@@ -56,8 +56,10 @@
       background:rgba(4,32,15,.96);
       box-shadow:0 4px 24px rgba(0,0,0,.25);
     }
-    body.about-page .nav .logo img {
-      filter: none;
+    body.about-page .nav .logo img.logo-img-about {
+      filter: none !important;
+      mix-blend-mode: lighten !important;
+      border-radius: 0 !important;
     }
     body.about-page .logo-brand {
       color:rgba(255,255,255,.55);
@@ -135,6 +137,13 @@
         border-color:var(--g4) !important;
         color:#fff !important;
       }
+      /* Space first links below tall / dense nav bar on About */
+      body.about-page .mobile-menu-drawer {
+        padding-top: 1.25rem !important;
+      }
+      body.about-page .mobile-menu-drawer-list {
+        padding-top: 0.35rem !important;
+      }
     }
 
     /* ═══ HERO ═══ */
@@ -210,33 +219,39 @@
       background:var(--g4);
     }
     .hero-eyebrow-text {
-      font-size:.75rem;
+      font-size: clamp(0.58rem, 1.85vw, 0.6875rem);
       font-weight:700;
-      letter-spacing:.15em;
+      letter-spacing:0.1em;
       text-transform:uppercase;
       color:var(--g5);
+      line-height:1.35;
     }
 
-    .hero-title {
-      font-family: var(--font-serif);
-      font-size:clamp(3.5rem, 8vw, 8.5rem);
+    /* Scoped to About markup + stronger than dashboard.css / SW-cached duplicates */
+    body.about-page .hero-main .hero-title {
+      font-family: var(--font-serif) !important;
+      font-size: clamp(3.1rem, calc(7vw + 1.05rem), 7.25rem) !important;
       font-weight:700;
-      line-height:.95;
-      letter-spacing:-.035em;
-      color:#fff;
+      line-height:0.89 !important;
+      letter-spacing:-.035em !important;
+      color:#fff !important;
       margin-bottom:2rem;
       max-width:900px;
       opacity:0;
       animation:fadeUp .9s ease forwards .5s;
     }
-    .hero-title-brand {
+    body.about-page .hero-main .hero-title-brand {
       display:inline-block;
       letter-spacing:-0.02em;
     }
-    .hero-title em {
+    body.about-page .hero-main .hero-title em {
+      display:block;
       font-style:italic;
       font-weight:300;
-      color:var(--g5);
+      font-size:0.76em !important;
+      line-height:1.05;
+      margin-top:0.06em;
+      color:var(--g5) !important;
     }
 
     .hero-body-row {
@@ -249,10 +264,10 @@
       animation:fadeUp .9s ease forwards .7s;
     }
     .hero-desc {
-      font-size:1.1rem;
+      font-size:1rem;
       color:rgba(255,255,255,.55);
       max-width:500px;
-      line-height:1.85;
+      line-height:1.5;
       font-weight:400;
     }
     .hero-desc strong { color:rgba(255,255,255,.85); font-weight:700; }
@@ -377,7 +392,7 @@
 
     @media (prefers-reduced-motion: reduce) {
       .hero-eyebrow,
-      .hero-title,
+      body.about-page .hero-main .hero-title,
       .hero-body-row {
         opacity: 1 !important;
         transform: none !important;
@@ -887,7 +902,7 @@
       font-family: var(--font-footer-author);
       font-size:1.22em;
       font-weight:600;
-      color:var(--text-footer-author-on-dark);
+      color:inherit;
       letter-spacing:0.02em;
       line-height:1.15;
       margin-left:0.2rem;
@@ -924,4 +939,52 @@
       .values-grid   { grid-template-columns:1fr; }
       .module-grid   { grid-template-columns:1fr; }
       .break-right   { grid-template-columns:1fr; }
+
+      section.section.services-wrap {
+        padding-top:3rem;
+        padding-bottom:3.5rem;
+      }
+      .services-wrap .services-header {
+        margin-bottom:2rem;
+        gap:1rem;
+        align-items:flex-start;
+      }
+      .services-wrap .services-count {
+        font-size:2.85rem;
+        line-height:0.92;
+      }
+      .services-wrap .section-h2 {
+        font-size:clamp(1.65rem, 6vw, 2rem);
+      }
+      .services-wrap .eyebrow {
+        margin-bottom:0.95rem;
+        font-size:0.65rem;
+      }
+      .svc {
+        padding:1.15rem 1rem;
+      }
+      .svc-num {
+        font-size:0.65rem;
+        letter-spacing:0.1em;
+        margin-bottom:0.55rem;
+      }
+      .svc-icon {
+        font-size:1.35rem;
+        margin-bottom:0.5rem;
+      }
+      .svc h3 {
+        font-size:0.8rem;
+        margin-bottom:0.4rem;
+        line-height:1.25;
+      }
+      .svc p {
+        font-size:0.7rem;
+        line-height:1.45;
+      }
+      .svc-arrow {
+        width:21px;
+        height:21px;
+        margin-top:0.6rem;
+        font-size:0.65rem;
+      }
     }

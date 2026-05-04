@@ -1,10 +1,12 @@
 {# Main dashboard navigation bar - use across all modules #}
 {# Optional: active_page = 'home' | 'about' | 'admin' | 'personal-progress' | 'report' | 'mmr-chargeable' | 'hr' | ... #}
 {# Include with `with context` so routes can pass active_page: {% include 'partials/main_navbar.html' with context %} #}
+{# About: white full wordmark. Everywhere else: official mark (PNG). #}
+{% set _about_nav_logo = active_page is defined and active_page == 'about' %}
 <nav class="nav" id="nav">
   <div class="nav-container">
     <a href="/dashboard" class="logo" aria-label="Injaaz Home">
-      <img src="{{ url_for('static', filename='icons/INJAAZ Logo - Edited.png') }}" alt="Injaaz Facilities Management" width="200" height="40" decoding="async">
+      <img src="{{ url_for('static', filename=('icons/INJAAZ Logo - Edited.png' if _about_nav_logo else 'icons/icon-144x144.png')) }}" alt="Injaaz Facilities Management" class="{{ 'logo-img-about' if _about_nav_logo else 'logo-img-official' }}" width="{{ '200' if _about_nav_logo else '40' }}" height="{{ '40' if _about_nav_logo else '40' }}" decoding="async">
       <div class="logo-text">
         <span class="logo-brand">Injaaz</span>
         <span id="welcome-text" class="nav-welcome">Injaaz Application</span>
@@ -41,7 +43,7 @@
           </a>
         </li>
         <li id="review-history-menu-item" style="display: none;">
-          <a href="/api/workflow/history" {% if active_page == 'all-submissions' %}style="color: var(--primary); font-weight: 600;"{% endif %}>Review History</a>
+          <a href="/api/workflow/history" {% if active_page == 'all-submissions' %}style="color: var(--primary); font-weight: 600;"{% endif %}>Submitted Forms</a>
         </li>
         <li id="report-gen-menu-item" style="display: none;">
           <a href="/admin/mmr/" {% if active_page == 'report' or active_page == 'mmr-chargeable' %}style="color: var(--primary); font-weight: 600;"{% endif %}>Report Generation</a>

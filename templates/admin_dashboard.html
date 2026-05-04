@@ -104,10 +104,10 @@
       --sb-bg: #125435;
       --accent: #125435;
       --accent-2: #1a7a4d;
-      --sidebar-w: 260px;
+      --sidebar-w: 288px;
       --radius: 10px;
-      --dh-fs-base: 15px;
-      --dh-fs-sidebar: 14px;
+      --dh-fs-base: 17px;
+      --dh-fs-sidebar: 16px;
       --dh-fs-sidebar-label: 12px;
       --font-body: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
       font-family: var(--font-body);
@@ -115,12 +115,12 @@
     }
     @media (max-width: 1280px) {
       body.admin-dh-page {
-        --sidebar-w: 244px;
+        --sidebar-w: 252px;
       }
     }
     @media (max-width: 1100px) {
       body.admin-dh-page {
-        --sidebar-w: 228px;
+        --sidebar-w: 232px;
       }
     }
     /* DocHub method: viewport-locked body + flex column; only main column scrolls (see dochub-page.css body.dochub-page-v2.has-main-nav + .dh-page-root) */
@@ -354,178 +354,15 @@
     .admv3-anim:nth-child(4) { animation-delay: 0.22s; }
     .admv3-anim:nth-child(5) { animation-delay: 0.28s; }
 
-    /* ── Sidebar ─────────────────────────────────────────────── */
+    /* ── Sidebar ─ same solid bar as DocHub / BizFlow (dochub-page.css) ── */
     body.admin-v2 .admin-dh-page-root .dh-sidebar {
-      background: linear-gradient(180deg, #071c0f 0%, #0a3520 45%, #0d4028 100%);
-      color: rgba(255,255,255,0.9);
+      background: var(--sb-bg) !important;
+      color: rgba(255, 255, 255, 0.9);
       display: flex;
       flex-direction: column;
       overflow: hidden;
       border-right: none;
-      box-shadow: 4px 0 32px rgba(0,0,0,0.22);
-    }
-
-    /* Brand */
-    .admv2-sb-brand {
-      display: flex;
-      align-items: center;
-      gap: 0.65rem;
-      padding: 1.35rem 1.15rem 1rem;
-      border-bottom: 1px solid rgba(255,255,255,0.08);
-      flex-shrink: 0;
-    }
-    .admv2-sb-logo-wrap {
-      width: 38px;
-      height: 38px;
-      border-radius: 10px;
-      background: rgba(255,255,255,0.12);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-      overflow: hidden;
-    }
-    .admv2-sb-logo-img {
-      width: 26px;
-      height: 26px;
-      object-fit: contain;
-      filter: brightness(0) invert(1);
-    }
-    .admv2-sb-name {
-      font-size: 1rem;
-      font-weight: 700;
-      color: #fff;
-      letter-spacing: -0.01em;
-      line-height: 1.2;
-    }
-    .admv2-sb-sub {
-      font-size: 0.65rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: rgba(255,255,255,0.45);
-      margin-top: 0.1rem;
-    }
-
-    /* Nav */
-    .admv2-sb-nav {
-      flex: 1 1 0;
-      overflow-y: auto;
-      overflow-x: hidden;
-      padding: 0.65rem 0.65rem 0.5rem;
-      scrollbar-width: none;
-    }
-    .admv2-sb-nav::-webkit-scrollbar { display: none; }
-    .admv2-sb-grp-lbl {
-      font-size: 0.62rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.11em;
-      color: rgba(255,255,255,0.35);
-      padding: 0.7rem 0.55rem 0.28rem;
-    }
-    .admv2-sb-divider {
-      height: 1px;
-      background: rgba(255,255,255,0.07);
-      margin: 0.45rem 0.55rem;
-    }
-    .admv2-sb-item {
-      display: flex;
-      align-items: center;
-      gap: 0.55rem;
-      padding: 0.48rem 0.7rem;
-      border-radius: 9px;
-      font-size: 0.81rem;
-      font-weight: 500;
-      color: rgba(255,255,255,0.58);
-      text-decoration: none;
-      transition: background 0.15s, color 0.15s, padding-left 0.15s;
-      position: relative;
-      margin-bottom: 0.06rem;
-    }
-    .admv2-sb-item:hover {
-      background: rgba(255,255,255,0.09);
-      color: rgba(255,255,255,0.92);
-    }
-    .admv2-sb-item.admv2-sb-active {
-      background: rgba(110,231,183,0.12);
-      color: #fff;
-      font-weight: 600;
-    }
-    .admv2-sb-item.admv2-sb-active::before {
-      content: '';
-      position: absolute;
-      left: 0; top: 50%;
-      transform: translateY(-50%);
-      width: 3px; height: 65%;
-      background: #6ee7b7;
-      border-radius: 0 3px 3px 0;
-    }
-    .admv2-sb-item.admv2-sb-active .admv2-sb-ico { opacity: 1; }
-    .admv2-sb-ico {
-      font-size: 0.9rem;
-      flex-shrink: 0;
-      width: 18px;
-      text-align: center;
-      opacity: 0.85;
-    }
-    .admv2-sb-badge {
-      margin-left: auto;
-      background: rgba(110,231,183,0.25);
-      color: #6ee7b7;
-      font-size: 0.62rem;
-      font-weight: 700;
-      padding: 0.1rem 0.42rem;
-      border-radius: 99px;
-      min-width: 20px;
-      text-align: center;
-      flex-shrink: 0;
-    }
-
-    /* Sidebar footer */
-    .admv2-sb-footer {
-      padding: 0.75rem 0.9rem;
-      border-top: 1px solid rgba(255,255,255,0.08);
-      flex-shrink: 0;
-    }
-    .admv2-sb-user {
-      display: flex;
-      align-items: center;
-      gap: 0.6rem;
-      padding: 0.5rem 0.6rem;
-      border-radius: 10px;
-      cursor: pointer;
-      transition: background 0.15s;
-    }
-    .admv2-sb-user:hover { background: rgba(255,255,255,0.08); }
-    .admv2-sb-avatar {
-      width: 34px;
-      height: 34px;
-      border-radius: 9px;
-      background: rgba(110,231,183,0.2);
-      color: #6ee7b7;
-      font-size: 0.8rem;
-      font-weight: 700;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-    }
-    .admv2-sb-user-name {
-      font-size: 0.82rem;
-      font-weight: 600;
-      color: rgba(255,255,255,0.9);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .admv2-sb-user-role {
-      font-size: 0.68rem;
-      color: rgba(255,255,255,0.45);
-      text-transform: capitalize;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      box-shadow: none;
     }
 
     /* ══════════════════════════════════════════════════════════
@@ -3528,35 +3365,9 @@
       color: #0f172a;
     }
     body.admin-v4 .admin-dh-page-root .dh-sidebar {
-      background: linear-gradient(180deg, #06150d 0%, #082015 44%, #0b2d1c 100%);
-      box-shadow: 10px 0 38px rgba(2, 12, 7, 0.38);
-      border-right: 1px solid rgba(255,255,255,0.06);
-    }
-    body.admin-v4 .admv2-sb-brand {
-      background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0));
-      border-bottom-color: rgba(255,255,255,0.12);
-      padding-top: 1.5rem;
-      padding-bottom: 1.15rem;
-    }
-    body.admin-v4 .admv2-sb-item {
-      border: 1px solid transparent;
-      border-radius: 11px;
-      color: rgba(226, 232, 240, 0.82);
-      margin-bottom: 0.18rem;
-    }
-    body.admin-v4 .admv2-sb-item:hover {
-      border-color: rgba(110,231,183,0.22);
-      background: rgba(110,231,183,0.08);
-      color: #ffffff;
-    }
-    body.admin-v4 .admv2-sb-item.admv2-sb-active {
-      background: linear-gradient(135deg, rgba(16,185,129,0.26), rgba(59,130,246,0.2));
-      border-color: rgba(110,231,183,0.34);
-      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.07);
-    }
-    body.admin-v4 .admv2-sb-item.admv2-sb-active::before {
-      background: #93f5c8;
-      box-shadow: 0 0 0 2px rgba(147,245,200,0.2);
+      background: var(--sb-bg) !important;
+      box-shadow: none;
+      border-right: none;
     }
     body.admin-v4 .admin-dh-main .container.admin-content {
       padding-top: 1.3rem !important;
@@ -3768,70 +3579,48 @@
 
   <div class="dh-page-root admin-dh-page-root">
     <aside class="dh-sidebar" id="adminDhSidebar" aria-label="Administration menu">
-      <!-- Brand -->
-      <div class="admv2-sb-brand">
-        <div class="admv2-sb-logo-wrap">
-          <img src="{{ url_for('static', filename='logo.png') }}" class="admv2-sb-logo-img" alt="Injaaz">
-        </div>
-        <div>
-          <div class="admv2-sb-name">Injaaz</div>
-          <div class="admv2-sb-sub">Control Center</div>
+      <div class="sb-brand">
+        <div class="sb-brand-text">
+          <span class="name">Injaaz</span>
+          <span class="tagline">Control Center</span>
         </div>
       </div>
-      <!-- Navigation -->
-      <nav class="admv2-sb-nav">
-        <div class="admv2-sb-grp-lbl">Command</div>
-        <a href="#section-overview" class="admv2-sb-item admv2-sb-active" onclick="admv2ScrollTo('section-overview',this);return false;">
-          <span class="admv2-sb-ico">⊞</span>Dashboard
-        </a>
-        <a href="#section-users" class="admv2-sb-item" onclick="admv2ScrollTo('section-users',this);return false;">
-          <span class="admv2-sb-ico">👥</span>Users
-          <span class="admv2-sb-badge" id="admSbUserCount">0</span>
-        </a>
-        <a href="#section-documents" class="admv2-sb-item" onclick="admv2ScrollTo('section-documents',this);return false;">
-          <span class="admv2-sb-ico">📄</span>Documents
-          <span class="admv2-sb-badge" id="admSbDocCount">0</span>
-        </a>
-        <a href="#section-notification-settings" class="admv2-sb-item" onclick="admv2ScrollTo('section-notification-settings',this);return false;">
-          <span class="admv2-sb-ico">🔔</span>Notifications
-        </a>
-        <div class="admv2-sb-divider"></div>
-        <div class="admv2-sb-grp-lbl">Automation</div>
-        <a href="/admin/mmr/" class="admv2-sb-item">
-          <span class="admv2-sb-ico">📊</span>Report Generation
-        </a>
-        <a href="/admin/mmr-chargeable" class="admv2-sb-item">
-          <span class="admv2-sb-ico">⚙</span>Chargeable Rules
-        </a>
-        <div class="admv2-sb-divider"></div>
-        <div class="admv2-sb-grp-lbl">Operations</div>
-        <a href="/admin/devices" class="admv2-sb-item">
-          <span class="admv2-sb-ico">📱</span>Devices
-        </a>
-        <a href="/admin/bd" class="admv2-sb-item">
-          <span class="admv2-sb-ico">💼</span>Business Dev
-        </a>
-        <a href="/admin/personal-progress" class="admv2-sb-item">
-          <span class="admv2-sb-ico">📈</span>Personal Progress
-        </a>
-        <div class="admv2-sb-divider"></div>
-        <div class="admv2-sb-grp-lbl">Platform</div>
-        <a href="/dochub" class="admv2-sb-item">
-          <span class="admv2-sb-ico">🗂</span>DocHub
-        </a>
-        <a href="/dashboard" class="admv2-sb-item">
-          <span class="admv2-sb-ico">🏠</span>App Home
-        </a>
+      <nav class="sb-nav">
+        <div class="dh-sb-section">
+          <div class="sb-section-label">Command</div>
+          <a href="#section-overview" class="sb-nav-item active" onclick="admv2ScrollTo('section-overview',this);return false;">Dashboard</a>
+          <a href="#section-users" class="sb-nav-item" onclick="admv2ScrollTo('section-users',this);return false;">Users <span class="sb-badge" id="admSbUserCount">0</span></a>
+          <a href="#section-documents" class="sb-nav-item" onclick="admv2ScrollTo('section-documents',this);return false;">Documents <span class="sb-badge" id="admSbDocCount">0</span></a>
+          <a href="#section-notification-settings" class="sb-nav-item" onclick="admv2ScrollTo('section-notification-settings',this);return false;">Notifications</a>
+        </div>
+        <hr class="sb-nav-divider" aria-hidden="true">
+        <div class="dh-sb-section">
+          <div class="sb-section-label">Automation</div>
+          <a href="/admin/mmr/" class="sb-nav-item">Report Generation</a>
+          <a href="/admin/mmr-chargeable" class="sb-nav-item">Chargeable Rules</a>
+        </div>
+        <hr class="sb-nav-divider" aria-hidden="true">
+        <div class="dh-sb-section">
+          <div class="sb-section-label">Operations</div>
+          <a href="/admin/devices" class="sb-nav-item">Devices</a>
+          <a href="/admin/bd" class="sb-nav-item">Business Dev</a>
+          <a href="/admin/personal-progress" class="sb-nav-item">Personal Progress</a>
+        </div>
+        <hr class="sb-nav-divider" aria-hidden="true">
+        <div class="dh-sb-section">
+          <div class="sb-section-label">Platform</div>
+          <a href="/dochub" class="sb-nav-item">DocHub</a>
+          <a href="/dashboard" class="sb-nav-item">App Home</a>
+        </div>
       </nav>
-      <!-- Footer user row -->
-      <div class="admv2-sb-footer">
-        <div class="admv2-sb-user" id="admSbUserRow" role="button" tabindex="0" title="Open profile"
+      <div class="sb-footer">
+        <div class="sb-user-row" id="admSbUserRow" role="button" tabindex="0" title="Open profile"
              onclick="if(typeof openProfileModal==='function'){openProfileModal();}"
              onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();if(typeof openProfileModal==='function')openProfileModal();}">
-          <div class="admv2-sb-avatar" id="admSbAvatar">—</div>
-          <div>
-            <div class="admv2-sb-user-name" id="admSbName">Loading…</div>
-            <div class="admv2-sb-user-role" id="admSbRole">—</div>
+          <div class="sb-avatar" id="admSbAvatar">—</div>
+          <div class="sb-user-text">
+            <div class="sb-user-name" id="admSbName">Loading…</div>
+            <div class="sb-user-role" id="admSbRole">—</div>
           </div>
         </div>
       </div>
@@ -7136,10 +6925,10 @@
     /* ── Admin: sidebar + mobile rail active state ───────── */
     function admv2SetActiveSection(sectionId) {
       if (!sectionId) return;
-      document.querySelectorAll('.admv2-sb-item[href^="#"]').forEach((el) => {
+      document.querySelectorAll('#adminDhSidebar .sb-nav-item[href^="#"]').forEach((el) => {
         const href = el.getAttribute('href') || '';
         const id = href.indexOf('#') === 0 ? href.slice(1) : '';
-        el.classList.toggle('admv2-sb-active', id === sectionId);
+        el.classList.toggle('active', id === sectionId);
       });
       document.querySelectorAll('.admin-mobile-rail-item').forEach((el) => {
         const href = el.getAttribute('href') || '';

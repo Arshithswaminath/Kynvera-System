@@ -13,7 +13,8 @@
 <nav class="nav" id="nav">
   <div class="nav-container">
     <a href="/" class="logo">
-      <img src="{{ url_for('static', filename='icons/INJAAZ Logo - Edited.png') }}" alt="Injaaz Facilities Management" width="200" height="40" decoding="async">
+      {% set _about_nav_logo = active_page is defined and active_page == 'about' %}
+      <img src="{{ url_for('static', filename=('icons/INJAAZ Logo - Edited.png' if _about_nav_logo else 'icons/icon-144x144.png')) }}" alt="Injaaz Facilities Management" class="{{ 'logo-img-about' if _about_nav_logo else 'logo-img-official' }}" width="{{ '200' if _about_nav_logo else '40' }}" height="{{ '40' if _about_nav_logo else '40' }}" decoding="async">
       {% if page_title %}
         <span>{{ page_title }}</span>
       {% else %}
@@ -40,7 +41,7 @@
           <li><a href="/inspection/">Inspection Form</a></li>
           <li><a href="/hr/">HR Forms</a></li>
           <li id="review-history-menu-item" style="display: none;">
-            <a href="/api/workflow/history" style="color: var(--text-dark); font-weight: 500;">Review History</a>
+            <a href="/api/workflow/history" style="color: var(--text-dark); font-weight: 500;">Submitted Forms</a>
           </li>
           <li id="report-gen-menu-item" style="display: none;">
             <a href="/admin/mmr/" style="color: var(--primary); font-weight: 600;">Report Generation</a>

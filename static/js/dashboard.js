@@ -999,6 +999,7 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
       
       /* Module Badges */
       .pro-modules-wrap {
+        margin-top: 1rem;
         padding: 0.875rem;
         background: #f8fafc;
         border-radius: 12px;
@@ -1240,25 +1241,26 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
         gap: 0.75rem;
       }
       
-      /* Mobile Responsive - Profile Modal */
+      /* Mobile Responsive - Profile Modal (phones) */
       @media (max-width: 480px) {
         .pro-sig-grid {
           grid-template-columns: 1fr;
         }
         
         .pro-container {
-          padding: 0 1rem 1.5rem;
+          padding: 0 0.875rem calc(1.25rem + env(safe-area-inset-bottom, 0px));
+          box-sizing: border-box;
         }
         
         .pro-hero {
-          margin: 0 -1rem;
-          padding: 2rem 1rem 1.5rem;
+          margin: 0 -0.875rem;
+          padding: 1.5rem 0.875rem 1.25rem;
         }
         
         .pro-avatar {
-          width: 70px;
-          height: 70px;
-          font-size: 1.5rem;
+          width: 72px;
+          height: 72px;
+          font-size: 1.55rem;
         }
         
         .pro-avatar::after {
@@ -1267,41 +1269,64 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
         }
         
         .pro-name {
-          font-size: 1.2rem;
+          font-size: 1.15rem;
+          line-height: 1.25;
+          max-width: 100%;
+          padding: 0 0.125rem;
         }
         
         .pro-role-badge {
-          font-size: 0.7rem;
-          padding: 0.375rem 0.75rem;
+          font-size: 0.6875rem;
+          padding: 0.4rem 0.75rem;
+          max-width: min(100%, 340px);
+          flex-wrap: wrap;
+          justify-content: center;
+          text-align: center;
+          line-height: 1.35;
         }
         
         .pro-tabs {
-          margin: 0 -1rem;
-          padding: 0.625rem 0.5rem;
-          gap: 0.25rem;
+          margin: 0 -0.875rem;
+          padding: 0.35rem 0.45rem;
+          gap: 0.35rem;
+          width: calc(100% + 1.75rem);
+          max-width: none;
+          box-sizing: border-box;
+          justify-content: stretch;
         }
         
         .pro-tab {
-          padding: 0.5rem 0.375rem;
+          flex: 1;
+          min-width: 0;
+          min-height: 44px;
+          padding: 0.45rem 0.35rem;
           font-size: 0.7rem;
-          gap: 0.25rem;
+          gap: 0.3rem;
+          border-radius: 10px;
+          -webkit-tap-highlight-color: rgba(18, 84, 53, 0.12);
         }
         
         .pro-tab svg {
-          width: 12px;
-          height: 12px;
+          width: 20px;
+          height: 20px;
+          flex-shrink: 0;
+        }
+        
+        .pro-tab span {
+          display: none;
         }
         
         .pro-tab-content {
-          padding: 1rem 0;
+          padding: 0.875rem 0 0;
         }
         
         .pro-info-list {
-          gap: 0.625rem;
+          gap: 0.5rem;
         }
         
         .pro-info-item {
-          padding: 0.625rem 0.75rem;
+          align-items: flex-start;
+          padding: 0.625rem 0.625rem;
           gap: 0.625rem;
         }
         
@@ -1310,6 +1335,7 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
           height: 36px;
           font-size: 0.95rem;
           border-radius: 8px;
+          margin-top: 0.1rem;
         }
         
         .pro-info-label {
@@ -1317,11 +1343,13 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
         }
         
         .pro-info-value {
-          font-size: 0.85rem;
+          font-size: 0.875rem;
+          line-height: 1.35;
         }
         
         .pro-modules-wrap {
-          padding: 0.75rem;
+          padding: 0.625rem 0.625rem;
+          margin-top: 0.75rem;
         }
         
         .pro-modules-title {
@@ -1329,14 +1357,26 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
           margin-bottom: 0.5rem;
         }
         
+        .pro-modules-list {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 0.45rem;
+        }
+        
         .pro-module-badge {
-          padding: 0.375rem 0.625rem;
-          font-size: 0.7rem;
+          width: 100%;
+          max-width: 100%;
+          box-sizing: border-box;
+          justify-content: flex-start;
+          padding: 0.5rem 0.7rem;
+          font-size: 0.8125rem;
         }
         
         .pro-security-card {
-          padding: 0.625rem;
-          gap: 0.625rem;
+          flex-direction: column;
+          text-align: center;
+          gap: 0.75rem;
+          padding: 0.75rem 0.625rem;
         }
         
         .pro-security-icon {
@@ -1353,8 +1393,16 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
           font-size: 0.7rem;
         }
         
+        .pro-security-action {
+          width: 100%;
+        }
+        
+        .pro-security-action .pro-btn {
+          width: 100%;
+        }
+        
         .pro-btn {
-          padding: 0.375rem 0.75rem;
+          padding: 0.45rem 0.85rem;
           font-size: 0.7rem;
         }
         
@@ -1373,12 +1421,14 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
         .pro-sig-comment {
           min-height: 70px;
           padding: 0.625rem;
-          font-size: 0.75rem;
+          font-size: 0.8rem;
         }
         
         .pro-member-since {
-          font-size: 0.75rem;
-          padding: 0.75rem 0 0.25rem;
+          font-size: 0.8125rem;
+          padding: 1rem 0 0.35rem;
+          margin-top: 0.35rem;
+          line-height: 1.45;
         }
       }
       
@@ -1578,61 +1628,6 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
         color: #334155;
       }
       
-      /* Responsive */
-      @media (max-width: 480px) {
-        .pro-hero {
-          padding: 2rem 1rem 1.25rem;
-          margin: -1.75rem -1.75rem 0;
-        }
-        
-        .pro-avatar {
-          width: 76px;
-          height: 76px;
-          font-size: 1.75rem;
-        }
-        
-        .pro-name {
-          font-size: 1.3rem;
-        }
-        
-        .pro-tabs {
-          padding: 0.5rem 0.75rem;
-          margin: 0 -1.75rem;
-        }
-        
-        .pro-tab {
-          padding: 0.5rem;
-          font-size: 0.75rem;
-        }
-        
-        .pro-tab span {
-          display: none;
-        }
-        
-        .pro-info-item {
-          padding: 0.75rem;
-        }
-        
-        .pro-info-icon {
-          width: 36px;
-          height: 36px;
-          font-size: 1rem;
-        }
-        
-        .pro-security-card {
-          flex-direction: column;
-          text-align: center;
-          gap: 0.75rem;
-        }
-        
-        .pro-security-action {
-          width: 100%;
-        }
-        
-        .pro-security-action .pro-btn {
-          width: 100%;
-        }
-      }
     </style>
     
     <div class="pro-container">
@@ -1683,7 +1678,7 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
           </div>
         </div>
         
-        <div class="pro-modules-wrap" style="margin-top: 1rem;">
+        <div class="pro-modules-wrap">
           <div class="pro-modules-title">Module Access</div>
           <div class="pro-modules-list">
             ${moduleBadges}

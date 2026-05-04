@@ -150,10 +150,64 @@
       return `<div class="doc-form" style="padding:1rem;box-shadow:none;max-width:100%;"><div class="doc-section-title">${escapeHtml(sid)}</div><table class="doc-table">${row('Requester', fd.requester)}${row('Employee Name', fd.employee_name)}${row('Leave Started', fmtDate(fd.leave_started))}${row('Actual Resumption', fmtDate(fd.actual_resumption_date))}<tr><td class="label">Signature</td><td>${sig}</td></tr></table></div>`;
     }
     function renderLeaveFormAsFilled(fd, sid) {
-      const sig = fd.employee_signature && fd.employee_signature.startsWith('data:image') ? `<img src="${fd.employee_signature}" style="max-width:200px;max-height:80px;border:1px solid #e2e8f0;border-radius:6px;" alt="Signature">` : '-';
-      const leaveLabels = { annual: 'Annual Leave', sick: 'Sick Leave', ot_compensatory: 'OT Compensatory Off', unpaid: 'Unpaid Leave', compassionate: 'Compassionate Leave', study: 'Study Leave', examination: 'Examination Leave', hajj: 'Hajj Leave', other: 'Other' };
-      const leaveType = leaveLabels[fd.leave_type] || (fd.leave_type || '-');
-      return `<div class="doc-form" style="padding:1rem;box-shadow:none;max-width:100%;"><div class="doc-section-title">${escapeHtml(sid)}</div><table class="doc-table">${row('Name', fd.employee_name)}${row('Job Title', fd.job_title)}${row('Employee ID', fd.employee_id)}${row('Type of Leave', leaveType)}${row('Total Days', fd.total_days_requested || fd.total_days)}${row('First Day', fmtDate(fd.first_day_of_leave || fd.start_date))}${row('Last Day', fmtDate(fd.last_day_of_leave || fd.end_date))}<tr><td class="label">Employee Signature</td><td>${sig}</td></tr></table></div>`;
+      const row = (label, val) => {
+        const v = (val != null && val !== '') ? escapeHtml(String(val)) : '-';
+        return `<tr><td class="label">${label}</td><td>${v}</td></tr>`;
+      };
+      const sigHtml = (url, alt) => (url && typeof url === 'string' && url.startsWith('data:image'))
+        ? `<span class="doc-sig-wrap"><img src="${url}" class="doc-sig-img" alt="${alt || 'Signature'}"></span>` : '-';
+      const leaveLabels = { annual: 'Annual Leave', sick: 'Sick Leave', ot_compensatory: 'OT Compensatory Off', unpaid: 'Unpaid Leave', compassionate: 'Compassionate Leave', study: 'Study Leave', examination: 'Examination Leave (UAE Nationals)', hajj: 'Hajj Leave', other: 'Other' };
+      const leaveTypeRaw = leaveLabels[fd.leave_type] || fd.leave_type || '-';
+      const leaveTypeCell = escapeHtml(String(leaveTypeRaw)) + (fd.leave_type === 'other' && fd.leave_type_other ? ' — ' + escapeHtml(fd.leave_type_other) : '');
+      const salaryStr = fd.salary_advance === 'yes' ? 'YES' : fd.salary_advance === 'no' ? 'NO' : '-';
+      const ref = escapeHtml(sid || '');
+      return `
+        <div class="doc-form doc-form--preview" style="box-shadow:none;border:none;background:transparent;padding:0;max-width:100%;">
+          <div class="doc-submission-ref">Reference: ${ref}</div>
+          <div class="doc-form-grid doc-form-grid--leave">
+            <div class="doc-panel">
+              <div class="doc-section-title">Employee Details</div>
+              <table class="doc-table">
+                ${row('Name', fd.employee_name)}
+                ${row('Job Title', fd.job_title)}
+                ${row('Employee ID', fd.employee_id)}
+                ${row('Date of Joining', fmtDate(fd.date_of_joining))}
+                ${row('Last Leave Date', fmtDate(fd.last_leave_date))}
+                ${row("Today's Date", fmtDate(fd.today_date))}
+                ${row('Department', fd.department)}
+                ${row('Mobile No.', fd.mobile_no)}
+              </table>
+            </div>
+            <div class="doc-panel">
+              <div class="doc-section-title">Details of Leave</div>
+              <table class="doc-table">
+                <tr><td class="label">Type of Leave</td><td>${leaveTypeCell}</td></tr>
+                ${row('No. of Days', fd.number_of_days)}
+                ${row('Total No. of Days Requested', fd.total_days_requested || fd.total_days)}
+                ${row('First Day of Leave', fmtDate(fd.first_day_of_leave || fd.start_date))}
+                ${row('Last Day of Leave', fmtDate(fd.last_day_of_leave || fd.end_date))}
+                ${row('Date Returning to Work', fmtDate(fd.date_returning_to_work))}
+                ${row('Leave Salary Advance', salaryStr)}
+                ${row('Telephone (reachable)', fd.telephone_reachable)}
+                ${row('Replacement Name', fd.replacement_name)}
+                <tr><td class="label">Employee Signature</td><td>${sigHtml(fd.employee_signature, 'Employee')}</td></tr>
+              </table>
+            </div>
+          </div>
+          <div class="doc-panel doc-panel--hr">
+            <div class="doc-section-title doc-section-title--hr">For Human Resources Only</div>
+            <table class="doc-table">
+              ${row('Checked by HR', fd.hr_checked)}
+              ${row('HR Comments', fd.hr_comments)}
+              ${row('Balance C/F', fd.hr_balance_cf)}
+              ${row('Contract Year', fd.hr_contract_year)}
+              ${row('Paid', fd.hr_paid)}
+              ${row('Unpaid', fd.hr_unpaid)}
+              <tr><td class="label">HR Signature</td><td>${sigHtml(fd.hr_signature, 'HR')}</td></tr>
+              <tr><td class="label">GM Signature</td><td>${sigHtml(fd.gm_signature, 'GM')}</td></tr>
+            </table>
+          </div>
+        </div>`;
     }
     
     function buildTimelineItem(title, by, date, status, comment, signature) {

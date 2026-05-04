@@ -37,6 +37,18 @@
     .hr-approval-info { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; }
     .signature-canvas, .signature-pad { border: 2px dashed #d1d5db; border-radius: 8px; background: #fafafa; touch-action: none; -webkit-user-select: none; user-select: none; }
     
+    /* Print / DOCX / PDF sit on a light modal footer — outline-light is for dark backgrounds only. */
+    .gm-approval-footer .gm-export-link.btn {
+      color: #1e293b;
+      border-color: #cbd5e1;
+      font-weight: 600;
+    }
+    .gm-approval-footer .gm-export-link.btn:hover {
+      color: #0f172a;
+      background: #f8fafc;
+      border-color: #94a3b8;
+    }
+    
     /* Success Modal */
     .success-overlay {
       position: fixed; top: 0; left: 0; right: 0; bottom: 0;
@@ -168,10 +180,10 @@
             </div>
           </div>
         </div>
-        <div class="modal-footer">
-          <a id="printBtnGm" href="#" target="_blank" class="btn btn-outline-light" style="margin-right: auto;">🖨️ Print (HR Document)</a>
-          <a id="docxBtnGm" href="#" class="btn btn-outline-light" style="display: none;">📄 DOCX</a>
-          <a id="pdfBtnGm" href="#" class="btn btn-outline-light" style="display: none;">📕 PDF</a>
+        <div class="modal-footer gm-approval-footer" style="flex-wrap: wrap; gap: 0.5rem;">
+          <a id="printBtnGm" href="#" target="_blank" class="btn btn-outline-secondary gm-export-link" style="margin-right: auto;">🖨️ Print (HR Document)</a>
+          <a id="docxBtnGm" href="#" class="btn btn-outline-secondary gm-export-link" style="display: none;">📄 DOCX</a>
+          <a id="pdfBtnGm" href="#" class="btn btn-outline-secondary gm-export-link" style="display: none;">📕 PDF</a>
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
           <button type="button" class="btn btn-reject" onclick="rejectRequest()">Reject</button>
           <button type="button" class="btn btn-approve" onclick="approveRequest()">Give Final Approval</button>
@@ -277,11 +289,64 @@
       return `<div class="doc-form" style="padding:1rem;box-shadow:none;max-width:100%;"><div class="doc-section-title" style="margin-bottom:0.5rem;">${submissionId}</div><div class="doc-form-grid form-single"><div class="doc-form-col"><div class="doc-section-title">Employee Details</div><table class="doc-table">${row('Requester', fd.requester)}${row('Employee Name', fd.employee_name)}${row('Employee ID', fd.employee_id)}${row('Job Title', fd.job_title)}${row('Company', fd.company)}</table><div class="doc-section-title">Leave Information</div><table class="doc-table">${row('Leave Started', fmtDate(fd.leave_started))}${row('Leave Ended', fmtDate(fd.leave_ended))}${row('Planned Resumption Date', fmtDate(fd.planned_resumption_date))}${row('Actual Resumption Date', fmtDate(fd.actual_resumption_date))}${row('Note', fd.note)}${row('Line Manager Remarks', fd.line_manager_remarks)}<tr><td class="label">Employee Signature</td><td>${sig}</td></tr></table></div></div></div>`;
     }
     function renderLeaveFormAsFilled(fd, submissionId) {
-      const row = (label, val) => `<tr><td class="label">${label}</td><td>${val != null && val !== '' ? escapeHtml(val) : '-'}</td></tr>`;
-      const sig = fd.employee_signature && fd.employee_signature.startsWith('data:image') ? `<img src="${fd.employee_signature}" style="max-width:200px;max-height:80px;border:1px solid #e2e8f0;border-radius:6px;" alt="Signature">` : '-';
+      const row = (label, val) => {
+        const v = (val != null && val !== '') ? escapeHtml(String(val)) : '-';
+        return `<tr><td class="label">${label}</td><td>${v}</td></tr>`;
+      };
+      const sigHtml = (url, alt) => (url && typeof url === 'string' && url.startsWith('data:image'))
+        ? `<span class="doc-sig-wrap"><img src="${url}" class="doc-sig-img" alt="${alt || 'Signature'}"></span>` : '-';
       const leaveLabels = { annual: 'Annual Leave', sick: 'Sick Leave', ot_compensatory: 'OT Compensatory Off', unpaid: 'Unpaid Leave', compassionate: 'Compassionate Leave', study: 'Study Leave', examination: 'Examination Leave (UAE Nationals)', hajj: 'Hajj Leave', other: 'Other' };
-      const leaveType = leaveLabels[fd.leave_type] || (fd.leave_type || '-');
-      return `<div class="doc-form" style="padding:1rem;box-shadow:none;max-width:100%;"><div class="doc-section-title" style="margin-bottom:0.5rem;">${submissionId}</div><div class="doc-form-grid form-single"><div class="doc-form-col"><div class="doc-section-title">Employee Details</div><table class="doc-table">${row('Name', fd.employee_name)}${row('Job Title', fd.job_title)}${row('Employee ID', fd.employee_id)}${row('Date of Joining', fmtDate(fd.date_of_joining))}${row("Last Leave Date", fmtDate(fd.last_leave_date))}${row("Today's Date", fmtDate(fd.today_date))}${row('Department', fd.department)}${row('Mobile No.', fd.mobile_no)}</table><div class="doc-section-title">Details of Leave</div><table class="doc-table"><tr><td class="label">Type of Leave</td><td>${leaveType}${fd.leave_type === 'other' && fd.leave_type_other ? ' - ' + escapeHtml(fd.leave_type_other) : ''}</td></tr>${row('No. of Days', fd.number_of_days)}${row('Total No. of Days Requested', fd.total_days_requested)}${row('First Day of Leave', fmtDate(fd.first_day_of_leave))}${row('Last Day of Leave', fmtDate(fd.last_day_of_leave))}${row('Date Returning to Work', fmtDate(fd.date_returning_to_work))}${row('Leave Salary Advance', fd.salary_advance === 'yes' ? 'YES' : fd.salary_advance === 'no' ? 'NO' : '-')}${row('Telephone (reachable)', fd.telephone_reachable)}${row('Replacement Name', fd.replacement_name)}<tr><td class="label">Employee Signature</td><td>${sig}</td></tr></table></div></div></div>`;
+      const leaveTypeRaw = leaveLabels[fd.leave_type] || fd.leave_type || '-';
+      const leaveTypeCell = escapeHtml(String(leaveTypeRaw)) + (fd.leave_type === 'other' && fd.leave_type_other ? ' — ' + escapeHtml(fd.leave_type_other) : '');
+      const salaryStr = fd.salary_advance === 'yes' ? 'YES' : fd.salary_advance === 'no' ? 'NO' : '-';
+      const ref = escapeHtml(submissionId || '');
+      return `
+        <div class="doc-form doc-form--preview" style="box-shadow:none;border:none;background:transparent;padding:0;max-width:100%;">
+          <div class="doc-submission-ref">Reference: ${ref}</div>
+          <div class="doc-form-grid doc-form-grid--leave">
+            <div class="doc-panel">
+              <div class="doc-section-title">Employee Details</div>
+              <table class="doc-table">
+                ${row('Name', fd.employee_name)}
+                ${row('Job Title', fd.job_title)}
+                ${row('Employee ID', fd.employee_id)}
+                ${row('Date of Joining', fmtDate(fd.date_of_joining))}
+                ${row('Last Leave Date', fmtDate(fd.last_leave_date))}
+                ${row("Today's Date", fmtDate(fd.today_date))}
+                ${row('Department', fd.department)}
+                ${row('Mobile No.', fd.mobile_no)}
+              </table>
+            </div>
+            <div class="doc-panel">
+              <div class="doc-section-title">Details of Leave</div>
+              <table class="doc-table">
+                <tr><td class="label">Type of Leave</td><td>${leaveTypeCell}</td></tr>
+                ${row('No. of Days', fd.number_of_days)}
+                ${row('Total No. of Days Requested', fd.total_days_requested)}
+                ${row('First Day of Leave', fmtDate(fd.first_day_of_leave))}
+                ${row('Last Day of Leave', fmtDate(fd.last_day_of_leave))}
+                ${row('Date Returning to Work', fmtDate(fd.date_returning_to_work))}
+                ${row('Leave Salary Advance', salaryStr)}
+                ${row('Telephone (reachable)', fd.telephone_reachable)}
+                ${row('Replacement Name', fd.replacement_name)}
+                <tr><td class="label">Employee Signature</td><td>${sigHtml(fd.employee_signature, 'Employee')}</td></tr>
+              </table>
+            </div>
+          </div>
+          <div class="doc-panel doc-panel--hr">
+            <div class="doc-section-title doc-section-title--hr">For Human Resources Only</div>
+            <table class="doc-table">
+              ${row('Checked by HR', fd.hr_checked)}
+              ${row('HR Comments', fd.hr_comments)}
+              ${row('Balance C/F', fd.hr_balance_cf)}
+              ${row('Contract Year', fd.hr_contract_year)}
+              ${row('Paid', fd.hr_paid)}
+              ${row('Unpaid', fd.hr_unpaid)}
+              <tr><td class="label">HR Signature</td><td>${sigHtml(fd.hr_signature, 'HR')}</td></tr>
+              <tr><td class="label">GM Signature</td><td>${sigHtml(fd.gm_signature, 'GM')}</td></tr>
+            </table>
+          </div>
+        </div>`;
     }
     
     function initGmSignaturePad() {
@@ -386,7 +451,6 @@
         ${formData.hr_comments ? `<p class="mb-0"><strong>Comments:</strong> ${formData.hr_comments}</p>` : ''}
       `;
       
-      const formType = (submission.module_type || submission.form_type || '').replace('hr_', '');
       const details = document.getElementById('requestDetails');
       details.innerHTML = renderFormAsFilled(formType, formData, submission.submission_id);
       

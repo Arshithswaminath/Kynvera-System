@@ -325,7 +325,7 @@ body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-ben
   display: grid !important;
   grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr) !important;
   gap: 0.65rem !important;
-  align-items: start !important;
+  align-items: stretch !important;
 }
 body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-bento-main,
 body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-bento-side {
@@ -385,6 +385,9 @@ body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv3-rp-
 body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-card-body {
   padding: 0.75rem 0.95rem 0.85rem !important;
 }
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-docs-card .admv2-card-body {
+  padding: 0 !important;
+}
 
 /* ── Operator cards ── */
 body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv3-op-card {
@@ -419,8 +422,36 @@ body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-doc
 }
 body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-docs-inner-scroll {
   background: var(--neat-card) !important;
-  /* Taller table viewport than body.admin-v4 default min(56vh, 600px) */
   max-height: min(73vh, 860px) !important;
+}
+@media (min-width: 1101px) {
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-bento-main > #section-documents.admv2-docs-card {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-bento-main > #section-documents.admv2-docs-card > .admv2-card-hd {
+    flex-shrink: 0 !important;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-docs-card .admv2-card-body {
+    flex: 1 1 0% !important;
+    min-height: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-docs-controls {
+    flex-shrink: 0 !important;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-docs-inner-scroll {
+    flex: 1 1 0% !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow-x: auto !important;
+    overflow-y: auto !important;
+  }
 }
 body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-rp-section {
   padding: 0.65rem 0.85rem !important;

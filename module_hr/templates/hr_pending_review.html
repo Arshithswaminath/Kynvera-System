@@ -38,32 +38,6 @@
     .detail-value { color: #1e293b; }
     .signature-canvas, .signature-pad { border: 2px dashed #d1d5db; border-radius: 8px; background: #fafafa; touch-action: none; -webkit-user-select: none; user-select: none; }
     
-    /* Success Modal */
-    .success-overlay {
-      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center;
-      z-index: 99999; opacity: 0; visibility: hidden; transition: all 0.3s ease;
-    }
-    .success-overlay.show { opacity: 1; visibility: visible; }
-    .success-modal {
-      background: white; border-radius: 20px; padding: 2.5rem; text-align: center;
-      max-width: 400px; width: 90%; transform: scale(0.8); transition: transform 0.3s ease;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-    }
-    .success-overlay.show .success-modal { transform: scale(1); }
-    .success-icon {
-      width: 80px; height: 80px; border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      margin: 0 auto 1.5rem; animation: pulse 2s infinite;
-    }
-    .success-icon.approved { background: linear-gradient(135deg, #10b981, #059669); }
-    .success-icon.rejected { background: linear-gradient(135deg, #ef4444, #dc2626); }
-    @keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(16,185,129,0.4); } 50% { box-shadow: 0 0 0 15px rgba(16,185,129,0); } }
-    .success-icon svg { width: 40px; height: 40px; color: white; }
-    .success-title { font-size: 1.5rem; font-weight: 700; color: #1e293b; margin-bottom: 0.5rem; }
-    .success-message { color: #64748b; margin-bottom: 1.5rem; }
-    .success-btn { background: linear-gradient(135deg, #f59e0b, #d97706); color: white; border: none; padding: 0.75rem 2rem; border-radius: 8px; font-weight: 600; cursor: pointer; }
-    
     .review-card { cursor: pointer; transition: all 0.2s; }
     .review-card:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.12); border-color: #f59e0b; }
     
@@ -116,34 +90,41 @@
     .review-modal-header .btn-close:hover { opacity: 1; }
     .review-modal-body {
       padding: 1rem 1.25rem; max-height: none; overflow-y: auto;
-      background: #f8fafc;
+      background: #f7f8f7;
     }
     .review-form-preview .doc-form {
       background: #fff; padding: 1rem; margin-bottom: 0.75rem;
-      border-radius: 16px; border: none;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02);
-      transition: box-shadow 0.2s ease;
+      border-radius: 10px; border: 1px solid #e8ebea;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
     }
     .review-form-preview .doc-form:hover {
-      box-shadow: 0 4px 16px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.02);
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    }
+    .review-form-preview .doc-form--preview {
+      padding: 0 !important;
+      background: transparent !important;
+      box-shadow: none !important;
+    }
+    .review-form-preview .doc-submission-ref {
+      margin-bottom: 1rem;
+    }
+    .review-form-preview .doc-panel {
+      background: #fff;
     }
     .review-form-preview .doc-section-title {
-      font-size: 0.7rem; padding: 0.35rem 0.85rem;
-      background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
-      color: #047857; border-radius: 9999px;
-      font-weight: 600; letter-spacing: 0.05em; margin-bottom: 0.5rem;
-      display: inline-block;
+      margin-bottom: 0.65rem;
     }
     .review-form-preview .doc-table {
       font-size: 0.9rem; margin-bottom: 0;
       background: transparent; border: none; border-radius: 0;
     }
-    .review-form-preview .doc-table tr:nth-child(even) td { background: #fafafa; }
+    .review-form-preview .doc-table tr:nth-child(even) td { background: transparent; }
     .review-form-preview .doc-table td {
-      padding: 0.5rem 0.6rem; border-bottom: 1px solid #f1f5f9;
+      padding: 0.65rem 0.75rem;
+      border-bottom: 1px solid #eef0ef;
       transition: background 0.15s ease;
     }
-    .review-form-preview .doc-table tr:hover td { background: #f8fafc !important; }
+    .review-form-preview .doc-table tr:hover td { background: #fafbfb !important; }
     .review-form-preview .doc-table tr:last-child td { border-bottom: none; }
     .review-form-preview .doc-table .label {
       color: #64748b; font-weight: 500; width: 36%; font-size: 0.85rem;
@@ -157,7 +138,7 @@
       background: #fff; border-radius: 16px; border: none;
       padding: 1rem; margin-top: 0.75rem;
       box-shadow: 0 2px 8px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02);
-      border-left: 4px solid #0d9488;
+      border-left: 3px solid #125435;
     }
     .review-actions-card h6 {
       font-weight: 600; color: #0f172a; font-size: 0.95rem;
@@ -193,13 +174,13 @@
       border-top: 1px solid #e2e8f0; gap: 1rem; flex-wrap: wrap;
     }
     .review-export-btn {
-      padding: 0.5rem 1rem; font-size: 0.85rem; font-weight: 500;
-      border-radius: 10px; border: 1px solid #e2e8f0;
-      background: #fff; color: #475569; text-decoration: none;
+      padding: 0.5rem 1rem; font-size: 0.85rem; font-weight: 600;
+      border-radius: 10px; border: 1px solid #cbd5e1;
+      background: #fff; color: #1e293b; text-decoration: none;
       transition: all 0.2s ease;
     }
     .review-export-btn:hover {
-      background: #f8fafc; border-color: #cbd5e1; color: #0f172a;
+      background: #f8fafc; border-color: #94a3b8; color: #0f172a;
       box-shadow: 0 1px 3px rgba(0,0,0,0.06);
     }
     .review-modal-footer .btn-light.border {
@@ -233,17 +214,6 @@
 <body class="has-main-nav">
   {% set active_page = 'pending-review' %}
   {% include 'partials/main_navbar.html' with context %}
-  <!-- Success Modal -->
-  <div class="success-overlay" id="successModal">
-    <div class="success-modal">
-      <div class="success-icon approved" id="successIcon">
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
-      </div>
-      <h2 class="success-title" id="successTitle">Forwarded to GM!</h2>
-      <p class="success-message" id="successMessage">The request has been approved and forwarded to the General Manager for final approval.</p>
-      <button class="success-btn" onclick="closeSuccessModal()">Continue</button>
-    </div>
-  </div>
   <div class="container py-4">
     <div class="page-header">
       <a href="/hr/" class="back-link">
@@ -470,41 +440,62 @@
     }
     
     function renderLeaveFormAsFilled(fd, submissionId) {
-      const row = (label, val) => `<tr><td class="label">${label}</td><td>${val != null && val !== '' ? escapeHtml(val) : '-'}</td></tr>`;
-      const sig = fd.employee_signature && fd.employee_signature.startsWith('data:image')
-        ? `<img src="${fd.employee_signature}" style="max-width:200px;max-height:80px;border:1px solid #e2e8f0;border-radius:6px;" alt="Signature">` : '-';
+      const row = (label, val) => {
+        const v = (val != null && val !== '') ? escapeHtml(String(val)) : '-';
+        return `<tr><td class="label">${label}</td><td>${v}</td></tr>`;
+      };
+      const sigHtml = (url, alt) => (url && typeof url === 'string' && url.startsWith('data:image'))
+        ? `<span class="doc-sig-wrap"><img src="${url}" class="doc-sig-img" alt="${alt || 'Signature'}"></span>` : '-';
       const leaveLabels = { annual: 'Annual Leave', sick: 'Sick Leave', ot_compensatory: 'OT Compensatory Off', unpaid: 'Unpaid Leave', compassionate: 'Compassionate Leave', study: 'Study Leave', examination: 'Examination Leave (UAE Nationals)', hajj: 'Hajj Leave', other: 'Other' };
-      const leaveType = leaveLabels[fd.leave_type] || (fd.leave_type || '-');
+      const leaveTypeRaw = leaveLabels[fd.leave_type] || fd.leave_type || '-';
+      const leaveTypeCell = escapeHtml(String(leaveTypeRaw)) + (fd.leave_type === 'other' && fd.leave_type_other ? ' — ' + escapeHtml(fd.leave_type_other) : '');
+      const salaryStr = fd.salary_advance === 'yes' ? 'YES' : fd.salary_advance === 'no' ? 'NO' : '-';
+      const ref = escapeHtml(submissionId || '');
       return `
-        <div class="doc-form" style="padding:1rem;box-shadow:none;max-width:100%;">
-          <div class="doc-section-title" style="margin-bottom:0.5rem;">${submissionId}</div>
-          <div class="doc-form-grid form-single">
-            <div class="doc-form-col">
+        <div class="doc-form doc-form--preview" style="box-shadow:none;border:none;background:transparent;padding:0;max-width:100%;">
+          <div class="doc-submission-ref">Reference: ${ref}</div>
+          <div class="doc-form-grid doc-form-grid--leave">
+            <div class="doc-panel">
               <div class="doc-section-title">Employee Details</div>
               <table class="doc-table">
                 ${row('Name', fd.employee_name)}
                 ${row('Job Title', fd.job_title)}
                 ${row('Employee ID', fd.employee_id)}
                 ${row('Date of Joining', fmtDate(fd.date_of_joining))}
-                ${row("Last Leave Date", fmtDate(fd.last_leave_date))}
+                ${row('Last Leave Date', fmtDate(fd.last_leave_date))}
                 ${row("Today's Date", fmtDate(fd.today_date))}
                 ${row('Department', fd.department)}
                 ${row('Mobile No.', fd.mobile_no)}
               </table>
+            </div>
+            <div class="doc-panel">
               <div class="doc-section-title">Details of Leave</div>
               <table class="doc-table">
-                <tr><td class="label">Type of Leave</td><td>${leaveType}${fd.leave_type === 'other' && fd.leave_type_other ? ' - ' + escapeHtml(fd.leave_type_other) : ''}</td></tr>
+                <tr><td class="label">Type of Leave</td><td>${leaveTypeCell}</td></tr>
                 ${row('No. of Days', fd.number_of_days)}
                 ${row('Total No. of Days Requested', fd.total_days_requested)}
                 ${row('First Day of Leave', fmtDate(fd.first_day_of_leave))}
                 ${row('Last Day of Leave', fmtDate(fd.last_day_of_leave))}
                 ${row('Date Returning to Work', fmtDate(fd.date_returning_to_work))}
-                ${row('Leave Salary Advance', fd.salary_advance === 'yes' ? 'YES' : fd.salary_advance === 'no' ? 'NO' : '-')}
+                ${row('Leave Salary Advance', salaryStr)}
                 ${row('Telephone (reachable)', fd.telephone_reachable)}
                 ${row('Replacement Name', fd.replacement_name)}
-                <tr><td class="label">Employee Signature</td><td>${sig}</td></tr>
+                <tr><td class="label">Employee Signature</td><td>${sigHtml(fd.employee_signature, 'Employee')}</td></tr>
               </table>
             </div>
+          </div>
+          <div class="doc-panel doc-panel--hr">
+            <div class="doc-section-title doc-section-title--hr">For Human Resources Only</div>
+            <table class="doc-table">
+              ${row('Checked by HR', fd.hr_checked)}
+              ${row('HR Comments', fd.hr_comments)}
+              ${row('Balance C/F', fd.hr_balance_cf)}
+              ${row('Contract Year', fd.hr_contract_year)}
+              ${row('Paid', fd.hr_paid)}
+              ${row('Unpaid', fd.hr_unpaid)}
+              <tr><td class="label">HR Signature</td><td>${sigHtml(fd.hr_signature, 'HR')}</td></tr>
+              <tr><td class="label">GM Signature</td><td>${sigHtml(fd.gm_signature, 'GM')}</td></tr>
+            </table>
           </div>
         </div>`;
     }
@@ -716,6 +707,118 @@
     function clearSignature() {
       if (signaturePad) signaturePad.clear();
     }
+
+    /** Force-remove Bootstrap modal + backdrop (stuck backdrop = dim screen, no message). */
+    function forceCloseBootstrapReviewModal() {
+      const el = document.getElementById('reviewModal');
+      try {
+        if (el && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+          let inst = bootstrap.Modal.getInstance(el);
+          if (!inst) inst = bootstrap.Modal.getOrCreateInstance(el);
+          inst.hide();
+          try {
+            inst.dispose();
+          } catch (e) {
+            /* ignore */
+          }
+        }
+      } catch (e) {
+        console.warn('Modal close:', e);
+      }
+      function sweepBackdrops() {
+        document.body.classList.remove('modal-open');
+        document.body.removeAttribute('inert');
+        document.body.style.removeProperty('padding-right');
+        document.body.style.removeProperty('overflow');
+        document.querySelectorAll('.modal-backdrop').forEach(function (b) {
+          b.remove();
+        });
+        if (el) {
+          el.classList.remove('show');
+          el.setAttribute('aria-hidden', 'true');
+        }
+      }
+      sweepBackdrops();
+      requestAnimationFrame(sweepBackdrops);
+      setTimeout(sweepBackdrops, 0);
+      setTimeout(sweepBackdrops, 100);
+      setTimeout(sweepBackdrops, 400);
+    }
+
+    /**
+     * Visible result dialog (DOM-built). Native alert can race with modal teardown or be blocked;
+     * Bootstrap 5.3 may set [inert] on siblings while the modal is open.
+     */
+    function showHrPendingReviewResult(title, bodyText, variant) {
+      const old = document.getElementById('hrPendingReviewResultBanner');
+      if (old) old.remove();
+
+      const overlay = document.createElement('div');
+      overlay.id = 'hrPendingReviewResultBanner';
+      overlay.setAttribute('role', 'alertdialog');
+      overlay.setAttribute('aria-modal', 'true');
+      overlay.setAttribute('aria-labelledby', 'hrPendingReviewResultTitle');
+      /* Top of viewport, horizontally centered (matches fixed main nav ~5.5rem). */
+      overlay.style.cssText =
+        'position:fixed;inset:0;z-index:2147483647;display:flex;align-items:flex-start;justify-content:center;' +
+        'padding:calc(5.5rem + 0.75rem) 1rem 1rem 1rem;background:rgba(15,23,42,0.45);box-sizing:border-box;';
+
+      const panel = document.createElement('div');
+      panel.style.cssText =
+        'background:#fff;border-radius:16px;box-shadow:0 25px 50px rgba(0,0,0,.22);max-width:440px;width:100%;' +
+        'padding:1.75rem;text-align:center;border:1px solid #e2e8f0;';
+
+      const icon = document.createElement('div');
+      icon.setAttribute('aria-hidden', 'true');
+      icon.textContent = variant === 'reject' ? '✕' : '✓';
+      icon.style.cssText =
+        'font-size:2.25rem;margin-bottom:0.35rem;line-height:1;color:' +
+        (variant === 'reject' ? '#dc2626' : '#059669') +
+        ';font-weight:700;';
+
+      const h2 = document.createElement('h2');
+      h2.id = 'hrPendingReviewResultTitle';
+      h2.style.cssText = 'font-size:1.28rem;font-weight:700;margin:0 0 0.65rem;color:#0f172a;';
+      h2.textContent = title;
+
+      const p = document.createElement('p');
+      p.style.cssText = 'color:#64748b;margin:0 0 1.35rem;line-height:1.55;font-size:0.95rem;white-space:pre-wrap;text-align:center;';
+      p.textContent = bodyText;
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = 'OK';
+      btn.style.cssText =
+        'background:linear-gradient(135deg,#059669,#047857);color:#fff;border:none;padding:0.65rem 1.85rem;' +
+        'border-radius:10px;font-weight:600;cursor:pointer;';
+      if (variant === 'reject') {
+        btn.style.background = 'linear-gradient(135deg,#dc2626,#b91c1c)';
+      }
+      btn.onclick = function () {
+        overlay.remove();
+      };
+
+      panel.appendChild(icon);
+      panel.appendChild(h2);
+      panel.appendChild(p);
+      panel.appendChild(btn);
+      overlay.appendChild(panel);
+      overlay.addEventListener('click', function (e) {
+        if (e.target === overlay) overlay.remove();
+      });
+      document.body.appendChild(overlay);
+      btn.focus();
+    }
+
+    async function parseJsonResponse(response) {
+      const text = await response.text();
+      if (!text) return {};
+      try {
+        return JSON.parse(text);
+      } catch (e) {
+        throw new Error('Server returned an invalid response. Please refresh and try again.');
+      }
+    }
     
     async function approveRequest() {
       if (!currentSubmissionId) return;
@@ -747,16 +850,26 @@
           body: JSON.stringify(payload)
         });
         
-        const result = await response.json();
-        if (result.success) {
-          bootstrap.Modal.getInstance(document.getElementById('reviewModal')).hide();
-          showSuccessModal('approved', 'Forwarded to GM!', 'The request has been approved and forwarded to the General Manager for final approval.');
+        const result = await parseJsonResponse(response);
+        if (response.ok && result.success) {
+          currentSubmissionId = null;
+          const serverMsg = result.message || 'The request has been approved and forwarded to the General Manager for final approval.';
+          forceCloseBootstrapReviewModal();
           loadPending();
+          requestAnimationFrame(function () {
+            setTimeout(function () {
+              showHrPendingReviewResult(
+                'Approved — forwarded to GM',
+                serverMsg + '\n\nNext: General Manager completes sign-off in GM Final Approval (HR → GM Final Approval).',
+                'approve'
+              );
+            }, 50);
+          });
         } else {
-          showErrorToast('Error: ' + result.error);
+          showErrorToast('Error: ' + (result.error || result.message || 'Approval failed'));
         }
       } catch (error) {
-        showErrorToast('Error: ' + error.message);
+        showErrorToast('Error: ' + (error.message || 'Network error'));
       }
     }
     
@@ -776,37 +889,27 @@
           body: JSON.stringify({ reason })
         });
         
-        const result = await response.json();
-        if (result.success) {
-          bootstrap.Modal.getInstance(document.getElementById('reviewModal')).hide();
-          showSuccessModal('rejected', 'Request Rejected', 'The HR request has been rejected. The employee has been notified.');
+        const result = await parseJsonResponse(response);
+        if (response.ok && result.success) {
+          currentSubmissionId = null;
+          forceCloseBootstrapReviewModal();
           loadPending();
+          requestAnimationFrame(function () {
+            setTimeout(function () {
+              showHrPendingReviewResult('Request rejected', 'The employee has been notified.', 'reject');
+            }, 50);
+          });
         } else {
-          showErrorToast('Error: ' + result.error);
+          showErrorToast('Error: ' + (result.error || result.message || 'Rejection failed'));
         }
       } catch (error) {
-        showErrorToast('Error: ' + error.message);
+        showErrorToast('Error: ' + (error.message || 'Network error'));
       }
-    }
-    
-    function showSuccessModal(type, title, message) {
-      const icon = document.getElementById('successIcon');
-      icon.className = 'success-icon ' + type;
-      icon.innerHTML = type === 'approved' 
-        ? '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>'
-        : '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"/></svg>';
-      document.getElementById('successTitle').textContent = title;
-      document.getElementById('successMessage').textContent = message;
-      document.getElementById('successModal').classList.add('show');
-    }
-    
-    function closeSuccessModal() {
-      document.getElementById('successModal').classList.remove('show');
     }
     
     function showErrorToast(message) {
       const toast = document.createElement('div');
-      toast.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #fee2e2; color: #dc2626; padding: 1rem 1.5rem; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); z-index: 99999; font-weight: 500;';
+      toast.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #fee2e2; color: #dc2626; padding: 1rem 1.5rem; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); z-index: 2147483644; font-weight: 500;';
       toast.textContent = message;
       document.body.appendChild(toast);
       setTimeout(() => toast.remove(), 5000);

@@ -5,7 +5,7 @@ Workflow: User submits → HR reviews/signs → GM final approval
 """
 import uuid
 from datetime import datetime
-from flask import Blueprint, render_template, request, jsonify, current_app, redirect, send_file
+from flask import Blueprint, render_template, request, jsonify, current_app, redirect, send_file, url_for
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.models import db, User, Submission, Notification
 from common.form_data_utils import shallow_copy_form_data as _mutable_form_data
@@ -30,6 +30,17 @@ def _hr_form_context(user):
     is_hr = user.role == 'admin' or getattr(user, 'access_hr', False) or user.designation == 'hr_manager'
     is_gm = user.role == 'admin' or user.designation == 'general_manager'
     return {'is_hr': is_hr, 'is_gm': is_gm}
+
+
+def _can_access_hr_submission_export(user, submission):
+    """Admin, HR, GM may export any HR submission; submitter may export their own."""
+    if not user or not submission:
+        return False
+    is_hr = getattr(user, 'access_hr', False) or user.designation == 'hr_manager'
+    is_gm = user.designation == 'general_manager'
+    if user.role == 'admin' or is_hr or is_gm:
+        return True
+    return submission.user_id is not None and submission.user_id == user.id
 
 
 def create_notification(user_id, title, message, notification_type='info', submission_id=None):
@@ -220,6 +231,7 @@ def hr_dashboard():
 
 
 @hr_bp.route('/pending-review')
+@hr_bp.route('/pending_review')
 @jwt_required()
 def pending_review():
     """Pending HR Review - For HR managers"""
@@ -267,18 +279,16 @@ def gm_approval():
 @hr_bp.route('/print/<submission_id>')
 @jwt_required()
 def hr_print(submission_id):
-    """Print view - form in HR Document format (for HR and GM only)"""
+    """Print view - form in HR Document format (HR, GM, admin, or submitter)"""
     user = get_current_user()
     if not user:
         return jsonify({'error': 'User not found'}), 404
-    is_hr = getattr(user, 'access_hr', False) or user.designation == 'hr_manager'
-    is_gm = user.designation == 'general_manager'
-    if user.role != 'admin' and not is_hr and not is_gm:
-        return jsonify({'error': 'Access denied'}), 403
 
     submission = Submission.query.filter_by(submission_id=submission_id).first()
     if not submission or not submission.module_type.startswith('hr_'):
         return jsonify({'error': 'Submission not found'}), 404
+    if not _can_access_hr_submission_export(user, submission):
+        return jsonify({'error': 'Access denied'}), 403
 
     form_data = submission.form_data or {}
     form_title = get_form_type_display(submission.module_type)
@@ -288,6 +298,7 @@ def hr_print(submission_id):
     form_type = (submission.module_type or '').replace('hr_', '')
     doc_no = 'HR-FRM-007' if form_type in ('leave_application', 'leave') else None
     doc_date = submission.created_at.strftime('%d/%m/%Y') if submission.created_at else datetime.now().strftime('%d/%m/%Y')
+    pdf_available = form_type in get_supported_pdf_forms()
 
     return render_template(
         'hr_print.html',
@@ -295,8 +306,31 @@ def hr_print(submission_id):
         form_title=form_title,
         form_html=form_html,
         doc_no=doc_no,
-        doc_date=doc_date
+        doc_date=doc_date,
+        pdf_available=pdf_available,
     )
+
+
+@hr_bp.route('/print-pdf/<submission_id>')
+@jwt_required()
+def hr_print_pdf_launcher(submission_id):
+    """Loads the generated PDF and triggers the system print dialog (preview shows PDF in supporting browsers)."""
+    user = get_current_user()
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+
+    submission = Submission.query.filter_by(submission_id=submission_id).first()
+    if not submission or not submission.module_type.startswith('hr_'):
+        return jsonify({'error': 'Submission not found'}), 404
+    if not _can_access_hr_submission_export(user, submission):
+        return jsonify({'error': 'Access denied'}), 403
+
+    form_type = (submission.module_type or '').replace('hr_', '')
+    if form_type not in get_supported_pdf_forms():
+        return redirect(url_for('hr.hr_print', submission_id=submission_id))
+
+    pdf_url = url_for('hr.hr_download_pdf', submission_id=submission_id, inline=1)
+    return render_template('hr_print_pdf_launcher.html', pdf_url=pdf_url)
 
 
 @hr_bp.route('/download-docx/<submission_id>')
@@ -306,14 +340,12 @@ def hr_download_docx(submission_id):
     user = get_current_user()
     if not user:
         return jsonify({'error': 'User not found'}), 404
-    is_hr = getattr(user, 'access_hr', False) or user.designation == 'hr_manager'
-    is_gm = user.designation == 'general_manager'
-    if user.role != 'admin' and not is_hr and not is_gm:
-        return jsonify({'error': 'Access denied'}), 403
 
     submission = Submission.query.filter_by(submission_id=submission_id).first()
     if not submission or not submission.module_type.startswith('hr_'):
         return jsonify({'error': 'Submission not found'}), 404
+    if not _can_access_hr_submission_export(user, submission):
+        return jsonify({'error': 'Access denied'}), 403
 
     try:
         from io import BytesIO
@@ -343,14 +375,12 @@ def hr_download_pdf(submission_id):
     user = get_current_user()
     if not user:
         return jsonify({'error': 'User not found'}), 404
-    is_hr = getattr(user, 'access_hr', False) or user.designation == 'hr_manager'
-    is_gm = user.designation == 'general_manager'
-    if user.role != 'admin' and not is_hr and not is_gm:
-        return jsonify({'error': 'Access denied'}), 403
 
     submission = Submission.query.filter_by(submission_id=submission_id).first()
     if not submission or not submission.module_type.startswith('hr_'):
         return jsonify({'error': 'Submission not found'}), 404
+    if not _can_access_hr_submission_export(user, submission):
+        return jsonify({'error': 'Access denied'}), 403
 
     try:
         from io import BytesIO
@@ -361,7 +391,14 @@ def hr_download_pdf(submission_id):
         buf.seek(0)
         form_title = get_form_type_display(submission.module_type).replace(' ', '_')
         filename = f"{form_title}_{submission_id}.pdf"
-        resp = send_file(buf, mimetype='application/pdf', as_attachment=True, download_name=filename)
+        inline_q = (request.args.get('inline') or '').lower()
+        as_inline = inline_q in ('1', 'true', 'yes')
+        resp = send_file(
+            buf,
+            mimetype='application/pdf',
+            as_attachment=not as_inline,
+            download_name=filename,
+        )
         resp.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
         resp.headers['Pragma'] = 'no-cache'
         return resp

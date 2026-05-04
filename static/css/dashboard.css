@@ -49,7 +49,7 @@
 
 body {
   font-family: var(--font-sans);
-  background: var(--bg-body);
+  background: var(--bg-body, #f8faf8);
   color: var(--text-dark);
   overflow-x: hidden;
   line-height: 1.6;
@@ -63,13 +63,33 @@ body {
 
 html {
   scroll-behavior: smooth;
+  /* PWA / iOS WKWebView: unpainted bands (esp. between sections) show black if html has no fill */
+  background-color: var(--bg-body, #f8faf8);
+  color-scheme: light;
 }
 
-/* Dashboard routes: one continuous #f8faf8 surface (mobile_responsive sets body white) */
+/* Dashboard routes: one continuous #f8faf8 surface (mobile_responsive sets body white).
+   design-tokens.css uses :root:not([data-theme="light"]) under prefers-color-scheme:dark,
+   which beats this file's :root and sets --bg-body to ~black — modules/footer then read "black block". */
+html:not([data-theme="dark"]) body.page-dashboard,
+html:not([data-theme="dark"]) body.hr-dashboard,
+html:not([data-theme="dark"]) body.inspection-dashboard,
+html:not([data-theme="dark"]) body.review-dashboard {
+  --bg-body: #f8faf8;
+  --bg-light: #f9fafb;
+  --text-dark: #111827;
+  --text-mid: #374151;
+  --text-light: #6b7280;
+  --text-muted: #9ca3af;
+  --white: #ffffff;
+  --border-color: #e5e7eb;
+}
+
 body.page-dashboard,
 body.hr-dashboard,
-body.inspection-dashboard {
-  background: var(--bg-body) !important;
+body.inspection-dashboard,
+body.review-dashboard {
+  background: var(--bg-body, #f8faf8) !important;
 }
 
 /* ===========================================
@@ -140,8 +160,12 @@ body.inspection-dashboard {
   flex-shrink: 0;
   object-fit: contain;
   object-position: left center;
-  /* White wordmark PNG (icons/INJAAZ Logo - Edited.png): visible on light nav */
-  filter: brightness(0);
+  filter: none;
+}
+
+/* Official nav mark (square icon, non–About routes) — slight rounding reads as intentional */
+.logo img.logo-img-official {
+  border-radius: 12px;
 }
 
 .logo-text {
@@ -401,9 +425,10 @@ body.inspection-dashboard {
   display: none;
 }
 
-/* Review History hero: same as HR/Inspection - gradient at top, no grid */
+/* Submitted Forms (workflow history) hero — tighter bottom so stats sit closer to the list */
 .hero.review-hero {
   background: linear-gradient(180deg, #eef4f0 0%, #f2f7f4 45%, #F8FAF8 100%);
+  padding-bottom: 1.25rem;
 }
 .hero.review-hero::before,
 .hero.review-hero::after {
@@ -854,7 +879,7 @@ body.inspection-dashboard {
 
 /* ---- Section ---- */
 .modules-section {
-  background: #f8faf8;
+  background: var(--bg-body, #f8faf8);
   padding: 3rem 0 7rem;
   width: 100%;
   display: block !important;
@@ -1077,7 +1102,7 @@ body.inspection-dashboard {
    Footer
    =========================================== */
 .footer {
-  background: var(--bg-body);
+  background: var(--bg-body, #f8faf8);
   margin-top: auto;
   flex-shrink: 0;
   position: relative;
@@ -1742,7 +1767,7 @@ body.inspection-dashboard {
     max-width: 100% !important;
   }
   
-  .hero-title {
+  .page-dashboard .hero-title {
     font-size: clamp(1.7rem, 6.5vw, 2.25rem) !important;
     letter-spacing: -0.03em !important;
   }
@@ -1763,9 +1788,17 @@ body.inspection-dashboard {
   .contact-modal {
     padding: 6rem 1.25rem 1.5rem !important;
   }
-  #profileModal.contact-modal,
-  #contactModal.contact-modal {
+  /* Profile fullscreen rules override this at ≤479px via later block */
+  #profileModal.contact-modal {
     padding: 3rem 1rem 1.5rem !important;
+  }
+  /* Clear fixed nav + notch (matches profile sheet inset) */
+  #contactModal.contact-modal {
+    padding: calc(env(safe-area-inset-top, 0px) + 4.5rem + 12px) 1rem 1.5rem !important;
+    z-index: 10050 !important;
+  }
+  #contactModal.contact-modal.active {
+    z-index: 10050 !important;
   }
   
   .modules-section {
@@ -2212,11 +2245,9 @@ body.inspection-dashboard {
   }
 
   .logo img {
-    height: 54px !important;
+    height: 48px !important;
     width: auto !important;
-    filter: none !important;
-    content: url('/static/icons/icon-192x192.png') !important;
-    border-radius: 10px !important;
+    border-radius: 0 !important;
   }
 
   .mobile-menu-drawer {
@@ -2259,7 +2290,7 @@ body.inspection-dashboard {
     gap: 1rem !important;
   }
   
-  .hero-title {
+  .page-dashboard .hero-title {
     font-size: clamp(1.55rem, 7vw, 1.85rem) !important;
     line-height: 1.15 !important;
     letter-spacing: -0.03em !important;
@@ -2291,8 +2322,10 @@ body.inspection-dashboard {
     padding: 1.2rem 1.25rem max(1rem, env(safe-area-inset-bottom, 0px)) !important;
   }
   
+  /* Keep flush with modules — spacing comes from .modules-section padding; margin here
+     left a strip that on hosted iOS/PWA often read as solid black (unpainted html canvas). */
   .footer {
-    margin-top: 1.5rem !important;
+    margin-top: 0 !important;
   }
   
   .nav-container {
@@ -2397,7 +2430,7 @@ body.inspection-dashboard {
     gap: 0.875rem !important;
   }
 
-  .hero-title {
+  .page-dashboard .hero-title {
     font-size: clamp(1.45rem, 8vw, 1.7rem) !important;
   }
 
@@ -2498,23 +2531,31 @@ body.inspection-dashboard {
 }
 
 @media (max-width: 479px) {
+  /* Above .nav (1000), .mobile-menu-drawer / overlays (≤1200); keeps profile sheet off the nav bar */
+  #profileModal.contact-modal {
+    padding: 0 !important;
+    z-index: 10050 !important;
+  }
+  #profileModal.contact-modal.active {
+    z-index: 10050 !important;
+  }
   .contact-modal-content.profile-modal-container {
     max-width: 100% !important;
     width: 100% !important;
-    height: 100% !important;
-    max-height: 100% !important;
+    margin: 0 !important;
     border-radius: 0 !important;
     position: fixed !important;
-    top: 0 !important;
     left: 0 !important;
     right: 0 !important;
     bottom: 0 !important;
-  }
-  #profileModal.contact-modal {
-    padding: 0 !important;
+    top: calc(env(safe-area-inset-top, 0px) + 4.5rem + 10px) !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    box-sizing: border-box !important;
   }
   #profileModal .contact-modal-close {
-    top: 0.75rem !important;
+    top: 0.5rem !important;
     right: 0.75rem !important;
     width: 36px !important;
     height: 36px !important;
@@ -2526,9 +2567,9 @@ body.inspection-dashboard {
   -webkit-overflow-scrolling: touch;
 }
 
-/* Profile Modal Responsive */
+/* Profile Modal Responsive (non-fullscreen card widths only; fullscreen profile uses .profile-modal-container rules above) */
 @media (max-width: 520px) {
-  #profileModal .contact-modal-content {
+  #profileModal .contact-modal-content:not(.profile-modal-container) {
     max-width: 100%;
     margin: 0.5rem;
     border-radius: var(--radius-lg);

@@ -1,37 +1,51 @@
-/* HR Forms - Modern Stunning UI (system UI / SF on iOS) */
+/* HR Forms — INJAAZ document layout (print + legacy interactive)
+   Typography: San Francisco on Apple (-apple-system / SF Pro*) per HIG */
 :root {
-  --primary: #0d9488;
-  --primary-dark: #0f766e;
-  --primary-light: #14b8a6;
-  --primary-glow: rgba(20, 184, 166, 0.4);
-  --accent: #06b6d4;
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", ui-sans-serif, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-mono-ui: ui-monospace, "SF Mono", "Cascadia Mono", "DejaVu Sans Mono", Menlo, monospace;
+  --ios-grouped-bg: #f2f2f7;
+  --ios-separator: rgba(60, 60, 67, 0.18);
+  --ios-secondary-label: rgba(60, 60, 67, 0.6);
+  --primary: #125435;
+  --primary-dark: #0d3d24;
+  --primary-light: #1a7a4d;
+  --primary-glow: rgba(18, 84, 53, 0.28);
+  --accent: #0d9488;
   --surface: #ffffff;
   --surface-elevated: #ffffff;
-  --surface-muted: #f8fafc;
-  --border: #e2e8f0;
-  --border-light: #f1f5f9;
-  --text: #0f172a;
-  --text-secondary: #475569;
-  --text-muted: #94a3b8;
+  --surface-muted: #f4f8f6;
+  --border: #dde8e2;
+  --border-light: #e8f0ec;
+  --text: #0d1f14;
+  --text-secondary: #2d4a38;
+  --text-muted: #7a9489;
+  --hr-warm-bg: #fffbeb;
+  --hr-warm-bd: #fde68a;
+  --hr-warm-text: #92400e;
   --radius: 16px;
   --radius-lg: 20px;
   --radius-sm: 10px;
   --radius-full: 9999px;
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
-  --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.06), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
-  --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
-  --shadow-glow: 0 0 40px rgba(20, 184, 166, 0.15);
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.06);
+  --shadow-lg: 0 8px 24px rgba(15, 23, 42, 0.06);
+  --shadow-glow: none;
   --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* HR templates that load only this sheet still get SF / system UI */
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body.hr-form-page {
   min-height: 100vh;
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", sans-serif;
   color: var(--text);
-  background: #fafafa;
-  -webkit-font-smoothing: antialiased;
+  background: var(--ios-grouped-bg);
 }
 
 .hr-form-wrapper {
@@ -45,51 +59,47 @@ body.hr-form-page {
 }
 
 .doc-form {
-  max-width: 1450px;
+  max-width: 960px;
   margin: 0 auto;
   background: var(--surface);
   padding: 0;
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg), var(--shadow-glow);
-  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 14px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 4px 12px rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.06);
   overflow-x: auto;
-  animation: formFadeIn 0.5s ease-out;
+  animation: formFadeIn 0.35s ease-out;
+}
+
+.doc-form--sheet {
+  max-width: 920px;
 }
 
 @keyframes formFadeIn {
   from {
     opacity: 0;
-    transform: translateY(12px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 
-/* Header - Bold gradient, heading left, logo right */
+/* Header — flat brand bar */
 .doc-header {
   position: relative;
   display: grid;
   grid-template-columns: 1fr auto;
   grid-auto-rows: auto;
-  gap: 0.25rem 2rem;
+  gap: 0.5rem 2rem;
   align-items: center;
   text-align: left;
-  padding: 2rem 2.5rem;
-  background: linear-gradient(135deg, #0a6b5f 0%, #0c5f55 50%, #0d3d38 100%);
+  padding: 1.75rem 2.25rem;
+  background: #125435;
   overflow: hidden;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .doc-header::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-  opacity: 0.5;
+  display: none;
 }
 
 .doc-header-left {
@@ -106,32 +116,32 @@ body.hr-form-page {
   grid-row: 1 / -1;
   align-self: center;
   justify-self: end;
-  height: 72px;
+  height: 56px;
   width: auto;
-  max-width: 72px;
+  max-width: 56px;
   margin: 0;
   object-fit: contain;
-  filter: brightness(0) invert(1) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+  filter: brightness(0) invert(1);
+  opacity: 0.95;
 }
 
 .doc-header .doc-title {
   position: relative;
-  font-size: 1.75rem;
-  font-weight: 800;
-  color: white;
+  font-size: clamp(1.25rem, 2.8vw, 1.625rem);
+  font-weight: 700;
+  font-family: var(--font-sans);
+  color: #fff;
   margin: 0;
-  letter-spacing: 0.04em;
-  word-spacing: 0.08em;
-  line-height: 1.3;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  letter-spacing: -0.03em;
+  line-height: 1.25;
 }
 
 .doc-header .doc-company {
-  font-size: 0.7rem;
-  color: rgba(255, 255, 255, 0.88);
+  font-size: 0.6875rem;
+  color: rgba(255, 255, 255, 0.82);
   margin: 0;
-  font-weight: 500;
-  letter-spacing: 0.04em;
+  font-weight: 600;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
@@ -169,6 +179,18 @@ body.hr-form-page {
   padding: 1.5rem 2.5rem;
 }
 
+.doc-form-body-premium,
+.doc-form-content {
+  padding: 1.25rem 1.25rem 1.5rem;
+  background: var(--ios-grouped-bg);
+}
+@media (min-width: 640px) {
+  .doc-form-body-premium,
+  .doc-form-content {
+    padding: 1.5rem 1.75rem 1.75rem;
+  }
+}
+
 .doc-form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -176,8 +198,68 @@ body.hr-form-page {
   align-items: start;
 }
 
+.doc-form-grid--leave {
+  gap: 1.5rem;
+  margin-bottom: 0;
+}
+
 .doc-form-grid.form-single {
   grid-template-columns: 1fr;
+}
+
+.doc-panel {
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 12px;
+  padding: 1rem 1.1rem 1.15rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.doc-panel .doc-section-title {
+  margin-bottom: 1rem;
+}
+
+.doc-panel--hr {
+  background: #fffef9;
+  border-color: rgba(212, 180, 100, 0.35);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.doc-submission-ref {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+  margin: 0 0 1.25rem;
+  padding: 0 0 0.75rem;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #e5e8e7;
+  border-radius: 0;
+  display: block;
+  font-family: var(--font-mono-ui);
+}
+
+.doc-sig-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 72px;
+  min-width: 168px;
+  max-width: 100%;
+  padding: 0.5rem 0.75rem;
+  background: #fafbfb;
+  border: 1px dashed #cfd6d3;
+  border-radius: 8px;
+}
+
+.doc-sig-img {
+  display: block;
+  max-width: 240px;
+  max-height: 96px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
 }
 
 .doc-form-col {
@@ -198,47 +280,51 @@ body.hr-form-page {
   margin-bottom: 0;
 }
 
-/* Section titles - modern pill style */
+/* Section titles — iOS "footnote" header above a grouped block */
 .doc-section-title {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: var(--primary-dark);
-  margin: 0 0 0.65rem;
-  padding: 0.4rem 0.85rem;
-  background: linear-gradient(135deg, rgba(20, 184, 166, 0.12) 0%, rgba(6, 182, 212, 0.08) 100%);
-  border-radius: var(--radius-full);
-  letter-spacing: 0.02em;
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--ios-secondary-label);
+  margin: 0 0 0.5rem;
+  padding: 0 0.35rem;
+  background: none;
+  border: none;
+  border-radius: 0;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
 }
 
 .doc-section-title::before {
-  content: '';
-  width: 6px;
-  height: 6px;
-  background: var(--primary);
-  border-radius: 50%;
+  display: none;
 }
 
-/* Tables - clean card style */
+.doc-section-title--hr {
+  color: rgba(142, 80, 15, 0.85);
+}
+
+.doc-section-title--hr::before {
+  display: none;
+}
+
+/* Key–value tables — airy rows */
 .doc-table {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  font-size: 0.9rem;
-  margin: 0 0 1rem;
-  background: var(--surface-muted);
-  border-radius: var(--radius-sm);
+  font-size: 1rem;
+  line-height: 1.45;
+  margin: 0;
+  background: #fff;
+  border-radius: 10px;
   overflow: hidden;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--ios-separator);
 }
 
 .doc-table td {
-  padding: 0.6rem 0.9rem;
+  padding: 0.75rem 1rem;
   vertical-align: middle;
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--ios-separator);
   transition: background var(--transition);
 }
 
@@ -247,32 +333,32 @@ body.hr-form-page {
 }
 
 .doc-table tr:hover td {
-  background: rgba(255, 255, 255, 0.7);
+  background: rgba(142, 142, 147, 0.06);
 }
 
 .doc-table .label {
-  font-weight: 600;
-  color: var(--text);
-  background: rgba(255, 255, 255, 0.8);
-  width: 20%;
-  min-width: 90px;
+  font-weight: 500;
+  color: rgba(60, 60, 67, 0.85);
+  background: #fff;
+  width: 40%;
+  min-width: 128px;
   word-wrap: break-word;
   overflow-wrap: break-word;
-  font-size: 0.85rem;
+  font-size: 0.875rem;
 }
 
 .doc-table input,
 .doc-table select,
 .doc-table textarea {
   width: 100%;
-  border: 1.5px solid var(--border);
-  padding: 0.6rem 0.9rem;
-  font-size: 0.9rem;
-  font-family: inherit;
-  border-radius: var(--radius-sm);
+  border: 1px solid #e5e5ea;
+  padding: 0.65rem 0.9rem;
+  font-size: 1rem;
+  font-family: var(--font-sans);
+  border-radius: 10px;
   background: white;
   transition: all var(--transition);
-  min-height: 38px;
+  min-height: 44px;
 }
 .doc-table textarea {
   min-height: 80px;
@@ -284,7 +370,7 @@ body.hr-form-page {
 .doc-table textarea:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.2);
+  box-shadow: 0 0 0 3px rgba(18, 84, 53, 0.18);
 }
 
 .doc-table input::placeholder,
@@ -320,27 +406,35 @@ body.hr-form-page {
 }
 
 .doc-section {
-  font-weight: 700;
-  background: linear-gradient(135deg, rgba(20, 184, 166, 0.15) 0%, rgba(6, 182, 212, 0.1) 100%);
-  color: var(--primary-dark);
-  padding: 0.6rem 1rem;
-  font-size: 0.8rem;
-  letter-spacing: 0.03em;
+  font-weight: 600;
+  background: #f4f6f5;
+  color: #1a2e24;
+  padding: 0.65rem 1rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
+  border-bottom: 1px solid #e5e8e7;
 }
 
 /* Footer */
 .doc-footer {
-  margin: 1.5rem 0 0;
-  padding: 0.85rem 1.25rem;
-  background: var(--surface-muted);
-  border-radius: var(--radius-sm);
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  display: flex;
-  gap: 1.5rem;
-  flex-wrap: wrap;
+  margin: 1.75rem 0 0;
+  padding: 1rem 1.25rem;
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid var(--ios-separator);
+  font-size: 0.8125rem;
   font-weight: 500;
+  color: var(--ios-secondary-label);
+  display: flex;
+  gap: 1.25rem 1.75rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  font-weight: 500;
+}
+
+.doc-footer span {
+  color: var(--text-secondary);
 }
 
 /* Signature pad - expanded for comfortable signing */
@@ -480,51 +574,35 @@ body.hr-form-page {
 .hr-only .text-break,
 .gm-only .text-break { word-wrap: break-word; overflow-wrap: break-word; }
 
-/* Submit button - stunning CTA */
+/* Submit — flat primary */
 .hr-form-submit {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  padding: 0.85rem 2.5rem !important;
-  font-family: inherit !important;
-  font-weight: 700 !important;
+  padding: 0.75rem 1.75rem !important;
+  min-height: 48px;
+  font-family: var(--font-sans) !important;
+  font-weight: 600 !important;
   font-size: 1rem !important;
   color: white !important;
-  background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%) !important;
+  background: var(--primary) !important;
   border: none !important;
-  border-radius: var(--radius-full) !important;
-  box-shadow: 0 4px 14px rgba(13, 148, 136, 0.4) !important;
+  border-radius: 12px !important;
+  box-shadow: var(--shadow-sm) !important;
   cursor: pointer;
-  transition: all var(--transition) !important;
-  position: relative;
-  overflow: hidden;
-}
-
-.hr-form-submit::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 50%);
-  opacity: 0;
-  transition: opacity var(--transition);
+  transition: background var(--transition), box-shadow var(--transition) !important;
 }
 
 .hr-form-submit:hover {
-  transform: translateY(-2px) !important;
-  box-shadow: 0 8px 25px rgba(13, 148, 136, 0.45) !important;
+  transform: none !important;
+  background: var(--primary-dark) !important;
+  box-shadow: 0 2px 8px rgba(18, 84, 53, 0.2) !important;
   color: white !important;
 }
 
-.hr-form-submit:hover::before {
-  opacity: 1;
-}
-
 .hr-form-submit:active {
-  transform: translateY(0) !important;
+  transform: none !important;
 }
 
 /* Leave options - modern chip grid */
@@ -618,7 +696,7 @@ body.hr-form-page {
 .doc-letter .form-control:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 2px rgba(20, 184, 166, 0.15);
+  box-shadow: 0 0 0 2px rgba(18, 84, 53, 0.15);
 }
 .doc-letter p {
   margin: 0.5rem 0;
@@ -648,6 +726,13 @@ body.hr-form-page {
     padding-left: 1.25rem;
     padding-right: 1.25rem;
   }
+  .doc-form-body-premium,
+  .doc-form-content {
+    padding: 1.35rem 1.15rem;
+  }
+  .doc-panel {
+    padding: 1.1rem 1.15rem;
+  }
   .doc-title {
     font-size: 1.4rem;
   }
@@ -666,11 +751,5 @@ body.hr-form-page {
   }
   .signature-block .sig-canvas-wrap {
     min-width: 100%;
-  }
-}
-
-@media (min-width: 1400px) {
-  .doc-form {
-    max-width: 1450px;
   }
 }

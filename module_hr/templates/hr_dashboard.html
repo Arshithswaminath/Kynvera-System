@@ -44,6 +44,12 @@
     .hr-dashboard .modules-section {
       background: #F8FAF8 !important;
     }
+    /* dashboard.css gives .modules-section margin-top: -3rem to tuck under the hero; that
+       must not apply to the second section or "Recent Submissions" overlaps the last form row. */
+    .hr-dashboard .hr-modules-section + .modules-section {
+      margin-top: 0;
+      padding-top: 2.5rem;
+    }
     /* Workflow cards next to headline - same size as HR form cards */
     .hr-hero .hero-content {
       gap: 2.5rem;
@@ -572,7 +578,7 @@
   </section>
 
   <!-- Recent Submissions -->
-  <section class="modules-section" style="padding-top: 1rem;">
+  <section class="modules-section">
     <div class="modules-inner">
       <h2 class="modules-section-label">Recent Submissions</h2>
       <div id="submissionsList" class="module-card submissions-panel" style="padding: 1.5rem; min-height: 120px;">
