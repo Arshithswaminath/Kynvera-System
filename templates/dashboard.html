@@ -3,236 +3,450 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
-  <meta name="color-scheme" content="light">
-  <title>Injaaz Application - All Operations. One Platform.</title>
-  <meta name="description" content="Injaaz Application - All Operations. One Platform. Inspections, HR forms, and store keeping for your office.">
+  <meta name="color-scheme" content="dark">
+  <title>Injaaz · All Operations. One Platform.</title>
+  <meta name="description" content="Injaaz Application — inspections, HR, procurement, and operations in one beautifully designed platform.">
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
-  
+
   <!-- PWA Meta Tags -->
-  <meta name="theme-color" content="#125435">
+  <meta name="theme-color" content="#000000">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Injaaz Application">
-  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Injaaz">
   <link rel="manifest" href="/manifest.json">
   <link rel="apple-touch-icon" sizes="192x192" href="{{ url_for('static', filename='icons/icon-192x192.png') }}">
   <script src="{{ url_for('static', filename='pwa-install.js') }}" defer></script>
-  
-  {% include 'partials/caveat_font.html' %}
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/apple-theme.css') }}">
 </head>
-<body class="page-dashboard">
-  {% include 'partials/main_navbar.html' with context %}
+<body class="apl-shell-active apl-themed page-dashboard">
 
-  <!-- Dashboard: left hero + right stats widget -->
-  <header class="hero hero-split">
-    <div class="hero-content hero-split-inner">
-      <div class="hero-left">
-        <p class="hero-tagline">Injaaz Application</p>
-        <h1 class="hero-title">All Operations.<br><span class="hero-title-accent">One Platform.</span></h1>
-        <p class="hero-subtitle">Inspections, HR forms, and store keeping — streamlined in one place for your office.</p>
-        <div class="hero-cta-row">
-          <span class="hero-cta-stat">
-            <span class="hero-cta-stat-dot"></span>
-            Live &amp; active
-          </span>
-          <span class="hero-cta-divider"></span>
-          <span class="hero-cta-stat">All modules in one place</span>
+  <div class="apl-scrim" id="aplScrim"></div>
+
+  <div class="apl-shell">
+
+    <!-- Sidebar -->
+    <aside class="apl-sidebar" id="aplSidebar" aria-label="Primary navigation">
+      <div class="apl-brand">
+        <span class="apl-brand-mark">
+          <img src="{{ url_for('static', filename='icons/icon-192x192.png') }}" alt="">
+        </span>
+        <span class="apl-brand-name">Injaaz</span>
+      </div>
+
+      <div class="apl-nav-section">Workspace</div>
+      <ul class="apl-nav-list">
+        <li><a class="apl-nav-item is-active" href="/dashboard">
+          <span class="apl-nav-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12 12 4l9 8"/><path d="M5 10v10h14V10"/></svg>
+          </span>Home</a></li>
+        <li><a class="apl-nav-item" href="/about">
+          <span class="apl-nav-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5"/><circle cx="12" cy="16" r=".5" fill="currentColor"/></svg>
+          </span>About</a></li>
+        <li><a class="apl-nav-item" href="#" id="profileLink">
+          <span class="apl-nav-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 5-6 8-6s7 2 8 6"/></svg>
+          </span>Profile</a></li>
+      </ul>
+
+      <div class="apl-nav-section">Modules</div>
+      <ul class="apl-nav-list">
+        <li><a class="apl-nav-item" href="/inspection/">
+          <span class="apl-nav-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+          </span>Inspection</a></li>
+        <li><a class="apl-nav-item" href="/hr/" id="navHr" style="display:none">
+          <span class="apl-nav-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2 20c.8-3.2 3.6-5 7-5s6.2 1.8 7 5"/><circle cx="17" cy="9" r="2.5"/></svg>
+          </span>HR</a></li>
+        <li><a class="apl-nav-item" href="/procurement/">
+          <span class="apl-nav-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h18l-1.5 12a2 2 0 0 1-2 1.7H6.5a2 2 0 0 1-2-1.7L3 7Z"/><path d="M8 7V5a4 4 0 0 1 8 0v2"/></svg>
+          </span>Procurement</a></li>
+        <li><a class="apl-nav-item" href="/api/workflow/history" id="navHistory" style="display:none">
+          <span class="apl-nav-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+          </span>Submitted Forms</a></li>
+        <li><a class="apl-nav-item" href="/workflow/pending-reviews" id="navPending" style="display:none">
+          <span class="apl-nav-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4h6v3H9zM9 12h6M9 16h4"/></svg>
+          </span>Pending Review<span class="apl-nav-badge" id="sidePendingBadge" style="display:none">0</span></a></li>
+        <li><a class="apl-nav-item" href="/admin/mmr/" id="navReports" style="display:none">
+          <span class="apl-nav-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/></svg>
+          </span>Reports</a></li>
+      </ul>
+
+      <div class="apl-nav-section">Admin</div>
+      <ul class="apl-nav-list">
+        <li><a class="apl-nav-item" href="/admin/dashboard" id="navAdmin" style="display:none">
+          <span class="apl-nav-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 6v6c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6l-8-4Z"/></svg>
+          </span>Administrative</a></li>
+        <li><a class="apl-nav-item" href="/admin/devices" id="navDevices" style="display:none">
+          <span class="apl-nav-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+          </span>Devices</a></li>
+        <li><a class="apl-nav-item" href="/admin/bd" id="navBd" style="display:none">
+          <span class="apl-nav-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17 9 11l4 4 8-8"/><path d="M14 7h7v7"/></svg>
+          </span>Business Dev</a></li>
+        <li><a class="apl-nav-item" href="/bd/email-module" id="navBdEmail" style="display:none">
+          <span class="apl-nav-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+          </span>Email Module</a></li>
+      </ul>
+
+      <div class="apl-sidebar-footer">
+        <span>© {{ now().year }} Injaaz</span>
+      </div>
+    </aside>
+
+    <!-- Main column -->
+    <div class="apl-main">
+
+      <!-- Top bar -->
+      <header class="apl-topbar">
+        <button class="apl-topbar-mobile-toggle" id="aplMenuToggle" aria-label="Open menu">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+        </button>
+
+        <label class="apl-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input id="aplSearch" type="text" placeholder="Search modules, forms, people…" autocomplete="off">
+          <span class="apl-search-kbd">⌘K</span>
+        </label>
+
+        <div class="apl-topbar-actions">
+          <button type="button" class="apl-icon-btn" id="todoNavBtn" title="To-do" aria-label="To-do">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4h6v3H9zM9 12l2 2 4-4"/></svg>
+            <span class="apl-dot" id="todoNavBadge" style="display:none"></span>
+          </button>
+          <button type="button" class="apl-icon-btn" id="contactLink" title="Contact" aria-label="Contact">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5A8.5 8.5 0 0 1 4.7 16L3 21l5-1.7A8.5 8.5 0 1 0 21 11.5Z"/></svg>
+          </button>
+          <button type="button" class="apl-icon-btn" id="logoutBtn" title="Sign out" aria-label="Sign out">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l-5-5 5-5"/><path d="M15 12H5"/></svg>
+          </button>
+          <div class="apl-avatar" id="aplAvatar" title="Profile">IN</div>
         </div>
-      </div>
-      <div class="hero-right">
-        <a href="/api/workflow/history" class="dashboard-widget-link" title="View all submissions">
-        <div class="dashboard-widget">
-          <div class="dashboard-widget-header">
-            <div class="dashboard-widget-dots">
-              <span></span><span></span><span></span>
-            </div>
-            <div class="dashboard-widget-bar"></div>
-          </div>
-          <div class="dashboard-widget-body">
-            <div class="dashboard-stats-grid" id="dashboard-stats-grid">
-              <div class="dashboard-stat-card">
-                <div class="dashboard-stat-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div>
-                <span class="dashboard-stat-label" id="stat-label-0">Inspection forms</span>
-                <span class="dashboard-stat-value" id="stat-value-0">—</span>
-              </div>
-              <div class="dashboard-stat-card">
-                <div class="dashboard-stat-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg></div>
-                <span class="dashboard-stat-label" id="stat-label-1">HR forms</span>
-                <span class="dashboard-stat-value" id="stat-value-1">—</span>
-              </div>
-              <div class="dashboard-stat-card">
-                <div class="dashboard-stat-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg></div>
-                <span class="dashboard-stat-label" id="stat-label-2">Active users</span>
-                <span class="dashboard-stat-value" id="stat-value-2">—</span>
-              </div>
-              <div class="dashboard-stat-card">
-                <div class="dashboard-stat-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg></div>
-                <span class="dashboard-stat-label" id="stat-label-3">Forms to complete</span>
-                <span class="dashboard-stat-value" id="stat-value-3">—</span>
-              </div>
-            </div>
-            <div class="dashboard-activity">
-              <div class="dashboard-activity-item" id="dashboard-activity-item">
-                <span class="dashboard-activity-icon">✓</span>
-                <span class="dashboard-activity-text" id="dashboard-activity-text">Loading activity…</span>
-                <span class="dashboard-activity-time" id="dashboard-activity-time"></span>
-              </div>
-              <div class="dashboard-activity-list" id="dashboard-activity-list"></div>
+      </header>
+
+      <!-- Content -->
+      <main class="apl-content" id="main">
+
+        <!-- Hero card -->
+        <section class="apl-hero" aria-label="Welcome">
+          <div class="apl-hero-bg"></div>
+          <div class="apl-hero-content">
+            <span class="apl-hero-eyebrow"><span class="apl-pulse"></span>Live · {{ now().strftime('%a, %b %d') }}</span>
+            <h1 class="apl-hero-title">All Operations.<br><em>One Platform.</em></h1>
+            <p class="apl-hero-lede">Inspections, HR, procurement, and reporting — designed with the clarity, calm, and craft your team deserves.</p>
+            <div class="apl-hero-actions">
+              <a href="/inspection/" class="apl-btn apl-btn-primary">
+                Start an inspection
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+              </a>
+              <a href="/api/workflow/history" class="apl-btn apl-btn-ghost">View submissions</a>
             </div>
           </div>
-        </div>
-        </a>
-      </div>
+
+          <aside class="apl-hero-stats" aria-label="Live stats">
+            <a href="/api/workflow/history" class="dashboard-widget-link" style="text-decoration:none;color:inherit">
+              <div class="apl-hero-stats-grid" id="dashboard-stats-grid">
+                <div class="apl-stat dashboard-stat-card">
+                  <div class="apl-stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg></div>
+                  <span class="apl-stat-label dashboard-stat-label" id="stat-label-0">Inspection forms</span>
+                  <span class="apl-stat-value dashboard-stat-value" id="stat-value-0">—</span>
+                </div>
+                <div class="apl-stat dashboard-stat-card">
+                  <div class="apl-stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4h6v3H9zM9 12h6M9 16h4"/></svg></div>
+                  <span class="apl-stat-label dashboard-stat-label" id="stat-label-1">HR forms</span>
+                  <span class="apl-stat-value dashboard-stat-value" id="stat-value-1">—</span>
+                </div>
+                <div class="apl-stat dashboard-stat-card">
+                  <div class="apl-stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2 20c.8-3.2 3.6-5 7-5s6.2 1.8 7 5"/></svg></div>
+                  <span class="apl-stat-label dashboard-stat-label" id="stat-label-2">Active users</span>
+                  <span class="apl-stat-value dashboard-stat-value" id="stat-value-2">—</span>
+                </div>
+                <div class="apl-stat dashboard-stat-card">
+                  <div class="apl-stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/></svg></div>
+                  <span class="apl-stat-label dashboard-stat-label" id="stat-label-3">To complete</span>
+                  <span class="apl-stat-value dashboard-stat-value" id="stat-value-3">—</span>
+                </div>
+              </div>
+              <div class="dashboard-activity" style="display:none">
+                <div class="dashboard-activity-item" id="dashboard-activity-item">
+                  <span class="dashboard-activity-text" id="dashboard-activity-text"></span>
+                  <span class="dashboard-activity-time" id="dashboard-activity-time"></span>
+                </div>
+                <div class="dashboard-activity-list" id="dashboard-activity-list"></div>
+              </div>
+            </a>
+          </aside>
+        </section>
+
+        <!-- Modules -->
+        <section class="apl-section" id="modules">
+          <div class="apl-section-head">
+            <h2 class="apl-section-title">Your modules</h2>
+            <a class="apl-section-link" href="/about">Learn more →</a>
+          </div>
+
+          <div class="apl-grid modules-grid" id="modulesGrid">
+
+            <a href="/hr/" class="apl-card module-card" id="module-hr" data-tone="purple" style="display:none">
+              <span class="apl-card-eyebrow module-number">06 — HR</span>
+              <div class="apl-card-icon module-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2 20c.8-3.2 3.6-5 7-5s6.2 1.8 7 5"/><circle cx="17" cy="9" r="2.5"/></svg>
+              </div>
+              <h3 class="apl-card-title module-title">HR Module</h3>
+              <p class="apl-card-desc module-description">Leave requests, terminations, vacation applications, and asset management.</p>
+              <span class="apl-card-cta module-arrow">Open HR <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+            </a>
+
+            <a href="/admin/mmr/" class="apl-card module-card" id="module-report-generation" data-tone="amber" style="display:none">
+              <span class="apl-card-eyebrow module-number">Reports</span>
+              <div class="apl-card-icon module-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/></svg>
+              </div>
+              <h3 class="apl-card-title module-title">Report Generation</h3>
+              <p class="apl-card-desc module-description">Create Excel and PDF reports from inspections. Schedule emails and save to folder.</p>
+              <span class="apl-card-cta module-arrow">Open Reports <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+            </a>
+
+            <a href="/inspection/" class="apl-card module-card" id="module-inspection" data-tone="blue" style="display:none">
+              <span class="apl-card-eyebrow module-number">Inspection</span>
+              <div class="apl-card-icon module-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+              </div>
+              <h3 class="apl-card-title module-title">Inspection Form</h3>
+              <p class="apl-card-desc module-description">HVAC &amp; MEP, Civil Works, and Cleaning Services inspections in one place.</p>
+              <span class="apl-card-cta module-arrow">Open Forms <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+            </a>
+
+            <a href="/procurement/" class="apl-card module-card" id="module-procurement" data-tone="orange" style="display:none">
+              <span class="apl-card-eyebrow module-number">07 — Procurement</span>
+              <div class="apl-card-icon module-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h18l-1.5 12a2 2 0 0 1-2 1.7H6.5a2 2 0 0 1-2-1.7L3 7Z"/><path d="M8 7V5a4 4 0 0 1 8 0v2"/></svg>
+              </div>
+              <h3 class="apl-card-title module-title">Procurement</h3>
+              <p class="apl-card-desc module-description">Material lists, quantity tracking, pricing, and Excel import/export.</p>
+              <span class="apl-card-cta module-arrow">Open Procurement <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+            </a>
+
+            <a href="/api/workflow/history" class="apl-card module-card" id="module-review-history" data-tone="teal" style="display:none">
+              <span class="apl-card-eyebrow module-number">Workflow</span>
+              <div class="apl-card-icon module-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+              </div>
+              <h3 class="apl-card-title module-title">Submitted Forms</h3>
+              <p class="apl-card-desc module-description">Browse submitted forms with reviewer comments, signatures, and statuses.</p>
+              <span class="apl-card-cta module-arrow">View forms <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+            </a>
+
+            <a href="/workflow/pending-reviews" class="apl-card module-card" id="module-pending-review" data-tone="pink" style="display:none">
+              <span class="apl-card-eyebrow module-number">Workflow</span>
+              <div class="apl-card-icon module-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4h6v3H9zM9 12h6M9 16h4"/></svg>
+                <span class="apl-card-badge module-badge" id="modulePendingBadge" style="display:none">0</span>
+              </div>
+              <h3 class="apl-card-title module-title">Pending Review</h3>
+              <p class="apl-card-desc module-description">Review and approve submissions awaiting your signature in the workflow.</p>
+              <span class="apl-card-cta module-arrow">View pending <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+            </a>
+
+            <a href="/admin/devices" class="apl-card module-card" id="module-device-management" data-tone="blue" style="display:none">
+              <span class="apl-card-eyebrow module-number">Admin</span>
+              <div class="apl-card-icon module-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+              </div>
+              <h3 class="apl-card-title module-title">Device Management</h3>
+              <p class="apl-card-desc module-description">Track and manage enrolled devices. Enroll, view status, and export lists.</p>
+              <span class="apl-card-cta module-arrow">Open Devices <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+            </a>
+
+            <a href="/admin/bd" class="apl-card module-card" id="module-bd" data-tone="purple" style="display:none">
+              <span class="apl-card-eyebrow module-number">04 — BD</span>
+              <div class="apl-card-icon module-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17 9 11l4 4 8-8"/><path d="M14 7h7v7"/></svg>
+              </div>
+              <h3 class="apl-card-title module-title">Business Development</h3>
+              <p class="apl-card-desc module-description">Pipeline, projects, follow-ups, contacts, and BD analytics.</p>
+              <span class="apl-card-cta module-arrow">Open BizFlow <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+            </a>
+
+            <a href="/bd/email-module" class="apl-card module-card" id="module-bd-email" data-tone="teal" style="display:none">
+              <span class="apl-card-eyebrow module-number">05 — BD</span>
+              <div class="apl-card-icon module-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+              </div>
+              <h3 class="apl-card-title module-title">Email Module</h3>
+              <p class="apl-card-desc module-description">Compose and send GM notifications with custom To and CC details.</p>
+              <span class="apl-card-cta module-arrow">Send Email <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+            </a>
+
+          </div>
+        </section>
+
+        <!-- Recent activity (preserved for dashboard.js to populate) -->
+        <section class="apl-section" id="activity-section" style="display:none">
+          <div class="apl-section-head">
+            <h2 class="apl-section-title">Recent activity</h2>
+          </div>
+          <div class="apl-list" id="apl-activity-list"></div>
+        </section>
+
+      </main>
     </div>
-  </header>
+  </div>
 
-  <!-- Modules Section -->
-  <section class="modules-section" id="modules">
-    <div class="modules-inner">
-      <h2 class="modules-section-label">Modules</h2>
-
-      <div class="modules-grid" id="modulesGrid">
-
-        <!-- HR Module -->
-        <a href="/hr/" class="module-card" id="module-hr" style="display: none;">
-          <div class="card-body">
-            <span class="module-number">06 &mdash; HR</span>
-            <div class="module-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" /></svg>
-            </div>
-            <h2 class="module-title">HR Module</h2>
-            <p class="module-description">Leave requests, termination forms, long vacation applications, and asset management.</p>
-            <span class="module-arrow">Open HR <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
-          </div>
-        </a>
-
-        <!-- Report Generation -->
-        <a href="/admin/mmr/" class="module-card" id="module-report-generation" style="display: none;">
-          <div class="card-body">
-            <span class="module-number">Reports</span>
-            <div class="module-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" /></svg>
-            </div>
-            <h2 class="module-title">Report Generation</h2>
-            <p class="module-description">Generate Excel and PDF reports from inspection data. Schedule automated emails and save reports to folder.</p>
-            <span class="module-arrow">Open Reports <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
-          </div>
-        </a>
-
-        <!-- Inspection Form (HVAC, Civil, Cleaning) -->
-        <a href="/inspection/" class="module-card" id="module-inspection" style="display: none;">
-          <div class="card-body">
-            <span class="module-number">Inspection</span>
-            <div class="module-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-            </div>
-            <h2 class="module-title">Inspection Form</h2>
-            <p class="module-description">HVAC &amp; MEP, Civil Works, and Cleaning Services inspection forms — all in one place.</p>
-            <span class="module-arrow">Open Forms <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
-          </div>
-        </a>
-
-        <!-- Procurement -->
-        <a href="/procurement/" class="module-card" id="module-procurement" style="display: none;">
-          <div class="card-body">
-            <span class="module-number">07 &mdash; Procurement</span>
-            <div class="module-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m20.25 7.5-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z" /></svg>
-            </div>
-            <h2 class="module-title">Procurement</h2>
-            <p class="module-description">Material lists, quantity tracking, pricing management, and Excel import/export.</p>
-            <span class="module-arrow">Open Procurement <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
-          </div>
-        </a>
-
-        <!-- Submitted Forms (workflow history) -->
-        <a href="/api/workflow/history" class="module-card" id="module-review-history" style="display: none;">
-          <div class="card-body">
-            <span class="module-number">Workflow</span>
-            <div class="module-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>
-            </div>
-            <h2 class="module-title">Submitted Forms</h2>
-            <p class="module-description">Browse submitted forms with reviewer comments, signatures, and approval status.</p>
-            <span class="module-arrow">View forms <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
-          </div>
-        </a>
-
-        <!-- Pending Review (reviewers only) -->
-        <a href="/workflow/pending-reviews" class="module-card" id="module-pending-review" style="display: none;">
-          <div class="card-body">
-            <span class="module-number">Workflow</span>
-            <div class="module-icon" style="position: relative;">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25ZM6.75 12h.008v.008H6.75V12Zm0 3h.008v.008H6.75V15Zm0 3h.008v.008H6.75V18Z" /></svg>
-              <span class="module-badge" id="modulePendingBadge" style="display: none;">0</span>
-            </div>
-            <h2 class="module-title">Pending Review</h2>
-            <p class="module-description">Review and approve submissions awaiting your signature and approval in the workflow process.</p>
-            <span class="module-arrow">View Pending <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
-          </div>
-        </a>
-
-        <!-- Device Management (admin only) -->
-        <a href="/admin/devices" class="module-card" id="module-device-management" style="display: none;">
-          <div class="card-body">
-            <span class="module-number">Admin</span>
-            <div class="module-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
-            </div>
-            <h2 class="module-title">Device Management</h2>
-            <p class="module-description">Track and manage enrolled devices. Enroll new devices, view status, and export device lists.</p>
-            <span class="module-arrow">Open Devices <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
-          </div>
-        </a>
-
-        <!-- Business Development (admin only) -->
-        <a href="/admin/bd" class="module-card" id="module-bd" style="display: none;">
-          <div class="card-body">
-            <span class="module-number">04 &mdash; BD</span>
-            <div class="module-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V10.5Zm-12 0h.008v.008H6V10.5Z" /></svg>
-            </div>
-            <h2 class="module-title">Business Development</h2>
-            <p class="module-description">Pipeline, projects, follow-ups, contacts, and BD analytics — manage deals and relationships.</p>
-            <span class="module-arrow">Open BizFlow <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
-          </div>
-        </a>
-
-        <!-- Email Module (BD only) -->
-        <a href="/bd/email-module" class="module-card" id="module-bd-email" style="display: none;">
-          <div class="card-body">
-            <span class="module-number">05 &mdash; BD</span>
-            <div class="module-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" /></svg>
-            </div>
-            <h2 class="module-title">Email Module</h2>
-            <p class="module-description">Compose and send General Manager notifications with custom To and CC details.</p>
-            <span class="module-arrow">Send Email <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
-          </div>
-        </a>
-
-      </div>
-    </div>
-  </section>
-
-  <footer class="footer">
-    <div class="footer-inner">
-      <div class="footer-brand">Injaaz</div>
-      <p class="footer-copy">© {{ now().year }} Injaaz Application / built by <span class="footer-built-by-name">Arshith Swaminath P</span></p>
-    </div>
-  </footer>
-
-  <!-- Profile & Contact modals are in main_navbar partial -->
+  <!-- Profile / Contact / Todo modals -->
+  {% include 'partials/profile_modal.html' %}
+  {% include 'partials/contact_modal.html' %}
+  {% include 'partials/todo_modal.html' %}
 
   <!-- External Scripts -->
   <script src="{{ url_for('static', filename='mobile_utils.js') }}" defer></script>
   <script src="{{ url_for('static', filename='signature_pad.umd.min.js') }}"></script>
   <script src="{{ url_for('static', filename='api-client.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/todo_list.js') }}" defer></script>
   <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+
+  <script>
+    // ── Apple shell interactions ──────────────────────────────────────────
+    (function () {
+      const sidebar = document.getElementById('aplSidebar');
+      const scrim = document.getElementById('aplScrim');
+      const toggle = document.getElementById('aplMenuToggle');
+      const search = document.getElementById('aplSearch');
+
+      function openSidebar() { sidebar.classList.add('is-open'); scrim.classList.add('is-open'); }
+      function closeSidebar() { sidebar.classList.remove('is-open'); scrim.classList.remove('is-open'); }
+      if (toggle) toggle.addEventListener('click', openSidebar);
+      if (scrim) scrim.addEventListener('click', closeSidebar);
+
+      // ⌘K / Ctrl+K focus search
+      document.addEventListener('keydown', (e) => {
+        if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+          e.preventDefault();
+          if (search) search.focus();
+        }
+        if (e.key === 'Escape') closeSidebar();
+      });
+
+      // Filter modules by search
+      const cards = document.querySelectorAll('.apl-grid .apl-card');
+      if (search) {
+        search.addEventListener('input', () => {
+          const q = search.value.trim().toLowerCase();
+          cards.forEach(c => {
+            const text = c.textContent.toLowerCase();
+            const explicitlyHidden = c.dataset.hidden === '1';
+            if (explicitlyHidden) return;
+            c.style.display = (!q || text.includes(q)) ? '' : 'none';
+          });
+        });
+      }
+
+      // Sync sidebar role-gated links to module visibility
+      function syncSidebar() {
+        const map = [
+          ['module-hr', 'navHr'],
+          ['module-review-history', 'navHistory'],
+          ['module-pending-review', 'navPending'],
+          ['module-report-generation', 'navReports'],
+          ['module-bd', 'navBd'],
+          ['module-bd-email', 'navBdEmail'],
+          ['module-device-management', 'navDevices'],
+        ];
+        map.forEach(([cardId, navId]) => {
+          const card = document.getElementById(cardId);
+          const nav = document.getElementById(navId);
+          if (card && nav && card.style.display !== 'none') {
+            nav.style.display = '';
+          }
+        });
+
+        // Admin link based on any admin module
+        const admin = document.getElementById('navAdmin');
+        const hasAdmin = ['module-device-management','module-bd','module-report-generation']
+          .some(id => { const el = document.getElementById(id); return el && el.style.display !== 'none'; });
+        if (admin && hasAdmin) admin.style.display = '';
+
+        // Pending badge sync
+        const cardBadge = document.getElementById('modulePendingBadge');
+        const sideBadge = document.getElementById('sidePendingBadge');
+        if (cardBadge && sideBadge && cardBadge.style.display !== 'none') {
+          sideBadge.style.display = '';
+          sideBadge.textContent = cardBadge.textContent || '0';
+        }
+      }
+      // Run after dashboard.js mutations
+      setTimeout(syncSidebar, 600);
+      setTimeout(syncSidebar, 1800);
+
+      // Avatar from user
+      try {
+        const u = JSON.parse(localStorage.getItem('user') || '{}');
+        const name = u.full_name || u.username || 'Injaaz';
+        const initials = name.split(/\s+/).filter(Boolean).slice(0,2).map(s=>s[0]).join('').toUpperCase() || 'IN';
+        const av = document.getElementById('aplAvatar');
+        if (av) av.textContent = initials;
+      } catch (_) {}
+
+      // Logout
+      const logoutBtn = document.getElementById('logoutBtn');
+      if (logoutBtn) {
+        logoutBtn.addEventListener('click', async () => {
+          try {
+            const token = localStorage.getItem('access_token');
+            if (token) {
+              await fetch('/api/auth/logout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
+              });
+            }
+          } catch (_) {}
+          localStorage.clear(); sessionStorage.clear();
+          window.location.href = '/login';
+        });
+      }
+
+      // Profile / Contact modal triggers
+      const profileLink = document.getElementById('profileLink');
+      if (profileLink) profileLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (typeof window.openProfileModal === 'function') window.openProfileModal();
+      });
+      const contactLink = document.getElementById('contactLink');
+      if (contactLink) contactLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (typeof window.openContactModal === 'function') window.openContactModal();
+      });
+
+      // Modal close on Escape (legacy compat)
+      window.openProfileModal = window.openProfileModal || function () {
+        const m = document.getElementById('profileModal'); if (m) m.classList.add('active');
+      };
+      window.closeProfileModal = window.closeProfileModal || function () {
+        const m = document.getElementById('profileModal'); if (m) m.classList.remove('active');
+      };
+      window.openContactModal = window.openContactModal || function () {
+        const m = document.getElementById('contactModal'); if (m) m.classList.add('active');
+      };
+      window.closeContactModal = window.closeContactModal || function () {
+        const m = document.getElementById('contactModal'); if (m) m.classList.remove('active');
+      };
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          window.closeProfileModal && window.closeProfileModal();
+          window.closeContactModal && window.closeContactModal();
+        }
+      });
+    })();
+  </script>
 </body>
 </html>

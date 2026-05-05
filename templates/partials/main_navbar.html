@@ -120,3 +120,18 @@
 {% include 'partials/profile_modal.html' %}
 {% include 'partials/todo_modal.html' %}
 <script src="{{ url_for('static', filename='js/todo_list.js') }}" defer></script>
+
+{# Ensure Apple-inspired theme is loaded and body class is set on every page that uses this navbar #}
+<script>
+  (function () {
+    if (!document.querySelector('link[data-apl-theme]')) {
+      const l = document.createElement('link');
+      l.rel = 'stylesheet';
+      l.href = "{{ url_for('static', filename='css/apple-theme.css') }}";
+      l.setAttribute('data-apl-theme', '1');
+      document.head.appendChild(l);
+    }
+    document.body.classList.add('apl-themed');
+    document.documentElement.style.colorScheme = 'dark';
+  })();
+</script>
