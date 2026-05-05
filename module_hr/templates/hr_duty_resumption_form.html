@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+  
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+<title>Duty Resumption Form — INJAAZ</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --ink:#0d1f14;--ink2:#2d4a38;--ink3:#4a6857;--muted:#7a9489;
+      --pri:#125435;--pri-l:#1a7a4d;--pri-d:#0d3d24;
+      --pri-xs:#e8f5ed;--pri-sm:#c2dece;--pri-xl:#f0f9f4;
+      --warn-bg:#fffbeb;--warn-bd:#fde68a;--warn-txt:#92400e;
+      --sf:#ffffff;--bg:#eef4f0;--bd:#dde8e2;--bd-l:#e8f0ec;
+      --r:12px;--r-lg:20px;--r-sm:8px;--r-xl:24px;
+      --sh:0 2px 12px rgba(18,84,53,.06);
+      --sh-lg:0 24px 64px rgba(18,84,53,.08),0 8px 24px rgba(0,0,0,.04);
+      --t:.2s cubic-bezier(.4,0,.2,1);
+    }
+    html{scroll-behavior:smooth}
+    body{
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+      color:var(--ink);min-height:100vh;-webkit-font-smoothing:antialiased;line-height:1.5;
+      background:#fafafa;
+    }
+
+    .page{width:100%;min-height:100vh;padding:5.5rem 0 3rem}
+    .page-inner{max-width:1400px;margin:0 auto;padding:1.5rem 2rem 2rem}
+    .back-btn{
+      display:inline-flex;align-items:center;gap:.5rem;padding:.55rem 1.1rem;font-size:.875rem;font-weight:600;
+      color:var(--pri);background:rgba(255,255,255,.95);border:1px solid rgba(221,232,226,.8);
+      border-radius:999px;text-decoration:none;box-shadow:0 2px 12px rgba(18,84,53,.06);
+      transition:all var(--t);margin-bottom:1.5rem;backdrop-filter:blur(8px);
+    }
+    .back-btn:hover{background:#fff;border-color:var(--pri-sm);color:var(--pri-d);box-shadow:0 4px 16px rgba(18,84,53,.1)}
+
+    .card{
+      background:rgba(255,255,255,.98);border-radius:var(--r-xl);
+      box-shadow:var(--sh-lg);overflow:hidden;border:1px solid rgba(232,240,236,.9);
+      width:100%;backdrop-filter:blur(12px);
+    }
+
+    .hd{
+      background:linear-gradient(160deg, #051a10 0%, #082a18 25%, #0d3d24 55%, #125435 100%);
+      padding:2rem 2.5rem;position:relative;overflow:hidden;
+      display:flex;align-items:center;justify-content:space-between;gap:2rem;
+    }
+    .hd::before{
+      content:'';position:absolute;inset:0;
+      background:linear-gradient(180deg, rgba(255,255,255,.06) 0%, transparent 50%);
+      pointer-events:none;
+    }
+    .hd-left{position:relative;text-align:left}
+    .hd h1{font-size:1.6rem;font-weight:800;color:#fff;letter-spacing:-.02em;position:relative;margin:0;text-shadow:0 1px 2px rgba(0,0,0,.15)}
+    .hd-sub{font-size:.82rem;color:rgba(255,255,255,.88);margin-top:.4rem;font-weight:500;letter-spacing:.02em;position:relative}
+    .hd-logo{position:relative;height:88px;width:auto;filter:brightness(0) invert(1);opacity:.95;flex-shrink:0}
+
+    .step-bar{
+      display:flex;align-items:center;justify-content:center;gap:0;
+      padding:1.35rem 2rem;width:100%;
+    }
+    .step-item{display:flex;align-items:center;gap:.65rem;padding:.65rem 1.6rem;border-radius:999px;font-size:.9rem;font-weight:600;transition:all var(--t);cursor:pointer}
+    .step-item .num{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;flex-shrink:0}
+    .step-item.active{background:linear-gradient(135deg,var(--pri-xs),#e0f2e8);color:var(--pri-d);box-shadow:0 2px 8px rgba(18,84,53,.08)}
+    .step-item.active .num{background:linear-gradient(135deg,var(--pri),var(--pri-l));color:#fff;box-shadow:0 2px 6px rgba(18,84,53,.25)}
+    .step-item.done{background:linear-gradient(135deg,#d1f0dd,#c2dece);color:var(--pri-d)}
+    .step-item.done .num{background:var(--pri-l);color:#fff}
+    .step-item.locked{color:var(--muted);opacity:.85}
+    .step-item.locked .num{background:#e8f0ec;color:var(--muted)}
+    .step-connector{width:48px;height:2px;background:#e0e8e4;margin:0 -.2rem;border-radius:1px;transition:background var(--t)}
+    .step-connector.done{background:linear-gradient(90deg,var(--pri-sm),var(--pri-l))}
+    .step-hint{
+      display:flex;align-items:center;gap:.75rem;padding:1rem 1.5rem;
+      background:linear-gradient(135deg, rgba(232,245,237,.9), rgba(240,249,244,.95));
+      border:1px solid rgba(194,222,206,.6);border-radius:var(--r);
+      margin-bottom:1.25rem;font-size:.9rem;font-weight:500;color:var(--pri-d);
+      box-shadow:0 1px 3px rgba(18,84,53,.04);
+    }
+    .step-hint svg{flex-shrink:0;opacity:.9}
+    .step-hint strong{font-weight:700}
+
+    .form-body{padding:2rem 2.5rem;max-width:1200px;margin:0 auto;background:transparent}
+    .step-panel{display:none;animation:fadeIn .35s ease}
+    .step-panel.active{display:block}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+    .step-nav{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid var(--bd-l)}
+    .btn-next{display:inline-flex;align-items:center;gap:.5rem;padding:.8rem 1.85rem;font-size:.95rem;font-weight:700;color:#fff;background:linear-gradient(135deg, #0f4a2e 0%, var(--pri) 45%, var(--pri-l) 100%);border:none;border-radius:999px;cursor:pointer;box-shadow:0 4px 18px rgba(18,84,53,.35);transition:all var(--t);font-family:inherit}
+    .btn-next:hover{transform:translateY(-2px);box-shadow:0 6px 24px rgba(18,84,53,.4)}
+    .btn-back{display:inline-flex;align-items:center;gap:.4rem;padding:.75rem 1.25rem;font-size:.9rem;font-weight:600;color:var(--ink3);background:var(--sf);border:1.5px solid var(--bd);border-radius:999px;cursor:pointer;transition:all var(--t);font-family:inherit}
+    .btn-back:hover{border-color:var(--pri-sm);color:var(--pri);background:var(--pri-xs)}
+
+    .sec{
+      background:linear-gradient(180deg, rgba(255,255,255,.95) 0%, rgba(248,252,249,.98) 100%);
+      border:1px solid rgba(232,240,236,.9);border-radius:var(--r-lg);
+      padding:1.6rem 1.85rem;margin-bottom:1.5rem;
+      box-shadow:0 1px 4px rgba(18,84,53,.04);
+    }
+    .sec:last-of-type{margin-bottom:0}
+    .sec-hd{font-size:.75rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--pri);margin-bottom:1rem;padding-bottom:.65rem;border-bottom:2px solid rgba(194,222,206,.7);display:flex;align-items:center;gap:.5rem}
+    .sec-hd::before{content:'';width:4px;height:16px;background:linear-gradient(180deg,var(--pri),var(--pri-l));border-radius:2px}
+
+    .grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:1.25rem 1.75rem}
+    .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:1.25rem 1.75rem}
+    .fld{display:flex;flex-direction:column;gap:.35rem}
+    .fld-lbl{font-size:.8rem;font-weight:600;color:var(--ink2)}
+    .fld-lbl .req{color:#dc2626;font-weight:700}
+    .fld-inp{width:100%;border:1.5px solid rgba(221,232,226,.9);border-radius:var(--r-sm);padding:.65rem 1rem;font-size:.9rem;font-family:inherit;color:var(--ink);background:#fff;outline:none;transition:border-color var(--t),box-shadow var(--t)}
+    .fld-inp:focus{border-color:var(--pri);box-shadow:0 0 0 3px rgba(18,84,53,.14)}
+    .fld-inp::placeholder{color:var(--muted)}
+    .fld-inp[readonly],.fld-inp:disabled{background:var(--bg);color:var(--ink3);cursor:not-allowed}
+    textarea.fld-inp{min-height:80px;resize:vertical}
+    .fld.fw{grid-column:1/-1}
+
+    .sig-wrap{margin-top:.4rem}
+    .sig-box{min-height:68px;border:2px dashed var(--bd);border-radius:var(--r-sm);background:var(--sf);display:flex;align-items:center;justify-content:center;overflow:hidden;padding:.4rem;transition:border-color var(--t)}
+    .sig-box:hover{border-color:var(--pri-sm)}
+    .sig-box img{max-height:60px;max-width:100%;object-fit:contain}
+    .sig-ph{font-size:.78rem;color:var(--muted);font-style:italic}
+    .sig-actions{display:flex;gap:.4rem;margin-top:.5rem}
+    .btn-plus{display:inline-flex;align-items:center;gap:.35rem;padding:.35rem .8rem;font-size:.8rem;font-weight:600;color:var(--pri);background:var(--pri-xs);border:1.5px solid var(--pri-sm);border-radius:999px;cursor:pointer;transition:all var(--t);font-family:inherit}
+    .btn-plus:hover{background:var(--pri-sm);border-color:var(--pri);color:var(--pri-d)}
+    .btn-rm{display:none;align-items:center;gap:.35rem;padding:.35rem .8rem;font-size:.8rem;font-weight:600;color:#b91c1c;background:#fef2f2;border:1.5px solid #fecaca;border-radius:999px;cursor:pointer;transition:all var(--t);font-family:inherit}
+    .btn-rm:hover{background:#fee2e2}
+
+    .sec-hr{background:linear-gradient(135deg,#fffbeb,#fef3c7);border-color:#fde68a}
+    .sec-hr .sec-hd{color:var(--warn-txt);border-bottom-color:#fcd34d}
+    .sec-hr .sec-hd::before{background:#d97706}
+    .sec-hr .fld-inp[readonly]{background:rgba(255,255,255,.6)}
+
+    .doc-ft{padding:1.15rem 2.5rem;background:linear-gradient(180deg, #f4f8f6 0%, #eef4f0 100%);border-top:1px solid rgba(232,240,236,.9);font-size:.75rem;color:var(--muted);text-align:center;line-height:1.65}
+    .doc-ft-meta{display:flex;justify-content:center;gap:1.5rem;flex-wrap:wrap;font-weight:600;margin-bottom:.4rem;color:var(--ink3)}
+
+    .submit-bar{padding:1.6rem 2.5rem;border-top:1px solid rgba(232,240,236,.9);display:flex;align-items:center;justify-content:flex-end;gap:1rem;background:rgba(255,255,255,.98)}
+    .btn-submit{display:inline-flex;align-items:center;gap:.5rem;padding:.85rem 2.1rem;font-size:.95rem;font-weight:700;color:#fff;background:linear-gradient(135deg, #0f4a2e 0%, var(--pri) 40%, var(--pri-l) 100%);border:none;border-radius:999px;cursor:pointer;box-shadow:0 4px 20px rgba(18,84,53,.35), 0 1px 3px rgba(0,0,0,.08);transition:all var(--t);font-family:inherit}
+    .btn-submit:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(18,84,53,.4), 0 2px 6px rgba(0,0,0,.06)}
+    .btn-submit:active{transform:translateY(0)}
+    .btn-reset{padding:.8rem 1.4rem;font-size:.88rem;font-weight:600;color:var(--ink3);background:var(--sf);border:1.5px solid var(--bd);border-radius:999px;cursor:pointer;transition:all var(--t);font-family:inherit}
+    .btn-reset:hover{border-color:var(--pri-sm);color:var(--pri);background:var(--pri-xs)}
+
+    .sig-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:9000;display:flex;align-items:center;justify-content:center;opacity:0;visibility:hidden;transition:opacity .25s,visibility .25s}
+    .sig-modal-bg.open{opacity:1;visibility:visible}
+    .sig-modal{background:#fff;border-radius:var(--r-lg);width:520px;max-width:94vw;box-shadow:0 32px 64px rgba(0,0,0,.2);overflow:hidden;transform:scale(.95);transition:transform .3s cubic-bezier(.34,1.56,.64,1)}
+    .sig-modal-bg.open .sig-modal{transform:scale(1)}
+    .sig-modal-hd{padding:1.25rem 1.5rem;border-bottom:1px solid var(--bd-l);display:flex;align-items:center;justify-content:space-between}
+    .sig-modal-hd h3{font-size:1rem;font-weight:700;color:var(--ink);margin:0}
+    .sig-modal-x{width:36px;height:36px;border-radius:var(--r-sm);border:1px solid var(--bd);background:var(--bg);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1.1rem;color:var(--ink3);transition:all var(--t);line-height:1}
+    .sig-modal-x:hover{background:#fee2e2;border-color:#fca5a5;color:#b91c1c}
+    .sig-modal-body{padding:1.25rem 1.5rem}
+    .sig-modal-hint{font-size:.85rem;color:var(--muted);margin-bottom:.75rem}
+    .sig-canvas-box{border:2px solid var(--bd);border-radius:var(--r-sm);background:#fafafa;overflow:hidden;position:relative}
+    .sig-canvas-box canvas{display:block;width:100%;height:180px;cursor:crosshair;touch-action:none}
+    .sig-canvas-guide{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);font-size:.75rem;color:var(--muted);pointer-events:none;user-select:none}
+    .sig-modal-ft{display:flex;justify-content:space-between;align-items:center;margin-top:1rem}
+    .btn-m-clear{padding:.45rem 1rem;font-size:.85rem;font-weight:600;color:var(--ink3);background:var(--bg);border:1.5px solid var(--bd);border-radius:999px;cursor:pointer;transition:all var(--t);font-family:inherit}
+    .btn-m-clear:hover{border-color:#fca5a5;color:#b91c1c;background:#fef2f2}
+    .btn-m-apply{padding:.45rem 1.5rem;font-size:.9rem;font-weight:700;color:#fff;background:linear-gradient(135deg,var(--pri),var(--pri-l));border:none;border-radius:999px;cursor:pointer;box-shadow:0 4px 12px rgba(18,84,53,.3);transition:all var(--t);font-family:inherit}
+    .btn-m-apply:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(18,84,53,.38)}
+
+    .success-bg{position:fixed;inset:0;background:transparent;z-index:9999;display:flex;align-items:center;justify-content:center;pointer-events:none;opacity:0;visibility:hidden;transition:opacity .3s,visibility .3s}
+    .success-bg.show{opacity:1;visibility:visible;pointer-events:auto}
+    .success-box{position:relative;background:#fff;border-radius:var(--r-lg);padding:2.5rem;text-align:center;max-width:420px;width:90%;box-shadow:0 32px 64px rgba(0,0,0,.22);transform:scale(.94);transition:transform .35s cubic-bezier(.34,1.56,.64,1)}
+    .success-back-btn{position:absolute;top:1rem;right:1rem;width:40px;height:40px;border-radius:50%;border:1.5px solid var(--bd);background:var(--sf);color:var(--pri);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all var(--t);font-family:inherit}
+    .success-back-btn:hover{background:var(--pri-xs);border-color:var(--pri-sm);color:var(--pri-d)}
+    .success-bg.show .success-box{transform:scale(1)}
+    .success-icon{width:64px;height:64px;background:linear-gradient(135deg,var(--pri),#2ecc7a);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1.25rem}
+    .success-box h2{font-size:1.3rem;font-weight:800;color:var(--ink);margin:0 0 .4rem}
+    .success-box p{font-size:.9rem;color:var(--ink3);margin:0 0 1rem}
+    .sub-id{background:var(--bg);border:1px solid var(--bd);border-radius:var(--r-sm);padding:.5rem 1rem;font-family:monospace;font-size:.85rem;margin-bottom:1.25rem}
+
+    @keyframes spin{to{transform:rotate(360deg)}}.spin{animation:spin .7s linear infinite}
+
+    @media(max-width:900px){.grid-3{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:640px){
+      .page-inner{padding:1rem}
+      .form-body,.doc-ft,.submit-bar{padding-left:1.25rem;padding-right:1.25rem}
+      .hd{padding:1.5rem 1.25rem;flex-direction:column;align-items:flex-start;gap:1rem}
+      .hd-logo{height:72px}
+      .sec{padding:1.25rem 1.25rem}
+      .grid-2,.grid-3{grid-template-columns:1fr}
+      .step-bar{flex-wrap:wrap;padding:1rem}
+      .step-item{padding:.5rem 1rem;font-size:.82rem}
+    }
+  </style>
+</head>
+<body>
+  {% set active_page = 'hr' %}
+  {% include 'partials/main_navbar.html' with context %}
+
+  <div class="success-bg" id="successModal">
+    <div class="success-box">
+      <button type="button" class="success-back-btn" onclick="closeSuccessBackToForm()" title="Back to form">
+        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+      </button>
+      <div class="success-icon"><svg width="30" height="30" fill="none" stroke="#fff" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg></div>
+      <h2>Form Submitted!</h2>
+      <p>Your duty resumption form has been sent to HR for review.</p>
+      <div class="sub-id" id="submissionId"></div>
+      <button class="btn-submit" style="width:100%;justify-content:center" onclick="window.location.href='/hr/my-requests'">View My Requests</button>
+    </div>
+  </div>
+
+  <div class="sig-modal-bg" id="sigBg">
+    <div class="sig-modal">
+      <div class="sig-modal-hd"><h3 id="sigTitle">Signature</h3><button class="sig-modal-x" onclick="closeSig()">&times;</button></div>
+      <div class="sig-modal-body">
+        <p class="sig-modal-hint">Draw your signature using your mouse or finger.</p>
+        <div class="sig-canvas-box"><canvas id="sigCanvas" height="180"></canvas><span class="sig-canvas-guide">Sign here</span></div>
+        <div class="sig-modal-ft"><button class="btn-m-clear" onclick="clearModalPad()">Clear</button><button class="btn-m-apply" onclick="applySig()">Apply Signature</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page">
+    <div class="page-inner">
+      <a href="/hr/" class="back-btn">
+        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        Back to HR
+      </a>
+
+      <div class="step-bar">
+        <div class="step-item active" id="step1Badge" onclick="goToStep1()" role="button" tabindex="0"><span class="num">1</span><span>Employee & Leave Details</span></div>
+        <div class="step-connector" id="connector1"></div>
+        <div class="step-item locked" id="step2Badge" onclick="goToStep2()" role="button" tabindex="0"><span class="num">2</span><span>Signatures</span></div>
+      </div>
+
+      <div class="card">
+        <div class="hd">
+          <div class="hd-left">
+            <h1>Duty Resumption Form</h1>
+            <p class="hd-sub">INJAAZ FACILITY MANAGEMENT</p>
+          </div>
+          <img src="{{ url_for('static', filename='logo.png') }}" alt="INJAAZ" class="hd-logo">
+        </div>
+
+        <form id="dutyFrm">
+          <div class="form-body">
+
+            <!-- Step 1: Employee Details & Leave Information -->
+            <div class="step-panel active" id="step1Panel">
+              <div class="step-hint">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span><strong>Step 1 of 2</strong> — Complete employee and leave details below, then click <strong>Continue to Step 2</strong> for signatures.</span>
+              </div>
+              <section class="sec">
+                <h2 class="sec-hd">Employee Details</h2>
+                <div class="grid-2">
+                  <div class="fld"><label class="fld-lbl">Requester <span class="req">*</span></label><input class="fld-inp" type="text" name="requester" required placeholder="Person submitting the form"></div>
+                  <div class="fld fw"><label class="fld-lbl">Employee Name <span class="req">*</span></label><input class="fld-inp" type="text" name="employee_name" required placeholder="Full name as per contract"></div>
+                  <div class="fld"><label class="fld-lbl">Employee ID <span class="req">*</span></label><input class="fld-inp" type="text" name="employee_id" required placeholder="e.g. INJ-0001"></div>
+                  <div class="fld"><label class="fld-lbl">Job Title <span class="req">*</span></label><input class="fld-inp" type="text" name="job_title" required></div>
+                  <div class="fld"><label class="fld-lbl">Company <span class="req">*</span></label><input class="fld-inp" type="text" name="company" value="INJAAZ LLC" required></div>
+                </div>
+              </section>
+              <section class="sec">
+                <h2 class="sec-hd">Leave Information</h2>
+                <div class="grid-3">
+                  <div class="fld"><label class="fld-lbl">Leave Started <span class="req">*</span></label><input class="fld-inp" type="date" name="leave_started" required></div>
+                  <div class="fld"><label class="fld-lbl">Leave Ended <span class="req">*</span></label><input class="fld-inp" type="date" name="leave_ended" required></div>
+                  <div class="fld"><label class="fld-lbl">Planned Resumption Date <span class="req">*</span></label><input class="fld-inp" type="date" name="planned_resumption_date" required></div>
+                  <div class="fld"><label class="fld-lbl">Actual Resumption Date <span class="req">*</span></label><input class="fld-inp" type="date" name="actual_resumption_date" id="actualResumption" required></div>
+                  <div class="fld fw"><label class="fld-lbl">Note</label><input class="fld-inp" type="text" name="note" placeholder="Optional notes"></div>
+                </div>
+              </section>
+              <div class="step-nav">
+                <span></span>
+                <button type="button" class="btn-next" onclick="goToStep2()">Continue to Step 2 <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg></button>
+              </div>
+            </div>
+
+            <!-- Step 2: Signatures -->
+            <div class="step-panel" id="step2Panel">
+              <div class="step-hint">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span><strong>Step 2 of 2</strong> — Add signatures and submit. You can go back to edit Step 1 if needed.</span>
+              </div>
+
+              <section class="sec">
+                <h2 class="sec-hd">Line Manager Remarks</h2>
+                <div class="fld">
+                  <textarea class="fld-inp" name="line_manager_remarks" rows="3" placeholder="Manager remarks (optional)"></textarea>
+                </div>
+              </section>
+              <section class="sec">
+                <h2 class="sec-hd">Signatures</h2>
+                <div class="grid-3">
+                  <div class="fld">
+                    <label class="fld-lbl">Employee Signature <span class="req">*</span></label>
+                    <div class="sig-wrap">
+                      <div class="sig-box" id="empSigPrev"><span class="sig-ph">No signature</span><img id="empSigImg" src="" style="display:none"></div>
+                      <div class="sig-actions">
+                        <button type="button" class="btn-plus" onclick="openSig('employee')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 4v16m8-8H4"/></svg> Sign</button>
+                        <button type="button" class="btn-rm" id="empSigRm" onclick="rmSig('employee')">Remove</button>
+                      </div>
+                      <input type="hidden" name="employee_signature" id="empSigData">
+                    </div>
+                    <div class="fld" style="margin-top:.75rem"><label class="fld-lbl">Date</label><input class="fld-inp" type="date" name="sign_date" id="signDate"></div>
+                  </div>
+                  <div class="fld">
+                    <label class="fld-lbl">GM Signature</label>
+                    {% if is_gm %}
+                    <div class="sig-wrap">
+                      <div class="sig-box" id="gmSigPrev"><span class="sig-ph">No signature</span><img id="gmSigImg" src="" style="display:none"></div>
+                      <div class="sig-actions">
+                        <button type="button" class="btn-plus" onclick="openSig('gm')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 4v16m8-8H4"/></svg> Sign</button>
+                        <button type="button" class="btn-rm" id="gmSigRm" onclick="rmSig('gm')">Remove</button>
+                      </div>
+                      <input type="hidden" name="gm_signature" id="gmSigData">
+                    </div>
+                    {% else %}
+                    <em style="font-size:.85rem;color:var(--muted)">For GM approval workflow</em>
+                    {% endif %}
+                  </div>
+                  <div class="fld">
+                    <label class="fld-lbl">HR Signature</label>
+                    {% if is_hr %}
+                    <div class="sig-wrap">
+                      <div class="sig-box" id="hrSigPrev"><span class="sig-ph">No signature</span><img id="hrSigImg" src="" style="display:none"></div>
+                      <div class="sig-actions">
+                        <button type="button" class="btn-plus" onclick="openSig('hr')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 4v16m8-8H4"/></svg> Sign</button>
+                        <button type="button" class="btn-rm" id="hrSigRm" onclick="rmSig('hr')">Remove</button>
+                      </div>
+                      <input type="hidden" name="hr_signature" id="hrSigData">
+                    </div>
+                    {% else %}
+                    <em style="font-size:.85rem;color:var(--muted)">For HR approval workflow</em>
+                    {% endif %}
+                  </div>
+                </div>
+              </section>
+
+              <div class="step-nav">
+                <button type="button" class="btn-back" onclick="goToStep1()"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12"/></svg> Back to Step 1</button>
+                <span></span>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="doc-ft">
+            <div class="doc-ft-meta"><span>Duty Resumption Form</span><span>DATE: <span id="docDate"></span></span></div>
+            P.O Box: 3456 Ajman, UAE · Tel 067116815 · www.injaaz.ae<br>Registered under trade license name INJAAZ LLC
+          </div>
+
+          <div class="submit-bar" id="submitBar" style="display:none">
+            <button type="button" class="btn-reset" onclick="if(confirm('Reset the form?')){document.getElementById('dutyFrm').reset();clearAllSigs();goToStep1()}">Reset</button>
+            <button type="submit" class="btn-submit"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> Submit Form</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+<script>
+document.getElementById('signDate').value = new Date().toISOString().split('T')[0];
+document.getElementById('docDate').textContent = new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'});
+
+function goToStep2(){
+  document.getElementById('step1Panel').classList.remove('active');
+  document.getElementById('step2Panel').classList.add('active');
+  document.getElementById('submitBar').style.display='flex';
+  document.getElementById('step1Badge').className='step-item done';
+  document.getElementById('step1Badge').querySelector('.num').innerHTML='✓';
+  document.getElementById('step2Badge').className='step-item active';
+  document.getElementById('step2Badge').classList.remove('locked');
+  document.getElementById('connector1').classList.add('done');
+  document.getElementById('step2Panel').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function goToStep1(){
+  document.getElementById('step2Panel').classList.remove('active');
+  document.getElementById('step1Panel').classList.add('active');
+  document.getElementById('submitBar').style.display='none';
+  document.getElementById('step1Badge').className='step-item active';
+  document.getElementById('step1Badge').querySelector('.num').textContent='1';
+  document.getElementById('step2Badge').className='step-item locked';
+  document.getElementById('connector1').classList.remove('done');
+  document.getElementById('step1Panel').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function closeSuccessBackToForm(){
+  document.getElementById('successModal').classList.remove('show');
+  goToStep1();
+  const btn=document.querySelector('#dutyFrm .btn-submit');
+  if(btn){btn.disabled=false;btn.innerHTML='<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> Submit Form'}
+}
+
+let pad=null,target=null;
+const bg=document.getElementById('sigBg'),cv=document.getElementById('sigCanvas');
+const sigCfg={employee:{prev:'empSigPrev',img:'empSigImg',data:'empSigData',rm:'empSigRm',title:'Employee Signature'},gm:{prev:'gmSigPrev',img:'gmSigImg',data:'gmSigData',rm:'gmSigRm',title:'GM Signature'},hr:{prev:'hrSigPrev',img:'hrSigImg',data:'hrSigData',rm:'hrSigRm',title:'HR Signature'}};
+
+function openSig(t){target=t;const c=sigCfg[t];if(!c)return;document.getElementById('sigTitle').textContent=c.title;bg.classList.add('open');document.body.style.overflow='hidden';requestAnimationFrame(()=>{const r=window.devicePixelRatio||1,w=cv.offsetWidth;cv.width=w*r;cv.height=180*r;cv.getContext('2d').scale(r,r);cv.style.height='180px';if(pad)pad.off();pad=new SignaturePad(cv,{backgroundColor:'rgb(250,250,250)',penColor:'#0d1f14',minWidth:1.2,maxWidth:2.8})})}
+function closeSig(){bg.classList.remove('open');document.body.style.overflow='';target=null}
+function clearModalPad(){if(pad)pad.clear()}
+function applySig(){if(!pad||pad.isEmpty()){alert('Please draw your signature first.');return}const url=pad.toDataURL('image/png'),c=sigCfg[target];if(!c)return;const img=document.getElementById(c.img),ph=document.querySelector('#'+c.prev+' .sig-ph'),inp=document.getElementById(c.data),rm=document.getElementById(c.rm);if(img){img.src=url;img.style.display='block'}if(ph)ph.style.display='none';if(inp)inp.value=url;if(rm)rm.style.display='inline-flex';closeSig()}
+function rmSig(t){const c=sigCfg[t];if(!c)return;const img=document.getElementById(c.img),ph=document.querySelector('#'+c.prev+' .sig-ph'),inp=document.getElementById(c.data),rm=document.getElementById(c.rm);if(img){img.src='';img.style.display='none'}if(ph)ph.style.display='block';if(inp)inp.value='';if(rm)rm.style.display='none'}
+function clearAllSigs(){['employee','gm','hr'].forEach(rmSig)}
+bg.addEventListener('click',e=>{if(e.target===bg)closeSig()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&bg.classList.contains('open'))closeSig()});
+
+document.getElementById('dutyFrm').addEventListener('submit',async e=>{
+  e.preventDefault();
+  const fd=new FormData(e.target),data=Object.fromEntries(fd.entries());
+  data.form_type='duty_resumption';
+  const btn=e.target.querySelector('.btn-submit');
+  btn.disabled=true;btn.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="spin"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Submitting…';
+  try{const res=await fetch('/hr/api/submit',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.getItem('access_token')},body:JSON.stringify(data)});const r=await res.json();
+  if(r.success){document.getElementById('submissionId').textContent=r.submission_id;document.getElementById('successModal').classList.add('show')}
+  else{alert('Error: '+(r.error||'Unknown'));btn.disabled=false;btn.innerHTML='<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> Submit Form'}
+  }catch(err){alert('Network error: '+err.message);btn.disabled=false;btn.innerHTML='<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> Submit Form'}
+});
+</script>
+  <script src="{{ url_for('static', filename='api-client.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>

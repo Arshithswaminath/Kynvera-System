@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+  
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+  {% include 'partials/caveat_font.html' %}
+<title>HR Module - Injaaz Application</title>
+  <meta name="theme-color" content="#125435">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <style>
+    :root {
+      --primary: #125435;
+      --primary-light: #1a7a4c;
+      --secondary: #6366f1;
+    }
+    
+    /* HR Hero: gradient at top only, no grid */
+    .hr-hero::before {
+      display: none;
+    }
+    .hr-hero {
+      padding: 2.5rem 0 2rem;
+    }
+    .hr-dashboard-content {
+      padding-top: max(4.75rem, calc(72px + env(safe-area-inset-top, 0px) + 0.5rem));
+    }
+    /* Tighter space between workflow strip and HR form cards */
+    .hr-dashboard .hr-modules-section {
+      padding-top: 1rem;
+    }
+    /* Remove divider line - match main dashboard clean look */
+    .hr-modules-section::before {
+      display: none;
+    }
+    /* Whole HR module: consistent #F8FAF8 background */
+    .hr-dashboard {
+      background: #F8FAF8;
+    }
+    .hr-dashboard .modules-section {
+      background: #F8FAF8 !important;
+    }
+    /* dashboard.css gives .modules-section margin-top: -3rem to tuck under the hero; that
+       must not apply to the second section or "Recent Submissions" overlaps the last form row. */
+    .hr-dashboard .hr-modules-section + .modules-section {
+      margin-top: 0;
+      padding-top: 2.5rem;
+    }
+    /* Workflow cards next to headline - same size as HR form cards */
+    .hr-hero .hero-content {
+      gap: 2.5rem;
+      align-items: stretch;
+    }
+    .hr-hero .hero-left {
+      flex: 0 0 auto;
+      max-width: 280px;
+    }
+    .hr-hero .hero-right {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      justify-content: flex-end;
+    }
+    .hr-workflow-cards {
+      width: 100%;
+      min-width: 0;
+    }
+    .hr-workflow-cards .modules-grid {
+      margin-left: auto;
+      width: fit-content;
+      grid-template-columns: repeat(3, minmax(140px, 200px));
+      gap: 1rem;
+      height: 100%;
+    }
+    .hr-workflow-cards .modules-grid > div {
+      min-width: 0;
+      display: flex;
+    }
+    .hr-workflow-cards .modules-grid > div > a {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+    }
+    .hr-workflow-cards .module-card {
+      min-width: 0;
+      min-height: 130px;
+    }
+    .hr-workflow-cards .card-body {
+      padding: 1rem 1.25rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+    .hr-workflow-cards .module-title {
+      margin-bottom: 0;
+      font-size: 0.95rem;
+    }
+    .hr-workflow-cards .module-arrow {
+      margin-top: 0.5rem;
+      font-size: 0.8rem;
+    }
+    .hr-workflow-cards .module-number {
+      font-size: 0.6rem;
+    }
+    
+    @media (max-width: 992px) {
+      .hr-hero .hero-content {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1.35rem;
+      }
+      .hr-workflow-cards {
+        max-width: 100%;
+      }
+      .hr-workflow-cards .modules-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        width: 100%;
+        margin: 0;
+        gap: 0.65rem;
+      }
+    }
+
+    /* Mobile: tighter hero + workflow tiles (override global .module-card grid) */
+    @media (max-width: 768px) {
+      .hr-dashboard-content {
+        padding-top: max(4rem, calc(56px + env(safe-area-inset-top, 0px) + 0.85rem)) !important;
+      }
+      .hr-hero {
+        padding: 1.05rem 0 1.45rem !important;
+      }
+      /* One readable column: same horizontal inset as HR forms list below */
+      .hr-hero .hero-content.hero-split-inner {
+        padding-left: 1.45rem !important;
+        padding-right: 1.45rem !important;
+        box-sizing: border-box !important;
+      }
+      .hr-dashboard .hr-modules-section .modules-inner {
+        padding-left: 1.45rem !important;
+        padding-right: 1.45rem !important;
+      }
+      .hr-hero .hero-content {
+        gap: 1.2rem !important;
+      }
+      .hr-hero .hero-left {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        max-width: 100% !important;
+        padding-left: 0.3rem !important;
+        box-sizing: border-box !important;
+      }
+      .hr-hero .back-btn {
+        margin-top: 0.2rem !important;
+        margin-bottom: 0.55rem !important;
+        align-self: flex-start !important;
+      }
+      .hr-hero .hero-tagline {
+        margin-bottom: 0.5rem !important;
+        align-self: flex-start !important;
+      }
+      .hr-hero .hero-title {
+        align-self: flex-start !important;
+        text-align: left !important;
+      }
+      .hr-workflow-cards {
+        margin-top: 0.15rem !important;
+      }
+      .hr-workflow-cards .modules-grid {
+        gap: 0.45rem !important;
+      }
+      .hr-dashboard .hr-workflow-cards .module-card:not([style*="display: none"]) {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+      }
+      .hr-dashboard .hr-workflow-cards .module-card {
+        min-height: 122px !important;
+        padding: 0 !important;
+        grid-template-columns: unset !important;
+        grid-template-rows: unset !important;
+        gap: 0 !important;
+        border-radius: 14px !important;
+        border: 1px solid rgba(226, 232, 228, 0.98) !important;
+        background: #fff !important;
+        box-shadow: 0 2px 12px rgba(18, 84, 53, 0.07), 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+      }
+      .hr-dashboard .hr-workflow-cards .module-card .card-body {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        justify-content: flex-start !important;
+        text-align: left !important;
+        padding: 0.65rem 0.5rem 0.5rem 0.52rem !important;
+        gap: 0.32rem !important;
+        width: 100% !important;
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+      }
+      .hr-dashboard .hr-workflow-cards .module-number {
+        display: none !important;
+      }
+      .hr-dashboard .hr-workflow-cards .module-icon {
+        width: 36px !important;
+        height: 36px !important;
+        min-width: 36px !important;
+        min-height: 36px !important;
+        margin: 0 !important;
+        align-self: flex-start !important;
+        grid-column: unset !important;
+        grid-row: unset !important;
+        border-radius: 10px !important;
+      }
+      .hr-dashboard .hr-workflow-cards .module-icon svg {
+        width: 19px !important;
+        height: 19px !important;
+      }
+      .hr-dashboard .hr-workflow-cards .module-title {
+        font-size: 0.625rem !important;
+        font-weight: 700 !important;
+        line-height: 1.22 !important;
+        letter-spacing: 0.02em !important;
+        margin: 0 !important;
+        grid-column: unset !important;
+        grid-row: unset !important;
+        white-space: normal !important;
+        display: -webkit-box !important;
+        -webkit-line-clamp: 3 !important;
+        -webkit-box-orient: vertical !important;
+        overflow: hidden !important;
+        text-align: left !important;
+        align-self: stretch !important;
+        color: #14221a !important;
+      }
+      .hr-dashboard .hr-workflow-cards .module-badge {
+        font-size: 0.55rem !important;
+        padding: 0.1rem 0.3rem !important;
+        min-width: 17px !important;
+        top: -4px !important;
+        right: -4px !important;
+      }
+      /* Minimal CTA: hairline rule + label + chevron (no pill chrome) */
+      .hr-dashboard .hr-workflow-cards .module-arrow {
+        grid-column: unset !important;
+        grid-row: unset !important;
+        align-self: stretch !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        height: auto !important;
+        min-height: 0 !important;
+        margin: 0 !important;
+        margin-top: auto !important;
+        padding: 0.42rem 0 0 !important;
+        font-size: 0.64rem !important;
+        font-weight: 600 !important;
+        letter-spacing: 0.02em !important;
+        text-transform: none !important;
+        border: none !important;
+        border-radius: 0 !important;
+        border-top: 1px solid rgba(18, 84, 53, 0.1) !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        color: var(--primary) !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        gap: 0.2rem !important;
+        line-height: 1.2 !important;
+      }
+      .hr-dashboard .hr-workflow-cards .module-arrow svg {
+        width: 11px !important;
+        height: 11px !important;
+        flex-shrink: 0 !important;
+        opacity: 0.9 !important;
+      }
+      .hr-dashboard .hr-workflow-cards .module-card:active .module-arrow {
+        background: transparent !important;
+        box-shadow: none !important;
+        opacity: 0.72 !important;
+      }
+    }
+    
+    .submission-item {
+      cursor: pointer;
+      transition: all 0.2s;
+      border-radius: 8px;
+      margin-bottom: 0.5rem;
+    }
+    .submission-item:hover {
+      background: #f8fafc;
+    }
+    .submission-item:last-child {
+      margin-bottom: 0;
+    }
+    
+    /* Detail Modal - Tabbed, amazing layout */
+    .detail-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center;
+      z-index: 9999; opacity: 0; visibility: hidden; transition: all 0.3s ease;
+      padding: 1rem; backdrop-filter: blur(4px);
+    }
+    .detail-overlay.show { opacity: 1; visibility: visible; }
+    .detail-modal {
+      background: white; border-radius: 20px; max-width: 900px; width: 100%;
+      max-height: 90vh; overflow: hidden; transform: scale(0.95); transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
+      display: flex; flex-direction: column; box-shadow: 0 24px 48px rgba(0,0,0,0.18);
+    }
+    .detail-overlay.show .detail-modal { transform: scale(1); }
+    .detail-header {
+      padding: 1.25rem 1.5rem; background: #0f172a;
+      color: white; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;
+    }
+    .detail-header .form-type-badge { background: rgba(255,255,255,0.2); color: white; }
+    .detail-header h4 { color: white; font-weight: 700; margin: 0.35rem 0 0; font-size: 1.1rem; }
+    .detail-body { padding: 0; overflow: hidden; flex: 1; display: flex; flex-direction: column; }
+    .detail-tabs { display: flex; gap: 0; border-bottom: 2px solid #e2e8f0; background: #fff; }
+    .detail-tab { padding: 1rem 1.5rem; font-weight: 600; font-size: 0.9rem; cursor: pointer; color: #64748b; border-bottom: 3px solid transparent; transition: all 0.2s; }
+    .detail-tab:hover { color: var(--primary); }
+    .detail-tab.active { color: var(--primary); border-bottom-color: var(--primary); background: white; }
+    .detail-tab-pane { display: none; padding: 1.5rem; overflow-y: auto; flex: 1; background: white; }
+    .detail-tab-pane.active { display: block; }
+    .detail-close {
+      background: rgba(255,255,255,0.15); border: none; width: 40px; height: 40px;
+      border-radius: 10px; font-size: 1.5rem; cursor: pointer; color: white; line-height: 1; transition: all 0.2s;
+    }
+    .detail-close:hover { background: rgba(255,255,255,0.25); }
+    .detail-row { display: flex; padding: 0.75rem 0; border-bottom: 1px solid #f1f5f9; }
+    .detail-label { width: 40%; font-weight: 600; color: #64748b; font-size: 0.875rem; }
+    .detail-value { width: 60%; color: #1e293b; }
+    .detail-section { margin-bottom: 1.5rem; }
+    .detail-section-title { font-weight: 700; color: #1e293b; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid var(--primary); }
+    .workflow-timeline { margin-top: 0.65rem; --tl-line: #e2e8f0; }
+    .timeline-item {
+      display: flex; gap: 0.85rem; align-items: flex-start;
+      position: relative; padding: 0 0 1rem 0;
+    }
+    .timeline-item:last-child { padding-bottom: 0; }
+    .timeline-item::before {
+      content: ''; position: absolute; left: 7px; top: 1.5rem; bottom: 0;
+      width: 2px; background: var(--tl-line); border-radius: 1px;
+    }
+    .timeline-item:last-child::before { display: none; }
+    .timeline-dot {
+      position: relative; flex-shrink: 0;
+      margin-top: 0.3rem;
+      width: 16px; height: 16px; border-radius: 50%; z-index: 1;
+      background: #e2e8f0;
+      border: 2px solid white;
+      box-shadow: 0 0 0 2px #e2e8f0;
+    }
+    .timeline-dot.completed { background: #10b981; box-shadow: 0 0 0 2px rgba(16,185,129,0.35); }
+    .timeline-dot.current { background: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.4); }
+    .timeline-dot.rejected { background: #ef4444; box-shadow: 0 0 0 2px rgba(239,68,68,0.35); }
+    .timeline-body { flex: 1; min-width: 0; padding-bottom: 0.15rem; }
+    .timeline-title { font-weight: 700; font-size: 0.9125rem; color: #0f172a; letter-spacing: -0.015em; }
+    .timeline-meta { font-size: 0.8rem; color: #64748b; margin-top: 0.2rem; line-height: 1.45; }
+    .timeline-card {
+      margin-top: 0.6rem;
+      padding: 0.62rem 0.82rem;
+      background: #fff;
+      border: 1px solid #eef0f4;
+      border-radius: 10px;
+      box-shadow: 0 1px 3px rgba(15,23,42,0.04);
+    }
+    .timeline-card--alert {
+      border-color: #fecaca;
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(239,68,68,0.06);
+    }
+    .timeline-dl { margin: 0; display: grid; grid-template-columns: 5.25rem 1fr; gap: 0.3rem 0.72rem; font-size: 0.8075rem; align-items: start; }
+    .timeline-dl + .timeline-dl { margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid #f1f5f9; }
+    .timeline-dl dt { margin: 0; font-weight: 600; color: #64748b; }
+    .timeline-dl dd { margin: 0; color: #1e293b; word-break: break-word; white-space: pre-wrap; line-height: 1.48; }
+    .timeline-dd-muted { color: #94a3b8 !important; font-style: normal; }
+    /* White canvas matches SignaturePad PNGs (no grey “halo”) */
+    .timeline-sig {
+      box-sizing: border-box;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: min(280px, 100%);
+      height: 92px;
+      flex-shrink: 0;
+      padding: 0.4rem 0.5rem;
+      margin: 0;
+      background: #fff;
+      border: 1px solid #e5e9ef;
+      border-radius: 10px;
+      overflow: hidden;
+      line-height: 0;
+    }
+    .timeline-sig img {
+      display: block;
+      margin: 0;
+      max-width: 100%;
+      max-height: 100%;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      object-position: center center;
+    }
+    .signature-preview { max-width: 220px; max-height: 88px; object-fit: contain; border: 1px solid #e5e9ef; border-radius: 8px; padding: 0.4rem; background: #fff; }
+    
+    .status-badge { padding: 0.35rem 0.75rem; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+    .status-hr_review { background: #fef3c7; color: #b45309; }
+    .status-gm_review { background: #dbeafe; color: #1d4ed8; }
+    .status-approved { background: #d1fae5; color: #047857; }
+    .status-rejected { background: #fee2e2; color: #dc2626; }
+    .status-submitted { background: #e0e7ff; color: #4338ca; }
+    
+    .form-type-badge { padding: 0.25rem 0.5rem; border-radius: 6px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; background: #e5e7eb; color: #374151; }
+    .type-leave, .type-leave_application { background: #d1fae5; color: #047857; }
+    .type-termination { background: #fee2e2; color: #dc2626; }
+    .type-long_vacation { background: #dbeafe; color: #1d4ed8; }
+    .type-asset { background: #fef3c7; color: #b45309; }
+    .type-commencement, .type-duty_resumption, .type-passport_release, .type-visa_renewal { background: #dbeafe; color: #1d4ed8; }
+    .type-contract_renewal, .type-performance_evaluation, .type-staff_appraisal { background: #e0e7ff; color: #4338ca; }
+    .type-grievance { background: #fee2e2; color: #dc2626; }
+    .type-interview_assessment { background: #fef3c7; color: #b45309; }
+    .type-station_clearance { background: #d1fae5; color: #047857; }
+    
+    /* Quick action cards - attractive redesign */
+    .quick-action-card { display: flex; flex-direction: column; }
+    .quick-action-card .approved-forms-list { flex: 1; min-height: 0; overflow-y: auto; }
+    .qa-card {
+      position: relative; overflow: hidden; border-radius: 14px;
+      transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      border: 1px solid rgba(0,0,0,0.06);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+    }
+    .qa-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 28px rgba(0,0,0,0.12);
+    }
+    .qa-card.qa-orange:hover { border-color: rgba(245,158,11,0.4); box-shadow: 0 12px 28px rgba(245,158,11,0.15); }
+    .qa-card.qa-purple:hover { border-color: rgba(124,58,237,0.4); box-shadow: 0 12px 28px rgba(124,58,237,0.15); }
+    .qa-card.qa-green:hover { border-color: rgba(16,185,129,0.4); box-shadow: 0 12px 28px rgba(16,185,129,0.15); }
+    .qa-icon {
+      width: 48px; height: 48px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; transition: transform 0.3s ease;
+    }
+    .qa-card:hover .qa-icon { transform: scale(1.08); }
+    .qa-orange .qa-icon { background: linear-gradient(145deg, #fbbf24, #f59e0b); box-shadow: 0 4px 12px rgba(245,158,11,0.35); }
+    .qa-purple .qa-icon { background: linear-gradient(145deg, #8b5cf6, #7c3aed); box-shadow: 0 4px 12px rgba(124,58,237,0.35); }
+    .qa-green .qa-icon { background: linear-gradient(145deg, #34d399, #10b981); box-shadow: 0 4px 12px rgba(16,185,129,0.35); }
+    .qa-badge { font-size: 0.7rem; font-weight: 700; padding: 0.3rem 0.65rem; border-radius: 20px; letter-spacing: 0.02em; }
+    .approved-item:hover { background: #f0fdf4; }
+    .approved-item a:hover { color: var(--primary) !important; }
+    
+    /* Mobile Responsive - HR Detail Modal */
+    @media (max-width: 768px) {
+      .detail-modal { max-height: 95vh !important; margin: 0.5rem !important; border-radius: 14px !important; }
+      .detail-header { padding: 1rem !important; flex-direction: column !important; align-items: flex-start !important; gap: 0.75rem !important; }
+      .detail-header .d-flex { width: 100%; justify-content: flex-end; }
+      .detail-tabs { overflow-x: auto !important; -webkit-overflow-scrolling: touch !important; }
+      .detail-tab { padding: 0.75rem 1rem !important; font-size: 0.85rem !important; white-space: nowrap !important; }
+      .detail-tab-pane { padding: 1rem !important; }
+      .detail-row { flex-direction: column !important; gap: 0.25rem !important; }
+      .detail-label { width: 100% !important; font-size: 0.8rem !important; }
+      .detail-value { width: 100% !important; font-size: 0.9rem !important; }
+    }
+  </style>
+</head>
+<body class="hr-dashboard">
+  {% set active_page = 'hr' %}
+  {% include 'partials/main_navbar.html' with context %}
+
+  <main class="hr-dashboard-content">
+  <!-- Hero: gradient at top only (no grid) -->
+  <header class="hero hero-split hr-hero">
+    <div class="hero-content hero-split-inner">
+      <div class="hero-left">
+        <a href="/dashboard" class="back-btn">
+          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+          </svg>
+          Back to Dashboard
+        </a>
+        <p class="hero-tagline">HR Module</p>
+        <h1 class="hero-title">HR <span class="hero-title-accent">Forms</span></h1>
+      </div>
+      <div class="hero-right hr-workflow-cards" id="hrWorkflowCards" style="display: none;">
+        <div class="modules-grid" id="quickActionsRow" style="display: none;">
+          <div id="hrReviewCard" style="display: none;">
+            <a href="/hr/pending-review" class="module-card">
+              <div class="card-body">
+                <span class="module-number">Workflow</span>
+                <div class="module-icon" style="position: relative;">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+                  <span class="module-badge" id="pendingBadge" style="display: none;">0</span>
+                </div>
+                <h2 class="module-title">Pending HR Review</h2>
+                <span class="module-arrow hr-workflow-cta">Open <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" /></svg></span>
+              </div>
+            </a>
+          </div>
+          <div id="gmApprovalCard" style="display: none;">
+            <a href="/hr/gm-approval" class="module-card">
+              <div class="card-body">
+                <span class="module-number">Workflow</span>
+                <div class="module-icon" style="position: relative;">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                  <span class="module-badge" id="gmPendingBadge" style="display: none;">0</span>
+                </div>
+                <h2 class="module-title">GM Final Approval</h2>
+                <span class="module-arrow hr-workflow-cta">Open <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" /></svg></span>
+              </div>
+            </a>
+          </div>
+          <div id="approvedFormsCol" style="display: none;">
+            <a href="/hr/approved-forms" class="module-card">
+              <div class="card-body">
+                <span class="module-number">Workflow</span>
+                <div class="module-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                </div>
+                <h2 class="module-title">Approved Forms</h2>
+                <span class="module-arrow hr-workflow-cta">Open <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" /></svg></span>
+              </div>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- HR Forms (main dashboard module-card style) -->
+  <section class="modules-section hr-modules-section" id="modules">
+    <div class="modules-inner">
+      <h2 class="modules-section-label">HR Forms (from HR Documents)</h2>
+      <div class="modules-grid" id="hrFormsGrid">
+        <a href="/hr/leave-application-form" class="module-card">
+          <div class="card-body">
+            <span class="module-number">01 &mdash; HR</span>
+            <div class="module-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div>
+            <h2 class="module-title">Leave Application</h2>
+            <p class="module-description">Submit leave application (annual, sick, emergency)</p>
+            <span class="module-arrow">Open Form <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
+          </div>
+        </a>
+        <a href="/hr/commencement-form" class="module-card">
+          <div class="card-body">
+            <span class="module-number">02 &mdash; HR</span>
+            <div class="module-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
+            <h2 class="module-title">Commencement Form</h2>
+            <p class="module-description">Complete within 5 days of joining - personal &amp; bank details</p>
+            <span class="module-arrow">Open Form <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
+          </div>
+        </a>
+        <a href="/hr/duty-resumption-form" class="module-card">
+          <div class="card-body">
+            <span class="module-number">03 &mdash; HR</span>
+            <div class="module-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064"/></svg></div>
+            <h2 class="module-title">Duty Resumption</h2>
+            <p class="module-description">Resumption of duty after leave</p>
+            <span class="module-arrow">Open Form <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
+          </div>
+        </a>
+        <a href="/hr/contract-renewal-form" class="module-card">
+          <div class="card-body">
+            <span class="module-number">04 &mdash; HR</span>
+            <div class="module-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div>
+            <h2 class="module-title">Contract Renewal Assessment</h2>
+            <p class="module-description">Employee contract renewal evaluation</p>
+            <span class="module-arrow">Open Form <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
+          </div>
+        </a>
+        <a href="/hr/performance-evaluation-form" class="module-card">
+          <div class="card-body">
+            <span class="module-number">05 &mdash; HR</span>
+            <div class="module-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg></div>
+            <h2 class="module-title">Performance Evaluation</h2>
+            <p class="module-description">Employee performance evaluation form</p>
+            <span class="module-arrow">Open Form <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
+          </div>
+        </a>
+        <a href="/hr/grievance-form" class="module-card">
+          <div class="card-body">
+            <span class="module-number">06 &mdash; HR</span>
+            <div class="module-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg></div>
+            <h2 class="module-title">Grievance / Disciplinary</h2>
+            <p class="module-description">Employee grievance or disciplinary action</p>
+            <span class="module-arrow">Open Form <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
+          </div>
+        </a>
+        <a href="/hr/interview-assessment-form" class="module-card">
+          <div class="card-body">
+            <span class="module-number">07 &mdash; HR</span>
+            <div class="module-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg></div>
+            <h2 class="module-title">Interview Assessment</h2>
+            <p class="module-description">Candidate interview assessment</p>
+            <span class="module-arrow">Open Form <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
+          </div>
+        </a>
+        <a href="/hr/passport-release-form" class="module-card">
+          <div class="card-body">
+            <span class="module-number">08 &mdash; HR</span>
+            <div class="module-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2"/></svg></div>
+            <h2 class="module-title">Passport Release &amp; Submission</h2>
+            <p class="module-description">Passport release or requisition for safekeeping</p>
+            <span class="module-arrow">Open Form <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
+          </div>
+        </a>
+        <a href="/hr/staff-appraisal-form" class="module-card">
+          <div class="card-body">
+            <span class="module-number">09 &mdash; HR</span>
+            <div class="module-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg></div>
+            <h2 class="module-title">Staff Appraisal</h2>
+            <p class="module-description">Staff appraisal form</p>
+            <span class="module-arrow">Open Form <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
+          </div>
+        </a>
+        <a href="/hr/station-clearance-form" class="module-card">
+          <div class="card-body">
+            <span class="module-number">10 &mdash; HR</span>
+            <div class="module-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg></div>
+            <h2 class="module-title">Station Clearance</h2>
+            <p class="module-description">Exit formalities for transferring employees</p>
+            <span class="module-arrow">Open Form <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
+          </div>
+        </a>
+        <a href="/hr/visa-renewal-form" class="module-card">
+          <div class="card-body">
+            <span class="module-number">11 &mdash; HR</span>
+            <div class="module-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg></div>
+            <h2 class="module-title">Visa Renewal</h2>
+            <p class="module-description">Visa renewal or cancellation confirmation</p>
+            <span class="module-arrow">Open Form <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
+          </div>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Recent Submissions -->
+  <section class="modules-section">
+    <div class="modules-inner">
+      <h2 class="modules-section-label">Recent Submissions</h2>
+      <div id="submissionsList" class="module-card submissions-panel" style="padding: 1.5rem; min-height: 120px;">
+        <div style="text-align: center; padding: 2rem;">
+          <div class="spinner" style="border: 4px solid rgba(18,84,53,0.1); border-top: 4px solid var(--primary); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto;"></div>
+          <p style="margin-top: 1rem; color: var(--text-light);">Loading submissions...</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-brand">Injaaz</div>
+      <p class="footer-copy">© {{ now().year }} Injaaz Application / built by <span class="footer-built-by-name">Arshith Swaminath P</span></p>
+    </div>
+  </footer>
+
+  <!-- Detail Modal (HR form detail - tabbed) -->
+  <div class="detail-overlay" id="detailModal" onclick="closeDetailModal(event)">
+    <div class="detail-modal" onclick="event.stopPropagation()">
+      <div class="detail-header">
+        <div>
+          <span class="form-type-badge" id="modalFormType"></span>
+          <h4 id="modalSubmissionId"></h4>
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <a id="modalPrintBtn" href="#" target="_blank" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.5); padding: 0.375rem 0.75rem; border-radius: 8px; font-size: 0.875rem; text-decoration: none;">🖨️ Print</a>
+          <a id="modalDocxBtn" href="#" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.5); padding: 0.375rem 0.75rem; border-radius: 8px; font-size: 0.875rem; text-decoration: none; display: none;">📄 DOCX</a>
+          <button class="detail-close" onclick="closeDetailModal()" aria-label="Close">&times;</button>
+        </div>
+      </div>
+      <div class="detail-body">
+        <div class="detail-tabs">
+          <div class="detail-tab active" data-tab="form" onclick="switchDetailTab('form')">Form</div>
+          <div class="detail-tab" data-tab="workflow" onclick="switchDetailTab('workflow')">Workflow</div>
+        </div>
+        <div id="modalFormPane" class="detail-tab-pane active"></div>
+        <div id="modalWorkflowPane" class="detail-tab-pane"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Profile & Contact modals are in main_navbar partial -->
+  
+  <script>
+    const HR_SUPPORTED_DOCX_FORMS = {{ (supported_docx_forms or [])|tojson }};
+    const token = localStorage.getItem('access_token');
+    let allSubmissions = [];
+    
+    function getStatusLabel(status) {
+      const labels = {
+        'hr_review': 'Pending HR Review',
+        'gm_review': 'Pending GM Approval',
+        'approved': 'Approved',
+        'rejected': 'Rejected',
+        'submitted': 'Submitted'
+      };
+      return labels[status] || status;
+    }
+    
+    function getFormTypeLabel(type) {
+      return type.replace('hr_', '').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    }
+    
+    function getFormTypeClass(type) {
+      const t = type.replace('hr_', '');
+      return `type-${t}`;
+    }
+    
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+    
+    // Load recent submissions
+    async function loadSubmissions() {
+      try {
+        const response = await fetch('/hr/api/submissions', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        const data = await response.json();
+        const container = document.getElementById('submissionsList');
+        
+        if (data.submissions && data.submissions.length > 0) {
+          allSubmissions = data.submissions;
+          container.innerHTML = data.submissions.slice(0, 10).map((s, idx) => `
+            <div class="submission-item" style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; border-bottom: 1px solid #e2e8f0;" onclick="showDetail(${idx})">
+              <div>
+                <strong>${s.submission_id}</strong>
+                <span style="background: #e5e7eb; color: #374151; font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: 6px; margin-left: 0.5rem;">${getFormTypeLabel(s.module_type)}</span>
+                <p style="margin: 0.25rem 0 0; color: #64748b; font-size: 0.85rem;">${escapeHtml(s.site_name)} - ${new Date(s.created_at).toLocaleDateString()}</p>
+              </div>
+              <span class="status-badge status-${s.workflow_status}">${getStatusLabel(s.workflow_status)}</span>
+            </div>
+          `).join('');
+        } else {
+          container.innerHTML = '<p style="text-align: center; color: #64748b; padding: 2rem;">No submissions yet. Create your first HR form above.</p>';
+        }
+      } catch (error) {
+        console.error('Error loading submissions:', error);
+        document.getElementById('submissionsList').innerHTML = '<p style="text-align: center; color: #dc2626; padding: 2rem;">Error loading submissions</p>';
+      }
+    }
+    
+    // Load user permissions first, then load pending counts only for allowed endpoints
+    async function loadPendingCounts() {
+      try {
+        // First, get user permissions
+        const permResponse = await fetch('/hr/api/user-permissions', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!permResponse.ok) return;
+        
+        const permData = await permResponse.json();
+        const perms = permData.permissions || {};
+        let hasAnyAccess = false;
+        
+        // Only load HR pending if user has HR review access
+        if (perms.can_review_hr) {
+          hasAnyAccess = true;
+          document.getElementById('hrReviewCard').style.display = 'block';
+          
+          const hrResponse = await fetch('/hr/api/pending-hr-review', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (hrResponse.ok) {
+            const hrData = await hrResponse.json();
+            if (hrData.submissions && hrData.submissions.length > 0) {
+              const badge = document.getElementById('pendingBadge');
+              badge.textContent = hrData.submissions.length;
+              badge.style.display = 'inline';
+            }
+          }
+        }
+        
+        // Only load GM pending if user has GM approval access
+        if (perms.can_approve_gm) {
+          hasAnyAccess = true;
+          document.getElementById('gmApprovalCard').style.display = 'block';
+          
+          const gmResponse = await fetch('/hr/api/pending-gm-approval', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (gmResponse.ok) {
+            const gmData = await gmResponse.json();
+            if (gmData.submissions && gmData.submissions.length > 0) {
+              const gmBadge = document.getElementById('gmPendingBadge');
+              if (gmBadge) {
+                gmBadge.textContent = gmData.submissions.length;
+                gmBadge.style.display = 'inline';
+              }
+            }
+          }
+        }
+        
+        // Show the quick actions row and individual cards if user has any access
+        if (hasAnyAccess) {
+          document.getElementById('quickActionsRow').style.display = 'grid';
+          const approvedCol = document.getElementById('approvedFormsCol');
+          if (approvedCol) approvedCol.style.display = 'block';
+          const wfContainer = document.getElementById('hrWorkflowCards');
+          if (wfContainer) wfContainer.style.display = 'block';
+        } else {
+          const wfContainer = document.getElementById('hrWorkflowCards');
+          if (wfContainer) wfContainer.style.display = 'none';
+        }
+      } catch (error) {
+        // Silently ignore errors
+      }
+    }
+    
+    function switchDetailTab(tabName) {
+      document.querySelectorAll('.detail-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tabName));
+      document.getElementById('modalFormPane').classList.toggle('active', tabName === 'form');
+      document.getElementById('modalWorkflowPane').classList.toggle('active', tabName === 'workflow');
+    }
+    
+    function showDetail(index) {
+      const s = allSubmissions[index];
+      if (!s) return;
+      
+      const printBtn = document.getElementById('modalPrintBtn');
+      if (printBtn) printBtn.href = '/hr/print/' + encodeURIComponent(s.submission_id);
+      const docxBtn = document.getElementById('modalDocxBtn');
+      if (docxBtn) {
+        const formType = (s.module_type || '').replace('hr_', '');
+        const supportsDocx = (HR_SUPPORTED_DOCX_FORMS || []).includes(formType);
+        docxBtn.style.display = supportsDocx ? 'inline-block' : 'none';
+        docxBtn.href = supportsDocx ? ('/hr/download-docx/' + encodeURIComponent(s.submission_id)) : '#';
+      }
+      
+      const formType = s.module_type.replace('hr_', '');
+      document.getElementById('modalFormType').textContent = getFormTypeLabel(s.module_type);
+      document.getElementById('modalFormType').className = `form-type-badge ${getFormTypeClass(s.module_type)}`;
+      document.getElementById('modalSubmissionId').textContent = s.submission_id;
+      
+      let formHtml = '';
+      const fd = s.form_data || {};
+      
+      // Form tab: document-style layout
+      formHtml += `<div class="form-doc-wrapper" style="background: linear-gradient(180deg, #fafbfc 0%, #fff 100%); border-radius: 12px; padding: 1.5rem; border: 1px solid #e2e8f0;">
+        <div class="detail-section" style="margin-bottom: 0;">
+          <h5 class="detail-section-title" style="font-size: 1rem; color: var(--primary);">Form Details</h5>`;
+      
+      if (fd.employee_name) formHtml += detailRow('Employee Name', fd.employee_name);
+      if (fd.employee_id) formHtml += detailRow('Employee ID', fd.employee_id);
+      if (fd.department) formHtml += detailRow('Department', formatValue(fd.department));
+      if (fd.position) formHtml += detailRow('Position', fd.position);
+      
+      if (formType === 'leave' || formType === 'leave_application') {
+        if (fd.leave_type) formHtml += detailRow('Leave Type', formatValue(fd.leave_type));
+        if (fd.start_date || fd.first_day_of_leave) formHtml += detailRow('Start Date', formatDate(fd.start_date || fd.first_day_of_leave));
+        if (fd.end_date || fd.last_day_of_leave) formHtml += detailRow('End Date', formatDate(fd.end_date || fd.last_day_of_leave));
+        if (fd.total_days || fd.total_days_requested) formHtml += detailRow('Total Days', fd.total_days || fd.total_days_requested);
+        if (fd.reason) formHtml += detailRow('Reason', fd.reason);
+        if (fd.contact_number || fd.telephone_reachable) formHtml += detailRow('Contact During Leave', fd.contact_number || fd.telephone_reachable);
+        if (fd.handover_notes) formHtml += detailRow('Handover Notes', fd.handover_notes);
+      }
+      
+      if (formType === 'termination') {
+        if (fd.termination_type) formHtml += detailRow('Termination Type', formatValue(fd.termination_type));
+        if (fd.join_date) formHtml += detailRow('Date of Joining', formatDate(fd.join_date));
+        if (fd.last_working_day) formHtml += detailRow('Last Working Day', formatDate(fd.last_working_day));
+        if (fd.notice_served) formHtml += detailRow('Notice Period', formatValue(fd.notice_served));
+        if (fd.reason) formHtml += detailRow('Reason', fd.reason);
+        if (fd.exit_notes) formHtml += detailRow('Exit Interview Notes', fd.exit_notes);
+      }
+      
+      if (formType === 'long_vacation') {
+        if (fd.start_date) formHtml += detailRow('Vacation Start', formatDate(fd.start_date));
+        if (fd.end_date) formHtml += detailRow('Return Date', formatDate(fd.end_date));
+        if (fd.total_days) formHtml += detailRow('Total Days', fd.total_days);
+        if (fd.destination) formHtml += detailRow('Destination', fd.destination);
+        if (fd.ticket_required) formHtml += detailRow('Flight Ticket', formatValue(fd.ticket_required));
+        if (fd.vacation_phone) formHtml += detailRow('Phone During Vacation', fd.vacation_phone);
+        if (fd.covering_employee) formHtml += detailRow('Covering Employee', fd.covering_employee);
+        if (fd.handover_notes) formHtml += detailRow('Handover Notes', fd.handover_notes);
+      }
+      
+      if (formType === 'asset') {
+        if (fd.asset_form_type) formHtml += detailRow('Form Type', formatValue(fd.asset_form_type));
+        if (fd.form_date) formHtml += detailRow('Date', formatDate(fd.form_date));
+        if (fd.transfer_to_name) formHtml += detailRow('Transfer To', fd.transfer_to_name);
+        if (fd.remarks) formHtml += detailRow('Remarks', fd.remarks);
+        if (fd.assets && fd.assets.length > 0) {
+          formHtml += `<div style="margin-top: 1rem;"><strong>Assets:</strong></div>`;
+          fd.assets.forEach((asset, i) => {
+            formHtml += `<div style="background: #f8fafc; padding: 0.75rem; border-radius: 8px; margin-top: 0.5rem; border-left: 4px solid var(--primary);">
+              <strong>Asset ${i + 1}:</strong> ${escapeHtml(asset.type || 'N/A')}<br>
+              <small>Serial: ${escapeHtml(asset.serial || 'N/A')} | Condition: ${escapeHtml(asset.condition || 'N/A')}</small>
+            </div>`;
+          });
+        }
+      }
+      
+      const handledTypes = ['leave', 'leave_application', 'termination', 'long_vacation', 'asset'];
+      const commonKeys = ['employee_name', 'employee_id', 'department', 'position'];
+      if (!handledTypes.includes(formType)) {
+        const skipKeys = ['submitted_by_id', 'submitted_by_name', 'submitted_at', 'form_type'];
+        const isInternal = (k) => skipKeys.some(p => k.startsWith(p)) || k.startsWith('hr_') || k.startsWith('gm_') || commonKeys.includes(k);
+        for (const [key, value] of Object.entries(fd)) {
+          if (isInternal(key) || value === '' || value === null || value === undefined) continue;
+          if (Array.isArray(value) || (typeof value === 'object' && value !== null && !(value instanceof String))) continue;
+          const label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+          if (key.includes('signature') && typeof value === 'string' && value.startsWith('data:image')) {
+            formHtml += detailRow(label, '<img src="' + value + '" style="max-width:180px;border:1px solid #e2e8f0;border-radius:6px;padding:4px;" alt="Signature">', true);
+            continue;
+          }
+          const displayVal = typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value) ? formatDate(value) : value;
+          formHtml += detailRow(label, displayVal);
+        }
+      }
+      
+      formHtml += `</div></div>`;
+      
+      let workflowHtml = `<div class="detail-section">
+        <h5 class="detail-section-title" style="font-size: 1rem; color: var(--primary);">Approval Timeline</h5>
+        <div class="workflow-timeline">`;
+      
+      workflowHtml += timelineItem('Submitted', fd.submitted_by_name || s.site_name, fd.submitted_at || s.created_at, 'completed');
+      
+      if (fd.hr_reviewed_at) {
+        workflowHtml += timelineItem('HR Reviewed', fd.hr_reviewed_by_name, fd.hr_reviewed_at, 'completed',
+          mergeHrTimelineComment(fd.hr_comments, fd.hr_remarks), fd.hr_signature, { fillEmptyComment: true });
+      } else if (fd.hr_rejected_at) {
+        workflowHtml += timelineItem('HR Rejected', fd.hr_rejected_by_name, fd.hr_rejected_at, 'rejected', fd.hr_rejection_reason);
+      } else if (s.workflow_status === 'hr_review') {
+        workflowHtml += timelineItem('HR Review', 'Pending', null, 'current');
+      }
+      
+      if (fd.gm_approved_at) {
+        workflowHtml += timelineItem('GM Approved', fd.gm_approved_by_name, fd.gm_approved_at, 'completed',
+          fd.gm_comments, fd.gm_signature, { fillEmptyComment: true });
+      } else if (fd.gm_rejected_at) {
+        workflowHtml += timelineItem('GM Rejected', fd.gm_rejected_by_name, fd.gm_rejected_at, 'rejected', fd.gm_rejection_reason);
+      } else if (s.workflow_status === 'gm_review') {
+        workflowHtml += timelineItem('GM Approval', 'Pending', null, 'current');
+      }
+      
+      workflowHtml += `</div></div>`;
+      
+      document.getElementById('modalFormPane').innerHTML = formHtml;
+      document.getElementById('modalWorkflowPane').innerHTML = workflowHtml;
+      switchDetailTab('workflow'); // Don't show form by default; user clicks Form tab to view it
+      document.getElementById('detailModal').classList.add('show');
+    }
+    
+    function detailRow(label, value, isRaw) {
+      const val = isRaw ? value : (escapeHtml(value) || '-');
+      return `<div class="detail-row">
+        <div class="detail-label">${label}</div>
+        <div class="detail-value">${val || '-'}</div>
+      </div>`;
+    }
+    
+    function formatValue(val) {
+      if (!val) return '-';
+      return val.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    }
+    
+    function formatDate(dateStr) {
+      if (!dateStr) return '-';
+      try {
+        return new Date(dateStr).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+      } catch { return dateStr; }
+    }
+    
+    function mergeHrTimelineComment(a, b) {
+      const x = (a != null && String(a).trim()) ? String(a).trim() : '';
+      const y = (b != null && String(b).trim()) ? String(b).trim() : '';
+      if (x && y && x !== y) return x + '\n\n' + y;
+      return x || y;
+    }
+    
+    /** opts.fillEmptyComment: show Comment row (with "None" if empty) for HR/GM milestones */
+    function timelineItem(title, by, date, status, comment, signature, opts) {
+      opts = opts || {};
+      const dateStr = date ? formatDate(date) : '';
+      const hasSig = signature && typeof signature === 'string' && signature.startsWith('data:image');
+      const text = (comment != null && String(comment).trim()) ? String(comment).trim() : '';
+      let html = `<div class="timeline-item">
+        <div class="timeline-dot ${status}" role="presentation"></div>
+        <div class="timeline-body">
+          <div class="timeline-title">${escapeHtml(title)}</div>
+          <div class="timeline-meta">${escapeHtml(by || '—')}${dateStr ? ' · ' + escapeHtml(dateStr) : ''}</div>`;
+
+      if (status === 'rejected' && text) {
+        html += `<div class="timeline-card timeline-card--alert">
+          <dl class="timeline-dl"><dt>Reason</dt><dd>${escapeHtml(text)}</dd></dl>
+        </div>`;
+      } else if (status === 'completed' && (opts.fillEmptyComment || text || hasSig)) {
+        html += `<div class="timeline-card">`;
+        if (opts.fillEmptyComment || text) {
+          html += `<dl class="timeline-dl">
+            <dt>Comment</dt>
+            <dd class="${text ? '' : 'timeline-dd-muted'}">${text ? escapeHtml(text) : 'None'}</dd>
+          </dl>`;
+        }
+        if (hasSig) {
+          html += `<dl class="timeline-dl">
+            <dt>Signature</dt>
+            <dd><div class="timeline-sig"><img src="${signature}" alt="Signature"></div></dd>
+          </dl>`;
+        }
+        html += `</div>`;
+      }
+
+      html += `</div></div>`;
+      return html;
+    }
+    
+    function closeDetailModal(e) {
+      if (e && e.target !== document.getElementById('detailModal')) return;
+      document.getElementById('detailModal').classList.remove('show');
+    }
+    
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') closeDetailModal();
+    });
+    
+    loadSubmissions();
+    loadPendingCounts();
+  </script>
+  <script src="{{ url_for('static', filename='pwa-install.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='mobile_utils.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='signature_pad.umd.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='api-client.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>

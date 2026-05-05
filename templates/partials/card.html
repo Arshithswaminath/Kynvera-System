@@ -1,0 +1,51 @@
+{#
+  Card Component
+  
+  Usage:
+    {% with card_title='My Card', card_icon='📊' %}
+      {% include 'partials/card.html' %}
+    {% endwith %}
+  
+  Optional context variables:
+    - card_title: str - Card title
+    - card_icon: str - Emoji or icon
+    - card_description: str - Card description text
+    - card_link: str - URL for clickable cards
+    - card_number: str - Label like "01 — Module"
+    - card_class: str - Additional CSS classes
+    - card_id: str - ID for the card element
+#}
+
+{% if card_link %}
+<a href="{{ card_link }}" class="module-card {{ card_class|default('') }}" {% if card_id %}id="{{ card_id }}"{% endif %}>
+{% else %}
+<div class="module-card {{ card_class|default('') }}" {% if card_id %}id="{{ card_id }}"{% endif %}>
+{% endif %}
+  
+  {% if card_number %}
+  <span class="module-number">{{ card_number }}</span>
+  {% endif %}
+  
+  {% if card_icon %}
+  <div class="module-icon">{{ card_icon }}</div>
+  {% endif %}
+  
+  {% if card_title %}
+  <h2 class="module-title">{{ card_title }}</h2>
+  {% endif %}
+  
+  {% if card_description %}
+  <p class="module-description">{{ card_description }}</p>
+  {% endif %}
+  
+  {% if card_link %}
+  <span class="module-arrow">{{ card_action|default('Learn More') }}</span>
+  {% endif %}
+  
+  {{ caller() if caller }}
+
+{% if card_link %}
+</a>
+{% else %}
+</div>
+{% endif %}

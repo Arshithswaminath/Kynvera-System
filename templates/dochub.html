@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  {% include 'partials/base_head.html' %}
+  <title>DocHub — Document Management | Injaaz</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}">
+</head>
+<body class="has-main-nav dochub-page-v2">
+  {% include 'partials/main_navbar.html' with context %}
+
+  <div class="dh-overlay" id="dhOverlay" onclick="dhCloseSidebar()" aria-hidden="true"></div>
+  <button type="button" class="dh-sidebar-toggle" id="dhSidebarToggle" onclick="dhToggleSidebar()" aria-label="Open DocHub menu" title="Menu">☰</button>
+
+  <div class="dh-page-root">
+    <aside class="dh-sidebar" id="dhSidebar">
+      <div class="sb-brand">
+        <div class="sb-brand-text">
+          <span class="name">DocHub</span>
+          <span class="tagline">Document Management</span>
+        </div>
+      </div>
+
+      <nav class="sb-nav">
+        <div class="dh-sb-section">
+          <div class="sb-section-label">Overview</div>
+          <div class="dh-sb-bucket dh-sb-bucket--open" data-bucket="all" id="dhSbBucketAll">
+            <button type="button" class="dh-sb-bucket-head" id="dhSbHeadAll" data-filter="all" onclick="dhSelectSbBucket('all',this)">
+              <span class="dh-sb-bucket-label">All documents</span>
+              <span class="sb-badge" id="dhSbCountAll">0</span>
+              <span class="sb-chevron">▾</span>
+            </button>
+            <div class="dh-sb-bucket-body">
+              <div class="dh-sb-docs" id="dhSbDocsAll"></div>
+            </div>
+          </div>
+          <div class="dh-sb-bucket" data-bucket="published" id="dhSbBucketPublished">
+            <button type="button" class="dh-sb-bucket-head" data-filter="published" onclick="dhSelectSbBucket('published',this)">
+              <span class="dh-sb-bucket-label">Published</span>
+              <span class="sb-badge" id="dhSbCountPublished">0</span>
+              <span class="sb-chevron">▾</span>
+            </button>
+            <div class="dh-sb-bucket-body"><div class="dh-sb-docs" id="dhSbDocsPublished"></div></div>
+          </div>
+          <div class="dh-sb-bucket" data-bucket="draft" id="dhSbBucketDraft">
+            <button type="button" class="dh-sb-bucket-head" data-filter="draft" onclick="dhSelectSbBucket('draft',this)">
+              <span class="dh-sb-bucket-label">Drafts</span>
+              <span class="sb-badge" id="dhSbCountDraft">0</span>
+              <span class="sb-chevron">▾</span>
+            </button>
+            <div class="dh-sb-bucket-body"><div class="dh-sb-docs" id="dhSbDocsDraft"></div></div>
+          </div>
+          <div class="dh-sb-bucket" data-bucket="review" id="dhSbBucketReview">
+            <button type="button" class="dh-sb-bucket-head" data-filter="review" onclick="dhSelectSbBucket('review',this)">
+              <span class="dh-sb-bucket-label">In review</span>
+              <span class="sb-badge" id="dhSbCountReview">0</span>
+              <span class="sb-chevron">▾</span>
+            </button>
+            <div class="dh-sb-bucket-body"><div class="dh-sb-docs" id="dhSbDocsReview"></div></div>
+          </div>
+        </div>
+
+        <div class="dh-sb-section">
+          <div class="sb-section-label">Workspace</div>
+          <div class="dh-sb-bucket" data-bucket="starred" id="dhSbBucketStarred">
+            <button type="button" class="dh-sb-bucket-head" data-filter="starred" onclick="dhSelectSbBucket('starred',this)">
+              <span class="dh-sb-bucket-label">Starred</span>
+              <span class="sb-badge" id="dhSbCountStarred">0</span>
+              <span class="sb-chevron">▾</span>
+            </button>
+            <div class="dh-sb-bucket-body"><div class="dh-sb-docs" id="dhSbDocsStarred"></div></div>
+          </div>
+
+          <div class="sb-group-toggle" id="dhCategoriesToggle" onclick="toggleGroup('categories',this)">
+            <span>Categories</span>
+            <span class="sb-chevron open">▾</span>
+          </div>
+          <div class="sb-collapse" id="group-categories">
+            <div class="dh-sb-bucket dh-sb-bucket--nested" data-bucket="onboarding" id="dhSbBucketOnboarding">
+              <button type="button" class="dh-sb-bucket-head" data-filter="onboarding" onclick="dhSelectSbBucket('onboarding',this)">
+                <span class="dh-sb-bucket-label">Onboarding</span>
+                <span class="sb-badge" id="dhSbCountOnboarding">0</span>
+                <span class="sb-chevron">▾</span>
+              </button>
+              <div class="dh-sb-bucket-body"><div class="dh-sb-docs" id="dhSbDocsOnboarding"></div></div>
+            </div>
+            <div class="dh-sb-bucket dh-sb-bucket--nested" data-bucket="contracts" id="dhSbBucketContracts">
+              <button type="button" class="dh-sb-bucket-head" data-filter="contracts" onclick="dhSelectSbBucket('contracts',this)">
+                <span class="dh-sb-bucket-label">Contracts</span>
+                <span class="sb-badge" id="dhSbCountContracts">0</span>
+                <span class="sb-chevron">▾</span>
+              </button>
+              <div class="dh-sb-bucket-body"><div class="dh-sb-docs" id="dhSbDocsContracts"></div></div>
+            </div>
+            <div class="dh-sb-bucket dh-sb-bucket--nested" data-bucket="policies" id="dhSbBucketPolicies">
+              <button type="button" class="dh-sb-bucket-head" data-filter="policies" onclick="dhSelectSbBucket('policies',this)">
+                <span class="dh-sb-bucket-label">Policies</span>
+                <span class="sb-badge" id="dhSbCountPolicies">0</span>
+                <span class="sb-chevron">▾</span>
+              </button>
+              <div class="dh-sb-bucket-body"><div class="dh-sb-docs" id="dhSbDocsPolicies"></div></div>
+            </div>
+            <div class="dh-sb-bucket dh-sb-bucket--nested" data-bucket="manuals" id="dhSbBucketManuals">
+              <button type="button" class="dh-sb-bucket-head" data-filter="manuals" onclick="dhSelectSbBucket('manuals',this)">
+                <span class="dh-sb-bucket-label">Manuals</span>
+                <span class="sb-badge" id="dhSbCountManuals">0</span>
+                <span class="sb-chevron">▾</span>
+              </button>
+              <div class="dh-sb-bucket-body"><div class="dh-sb-docs" id="dhSbDocsManuals"></div></div>
+            </div>
+            <div class="dh-sb-bucket dh-sb-bucket--nested" data-bucket="reports" id="dhSbBucketReports">
+              <button type="button" class="dh-sb-bucket-head" data-filter="reports" onclick="dhSelectSbBucket('reports',this)">
+                <span class="dh-sb-bucket-label">Reports</span>
+                <span class="sb-badge" id="dhSbCountReports">0</span>
+                <span class="sb-chevron">▾</span>
+              </button>
+              <div class="dh-sb-bucket-body"><div class="dh-sb-docs" id="dhSbDocsReports"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dh-sb-section">
+          <div class="sb-section-label">Reports</div>
+          <a href="#" class="sb-nav-item" data-filter="analytics" id="dhNavAnalytics" onclick="filterDocs('analytics',this);return false">
+            Analytics
+          </a>
+          <div class="dh-sb-bucket" data-bucket="recent" id="dhSbBucketRecent">
+            <button type="button" class="dh-sb-bucket-head" data-filter="recent" onclick="dhSelectSbBucket('recent',this)">
+              <span class="dh-sb-bucket-label">Recent</span>
+              <span class="sb-badge" id="dhSbCountRecent">0</span>
+              <span class="sb-chevron">▾</span>
+            </button>
+            <div class="dh-sb-bucket-body"><div class="dh-sb-docs" id="dhSbDocsRecent"></div></div>
+          </div>
+          <a href="#" class="sb-nav-item" data-filter="archived" onclick="filterDocs('archived',this);return false">
+            Archived
+          </a>
+          <a href="#" class="sb-nav-item" data-filter="internal" onclick="filterDocs('internal',this);return false">
+            Internal
+          </a>
+          <button type="button" class="sb-nav-item" onclick="openNewModal()">
+            New from template
+          </button>
+        </div>
+
+        <div class="dh-sb-section dh-sb-section--other" id="dhSbOtherSection" hidden>
+          <div class="dh-sb-other-head">
+            <span class="sb-section-label dh-sb-other-title" id="dhSbOtherSectionLabel">Filtered</span>
+            <span class="sb-badge" id="dhSbOtherCount">0</span>
+          </div>
+          <div class="dh-sb-docs" id="dhSbDocsOther"></div>
+        </div>
+
+        <div class="dh-sb-section">
+          <div class="sb-section-label">System</div>
+          <a href="/admin/dashboard" class="sb-nav-item">
+            Settings
+          </a>
+          <button type="button" class="sb-nav-item" id="dhAccessNavBtn" style="display:none" onclick="dhOpenAccessModal()">
+            DocHub access
+          </button>
+        </div>
+      </nav>
+
+      <div class="sb-footer">
+        <div class="sb-user-row" onclick="if(typeof openProfileModal==='function'){openProfileModal();}" role="button" tabindex="0">
+          <div class="sb-avatar" id="dhUserAv">—</div>
+          <div class="sb-user-text">
+            <div class="sb-user-name" id="dhUserName">Loading…</div>
+            <div class="sb-user-role" id="dhUserRole">User</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <div class="dh-main">
+      <div class="dh-topbar">
+        <div class="topbar-tools">
+          <div class="dh-search">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6.5" cy="6.5" r="4.5"/><path d="M10.5 10.5l3 3"/></svg>
+            <input type="search" placeholder="Search documents…" id="dhSearch" oninput="searchDocs(this.value)" autocomplete="off"/>
+          </div>
+          <button type="button" class="btn btn-ghost" id="dhNewDocBtn" onclick="openNewModal()">New</button>
+          <button type="button" class="btn btn-ghost" id="dhUploadBtn" onclick="openUploadModal()">Upload</button>
+          <button type="button" class="btn btn-ghost" id="dhAdminAccessBtn" style="display:none" onclick="dhOpenAccessModal()">Access</button>
+        </div>
+      </div>
+
+      <div class="dh-content" id="dhContent">
+        <div id="dh-doc-shell">
+          <div class="dh-body">
+            <div class="editor-area" id="dhEditorArea">
+              <div id="dhSearchResults" class="dh-search-results" hidden aria-live="polite"></div>
+              <div class="empty-state" id="dhEmptyState">
+                <div class="empty-icon">📂</div>
+                <h3>No document selected</h3>
+                <p class="dh-empty-hint">Pick a document from the <span class="dh-empty-hint-desktop">menu on the left</span><span class="dh-empty-hint-mobile">menu (☰)</span>, or create a new one to get started.</p>
+                <button type="button" class="btn btn-primary" id="dhEmptyNewBtn" style="margin-top:8px" onclick="openNewModal()">Create Document</button>
+                <button type="button" class="btn btn-ghost" id="dhEmptyUploadBtn" style="margin-top:6px" onclick="openUploadModal()">Upload Document</button>
+              </div>
+
+              <div id="dhViewerState" style="display:none;flex-direction:column;height:100%">
+                <div class="editor-topbar">
+                  <div id="dhViewDocTitle" class="dh-viewer-title-line"></div>
+                  <div class="mode-tabs" id="dhViewerModeTabs">
+                    <button type="button" class="mode-tab active" data-mode="view" onclick="setMode('view',this)">View</button>
+                    <button type="button" class="mode-tab" data-mode="edit" onclick="setMode('edit',this)">Edit</button>
+                  </div>
+                  <div class="editor-actions dh-viewer-actions">
+                    <button type="button" class="btn btn-primary" id="dhViewerPublish" onclick="publishDoc()">↑ Publish</button>
+                    <div class="dh-doc-info-wrap" id="dhViewerInfoWrap" hidden>
+                      <button type="button" class="btn btn-ghost dh-doc-info-btn" id="dhViewerInfoBtn" aria-expanded="false" aria-controls="dhViewerInfoDropdown" onclick="dhToggleDocInfo(event,'dhViewerInfoDropdown')">Info</button>
+                      <div class="dh-doc-info-dropdown" id="dhViewerInfoDropdown" hidden role="region" aria-label="Document info">
+                        <div class="info-section-label">Document Info</div>
+                        <div class="info-row"><div class="info-key">Category</div><div class="info-val" data-dh-info="cat">—</div></div>
+                        <div class="info-row"><div class="info-key">Status</div><div class="info-val" data-dh-info="status">—</div></div>
+                        <div class="info-row"><div class="info-key">Author</div><div class="info-val" data-dh-info="author">—</div></div>
+                        <div class="info-row"><div class="info-key">Modified</div><div class="info-val" data-dh-info="modified">—</div></div>
+                        <div class="info-row"><div class="info-key">Words</div><div class="info-val" data-dh-info="words">—</div></div>
+                      </div>
+                    </div>
+                    <button type="button" class="btn btn-ghost" id="dhViewerStar" onclick="toggleStar()">☆ Star</button>
+                    <button type="button" class="btn btn-ghost" id="dhViewerDownload">⬇ Export</button>
+                    <button type="button" class="btn btn-ghost" id="dhViewerDelete" style="color:var(--red)" onclick="deleteDoc()">🗑 Delete</button>
+                  </div>
+                </div>
+                <div class="dh-viewer-split">
+                  <div class="dh-viewer-scroll">
+                    <div id="dhViewerContent" class="editor-content" style="min-height:0"></div>
+                    <footer class="dh-ref-docs-footer" id="dhRefDocsFooterViewer" style="display:none" aria-label="Additional documents">
+                      <h3 class="dh-ref-docs-footer-title">Additional documents</h3>
+                      <p class="dh-ref-docs-footer-desc">Supporting files linked to this page (not part of the body text). Readers can open or download them below.</p>
+                      <div class="dh-ref-docs-footer-row dh-ref-docs-footer-row--view">
+                        <div class="dh-ref-docs-chips dh-ref-docs-chips--footer dh-add-doc-slot" id="dhRefDocsFooterChipsViewer"></div>
+                      </div>
+                    </footer>
+                  </div>
+                </div>
+              </div>
+
+              <div id="dhEditorState" style="display:none;flex-direction:column;height:100%">
+                <div class="editor-topbar">
+                  <input class="doc-title-input" id="dhDocTitleInput" placeholder="Document title…" oninput="markUnsaved()"/>
+                  <div class="mode-tabs" id="dhEditorModeTabs">
+                    <button type="button" class="mode-tab" data-mode="view" onclick="setMode('view',this)">View</button>
+                    <button type="button" class="mode-tab active" data-mode="edit" onclick="setMode('edit',this)">Edit</button>
+                  </div>
+                  <div id="dhStatusBadge" class="status-badge sb-draft" onclick="cycleStatus()" style="flex-shrink:0">
+                    <span class="status-dot sd-draft" id="dhStatusPip"></span>
+                    <span id="dhStatusText">Draft</span>
+                  </div>
+                  <div class="editor-actions">
+                    <div class="dh-doc-info-wrap" id="dhEditorInfoWrap" hidden>
+                      <button type="button" class="btn btn-ghost dh-doc-info-btn" id="dhEditorInfoBtn" aria-expanded="false" aria-controls="dhEditorInfoDropdown" onclick="dhToggleDocInfo(event,'dhEditorInfoDropdown')">Info</button>
+                      <div class="dh-doc-info-dropdown" id="dhEditorInfoDropdown" hidden role="region" aria-label="Document info">
+                        <div class="info-section-label">Document Info</div>
+                        <div class="info-row"><div class="info-key">Category</div><div class="info-val" data-dh-info="cat">—</div></div>
+                        <div class="info-row"><div class="info-key">Status</div><div class="info-val" data-dh-info="status">—</div></div>
+                        <div class="info-row"><div class="info-key">Author</div><div class="info-val" data-dh-info="author">—</div></div>
+                        <div class="info-row"><div class="info-key">Modified</div><div class="info-val" data-dh-info="modified">—</div></div>
+                        <div class="info-row"><div class="info-key">Words</div><div class="info-val" data-dh-info="words">—</div></div>
+                      </div>
+                    </div>
+                    <div class="save-status">
+                      <div class="save-dot" id="dhSaveDot"></div>
+                      <span id="dhSaveLabel">No changes</span>
+                    </div>
+                    <button type="button" class="btn btn-primary" id="dhEditorSaveBtn" onclick="saveDoc()">Save</button>
+                  </div>
+                </div>
+                <div class="editor-toolbar" role="toolbar" aria-label="Document formatting">
+                  <div class="tb-group tb-group--block">
+                    <select class="tb-select" id="dhFormatSelect" title="Block style">
+                      <option value="p">Paragraph</option>
+                      <option value="h1">Heading 1</option>
+                      <option value="h2">Heading 2</option>
+                      <option value="h3">Heading 3</option>
+                    </select>
+                  </div>
+                  <div class="tb-group" role="group" aria-label="Formatting">
+                    <button type="button" class="tb-btn" onclick="execCmd('bold')" title="Bold (Ctrl+B)"><span class="tb-key">B</span></button>
+                    <button type="button" class="tb-btn" onclick="execCmd('italic')" title="Italic (Ctrl+I)"><span class="tb-key tb-key--italic">I</span></button>
+                    <button type="button" class="tb-btn" onclick="execCmd('underline')" title="Underline (Ctrl+U)"><span class="tb-key tb-key--underline">U</span></button>
+                    <button type="button" class="tb-btn" onclick="execCmd('strikeThrough')" title="Strikethrough"><span class="tb-key tb-key--strike">S</span></button>
+                  </div>
+                  <div class="tb-group" role="group" aria-label="Lists">
+                    <button type="button" class="tb-btn" onclick="execCmd('insertUnorderedList')" title="Bulleted list"><svg class="tb-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></button>
+                    <button type="button" class="tb-btn tb-btn--glyph" onclick="execCmd('insertOrderedList')" title="Numbered list"><span class="tb-numlist" aria-hidden="true">1.</span></button>
+                    <button type="button" class="tb-btn" onclick="execCmd('formatBlock','blockquote')" title="Quote"><svg class="tb-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"/><path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3z"/></svg></button>
+                  </div>
+                  <div class="tb-group" role="group" aria-label="Alignment">
+                    <button type="button" class="tb-btn" onclick="execCmd('justifyLeft')" title="Align left"><svg class="tb-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="17" y1="10" x2="3" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="17" y1="18" x2="3" y2="18"/></svg></button>
+                    <button type="button" class="tb-btn" onclick="execCmd('justifyCenter')" title="Align center"><svg class="tb-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="18" y1="10" x2="6" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="18" y1="18" x2="6" y2="18"/></svg></button>
+                    <button type="button" class="tb-btn" onclick="execCmd('justifyRight')" title="Align right"><svg class="tb-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="21" y1="10" x2="7" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="21" y1="18" x2="7" y2="18"/></svg></button>
+                  </div>
+                  <div class="tb-group" role="group" aria-label="Insert">
+                    <button type="button" class="tb-btn" onclick="execCmd('insertHorizontalRule')" title="Horizontal line"><svg class="tb-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+                    <button type="button" class="tb-btn" onclick="dhInsertImage()" title="Insert image"><svg class="tb-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></button>
+                    <input type="file" id="dhEditorImageInput" accept="image/png,image/jpeg,image/gif,image/webp" class="sr-only" tabindex="-1" aria-hidden="true"/>
+                    <button type="button" class="tb-btn" onclick="dhOpenTableModal()" title="Insert table"><svg class="tb-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg></button>
+                    <button type="button" class="tb-btn" onclick="dhInsertLink()" title="Insert link"><svg class="tb-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M10 13a5 5 0 0 1 0-7l1-1a5 5 0 0 1 7 7l-1 1"/><path d="M14 11a5 5 0 0 1 0 7l-1 1a5 5 0 0 1-7-7l1-1"/></svg></button>
+                    <button type="button" class="tb-btn" onclick="dhInsertReferenceDoc()" title="Attach an additional document (bottom of page)"><svg class="tb-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M12 18v-6"/><path d="M9 15h6"/></svg></button>
+                  </div>
+                  <div class="tb-group" role="group" aria-label="History">
+                    <button type="button" class="tb-btn" onclick="execCmd('undo')" title="Undo (Ctrl+Z)"><svg class="tb-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg></button>
+                    <button type="button" class="tb-btn" onclick="execCmd('redo')" title="Redo (Ctrl+Y)"><svg class="tb-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"/></svg></button>
+                    <button type="button" class="tb-btn tb-btn--glyph" onclick="execCmd('removeFormat')" title="Clear formatting"><span class="tb-glyph-clear" aria-hidden="true">⌧</span></button>
+                  </div>
+                  <div class="tb-group" role="group" aria-label="Paragraph">
+                    <button type="button" class="tb-btn" onclick="execCmd('indent')" title="Indent"><svg class="tb-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="3 8 7 12 3 16"/><line x1="21" y1="12" x2="11" y2="12"/><line x1="21" y1="6" x2="11" y2="6"/><line x1="21" y1="18" x2="11" y2="18"/></svg></button>
+                    <button type="button" class="tb-btn" onclick="execCmd('outdent')" title="Outdent"><svg class="tb-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="11 8 7 12 11 16"/><line x1="21" y1="12" x2="11" y2="12"/><line x1="21" y1="6" x2="11" y2="6"/><line x1="21" y1="18" x2="11" y2="18"/></svg></button>
+                    <button type="button" class="tb-btn tb-btn--sub" onclick="execCmd('subscript')" title="Subscript">x₂</button>
+                    <button type="button" class="tb-btn tb-btn--sub" onclick="execCmd('superscript')" title="Superscript">x²</button>
+                  </div>
+                </div>
+                <div class="editor-canvas">
+                  <div class="editor-content-wrap">
+                    <div class="editor-content" id="dhEditorContent" contenteditable="true"></div>
+                    <footer class="dh-ref-docs-footer" id="dhRefDocsFooterEditor" style="display:none" aria-label="Additional documents">
+                      <h3 class="dh-ref-docs-footer-title">Additional documents</h3>
+                      <p class="dh-ref-docs-footer-desc">Supporting files linked to this page (not part of the body text). Readers can open or download them below.</p>
+                      <input type="file" id="dhEditorRefInput" class="sr-only" multiple accept=".pdf,.docx,.xlsx,.xls,.pptx,.md,.zip,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/zip,text/markdown" tabindex="-1" aria-label="Attach additional document"/>
+                      <div class="dh-ref-docs-footer-row">
+                        <div class="dh-ref-docs-chips dh-ref-docs-chips--footer dh-add-doc-slot" id="dhRefDocsFooterChipsEditor"></div>
+                        <label for="dhEditorRefInput" class="btn btn-ghost dh-ref-docs-add" id="dhFooterRefAddEditor">+ Add document</label>
+                      </div>
+                    </footer>
+                  </div>
+                  <nav class="editor-toc" id="dhTocEdit">
+                    <div class="toc-title">On this page</div>
+                    <ul class="toc-list" id="dhTocListEdit"></ul>
+                  </nav>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="dhNewDocModal" onclick="if(event.target===this)closeNewModal()">
+    <div class="modal">
+      <h2>New Document</h2>
+      <label>Template</label>
+      <div class="template-grid" id="dhTemplateGrid">
+        <div class="template-item selected" data-cat="onboarding"><div class="template-icon">🚀</div><div class="template-label">Onboarding</div></div>
+        <div class="template-item" data-cat="contracts"><div class="template-icon">📝</div><div class="template-label">Contract</div></div>
+        <div class="template-item" data-cat="policies"><div class="template-icon">📜</div><div class="template-label">Policy</div></div>
+        <div class="template-item" data-cat="manuals"><div class="template-icon">📖</div><div class="template-label">Manual</div></div>
+        <div class="template-item" data-cat="reports"><div class="template-icon">📊</div><div class="template-label">Report</div></div>
+        <div class="template-item" data-cat="other"><div class="template-icon">📄</div><div class="template-label">Blank</div></div>
+      </div>
+      <label>Document Title</label>
+      <input type="text" id="dhNewTitle" placeholder="Enter document title…" autocomplete="off"/>
+      <label>Description (optional)</label>
+      <textarea id="dhNewDesc" placeholder="Brief description…"></textarea>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="closeNewModal()">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="createDoc()">Create Document</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="dhUploadModal" onclick="if(event.target===this)closeUploadModal()">
+    <div class="modal dh-modal-upload">
+      <div class="dh-modal-head">
+        <h2 id="dhUploadTitle">Upload documents</h2>
+        <p class="dh-modal-lead">Add one or more files to your library. Each file has its own library title below (defaults from the file name).</p>
+      </div>
+      <div class="dh-upload-block">
+        <label class="dh-upload-label" for="dhUFile">Files</label>
+        <input type="file" id="dhUFile" class="sr-only" multiple accept=".pdf,.docx,.xlsx,.xls,.pptx,.md,.zip,.png,.jpg,.jpeg,.gif,.webp" tabindex="-1" aria-hidden="true"/>
+        <div class="dh-upload-drop" id="dhUploadDrop" role="button" tabindex="0" aria-label="Choose files or drop here">
+          <div class="dh-upload-drop-icon" aria-hidden="true">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          </div>
+          <p class="dh-upload-drop-title"><button type="button" class="dh-upload-browse">Browse files</button> or drag and drop here</p>
+          <p class="dh-upload-drop-hint">PDF, Word, Excel, PowerPoint, Markdown, images, or ZIP — multiple files allowed.</p>
+        </div>
+        <div id="dhUploadFileList" class="dh-upload-file-list" aria-live="polite"></div>
+      </div>
+      <div class="dh-modal-row">
+        <div class="dh-modal-field">
+          <label for="dhUCategory">Category</label>
+          <select id="dhUCategory">
+            <option value="onboarding">Onboarding</option>
+            <option value="contracts">Project Contracts</option>
+            <option value="policies">Policies</option>
+            <option value="manuals">User Manuals</option>
+            <option value="reports">Reports</option>
+            <option value="Internal">Internal</option>
+          </select>
+        </div>
+        <div class="dh-modal-field">
+          <label for="dhUStatus">Status</label>
+          <select id="dhUStatus">
+            <option value="draft">Draft</option>
+            <option value="review">In Review</option>
+            <option value="published">Published</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer dh-modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="closeUploadModal()">Cancel</button>
+        <button type="button" class="btn btn-primary" id="dhUploadSubmitBtn" onclick="submitUpload()">Upload</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="dhTableModal" onclick="if(event.target===this)dhCloseTableModal()">
+    <div class="modal dh-modal-table">
+      <div class="dh-modal-head">
+        <h2>Insert table</h2>
+        <p class="dh-modal-lead">Choose the size of your table. You can edit cells after inserting.</p>
+      </div>
+      <div class="dh-modal-row dh-modal-row--table">
+        <div class="dh-modal-field">
+          <label for="dhTableRows">Rows</label>
+          <input type="number" id="dhTableRows" min="1" max="30" value="3"/>
+        </div>
+        <div class="dh-modal-field">
+          <label for="dhTableCols">Columns</label>
+          <input type="number" id="dhTableCols" min="1" max="20" value="3"/>
+        </div>
+      </div>
+      <label class="dh-table-header-check">
+        <input type="checkbox" id="dhTableHeader"/>
+        <span>First row as header</span>
+      </label>
+      <label class="dh-table-header-check dh-table-ref-col-check">
+        <input type="checkbox" id="dhTableRefCol"/>
+        <span>Add “Additional document” column (points readers to files at the bottom)</span>
+      </label>
+      <div class="modal-footer dh-modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="dhCloseTableModal()">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="dhInsertTableConfirm()">Insert table</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="dhAccessModal" onclick="if(event.target===this)dhCloseAccessModal()">
+    <div class="modal" style="max-width:720px;width:96vw">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:12px">
+        <h2 style="margin:0">DocHub Access Control</h2>
+        <button type="button" class="btn btn-ghost" onclick="dhCloseAccessModal()">✕ Close</button>
+      </div>
+      <p style="font-size:14px;color:var(--ink-3);margin-bottom:12px">Admins can grant or revoke DocHub access per user.</p>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:14px">
+          <thead>
+            <tr style="background:var(--surface-2);font-size:11.5px;text-transform:uppercase;color:var(--ink-3);font-weight:700">
+              <th style="padding:10px 12px;text-align:left">User</th>
+              <th style="padding:10px 12px;text-align:left">Email</th>
+              <th style="padding:10px 12px;text-align:left">Role</th>
+              <th style="padding:10px 12px;text-align:left">Access</th>
+            </tr>
+          </thead>
+          <tbody id="dhAccessBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="dh-toast" id="dhToast"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.8/purify.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/11.1.1/marked.min.js" crossorigin="anonymous"></script>
+  <script src="{{ url_for('static', filename='api-client.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dochub.js') }}"></script>
+</body>
+</html>

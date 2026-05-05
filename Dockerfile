@@ -1,36 +1,51 @@
-FROM python:3.10-slim
+# Multi-stage Dockerfile: build wheels in builder stage, install from wheels in final image
 
-# Install OS-level deps for building packages (psycopg2, etc.)
-RUN apt-get update --yes \
- && apt-get install -y --no-install-recommends \
-      build-essential \
-      gcc \
-      libpq-dev \
-      curl \
+# Stage 1: builder - build wheels
+FROM python:3.10-slim AS builder
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential gcc libpq-dev curl \
  && rm -rf /var/lib/apt/lists/*
 
+WORKDIR /wheels
+
+# NOTE: repo contains requirements-prods.txt (plural) — use that file so COPY succeeds.
+COPY requirements-prods.txt /wheels/requirements-prods.txt
+
+RUN python -m pip install --upgrade pip "setuptools<81" wheel \
+ && pip wheel --wheel-dir=/wheels -r /wheels/requirements-prods.txt
+
+# Stage 2: runtime image
+FROM python:3.10-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 
-# Copy requirements first for caching
-COPY requirements.txt /app/requirements.txt
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq-dev \
+ && rm -rf /var/lib/apt/lists/*
 
-RUN python -m pip install --upgrade pip setuptools wheel \
- && pip install --no-cache-dir -r requirements.txt
+# Copy built wheels and install from them
+COPY --from=builder /wheels /wheels
+COPY requirements-prods.txt /app/requirements-prods.txt
+
+RUN python -m pip install --upgrade pip "setuptools<81" wheel \
+ && pip install --no-index --find-links=/wheels -r /app/requirements-prods.txt \
+ && python -c "import pkg_resources, gunicorn; print('runtime deps OK')"
 
 # Copy application code
 COPY . /app
 
-# Create a non-root user and fix permissions
+# Create non-root user and adjust permissions
 RUN useradd -m injaaz && chown -R injaaz /app
 USER injaaz
 
-# Ensure PORT is set by the platform (Render provides PORT). Default to 5000 locally.
+# Render will provide PORT at runtime. Provide sane defaults for local testing.
 ENV PORT=${PORT:-5000}
 ENV WEB_CONCURRENCY=${WEB_CONCURRENCY:-1}
 
 EXPOSE 5000
 
-# Run via sh -c so environment variables like $PORT expand
-# Point Gunicorn at the resilient wsgi entrypoint that exposes `app`
-CMD sh -c "gunicorn -w ${WEB_CONCURRENCY} -b 0.0.0.0:${PORT} wsgi:app"
+# Use shell form so environment variables like ${PORT} are expanded at runtime.
+CMD sh -c "gunicorn wsgi:app -w ${WEB_CONCURRENCY:-1} --threads 4 --bind 0.0.0.0:${PORT:-5000}"

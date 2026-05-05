@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+  
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+<title>Interview Assessment Form — INJAAZ</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-forms-unified.css') }}">
+  <style>.hr-form-unified .page { padding-top: 5.5rem; }</style>
+  <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+</head>
+<body class="hr-form-unified">
+  {% set active_page = 'hr' %}
+  {% include 'partials/main_navbar.html' with context %}
+
+  <div class="sig-modal-bg" id="sigBg">
+    <div class="sig-modal">
+      <div class="sig-modal-hd"><h3 id="sigTitle">Signature</h3><button class="sig-modal-x" onclick="closeSig()">&times;</button></div>
+      <div class="sig-modal-body">
+        <p class="sig-modal-hint">Draw your signature using your mouse or finger.</p>
+        <div class="sig-canvas-box"><canvas id="sigCanvas" height="180"></canvas><span class="sig-canvas-guide">Sign here</span></div>
+        <div class="sig-modal-ft"><button class="btn-m-clear" onclick="clearModalPad()">Clear</button><button class="btn-m-apply" onclick="applySig()">Apply Signature</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="success-bg" id="successModal">
+    <div class="success-box">
+      <button type="button" class="success-back-btn" onclick="closeSuccessBackToForm()" title="Back to form">
+        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+      </button>
+      <div class="success-icon"><svg width="30" height="30" fill="none" stroke="#fff" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg></div>
+      <h2>Form Submitted!</h2>
+      <p>Interview assessment sent to HR.</p>
+      <div class="sub-id" id="submissionId"></div>
+      <button class="btn-submit" style="width:100%;justify-content:center" onclick="window.location.href='/hr/my-requests'">View My Requests</button>
+    </div>
+  </div>
+
+  <div class="page">
+    <div class="page-inner">
+      <a href="/hr/" class="back-btn">
+        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        Back to HR
+      </a>
+
+      <div class="card">
+        <div class="hd">
+          <div class="hd-left">
+            <h1>Interview Assessment Form</h1>
+            <p class="hd-sub">INJAAZ FACILITY MANAGEMENT</p>
+          </div>
+          <img src="{{ url_for('static', filename='logo.png') }}" alt="INJAAZ" class="hd-logo">
+        </div>
+
+        <form id="hrForm">
+          <div class="form-body">
+
+            <section class="sec">
+              <h2 class="sec-hd">Candidate Details</h2>
+              <div class="grid-2">
+                <div class="fld"><label class="fld-lbl">Candidate Name <span class="req">*</span></label><input class="fld-inp" type="text" name="candidate_name" required></div>
+                <div class="fld"><label class="fld-lbl">Position Title <span class="req">*</span></label><input class="fld-inp" type="text" name="position_title" required></div>
+                <div class="fld"><label class="fld-lbl">Academic Qualification</label><input class="fld-inp" type="text" name="academic_qualification"></div>
+                <div class="fld"><label class="fld-lbl">Age</label><input class="fld-inp" type="number" name="age" min="18" max="99"></div>
+                <div class="fld"><label class="fld-lbl">Marital Status</label><input class="fld-inp" type="text" name="marital_status"></div>
+                <div class="fld"><label class="fld-lbl">No. of Dependents</label><input class="fld-inp" type="number" name="dependents" min="0"></div>
+                <div class="fld"><label class="fld-lbl">Nationality</label><input class="fld-inp" type="text" name="nationality"></div>
+                <div class="fld">
+                  <label class="fld-lbl">Gender</label>
+                  <div class="yn-row">
+                    <label><input type="radio" name="gender" value="F"> F</label>
+                    <label><input type="radio" name="gender" value="M"> M</label>
+                  </div>
+                </div>
+                <div class="fld"><label class="fld-lbl">Current Job Title</label><input class="fld-inp" type="text" name="current_job_title"></div>
+                <div class="fld"><label class="fld-lbl">Years of Experience</label><input class="fld-inp" type="text" name="years_experience" placeholder="e.g. 5"></div>
+                <div class="fld"><label class="fld-lbl">Current Salary</label><input class="fld-inp" type="text" name="current_salary" placeholder="Optional"></div>
+                <div class="fld"><label class="fld-lbl">Expected Salary</label><input class="fld-inp" type="text" name="expected_salary" placeholder="Optional"></div>
+                <div class="fld"><label class="fld-lbl">Interview Date <span class="req">*</span></label><input class="fld-inp" type="date" name="interview_date" required></div>
+                <div class="fld"><label class="fld-lbl">Interview by <span class="req">*</span></label><input class="fld-inp" type="text" name="interview_by" required></div>
+              </div>
+            </section>
+
+            <section class="sec">
+              <h2 class="sec-hd">Assessment Factors</h2>
+              <p style="font-size:.9rem;margin-bottom:1rem;">The Interviewer shall indicate the rating by selecting Outstanding, V. Good, Good, Fair, or Low for each factor.</p>
+              <div class="grid-3">
+                <div class="fld"><label class="fld-lbl">Turn-out & appearance</label><span class="fld-indicator">The turn-out and appearance are appropriate to the position.</span><select class="rating-select" name="rating_turnout"><option value="">Select</option><option value="outstanding">Outstanding</option><option value="v_good">V. Good</option><option value="good">Good</option><option value="fair">Fair</option><option value="low">Low</option></select></div>
+                <div class="fld"><label class="fld-lbl">Confidence</label><span class="fld-indicator">Demonstrates professional competence and self-confidence.</span><select class="rating-select" name="rating_confidence"><option value="">Select</option><option value="outstanding">Outstanding</option><option value="v_good">V. Good</option><option value="good">Good</option><option value="fair">Fair</option><option value="low">Low</option></select></div>
+                <div class="fld"><label class="fld-lbl">Mental Alertness</label><span class="fld-indicator">Comprehends and coherently responds to questions.</span><select class="rating-select" name="rating_mental_alertness"><option value="">Select</option><option value="outstanding">Outstanding</option><option value="v_good">V. Good</option><option value="good">Good</option><option value="fair">Fair</option><option value="low">Low</option></select></div>
+                <div class="fld"><label class="fld-lbl">Maturity & Emotional Stability</label><span class="fld-indicator">Shows composure and handles pressure appropriately.</span><select class="rating-select" name="rating_maturity"><option value="">Select</option><option value="outstanding">Outstanding</option><option value="v_good">V. Good</option><option value="good">Good</option><option value="fair">Fair</option><option value="low">Low</option></select></div>
+                <div class="fld"><label class="fld-lbl">Communication Skills</label><span class="fld-indicator">Expresses ideas clearly and listens effectively.</span><select class="rating-select" name="rating_communication"><option value="">Select</option><option value="outstanding">Outstanding</option><option value="v_good">V. Good</option><option value="good">Good</option><option value="fair">Fair</option><option value="low">Low</option></select></div>
+                <div class="fld"><label class="fld-lbl">Technical Knowledge</label><span class="fld-indicator">Displays adequate knowledge for the role.</span><select class="rating-select" name="rating_technical"><option value="">Select</option><option value="outstanding">Outstanding</option><option value="v_good">V. Good</option><option value="good">Good</option><option value="fair">Fair</option><option value="low">Low</option></select></div>
+                <div class="fld"><label class="fld-lbl">Relevant Training</label><span class="fld-indicator">Has relevant certifications or training.</span><select class="rating-select" name="rating_training"><option value="">Select</option><option value="outstanding">Outstanding</option><option value="v_good">V. Good</option><option value="good">Good</option><option value="fair">Fair</option><option value="low">Low</option></select></div>
+                <div class="fld"><label class="fld-lbl">Relevant Experience</label><span class="fld-indicator">Experience matches job requirements.</span><select class="rating-select" name="rating_experience"><option value="">Select</option><option value="outstanding">Outstanding</option><option value="v_good">V. Good</option><option value="good">Good</option><option value="fair">Fair</option><option value="low">Low</option></select></div>
+                <div class="fld"><label class="fld-lbl">Overall Rating <span class="req">*</span></label><span class="fld-indicator">The candidate's overall suitability for the position.</span><select class="rating-select" name="rating_overall" required><option value="">Select</option><option value="outstanding">Outstanding</option><option value="v_good">V. Good</option><option value="good">Good</option><option value="fair">Fair</option><option value="low">Low</option></select></div>
+              </div>
+            </section>
+
+            <section class="sec">
+              <h2 class="sec-hd">Overall Assessment / Comments</h2>
+              <p class="fld-indicator" style="margin-bottom:.75rem;">The Interviewer shall record below the descriptive comments/observations on suitability of the candidate.</p>
+              <div class="fld">
+                <label class="fld-lbl">Professional <span class="fld-hint">(e.g. academic qualification, technical training and experience)</span></label>
+                <textarea class="fld-inp" name="assessment_professional" rows="3" placeholder="Provide descriptive assessment"></textarea>
+              </div>
+              <div class="fld">
+                <label class="fld-lbl">Personality <span class="fld-hint">(e.g. behaviour, attitude and presentation)</span></label>
+                <textarea class="fld-inp" name="assessment_personality" rows="3" placeholder="Provide descriptive assessment"></textarea>
+              </div>
+              <div class="yn-row" style="margin-top:1rem">
+                <label class="fld-lbl">Eligibility for Employment <span class="req">*</span></label>
+                <label><input type="radio" name="eligibility" value="yes" required> YES</label>
+                <label><input type="radio" name="eligibility" value="no"> NO</label>
+              </div>
+              <div class="fld" style="margin-top:1rem">
+                <label class="fld-lbl">Job Recommended for</label>
+                <input class="fld-inp" type="text" name="job_recommended_for" placeholder="e.g. Facility Coordinator">
+              </div>
+            </section>
+
+            <section class="sec">
+              <h2 class="sec-hd">Interviewer Details</h2>
+              <div class="grid-2">
+                <div class="fld"><label class="fld-lbl">Interviewer's Name</label><input class="fld-inp" type="text" name="interviewer_name" placeholder="Same as Interview by if applicable"></div>
+                <div class="fld"><label class="fld-lbl">Title</label><input class="fld-inp" type="text" name="interviewer_title" placeholder="e.g. HR Manager"></div>
+                <div class="fld">
+                  <label class="fld-lbl">Signature</label>
+                  <div class="sig-wrap">
+                    <div class="sig-box" id="intSigPrev"><span class="sig-ph">No signature</span><img id="intSigImg" src="" style="display:none"></div>
+                    <div class="sig-actions">
+                      <button type="button" class="btn-plus" onclick="openSig('interviewer')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 4v16m8-8H4"/></svg> Sign</button>
+                      <button type="button" class="btn-rm" id="intSigRm" onclick="rmSig('interviewer')">Remove</button>
+                    </div>
+                    <input type="hidden" name="interviewer_signature" id="intSigData">
+                  </div>
+                </div>
+              </div>
+            </section>
+
+          </div>
+
+          <div class="doc-ft">
+            <div class="doc-ft-meta"><span>Interview Assessment Form</span><span>DATE: <span id="docDate"></span></span></div>
+            P.O Box: 3456 Ajman, UAE · Tel 067116815 · www.injaaz.ae
+          </div>
+
+          <div class="submit-bar">
+            <button type="button" class="btn-reset" onclick="if(confirm('Reset the form?')){document.getElementById('hrForm').reset();rmSig('interviewer')}">Reset</button>
+            <button type="submit" class="btn-submit"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> Submit Form</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+<script>
+document.querySelector('[name="interview_date"]').value = new Date().toISOString().split('T')[0];
+document.getElementById('docDate').textContent = new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'});
+
+let pad=null,target=null;
+const sigBg=document.getElementById('sigBg'),sigCv=document.getElementById('sigCanvas');
+const sigCfg={interviewer:{prev:'intSigPrev',img:'intSigImg',data:'intSigData',rm:'intSigRm',title:'Interviewer Signature'}};
+function openSig(t){target=t;const c=sigCfg[t];if(!c)return;document.getElementById('sigTitle').textContent=c.title;sigBg.classList.add('open');document.body.style.overflow='hidden';requestAnimationFrame(()=>{const r=window.devicePixelRatio||1,w=sigCv.offsetWidth;sigCv.width=w*r;sigCv.height=180*r;sigCv.getContext('2d').scale(r,r);sigCv.style.height='180px';if(pad)pad.off();pad=new SignaturePad(sigCv,{backgroundColor:'rgb(250,250,250)',penColor:'#0d1f14',minWidth:1.2,maxWidth:2.8})})}
+function closeSig(){sigBg.classList.remove('open');document.body.style.overflow='';target=null}
+function clearModalPad(){if(pad)pad.clear()}
+function applySig(){if(!pad||pad.isEmpty()){alert('Please draw your signature first.');return}const url=pad.toDataURL('image/png'),c=sigCfg[target];if(!c)return;const img=document.getElementById(c.img),ph=document.querySelector('#'+c.prev+' .sig-ph'),inp=document.getElementById(c.data),rm=document.getElementById(c.rm);if(img){img.src=url;img.style.display='block'}if(ph)ph.style.display='none';if(inp)inp.value=url;if(rm)rm.style.display='inline-flex';closeSig()}
+function rmSig(t){const c=sigCfg[t];if(!c)return;const img=document.getElementById(c.img),ph=document.querySelector('#'+c.prev+' .sig-ph'),inp=document.getElementById(c.data),rm=document.getElementById(c.rm);if(img){img.src='';img.style.display='none'}if(ph)ph.style.display='block';if(inp)inp.value='';if(rm)rm.style.display='none'}
+sigBg.addEventListener('click',e=>{if(e.target===sigBg)closeSig()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&sigBg.classList.contains('open'))closeSig()});
+
+function closeSuccessBackToForm(){
+  document.getElementById('successModal').classList.remove('show');
+  const btn=document.querySelector('#hrForm .btn-submit');
+  if(btn){btn.disabled=false;btn.innerHTML='<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> Submit Form'}
+}
+
+document.getElementById('hrForm').addEventListener('submit',async e=>{
+  e.preventDefault();
+  const fd=new FormData(e.target),data=Object.fromEntries(fd.entries());
+  data.form_type='interview_assessment';
+  data.employee_name=data.candidate_name;
+  const btn=e.target.querySelector('.btn-submit');
+  btn.disabled=true;btn.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="spin"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Submitting…';
+  try{const res=await fetch('/hr/api/submit',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.getItem('access_token')},body:JSON.stringify(data)});const r=await res.json();
+  if(r.success){document.getElementById('submissionId').textContent=r.submission_id;document.getElementById('successModal').classList.add('show')}
+  else{alert('Error: '+(r.error||'Unknown'));btn.disabled=false;btn.innerHTML='<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> Submit Form'}
+  }catch(err){alert('Network error: '+err.message);btn.disabled=false;btn.innerHTML='<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> Submit Form'}
+});
+</script>
+  <script src="{{ url_for('static', filename='api-client.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>

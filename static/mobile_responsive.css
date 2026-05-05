@@ -1,0 +1,2282 @@
+/* Mobile Responsive Styles for Injaaz
+   Mobile-first design - optimizes for phones and tablets */
+
+/* Tab labels: full on desktop, short on mobile */
+.tab-label-full { display: inline; }
+.tab-label-short { display: none; }
+
+/* ========================================
+   MOBILE-FIRST BASE
+   ======================================== */
+/* Safe area insets for notched phones (iPhone X+, etc.) */
+@supports (padding: env(safe-area-inset-bottom)) or (padding: constant(safe-area-inset-bottom)) {
+  body {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  /* Fixed nav: account for notch */
+  .nav,
+  .navbar {
+    padding-top: max(0.75rem, env(safe-area-inset-top)) !important;
+    padding-left: max(1rem, env(safe-area-inset-left)) !important;
+    padding-right: max(1rem, env(safe-area-inset-right)) !important;
+  }
+  
+  /* Footer — safe area only (padding lives on .footer-inner in dashboard.css) */
+  .footer {
+    background: #f8faf8 !important;
+    padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+  }
+  
+  /* Content area - add bottom padding for home indicator */
+  .hero-content,
+  .container,
+  .modules-section {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom)) !important;
+  }
+}
+
+/* Touch-friendly tap targets (min 44x44px per Apple HIG) */
+@media (hover: none) and (pointer: coarse) {
+  .module-card {
+    min-height: 64px !important;
+  }
+  
+  .main-content a,
+  .main-content button,
+  .main-content .btn,
+  form button,
+  form .btn,
+  .footer a {
+    min-height: 44px !important;
+    min-width: 44px !important;
+  }
+  
+  .module-card {
+    -webkit-tap-highlight-color: rgba(18, 84, 53, 0.15) !important;
+    tap-highlight-color: rgba(18, 84, 53, 0.15) !important;
+  }
+}
+
+/* ========================================
+   DASHBOARD - MOBILE FIXES
+   ======================================== */
+@media (max-width: 768px) {
+  /* Prevent horizontal scroll on mobile - allow vertical scroll */
+  html, body {
+    overflow-x: hidden !important;
+    max-width: 100vw !important;
+    overflow-y: auto !important;
+  }
+  
+  /* Clean background - content flows naturally */
+  body {
+    background: #ffffff !important;
+  }
+  
+  /* Dashboard Header */
+  .dashboard-header {
+    padding: 1rem !important;
+    text-align: center !important;
+  }
+  
+  .dashboard-header h1 {
+    font-size: 1.5rem !important;
+  }
+  
+  .dashboard-header p {
+    font-size: 0.9rem !important;
+  }
+  
+  /* Modules section label */
+  .modules-section-label {
+    font-size: 0.7rem !important;
+    letter-spacing: 0.12em !important;
+    margin-bottom: 0.75rem !important;
+    padding: 0 0.75rem !important;
+  }
+  
+  /* Module Cards Grid - compact on mobile (card layout in dashboard.css) */
+  .modules-grid, .dashboard-grid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 0.625rem !important;
+    padding: 0 0.75rem !important;
+  }
+  
+  /* Module cards - mobile polish (layout handled by dashboard.css) */
+  .module-card {
+    border: 1px solid var(--border-color, #e5e7eb) !important;
+    background: #ffffff !important;
+    transition: transform 0.15s ease, box-shadow 0.15s ease !important;
+  }
+  
+  .module-card:active {
+    transform: scale(0.98) !important;
+  }
+  
+  .module-card .module-icon {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06) !important;
+  }
+  
+  /* Nav: rely on dashboard.css border only — extra shadow stacked with border and read as a “black line” */
+  .nav, .navbar {
+    box-shadow: none !important;
+  }
+  
+  /* Modules section label - larger for readability */
+  .modules-section-label {
+    font-size: 0.8rem !important;
+  }
+  
+  /* Sidebar nav (forms) - bottom bar on mobile. Dashboard .nav-menu uses slide-out from dashboard.css */
+  .sidebar-nav {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    background: rgba(255, 255, 255, 0.98) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08) !important;
+    border-top: 1px solid rgba(0, 0, 0, 0.06) !important;
+    z-index: 1000 !important;
+    padding: 0.5rem !important;
+    display: flex !important;
+    justify-content: space-around !important;
+  }
+  
+  /* Profile Modal - Mobile */
+  .contact-modal-content.profile-modal-container {
+    max-width: 100% !important;
+    width: 100% !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+  }
+  
+  .pro-container {
+    padding: 0 1rem 1.5rem !important;
+  }
+  
+  .pro-hero {
+    margin: 0 -1rem !important;
+    padding: 2rem 1rem 1.5rem !important;
+  }
+  
+  .pro-tabs {
+    margin: 0 -1rem !important;
+    padding: 0.625rem 0.75rem !important;
+    gap: 0.25rem !important;
+  }
+  
+  .pro-tab {
+    padding: 0.5rem 0.5rem !important;
+    font-size: 0.75rem !important;
+  }
+  
+  .pro-avatar {
+    width: 80px !important;
+    height: 80px !important;
+    font-size: 1.75rem !important;
+  }
+  
+  .pro-name {
+    font-size: 1.25rem !important;
+  }
+  
+  .pro-info-item {
+    padding: 0.75rem !important;
+    gap: 0.75rem !important;
+  }
+  
+  .pro-info-icon {
+    width: 36px !important;
+    height: 36px !important;
+    font-size: 1rem !important;
+  }
+  
+  .pro-info-label {
+    font-size: 0.65rem !important;
+  }
+  
+  .pro-info-value {
+    font-size: 0.875rem !important;
+  }
+  
+  /* Submitted Forms - Mobile */
+  .submission-card {
+    padding: 1rem !important;
+    margin-bottom: 1rem !important;
+  }
+  
+  .submission-card h4 {
+    font-size: 1rem !important;
+  }
+  
+  .submission-card .btn-group {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+  }
+  
+  .submission-card .btn {
+    width: 100% !important;
+  }
+  
+  /* Email Module - Mobile */
+  .email-module-container {
+    padding: 1rem !important;
+  }
+  
+  .email-recipients-list {
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+  }
+  
+  .email-recipient-btn {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+  
+  /* Form Header with Save Draft - Mobile */
+  .d-flex.justify-content-between.align-items-start {
+    flex-direction: column !important;
+    gap: 1rem !important;
+    align-items: stretch !important;
+  }
+  
+  /* Only legacy page headers — never the main nav (.nav-right) Save Draft */
+  .d-flex.justify-content-between.align-items-start #saveDraftBtn {
+    width: 100% !important;
+    justify-content: center !important;
+    order: -1 !important;
+  }
+  
+  /* Bottom Submit Buttons - Mobile */
+  .col-12.mb-5.mt-4 .d-flex.justify-content-between {
+    flex-direction: column !important;
+    gap: 1rem !important;
+  }
+  
+  .col-12.mb-5.mt-4 .d-flex.gap-2 {
+    flex-direction: column !important;
+    width: 100% !important;
+  }
+  
+  .col-12.mb-5.mt-4 .btn {
+    width: 100% !important;
+  }
+  
+  /* Signature Container - Mobile */
+  .signature-container {
+    height: auto !important;
+    min-height: 120px !important;
+  }
+  
+  .signature-actions {
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+  }
+  
+  .signature-actions .btn {
+    flex: 1 1 auto !important;
+    min-width: 120px !important;
+  }
+  
+  /* Tab Navigation - Mobile */
+  .nav-tabs {
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    padding-bottom: 2px !important;
+    gap: 0.25rem !important;
+  }
+  
+  .nav-tabs::-webkit-scrollbar {
+    display: none !important;
+  }
+  
+  .nav-tabs .nav-link {
+    white-space: nowrap !important;
+    font-size: 0.85rem !important;
+    padding: 0.625rem 0.875rem !important;
+    border-radius: 8px 8px 0 0 !important;
+    min-height: 44px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+  }
+  
+  .tab-label-full { display: none !important; }
+  .tab-label-short { display: inline !important; }
+  
+  /* Form section headings - cleaner hierarchy */
+  .section-heading,
+  .section-heading-no-border {
+    font-size: 1.15rem !important;
+    margin-bottom: 1rem !important;
+    padding-bottom: 0.5rem !important;
+  }
+  
+  /* Supervisor/Review sections - stack Comments + Signature on mobile */
+  .signature-container {
+    min-height: 140px !important;
+    border-radius: 8px !important;
+  }
+  
+  .signature-actions {
+    flex-wrap: wrap !important;
+    gap: 0.5rem !important;
+  }
+  
+  .signature-actions .btn {
+    min-height: 40px !important;
+  }
+  
+  /* Item Cards - Mobile */
+  .editable-item-card {
+    padding: 1rem !important;
+  }
+  
+  .editable-item-card .d-flex.justify-content-between {
+    flex-direction: column !important;
+    gap: 0.75rem !important;
+  }
+  
+  .editable-item-card .d-flex.gap-2 {
+    flex-wrap: wrap !important;
+  }
+  
+  .editable-item-card .btn-sm {
+    width: 100% !important;
+  }
+  
+  /* Thumbs Row - Mobile */
+  .thumbs-row {
+    gap: 4px !important;
+  }
+  
+  .thumbs-row img {
+    width: 60px !important;
+    height: 45px !important;
+    border-radius: 8px !important;
+  }
+  
+  /* Buttons - mobile polish */
+  .btn-primary:active,
+  .btn-success:active {
+    transform: scale(0.98) !important;
+  }
+  
+  /* Form inputs - cleaner mobile look (class-based only, avoids table inputs) */
+  .form-control,
+  .form-select {
+    border-radius: 10px !important;
+    border: 1.5px solid rgba(18, 84, 53, 0.2) !important;
+    box-shadow: none !important;
+    padding: 0.65rem 0.9rem !important;
+    min-height: 46px !important;
+    height: auto !important;
+    font-size: 16px !important;
+    background-color: #ffffff !important;
+  }
+
+  .form-control:focus,
+  .form-select:focus {
+    border-color: rgba(18, 84, 53, 0.5) !important;
+    box-shadow: 0 0 0 3px rgba(18, 84, 53, 0.1) !important;
+  }
+  
+  /* Submission cards - pending/submitted forms */
+  .submission-card,
+  .stat-card {
+    border-radius: 14px !important;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06) !important;
+    border: 1px solid rgba(0, 0, 0, 0.05) !important;
+  }
+  
+  /* Container/card - forms */
+  .container,
+  .form-card,
+  .form-container {
+    border-radius: 16px !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06) !important;
+  }
+  
+  /* Login & Register - mobile polish */
+  .login-container,
+  .register-container {
+    border-radius: 20px !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12) !important;
+    padding: 1.5rem 1.25rem !important;
+  }
+  
+  .login-container input,
+  .register-container input {
+    border-radius: 12px !important;
+  }
+  
+  /* Footer - subtle mobile */
+  .footer {
+    background: #f8faf8 !important;
+  }
+}
+
+/* Base Mobile Improvements */
+@media (max-width: 768px) {
+  /* Form inputs — prevent collapsed/flat look on mobile.
+     IMPORTANT: Use class-based selectors only (.form-control, .form-select)
+     to avoid accidentally targeting inputs inside table cells. */
+  .form-control,
+  .form-select {
+    min-height: 46px !important;
+    height: auto !important;
+    font-size: 16px !important; /* Prevents zoom on iOS */
+    padding: 0.65rem 0.9rem !important;
+    border: 1.5px solid rgba(18, 84, 53, 0.2) !important;
+    border-radius: 10px !important;
+    background-color: #ffffff !important;
+    box-shadow: none !important;
+    line-height: 1.5 !important;
+    color: #1a1a1a !important;
+  }
+
+  /* Standalone inputs (not inside tables) */
+  form input[type="text"],
+  form input[type="email"],
+  form input[type="password"],
+  form input[type="number"],
+  form input[type="tel"],
+  form input[type="date"],
+  form input[type="search"],
+  form select,
+  .form-group input[type="text"],
+  .form-group input[type="email"],
+  .form-group input[type="password"],
+  .form-group select,
+  .bf-fld input,
+  .bf-fld select,
+  .pp-fld input,
+  .pp-fld select,
+  .dm-form-field input,
+  .dm-form-field select {
+    min-height: 46px !important;
+    height: auto !important;
+    font-size: 16px !important;
+    padding: 0.65rem 0.9rem !important;
+    border: 1.5px solid rgba(18, 84, 53, 0.2) !important;
+    border-radius: 10px !important;
+    background-color: #ffffff !important;
+    box-shadow: none !important;
+    line-height: 1.5 !important;
+    color: #1a1a1a !important;
+  }
+
+  .form-control:focus,
+  .form-select:focus {
+    border-color: rgba(18, 84, 53, 0.5) !important;
+    box-shadow: 0 0 0 3px rgba(18, 84, 53, 0.1) !important;
+    outline: none !important;
+  }
+
+  textarea.form-control,
+  form textarea {
+    min-height: 90px !important;
+    padding: 0.65rem 0.9rem !important;
+    font-size: 16px !important;
+    border: 1.5px solid rgba(18, 84, 53, 0.2) !important;
+    border-radius: 10px !important;
+    background-color: #ffffff !important;
+    resize: vertical !important;
+    line-height: 1.5 !important;
+  }
+
+  /* Form check inputs */
+  .form-check-input {
+    min-height: 18px !important;
+    width: 18px !important;
+    margin-top: 0.25em !important;
+  }
+
+  /* ============================================================
+     TABLE OVERRIDES — prevent form-input / button rules from
+     bloating table rows. Tables use compact styling.
+     ============================================================ */
+  table select,
+  .designation-select,
+  .dashboard-filter,
+  td select {
+    min-height: unset !important;
+    height: auto !important;
+    padding: 0.35rem 0.5rem !important;
+    font-size: 0.8rem !important;
+    border: 1px solid rgba(18, 84, 53, 0.2) !important;
+    border-radius: 6px !important;
+    background-color: #fff !important;
+    line-height: 1.4 !important;
+  }
+
+  table input[type="text"],
+  table input[type="email"],
+  table input[type="search"],
+  table input[type="date"],
+  td input[type="text"],
+  td input[type="date"] {
+    min-height: unset !important;
+    height: 32px !important;
+    padding: 0.3rem 0.5rem !important;
+    font-size: 0.8rem !important;
+    border-radius: 6px !important;
+  }
+
+  /* Table action buttons — compact, not full-width */
+  table .btn,
+  td .btn,
+  .action-buttons .btn,
+  .action-buttons .btn-sm,
+  .documents-table .btn,
+  .users-table .btn {
+    min-height: unset !important;
+    height: auto !important;
+    padding: 0.3rem 0.55rem !important;
+    font-size: 0.75rem !important;
+    width: auto !important;
+    margin-bottom: 0.2rem !important;
+    border-radius: 6px !important;
+  }
+
+  /* btn-download links in tables */
+  .btn-download {
+    min-height: unset !important;
+    padding: 0.3rem 0.55rem !important;
+    font-size: 0.75rem !important;
+    width: auto !important;
+    margin-bottom: 0.2rem !important;
+  }
+
+  /* Better touch targets for FORM buttons only */
+  .main-content .btn,
+  form .btn {
+    min-height: 44px;
+    font-size: 15px;
+  }
+
+  /* Container adjustments — no side margins to avoid dead space */
+  .container {
+    padding: 0.875rem 0.875rem !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    margin-top: 0 !important;
+    border-radius: 0 !important;
+    max-width: 100% !important;
+  }
+  
+  /* Navbar - Mobile Optimized */
+  .navbar {
+    padding: 0.75rem 0 !important;
+  }
+  
+  .navbar-container {
+    padding: 0 1rem !important;
+    flex-wrap: wrap !important;
+    gap: 0.75rem !important;
+  }
+  
+  .navbar-brand {
+    font-size: 1.1rem !important;
+    flex: 0 0 auto !important;
+  }
+  
+  .navbar-brand img {
+    height: 24px !important;
+  }
+  
+  .navbar-brand span {
+    font-size: 1rem !important;
+    white-space: normal !important;
+    line-height: 1.2 !important;
+  }
+  
+  .module-badge {
+    font-size: 0.7rem !important;
+    padding: 0.25rem 0.625rem !important;
+    flex: 0 0 auto !important;
+  }
+  
+  .navbar-nav {
+    width: 100% !important;
+    justify-content: space-between !important;
+    margin-left: 0 !important;
+    margin-top: 0.5rem !important;
+    gap: 0.5rem !important;
+  }
+  
+  .nav-btn {
+    flex: 1 !important;
+    min-width: 0 !important;
+    font-size: 0.875rem !important;
+    padding: 0.625rem 0.75rem !important;
+    text-align: center !important;
+  }
+  
+  /* Form Headings — tighter on mobile */
+  h1 { font-size: 1.5rem !important; margin-bottom: 0.5rem !important; }
+  h2 { font-size: 1.3rem !important; margin-bottom: 0.5rem !important; }
+  h3 { font-size: 1.1rem !important; margin-bottom: 0.375rem !important; }
+  h4 { font-size: 1rem !important; margin-bottom: 0.375rem !important; }
+  h5 { font-size: 0.95rem !important; margin-bottom: 0.375rem !important; }
+  h6 { font-size: 0.875rem !important; margin-bottom: 0.25rem !important; }
+
+  /* Form Labels — compact */
+  .form-label {
+    font-size: 0.85rem !important;
+    margin-bottom: 0.3rem !important;
+    font-weight: 500 !important;
+  }
+  
+  /* Form Grid - Stack on mobile */
+  .row {
+    margin-left: -0.5rem !important;
+    margin-right: -0.5rem !important;
+  }
+  
+  .row.g-3 {
+    --bs-gutter-x: 0.75rem !important;
+    --bs-gutter-y: 0.75rem !important;
+  }
+  
+  .col-md-6, .col-md-4, .col-md-3, .col-md-12 {
+    width: 100% !important;
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+    margin-bottom: 0.5rem !important;
+  }
+
+  /* Force single column on mobile */
+  [class*="col-"] {
+    flex: 0 0 100% !important;
+    max-width: 100% !important;
+  }
+  
+  /* Buttons - Mobile Optimized (form context buttons — scoped away from tables) */
+  form .btn {
+    padding: 0.7rem 1.25rem !important;
+    font-size: 0.95rem !important;
+    margin-bottom: 0.5rem !important;
+    min-height: 46px !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+    touch-action: manipulation !important;
+    -webkit-tap-highlight-color: rgba(18, 84, 53, 0.2) !important;
+  }
+
+  /* Only full-width when it's a standalone primary/submit button */
+  form .btn[type="submit"],
+  form .btn-primary {
+    width: 100% !important;
+  }
+
+  .main-content .btn-lg,
+  form .btn-lg {
+    padding: 0.875rem 1.5rem !important;
+    font-size: 1rem !important;
+    min-height: 50px !important;
+  }
+
+  .main-content .btn-sm,
+  form .btn-sm {
+    padding: 0.5rem 0.875rem !important;
+    font-size: 0.875rem !important;
+    min-height: 38px !important;
+  }
+
+  .main-content .btn-group,
+  form .btn-group {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+  }
+  
+  /* Drop Zone */
+  .drop-zone {
+    min-height: 120px !important;
+    padding: 1rem !important;
+  }
+  
+  .drop-zone-content {
+    font-size: 0.9rem !important;
+  }
+  
+  .drop-zone-content strong {
+    font-size: 1rem !important;
+  }
+  
+  .drop-zone-content small {
+    font-size: 0.75rem !important;
+    display: block !important;
+    margin-top: 0.5rem !important;
+  }
+  
+  /* Photo Preview - Mobile Optimized */
+  .photo-preview-container,
+  #photoPreviewContainer {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 0.5rem !important;
+    margin-top: 1rem !important;
+    padding: 0.5rem !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  
+  .photo-item,
+  .photo-container {
+    width: calc(50% - 0.25rem) !important;
+    max-width: none !important;
+    flex: 0 0 calc(50% - 0.25rem) !important;
+    box-sizing: border-box !important;
+  }
+  
+  .photo-item img,
+  .photo-container img {
+    height: 120px !important;
+    width: 100% !important;
+    object-fit: cover !important;
+    border-radius: 4px !important;
+    display: block !important;
+  }
+  
+  /* Upload Queue UI - Mobile */
+  .upload-queue-container {
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  
+  /* Photo status overlays - more visible on mobile */
+  .photo-status-overlay {
+    font-size: 11px !important;
+  }
+  
+  .photo-status-overlay.status-uploading,
+  .photo-status-overlay.status-failed {
+    opacity: 1 !important;
+  }
+  
+  .photo-count {
+    width: 100% !important;
+    text-align: center !important;
+    margin: 0.5rem 0 !important;
+  }
+  
+  /* Items List */
+  .item-card {
+    padding: 0.75rem !important;
+    margin-bottom: 0.75rem !important;
+  }
+  
+  .item-badge {
+    font-size: 0.75rem !important;
+    padding: 0.25rem 0.5rem !important;
+  }
+  
+  /* Signature Pads - Mobile Optimized */
+  canvas.signature-pad,
+  #techSignaturePad,
+  #opManSignaturePad,
+  #tech_signature_canvas,
+  #contact_signature_canvas {
+    height: 160px !important;
+    max-width: 100% !important;
+    touch-action: none !important;
+  }
+  
+  .signature-container,
+  .signature-label {
+    margin-bottom: 1rem !important;
+  }
+  
+  .signature-hint {
+    font-size: 0.7rem !important;
+  }
+  
+  /* Status Box */
+  #statusBox {
+    font-size: 0.9rem !important;
+    padding: 0.75rem !important;
+  }
+  
+  /* Progress Container */
+  #progressContainer {
+    margin: 1rem 0 !important;
+  }
+  
+  /* Download Links */
+  #downloadLinks {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+  }
+  
+  #downloadLinks a {
+    width: 100% !important;
+    text-align: center !important;
+  }
+  
+  /* Table Responsive - Mobile Optimized */
+  .table-responsive {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    display: block !important;
+    width: 100% !important;
+    margin-bottom: 1rem !important;
+  }
+  
+  table {
+    font-size: 0.85rem !important;
+    width: 100% !important;
+    min-width: 600px !important; /* Allow horizontal scroll */
+  }
+  
+  table th, table td {
+    padding: 0.625rem 0.5rem !important;
+    white-space: nowrap !important;
+  }
+  
+  table th {
+    font-size: 0.8rem !important;
+    font-weight: 600 !important;
+  }
+  
+  /* Work Items Table - Mobile */
+  #workItemsBody tr {
+    display: flex !important;
+    flex-direction: column !important;
+    border: 1px solid rgba(0, 0, 0, 0.08) !important;
+    border-radius: 12px !important;
+    padding: 0.875rem !important;
+    margin-bottom: 0.75rem !important;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04) !important;
+  }
+  
+  #workItemsBody td {
+    display: block !important;
+    width: 100% !important;
+    padding: 0.5rem 0 !important;
+    border: none !important;
+  }
+  
+  #workItemsBody td:before {
+    content: attr(data-label) ": " !important;
+    font-weight: 600 !important;
+    display: inline-block !important;
+    width: 40% !important;
+  }
+  
+  /* Modal Improvements */
+  .modal-dialog {
+    margin: 0.5rem !important;
+    max-width: calc(100% - 1rem) !important;
+  }
+  
+  .modal-content {
+    border-radius: 16px !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12) !important;
+  }
+  
+  /* Alert Messages */
+  .alert {
+    font-size: 0.9rem !important;
+    padding: 0.75rem !important;
+    margin-bottom: 0.75rem !important;
+  }
+  
+  /* Form Sections */
+  .mb-section {
+    margin-bottom: 1rem !important;
+    padding-bottom: 0.5rem !important;
+    border-bottom: 1px solid var(--border-light, #e5e7eb) !important;
+  }
+  
+  /* Photo Count Badge */
+  .photo-count {
+    font-size: 0.9rem !important;
+    padding: 0.5rem !important;
+  }
+  
+  /* Upload Progress */
+  .upload-progress {
+    margin: 0.75rem 0 !important;
+  }
+  
+  .progress {
+    height: 8px !important;
+  }
+  
+  /* File Warning */
+  .file-warning {
+    font-size: 0.85rem !important;
+    padding: 0.5rem !important;
+  }
+  
+  /* HR Module - Mobile */
+  .hr-header {
+    padding: 1.5rem 1rem !important;
+    border-radius: 12px !important;
+    margin-bottom: 1.5rem !important;
+  }
+  
+  .hr-header h1 {
+    font-size: 1.5rem !important;
+  }
+  
+  .hr-card {
+    padding: 1.25rem !important;
+    margin-bottom: 1rem !important;
+  }
+  
+  .hr-card h3 {
+    font-size: 1rem !important;
+  }
+  
+  .hr-card-icon {
+    width: 48px !important;
+    height: 48px !important;
+    font-size: 1.5rem !important;
+  }
+  
+  .back-btn {
+    padding: 0.5rem 0.75rem !important;
+    font-size: 0.9rem !important;
+    min-height: 44px !important;
+  }
+  
+  .detail-modal {
+    max-height: 95vh !important;
+    margin: 0.5rem !important;
+  }
+  
+  .detail-header {
+    padding: 1rem !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+  
+  .detail-tabs {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    flex-wrap: nowrap !important;
+  }
+  
+  .detail-tab {
+    padding: 0.75rem 1rem !important;
+    font-size: 0.8rem !important;
+    white-space: nowrap !important;
+  }
+  
+  .detail-row {
+    flex-direction: column !important;
+    gap: 0.25rem !important;
+  }
+  
+  .detail-label {
+    width: 100% !important;
+  }
+  
+  .detail-value {
+    width: 100% !important;
+  }
+  
+  /* Procurement Module - Mobile */
+  .proc-header {
+    padding: 1.5rem 1rem !important;
+    border-radius: 16px !important;
+    margin-bottom: 1.5rem !important;
+  }
+  
+  .proc-header h1 {
+    font-size: 1.5rem !important;
+  }
+  
+  .module-showcase {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+  }
+  
+  .module-card-header {
+    padding: 1.5rem !important;
+  }
+  
+  .module-card-body {
+    padding: 1.25rem !important;
+  }
+  
+  .module-card-body h3 {
+    font-size: 1.1rem !important;
+  }
+  
+  /* Workflow History / Submitted Forms - Mobile tables */
+  .navbar-container {
+    flex-wrap: wrap !important;
+  }
+  
+  .table-responsive {
+    margin: 0 -0.5rem !important;
+    border-radius: 8px !important;
+  }
+}
+
+/* Extra Small Devices (phones in portrait) */
+@media (max-width: 576px) {
+  /* Even smaller adjustments */
+  .container {
+    padding: 0.75rem 0.625rem !important;
+    margin: 0 !important;
+  }
+
+  h2 {
+    font-size: 1.25rem !important;
+  }
+  
+  /* Single photo per row on very small screens */
+  .photo-item {
+    width: calc(50% - 0.25rem) !important;
+    flex: 0 0 calc(50% - 0.25rem) !important;
+  }
+  
+  /* Upload queue - full width on small screens */
+  .upload-queue-container {
+    padding: 8px !important;
+  }
+  
+  .upload-progress-bar {
+    height: 18px !important;
+  }
+  
+  .upload-stats {
+    font-size: 11px !important;
+  }
+  
+  /* Stack signature pads */
+  .signature-container {
+    width: 100% !important;
+  }
+  
+  /* Smaller navbar */
+  .navbar {
+    padding: 0.625rem 0 !important;
+  }
+  
+  .navbar-brand span {
+    font-size: 0.9rem !important;
+    max-width: 150px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+  
+  /* Buttons — keep compact on small phones */
+  .main-content .btn,
+  form .btn,
+  .container .btn {
+    font-size: 0.9rem !important;
+    padding: 0.65rem 1.1rem !important;
+    min-height: 44px !important;
+  }
+  
+  /* Stack button groups vertically */
+  .d-flex.gap-2 {
+    flex-direction: column !important;
+    gap: 0.75rem !important;
+  }
+  
+  /* Upload and Submit buttons */
+  #uploadImagesBtn,
+  #submitBtn {
+    width: 100% !important;
+    margin: 0 !important;
+  }
+}
+
+/* Landscape Phone Adjustments */
+@media (max-width: 896px) and (orientation: landscape) {
+  .signature-pad {
+    height: 120px !important;
+  }
+  
+  .container {
+    max-height: none !important;
+  }
+  
+  .navbar {
+    position: relative !important; /* Don't stick on landscape */
+  }
+}
+
+/* Touch-specific improvements */
+@media (hover: none) and (pointer: coarse) {
+  /* Larger tap targets for touch devices (content area only) */
+  .main-content .btn,
+  .main-content button,
+  .main-content a,
+  form .btn,
+  form button {
+    min-height: 44px !important;
+    min-width: 44px !important;
+  }
+  
+  /* Remove hover effects on touch devices */
+  .btn:hover,
+  .form-control:hover,
+  .form-select:hover,
+  .nav-btn:hover {
+    transform: none !important;
+  }
+  
+  /* Better focus states for accessibility */
+  .btn:focus,
+  .form-control:focus,
+  .form-select:focus,
+  .nav-btn:focus {
+    box-shadow: 0 0 0 3px rgba(18, 84, 53, 0.25) !important;
+    outline: none !important;
+  }
+  
+  /* Prevent accidental zooming on iOS — font-size only (not min-height,
+     to avoid inflating table-cell inputs) */
+  input[type="text"],
+  input[type="email"],
+  input[type="tel"],
+  input[type="number"],
+  input[type="date"],
+  input[type="password"],
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  /* For non-table form inputs, also fix sizing */
+  form input[type="text"],
+  form input[type="email"],
+  form input[type="tel"],
+  form input[type="number"],
+  form input[type="date"],
+  form input[type="password"],
+  form select,
+  form textarea,
+  .form-control,
+  .form-select {
+    padding: 0.65rem 0.9rem !important;
+    min-height: 46px !important;
+    border: 1.5px solid rgba(18, 84, 53, 0.2) !important;
+    border-radius: 10px !important;
+    background-color: #ffffff !important;
+  }
+  
+  /* Better touch feedback */
+  .main-content .btn:active,
+  .nav-btn:active {
+    opacity: 0.8 !important;
+    transform: scale(0.98) !important;
+  }
+  
+  /* Signature pad touch improvements */
+  canvas.signature-pad {
+    touch-action: none !important;
+    -webkit-touch-callout: none !important;
+    -webkit-user-select: none !important;
+    user-select: none !important;
+  }
+}
+
+/* PWA Safe Area Adjustments (notch support) */
+@supports (padding: max(0px)) {
+  body {
+    padding-left: env(safe-area-inset-left) !important;
+    padding-right: env(safe-area-inset-right) !important;
+  }
+  
+  .navbar {
+    padding-left: max(1rem, env(safe-area-inset-left)) !important;
+    padding-right: max(1rem, env(safe-area-inset-right)) !important;
+    padding-top: max(0.75rem, env(safe-area-inset-top)) !important;
+  }
+  
+  .navbar-container {
+    padding-left: max(1rem, env(safe-area-inset-left)) !important;
+    padding-right: max(1rem, env(safe-area-inset-right)) !important;
+  }
+  
+  .container {
+    padding-left: max(0.75rem, env(safe-area-inset-left)) !important;
+    padding-right: max(0.75rem, env(safe-area-inset-right)) !important;
+    padding-bottom: max(1rem, env(safe-area-inset-bottom)) !important;
+  }
+  
+  .main-content .btn,
+  form .btn {
+    margin-bottom: max(0.5rem, env(safe-area-inset-bottom)) !important;
+  }
+}
+
+/* Print Styles (prevent printing form controls) */
+@media print {
+  .navbar,
+  .btn,
+  .drop-zone,
+  #uploadProgress,
+  .photo-preview-container {
+    display: none !important;
+  }
+}
+
+/* Dark Mode Support (if system prefers) */
+@media (prefers-color-scheme: dark) {
+  /* Add dark mode styles if needed in future */
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ========================================
+   COMPREHENSIVE MOBILE ENHANCEMENTS
+   Applied after all other rules for highest mobile specificity
+   ======================================== */
+
+/* ── Prevent iOS auto-zoom on form inputs (font-size < 16px triggers zoom) ── */
+@media (max-width: 768px) {
+  input[type="text"],
+  input[type="email"],
+  input[type="tel"],
+  input[type="number"],
+  input[type="date"],
+  input[type="time"],
+  input[type="datetime-local"],
+  input[type="password"],
+  input[type="search"],
+  input[type="url"],
+  select,
+  textarea,
+  .form-control,
+  .form-select,
+  .fld-inp,
+  .rating-select {
+    font-size: 16px !important;
+    -webkit-text-size-adjust: 100%;
+  }
+}
+
+/* ── Global box-sizing safety ── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+/* ── Horizontal scroll prevention ── */
+@media (max-width: 768px) {
+  html, body {
+    overflow-x: hidden !important;
+    max-width: 100vw !important;
+  }
+}
+
+/* ── HR / Inspection form page containers ── */
+@media (max-width: 768px) {
+  /* The unified HR form page wrapper */
+  .hr-form-unified .page {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+  .hr-form-unified .card {
+    border-radius: 14px !important;
+    overflow: hidden !important;
+  }
+  /* Step navigation back/next buttons */
+  .hr-form-unified .step-nav {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom)) !important;
+  }
+}
+
+/* ── Dashboard hero section mobile fixes ── */
+@media (max-width: 768px) {
+  .hero-split .hero-content {
+    padding: 0 1rem !important;
+  }
+  .hero-left {
+    width: 100% !important;
+  }
+  .hero-right {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
+
+/* ── Module cards grid — 1 column on phones ── */
+@media (max-width: 768px) {
+  .modules-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ── Procurement KPI strip ── */
+@media (max-width: 768px) {
+  .proc-kpi-strip {
+    grid-template-columns: repeat(2, 1fr) !important;
+    padding: 0 1rem !important;
+    margin-top: -1.5rem !important;
+  }
+  .kpi-pill {
+    padding: 1rem !important;
+    gap: .75rem !important;
+  }
+  .kpi-pill-val {
+    font-size: 1.3rem !important;
+  }
+}
+@media (max-width: 480px) {
+  .proc-kpi-strip {
+    grid-template-columns: 1fr 1fr !important;
+    gap: .75rem !important;
+  }
+}
+
+/* ── Table improvements ── */
+@media (max-width: 768px) {
+  /* Make tables scrollable horizontally rather than breaking layout */
+  .table-responsive {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    border-radius: 10px !important;
+    border: 1px solid rgba(0,0,0,.06) !important;
+  }
+  /* Don't force min-width on ALL tables — let table-responsive handle it */
+  .table-responsive > table {
+    min-width: 500px;
+  }
+  /* Card-style table rows for small screens outside table-responsive */
+  .submission-cards-list .submission-card {
+    padding: 1rem !important;
+  }
+}
+
+/* ── HR dashboard workflow cards on mobile — one premium row ── */
+@media (max-width: 768px) {
+  .hr-workflow-cards .modules-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 0.5rem !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+  }
+  .hr-hero .hero-left {
+    max-width: 100% !important;
+  }
+  .hr-hero .hero-right {
+    display: block !important;
+  }
+}
+
+/* ── Inspection dashboard hero on mobile ── */
+@media (max-width: 768px) {
+  .inspection-hero {
+    padding: 5.5rem 0 1.5rem !important;
+  }
+  .inspection-hero .hero-right {
+    display: block !important;
+  }
+  .inspection-modules-section .modules-inner {
+    padding: 0 1rem !important;
+  }
+}
+
+/* ── Admin dashboard tables ── */
+@media (max-width: 768px) {
+  .admin-content,
+  .admin-dashboard-content {
+    padding: 1rem !important;
+  }
+}
+
+/* ── Forms with inline navbar (HVAC/Civil/Cleaning) ── */
+@media (max-width: 768px) {
+  /* These forms use .navbar-container with large padding */
+  .navbar-container {
+    padding: 0 .875rem !important;
+    gap: .75rem !important;
+  }
+  .navbar-brand {
+    font-size: 1.1rem !important;
+  }
+  .navbar-brand img {
+    height: 26px !important;
+  }
+  .module-badge {
+    font-size: .75rem !important;
+    padding: .35rem .75rem !important;
+  }
+  .navbar-nav {
+    gap: .5rem !important;
+  }
+  .nav-btn {
+    font-size: .8rem !important;
+    padding: .5rem .75rem !important;
+  }
+  .nav-btn span:not(:first-child) {
+    display: none !important;
+  }
+}
+
+/* ── Login / Register pages ── */
+@media (max-width: 768px) {
+  /* Ensure login page allows scroll on very short screens */
+  html.login-root {
+    overflow: auto !important;
+    height: auto !important;
+  }
+  body.login-page {
+    overflow: auto !important;
+    height: auto !important;
+    min-height: 100dvh !important;
+  }
+}
+
+/* ── General button overflow fix ── */
+@media (max-width: 768px) {
+  /* Buttons inside btn-group should NOT be forced full-width */
+  .btn-group .btn,
+  .btn-group-sm .btn,
+  .input-group .btn {
+    width: auto !important;
+    min-width: unset !important;
+    margin-bottom: 0 !important;
+  }
+  /* Inline action buttons (sm size) — keep inline */
+  .btn.btn-sm.btn-icon,
+  .btn.btn-xs {
+    width: auto !important;
+    min-width: unset !important;
+  }
+}
+
+/* ── Workflow history / submitted forms ── */
+@media (max-width: 768px) {
+  .workflow-history-content,
+  .submitted-forms-content,
+  .pending-reviews-content {
+    padding: 0 !important;
+  }
+}
+
+/* ── Profile & contact modals ── */
+@media (max-width: 480px) {
+  .pro-tabs {
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+  }
+  .pro-tabs::-webkit-scrollbar { display: none !important; }
+}
+
+/* ── MMR dashboard ── */
+@media (max-width: 768px) {
+  .mmr-content {
+    padding: 1rem !important;
+  }
+  .mmr-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+  }
+}
+
+/* ── About page ── */
+@media (max-width: 768px) {
+  .about-hero,
+  .about-content {
+    padding: 1rem !important;
+  }
+}
+
+/* ── DocHub ── */
+@media (max-width: 768px) {
+  .dochub-sidebar {
+    position: fixed !important;
+    transform: translateX(-100%) !important;
+    z-index: 1000 !important;
+    width: min(280px, 85vw) !important;
+    height: 100vh !important;
+    overflow-y: auto !important;
+    transition: transform .3s ease !important;
+  }
+  .dochub-sidebar.open {
+    transform: translateX(0) !important;
+  }
+  .dochub-content {
+    margin-left: 0 !important;
+    width: 100% !important;
+    padding: 1rem !important;
+  }
+}
+
+/* ── Admin BD module ── */
+@media (max-width: 768px) {
+  .bd-module-container,
+  .admin-container {
+    padding: .875rem !important;
+  }
+  .stats-grid,
+  .kpi-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: .75rem !important;
+  }
+}
+
+/* ── MMR chargeable settings ── */
+@media (max-width: 768px) {
+  .mmr-chargeable-container {
+    padding: .875rem !important;
+  }
+}
+
+/* ── General page heading + action row ── */
+@media (max-width: 768px) {
+  .page-header,
+  .section-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: .75rem !important;
+  }
+  .page-header .btn,
+  .section-header .btn {
+    width: 100% !important;
+  }
+}
+
+/* ── Card grids / stat grids ── */
+@media (max-width: 768px) {
+  .stats-row,
+  .cards-row {
+    flex-direction: column !important;
+    gap: .875rem !important;
+  }
+  .stat-card,
+  .info-card {
+    width: 100% !important;
+  }
+}
+
+/* ── Forms: label/input stacking ── */
+@media (max-width: 480px) {
+  .form-check-inline {
+    display: flex !important;
+    width: 100% !important;
+    margin-right: 0 !important;
+    margin-bottom: .5rem !important;
+  }
+}
+
+/* ── Signature pads: prevent browser scrolling while signing ── */
+canvas.signature-pad,
+canvas[id*="Pad"],
+canvas[id*="signature"] {
+  touch-action: none !important;
+  -webkit-touch-callout: none !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
+}
+
+/* ── Bottom safe area padding for modals / fixed footers ── */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .modal-dialog,
+  .detail-modal,
+  .mobile-menu-drawer {
+    padding-bottom: env(safe-area-inset-bottom) !important;
+  }
+}
+
+/* Mobile-specific improvements */
+.is-mobile {
+  -webkit-tap-highlight-color: rgba(18, 84, 53, 0.2) !important;
+  -webkit-touch-callout: none !important;
+}
+
+/* Better download button styling for mobile */
+.is-mobile .download-links a,
+.is-mobile #downloadLinks a {
+  display: block !important;
+  width: 100% !important;
+  padding: 1rem !important;
+  margin-bottom: 0.75rem !important;
+  font-size: 1rem !important;
+  text-align: center !important;
+  border-radius: 8px !important;
+  min-height: 52px !important;
+  touch-action: manipulation !important;
+}
+
+/* Prevent text selection on mobile buttons */
+.is-mobile button,
+.is-mobile .btn,
+.is-mobile a.btn {
+  -webkit-user-select: none !important;
+  user-select: none !important;
+  -webkit-tap-highlight-color: rgba(18, 84, 53, 0.3) !important;
+}
+
+/* Better signature pad on mobile */
+.is-mobile canvas.signature-pad,
+.is-mobile #techSignaturePad,
+.is-mobile #opManSignaturePad {
+  touch-action: none !important;
+  -webkit-touch-callout: none !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
+  background: white !important;
+  border: 2px solid #125435 !important;
+}
+
+/* File input improvements for mobile */
+.is-mobile input[type="file"] {
+  font-size: 16px !important;
+  min-height: 44px !important;
+  padding: 0.5rem !important;
+}
+
+/* Better modal on mobile */
+.is-mobile .modal-dialog {
+  margin: 0 !important;
+  max-width: 100% !important;
+  height: 100vh !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+.is-mobile .modal-content {
+  border-radius: 0 !important;
+  max-height: 100vh !important;
+  overflow-y: auto !important;
+}
+
+/* Prevent horizontal scroll on mobile */
+.is-mobile body {
+  overflow-x: hidden !important;
+  position: relative !important;
+}
+
+.is-mobile .container {
+  overflow-x: hidden !important;
+}
+
+/* Better status messages on mobile */
+.is-mobile .alert {
+  font-size: 0.95rem !important;
+  padding: 1rem !important;
+  line-height: 1.5 !important;
+}
+
+/* Loading overlay improvements */
+.is-mobile .loading-overlay {
+  background: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(4px) !important;
+}
+
+/* Progress bar improvements */
+.is-mobile .progress {
+  height: 12px !important;
+  border-radius: 6px !important;
+}
+
+.is-mobile .progress-bar {
+  font-size: 0.75rem !important;
+  line-height: 12px !important;
+}
+
+/* Network status indicator */
+.network-status {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: #dc3545;
+  color: white;
+  text-align: center;
+  padding: 0.5rem;
+  font-size: 0.875rem;
+  z-index: 10001;
+  display: none;
+}
+
+.network-status.online {
+  background: #28a745;
+}
+
+.network-status.show {
+  display: block;
+  animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+/* ========================================
+   PROCUREMENT + ADMIN + OTHER MODULE FIXES
+   ======================================== */
+
+/* ── Procurement dashboard ── */
+@media (max-width: 768px) {
+  .proc-main {
+    padding: 2rem 1rem 2.5rem !important;
+  }
+  .proc-hero-inner {
+    padding: 0 1rem !important;
+  }
+  .proc-hero-inner .back-btn-proc {
+    margin-bottom: 1rem !important;
+  }
+  .dept-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 1rem !important;
+  }
+  .inv-actions-row {
+    grid-template-columns: 1fr !important;
+  }
+  .actions-panel {
+    padding: 1.25rem 1rem !important;
+  }
+  .actions-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: .75rem !important;
+  }
+  .inv-top {
+    padding: 1.25rem !important;
+  }
+  .inv-body {
+    padding: 1rem !important;
+  }
+  .inv-foot {
+    padding: .75rem 1rem !important;
+    flex-wrap: wrap !important;
+    gap: .5rem !important;
+  }
+  .dept-top {
+    min-height: 130px !important;
+    padding: 1.25rem 1.1rem 1.1rem !important;
+  }
+}
+@media (max-width: 480px) {
+  .dept-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .proc-main {
+    padding: 1.5rem .875rem 2rem !important;
+  }
+  .inv-stats {
+    flex-direction: column !important;
+    gap: .5rem !important;
+  }
+}
+
+/* ── Procurement materials / properties ── */
+@media (max-width: 768px) {
+  .materials-header,
+  .properties-header,
+  .catalog-header {
+    flex-direction: column !important;
+    gap: .875rem !important;
+    align-items: flex-start !important;
+  }
+  .materials-header .btn,
+  .properties-header .btn {
+    width: 100% !important;
+  }
+  .materials-search,
+  .search-bar {
+    width: 100% !important;
+  }
+}
+
+/* ── Admin dashboard ── */
+@media (max-width: 768px) {
+  .admin-grid,
+  .admin-stats-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: .875rem !important;
+  }
+  .admin-card {
+    padding: 1rem !important;
+  }
+  .admin-header {
+    flex-direction: column !important;
+    gap: .875rem !important;
+    padding: 1rem !important;
+  }
+}
+@media (max-width: 480px) {
+  .admin-grid,
+  .admin-stats-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ── BD Email module ── */
+@media (max-width: 768px) {
+  .bd-email-container {
+    padding: 1rem !important;
+  }
+  .email-compose-area {
+    padding: 1rem !important;
+  }
+}
+
+/* ── MMR dashboard ── */
+@media (max-width: 768px) {
+  .mmr-dashboard-content {
+    padding: 0 1rem 2rem !important;
+  }
+  .mmr-hero-section {
+    padding: 5.5rem 1rem 2rem !important;
+  }
+  .mmr-stats-row {
+    flex-direction: column !important;
+    gap: .875rem !important;
+  }
+  .mmr-stats-card {
+    width: 100% !important;
+  }
+  .mmr-table-wrapper {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+}
+
+/* ── Workflow / submitted forms / pending reviews ── */
+@media (max-width: 768px) {
+  .hero.review-hero {
+    padding: 5.5rem 0 0.75rem !important;
+  }
+  .review-dashboard {
+    padding: 0 .875rem 2rem !important;
+  }
+  /* Filter/search bar on workflow pages */
+  .filters-row,
+  .search-filters {
+    flex-direction: column !important;
+    gap: .75rem !important;
+  }
+  .filters-row select,
+  .filters-row input,
+  .search-filters select,
+  .search-filters input {
+    width: 100% !important;
+  }
+  /* Submission list cards */
+  .submission-list .submission-card {
+    padding: 1rem !important;
+    margin-bottom: .875rem !important;
+  }
+  .submission-card .action-buttons,
+  .submission-card .btn-group-actions {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: .5rem !important;
+    width: 100% !important;
+  }
+  .submission-card .action-buttons .btn,
+  .submission-card .btn-group-actions .btn {
+    width: 100% !important;
+  }
+}
+
+/* ── Site visit form ── */
+@media (max-width: 768px) {
+  .site-form-container,
+  .site-visit-container {
+    padding: .875rem !important;
+    margin: .75rem !important;
+  }
+}
+
+/* ── Register page ── */
+@media (max-width: 768px) {
+  .register-container {
+    padding: 1.5rem 1.25rem !important;
+    margin: 1rem !important;
+    border-radius: 16px !important;
+  }
+  .register-container .row .col-md-6 {
+    flex: 0 0 100% !important;
+    max-width: 100% !important;
+  }
+}
+
+/* ── Access denied / offline / about ── */
+@media (max-width: 768px) {
+  .access-denied-container,
+  .offline-container,
+  .error-container {
+    padding: 2rem 1.25rem !important;
+    margin: 1rem !important;
+    text-align: center !important;
+  }
+  .access-denied-container .btn,
+  .offline-container .btn {
+    width: 100% !important;
+    margin-bottom: .75rem !important;
+  }
+}
+
+/* ── Device management ── */
+@media (max-width: 768px) {
+  .device-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .device-card {
+    padding: 1rem !important;
+  }
+}
+
+/* ── Personal progress ── */
+@media (max-width: 768px) {
+  .progress-grid,
+  .personal-progress-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+  }
+}
+
+/* ── HR forms: pending review / my requests / approved forms ── */
+@media (max-width: 768px) {
+  .hr-requests-container,
+  .hr-approved-container,
+  .hr-pending-container {
+    padding: 0 .875rem 2rem !important;
+  }
+  .hr-list-item {
+    padding: 1rem !important;
+    flex-direction: column !important;
+    gap: .75rem !important;
+    align-items: flex-start !important;
+  }
+  .hr-list-item .item-actions {
+    width: 100% !important;
+    flex-direction: column !important;
+    gap: .5rem !important;
+  }
+  .hr-list-item .item-actions .btn {
+    width: 100% !important;
+  }
+}
+
+/* ── General responsive utilities ── */
+@media (max-width: 768px) {
+  /* Spacing helpers */
+  .mb-mobile-0 { margin-bottom: 0 !important; }
+  .mt-mobile-1 { margin-top: .875rem !important; }
+  .p-mobile-1  { padding: .875rem !important; }
+
+  /* Text sizing */
+  .text-mobile-sm { font-size: .85rem !important; }
+  .text-mobile-base { font-size: 1rem !important; }
+
+  /* Hide on mobile */
+  .d-mobile-none { display: none !important; }
+  /* Show on mobile */
+  .d-mobile-block { display: block !important; }
+  .d-mobile-flex  { display: flex !important; }
+}
+
+/* ═══════════════════════════════════════════════
+   MOBILE UI POLISH — Better visual experience
+   ═══════════════════════════════════════════════ */
+
+/* ── Procurement: KPI tiles – fix padding/gap on mobile ── */
+@media (max-width: 768px) {
+  /* proc-kpi-strip inline CSS has padding:0 2.5rem, gap:1.5rem, margin:-2.75rem — all too aggressive */
+  .proc-kpi-strip {
+    grid-template-columns: repeat(2, 1fr) !important;
+    padding: 0 1rem !important;
+    gap: .625rem !important;
+    margin-top: 0 !important;     /* remove negative margin that causes hero clipping */
+    max-width: 100% !important;
+  }
+  header.hero.proc-hero {
+    padding-bottom: 1.5rem !important;   /* tighter hero on mobile */
+  }
+  .kpi-pill {
+    padding: .875rem 1rem !important;
+    gap: .75rem !important;
+    border-radius: 12px !important;
+  }
+  .kpi-pill-icon {
+    width: 38px !important;
+    height: 38px !important;
+    border-radius: 10px !important;
+    flex-shrink: 0 !important;
+  }
+  .kpi-pill-val { font-size: 1.35rem !important; }
+  .kpi-pill-lbl { font-size: .65rem !important; }
+
+  /* Generic kpi-strip fallback */
+  .kpi-strip {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: .75rem !important;
+    overflow-x: visible !important;
+  }
+  .kpi-tile {
+    min-width: 0 !important;
+    flex: none !important;
+    width: 100% !important;
+    padding: .875rem 1rem !important;
+  }
+  .kpi-tile .kpi-value { font-size: 1.5rem !important; }
+  .kpi-tile .kpi-label { font-size: .72rem !important; }
+
+  /* Procurement dept-grid: 2 columns on tablet */
+  .dept-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: .75rem !important;
+  }
+
+  /* Better back-button touch target */
+  .back-btn {
+    min-height: 40px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+  }
+
+  /* Inspection form: better section card spacing */
+  body.inspection-form .card {
+    border-radius: 12px !important;
+    margin-bottom: 1rem !important;
+  }
+
+  /* HR dashboard cards: full-width tap target */
+  .hr-module-card,
+  .workflow-card {
+    min-height: 64px !important;
+  }
+
+  /* Wider touch targets on all nav icon buttons */
+  .notification-btn,
+  .todo-nav-btn {
+    min-width: 40px !important;
+    min-height: 40px !important;
+  }
+
+  /* Section heading bar on inspection forms */
+  body.inspection-form .section-header,
+  body.inspection-form .card-header {
+    padding: .875rem 1rem !important;
+    font-size: .8rem !important;
+  }
+
+  /* Better form label sizing on all forms */
+  .form-label,
+  label.form-label {
+    font-size: .85rem !important;
+    font-weight: 600 !important;
+    margin-bottom: .3rem !important;
+  }
+
+  /* Input group icon buttons */
+  .input-group-text {
+    padding: .5rem .75rem !important;
+  }
+}
+
+/* ── Small phone (≤480px) ── */
+@media (max-width: 480px) {
+  /* KPI tiles: full-width stack on very small screens */
+  .kpi-strip {
+    grid-template-columns: 1fr 1fr !important;
+    gap: .5rem !important;
+  }
+  .kpi-tile { padding: .75rem .875rem !important; }
+  .kpi-tile .kpi-value { font-size: 1.3rem !important; }
+
+  /* Procurement dept-grid: single column */
+  .dept-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Better modal sizing */
+  .modal-dialog {
+    margin: .5rem !important;
+  }
+  .modal-content {
+    border-radius: 12px !important;
+  }
+
+  /* Inspection form: tighter form section padding */
+  body.inspection-form .card-body {
+    padding: .875rem !important;
+  }
+
+  /* Table on small screens: horizontal scroll with snap */
+  .table-responsive {
+    -webkit-overflow-scrolling: touch !important;
+    scroll-snap-type: x mandatory !important;
+  }
+
+  /* Float buttons: keep above keyboard */
+  .fab, .float-btn {
+    bottom: max(1.25rem, env(safe-area-inset-bottom, 1.25rem)) !important;
+    right: 1rem !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   GLOBAL MOBILE PATTERNS (all pages, ≤768px)
+   ═══════════════════════════════════════════════ */
+@media (max-width: 768px) {
+
+  /* ── All data tables: horizontal scroll ── */
+  table:not(.no-scroll) {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+  }
+  table:not(.no-scroll) thead,
+  table:not(.no-scroll) tbody,
+  table:not(.no-scroll) tr {
+    display: table;
+    width: 100%;
+    table-layout: auto;
+  }
+
+  /* ── Page-level headers (h1 size) ── */
+  .page-header h1,
+  .page-title,
+  h1.page-title {
+    font-size: clamp(1.4rem, 6vw, 1.85rem) !important;
+  }
+
+  /* ── Wide banner/hero sections on sub-pages ── */
+  .page-banner {
+    padding: 1.25rem 1rem !important;
+    flex-direction: column !important;
+    gap: 0.75rem !important;
+  }
+  .page-banner .banner-right {
+    width: 100% !important;
+    justify-content: flex-start !important;
+  }
+
+  /* ── Stat cards: 2-col grid ── */
+  .stats-grid,
+  .stat-grid,
+  .kpi-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.75rem !important;
+  }
+
+  /* ── Action buttons row: wrap ── */
+  .actions-row,
+  .btn-row,
+  .button-group {
+    flex-wrap: wrap !important;
+    gap: 0.5rem !important;
+  }
+  .actions-row .btn,
+  .btn-row .btn {
+    flex: 1 1 auto !important;
+    min-width: 120px !important;
+    justify-content: center !important;
+  }
+
+  /* ── DocHub toolbar ── */
+  .dh-toolbar,
+  .toolbar-strip {
+    flex-wrap: wrap !important;
+    gap: 0.5rem !important;
+    padding: 0.625rem 0.875rem !important;
+  }
+
+  /* ── Admin pages with sidebar: padding fix ── */
+  body.has-main-nav.admin-dh-page {
+    padding-top: 4rem !important;
+  }
+
+  /* ── Submission / review cards ── */
+  .submission-card,
+  .review-card,
+  .form-card {
+    padding: 1rem !important;
+    border-radius: 10px !important;
+  }
+
+  /* ── Modal: full-width on small screens ── */
+  .modal-dialog {
+    margin: 0.75rem !important;
+    max-width: calc(100% - 1.5rem) !important;
+  }
+
+  /* ── Pagination: center and compact ── */
+  .pagination,
+  .pag-bar {
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    gap: 0.25rem !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   PHONE-ONLY PATTERNS (≤600px)
+   ═══════════════════════════════════════════════ */
+@media (max-width: 600px) {
+
+  /* ── HR dashboard content area (align with hr_dashboard inline 768 rules) ── */
+  .hr-dashboard-content {
+    padding-top: max(3.95rem, calc(56px + env(safe-area-inset-top, 0px) + 0.75rem)) !important;
+  }
+
+  /* ── Stat cards: compact values ── */
+  .stat-card .stat-value { font-size: 2rem !important; }
+  .stat-card h3 { font-size: 0.78rem !important; }
+
+  /* ── Filter / select dropdowns: full width ── */
+  .filter-section,
+  .filter-bar {
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+  }
+  .filter-section select,
+  .filter-bar select,
+  .filter-bar input {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  /* ── Pending reviews item cards ── */
+  .review-item,
+  .pending-card {
+    padding: 0.875rem !important;
+    border-radius: 10px !important;
+  }
+  .review-item h3,
+  .pending-card h3 {
+    font-size: 0.95rem !important;
+  }
+
+  /* ── Workflow status badges: wrap ── */
+  .badge-row,
+  .status-badges {
+    flex-wrap: wrap !important;
+    gap: 0.375rem !important;
+  }
+}

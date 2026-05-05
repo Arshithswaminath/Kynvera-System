@@ -2,7 +2,8 @@ import os
 import time
 import io
 import logging
-from datetime import datetime
+
+from common.datetime_utils import utc_now_naive
 
 import requests
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle
@@ -80,7 +81,7 @@ def generate_visit_pdf(visit_info, items, generated_dir, report_id=None):
         story.append(Spacer(1, 6))
 
         meta_lines = []
-        meta_lines.append(("Date:", datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")))
+        meta_lines.append(("Date:", utc_now_naive().strftime("%Y-%m-%d %H:%M UTC")))
         if visit_info.get('email'):
             meta_lines.append(("Technician:", visit_info.get('email')))
         if visit_info.get('building_address'):

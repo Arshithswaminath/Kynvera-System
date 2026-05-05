@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+    <!-- CSP: Replace https://*.onrender.com with your actual deployment URL if you need to
+         restrict connect-src further. The wildcard covers all Render subdomain deployments. -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: gap: https://ssl.gstatic.com 'unsafe-eval' 'unsafe-inline' https://*.onrender.com https://*.cloudinary.com https://cdn.jsdelivr.net https://fonts.googleapis.com https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: https: http:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; connect-src 'self' https://*.onrender.com https://*.cloudinary.com wss: ws:;">
+    <title>Injaaz Application - All Operations. One Platform.</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#125435">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Injaaz Application">
+    <meta name="mobile-web-app-capable" content="yes">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json">
+    
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" sizes="192x192" href="/static/icons/icon-192x192.png">
+    <link rel="apple-touch-icon" sizes="512x512" href="/static/icons/icon-512x512.png">
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Mobile Responsive CSS -->
+    <link rel="stylesheet" href="/static/mobile_responsive.css">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+            background: #f5f5f5;
+            color: #1a1a1a;
+            overflow-x: hidden;
+        }
+        
+        .loading-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #125435 0%, #1a7a4d 100%);
+            color: white;
+        }
+        
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .loading-text {
+            font-size: 1.2rem;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="loading-container" id="loadingScreen">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Loading Injaaz Application...</div>
+    </div>
+    
+    <div id="app-container" style="display: none;">
+        <!-- App content will be loaded here -->
+    </div>
+    
+    <script>
+        // Capacitor imports
+        import { Capacitor } from '@capacitor/core';
+        import { App } from '@capacitor/app';
+        import { StatusBar, Style } from '@capacitor/status-bar';
+        
+        // Initialize Capacitor
+        const platform = Capacitor.getPlatform();
+        console.log('Running on platform:', platform);
+        
+        // Set status bar style
+        if (platform === 'android' || platform === 'ios') {
+            StatusBar.setStyle({ style: Style.Dark });
+            StatusBar.setBackgroundColor({ color: '#125435' });
+        }
+        
+        // Handle app state changes
+        App.addListener('appStateChange', ({ isActive }) => {
+            console.log('App state changed. Is active?', isActive);
+        });
+        
+        // Handle back button (Android)
+        App.addListener('backButton', ({ canGoBack }) => {
+            if (!canGoBack) {
+                App.exitApp();
+            } else {
+                window.history.back();
+            }
+        });
+        
+        // Load the Flask app
+        async function loadApp() {
+            try {
+                // Get the base URL - use your Render URL in production
+                const baseUrl = window.location.origin;
+                
+                // Fetch the dashboard page
+                const response = await fetch(`${baseUrl}/dashboard`, {
+                    credentials: 'include',
+                    headers: {
+                        'Accept': 'text/html'
+                    }
+                });
+                
+                if (response.ok) {
+                    const html = await response.text();
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    
+                    // Extract body content
+                    const bodyContent = doc.body.innerHTML;
+                    document.getElementById('app-container').innerHTML = bodyContent;
+                    
+                    // Hide loading screen
+                    document.getElementById('loadingScreen').style.display = 'none';
+                    document.getElementById('app-container').style.display = 'block';
+                    
+                    // Execute any scripts from the loaded content
+                    const scripts = doc.querySelectorAll('script');
+                    scripts.forEach(oldScript => {
+                        const newScript = document.createElement('script');
+                        if (oldScript.src) {
+                            newScript.src = oldScript.src;
+                        } else {
+                            newScript.textContent = oldScript.textContent;
+                        }
+                        document.body.appendChild(newScript);
+                    });
+                } else {
+                    throw new Error('Failed to load app');
+                }
+            } catch (error) {
+                console.error('Error loading app:', error);
+                document.getElementById('loadingScreen').innerHTML = `
+                    <div style="text-align: center; padding: 2rem;">
+                        <h2>Connection Error</h2>
+                        <p>Unable to connect to the server.</p>
+                        <p style="font-size: 0.9rem; margin-top: 1rem; opacity: 0.8;">${error.message}</p>
+                        <button onclick="location.reload()" style="margin-top: 1rem; padding: 0.75rem 1.5rem; background: white; color: #125435; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                            Retry
+                        </button>
+                    </div>
+                `;
+            }
+        }
+        
+        // Load app when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', loadApp);
+        } else {
+            loadApp();
+        }
+    </script>
+    
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+

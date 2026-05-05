@@ -1,0 +1,755 @@
+/* HR Forms — INJAAZ document layout (print + legacy interactive)
+   Typography: San Francisco on Apple (-apple-system / SF Pro*) per HIG */
+:root {
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", ui-sans-serif, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-mono-ui: ui-monospace, "SF Mono", "Cascadia Mono", "DejaVu Sans Mono", Menlo, monospace;
+  --ios-grouped-bg: #f2f2f7;
+  --ios-separator: rgba(60, 60, 67, 0.18);
+  --ios-secondary-label: rgba(60, 60, 67, 0.6);
+  --primary: #125435;
+  --primary-dark: #0d3d24;
+  --primary-light: #1a7a4d;
+  --primary-glow: rgba(18, 84, 53, 0.28);
+  --accent: #0d9488;
+  --surface: #ffffff;
+  --surface-elevated: #ffffff;
+  --surface-muted: #f4f8f6;
+  --border: #dde8e2;
+  --border-light: #e8f0ec;
+  --text: #0d1f14;
+  --text-secondary: #2d4a38;
+  --text-muted: #7a9489;
+  --hr-warm-bg: #fffbeb;
+  --hr-warm-bd: #fde68a;
+  --hr-warm-text: #92400e;
+  --radius: 16px;
+  --radius-lg: 20px;
+  --radius-sm: 10px;
+  --radius-full: 9999px;
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.06);
+  --shadow-lg: 0 8px 24px rgba(15, 23, 42, 0.06);
+  --shadow-glow: none;
+  --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* HR templates that load only this sheet still get SF / system UI */
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body.hr-form-page {
+  min-height: 100vh;
+  margin: 0;
+  color: var(--text);
+  background: var(--ios-grouped-bg);
+}
+
+.hr-form-wrapper {
+  width: 100%;
+  padding: 1.5rem 2rem;
+}
+
+.hr-form-wrapper .container-fluid {
+  max-width: 100%;
+  padding: 0 1.5rem;
+}
+
+.doc-form {
+  max-width: 960px;
+  margin: 0 auto;
+  background: var(--surface);
+  padding: 0;
+  border-radius: 14px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 4px 12px rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  overflow-x: auto;
+  animation: formFadeIn 0.35s ease-out;
+}
+
+.doc-form--sheet {
+  max-width: 920px;
+}
+
+@keyframes formFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Header — flat brand bar */
+.doc-header {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-auto-rows: auto;
+  gap: 0.5rem 2rem;
+  align-items: center;
+  text-align: left;
+  padding: 1.75rem 2.25rem;
+  background: #125435;
+  overflow: hidden;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.doc-header::before {
+  display: none;
+}
+
+.doc-header-left {
+  grid-column: 1;
+  grid-row: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.doc-header .doc-logo {
+  position: relative;
+  grid-column: 2;
+  grid-row: 1 / -1;
+  align-self: center;
+  justify-self: end;
+  height: 56px;
+  width: auto;
+  max-width: 56px;
+  margin: 0;
+  object-fit: contain;
+  filter: brightness(0) invert(1);
+  opacity: 0.95;
+}
+
+.doc-header .doc-title {
+  position: relative;
+  font-size: clamp(1.25rem, 2.8vw, 1.625rem);
+  font-weight: 700;
+  font-family: var(--font-sans);
+  color: #fff;
+  margin: 0;
+  letter-spacing: -0.03em;
+  line-height: 1.25;
+}
+
+.doc-header .doc-company {
+  font-size: 0.6875rem;
+  color: rgba(255, 255, 255, 0.82);
+  margin: 0;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.doc-company {
+  position: relative;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.9);
+  margin: 0.5rem 0 0;
+  font-weight: 500;
+}
+
+.doc-intro {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin: 0.5rem 0;
+}
+
+/* Intro text on dark header - high contrast */
+.doc-header .doc-intro {
+  grid-column: 1;
+  color: rgba(255, 255, 255, 0.95);
+  max-width: 560px;
+  margin: 0.5rem 0 0;
+  font-weight: 500;
+}
+
+.doc-header .doc-company {
+  grid-column: 1;
+  margin: 0.25rem 0 0;
+}
+
+/* Form content area */
+.doc-form form {
+  padding: 1.5rem 2.5rem;
+}
+
+.doc-form-body-premium,
+.doc-form-content {
+  padding: 1.25rem 1.25rem 1.5rem;
+  background: var(--ios-grouped-bg);
+}
+@media (min-width: 640px) {
+  .doc-form-body-premium,
+  .doc-form-content {
+    padding: 1.5rem 1.75rem 1.75rem;
+  }
+}
+
+.doc-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.doc-form-grid--leave {
+  gap: 1.5rem;
+  margin-bottom: 0;
+}
+
+.doc-form-grid.form-single {
+  grid-template-columns: 1fr;
+}
+
+.doc-panel {
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 12px;
+  padding: 1rem 1.1rem 1.15rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.doc-panel .doc-section-title {
+  margin-bottom: 1rem;
+}
+
+.doc-panel--hr {
+  background: #fffef9;
+  border-color: rgba(212, 180, 100, 0.35);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.doc-submission-ref {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+  margin: 0 0 1.25rem;
+  padding: 0 0 0.75rem;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #e5e8e7;
+  border-radius: 0;
+  display: block;
+  font-family: var(--font-mono-ui);
+}
+
+.doc-sig-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 72px;
+  min-width: 168px;
+  max-width: 100%;
+  padding: 0.5rem 0.75rem;
+  background: #fafbfb;
+  border: 1px dashed #cfd6d3;
+  border-radius: 8px;
+}
+
+.doc-sig-img {
+  display: block;
+  max-width: 240px;
+  max-height: 96px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+.doc-form-col {
+  min-width: 0;
+  overflow-wrap: break-word;
+  overflow-x: hidden;
+}
+.doc-form-col table {
+  width: 100%;
+}
+.doc-form-col .hr-only {
+  overflow: visible;
+}
+.doc-form-col .hr-only p {
+  margin-bottom: 0.5rem;
+}
+.doc-form-col .hr-only p:last-child {
+  margin-bottom: 0;
+}
+
+/* Section titles — iOS "footnote" header above a grouped block */
+.doc-section-title {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--ios-secondary-label);
+  margin: 0 0 0.5rem;
+  padding: 0 0.35rem;
+  background: none;
+  border: none;
+  border-radius: 0;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.doc-section-title::before {
+  display: none;
+}
+
+.doc-section-title--hr {
+  color: rgba(142, 80, 15, 0.85);
+}
+
+.doc-section-title--hr::before {
+  display: none;
+}
+
+/* Key–value tables — airy rows */
+.doc-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 1rem;
+  line-height: 1.45;
+  margin: 0;
+  background: #fff;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--ios-separator);
+}
+
+.doc-table td {
+  padding: 0.75rem 1rem;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--ios-separator);
+  transition: background var(--transition);
+}
+
+.doc-table tr:last-child td {
+  border-bottom: none;
+}
+
+.doc-table tr:hover td {
+  background: rgba(142, 142, 147, 0.06);
+}
+
+.doc-table .label {
+  font-weight: 500;
+  color: rgba(60, 60, 67, 0.85);
+  background: #fff;
+  width: 40%;
+  min-width: 128px;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  font-size: 0.875rem;
+}
+
+.doc-table input,
+.doc-table select,
+.doc-table textarea {
+  width: 100%;
+  border: 1px solid #e5e5ea;
+  padding: 0.65rem 0.9rem;
+  font-size: 1rem;
+  font-family: var(--font-sans);
+  border-radius: 10px;
+  background: white;
+  transition: all var(--transition);
+  min-height: 44px;
+}
+.doc-table textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.doc-table input:focus,
+.doc-table select:focus,
+.doc-table textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(18, 84, 53, 0.18);
+}
+
+.doc-table input::placeholder,
+.doc-table textarea::placeholder {
+  color: var(--text-muted);
+}
+
+/* Ensure helper/note text has sufficient contrast */
+.doc-form .text-muted {
+  color: var(--text-secondary) !important;
+}
+.doc-form .small {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+.doc-note {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  margin: 0;
+}
+.radio-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0 0.5rem 0 0;
+  cursor: pointer;
+}
+.doc-table-pairs .label { width: 18%; min-width: 100px; }
+.doc-table-pairs td:has(input):not(.label),
+.doc-table-pairs td:has(select):not(.label) {
+  width: 32%;
+  min-width: 0;
+}
+
+.doc-section {
+  font-weight: 600;
+  background: #f4f6f5;
+  color: #1a2e24;
+  padding: 0.65rem 1rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-bottom: 1px solid #e5e8e7;
+}
+
+/* Footer */
+.doc-footer {
+  margin: 1.75rem 0 0;
+  padding: 1rem 1.25rem;
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid var(--ios-separator);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--ios-secondary-label);
+  display: flex;
+  gap: 1.25rem 1.75rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  font-weight: 500;
+}
+
+.doc-footer span {
+  color: var(--text-secondary);
+}
+
+/* Signature pad - expanded for comfortable signing */
+.signature-pad {
+  border: 2px dashed var(--border);
+  border-radius: var(--radius-sm);
+  background: white;
+  touch-action: none;
+  min-width: 280px;
+  width: 100%;
+  max-width: 100%;
+  min-height: 120px;
+  box-sizing: border-box;
+  transition: all var(--transition);
+}
+
+.signature-pad:hover,
+.signature-pad:focus {
+  border-color: var(--primary);
+  background: rgba(20, 184, 166, 0.02);
+}
+
+/* Signature block - compact aligned layout */
+.signature-block {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+  width: 100%;
+}
+.signature-block .sig-canvas-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+  min-width: 0;
+  flex: 1;
+  width: 100%;
+  max-width: 100%;
+}
+.signature-block .sig-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+}
+.signature-block .sig-date-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+.signature-block .sig-date-wrap .sig-label {
+  white-space: nowrap;
+}
+.signature-block .sig-date-wrap input {
+  width: 140px;
+  padding: 0.5rem 0.65rem;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+}
+.form-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 0.35rem;
+}
+
+/* Clear signature button - consistent modern style */
+.btn-clear-signature {
+  padding: 0.4rem 0.9rem !important;
+  font-size: 0.8rem !important;
+  font-weight: 600 !important;
+  color: var(--primary-dark) !important;
+  background: rgba(20, 184, 166, 0.08) !important;
+  border: 1.5px solid var(--primary) !important;
+  border-radius: var(--radius-sm) !important;
+  transition: all var(--transition) !important;
+}
+.btn-clear-signature:hover {
+  background: rgba(20, 184, 166, 0.15) !important;
+  color: var(--primary-dark) !important;
+  border-color: var(--primary-dark) !important;
+}
+
+/* Back link - pill button style */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  margin-bottom: 1.25rem;
+  color: var(--primary-dark);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.9rem;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition);
+}
+
+.back-link:hover {
+  background: white;
+  color: var(--primary);
+  border-color: var(--primary);
+  box-shadow: var(--shadow);
+}
+
+/* HR-only and GM-only sections (approval workflow fields) */
+.hr-only,
+.gm-only {
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+  color: #92400e;
+  font-size: 0.85rem;
+  padding: 1rem 1.25rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid #fde68a;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+}
+.hr-only p,
+.gm-only p {
+  margin-bottom: 0.5rem;
+  line-height: 1.5;
+}
+.hr-only .form-control, .hr-only textarea,
+.gm-only .form-control, .gm-only textarea {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.hr-only label:not(:has(input[type="radio"])),
+.gm-only label:not(:has(input[type="radio"])) { display: block; margin-bottom: 0.25rem; }
+.hr-only .text-break,
+.gm-only .text-break { word-wrap: break-word; overflow-wrap: break-word; }
+
+/* Submit — flat primary */
+.hr-form-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.75rem !important;
+  min-height: 48px;
+  font-family: var(--font-sans) !important;
+  font-weight: 600 !important;
+  font-size: 1rem !important;
+  color: white !important;
+  background: var(--primary) !important;
+  border: none !important;
+  border-radius: 12px !important;
+  box-shadow: var(--shadow-sm) !important;
+  cursor: pointer;
+  transition: background var(--transition), box-shadow var(--transition) !important;
+}
+
+.hr-form-submit:hover {
+  transform: none !important;
+  background: var(--primary-dark) !important;
+  box-shadow: 0 2px 8px rgba(18, 84, 53, 0.2) !important;
+  color: white !important;
+}
+
+.hr-form-submit:active {
+  transform: none !important;
+}
+
+/* Leave options - modern chip grid */
+.leave-options {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem 1rem;
+  font-size: 0.85rem;
+}
+
+.leave-options label {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0.5rem 0.85rem;
+  border-radius: var(--radius-sm);
+  background: white;
+  border: 1.5px solid var(--border);
+  cursor: pointer;
+  transition: all var(--transition);
+  white-space: nowrap;
+}
+
+.leave-options label:hover {
+  border-color: var(--primary);
+  background: rgba(20, 184, 166, 0.04);
+}
+
+.leave-options input[type="radio"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--primary);
+}
+
+.leave-options label:has(input:checked) {
+  border-color: var(--primary);
+  background: rgba(20, 184, 166, 0.08);
+  font-weight: 600;
+}
+
+/* Success overlay - glass morphism */
+.success-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.success-overlay.show {
+  opacity: 1;
+  visibility: visible;
+}
+
+.success-modal {
+  background: white !important;
+  border-radius: var(--radius-lg) !important;
+  padding: 2.5rem !important;
+  text-align: center;
+  max-width: 420px;
+  width: 90%;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05) !important;
+  transform: scale(0.95);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.success-overlay.show .success-modal {
+  transform: scale(1);
+}
+
+/* Letter-style inline fields (Visa etc) */
+.doc-letter .form-control,
+.doc-letter .fill-in {
+  display: inline-block;
+  min-width: 60px;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.9rem;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  vertical-align: baseline;
+  transition: all var(--transition);
+}
+.doc-letter .form-control:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(18, 84, 53, 0.15);
+}
+.doc-letter p {
+  margin: 0.5rem 0;
+  line-height: 1.7;
+}
+.doc-letter .fill-label {
+  display: inline;
+}
+
+/* Responsive */
+@media (max-width: 992px) {
+  .doc-form-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  .leave-options {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .hr-form-wrapper {
+    padding: 1rem;
+  }
+  .doc-form form,
+  .doc-footer {
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
+  }
+  .doc-form-body-premium,
+  .doc-form-content {
+    padding: 1.35rem 1.15rem;
+  }
+  .doc-panel {
+    padding: 1.1rem 1.15rem;
+  }
+  .doc-title {
+    font-size: 1.4rem;
+  }
+  .doc-header {
+    padding: 1.5rem 1.5rem;
+    grid-template-columns: 1fr;
+  }
+  .doc-header .doc-logo {
+    grid-column: 1;
+    grid-row: auto;
+    justify-self: start;
+    margin-top: 1rem;
+  }
+  .signature-pad {
+    min-width: 100%;
+  }
+  .signature-block .sig-canvas-wrap {
+    min-width: 100%;
+  }
+}

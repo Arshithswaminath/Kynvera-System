@@ -14,7 +14,7 @@ from app.tasks import enqueue_report_job
 bp = Blueprint("forms", __name__, template_folder="../templates", static_folder="../static", url_prefix="/forms")
 
 ALLOWED_EXT = {"png", "jpg", "jpeg", "gif"}
-MAX_FILE_SIZE = 15 * 1024 * 1024  # 15 MB
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB (standardized across all modules)
 
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXT

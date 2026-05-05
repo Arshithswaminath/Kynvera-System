@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+  
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+<title>Employee Contract Renewal Assessment — INJAAZ</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-forms-unified.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+  <style>
+    .eval-param-list{display:flex;flex-direction:column;gap:1.25rem}
+    .eval-param{background:rgba(248,252,249,.6);border:1px solid rgba(194,222,206,.5);border-radius:var(--r);padding:1rem 1.25rem}
+    .eval-param-hd{font-size:.95rem;color:var(--pri-d);margin-bottom:.75rem}
+    .eval-row{display:flex;align-items:center;gap:1rem;margin-bottom:.5rem}
+    .eval-row .eval-label{flex:1;font-size:.85rem;color:var(--ink2)}
+    .eval-row .eval-rating{width:80px;flex-shrink:0}
+  </style>
+  <style>.hr-form-unified .page { padding-top: 5.5rem; }</style>
+</head>
+<body class="hr-form-unified">
+  {% set active_page = 'hr' %}
+  {% include 'partials/main_navbar.html' with context %}
+
+  <div class="success-bg" id="successModal">
+    <div class="success-box">
+      <button type="button" class="success-back-btn" onclick="closeSuccessBackToForm()" title="Back to form">
+        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+      </button>
+      <div class="success-icon"><svg width="30" height="30" fill="none" stroke="#fff" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg></div>
+      <h2>Form Submitted!</h2>
+      <p>Contract renewal assessment sent to HR.</p>
+      <div class="sub-id" id="submissionId"></div>
+      <button class="btn-submit" style="width:100%;justify-content:center" onclick="window.location.href='/hr/my-requests'">View My Requests</button>
+    </div>
+  </div>
+
+  <div class="sig-modal-bg" id="sigBg">
+    <div class="sig-modal">
+      <div class="sig-modal-hd"><h3 id="sigTitle">Signature</h3><button class="sig-modal-x" onclick="closeSig()">&times;</button></div>
+      <div class="sig-modal-body">
+        <p class="sig-modal-hint">Draw your signature using your mouse or finger.</p>
+        <div class="sig-canvas-box"><canvas id="sigCanvas" height="180"></canvas><span class="sig-canvas-guide">Sign here</span></div>
+        <div class="sig-modal-ft"><button class="btn-m-clear" onclick="clearModalPad()">Clear</button><button class="btn-m-apply" onclick="applySig()">Apply Signature</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page">
+    <div class="page-inner">
+      <a href="/hr/" class="back-btn">
+        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        Back to HR
+      </a>
+
+      <div class="step-bar">
+        <div class="step-item active" id="step1Badge" onclick="goToStep1()" role="button" tabindex="0"><span class="num">1</span><span>Evaluation</span></div>
+        <div class="step-connector" id="connector1"></div>
+        <div class="step-item locked" id="step2Badge" onclick="goToStep2()" role="button" tabindex="0"><span class="num">2</span><span>Signature</span></div>
+      </div>
+
+      <div class="card">
+        <div class="hd">
+          <div class="hd-left">
+            <h1>Employee Contract Renewal Assessment</h1>
+            <p class="hd-sub">INJAAZ FACILITY MANAGEMENT</p>
+          </div>
+          <img src="{{ url_for('static', filename='logo.png') }}" alt="INJAAZ" class="hd-logo">
+        </div>
+
+        <form id="hrForm" novalidate>
+          <div class="form-body">
+
+            <div class="step-panel active" id="step1Panel">
+              <div class="step-hint">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span><strong>Step 1 of 2</strong> — Complete employee and evaluation details, then continue to signature.</span>
+              </div>
+              <section class="sec">
+                <h2 class="sec-hd">Employee Information</h2>
+                <div class="grid-2">
+                  <div class="fld"><label class="fld-lbl">Employee Name <span class="req">*</span></label><input class="fld-inp" type="text" name="employee_name" required></div>
+                  <div class="fld"><label class="fld-lbl">Date Of Evaluation <span class="req">*</span></label><input class="fld-inp" type="date" name="date_of_evaluation" required></div>
+                  <div class="fld"><label class="fld-lbl">Employee Id <span class="req">*</span></label><input class="fld-inp" type="text" name="employee_id" required></div>
+                  <div class="fld"><label class="fld-lbl">Date Of Joining <span class="req">*</span></label><input class="fld-inp" type="date" name="date_of_joining" required></div>
+                  <div class="fld"><label class="fld-lbl">Department/Section <span class="req">*</span></label><input class="fld-inp" type="text" name="department" required></div>
+                  <div class="fld"><label class="fld-lbl">Contract End Date <span class="req">*</span></label><input class="fld-inp" type="date" name="contract_end_date" required></div>
+                  <div class="fld"><label class="fld-lbl">Evaluation By <span class="req">*</span></label><input class="fld-inp" type="text" name="evaluation_by" required></div>
+                  <div class="fld"><label class="fld-lbl">Designation <span class="req">*</span></label><input class="fld-inp" type="text" name="designation" required></div>
+                </div>
+              </section>
+              <section class="sec">
+                <h2 class="sec-hd">Score and Performance Rating</h2>
+                <p style="font-size:.85rem;margin-bottom:1rem;">Outstanding 5 | Excellent 4 | Good 3 | Fair 2 | Poor 1 — 3 & above: Renew | 2 to 3: Renew/extend | Below 2: Terminate</p>
+                <div class="eval-param-list">
+                  <div class="eval-param">
+                    <div class="eval-param-hd"><strong>SN 01: Job Performance</strong></div>
+                    <div class="eval-row"><span class="eval-label">A. Completes assigned tasks efficiently and accurately</span><input class="fld-inp eval-rating" type="number" name="rating_01a" min="1" max="5" step="0.5" placeholder="1-5"></div>
+                    <div class="eval-row"><span class="eval-label">B. Demonstrates a strong understanding of job responsibilities</span><input class="fld-inp eval-rating" type="number" name="rating_01b" min="1" max="5" step="0.5" placeholder="1-5"></div>
+                    <div class="eval-row"><span class="eval-label">C. Meets deadlines consistently</span><input class="fld-inp eval-rating" type="number" name="rating_01c" min="1" max="5" step="0.5" placeholder="1-5"></div>
+                    <div class="eval-row"><span class="eval-label">D. Produces work of high quality</span><input class="fld-inp eval-rating" type="number" name="rating_01d" min="1" max="5" step="0.5" placeholder="1-5"></div>
+                    <div class="eval-row"><span class="eval-label">E. Takes initiative to improve work processes</span><input class="fld-inp eval-rating" type="number" name="rating_01e" min="1" max="5" step="0.5" placeholder="1-5"></div>
+                    <div class="fld" style="margin-top:.5rem"><label class="fld-lbl">Comments</label><textarea class="fld-inp" name="comments_01" rows="2" placeholder="Remarks or notes"></textarea></div>
+                  </div>
+                  <div class="eval-param">
+                    <div class="eval-param-hd"><strong>SN 02: Work Attitude and Behaviour</strong></div>
+                    <div class="eval-row"><span class="eval-label">A. Shows a positive attitude towards work and colleagues</span><input class="fld-inp eval-rating" type="number" name="rating_02a" min="1" max="5" step="0.5" placeholder="1-5"></div>
+                    <div class="eval-row"><span class="eval-label">B. Accepts feedback constructively and strives for improvement</span><input class="fld-inp eval-rating" type="number" name="rating_02b" min="1" max="5" step="0.5" placeholder="1-5"></div>
+                    <div class="eval-row"><span class="eval-label">C. Maintains professionalism in all interactions</span><input class="fld-inp eval-rating" type="number" name="rating_02c" min="1" max="5" step="0.5" placeholder="1-5"></div>
+                    <div class="eval-row"><span class="eval-label">D. Demonstrates adaptability to changing situations or challenges</span><input class="fld-inp eval-rating" type="number" name="rating_02d" min="1" max="5" step="0.5" placeholder="1-5"></div>
+                    <div class="eval-row"><span class="eval-label">E. Upholds company policies and values</span><input class="fld-inp eval-rating" type="number" name="rating_02e" min="1" max="5" step="0.5" placeholder="1-5"></div>
+                    <div class="fld" style="margin-top:.5rem"><label class="fld-lbl">Comments</label><textarea class="fld-inp" name="comments_02" rows="2" placeholder="Remarks or notes"></textarea></div>
+                  </div>
+                  <div class="eval-param">
+                    <div class="eval-param-hd"><strong>SN 03: Communication and Teamwork</strong></div>
+                    <div class="eval-row"><span class="eval-label">A. Communicates clearly and effectively with team members</span><input class="fld-inp eval-rating" type="number" name="rating_03a" min="1" max="5" step="0.5" placeholder="1-5"></div>
+                    <div class="eval-row"><span class="eval-label">B. Works collaboratively and contributes to team goals</span><input class="fld-inp eval-rating" type="number" name="rating_03b" min="1" max="5" step="0.5" placeholder="1-5"></div>
+                    <div class="eval-row"><span class="eval-label">C. Resolves conflicts or issues amicably</span><input class="fld-inp eval-rating" type="number" name="rating_03c" min="1" max="5" step="0.5" placeholder="1-5"></div>
+                    <div class="eval-row"><span class="eval-label">D. Demonstrates good listening skills</span><input class="fld-inp eval-rating" type="number" name="rating_03d" min="1" max="5" step="0.5" placeholder="1-5"></div>
+                    <div class="eval-row"><span class="eval-label">E. Keeps supervisors and colleagues informed of work progress</span><input class="fld-inp eval-rating" type="number" name="rating_03e" min="1" max="5" step="0.5" placeholder="1-5"></div>
+                    <div class="fld" style="margin-top:.5rem"><label class="fld-lbl">Comments</label><textarea class="fld-inp" name="comments_03" rows="2" placeholder="Remarks or notes"></textarea></div>
+                  </div>
+                  <div class="eval-param">
+                    <div class="eval-param-hd"><strong>SN 04: Attendance and Punctuality</strong></div>
+                    <div class="eval-row"><span class="eval-label">A. Arrives on time and prepared for work</span><input class="fld-inp eval-rating" type="number" name="rating_04a" min="1" max="5" step="0.5" placeholder="1-5"></div>
+                    <div class="eval-row"><span class="eval-label">B. Maintains consistent attendance</span><input class="fld-inp eval-rating" type="number" name="rating_04b" min="1" max="5" step="0.5" placeholder="1-5"></div>
+                    <div class="eval-row"><span class="eval-label">C. Provides notice and valid reasons for absences</span><input class="fld-inp eval-rating" type="number" name="rating_04c" min="1" max="5" step="0.5" placeholder="1-5"></div>
+                    <div class="fld" style="margin-top:.5rem"><label class="fld-lbl">Comments</label><textarea class="fld-inp" name="comments_04" rows="2" placeholder="Remarks or notes"></textarea></div>
+                  </div>
+                  <div class="eval-param">
+                    <div class="eval-param-hd"><strong>SN 05: Overall Evaluation</strong></div>
+                    <div class="grid-2" style="margin-top:.5rem">
+                      <div class="fld fw"><label class="fld-lbl">Strength</label><textarea class="fld-inp" name="strength" rows="2" placeholder="Key strengths and achievements"></textarea></div>
+                      <div class="fld fw"><label class="fld-lbl">Areas for Improvement</label><textarea class="fld-inp" name="areas_for_improvement" rows="2" placeholder="Areas requiring development"></textarea></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="grid-2" style="margin-top:1.25rem">
+                  <div class="fld"><label class="fld-lbl">Total Score (sum of all ratings)</label><input class="fld-inp" type="number" name="overall_score" min="0" max="90" step="0.5" placeholder="Auto-calculated" readonly></div>
+                  <div class="fld"><label class="fld-lbl">Evaluator's Recommendation <span class="req">*</span></label><select class="fld-inp" name="recommendation" required><option value="">Select</option><option value="renew">3 & above - Renew Contract</option><option value="renew_extend">2 to 3 - Renew or extend Contract</option><option value="terminate">Below 2 - Terminate Contract</option></select></div>
+                </div>
+              </section>
+              <div class="step-nav">
+                <span></span>
+                <button type="button" class="btn-next" onclick="goToStep2()">Continue to Step 2 <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg></button>
+              </div>
+            </div>
+
+            <div class="step-panel" id="step2Panel">
+              <div class="step-hint">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span><strong>Step 2 of 2</strong> — Add evaluator signature and submit.</span>
+              </div>
+              <section class="sec">
+                <h2 class="sec-hd">Evaluator's Signature</h2>
+                <div class="fld">
+                  <label class="fld-lbl">Evaluator's Signature <span class="req">*</span></label>
+                  <div class="sig-wrap">
+                    <div class="sig-box" id="evalSigPrev"><span class="sig-ph">No signature</span><img id="evalSigImg" src="" style="display:none"></div>
+                    <div class="sig-actions">
+                      <button type="button" class="btn-plus" onclick="openSig('evaluator')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 4v16m8-8H4"/></svg> Sign</button>
+                      <button type="button" class="btn-rm" id="evalSigRm" onclick="rmSig('evaluator')">Remove</button>
+                    </div>
+                    <input type="hidden" name="evaluator_signature" id="evalSigData">
+                  </div>
+                  <div class="fld" style="margin-top:.75rem"><label class="fld-lbl">Date</label><input class="fld-inp" type="date" name="evaluator_date" id="evalSignDate"></div>
+                </div>
+              </section>
+              <div class="step-nav">
+                <button type="button" class="btn-back" onclick="goToStep1()"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12"/></svg> Back to Step 1</button>
+                <span></span>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="doc-ft">
+            <div class="doc-ft-meta"><span>Contract Renewal Assessment</span><span>DATE: <span id="docDate"></span></span></div>
+            P.O Box: 3456 Ajman, UAE · Tel 067116815 · www.injaaz.ae
+          </div>
+
+          <div class="submit-bar" id="submitBar" style="display:none">
+            <button type="button" class="btn-reset" onclick="if(confirm('Reset the form?')){document.getElementById('hrForm').reset();clearAllSigs();goToStep1()}">Reset</button>
+            <button type="submit" class="btn-submit"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> Submit Form</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+<script>
+document.querySelector('[name="date_of_evaluation"]').value = new Date().toISOString().split('T')[0];
+document.getElementById('evalSignDate').value = new Date().toISOString().split('T')[0];
+document.getElementById('docDate').textContent = new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'});
+
+document.querySelectorAll('[name^="rating_"]').forEach(inp=>inp.addEventListener('input',calcOverall));
+function calcOverall(){
+  const ratings=document.querySelectorAll('[name^="rating_"]');
+  let sum=0,count=0;
+  ratings.forEach(r=>{const v=parseFloat(r.value);if(!isNaN(v)){sum+=v;count++}});
+  const overall=document.querySelector('[name="overall_score"]');
+  if(count>0)overall.value=Math.round(sum*10)/10;
+}
+
+function goToStep2(){
+  document.getElementById('step1Panel').classList.remove('active');
+  document.getElementById('step2Panel').classList.add('active');
+  document.getElementById('submitBar').style.display='flex';
+  document.getElementById('step1Badge').className='step-item done';
+  document.getElementById('step1Badge').querySelector('.num').innerHTML='✓';
+  document.getElementById('step2Badge').className='step-item active';
+  document.getElementById('step2Badge').classList.remove('locked');
+  document.getElementById('connector1').classList.add('done');
+  document.getElementById('step2Panel').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function goToStep1(){
+  document.getElementById('step2Panel').classList.remove('active');
+  document.getElementById('step1Panel').classList.add('active');
+  document.getElementById('submitBar').style.display='none';
+  document.getElementById('step1Badge').className='step-item active';
+  document.getElementById('step1Badge').querySelector('.num').textContent='1';
+  document.getElementById('step2Badge').className='step-item locked';
+  document.getElementById('connector1').classList.remove('done');
+  document.getElementById('step1Panel').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function closeSuccessBackToForm(){
+  document.getElementById('successModal').classList.remove('show');
+  goToStep1();
+  const btn=document.querySelector('#hrForm .btn-submit');
+  if(btn){btn.disabled=false;btn.innerHTML='<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> Submit Form'}
+}
+
+let pad=null,target=null;
+const bg=document.getElementById('sigBg'),cv=document.getElementById('sigCanvas');
+const sigCfg={evaluator:{prev:'evalSigPrev',img:'evalSigImg',data:'evalSigData',rm:'evalSigRm',title:'Evaluator Signature'}};
+
+function openSig(t){target=t;const c=sigCfg[t];if(!c)return;document.getElementById('sigTitle').textContent=c.title;bg.classList.add('open');document.body.style.overflow='hidden';requestAnimationFrame(()=>{const r=window.devicePixelRatio||1,w=cv.offsetWidth;cv.width=w*r;cv.height=180*r;cv.getContext('2d').scale(r,r);cv.style.height='180px';if(pad)pad.off();pad=new SignaturePad(cv,{backgroundColor:'rgb(250,250,250)',penColor:'#0d1f14',minWidth:1.2,maxWidth:2.8})})}
+function closeSig(){bg.classList.remove('open');document.body.style.overflow='';target=null}
+function clearModalPad(){if(pad)pad.clear()}
+function applySig(){if(!pad||pad.isEmpty()){alert('Please draw your signature first.');return}const url=pad.toDataURL('image/png'),c=sigCfg[target];if(!c)return;const img=document.getElementById(c.img),ph=document.querySelector('#'+c.prev+' .sig-ph'),inp=document.getElementById(c.data),rm=document.getElementById(c.rm);if(img){img.src=url;img.style.display='block'}if(ph)ph.style.display='none';if(inp)inp.value=url;if(rm)rm.style.display='inline-flex';closeSig()}
+function rmSig(t){const c=sigCfg[t];if(!c)return;const img=document.getElementById(c.img),ph=document.querySelector('#'+c.prev+' .sig-ph'),inp=document.getElementById(c.data),rm=document.getElementById(c.rm);if(img){img.src='';img.style.display='none'}if(ph)ph.style.display='block';if(inp)inp.value='';if(rm)rm.style.display='none'}
+function clearAllSigs(){rmSig('evaluator')}
+bg.addEventListener('click',e=>{if(e.target===bg)closeSig()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&bg.classList.contains('open'))closeSig()});
+
+document.getElementById('hrForm').addEventListener('submit',async e=>{
+  e.preventDefault();
+  const form=e.target;
+  const required=['employee_name','date_of_evaluation','employee_id','date_of_joining','department','contract_end_date','evaluation_by','designation','recommendation','evaluator_signature'];
+  let firstInvalid=null;
+  for(const name of required){
+    const el=form.querySelector('[name="'+name+'"]');
+    if(!el)continue;
+    const v=(el.value||'').toString().trim();
+    if(!v){firstInvalid=el;break;}
+  }
+  if(firstInvalid){
+    goToStep1();
+    firstInvalid.focus();
+    alert('Please complete all required fields in Step 1 before submitting.');
+    return;
+  }
+  const fd=new FormData(form),data=Object.fromEntries(fd.entries());
+  data.form_type='contract_renewal';
+  const btn=form.querySelector('.btn-submit');
+  btn.disabled=true;btn.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="spin"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Submitting…';
+  try{const res=await fetch('/hr/api/submit',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.getItem('access_token')},body:JSON.stringify(data)});const r=await res.json();
+  if(r.success){document.getElementById('submissionId').textContent=r.submission_id;document.getElementById('successModal').classList.add('show')}
+  else{alert('Error: '+(r.error||'Unknown'));btn.disabled=false;btn.innerHTML='<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> Submit Form'}
+  }catch(err){alert('Network error: '+err.message);btn.disabled=false;btn.innerHTML='<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> Submit Form'}
+});
+</script>
+  <script src="{{ url_for('static', filename='api-client.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>

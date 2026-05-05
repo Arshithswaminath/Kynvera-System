@@ -1,0 +1,203 @@
+/* ============================================================
+   INJAAZ HR Forms — shared print stylesheet
+   Usage: weasyprint form.html form.pdf --stylesheet hr-style.css
+          or link via <link rel="stylesheet" href="hr-style.css">
+   ============================================================ */
+
+@page {
+  size: A4;
+  margin: 2cm 2cm 3cm 2cm;   /* extra bottom for footer */
+
+  @bottom-center {
+    content: element(page-footer);
+    font-family: Arial, sans-serif;
+    font-size: 7pt;
+    color: #555;
+    border-top: 0.5pt solid #aaa;
+    padding-top: 4pt;
+  }
+  @bottom-right {
+    content: "Page " counter(page) " of " counter(pages);
+    font-family: Arial, sans-serif;
+    font-size: 7pt;
+    color: #888;
+  }
+}
+
+body {
+  font-family: Arial, Calibri, sans-serif;
+  font-size: 11pt;
+  line-height: 1.35;
+  color: #000;
+  margin: 0;
+}
+
+/* ── Company footer ─────────────────────────────── */
+.page-footer {
+  position: running(page-footer);
+  text-align: center;
+  font-size: 7pt;
+  color: #555;
+}
+
+/* ── Header block ───────────────────────────────── */
+.form-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 1.5pt solid #000;
+  padding-bottom: 8pt;
+  margin-bottom: 12pt;
+}
+.form-header .company-name {
+  font-size: 8pt;
+  color: #555;
+  margin-bottom: 2pt;
+}
+.form-header .form-title {
+  font-size: 15pt;
+  font-weight: bold;
+  color: #000;
+}
+.form-header .logo {
+  width: 56pt;
+}
+
+/* ── Document ref bar (DOC NO / DATE / ISSUE etc.) ─ */
+.doc-ref {
+  font-size: 7.5pt;
+  border: 0.5pt solid #aaa;
+  border-collapse: collapse;
+  width: 100%;
+  margin-bottom: 10pt;
+}
+.doc-ref td {
+  border: 0.5pt solid #aaa;
+  padding: 3pt 6pt;
+  text-align: center;
+}
+
+/* ── Section headings ───────────────────────────── */
+h2 {
+  font-size: 11pt;
+  font-weight: bold;
+  text-transform: uppercase;
+  border-bottom: 0.5pt solid #000;
+  padding-bottom: 2pt;
+  margin: 14pt 0 6pt 0;
+}
+h3 {
+  font-size: 10pt;
+  font-weight: bold;
+  margin: 10pt 0 4pt 0;
+}
+
+/* ── Field tables ───────────────────────────────── */
+table.fields {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 6pt;
+}
+table.fields td {
+  border: 0.5pt solid #aaa;
+  padding: 5pt 8pt;
+  font-size: 10.5pt;
+  vertical-align: middle;
+}
+table.fields td.lbl {
+  font-weight: bold;
+  white-space: nowrap;
+  width: 30%;
+}
+table.fields td.val {
+  border-left: none;
+  min-width: 120pt;
+}
+
+/* ── Rating / evaluation tables ─────────────────── */
+table.rating {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 9.5pt;
+  margin-bottom: 6pt;
+}
+table.rating th, table.rating td {
+  border: 0.5pt solid #999;
+  padding: 4pt 6pt;
+  vertical-align: middle;
+}
+table.rating th {
+  background: #f0f0f0;
+  font-weight: bold;
+  text-align: center;
+}
+table.rating td.sn {
+  text-align: center;
+  width: 26pt;
+  font-weight: bold;
+}
+table.rating td.sub {
+  text-align: center;
+  width: 18pt;
+}
+table.rating td.score-box {
+  text-align: center;
+  width: 32pt;
+  min-height: 18pt;
+}
+table.rating .section-row td {
+  font-weight: bold;
+  background: #f8f8f8;
+}
+
+/* ── Checkbox items ─────────────────────────────── */
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 6pt;
+  font-size: 10pt;
+  margin: 3pt 0;
+}
+.checkbox-row input[type=checkbox] { display: none; }
+
+/* ── Signature blocks ───────────────────────────── */
+.sig-block {
+  display: flex;
+  gap: 20pt;
+  margin-top: 12pt;
+}
+.sig-item {
+  flex: 1;
+}
+.sig-item .sig-label {
+  font-weight: bold;
+  font-size: 10pt;
+  margin-bottom: 2pt;
+}
+.sig-item .sig-line {
+  border-bottom: 0.5pt solid #000;
+  height: 28pt;
+  margin-bottom: 2pt;
+}
+.sig-item .date-line {
+  font-size: 9pt;
+  border-bottom: 0.5pt solid #000;
+  padding-bottom: 2pt;
+}
+
+/* ── Instruction / note text ────────────────────── */
+.instruction {
+  font-size: 9pt;
+  color: #444;
+  font-style: italic;
+  margin-bottom: 8pt;
+}
+
+/* ── Full-width note block ──────────────────────── */
+.note-block {
+  font-size: 8.5pt;
+  color: #333;
+  border: 0.5pt solid #aaa;
+  padding: 6pt 8pt;
+  margin-top: 10pt;
+}

@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+  
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+<title>Materials List — Procurement</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/static/animations.css">
+  <link rel="stylesheet" href="/static/css/dashboard.css">
+  <link rel="stylesheet" href="/static/mobile_responsive.css">
+  <style>
+    *, *::before, *::after { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; box-sizing: border-box; }
+    :root {
+      --brand: #125435; --brand-mid: #1a7a4c; --brand-light: #10b981;
+      --brand-pale: #f0fdf4; --bg: #f4f6f5; --surface: #fff;
+      --text: #0f172a; --muted: #64748b; --border: #e2e8f0;
+    }
+    body { background: var(--bg); min-height: 100vh; }
+
+    /* ── Page header banner ── */
+    .page-banner {
+      background: linear-gradient(135deg, #0a3d26 0%, #125435 55%, #1a7a4c 100%);
+      padding: 2rem 2.5rem;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 1rem;
+      position: relative; overflow: hidden;
+    }
+    .page-banner::after {
+      content: ''; position: absolute; right: -5%; top: -30%;
+      width: 40%; height: 160%;
+      background: radial-gradient(circle, rgba(16,185,129,0.15) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .banner-left { z-index: 1; }
+    .back-link {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      color: rgba(255,255,255,0.65); text-decoration: none;
+      font-size: 0.82rem; font-weight: 500; margin-bottom: 0.75rem;
+      transition: color 0.2s;
+    }
+    .back-link:hover { color: #fff; }
+    .banner-title { font-size: 1.5rem; font-weight: 800; color: #fff; margin: 0; }
+    .banner-sub   { font-size: 0.85rem; color: rgba(255,255,255,0.65); margin: 0.2rem 0 0; }
+    .banner-right { z-index: 1; display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+    .btn-add-mat {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      background: #fff; color: var(--brand); border: none;
+      padding: 0.6rem 1.3rem; border-radius: 10px; font-size: 0.85rem; font-weight: 700;
+      text-decoration: none; transition: all 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    }
+    .btn-add-mat:hover { background: var(--brand-pale); color: var(--brand); transform: translateY(-1px); }
+    .btn-export-mat {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      background: rgba(255,255,255,0.15); color: #fff; border: 1px solid rgba(255,255,255,0.25);
+      padding: 0.6rem 1.3rem; border-radius: 10px; font-size: 0.85rem; font-weight: 600; cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-export-mat:hover { background: rgba(255,255,255,0.22); }
+    .btn-export-mat svg, .btn-add-mat svg { width: 15px; height: 15px; }
+
+    /* ── Toolbar ── */
+    .toolbar {
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      padding: 1rem 2rem; display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;
+      position: sticky; top: 0; z-index: 50;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+    .search-wrap { position: relative; flex: 1; min-width: 220px; max-width: 380px; }
+    .search-wrap svg {
+      position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+      width: 15px; height: 15px; stroke: #94a3b8; fill: none; stroke-width: 2;
+      stroke-linecap: round; stroke-linejoin: round; pointer-events: none;
+    }
+    .search-input {
+      width: 100%; padding: 0.6rem 0.9rem 0.6rem 2.25rem;
+      border: 1.5px solid var(--border); border-radius: 10px; font-size: 0.875rem;
+      outline: none; transition: border-color 0.15s; background: #f8fafc;
+    }
+    .search-input:focus { border-color: var(--brand-light); background: #fff; box-shadow: 0 0 0 3px rgba(16,185,129,0.1); }
+    .filter-select {
+      padding: 0.6rem 0.9rem; border: 1.5px solid var(--border); border-radius: 10px;
+      font-size: 0.82rem; font-weight: 500; background: #f8fafc; outline: none;
+      transition: border-color 0.15s; color: var(--text); cursor: pointer;
+    }
+    .filter-select:focus { border-color: var(--brand-light); }
+    .toolbar-count {
+      margin-left: auto; font-size: 0.8rem; font-weight: 600; color: var(--muted);
+      background: #f1f5f9; border-radius: 20px; padding: 0.3rem 0.9rem;
+      white-space: nowrap;
+    }
+
+    /* ── Table wrapper ── */
+    .table-wrapper { background: var(--surface); }
+    .mat-table { width: 100%; border-collapse: collapse; }
+    .mat-table thead th {
+      background: #f8fafc; padding: 0.85rem 1.25rem;
+      font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.07em; color: #64748b; border-bottom: 1.5px solid var(--border);
+      white-space: nowrap;
+    }
+    .mat-table tbody tr { border-bottom: 1px solid #f1f5f9; transition: background 0.15s; }
+    .mat-table tbody tr:last-child { border-bottom: none; }
+    .mat-table tbody tr:hover { background: #f8fafc; }
+    .mat-table td { padding: 0.9rem 1.25rem; font-size: 0.875rem; color: var(--text); vertical-align: middle; }
+    .mat-name { font-weight: 600; color: var(--text); }
+    .mat-desc { font-size: 0.78rem; color: var(--muted); margin-top: 0.15rem; }
+
+    /* Category badges */
+    .cat-badge {
+      display: inline-flex; align-items: center; gap: 0.3rem;
+      padding: 0.25rem 0.65rem; border-radius: 20px;
+      font-size: 0.72rem; font-weight: 700; white-space: nowrap;
+    }
+    .cat-badge .dot { width: 5px; height: 5px; border-radius: 50%; }
+    .cat-general    { background: #e0e7ff; color: #4338ca; } .cat-general .dot    { background: #4338ca; }
+    .cat-electrical { background: #fef3c7; color: #b45309; } .cat-electrical .dot { background: #d97706; }
+    .cat-plumbing   { background: #dbeafe; color: #1d4ed8; } .cat-plumbing .dot   { background: #3b82f6; }
+    .cat-hvac       { background: #d1fae5; color: #047857; } .cat-hvac .dot       { background: #10b981; }
+    .cat-cleaning   { background: #fce7f3; color: #be185d; } .cat-cleaning .dot   { background: #ec4899; }
+    .cat-imported   { background: #f3e8ff; color: #7c3aed; } .cat-imported .dot   { background: #8b5cf6; }
+
+    /* Property badge */
+    .prop-tag {
+      display: inline-block; padding: 0.2rem 0.65rem; border-radius: 6px;
+      font-size: 0.75rem; font-weight: 600;
+    }
+    .prop-tag.assigned   { background: #dcfce7; color: #166534; }
+    .prop-tag.unassigned { background: #f1f5f9; color: #64748b; }
+
+    /* Value cell */
+    .val-cell { font-weight: 700; color: var(--text); }
+    .sub-cell { color: var(--muted); font-size: 0.82rem; }
+
+    /* Delete button */
+    .btn-del {
+      display: inline-flex; align-items: center; gap: 0.3rem;
+      background: #fff0f0; color: #dc2626; border: 1px solid #fecaca;
+      padding: 0.35rem 0.75rem; border-radius: 7px; font-size: 0.78rem; font-weight: 600;
+      cursor: pointer; transition: all 0.18s;
+    }
+    .btn-del:hover { background: #fee2e2; border-color: #fca5a5; }
+    .btn-del svg { width: 12px; height: 12px; stroke: #dc2626; }
+
+    /* ── Pagination ── */
+    .pag-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem 1.5rem; border-top: 1px solid var(--border);
+      background: #fafafa;
+    }
+    .pag-info { font-size: 0.8rem; color: var(--muted); }
+    .pag-btns { display: flex; gap: 0.3rem; }
+    .pag-btn {
+      width: 32px; height: 32px; border-radius: 8px; border: 1.5px solid var(--border);
+      background: #fff; font-size: 0.8rem; font-weight: 600; color: #475569;
+      cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center;
+    }
+    .pag-btn:hover:not(:disabled) { border-color: var(--brand-light); color: var(--brand); }
+    .pag-btn:disabled { opacity: 0.35; cursor: default; }
+    .pag-btn.active { background: var(--brand); border-color: var(--brand); color: white; }
+
+    /* ── Empty / loading ── */
+    .empty-row td { text-align: center; padding: 4rem 1rem; color: var(--muted); }
+    .spinner-sm { width: 28px; height: 28px; }
+
+    /* ── Mobile ── */
+    @media (max-width: 768px) {
+      .page-banner { padding: 1.25rem 1rem; }
+      .banner-title { font-size: 1.2rem; }
+      .banner-right { gap: 0.5rem; }
+      .btn-add-mat, .btn-export-mat { padding: 0.5rem 0.9rem; font-size: 0.8rem; }
+      .toolbar { padding: 0.75rem 1rem; gap: 0.5rem; }
+      .search-wrap { min-width: 0; max-width: 100%; flex: 1 1 auto; }
+      .toolbar-count { display: none; }
+      .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      .mat-table { min-width: 520px; }
+      .mat-table thead th, .mat-table td { padding: 0.7rem 0.875rem; font-size: 0.8rem; }
+      .pag-bar { flex-direction: column; gap: 0.625rem; padding: 0.875rem 1rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Banner -->
+  <div class="page-banner">
+    <div class="banner-left">
+      <a href="/procurement/" class="back-link">
+        <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        Back to Procurement
+      </a>
+      <div class="banner-title">All Materials</div>
+      <div class="banner-sub">Complete catalog across all departments — HVAC, Cleaning, Electrical &amp; Plumbing</div>
+    </div>
+    <div class="banner-right">
+      <button class="btn-export-mat" onclick="window.open('/procurement/api/export-excel','_blank')">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+        Export Excel
+      </button>
+      <a href="/procurement/add-material" class="btn-add-mat">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+        Add Material
+      </a>
+    </div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div class="search-wrap">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" class="search-input" id="searchInput" placeholder="Search by name or brand…" oninput="filterMaterials()">
+    </div>
+    <select class="filter-select" id="deptFilter" onchange="filterMaterials()">
+      <option value="">All Departments</option>
+      <option value="HVAC">HVAC</option>
+      <option value="Cleaning">Cleaning</option>
+      <option value="Electrical">Electrical</option>
+      <option value="Plumbing">Plumbing</option>
+    </select>
+    <div class="toolbar-count" id="countBadge">Loading…</div>
+  </div>
+
+  <!-- Table -->
+  <div class="table-wrapper">
+    <div class="table-responsive">
+      <table class="mat-table">
+        <thead>
+          <tr>
+            <th style="width:38px">#</th>
+            <th>Material</th>
+            <th>Brand</th>
+            <th>Department</th>
+            <th>UOM</th>
+            <th>Unit Price (AED)</th>
+          </tr>
+        </thead>
+        <tbody id="materialsBody">
+          <tr class="empty-row"><td colspan="6"><div class="d-flex justify-content-center align-items-center gap-2"><div class="spinner-border spinner-sm text-secondary"></div><span>Loading materials…</span></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="pag-bar" id="paginationBar" style="display:none">
+      <div class="pag-info" id="pagInfo"></div>
+      <div class="pag-btns" id="pagBtns"></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    const token = localStorage.getItem('access_token');
+    let allMaterials = [];
+    let filteredMaterials = [];
+    const perPage = 25;
+    let currentPage = 1;
+
+    const DEPT_STYLE = {
+      'HVAC':       { cls: 'cat-hvac',       label: 'HVAC' },
+      'Cleaning':   { cls: 'cat-cleaning',   label: 'Cleaning' },
+      'Electrical': { cls: 'cat-electrical', label: 'Electrical' },
+      'Plumbing':   { cls: 'cat-plumbing',   label: 'Plumbing' },
+    };
+    function deptBadge(dept) {
+      const s = DEPT_STYLE[dept] || { cls: 'cat-general', label: dept || 'General' };
+      return `<span class="cat-badge ${s.cls}"><span class="dot"></span>${esc(s.label)}</span>`;
+    }
+
+    async function loadMaterials() {
+      try {
+        const resp = await fetch('/procurement/api/catalog/materials', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await resp.json();
+        if (!data.materials) throw new Error(data.error || 'No data');
+
+        // Flatten all departments into one sorted array
+        allMaterials = [];
+        const depts = ['HVAC', 'Cleaning', 'Electrical', 'Plumbing'];
+        depts.forEach(dept => {
+          (data.materials[dept] || []).forEach(item => {
+            allMaterials.push({ ...item, department: dept });
+          });
+        });
+        // Also include any other departments returned
+        Object.keys(data.materials).forEach(dept => {
+          if (!depts.includes(dept)) {
+            (data.materials[dept] || []).forEach(item => {
+              allMaterials.push({ ...item, department: dept });
+            });
+          }
+        });
+
+        filteredMaterials = [...allMaterials];
+        renderTable();
+      } catch (error) {
+        document.getElementById('materialsBody').innerHTML =
+          `<tr class="empty-row"><td colspan="6" class="text-danger">Error loading materials: ${esc(error.message)}</td></tr>`;
+      }
+    }
+
+    function filterMaterials() {
+      const search = document.getElementById('searchInput').value.toLowerCase();
+      const dept   = document.getElementById('deptFilter').value;
+      filteredMaterials = allMaterials.filter(m => {
+        const matchSearch = !search ||
+          (m.name  || '').toLowerCase().includes(search) ||
+          (m.brand || '').toLowerCase().includes(search);
+        const matchDept = !dept || m.department === dept;
+        return matchSearch && matchDept;
+      });
+      currentPage = 1;
+      renderTable();
+    }
+
+    function renderTable() {
+      const start    = (currentPage - 1) * perPage;
+      const pageData = filteredMaterials.slice(start, start + perPage);
+      const tbody    = document.getElementById('materialsBody');
+      document.getElementById('countBadge').textContent =
+        filteredMaterials.length.toLocaleString() + ' material' + (filteredMaterials.length !== 1 ? 's' : '');
+
+      if (pageData.length === 0) {
+        tbody.innerHTML = `<tr class="empty-row"><td colspan="6">No materials match your search.</td></tr>`;
+        document.getElementById('paginationBar').style.display = 'none';
+        return;
+      }
+
+      tbody.innerHTML = pageData.map((m, i) => {
+        const price = parseFloat(m.unit_price) || 0;
+        return `<tr>
+          <td style="color:#94a3b8;font-size:.78rem;font-weight:600;">${start + i + 1}</td>
+          <td><div class="mat-name">${esc(m.name)}</div></td>
+          <td class="sub-cell">${esc(m.brand || '—')}</td>
+          <td>${deptBadge(m.department)}</td>
+          <td class="sub-cell">${esc(m.uom || 'PCS')}</td>
+          <td class="val-cell">${price > 0 ? 'AED ' + price.toLocaleString('en-AE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '<span style="color:#94a3b8">—</span>'}</td>
+        </tr>`;
+      }).join('');
+
+      // Pagination
+      const totalPages = Math.ceil(filteredMaterials.length / perPage);
+      const bar = document.getElementById('paginationBar');
+      bar.style.display = totalPages > 1 ? 'flex' : 'none';
+      document.getElementById('pagInfo').textContent =
+        `Showing ${start + 1}–${Math.min(start + perPage, filteredMaterials.length)} of ${filteredMaterials.length.toLocaleString()}`;
+
+      let btns = '';
+      for (let p = 1; p <= totalPages; p++) {
+        if (p === 1 || p === totalPages || Math.abs(p - currentPage) <= 2) {
+          btns += `<button class="pag-btn${p === currentPage ? ' active' : ''}" onclick="goPage(${p})">${p}</button>`;
+        } else if (!btns.endsWith('…</span>')) {
+          btns += `<span style="padding:0 4px;color:#94a3b8;line-height:32px">…</span>`;
+        }
+      }
+      document.getElementById('pagBtns').innerHTML = btns;
+    }
+
+    function goPage(p) { currentPage = p; renderTable(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+
+    function esc(s) {
+      const d = document.createElement('div');
+      d.textContent = String(s ?? '');
+      return d.innerHTML;
+    }
+
+    loadMaterials();
+  </script>
+</body>
+</html>

@@ -1,10 +1,12 @@
 import os
 from openpyxl import Workbook
-from datetime import datetime
+
+from common.datetime_utils import utc_now_naive
+
 
 def create_report_workbook(generated_dir, visit_info, items):
     os.makedirs(generated_dir, exist_ok=True)
-    filename = f"report_{int(datetime.utcnow().timestamp())}.xlsx"
+    filename = f"report_{int(utc_now_naive().timestamp())}.xlsx"
     path = os.path.join(generated_dir, filename)
     wb = Workbook()
     ws = wb.active

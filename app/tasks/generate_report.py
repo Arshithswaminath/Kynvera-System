@@ -1,8 +1,8 @@
 import os
 import json
 import logging
-from datetime import datetime
 from app.services.excel_service import create_report_workbook
+from common.datetime_utils import utc_now_naive
 from app.services.cloudinary_service import upload_local_file, init_cloudinary
 from app.services.email_service import send_outlook_email
 from app.services.pdf_service import generate_visit_pdf
@@ -21,7 +21,7 @@ def _write_status_file(generated_dir, report_id, status_obj):
 def generate_and_send_report(report_id, visit_info, final_items, generated_dir, remove_local_files=False):
     status_key = f"report:{report_id}"
     try:
-        status = {"status": "processing", "started_at": datetime.utcnow().isoformat(), "progress": 0}
+        status = {"status": "processing", "started_at": utc_now_naive().isoformat(), "progress": 0}
         _write_status_file(generated_dir, report_id, status)
 
         # Excel
@@ -63,7 +63,7 @@ def generate_and_send_report(report_id, visit_info, final_items, generated_dir, 
             "excel_url": excel_url,
             "pdf_url": pdf_url,
             "uploaded_to_cloudinary": uploaded_to_cloudinary,
-            "finished_at": datetime.utcnow().isoformat()
+            "finished_at": utc_now_naive().isoformat()
         }
         _write_status_file(generated_dir, report_id, final_status)
 

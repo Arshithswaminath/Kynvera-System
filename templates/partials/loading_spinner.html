@@ -1,0 +1,28 @@
+{#
+  Loading Spinner Component
+  
+  Usage:
+    {% include 'partials/loading_spinner.html' %}
+  
+  Optional context variables:
+    - spinner_text: str - Text to show below spinner (default: 'Loading...')
+    - spinner_size: str - 'sm', 'md', 'lg' (default: 'md')
+#}
+
+{% set size_map = {'sm': '24px', 'md': '40px', 'lg': '60px'} %}
+{% set size = size_map[spinner_size|default('md')] %}
+
+<div class="loading-spinner" style="text-align: center; padding: 2rem;">
+  <div class="spinner" style="
+    border: 4px solid rgba(18, 84, 53, 0.1); 
+    border-top: 4px solid var(--primary); 
+    border-radius: 50%; 
+    width: {{ size }}; 
+    height: {{ size }}; 
+    animation: spin 1s linear infinite; 
+    margin: 0 auto;
+  "></div>
+  {% if spinner_text is not defined or spinner_text %}
+  <p style="margin-top: 1rem; color: var(--text-light);">{{ spinner_text|default('Loading...') }}</p>
+  {% endif %}
+</div>

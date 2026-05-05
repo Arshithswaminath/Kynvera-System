@@ -1,0 +1,55 @@
+# Persistent GENERATED_DIR: attach a Render Disk (paid plans), mount e.g. /var/data, then set
+# GENERATED_DIR=/var/data/generated so mmr_email_config.json and uploads survive redeploys.
+# Alternatively keep ephemeral disk and set MMR_SCHEDULE_ENABLED=true (and hour/minute) in the dashboard.
+services:
+  - type: web
+    name: injaaz-app
+    env: python
+    buildCommand: bash build.sh
+    startCommand: gunicorn wsgi:app --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 300 --worker-class gthread
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: SECRET_KEY
+        generateValue: true
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: FLASK_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: injaaz-db
+          property: connectionString
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      # Optional: Redis for rate limiting — use full Upstash URL (rediss://...), no extra spaces
+      - key: REDIS_URL
+        sync: false
+      # MMR daily email: set if config UI resets after deploy (ephemeral /app/generated)
+      - key: MMR_SCHEDULE_ENABLED
+        sync: false
+      - key: MMR_SCHEDULE_HOUR
+        sync: false
+      - key: MMR_SCHEDULE_MINUTE
+        sync: false
+      # If you add a disk mount, set to e.g. /var/data/generated
+      - key: GENERATED_DIR
+        sync: false
+      # HTTPS email: use Brevo OR Mailjet on Render when SMTP is blocked (see docs/EMAIL_SMTP_OPTIONS.md).
+      - key: BREVO_API_KEY
+        sync: false
+      - key: MAILJET_API_KEY
+        sync: false
+      - key: MAILJET_SECRET_KEY
+        sync: false
+      - key: MAIL_DEFAULT_SENDER
+        sync: false
+
+databases:
+  - name: injaaz-db
+    databaseName: injaaz
+    user: injaaz_user

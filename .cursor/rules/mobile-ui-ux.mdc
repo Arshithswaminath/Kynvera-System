@@ -1,0 +1,52 @@
+---
+description: Mobile UI/UX standards for Injaaz Application - maintain consistency across all modules
+globs: **/*.html, **/mobile_responsive.css, **/dashboard.css
+alwaysApply: false
+---
+
+# Injaaz Mobile UI/UX Standards
+
+## Required for All Templates
+
+### 1. Viewport Meta
+Every HTML template MUST include:
+```html
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+```
+
+### 2. Mobile Stylesheet
+Include `mobile_responsive.css` in every page:
+```html
+<link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
+```
+Or for module templates: `href="/static/mobile_responsive.css"`
+
+### 3. PWA Meta (for app-like pages)
+- `theme-color`: #125435
+- `apple-mobile-web-app-capable`: yes
+- `viewport-fit=cover` for notch support
+
+## Touch Targets
+- Minimum 44x44px for buttons, links, form controls (Apple HIG)
+- Use `min-height: 44px` for form inputs on mobile to prevent iOS zoom
+- `font-size: 16px` on inputs prevents iOS auto-zoom
+
+## Layout Patterns
+- **Dashboard**: Compact grid module cards (icon | title | action, description below)
+- **Forms**: Single column on mobile; stack `.row` columns
+- **Tables**: Use `.table-responsive` with horizontal scroll or card-style rows
+- **Modals**: Full-width on small screens, `max-height: 95vh`
+
+## Module-Specific
+- **HR**: `.hr-card`, `.hr-header` - reduced padding, smaller icons
+- **Procurement**: `.proc-header`, `.module-showcase` - single column grid
+- **Inspection forms**: Signature pads 160px height, photo grid 2 columns
+- **Sidebar nav** (forms): Fixed bottom bar on mobile via `.sidebar-nav`
+
+## Safe Areas
+Use `env(safe-area-inset-*)` for notched devices. Already in `mobile_responsive.css`.
+
+## Do NOT
+- Use `width: 100% !important` on all buttons if side-by-side layout is needed
+- Omit `mobile_responsive.css` from new pages
+- Use viewport without `viewport-fit=cover` for PWA

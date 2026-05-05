@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+  
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+<title>Employee Grievance / Disciplinary Action Form — INJAAZ</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-forms-unified.css') }}">
+  <style>.hr-form-unified .page { padding-top: 5.5rem; }</style>
+  <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+</head>
+<body class="hr-form-unified">
+  {% set active_page = 'hr' %}
+  {% include 'partials/main_navbar.html' with context %}
+
+  <div class="success-bg" id="successModal">
+    <div class="success-box">
+      <button type="button" class="success-back-btn" onclick="closeSuccessBackToForm()" title="Back to form">
+        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+      </button>
+      <div class="success-icon"><svg width="30" height="30" fill="none" stroke="#fff" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg></div>
+      <h2>Form Submitted!</h2>
+      <p>Grievance form sent. This remains confidential.</p>
+      <div class="sub-id" id="submissionId"></div>
+      <button class="btn-submit" style="width:100%;justify-content:center" onclick="window.location.href='/hr/my-requests'">View My Requests</button>
+    </div>
+  </div>
+
+  <div class="sig-modal-bg" id="sigBg">
+    <div class="sig-modal">
+      <div class="sig-modal-hd"><h3 id="sigTitle">Signature</h3><button class="sig-modal-x" onclick="closeSig()">&times;</button></div>
+      <div class="sig-modal-body">
+        <p class="sig-modal-hint">Draw your signature using your mouse or finger.</p>
+        <div class="sig-canvas-box"><canvas id="sigCanvas" height="180"></canvas><span class="sig-canvas-guide">Sign here</span></div>
+        <div class="sig-modal-ft"><button class="btn-m-clear" onclick="clearModalPad()">Clear</button><button class="btn-m-apply" onclick="applySig()">Apply Signature</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page">
+    <div class="page-inner">
+      <a href="/hr/" class="back-btn">
+        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        Back to HR
+      </a>
+
+      <div class="step-bar">
+        <div class="step-item active" id="step1Badge" onclick="goToStep1()" role="button" tabindex="0"><span class="num">1</span><span>Complaint Details</span></div>
+        <div class="step-connector" id="connector1"></div>
+        <div class="step-item locked" id="step2Badge" onclick="goToStep2()" role="button" tabindex="0"><span class="num">2</span><span>Signatures</span></div>
+      </div>
+
+      <div class="card">
+        <div class="hd">
+          <div class="hd-left">
+            <h1>Employee Grievance / Disciplinary Action Form</h1>
+            <p class="hd-sub">INJAAZ FACILITY MANAGEMENT</p>
+          </div>
+          <img src="{{ url_for('static', filename='logo.png') }}" alt="INJAAZ" class="hd-logo">
+        </div>
+
+        <form id="hrForm">
+          <div class="form-body">
+
+            <div class="step-panel active" id="step1Panel">
+              <div class="step-hint">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span><strong>Step 1 of 2</strong> — Complete complainant, second party and complaint details, then continue to signatures.</span>
+              </div>
+              <section class="sec">
+                <h2 class="sec-hd">1st Party: Complainant Information (Part A)</h2>
+                <div class="grid-2">
+                  <div class="fld"><label class="fld-lbl">Employee name <span class="req">*</span></label><input class="fld-inp" type="text" name="complainant_name" required></div>
+                  <div class="fld"><label class="fld-lbl">Employee ID # <span class="req">*</span></label><input class="fld-inp" type="text" name="complainant_id" required></div>
+                  <div class="fld"><label class="fld-lbl">Designation <span class="req">*</span></label><input class="fld-inp" type="text" name="complainant_designation" required></div>
+                  <div class="fld"><label class="fld-lbl">Date of incident/issue <span class="req">*</span></label><input class="fld-inp" type="date" name="date_of_incident" required></div>
+                  <div class="fld"><label class="fld-lbl">Shift / time</label><input class="fld-inp" type="text" name="shift_time" placeholder="e.g. Day/Night"></div>
+                  <div class="fld"><label class="fld-lbl">Employee contact #</label><input class="fld-inp" type="tel" name="complainant_contact"></div>
+                  <div class="fld fw">
+                    <label class="fld-lbl">Issue happened at?</label>
+                    <div class="yn-row">
+                      <label><input type="radio" name="issue_location" value="camp"> Camp</label>
+                      <label><input type="radio" name="issue_location" value="site"> Site</label>
+                      <label><input type="radio" name="issue_location" value="head_office"> Head Office</label>
+                    </div>
+                  </div>
+                </div>
+              </section>
+              <section class="sec">
+                <h2 class="sec-hd">2nd Party: Description (Part B)</h2>
+                <p style="font-size:.85rem;color:var(--muted);margin-bottom:1rem;">Note: use new form if complaint is for more than 1 employee.</p>
+                <div class="grid-2">
+                  <div class="fld"><label class="fld-lbl">Employee name <span class="req">*</span></label><input class="fld-inp" type="text" name="second_party_name" required></div>
+                  <div class="fld"><label class="fld-lbl">Staff ID number</label><input class="fld-inp" type="text" name="second_party_id"></div>
+                  <div class="fld"><label class="fld-lbl">Department</label><input class="fld-inp" type="text" name="second_party_department"></div>
+                  <div class="fld"><label class="fld-lbl">Place of Incident</label><input class="fld-inp" type="text" name="place_of_incident"></div>
+                  <div class="fld"><label class="fld-lbl">Shift / time</label><input class="fld-inp" type="text" name="second_party_shift"></div>
+                  <div class="fld"><label class="fld-lbl">Employee contact #</label><input class="fld-inp" type="tel" name="second_party_contact"></div>
+                </div>
+              </section>
+              <section class="sec">
+                <h2 class="sec-hd">What is complaint/issue? (Part C)</h2>
+                <div class="fld">
+                  <textarea class="fld-inp" name="complaint_description" rows="5" required placeholder="Please tell us what happened"></textarea>
+                </div>
+                <div class="grid-2" style="margin-top:1rem">
+                  <div class="fld"><label class="fld-lbl">Witnesses, if any?</label><input class="fld-inp" type="text" name="witnesses" placeholder="Kindly mention the witness names"></div>
+                  <div class="fld"><label class="fld-lbl">Who was informed?</label><input class="fld-inp" type="text" name="who_informed" placeholder="e.g. Police, Civil Defence"></div>
+                  <div class="fld fw"><label class="fld-lbl">Attachment if any?</label><input class="fld-inp" type="text" name="attachment" placeholder="e.g. Pictures, Security report"></div>
+                </div>
+              </section>
+              <section class="sec sec-hr">
+                <h2 class="sec-hd">For Engineer, QHSE & Head of Department (HOD) Use</h2>
+                <p style="font-size:.9rem;margin-bottom:1rem;">The Engineer, QHSE or HOD handling the employee grievance needs to state the actions or recommendations taken to resolve the issues. Did both (disputing) parties reach a solution/agreement?</p>
+                <div class="yn-row" style="margin-bottom:1rem">
+                  <label>Statement of 2nd party been taken & attached?</label>
+                  <label><input type="radio" name="statement_2nd_party" value="yes" {% if not is_hr %}disabled{% endif %}> Yes</label>
+                  <label><input type="radio" name="statement_2nd_party" value="no" {% if not is_hr %}disabled{% endif %}> No</label>
+                  <label><input type="radio" name="statement_2nd_party" value="na" {% if not is_hr %}disabled{% endif %}> Not Required</label>
+                </div>
+                <div class="fld">
+                  <label class="fld-lbl">HOD Actions / Recommendations</label>
+                  <textarea class="fld-inp" name="hod_actions" rows="3" {% if not is_hr %}readonly{% endif %} placeholder="State the actions or recommendations taken..."></textarea>
+                </div>
+              </section>
+              <section class="sec sec-hr">
+                <h2 class="sec-hd">For HR use only</h2>
+                <div class="grid-2">
+                  <div class="fld"><label class="fld-lbl">Statement of one or both parties attached/verified?</label><input class="fld-inp" type="text" name="hr_statement_verified" placeholder="one party / both" {% if not is_hr %}readonly{% endif %}></div>
+                  <div class="fld">
+                    <label class="fld-lbl">Is it first complaint or recurring issue?</label>
+                    <div class="yn-row">
+                      <label><input type="radio" name="hr_first_recurring" value="1st" {% if not is_hr %}disabled{% endif %}> 1st</label>
+                      <label><input type="radio" name="hr_first_recurring" value="recurring" {% if not is_hr %}disabled{% endif %}> Recurring</label>
+                    </div>
+                  </div>
+                  <div class="fld fw"><label class="fld-lbl">HR remarks</label><textarea class="fld-inp" name="hr_remarks" rows="2" {% if not is_hr %}readonly{% endif %}></textarea></div>
+                </div>
+              </section>
+              <section class="sec sec-hr">
+                <h2 class="sec-hd">For GM use only</h2>
+                <div class="fld"><label class="fld-lbl">GM remarks</label><textarea class="fld-inp" name="gm_remarks" rows="2" {% if not is_gm %}readonly{% endif %}></textarea></div>
+              </section>
+              <div class="step-nav">
+                <span></span>
+                <button type="button" class="btn-next" onclick="goToStep2()">Continue to Step 2 <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg></button>
+              </div>
+            </div>
+
+            <div class="step-panel" id="step2Panel">
+              <div class="step-hint">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span><strong>Step 2 of 2</strong> — Add signatures and submit. I have written and signed this grievance/disciplinary action form.</span>
+              </div>
+              <section class="sec">
+                <h2 class="sec-hd">Signatures</h2>
+                <div class="grid-3">
+                  <div class="fld">
+                    <label class="fld-lbl">Complainant Signature (1st party) <span class="req">*</span></label>
+                    <div class="sig-wrap">
+                      <div class="sig-box" id="compSigPrev"><span class="sig-ph">No signature</span><img id="compSigImg" src="" style="display:none"></div>
+                      <div class="sig-actions">
+                        <button type="button" class="btn-plus" onclick="openSig('complainant')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 4v16m8-8H4"/></svg> Sign</button>
+                        <button type="button" class="btn-rm" id="compSigRm" onclick="rmSig('complainant')">Remove</button>
+                      </div>
+                      <input type="hidden" name="complainant_signature" id="compSigData">
+                    </div>
+                  </div>
+                  <div class="fld">
+                    <label class="fld-lbl">2nd Party Signature</label>
+                    <div class="sig-wrap">
+                      <div class="sig-box" id="sp2SigPrev"><span class="sig-ph">No signature</span><img id="sp2SigImg" src="" style="display:none"></div>
+                      <div class="sig-actions">
+                        <button type="button" class="btn-plus" onclick="openSig('second_party')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 4v16m8-8H4"/></svg> Sign</button>
+                        <button type="button" class="btn-rm" id="sp2SigRm" onclick="rmSig('second_party')">Remove</button>
+                      </div>
+                      <input type="hidden" name="second_party_signature" id="sp2SigData">
+                    </div>
+                  </div>
+                  <div class="fld">
+                    <label class="fld-lbl">HOD / Engineer Signature</label>
+                    {% if is_hr %}
+                    <div class="sig-wrap">
+                      <div class="sig-box" id="hodSigPrev"><span class="sig-ph">No signature</span><img id="hodSigImg" src="" style="display:none"></div>
+                      <div class="sig-actions">
+                        <button type="button" class="btn-plus" onclick="openSig('hod')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 4v16m8-8H4"/></svg> Sign</button>
+                        <button type="button" class="btn-rm" id="hodSigRm" onclick="rmSig('hod')">Remove</button>
+                      </div>
+                      <input type="hidden" name="hod_signature" id="hodSigData">
+                    </div>
+                    {% else %}
+                    <em style="font-size:.85rem;color:var(--muted)">For HOD / Engineer</em>
+                    {% endif %}
+                  </div>
+                  <div class="fld">
+                    <label class="fld-lbl">HR Signature</label>
+                    {% if is_hr %}
+                    <div class="sig-wrap">
+                      <div class="sig-box" id="hrSigPrev"><span class="sig-ph">No signature</span><img id="hrSigImg" src="" style="display:none"></div>
+                      <div class="sig-actions">
+                        <button type="button" class="btn-plus" onclick="openSig('hr')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 4v16m8-8H4"/></svg> Sign</button>
+                        <button type="button" class="btn-rm" id="hrSigRm" onclick="rmSig('hr')">Remove</button>
+                      </div>
+                      <input type="hidden" name="hr_signature" id="hrSigData">
+                    </div>
+                    {% else %}
+                    <em style="font-size:.85rem;color:var(--muted)">For HR approval workflow</em>
+                    {% endif %}
+                  </div>
+                  <div class="fld">
+                    <label class="fld-lbl">GM Signature</label>
+                    {% if is_gm %}
+                    <div class="sig-wrap">
+                      <div class="sig-box" id="gmSigPrev"><span class="sig-ph">No signature</span><img id="gmSigImg" src="" style="display:none"></div>
+                      <div class="sig-actions">
+                        <button type="button" class="btn-plus" onclick="openSig('gm')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 4v16m8-8H4"/></svg> Sign</button>
+                        <button type="button" class="btn-rm" id="gmSigRm" onclick="rmSig('gm')">Remove</button>
+                      </div>
+                      <input type="hidden" name="gm_signature" id="gmSigData">
+                    </div>
+                    {% else %}
+                    <em style="font-size:.85rem;color:var(--muted)">For GM approval workflow</em>
+                    {% endif %}
+                  </div>
+                </div>
+              </section>
+              <div class="step-nav">
+                <button type="button" class="btn-back" onclick="goToStep1()"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12"/></svg> Back to Step 1</button>
+                <span></span>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="doc-ft">
+            <div class="doc-ft-meta"><span>Grievance Form</span><span>DATE: <span id="docDate"></span></span></div>
+            P.O Box: 3456 Ajman, UAE · Tel 067116815 · www.injaaz.ae
+          </div>
+
+          <div class="submit-bar" id="submitBar" style="display:none">
+            <button type="button" class="btn-reset" onclick="if(confirm('Reset the form?')){document.getElementById('hrForm').reset();clearAllSigs();goToStep1()}">Reset</button>
+            <button type="submit" class="btn-submit"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> Submit Form</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+<script>
+document.getElementById('docDate').textContent = new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'});
+
+function goToStep2(){
+  document.getElementById('step1Panel').classList.remove('active');
+  document.getElementById('step2Panel').classList.add('active');
+  document.getElementById('submitBar').style.display='flex';
+  document.getElementById('step1Badge').className='step-item done';
+  document.getElementById('step1Badge').querySelector('.num').innerHTML='✓';
+  document.getElementById('step2Badge').className='step-item active';
+  document.getElementById('step2Badge').classList.remove('locked');
+  document.getElementById('connector1').classList.add('done');
+  document.getElementById('step2Panel').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function goToStep1(){
+  document.getElementById('step2Panel').classList.remove('active');
+  document.getElementById('step1Panel').classList.add('active');
+  document.getElementById('submitBar').style.display='none';
+  document.getElementById('step1Badge').className='step-item active';
+  document.getElementById('step1Badge').querySelector('.num').textContent='1';
+  document.getElementById('step2Badge').className='step-item locked';
+  document.getElementById('connector1').classList.remove('done');
+  document.getElementById('step1Panel').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function closeSuccessBackToForm(){
+  document.getElementById('successModal').classList.remove('show');
+  goToStep1();
+  const btn=document.querySelector('#hrForm .btn-submit');
+  if(btn){btn.disabled=false;btn.innerHTML='<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> Submit Form'}
+}
+
+let pad=null,target=null;
+const bg=document.getElementById('sigBg'),cv=document.getElementById('sigCanvas');
+const sigCfg={
+  complainant:{prev:'compSigPrev',img:'compSigImg',data:'compSigData',rm:'compSigRm',title:'Complainant Signature'},
+  second_party:{prev:'sp2SigPrev',img:'sp2SigImg',data:'sp2SigData',rm:'sp2SigRm',title:'2nd Party Signature'},
+  hod:{prev:'hodSigPrev',img:'hodSigImg',data:'hodSigData',rm:'hodSigRm',title:'HOD / Engineer Signature'},
+  hr:{prev:'hrSigPrev',img:'hrSigImg',data:'hrSigData',rm:'hrSigRm',title:'HR Signature'},
+  gm:{prev:'gmSigPrev',img:'gmSigImg',data:'gmSigData',rm:'gmSigRm',title:'GM Signature'}
+};
+
+function openSig(t){target=t;const c=sigCfg[t];if(!c)return;document.getElementById('sigTitle').textContent=c.title;bg.classList.add('open');document.body.style.overflow='hidden';requestAnimationFrame(()=>{const r=window.devicePixelRatio||1,w=cv.offsetWidth;cv.width=w*r;cv.height=180*r;cv.getContext('2d').scale(r,r);cv.style.height='180px';if(pad)pad.off();pad=new SignaturePad(cv,{backgroundColor:'rgb(250,250,250)',penColor:'#0d1f14',minWidth:1.2,maxWidth:2.8})})}
+function closeSig(){bg.classList.remove('open');document.body.style.overflow='';target=null}
+function clearModalPad(){if(pad)pad.clear()}
+function applySig(){if(!pad||pad.isEmpty()){alert('Please draw your signature first.');return}const url=pad.toDataURL('image/png'),c=sigCfg[target];if(!c)return;const img=document.getElementById(c.img),ph=document.querySelector('#'+c.prev+' .sig-ph'),inp=document.getElementById(c.data),rm=document.getElementById(c.rm);if(img){img.src=url;img.style.display='block'}if(ph)ph.style.display='none';if(inp)inp.value=url;if(rm)rm.style.display='inline-flex';closeSig()}
+function rmSig(t){const c=sigCfg[t];if(!c)return;const img=document.getElementById(c.img),ph=document.querySelector('#'+c.prev+' .sig-ph'),inp=document.getElementById(c.data),rm=document.getElementById(c.rm);if(img){img.src='';img.style.display='none'}if(ph)ph.style.display='block';if(inp)inp.value='';if(rm)rm.style.display='none'}
+function clearAllSigs(){['complainant','second_party','hod','hr','gm'].forEach(t=>{const c=sigCfg[t];if(c&&document.getElementById(c.rm))rmSig(t)})}
+bg.addEventListener('click',e=>{if(e.target===bg)closeSig()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&bg.classList.contains('open'))closeSig()});
+
+document.getElementById('hrForm').addEventListener('submit',async e=>{
+  e.preventDefault();
+  const fd=new FormData(e.target),data=Object.fromEntries(fd.entries());
+  data.form_type='grievance';
+  data.employee_name=data.complainant_name;
+  const btn=e.target.querySelector('.btn-submit');
+  btn.disabled=true;btn.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="spin"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Submitting…';
+  try{const res=await fetch('/hr/api/submit',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.getItem('access_token')},body:JSON.stringify(data)});const r=await res.json();
+  if(r.success){document.getElementById('submissionId').textContent=r.submission_id;document.getElementById('successModal').classList.add('show')}
+  else{alert('Error: '+(r.error||'Unknown'));btn.disabled=false;btn.innerHTML='<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> Submit Form'}
+  }catch(err){alert('Network error: '+err.message);btn.disabled=false;btn.innerHTML='<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> Submit Form'}
+});
+</script>
+  <script src="{{ url_for('static', filename='api-client.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>

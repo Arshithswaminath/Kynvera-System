@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+  <title>BizFlow — Business Development | Injaaz Admin</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}">
+  <style>
+:root {
+  --radius:10px;
+  --sidebar-w:260px;
+  --accent:#125435;
+  --accent-2:#1a7a4d;
+  --sb-bg:#125435;
+  --dh-fs-sidebar:16px;
+  --dh-fs-sidebar-label:12px;
+  --g900:#0b3322; --g800:#125435; --g700:#176640; --g600:#1d804f; --g500:#22a063;
+  --g400:#4db87e; --g300:#86d4a8; --g200:#c0ecd4; --g100:#e4f7ed; --g50:#f2fbf6;
+  --white:#fff; --ink:#0c1f17; --ink2:#1e3a2e; --muted:#587569; --subtle:#8eada3;
+  --line:#e2ede8; --bg:#f5faf7; --card:#fff;
+  --amber:#c97d0e; --amber-bg:#fef6e4; --rose:#c0392b; --rose-bg:#fdf0ee;
+  --blue:#1a5fa8; --blue-bg:#e8f0fb; --violet:#6b3fa0; --violet-bg:#f3edfc;
+  --r-xs:6px; --r-sm:10px; --r-md:14px; --r-lg:20px; --r-xl:28px;
+  --sh-xs:0 1px 3px rgba(18,84,53,.07); --sh-sm:0 2px 10px rgba(18,84,53,.09);
+  --sh-md:0 6px 24px rgba(18,84,53,.11); --sh-lg:0 16px 48px rgba(18,84,53,.14);
+  --sh-glow:0 0 0 3px rgba(18,84,53,.12);
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;overflow-x:hidden;font-size:15px}
+body.has-main-nav{padding-top:5.5rem}
+
+.bf-shell{display:flex;min-height:calc(100vh - 5.5rem)}
+
+/* Sidebar: layout + admin nav offset; visual tokens match DocHub (dochub-page.css .dh-sidebar, .sb-*) */
+.bf-sidebar.dh-sidebar{
+  position:sticky;top:5.5rem;height:calc(100vh - 5.5rem);z-index:40;flex-shrink:0;overflow:hidden;
+}
+
+.bf-main{flex:1;display:flex;flex-direction:column;min-height:calc(100vh - 5.5rem);min-width:0}
+
+.bf-topbar{background:var(--white);border-bottom:1.5px solid var(--line);height:64px;padding:0 32px;display:flex;align-items:center;gap:14px;position:sticky;top:5.5rem;z-index:50;box-shadow:var(--sh-xs)}
+.bf-topbar-title{font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;font-size:20px;font-weight:700;color:var(--ink);letter-spacing:-.3px}
+.bf-topbar-title span{color:var(--subtle);font-style:italic;font-size:16px;margin-right:6px}
+.bf-topbar-space{flex:1}
+.bf-tb-search{position:relative;display:flex;align-items:center}
+.bf-tb-search input{padding:8px 14px 8px 36px;border:1.5px solid var(--line);border-radius:var(--r-sm);font-family:inherit;font-size:14px;color:var(--ink);background:var(--bg);width:220px;outline:none;transition:all .18s}
+.bf-tb-search input:focus{border-color:var(--g800);background:#fff;width:260px;box-shadow:var(--sh-glow)}
+.bf-tb-search .si{position:absolute;left:11px;color:var(--subtle);font-size:14px;pointer-events:none}
+.bf-tb-icon-btn{width:36px;height:36px;border:1.5px solid var(--line);border-radius:var(--r-sm);background:#fff;cursor:pointer;color:var(--muted);font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .18s;position:relative}
+.bf-tb-icon-btn:hover{border-color:var(--g800);color:var(--g800);background:var(--g50)}
+.bf-notif-pip{position:absolute;top:7px;right:7px;width:7px;height:7px;border-radius:50%;background:var(--rose);border:1.5px solid #fff}
+.bf-tb-cta{display:flex;align-items:center;gap:8px;padding:9px 18px;background:var(--g800);color:#fff;border:none;border-radius:var(--r-sm);font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;transition:all .18s;box-shadow:0 2px 10px rgba(18,84,53,.28)}
+.bf-tb-cta:hover{background:var(--g700);transform:translateY(-1px);box-shadow:0 4px 16px rgba(18,84,53,.32)}
+
+.bf-view-tabs{background:#fff;border-bottom:1.5px solid var(--line);padding:0 32px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.bf-view-tabs-inner{display:flex;align-items:center;gap:2px;flex-wrap:wrap}
+.bf-view-tabs-actions{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.bf-view-tab{display:flex;align-items:center;gap:7px;padding:14px 18px;font-size:14px;font-weight:600;color:var(--subtle);cursor:pointer;border-bottom:2.5px solid transparent;transition:all .18s;user-select:none}
+.bf-view-tab:hover{color:var(--ink)}
+.bf-view-tab.active{color:var(--g800);border-bottom-color:var(--g800)}
+.bf-view-tab .vt-count{background:var(--g100);color:var(--g800);font-size:10px;padding:2px 7px;border-radius:20px;font-weight:700}
+.bf-view-tab.active .vt-count{background:var(--g800);color:#fff}
+
+.bf-content{padding:28px 32px;flex:1}
+
+.bf-view-section{display:none}
+.bf-view-section.active{display:block}
+
+.bf-kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:26px}
+@media(max-width:1200px){.bf-kpi-row{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:700px){.bf-kpi-row{grid-template-columns:1fr}}
+
+.bf-kpi-card{background:#fff;border-radius:var(--r-md);border:1.5px solid var(--line);padding:18px 20px;box-shadow:var(--sh-xs);transition:all .22s;animation:bfFadeUp .4s ease both;cursor:default;position:relative;overflow:hidden}
+.bf-kpi-card:hover{transform:translateY(-2px);box-shadow:var(--sh-sm);border-color:var(--g300)}
+.bf-kpi-card::after{content:'';position:absolute;top:-24px;right:-24px;width:70px;height:70px;border-radius:50%;opacity:.06}
+.bf-kpi-card.c1::after{background:var(--g800)}
+.bf-kpi-card.c2::after{background:var(--amber)}
+.bf-kpi-card.c3::after{background:var(--blue)}
+.bf-kpi-card.c4::after{background:var(--g500)}
+.bf-kpi-card.c5::after{background:var(--rose)}
+.bf-kpi-label{font-size:12.5px;font-weight:600;color:var(--subtle);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px}
+.bf-kpi-val{font-size:28px;font-weight:800;color:var(--ink);letter-spacing:-1px;line-height:1;margin-bottom:8px}
+.bf-kpi-val.serif{font-family:inherit;font-size:30px;font-weight:800}
+.bf-kpi-trend{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;padding:3px 8px;border-radius:20px}
+.bf-kpi-trend.up{background:var(--g100);color:var(--g800)}
+.bf-kpi-trend.dn{background:var(--rose-bg);color:var(--rose)}
+.bf-kpi-trend.neu{background:var(--bg);color:var(--muted)}
+
+.bf-dash-grid{display:grid;grid-template-columns:1fr 310px;gap:20px;margin-bottom:24px}
+@media(max-width:1100px){.bf-dash-grid{grid-template-columns:1fr}}
+
+.bf-card{background:#fff;border-radius:var(--r-md);border:1.5px solid var(--line);box-shadow:var(--sh-xs);overflow:hidden;animation:bfFadeUp .4s ease both}
+.bf-card-hd{padding:18px 22px 14px;display:flex;align-items:center;gap:10px;border-bottom:1.5px solid var(--line)}
+.bf-card-hd-info{flex:1}
+.bf-card-hd-title{font-size:15.5px;font-weight:700;color:var(--ink)}
+.bf-card-hd-sub{font-size:12.5px;color:var(--subtle);margin-top:2px}
+.bf-card-hd-actions{display:flex;align-items:center;gap:8px}
+
+.bf-pill-tabs{display:flex;gap:2px;background:var(--bg);border-radius:var(--r-sm);padding:3px}
+.bf-pill-tab{padding:5px 13px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;color:var(--subtle);transition:all .14s;user-select:none;border:none;background:none;font-family:inherit;appearance:none}
+.bf-pill-tab.active{background:#fff;color:var(--g800);box-shadow:var(--sh-xs)}
+
+.bf-pipeline-body{padding:20px 22px 22px}
+.bf-stage-row{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.bf-stage-row:last-child{margin-bottom:0}
+.bf-stage-label{width:110px;flex-shrink:0;font-size:13px;font-weight:600;color:var(--ink2);display:flex;align-items:center;gap:7px}
+.bf-stage-dot{width:9px;height:9px;border-radius:3px;flex-shrink:0}
+.bf-stage-bar-wrap{flex:1;height:28px;background:var(--bg);border-radius:var(--r-sm);overflow:hidden;position:relative;border:1px solid var(--line)}
+.bf-stage-bar-fill{height:100%;border-radius:var(--r-sm);transition:width 1.2s cubic-bezier(.16,1,.3,1);display:flex;align-items:center}
+.bf-stage-bar-label{padding:0 12px;font-size:12.5px;font-weight:700;color:#fff;white-space:nowrap;opacity:0;transition:opacity .4s .8s}
+.bf-stage-bar-fill.loaded .bf-stage-bar-label{opacity:1}
+.bf-stage-count{width:40px;text-align:right;font-size:14px;font-weight:700;color:var(--ink)}
+.bf-stage-val{width:80px;text-align:right;font-size:13px;font-weight:600;color:var(--muted);font-family:ui-monospace,monospace}
+
+.bf-winrate-wrap{display:flex;align-items:center;gap:18px;margin-top:18px;padding-top:18px;border-top:1.5px solid var(--line)}
+.bf-winrate-progress{width:190px;flex-shrink:0}
+.bf-winrate-label{font-size:12px;color:var(--muted);margin-bottom:7px;font-weight:600}
+.bf-winrate-bar{height:12px;background:var(--line);border-radius:999px;overflow:hidden;position:relative}
+.bf-winrate-fill{height:100%;width:0;background:linear-gradient(90deg,#125435,#22a063);border-radius:999px;transition:width .55s ease}
+.bf-winrate-pct{margin-top:7px;font-size:24px;font-weight:800;color:var(--g800);line-height:1}
+.bf-winrate-stats{flex:1;display:flex;flex-direction:column;gap:8px}
+.bf-winrate-stat{display:flex;justify-content:space-between;align-items:center}
+.bf-wrs-label{font-size:12px;color:var(--muted)}
+.bf-wrs-val{font-size:13px;font-weight:700;color:var(--ink)}
+
+.bf-right-col{display:flex;flex-direction:column;gap:16px}
+
+.bf-fu-list{padding:8px 16px 16px}
+.bf-fu-item{display:flex;align-items:flex-start;gap:11px;padding:12px 8px;border-radius:var(--r-sm);transition:background .12s;cursor:pointer;border-bottom:1px solid var(--g50)}
+.bf-fu-item:last-child{border-bottom:none}
+.bf-fu-item:hover{background:var(--g50)}
+.bf-fu-type-icon{font-size:16px;flex-shrink:0;margin-top:1px}
+.bf-fu-body{flex:1}
+.bf-fu-title{font-size:14px;font-weight:600;color:var(--ink)}
+.bf-fu-title.done{text-decoration:line-through;color:var(--subtle)}
+.bf-fu-meta{display:flex;gap:8px;align-items:center;margin-top:4px;flex-wrap:wrap}
+.bf-fu-company{font-size:12.5px;color:var(--muted)}
+.bf-fu-date{font-size:12px;font-weight:600;padding:2px 7px;border-radius:5px}
+.bf-fu-date.overdue{background:var(--rose-bg);color:var(--rose)}
+.bf-fu-date.today{background:var(--amber-bg);color:var(--amber)}
+.bf-fu-date.soon{background:var(--g100);color:var(--g800)}
+.bf-fu-date.later{background:var(--bg);color:var(--subtle)}
+
+.bf-proj-table{width:100%;border-collapse:collapse}
+.bf-proj-table th{padding:9px 16px;font-size:11.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--subtle);background:var(--bg);border-bottom:1.5px solid var(--line);text-align:left}
+.bf-proj-table td{padding:13px 16px;font-size:14px;border-bottom:1px solid var(--g50);vertical-align:middle}
+.bf-proj-table tbody tr{cursor:pointer;transition:background .12s}
+.bf-proj-table tbody tr:hover{background:var(--g50)}
+.bf-proj-table tbody tr:last-child td{border-bottom:none}
+.bf-proj-name-cell{display:flex;align-items:center;gap:10px}
+.bf-proj-avatar{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.bf-proj-n{font-size:14.5px;font-weight:600;color:var(--ink)}
+.bf-proj-co{font-size:12px;color:var(--subtle);margin-top:2px}
+.bf-status-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:12.5px;font-weight:600}
+.bf-status-badge::before{content:'';width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.bf-sb-active{background:var(--g100);color:var(--g800)}
+.bf-sb-prospect{background:var(--blue-bg);color:var(--blue)}
+.bf-sb-proposal{background:var(--amber-bg);color:var(--amber)}
+.bf-sb-won{background:var(--g100);color:var(--g700)}
+.bf-sb-lost{background:var(--rose-bg);color:var(--rose)}
+.bf-priority-tag{display:inline-flex;padding:3px 8px;border-radius:5px;font-size:12px;font-weight:700;border:1.5px solid transparent}
+.bf-pr-high{background:var(--rose-bg);color:var(--rose);border-color:#f5c0bb}
+.bf-pr-med{background:var(--amber-bg);color:var(--amber);border-color:#f5d8a3}
+.bf-pr-low{background:var(--g100);color:var(--g700);border-color:var(--g200)}
+.bf-value-tag{font-family:ui-monospace,monospace;font-size:13px;font-weight:500;color:var(--ink2)}
+.bf-pm-label{display:flex;justify-content:space-between;font-size:11px;font-weight:600;color:var(--muted);margin-bottom:4px}
+.bf-pm-bar{height:5px;background:var(--line);border-radius:3px;overflow:hidden}
+.bf-pm-fill{height:100%;border-radius:3px;background:var(--g800)}
+
+.bf-contacts-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;padding:16px 18px 18px}
+@media(max-width:900px){.bf-contacts-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:600px){.bf-contacts-grid{grid-template-columns:1fr}}
+.bf-contact-card{border:1.5px solid var(--line);border-radius:var(--r-md);padding:16px 14px;transition:all .18s;cursor:pointer}
+.bf-contact-card:hover{border-color:var(--g300);box-shadow:var(--sh-sm);transform:translateY(-2px)}
+.bf-cc-top{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.bf-cc-av{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;flex-shrink:0;background:var(--g100);color:var(--g800)}
+.bf-cc-name{font-size:14.5px;font-weight:700;color:var(--ink)}
+.bf-cc-title{font-size:12.5px;color:var(--subtle)}
+.bf-cc-company{font-size:12.5px;color:var(--g700);font-weight:600;margin-bottom:8px}
+.bf-cc-tags{display:flex;flex-wrap:wrap;gap:5px}
+.bf-cc-tag{font-size:11.5px;font-weight:600;padding:2px 7px;border-radius:5px;background:var(--bg);color:var(--muted);border:1px solid var(--line)}
+
+.bf-timeline{padding:14px 22px 20px}
+.bf-tl-item{display:flex;gap:14px;margin-bottom:18px;position:relative}
+.bf-tl-item:last-child{margin-bottom:0}
+.bf-tl-item::before{content:'';position:absolute;left:15px;top:32px;bottom:-18px;width:1.5px;background:var(--line)}
+.bf-tl-item:last-child::before{display:none}
+.bf-tl-icon{width:32px;height:32px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;z-index:1;border:2px solid #fff;box-shadow:var(--sh-xs)}
+.bf-tl-content{flex:1;padding-top:4px}
+.bf-tl-title{font-size:14px;font-weight:600;color:var(--ink)}
+.bf-tl-desc{font-size:13px;color:var(--muted);margin-top:3px;line-height:1.5}
+.bf-tl-time{font-size:12px;color:var(--subtle);margin-top:4px}
+.bf-tl-badge{font-size:12px;font-weight:700;padding:2px 8px;border-radius:5px;background:var(--g100);color:var(--g800);display:inline-flex;margin-top:5px}
+
+.bf-chart-wrap{padding:16px 22px 20px}
+
+.bf-modal-veil{position:fixed;inset:0;background:rgba(8,24,15,.45);z-index:200;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .22s;backdrop-filter:blur(5px)}
+.bf-modal-veil.open{opacity:1;pointer-events:all}
+.bf-modal-box{background:#fff;border-radius:var(--r-xl);width:520px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:var(--sh-lg);transform:scale(.95) translateY(14px);transition:transform .22s}
+.bf-modal-veil.open .bf-modal-box{transform:scale(1) translateY(0)}
+.bf-modal-head{padding:24px 26px 18px;border-bottom:1.5px solid var(--line);display:flex;align-items:center;gap:13px;position:sticky;top:0;background:#fff;z-index:10;border-radius:var(--r-xl) var(--r-xl) 0 0}
+.bf-modal-head-ico{width:44px;height:44px;border-radius:13px;background:var(--g100);display:flex;align-items:center;justify-content:center;font-size:22px}
+.bf-modal-head-title{font-size:17px;font-weight:700;color:var(--ink)}
+.bf-modal-head-sub{font-size:12px;color:var(--subtle);margin-top:2px}
+.bf-modal-close{margin-left:auto;width:32px;height:32px;border-radius:8px;border:1.5px solid var(--line);background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:var(--subtle);transition:all .14s}
+.bf-modal-close:hover{border-color:var(--rose);color:var(--rose)}
+.bf-modal-body{padding:22px 26px}
+.bf-field-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.bf-field-grid.solo{grid-template-columns:1fr}
+.bf-field-grid.trio{grid-template-columns:1fr 1fr 1fr}
+.bf-fld label{display:block;font-size:11.5px;font-weight:700;color:var(--muted);letter-spacing:.3px;margin-bottom:6px}
+.bf-fld input,.bf-fld select,.bf-fld textarea{width:100%;padding:9px 13px;border:1.5px solid var(--line);border-radius:var(--r-sm);font-family:inherit;font-size:13px;color:var(--ink);background:var(--bg);outline:none;transition:all .15s;resize:none}
+.bf-fld input:focus,.bf-fld select:focus,.bf-fld textarea:focus{border-color:var(--g800);background:#fff;box-shadow:var(--sh-glow)}
+.bf-section-divider{display:flex;align-items:center;gap:10px;margin:16px 0 14px;font-size:11px;font-weight:700;color:var(--subtle);text-transform:uppercase;letter-spacing:.8px}
+.bf-section-divider::before,.bf-section-divider::after{content:'';flex:1;height:1px;background:var(--line)}
+.bf-modal-foot{padding:14px 26px 22px;display:flex;gap:10px;justify-content:flex-end}
+.bf-btn-cancel{padding:9px 20px;border:1.5px solid var(--line);border-radius:var(--r-sm);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;color:var(--muted);background:#fff;transition:all .14s}
+.bf-btn-cancel:hover{background:var(--bg)}
+.bf-btn-primary{padding:9px 24px;background:var(--g800);color:#fff;border:none;border-radius:var(--r-sm);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all .18s;box-shadow:0 2px 10px rgba(18,84,53,.28)}
+.bf-btn-primary:hover{background:var(--g700);transform:translateY(-1px)}
+
+#bf-toast{position:fixed;bottom:28px;right:28px;background:var(--g800);color:#fff;padding:12px 20px;border-radius:12px;font-size:13.5px;font-weight:600;box-shadow:var(--sh-md);transform:translateY(70px);opacity:0;transition:all .3s cubic-bezier(.34,1.56,.64,1);z-index:999;max-width:320px;display:flex;align-items:center;gap:9px}
+
+@keyframes bfFadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+.bf-kpi-card:nth-child(1){animation-delay:.04s}
+.bf-kpi-card:nth-child(2){animation-delay:.08s}
+.bf-kpi-card:nth-child(3){animation-delay:.12s}
+.bf-kpi-card:nth-child(4){animation-delay:.16s}
+.bf-kpi-card:nth-child(5){animation-delay:.2s}
+
+@media(max-width:900px){.bf-sidebar{display:none}.bf-main{margin-left:0}}
+@media(max-width:768px){
+  .bf-topbar{padding:0 1rem;height:auto;min-height:52px;top:4rem;flex-wrap:wrap;gap:8px;padding-top:8px;padding-bottom:8px}
+  .bf-topbar-space{display:none}
+  .bf-view-tabs{padding:0 0.75rem;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;gap:0;justify-content:flex-start}
+  .bf-view-tabs::-webkit-scrollbar{display:none}
+  .bf-view-tabs-inner{flex-wrap:nowrap;gap:0}
+  .bf-view-tab{padding:10px 12px;font-size:13px;white-space:nowrap;flex-shrink:0}
+  .bf-view-tabs-actions{flex-shrink:0}
+  .bf-view-tabs-actions .bf-tb-cta{padding:7px 12px;font-size:12px}
+  .bf-content{padding:0.875rem}
+  .bf-card{padding:0.875rem}
+  .bf-kpi-card{padding:0.875rem}
+  .bf-proj-table th,.bf-proj-table td{padding:0.6rem 0.75rem;font-size:0.78rem}
+  /* Form fields — prevent collapsed look on mobile */
+  .bf-field-grid{grid-template-columns:1fr;gap:10px;margin-bottom:10px}
+  .bf-field-grid.trio{grid-template-columns:1fr}
+  .bf-fld input,.bf-fld select,.bf-fld textarea{
+    font-size:16px;padding:0.65rem 0.875rem;min-height:44px;
+    border:1.5px solid rgba(18,84,53,0.2);border-radius:10px
+  }
+  .bf-fld label{font-size:12px;margin-bottom:4px}
+  .bf-modal-body{padding:1rem}
+  .bf-modal-footer{padding:0.875rem 1rem;gap:0.5rem}
+  .bf-modal-footer .bf-btn{width:100%}
+}
+  </style>
+</head>
+<body class="has-main-nav">
+  {% include 'partials/main_navbar.html' with context %}
+
+  <div class="bf-shell">
+    <aside class="bf-sidebar dh-sidebar">
+      <div class="sb-brand">
+        <div class="sb-brand-text">
+          <span class="name">BizFlow</span>
+          <span class="tagline">Business Development</span>
+        </div>
+      </div>
+      <nav class="sb-nav">
+        <div class="dh-sb-section">
+          <div class="sb-section-label">Overview</div>
+          <a href="#" class="sb-nav-item active" data-view="dashboard" onclick="bfSetNav(this,'dashboard');return false">Dashboard</a>
+          <a href="#" class="sb-nav-item" data-view="projects" onclick="bfSetNav(this,'projects');return false">All Projects <span class="sb-badge" id="bfSidebarProjectCount">0</span></a>
+          <a href="#" class="sb-nav-item" data-view="pipeline" onclick="bfSetNav(this,'pipeline');return false">Pipeline</a>
+        </div>
+        <div class="dh-sb-section">
+          <div class="sb-section-label">Management</div>
+          <a href="#" class="sb-nav-item" data-view="followups" onclick="bfSetNav(this,'followups');return false">Follow-ups <span class="sb-badge" id="bfSidebarFollowupBadge">0</span></a>
+          <a href="#" class="sb-nav-item" data-view="contacts" onclick="bfSetNav(this,'contacts');return false">Contacts</a>
+          <a href="#" class="sb-nav-item" data-view="proposals" onclick="bfSetNav(this,'proposals');return false">Proposals</a>
+          <a href="#" class="sb-nav-item" data-view="prospects" onclick="bfSetNav(this,'prospects');return false">Prospects</a>
+        </div>
+        <div class="dh-sb-section">
+          <div class="sb-section-label">Reports</div>
+          <a href="#" class="sb-nav-item" data-view="analytics" onclick="bfSetNav(this,'analytics');return false">Analytics</a>
+          <a href="#" class="sb-nav-item" data-view="dashboard" onclick="bfSetNav(this,'dashboard');return false">Win rate</a>
+          <a href="#" class="sb-nav-item" data-view="activities" onclick="bfSetNav(this,'activities');return false">Activity log</a>
+        </div>
+        <div class="dh-sb-section">
+          <div class="sb-section-label">System</div>
+          <a href="/admin/dashboard" class="sb-nav-item">Settings</a>
+        </div>
+      </nav>
+      <div class="sb-footer">
+        <div class="sb-user-row" onclick="if(typeof openProfileModal==='function'){openProfileModal()}" role="button" tabindex="0">
+          <div class="sb-avatar" id="bfUserAv">—</div>
+          <div class="sb-user-text">
+            <div class="sb-user-name" id="bfUserName">Loading…</div>
+            <div class="sb-user-role" id="bfUserRole">Admin</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <div class="bf-main">
+      <div class="bf-view-tabs" id="bfViewTabs">
+        <div class="bf-view-tabs-inner">
+          <div class="bf-view-tab active" data-view="dashboard" onclick="bfSwitchView('dashboard',this)">Dashboard</div>
+          <div class="bf-view-tab" data-view="projects" onclick="bfSwitchView('projects',this)">Projects <span class="vt-count">8</span></div>
+          <div class="bf-view-tab" data-view="pipeline" onclick="bfSwitchView('pipeline',this)">Pipeline <span class="vt-count">24</span></div>
+          <div class="bf-view-tab" data-view="followups" onclick="bfSwitchView('followups',this)">Follow-ups <span class="vt-count">12</span></div>
+          <div class="bf-view-tab" data-view="contacts" onclick="bfSwitchView('contacts',this)">Contacts</div>
+          <div class="bf-view-tab" data-view="activities" onclick="bfSwitchView('activities',this)">Activities</div>
+        </div>
+        <div class="bf-view-tabs-actions">
+          <div class="bf-tb-search">
+            <span class="si">🔍</span>
+            <input type="text" placeholder="Search projects, contacts, deals…">
+          </div>
+          <div class="bf-tb-icon-btn">🔔<span class="bf-notif-pip"></span></div>
+          <div class="bf-tb-icon-btn">📅</div>
+          <button type="button" class="bf-tb-cta" onclick="bfOpenModal()">＋ New Project</button>
+        </div>
+      </div>
+
+      <div class="bf-content">
+        <div class="bf-view-section active" id="bf-v-dashboard">
+          <div class="bf-kpi-row">
+            <div class="bf-kpi-card c1"><div class="bf-kpi-label">Total Pipeline</div><div class="bf-kpi-val serif" id="bfKpiTotalPipeline">$0</div><span class="bf-kpi-trend up">Live</span></div>
+            <div class="bf-kpi-card c2"><div class="bf-kpi-label">Active Deals</div><div class="bf-kpi-val" id="bfKpiActiveDeals">0</div><span class="bf-kpi-trend up">Live</span></div>
+            <div class="bf-kpi-card c3"><div class="bf-kpi-label">Win Rate</div><div class="bf-kpi-val" id="bfKpiWinRate">0<span style="font-size:16px;font-weight:500">%</span></div><span class="bf-kpi-trend up">Live</span></div>
+            <div class="bf-kpi-card c4"><div class="bf-kpi-label">Avg. Deal Size</div><div class="bf-kpi-val serif" id="bfKpiAvgDeal">$0</div><span class="bf-kpi-trend neu">Live</span></div>
+            <div class="bf-kpi-card c5"><div class="bf-kpi-label">Overdue Follow-ups</div><div class="bf-kpi-val" style="color:var(--rose)" id="bfKpiOverdue">0</div><span class="bf-kpi-trend dn">Live</span></div>
+          </div>
+          <div class="bf-dash-grid">
+            <div class="bf-card" style="animation-delay:.22s">
+              <div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">Sales Pipeline</div><div class="bf-card-hd-sub">Funnel breakdown by stage</div></div><div class="bf-card-hd-actions"><div class="bf-pill-tabs"><button type="button" class="bf-pill-tab active" data-pipeline-mode="value" onclick="bfSetPipelineMode('value', this)">Value</button><button type="button" class="bf-pill-tab" data-pipeline-mode="count" onclick="bfSetPipelineMode('count', this)">Count</button></div></div></div>
+              <div class="bf-pipeline-body">
+                <div class="bf-stage-row"><div class="bf-stage-label"><div class="bf-stage-dot" style="background:#1a5fa8"></div>Prospecting</div><div class="bf-stage-bar-wrap"><div class="bf-stage-bar-fill" style="width:72%;background:linear-gradient(90deg,#1a5fa8,#2e80d8)" id="bfSb1"><span class="bf-stage-bar-label">$980K</span></div></div><div class="bf-stage-count">9</div><div class="bf-stage-val">$980K</div></div>
+                <div class="bf-stage-row"><div class="bf-stage-label"><div class="bf-stage-dot" style="background:#6b3fa0"></div>Qualifying</div><div class="bf-stage-bar-wrap"><div class="bf-stage-bar-fill" style="width:56%;background:linear-gradient(90deg,#6b3fa0,#8b5dc0)" id="bfSb2"><span class="bf-stage-bar-label">$740K</span></div></div><div class="bf-stage-count">5</div><div class="bf-stage-val">$740K</div></div>
+                <div class="bf-stage-row"><div class="bf-stage-label"><div class="bf-stage-dot" style="background:#c97d0e"></div>Proposal</div><div class="bf-stage-bar-wrap"><div class="bf-stage-bar-fill" style="width:83%;background:linear-gradient(90deg,#c97d0e,#f0a030)" id="bfSb3"><span class="bf-stage-bar-label">$1.1M</span></div></div><div class="bf-stage-count">5</div><div class="bf-stage-val">$1.1M</div></div>
+                <div class="bf-stage-row"><div class="bf-stage-label"><div class="bf-stage-dot" style="background:#125435"></div>Negotiation</div><div class="bf-stage-bar-wrap"><div class="bf-stage-bar-fill" style="width:69%;background:linear-gradient(90deg,#125435,#1d804f)" id="bfSb4"><span class="bf-stage-bar-label">$920K</span></div></div><div class="bf-stage-count">4</div><div class="bf-stage-val">$920K</div></div>
+                <div class="bf-stage-row"><div class="bf-stage-label"><div class="bf-stage-dot" style="background:#22a063"></div>Closing</div><div class="bf-stage-bar-wrap"><div class="bf-stage-bar-fill" style="width:36%;background:linear-gradient(90deg,#22a063,#40c87d)" id="bfSb5"><span class="bf-stage-bar-label">$480K</span></div></div><div class="bf-stage-count">1</div><div class="bf-stage-val">$480K</div></div>
+                <div class="bf-winrate-wrap"><div class="bf-winrate-progress"><div class="bf-winrate-label">Win Rate</div><div class="bf-winrate-bar"><div class="bf-winrate-fill" id="bfWinRateFill"></div></div><div class="bf-winrate-pct" id="bfWinArcText">0%</div></div><div class="bf-winrate-stats"><div class="bf-winrate-stat"><span class="bf-wrs-label">Won Deals</span><span class="bf-wrs-val" id="bfWonMetric">0</span></div><div class="bf-winrate-stat"><span class="bf-wrs-label">Lost Deals</span><span class="bf-wrs-val" id="bfLostMetric" style="color:var(--rose)">0</span></div><div class="bf-winrate-stat"><span class="bf-wrs-label">Open Follow-ups</span><span class="bf-wrs-val" id="bfCycleMetric">0</span></div></div></div>
+              </div>
+            </div>
+            <div class="bf-right-col">
+              <div class="bf-card" style="animation-delay:.26s">
+                <div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">🔔 Today's Follow-ups</div><div class="bf-card-hd-sub" id="bfTodaySub">0 due · 0 overdue</div></div><div class="bf-card-hd-actions"><span id="bfTodayOverdueBadge" style="font-size:11px;font-weight:700;background:var(--rose-bg);color:var(--rose);padding:3px 9px;border-radius:20px">0 overdue</span></div></div>
+                <div class="bf-fu-list" id="bfTodayFollowups"></div>
+              </div>
+              <div class="bf-card" style="animation-delay:.30s">
+                <div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">Revenue Trend</div><div class="bf-card-hd-sub">Won deals · Last 6 months</div></div></div>
+                <div class="bf-chart-wrap"><svg viewBox="0 0 280 110" style="height:110px;width:100%"><defs><linearGradient id="bfAreaGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#125435" stop-opacity=".18"/><stop offset="100%" stop-color="#125435" stop-opacity="0"/></linearGradient></defs><path d="M0,72 L46,58 L92,45 L138,55 L184,28 L230,18 L280,22 L280,110 L0,110 Z" fill="url(#bfAreaGrad)"/><polyline points="0,72 46,58 92,45 138,55 184,28 230,18 280,22" fill="none" stroke="#125435" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="184" cy="28" r="4" fill="#fff" stroke="#125435" stroke-width="2.5"/><text x="184" y="106" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="8.5" fill="#125435" font-weight="700" text-anchor="middle">Jan</text></svg><div style="display:flex;gap:18px;margin-top:10px"><div><div style="font-size:11px;color:var(--subtle)">Best Month</div><div style="font-size:14px;font-weight:700;color:var(--g800);font-family:ui-monospace,monospace">$680K</div></div><div><div style="font-size:11px;color:var(--subtle)">Avg/Month</div><div style="font-size:14px;font-weight:700;color:var(--ink);font-family:ui-monospace,monospace">$467K</div></div><div><div style="font-size:11px;color:var(--subtle)">YTD Total</div><div style="font-size:14px;font-weight:700;color:var(--ink);font-family:ui-monospace,monospace">$2.8M</div></div></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bf-view-section" id="bf-v-projects">
+          <div class="bf-card"><div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">Active Projects</div><div class="bf-card-hd-sub" id="bfProjectsSub">0 projects · $0 total value</div></div><div class="bf-card-hd-actions"><input type="file" id="bfProjectExcelInput" accept=".xlsx,.xls" style="display:none" onchange="bfImportProjectsFromExcel(this)"><button type="button" class="bf-tb-cta" style="font-size:12px;padding:7px 14px;background:#fff;color:var(--g800);border:1.5px solid var(--g300)" onclick="document.getElementById('bfProjectExcelInput').click()">⭳ Import Excel</button><button type="button" class="bf-tb-cta" style="font-size:12px;padding:7px 14px" onclick="bfOpenModal()">＋ Add</button></div></div>
+            <div style="overflow-x:auto"><table class="bf-proj-table" id="bfProjectsTable"><thead><tr><th>Project</th><th>Status</th><th>Priority</th><th>Value</th><th>Progress</th><th>Owner</th><th>Next Action</th></tr></thead><tbody id="bfProjTbody"></tbody></table></div>
+          </div>
+        </div>
+
+        <div class="bf-view-section" id="bf-v-pipeline"><div class="bf-card"><div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">Deal Pipeline</div><div class="bf-card-hd-sub">Grouped by stage with values and counts</div></div><div class="bf-card-hd-actions"><button type="button" class="bf-tb-cta" style="font-size:12px;padding:7px 14px" onclick="bfOpenModal()">＋ New Deal</button></div></div><div style="overflow-x:auto"><table class="bf-proj-table"><thead><tr><th>Stage</th><th>Deals</th><th>Total Value</th><th>Share</th></tr></thead><tbody id="bfPipelineTbody"></tbody></table></div></div></div>
+
+        <div class="bf-view-section" id="bf-v-followups"><div class="bf-card"><div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">All Follow-ups</div><div class="bf-card-hd-sub">Track calls, emails and tasks</div></div><div class="bf-card-hd-actions"><button type="button" class="bf-tb-cta" style="font-size:12px;padding:7px 14px" onclick="bfOpenFollowupPrompt()">＋ Add Follow-up</button></div></div><div class="bf-fu-list" id="bfFuList"></div></div></div>
+
+        <div class="bf-view-section" id="bf-v-contacts"><div class="bf-card"><div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">Key Contacts</div><div class="bf-card-hd-sub">Decision makers &amp; champions</div></div><div class="bf-card-hd-actions"><button type="button" class="bf-tb-cta" style="font-size:12px;padding:7px 14px" onclick="bfOpenContactPrompt()">＋ Add Contact</button></div></div><div class="bf-contacts-grid" id="bfContactsGrid"></div></div></div>
+
+        <div class="bf-view-section" id="bf-v-activities"><div class="bf-card"><div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">Activity Timeline</div><div class="bf-card-hd-sub">All logged interactions</div></div></div><div class="bf-timeline" id="bfActTimeline"></div></div></div>
+
+        <div class="bf-view-section" id="bf-v-prospects"><div class="bf-card"><div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">Potential Prospects</div><div class="bf-card-hd-sub">Early-stage opportunities</div></div></div><div style="overflow-x:auto"><table class="bf-proj-table"><thead><tr><th>Prospect</th><th>Company</th><th>Owner</th><th>Value</th><th>Next Action</th></tr></thead><tbody id="bfProspectsTbody"></tbody></table></div></div></div>
+
+        <div class="bf-view-section" id="bf-v-proposals"><div class="bf-card"><div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">Proposals</div><div class="bf-card-hd-sub">In-progress proposal and negotiation deals</div></div></div><div style="overflow-x:auto"><table class="bf-proj-table"><thead><tr><th>Project</th><th>Stage</th><th>Priority</th><th>Value</th><th>Progress</th></tr></thead><tbody id="bfProposalsTbody"></tbody></table></div></div></div>
+
+        <div class="bf-view-section" id="bf-v-analytics"><div class="bf-card"><div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">Analytics</div><div class="bf-card-hd-sub">BD intelligence &amp; insights</div></div></div><div id="bfAnalyticsBody" style="padding:22px;color:var(--ink2)"></div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bf-modal-veil" id="bfModal" onclick="if(event.target===this)bfCloseModal()">
+    <div class="bf-modal-box" onclick="event.stopPropagation()">
+      <div class="bf-modal-head"><div class="bf-modal-head-ico" id="bfModalIcon">📁</div><div><div class="bf-modal-head-title" id="bfModalTitle">New Project / Deal</div><div class="bf-modal-head-sub" id="bfModalSubTitle">Add to your business development pipeline</div></div><div class="bf-modal-close" onclick="bfCloseModal()">✕</div></div>
+      <div class="bf-modal-body">
+        <div class="bf-field-grid"><div class="bf-fld"><label>Project Name</label><input id="bfFldName" placeholder="e.g. Nexus Corp — Platform Deal"></div><div class="bf-fld"><label>Company</label><input id="bfFldCompany" placeholder="Client company name"></div></div>
+        <div class="bf-field-grid trio"><div class="bf-fld"><label>Value (USD)</label><input id="bfFldValue" type="number" min="0" step="1" placeholder="e.g. 250000"></div><div class="bf-fld"><label>Stage</label><select id="bfFldStage"><option value="prospecting">Prospecting</option><option value="qualifying">Qualifying</option><option value="proposal">Proposal</option><option value="negotiation">Negotiation</option><option value="closing">Closing</option></select></div><div class="bf-fld"><label>Priority</label><select id="bfFldPriority"><option value="high">High</option><option value="med" selected>Medium</option><option value="low">Low</option></select></div></div>
+        <div class="bf-field-grid trio"><div class="bf-fld"><label>Status</label><select id="bfFldStatus"><option value="active" selected>Active</option><option value="prospect">Prospect</option><option value="proposal">Proposal</option><option value="won">Won</option><option value="lost">Lost</option></select></div><div class="bf-fld"><label>Progress (%)</label><input id="bfFldProgress" type="number" min="0" max="100" step="1" placeholder="0-100"></div><div class="bf-fld"><label>Next Action</label><input id="bfFldNextAction" placeholder="e.g. Contract review"></div></div>
+        <div class="bf-field-grid"><div class="bf-fld"><label>Owner</label><input id="bfFldOwner" placeholder="Assigned team member"></div><div class="bf-fld"><label>Expected Close</label><input id="bfFldCloseDate" type="date"></div></div>
+        <div class="bf-section-divider">Contact</div>
+        <div class="bf-field-grid"><div class="bf-fld"><label>Primary Contact</label><input id="bfFldContactName" placeholder="Contact full name"></div><div class="bf-fld"><label>Contact Email</label><input id="bfFldContactEmail" placeholder="email@company.com"></div></div>
+        <div class="bf-section-divider">Details</div>
+        <div class="bf-field-grid solo"><div class="bf-fld"><label>Notes / Description</label><textarea id="bfFldNotes" rows="3" placeholder="Key details, requirements, context…"></textarea></div></div>
+      </div>
+      <div class="bf-modal-foot"><button type="button" class="bf-btn-cancel" onclick="bfCloseModal()">Cancel</button><button type="button" class="bf-btn-primary" id="bfProjectSaveBtn" onclick="bfSaveProject()">Save Project</button></div>
+    </div>
+  </div>
+
+  <div id="bf-toast"></div>
+
+  <script src="{{ url_for('static', filename='api-client.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+  <script>
+(function(){
+let projects = [];
+let followups = [];
+let contacts = [];
+let activityLog = [];
+let bdStats = { total_pipeline: 0, active_deals: 0, win_rate: 0, avg_deal_size: 0, overdue_followups: 0, stage_stats: [] };
+let pipelineDisplayMode = 'value';
+let editingProjectId = null;
+
+function esc(t){if(t===null||t===undefined)return'';const d=document.createElement('div');d.textContent=String(t);return d.innerHTML}
+function money(n){const v=Number(n||0);return '$'+v.toLocaleString(undefined,{maximumFractionDigits:0})}
+function authHeaders(){const token=localStorage.getItem('access_token');return{'Content-Type':'application/json','Authorization':'Bearer '+token}}
+
+async function apiGet(url){
+  const r=await fetch(url,{headers:authHeaders()});
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok||j.success===false){throw new Error(j.error||'Request failed');}
+  return j.data||j;
+}
+
+async function apiPost(url,payload){
+  const r=await fetch(url,{method:'POST',headers:authHeaders(),body:JSON.stringify(payload||{})});
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok||j.success===false){throw new Error(j.error||'Request failed');}
+  return j.data||j;
+}
+
+async function apiPut(url,payload){
+  const r=await fetch(url,{method:'PUT',headers:authHeaders(),body:JSON.stringify(payload||{})});
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok||j.success===false){throw new Error(j.error||'Request failed');}
+  return j.data||j;
+}
+
+function dueLabel(iso){
+  if(!iso) return {label:'No due date',cls:'soon'};
+  const due=new Date(iso);
+  const now=new Date();
+  const dayMs=24*60*60*1000;
+  const delta=Math.floor((due-now)/dayMs);
+  if(delta<0) return {label:`Overdue · ${Math.abs(delta)}d`,cls:'overdue'};
+  if(delta===0) return {label:'Today',cls:'today'};
+  if(delta===1) return {label:'Tomorrow',cls:'soon'};
+  return {label:due.toLocaleDateString(),cls:'soon'};
+}
+
+function normalizeFollowup(f){
+  const due=dueLabel(f.date);
+  return {...f,dateLabel:due.label,dateClass:due.cls};
+}
+
+function getPipelineMetric(item){
+  if(pipelineDisplayMode==='count'){
+    return Number(item?.count||0);
+  }
+  return Number(item?.value||0);
+}
+
+function renderProjects(){
+  const tbody=document.getElementById('bfProjTbody');if(!tbody)return;
+  const totalValue=projects.reduce((sum,p)=>sum+Number(p.valueAmount||0),0);
+  const sub=document.getElementById('bfProjectsSub');
+  if(sub){sub.textContent=`${projects.length} projects · ${money(totalValue)} total value`;}
+  tbody.innerHTML=projects.map((p)=>`<tr onclick="bfOpenProjectEditor(${Number(p.id||0)})" title="Click to edit project"><td><div class="bf-proj-name-cell"><div class="bf-proj-avatar" style="background:${p.bg||'#e8f5ee'}">${p.icon||'🏢'}</div><div><div class="bf-proj-n">${esc(p.name)}</div><div class="bf-proj-co">${esc(p.co)}</div></div></div></td><td><span class="bf-status-badge bf-sb-${esc((p.status||'active').toLowerCase())}">${esc((p.status||'active').charAt(0).toUpperCase()+(p.status||'active').slice(1))}</span></td><td><span class="bf-priority-tag bf-pr-${p.priority==='high'?'high':p.priority==='low'?'low':'med'}">${esc((p.priority||'med').toUpperCase())}</span></td><td><span class="bf-value-tag">${esc(p.value||money(p.valueAmount))}</span></td><td><div><div class="bf-pm-label"><span>${Number(p.progress||0)}%</span></div><div class="bf-pm-bar"><div class="bf-pm-fill" style="width:${Number(p.progress||0)}%"></div></div></div></td><td style="font-size:12.5px;font-weight:600;color:var(--ink2)">${esc(p.owner||'Unassigned')}</td><td><div style="font-size:12px;color:var(--ink2);font-weight:500">${esc(p.next||'No action')}</div><div style="font-size:11px;color:var(--subtle);font-weight:600;margin-top:2px">${esc(p.nextDate||'')}</div></td></tr>`).join('')||'<tr><td colspan="7" style="padding:16px;color:var(--subtle)">No projects yet. Add your first project.</td></tr>';
+}
+
+function renderFollowups(targetId='bfFuList',limit=null){
+  const list=document.getElementById(targetId);if(!list)return;
+  const items=(limit?followups.slice(0,limit):followups).map(normalizeFollowup);
+  list.innerHTML=items.map(f=>`<div class="bf-fu-item"><span class="bf-fu-type-icon">${f.icon||'📝'}</span><div class="bf-fu-body"><div class="bf-fu-title">${esc(f.title)}</div><div class="bf-fu-meta"><span class="bf-fu-company">${esc(f.co||'')}</span><span class="bf-fu-date ${f.dateClass}">${esc(f.dateLabel)}</span></div></div></div>`).join('')||'<div style="padding:16px;color:var(--subtle)">No follow-ups yet.</div>';
+}
+
+function renderTodayFollowups(){
+  const list=document.getElementById('bfTodayFollowups');if(!list)return;
+  const items=followups
+    .map(normalizeFollowup)
+    .filter(f=>f.dateClass==='today'||f.dateClass==='overdue')
+    .sort((a,b)=>a.dateClass===b.dateClass?0:(a.dateClass==='overdue'?-1:1))
+    .slice(0,4);
+  list.innerHTML=items.map(f=>`<div class="bf-fu-item"><span class="bf-fu-type-icon">${f.icon||'📝'}</span><div class="bf-fu-body"><div class="bf-fu-title">${esc(f.title)}</div><div class="bf-fu-meta"><span class="bf-fu-company">${esc(f.co||'')}</span><span class="bf-fu-date ${f.dateClass}">${esc(f.dateLabel)}</span></div></div></div>`).join('')||'<div style="padding:16px;color:var(--subtle)">No due follow-ups for today.</div>';
+}
+
+function renderContacts(){
+  const grid=document.getElementById('bfContactsGrid');if(!grid)return;
+  grid.innerHTML=contacts.map(c=>`<div class="bf-contact-card"><div class="bf-cc-top"><div class="bf-cc-av">${esc(c.initials||'NA')}</div><div><div class="bf-cc-name">${esc(c.name)}</div><div class="bf-cc-title">${esc(c.title||'Contact')}</div></div></div><div class="bf-cc-company">🏢 ${esc(c.co||'')}</div><div class="bf-cc-tags">${(c.tags||[]).map(t=>`<span class="bf-cc-tag">${esc(t)}</span>`).join('')}</div></div>`).join('')||'<div style="padding:16px;color:var(--subtle)">No contacts yet.</div>';
+}
+
+function renderActivities(){
+  const tl=document.getElementById('bfActTimeline');if(!tl)return;
+  tl.innerHTML=activityLog.map(a=>`<div class="bf-tl-item"><div class="bf-tl-icon" style="background:${a.bg||'#e8f5ee'}">${a.icon||'📝'}</div><div class="bf-tl-content"><div class="bf-tl-title">${esc(a.title)}</div><div class="bf-tl-desc">${esc(a.desc||'')}</div><div class="bf-tl-time">${esc(a.time?new Date(a.time).toLocaleString():'')}</div><span class="bf-tl-badge">${esc(a.badge||'')}</span></div></div>`).join('')||'<div style="padding:16px;color:var(--subtle)">No activity yet.</div>';
+}
+
+function renderPipeline(){
+  const body=document.getElementById('bfPipelineTbody'); if(!body) return;
+  const stats=bdStats.stage_stats||[];
+  const total=stats.reduce((a,s)=>a+Number(s.value||0),0)||1;
+  body.innerHTML=stats.map(s=>`<tr><td>${esc(s.stage.charAt(0).toUpperCase()+s.stage.slice(1))}</td><td>${Number(s.count||0)}</td><td>${money(s.value)}</td><td>${Math.round((Number(s.value||0)/total)*100)}%</td></tr>`).join('')||'<tr><td colspan="4" style="padding:16px;color:var(--subtle)">No pipeline data yet.</td></tr>';
+}
+
+function renderProspectsAndProposals(){
+  const prospects=document.getElementById('bfProspectsTbody');
+  const proposals=document.getElementById('bfProposalsTbody');
+  const prospectRows=projects.filter(p=>['prospecting','qualifying'].includes((p.stage||'').toLowerCase()));
+  const proposalRows=projects.filter(p=>['proposal','negotiation','closing'].includes((p.stage||'').toLowerCase()));
+  if(prospects){prospects.innerHTML=prospectRows.map(p=>`<tr><td>${esc(p.name)}</td><td>${esc(p.co)}</td><td>${esc(p.owner||'Unassigned')}</td><td>${esc(p.value||money(p.valueAmount))}</td><td>${esc(p.next||'-')}</td></tr>`).join('')||'<tr><td colspan="5" style="padding:16px;color:var(--subtle)">No prospects yet.</td></tr>';}
+  if(proposals){proposals.innerHTML=proposalRows.map(p=>`<tr><td>${esc(p.name)}</td><td>${esc((p.stage||'').charAt(0).toUpperCase()+(p.stage||'').slice(1))}</td><td>${esc((p.priority||'med').toUpperCase())}</td><td>${esc(p.value||money(p.valueAmount))}</td><td>${Number(p.progress||0)}%</td></tr>`).join('')||'<tr><td colspan="5" style="padding:16px;color:var(--subtle)">No proposals yet.</td></tr>';}
+}
+
+function renderAnalytics(){
+  const el=document.getElementById('bfAnalyticsBody'); if(!el) return;
+  const total=projects.length;
+  const high=projects.filter(p=>(p.priority||'')==='high').length;
+  const avgProgress=total?Math.round(projects.reduce((a,p)=>a+Number(p.progress||0),0)/total):0;
+  el.innerHTML=`<div style="display:grid;grid-template-columns:repeat(3,minmax(180px,1fr));gap:12px"><div class="bf-card" style="padding:14px"><div class="bf-card-hd-title">Total Projects</div><div style="margin-top:8px;font-size:24px;font-weight:800">${total}</div></div><div class="bf-card" style="padding:14px"><div class="bf-card-hd-title">High Priority Deals</div><div style="margin-top:8px;font-size:24px;font-weight:800">${high}</div></div><div class="bf-card" style="padding:14px"><div class="bf-card-hd-title">Avg Progress</div><div style="margin-top:8px;font-size:24px;font-weight:800">${avgProgress}%</div></div></div>`;
+}
+
+function updateDashboardStats(){
+  const total=bdStats.total_pipeline||0;
+  const active=bdStats.active_deals||0;
+  const win=bdStats.win_rate||0;
+  const avg=bdStats.avg_deal_size||0;
+  const overdue=bdStats.overdue_followups||0;
+  const elTotal=document.getElementById('bfKpiTotalPipeline');if(elTotal)elTotal.textContent=money(total);
+  const elActive=document.getElementById('bfKpiActiveDeals');if(elActive)elActive.textContent=String(active);
+  const elWin=document.getElementById('bfKpiWinRate');if(elWin)elWin.innerHTML=`${win}<span style="font-size:16px;font-weight:500">%</span>`;
+  const elAvg=document.getElementById('bfKpiAvgDeal');if(elAvg)elAvg.textContent=money(avg);
+  const elOverdue=document.getElementById('bfKpiOverdue');if(elOverdue)elOverdue.textContent=String(overdue);
+
+  const stages=bdStats.stage_stats||[];
+  const maxMetric=Math.max(1,...stages.map(s=>getPipelineMetric(s)));
+  ['bfSb1','bfSb2','bfSb3','bfSb4','bfSb5'].forEach((id,i)=>{
+    const row=stages[i]||{value:0,count:0};
+    const bar=document.getElementById(id);
+    const metric=getPipelineMetric(row);
+    if(bar){
+      const width=metric>0?Math.max(8,Math.round((metric/maxMetric)*100)):6;
+      bar.style.width=`${width}%`;
+      const lbl=bar.querySelector('.bf-stage-bar-label');
+      if(lbl)lbl.textContent=pipelineDisplayMode==='count'?`${Number(row.count||0)} deals`:money(row.value||0);
+      bar.classList.add('loaded');
+    }
+    const stageRow=bar?bar.closest('.bf-stage-row'):null;
+    if(stageRow){
+      const countEl=stageRow.querySelector('.bf-stage-count');
+      const valEl=stageRow.querySelector('.bf-stage-val');
+      if(countEl)countEl.textContent=String(row.count||0);
+      if(valEl)valEl.textContent=money(row.value||0);
+    }
+  });
+
+  const wonCount=projects.filter(p=>(p.status||'').toLowerCase()==='won').length;
+  const lostCount=projects.filter(p=>(p.status||'').toLowerCase()==='lost').length;
+  const winRateFill=document.getElementById('bfWinRateFill');
+  const winArcText=document.getElementById('bfWinArcText');
+  const boundedWin=Math.max(0,Math.min(100,win));
+  if(winRateFill)winRateFill.style.width=`${boundedWin}%`;
+  if(winArcText)winArcText.textContent=`${win}%`;
+  const wonMetric=document.getElementById('bfWonMetric');if(wonMetric)wonMetric.textContent=String(wonCount);
+  const lostMetric=document.getElementById('bfLostMetric');if(lostMetric)lostMetric.textContent=String(lostCount);
+  const openFollowups=followups.filter(f=>(f.status||'open')!=='done').length;
+  const cycleMetric=document.getElementById('bfCycleMetric');if(cycleMetric)cycleMetric.textContent=String(openFollowups);
+
+  const todayItems=followups.map(normalizeFollowup).filter(f=>f.dateClass==='today'||f.dateClass==='overdue');
+  const todaySub=document.getElementById('bfTodaySub');
+  const todayBadge=document.getElementById('bfTodayOverdueBadge');
+  const overdueItems=todayItems.filter(f=>f.dateClass==='overdue');
+  if(todaySub)todaySub.textContent=`${todayItems.length} due · ${overdueItems.length} overdue`;
+  if(todayBadge)todayBadge.textContent=`${overdueItems.length} overdue`;
+
+  const sidebarProj=document.getElementById('bfSidebarProjectCount');if(sidebarProj)sidebarProj.textContent=String(projects.length);
+  const sidebarFu=document.getElementById('bfSidebarFollowupBadge');if(sidebarFu){sidebarFu.textContent=String(overdueItems.length);sidebarFu.classList.toggle('sb-badge--alert',overdueItems.length>0);}
+}
+
+function renderAll(){
+  renderProjects();
+  renderFollowups('bfFuList');
+  renderTodayFollowups();
+  renderContacts();
+  renderActivities();
+  renderPipeline();
+  renderProspectsAndProposals();
+  renderAnalytics();
+  updateDashboardStats();
+}
+
+function bfSetPipelineMode(mode,btn){
+  pipelineDisplayMode=(mode==='count')?'count':'value';
+  document.querySelectorAll('.bf-pill-tab[data-pipeline-mode]').forEach((tab)=>{
+    tab.classList.toggle('active',tab===btn||tab.dataset.pipelineMode===pipelineDisplayMode);
+  });
+  updateDashboardStats();
+}
+
+function bfSwitchView(view,el){
+  document.querySelectorAll('.bf-view-section').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.bf-view-tab').forEach(t=>t.classList.remove('active'));
+  const sec=document.getElementById('bf-v-'+view);if(sec)sec.classList.add('active');
+  if(el)el.classList.add('active');
+}
+
+function bfSetNav(el,view){
+  document.querySelectorAll('.bf-sidebar .sb-nav-item[data-view]').forEach(n=>n.classList.remove('active'));
+  if(el)el.classList.add('active');
+  const tab=document.querySelector(`.bf-view-tab[data-view="${view}"]`);
+  bfSwitchView(view,tab||null);
+}
+
+function getProjectFormPayload(){
+  return {
+    name:(document.getElementById('bfFldName')||{}).value||'',
+    company:(document.getElementById('bfFldCompany')||{}).value||'',
+    value_amount:Number((document.getElementById('bfFldValue')||{}).value||0),
+    stage:(document.getElementById('bfFldStage')||{}).value||'prospecting',
+    priority:(document.getElementById('bfFldPriority')||{}).value||'med',
+    status:(document.getElementById('bfFldStatus')||{}).value||'active',
+    progress:Number((document.getElementById('bfFldProgress')||{}).value||0),
+    owner:(document.getElementById('bfFldOwner')||{}).value||'',
+    expected_close_date:(document.getElementById('bfFldCloseDate')||{}).value||null,
+    primary_contact_name:(document.getElementById('bfFldContactName')||{}).value||'',
+    primary_contact_email:(document.getElementById('bfFldContactEmail')||{}).value||'',
+    next_action:(document.getElementById('bfFldNextAction')||{}).value||'',
+    notes:(document.getElementById('bfFldNotes')||{}).value||''
+  };
+}
+
+function setProjectFormData(p){
+  (document.getElementById('bfFldName')||{}).value=p?.name||'';
+  (document.getElementById('bfFldCompany')||{}).value=p?.co||p?.company||'';
+  (document.getElementById('bfFldValue')||{}).value=Number(p?.valueAmount||0);
+  (document.getElementById('bfFldStage')||{}).value=(p?.stage||'prospecting');
+  (document.getElementById('bfFldPriority')||{}).value=(p?.priority||'med');
+  (document.getElementById('bfFldStatus')||{}).value=(p?.status||'active');
+  (document.getElementById('bfFldProgress')||{}).value=Number(p?.progress||0);
+  (document.getElementById('bfFldOwner')||{}).value=p?.owner||'';
+  (document.getElementById('bfFldCloseDate')||{}).value=(p?.expectedCloseDate||'').slice(0,10);
+  (document.getElementById('bfFldContactName')||{}).value=p?.primaryContactName||'';
+  (document.getElementById('bfFldContactEmail')||{}).value=p?.primaryContactEmail||'';
+  (document.getElementById('bfFldNextAction')||{}).value=p?.next||'';
+  (document.getElementById('bfFldNotes')||{}).value=p?.notes||'';
+}
+
+function resetProjectFormData(){
+  setProjectFormData({
+    name:'',co:'',valueAmount:0,stage:'prospecting',priority:'med',status:'active',
+    progress:0,owner:'',expectedCloseDate:'',primaryContactName:'',primaryContactEmail:'',
+    next:'',notes:''
+  });
+}
+
+function bfOpenModal(project){
+  const m=document.getElementById('bfModal');
+  const title=document.getElementById('bfModalTitle');
+  const subtitle=document.getElementById('bfModalSubTitle');
+  const icon=document.getElementById('bfModalIcon');
+  const saveBtn=document.getElementById('bfProjectSaveBtn');
+  editingProjectId=(project&&project.id)?Number(project.id):null;
+  if(editingProjectId){
+    if(title)title.textContent='Edit Project';
+    if(subtitle)subtitle.textContent='Update project details and save changes';
+    if(icon)icon.textContent='✏️';
+    if(saveBtn)saveBtn.textContent='Save Changes';
+    setProjectFormData(project);
+  }else{
+    if(title)title.textContent='New Project / Deal';
+    if(subtitle)subtitle.textContent='Add to your business development pipeline';
+    if(icon)icon.textContent='📁';
+    if(saveBtn)saveBtn.textContent='Save Project';
+    resetProjectFormData();
+  }
+  if(m)m.classList.add('open');
+}
+
+function bfCloseModal(){
+  const m=document.getElementById('bfModal');
+  if(m)m.classList.remove('open');
+}
+
+let _tt;
+function bfToast(msg){const t=document.getElementById('bf-toast');if(!t)return;t.textContent=msg;t.style.transform='translateY(0)';t.style.opacity='1';clearTimeout(_tt);_tt=setTimeout(()=>{t.style.transform='translateY(70px)';t.style.opacity='0'},2800)}
+
+function bfOpenProjectEditor(projectId){
+  const project=projects.find(p=>Number(p.id)===Number(projectId));
+  if(!project){bfToast('Project not found');return;}
+  bfOpenModal(project);
+}
+
+async function bfSaveProject(){
+  const payload=getProjectFormPayload();
+  if(!payload.name.trim()||!payload.company.trim()){bfToast('Project name and company are required');return;}
+  if(payload.progress<0||payload.progress>100){bfToast('Progress must be between 0 and 100');return;}
+  try{
+    if(editingProjectId){
+      await apiPut(`/api/admin/bd/projects/${editingProjectId}`,payload);
+      bfToast('✅ Project updated');
+    }else{
+      await apiPost('/api/admin/bd/projects',payload);
+      bfToast('✅ Project created');
+    }
+    bfCloseModal();
+    editingProjectId=null;
+    await loadBDData();
+  }catch(e){bfToast('❌ '+(e.message||'Failed to save project'));}
+}
+
+async function bfImportProjectsFromExcel(input){
+  try{
+    const file=input&&input.files&&input.files[0]?input.files[0]:null;
+    if(!file){return;}
+    const fd=new FormData();
+    fd.append('file',file);
+    const token=localStorage.getItem('access_token');
+    const response=await fetch('/api/admin/bd/projects/import-excel',{
+      method:'POST',
+      headers:{'Authorization':'Bearer '+token},
+      body:fd
+    });
+    const result=await response.json().catch(()=>({}));
+    if(!response.ok||result.success===false){
+      throw new Error(result.error||'Import failed');
+    }
+    const data=result.data||{};
+    const imported=Number(data.imported||0);
+    const dup=Number(data.skipped_duplicates||0);
+    const empty=Number(data.skipped_empty||0);
+    const errs=Array.isArray(data.errors)?data.errors:[];
+    let msg=`✅ Imported ${imported} project(s)`;
+    if(dup>0||empty>0){msg+=` · skipped ${dup+empty}`;}
+    if(errs.length>0){msg+=` · ${errs.length} row warning(s)`;}
+    bfToast(msg);
+    await loadBDData();
+  }catch(e){
+    bfToast('❌ '+(e.message||'Excel import failed'));
+  }finally{
+    if(input){input.value='';}
+  }
+}
+
+async function bfOpenContactPrompt(){
+  const name=window.prompt('Contact name');
+  if(!name) return;
+  const company=window.prompt('Company','');
+  const title=window.prompt('Title','');
+  const email=window.prompt('Email (optional)','');
+  try{
+    await apiPost('/api/admin/bd/contacts',{name,company,title,email});
+    bfToast('✅ Contact added');
+    await loadBDData();
+  }catch(e){bfToast('❌ '+(e.message||'Failed to add contact'));}
+}
+
+async function bfOpenFollowupPrompt(){
+  const title=window.prompt('Follow-up title');
+  if(!title) return;
+  const company=window.prompt('Company (optional)','');
+  const dueDate=window.prompt('Due date (YYYY-MM-DD, optional)','');
+  try{
+    await apiPost('/api/admin/bd/followups',{title,company,due_at:dueDate?`${dueDate}T09:00:00`:null,followup_type:'note'});
+    bfToast('✅ Follow-up added');
+    await loadBDData();
+  }catch(e){bfToast('❌ '+(e.message||'Failed to add follow-up'));}
+}
+
+async function loadUser(){
+  try{
+    const r=await fetch('/api/auth/me',{headers:authHeaders()});
+    if(!r.ok)return;
+    const j=await r.json(); const u=j.user; if(!u)return;
+    const name=u.full_name||u.username||'User';
+    const role=u.role==='admin'?'BD Director':(u.role?u.role.charAt(0).toUpperCase()+u.role.slice(1):'User');
+    const initials=name.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2)||'U';
+    const av=document.getElementById('bfUserAv'); const nm=document.getElementById('bfUserName'); const rl=document.getElementById('bfUserRole');
+    if(av)av.textContent=initials; if(nm)nm.textContent=name; if(rl)rl.textContent=role;
+  }catch(_){}
+}
+
+async function loadBDData(){
+  try{
+    const data=await apiGet('/api/admin/bd/dashboard-data');
+    projects=data.projects||[];
+    followups=data.followups||[];
+    contacts=data.contacts||[];
+    activityLog=data.activities||[];
+    bdStats=data.stats||bdStats;
+    renderAll();
+  }catch(e){
+    bfToast('❌ Failed to load BD data');
+  }
+}
+
+window.bfSwitchView=bfSwitchView;
+window.bfSetNav=bfSetNav;
+window.bfOpenModal=bfOpenModal;
+window.bfCloseModal=bfCloseModal;
+window.bfOpenProjectEditor=bfOpenProjectEditor;
+window.bfSaveProject=bfSaveProject;
+window.bfImportProjectsFromExcel=bfImportProjectsFromExcel;
+window.bfOpenContactPrompt=bfOpenContactPrompt;
+window.bfOpenFollowupPrompt=bfOpenFollowupPrompt;
+window.bfToast=bfToast;
+window.bfSetPipelineMode=bfSetPipelineMode;
+
+loadUser();
+loadBDData();
+})();
+  </script>
+</body>
+</html>

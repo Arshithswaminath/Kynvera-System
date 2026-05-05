@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+  <title>Long Vacation Form - HR Module</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/static/animations.css">
+  <link rel="stylesheet" href="/static/css/hr-forms.css">
+  <link rel="stylesheet" href="/static/css/dashboard.css">
+  <link rel="stylesheet" href="/static/mobile_responsive.css">
+  <style>
+    .form-container { max-width: 900px; margin: 0 auto; }
+    .form-card { background: white; border-radius: 10px; padding: 2rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.06), 0 4px 6px -4px rgba(0,0,0,0.04); border: 1px solid var(--border, #e2e8f0); }
+    .form-header { background: linear-gradient(135deg, #0d9488 0%, #0f766e 50%, #134e4a 100%); color: white; padding: 1.5rem 1.75rem; border-radius: 16px; margin-bottom: 1.5rem; box-shadow: 0 4px 14px rgba(13, 148, 136, 0.25); }
+    .form-label { font-weight: 600; color: #374151; margin-bottom: 0.5rem; }
+    .form-control, .form-select { border: 1px solid #d1d5db; border-radius: 8px; padding: 0.75rem; }
+    .form-control:focus, .form-select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(18,84,53,0.1); }
+    .btn-submit { background: linear-gradient(135deg, var(--primary), var(--primary-light)); color: white; border: none; padding: 0.875rem 2rem; border-radius: 8px; font-weight: 600; }
+    .btn-submit:hover { color: white; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(18,84,53,0.3); }
+    .back-link { color: var(--primary); text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; margin-bottom: 1.5rem; }
+    .section-title { font-size: 1rem; font-weight: 600; color: #1e293b; margin: 1.5rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid #e5e7eb; }
+    
+    .success-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15,23,42,0.5); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 9999; opacity: 0; visibility: hidden; transition: opacity 0.2s, visibility 0.2s; }
+    .success-overlay.show { opacity: 1; visibility: visible; }
+    .container { padding-top: 5.5rem; }
+  </style>
+</head>
+<body class="hr-form-page">
+  {% set active_page = 'hr' %}
+  {% include 'partials/main_navbar.html' with context %}
+
+  <div class="success-overlay" id="successModal">
+    <div class="success-modal">
+      <div style="width:64px;height:64px;background:linear-gradient(135deg,#10b981,#059669);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;"><svg width="32" height="32" fill="none" stroke="white" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg></div>
+      <h2 style="font-size:1.35rem;font-weight:700;color:#1e293b;">Form Submitted!</h2>
+      <p class="text-muted" style="margin:0.5rem 0;">Your long vacation request has been sent to HR for review.</p>
+      <div id="submissionId" style="background:#f1f5f9;padding:0.5rem 1rem;border-radius:8px;font-family:monospace;font-size:0.85rem;margin:1rem 0;"></div>
+      <button class="btn hr-form-submit" onclick="goToMyRequests()">View My Requests</button>
+    </div>
+  </div>
+
+  <div class="container py-4">
+    <div class="form-container">
+      <a href="/hr/" class="back-link">
+        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        Back to HR Module
+      </a>
+      
+      <div class="form-card">
+        <div class="form-header">
+          <h1 style="font-size: 1.5rem; font-weight: 700; margin: 0;">Long Vacation Request</h1>
+          <p style="margin: 0.5rem 0 0; opacity: 0.9;">Apply for extended leave (30+ days)</p>
+        </div>
+        
+        <form id="vacationForm">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Employee Name *</label>
+              <input type="text" class="form-control" name="employee_name" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Employee ID *</label>
+              <input type="text" class="form-control" name="employee_id" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Department *</label>
+              <select class="form-select" name="department" required>
+                <option value="">Select Department</option>
+                <option value="operations">Operations</option>
+                <option value="hr">Human Resources</option>
+                <option value="finance">Finance</option>
+                <option value="procurement">Procurement</option>
+                <option value="business_development">Business Development</option>
+                <option value="maintenance">Maintenance</option>
+                <option value="cleaning">Cleaning</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Position/Title *</label>
+              <input type="text" class="form-control" name="position" required>
+            </div>
+            
+            <div class="col-12"><h5 class="section-title">Vacation Details</h5></div>
+            
+            <div class="col-md-6">
+              <label class="form-label">Vacation Start Date *</label>
+              <input type="date" class="form-control" name="start_date" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Expected Return Date *</label>
+              <input type="date" class="form-control" name="end_date" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Total Days</label>
+              <input type="number" class="form-control" name="total_days" id="totalDays" readonly>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Destination Country *</label>
+              <input type="text" class="form-control" name="destination" required placeholder="e.g., India, Philippines">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Flight Ticket Required</label>
+              <select class="form-select" name="ticket_required">
+                <option value="yes">Yes - Company Provided</option>
+                <option value="no">No - Self Arranged</option>
+                <option value="reimbursement">Reimbursement Requested</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Ticket Allowance Eligible</label>
+              <select class="form-select" name="ticket_allowance">
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+                <option value="partial">Partial</option>
+              </select>
+            </div>
+            
+            <div class="col-12"><h5 class="section-title">Contact Information</h5></div>
+            
+            <div class="col-md-6">
+              <label class="form-label">Phone Number During Vacation</label>
+              <input type="tel" class="form-control" name="vacation_phone" placeholder="+XX XXX XXX XXXX">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Emergency Contact Name</label>
+              <input type="text" class="form-control" name="emergency_contact_name">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Emergency Contact Phone</label>
+              <input type="tel" class="form-control" name="emergency_contact_phone">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Email During Vacation</label>
+              <input type="email" class="form-control" name="vacation_email">
+            </div>
+            
+            <div class="col-12"><h5 class="section-title">Handover Details</h5></div>
+            
+            <div class="col-md-6">
+              <label class="form-label">Covering Employee Name</label>
+              <input type="text" class="form-control" name="covering_employee" placeholder="Who will cover your duties">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Handover Date</label>
+              <input type="date" class="form-control" name="handover_date">
+            </div>
+            <div class="col-12">
+              <label class="form-label">Handover Notes *</label>
+              <textarea class="form-control" name="handover_notes" rows="4" required placeholder="List all tasks, ongoing projects, and responsibilities to be handed over"></textarea>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Additional Remarks</label>
+              <textarea class="form-control" name="remarks" rows="2"></textarea>
+            </div>
+            
+            <div class="col-12 mt-4">
+              <button type="submit" class="btn-submit w-100">Submit Long Vacation Request</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    document.querySelector('[name="start_date"]').addEventListener('change', calculateDays);
+    document.querySelector('[name="end_date"]').addEventListener('change', calculateDays);
+    
+    function calculateDays() {
+      const start = new Date(document.querySelector('[name="start_date"]').value);
+      const end = new Date(document.querySelector('[name="end_date"]').value);
+      if (start && end && end >= start) {
+        const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+        document.getElementById('totalDays').value = days;
+      }
+    }
+    
+    document.getElementById('vacationForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const formData = new FormData(e.target);
+      const data = Object.fromEntries(formData.entries());
+      data.form_type = 'long_vacation';
+      
+      try {
+        const token = localStorage.getItem('access_token');
+        const response = await fetch('/hr/api/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+          showSuccessModal(result.submission_id);
+        } else {
+          showErrorMessage('Error: ' + result.error);
+        }
+      } catch (error) {
+        showErrorMessage('Error: ' + error.message);
+      }
+    });
+    
+    function showSuccessModal(submissionId) {
+      document.getElementById('submissionId').textContent = submissionId;
+      document.getElementById('successModal').classList.add('show');
+    }
+    function goToMyRequests() { window.location.href = '/hr/my-requests'; }
+    function showErrorMessage(message) {
+      const toast = document.createElement('div');
+      toast.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #fee2e2; color: #dc2626; padding: 1rem 1.5rem; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); z-index: 9999; font-weight: 500;';
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 5000);
+    }
+  </script>
+  <script src="{{ url_for('static', filename='api-client.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>

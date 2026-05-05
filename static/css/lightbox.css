@@ -1,0 +1,416 @@
+/**
+ * Injaaz Design System - Photo Lightbox
+ * Full-screen photo viewer with navigation
+ * Version: 1.0.0
+ */
+
+/* ============================================
+ * LIGHTBOX OVERLAY
+ * ============================================ */
+
+.lightbox-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.95);
+  z-index: var(--z-modal, 500);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4, 1rem);
+}
+
+.lightbox-overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* ============================================
+ * LIGHTBOX CONTENT
+ * ============================================ */
+
+.lightbox-content {
+  position: relative;
+  max-width: 90vw;
+  max-height: 90vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lightbox-image {
+  max-width: 100%;
+  max-height: 85vh;
+  object-fit: contain;
+  border-radius: var(--radius-lg, 0.5rem);
+  opacity: 0;
+  transform: scale(0.9);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+.lightbox-overlay.active .lightbox-image {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Loading state */
+.lightbox-loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 48px;
+  height: 48px;
+  border: 3px solid rgba(255, 255, 255, 0.2);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: lightbox-spin 0.8s linear infinite;
+}
+
+@keyframes lightbox-spin {
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* ============================================
+ * LIGHTBOX CONTROLS
+ * ============================================ */
+
+.lightbox-close {
+  position: absolute;
+  top: var(--space-4, 1rem);
+  right: var(--space-4, 1rem);
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: var(--radius-full, 9999px);
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 10;
+}
+
+.lightbox-close:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+  transform: scale(1.1);
+}
+
+.lightbox-close svg {
+  width: 24px;
+  height: 24px;
+}
+
+/* Navigation Arrows */
+.lightbox-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: var(--radius-full, 9999px);
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 10;
+}
+
+.lightbox-nav:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-50%) scale(1.1);
+}
+
+.lightbox-nav:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.lightbox-nav:disabled:hover {
+  transform: translateY(-50%);
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.lightbox-nav svg {
+  width: 28px;
+  height: 28px;
+}
+
+.lightbox-prev {
+  left: var(--space-4, 1rem);
+}
+
+.lightbox-next {
+  right: var(--space-4, 1rem);
+}
+
+/* ============================================
+ * LIGHTBOX FOOTER
+ * ============================================ */
+
+.lightbox-footer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: var(--space-4, 1rem) var(--space-6, 1.5rem);
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.lightbox-caption {
+  color: white;
+  font-size: var(--text-sm, 0.875rem);
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lightbox-counter {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: var(--text-sm, 0.875rem);
+  font-weight: var(--font-medium, 500);
+}
+
+/* ============================================
+ * LIGHTBOX THUMBNAILS
+ * ============================================ */
+
+.lightbox-thumbnails {
+  position: absolute;
+  bottom: var(--space-20, 5rem);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: var(--space-2, 0.5rem);
+  padding: var(--space-2, 0.5rem);
+  background-color: rgba(0, 0, 0, 0.5);
+  border-radius: var(--radius-lg, 0.5rem);
+  max-width: 80vw;
+  overflow-x: auto;
+}
+
+.lightbox-thumbnail {
+  width: 60px;
+  height: 60px;
+  border-radius: var(--radius-md, 0.375rem);
+  object-fit: cover;
+  cursor: pointer;
+  opacity: 0.5;
+  transition: all 0.2s ease;
+  border: 2px solid transparent;
+  flex-shrink: 0;
+}
+
+.lightbox-thumbnail:hover {
+  opacity: 0.8;
+}
+
+.lightbox-thumbnail.active {
+  opacity: 1;
+  border-color: white;
+}
+
+/* Hide thumbnails when only one image */
+.lightbox-thumbnails.single {
+  display: none;
+}
+
+/* ============================================
+ * LIGHTBOX ACTIONS
+ * ============================================ */
+
+.lightbox-actions {
+  position: absolute;
+  top: var(--space-4, 1rem);
+  left: var(--space-4, 1rem);
+  display: flex;
+  gap: var(--space-2, 0.5rem);
+}
+
+.lightbox-action {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: var(--radius-lg, 0.5rem);
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.lightbox-action:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.lightbox-action svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* ============================================
+ * ZOOM CONTROLS
+ * ============================================ */
+
+.lightbox-content.zoomed .lightbox-image {
+  cursor: zoom-out;
+  max-width: none;
+  max-height: none;
+}
+
+.lightbox-zoom-hint {
+  position: absolute;
+  bottom: var(--space-24, 6rem);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: var(--space-2, 0.5rem) var(--space-4, 1rem);
+  background-color: rgba(0, 0, 0, 0.7);
+  border-radius: var(--radius-full, 9999px);
+  color: rgba(255, 255, 255, 0.8);
+  font-size: var(--text-xs, 0.75rem);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.lightbox-overlay.active .lightbox-zoom-hint {
+  animation: lightbox-hint 3s ease forwards;
+}
+
+@keyframes lightbox-hint {
+  0%, 10% { opacity: 0; }
+  20%, 80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ============================================
+ * TOUCH GESTURES INDICATOR
+ * ============================================ */
+
+@media (hover: none) {
+  .lightbox-nav {
+    width: 48px;
+    height: 48px;
+  }
+  
+  .lightbox-nav svg {
+    width: 24px;
+    height: 24px;
+  }
+  
+  .lightbox-thumbnails {
+    bottom: var(--space-24, 6rem);
+  }
+  
+  .lightbox-thumbnail {
+    width: 50px;
+    height: 50px;
+  }
+}
+
+/* ============================================
+ * RESPONSIVE
+ * ============================================ */
+
+@media (max-width: 640px) {
+  .lightbox-overlay {
+    padding: 0;
+  }
+  
+  .lightbox-image {
+    max-height: 100vh;
+    border-radius: 0;
+  }
+  
+  .lightbox-close {
+    top: var(--space-2, 0.5rem);
+    right: var(--space-2, 0.5rem);
+    width: 40px;
+    height: 40px;
+  }
+  
+  .lightbox-nav {
+    width: 44px;
+    height: 44px;
+  }
+  
+  .lightbox-prev {
+    left: var(--space-2, 0.5rem);
+  }
+  
+  .lightbox-next {
+    right: var(--space-2, 0.5rem);
+  }
+  
+  .lightbox-footer {
+    padding: var(--space-3, 0.75rem);
+  }
+  
+  .lightbox-thumbnails {
+    padding: var(--space-1, 0.25rem);
+    gap: var(--space-1, 0.25rem);
+    bottom: var(--space-16, 4rem);
+  }
+  
+  .lightbox-thumbnail {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .lightbox-actions {
+    top: var(--space-2, 0.5rem);
+    left: var(--space-2, 0.5rem);
+  }
+}
+
+/* ============================================
+ * KEYBOARD NAVIGATION FOCUS
+ * ============================================ */
+
+.lightbox-close:focus-visible,
+.lightbox-nav:focus-visible,
+.lightbox-action:focus-visible {
+  outline: 2px solid white;
+  outline-offset: 2px;
+}
+
+/* ============================================
+ * REDUCED MOTION
+ * ============================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  .lightbox-overlay {
+    transition: none;
+  }
+  
+  .lightbox-image {
+    transition: none;
+    transform: none;
+  }
+  
+  .lightbox-loading {
+    animation: none;
+    border-top-color: transparent;
+    border-left-color: white;
+  }
+  
+  .lightbox-zoom-hint {
+    animation: none;
+    opacity: 1;
+  }
+}

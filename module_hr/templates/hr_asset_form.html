@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+  <title>Asset Transfer & Register - HR Module</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/static/animations.css">
+  <link rel="stylesheet" href="/static/css/hr-forms.css">
+  <link rel="stylesheet" href="/static/css/dashboard.css">
+  <link rel="stylesheet" href="/static/mobile_responsive.css">
+  <style>
+    :root { --primary: #125435; --primary-light: #1a7a4c; }
+    .form-container { max-width: 900px; margin: 0 auto; }
+    .form-card { background: white; border-radius: 16px; padding: 2rem; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+    .form-header { background: #0f766e; color: white; padding: 1.5rem 1.75rem; border-radius: 16px; margin-bottom: 1.5rem; box-shadow: 0 4px 14px rgba(13, 148, 136, 0.25); }
+    .form-label { font-weight: 600; color: #374151; margin-bottom: 0.5rem; }
+    .form-control, .form-select { border: 1px solid #d1d5db; border-radius: 8px; padding: 0.75rem; }
+    .form-control:focus, .form-select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(18,84,53,0.1); }
+    .btn-submit { background: linear-gradient(135deg, var(--primary), var(--primary-light)); color: white; border: none; padding: 0.875rem 2rem; border-radius: 8px; font-weight: 600; }
+    .btn-submit:hover { color: white; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(18,84,53,0.3); }
+    .back-link { color: var(--primary); text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; margin-bottom: 1.5rem; }
+    .section-title { font-size: 1rem; font-weight: 600; color: #1e293b; margin: 1.5rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid #e5e7eb; }
+    .asset-item { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1rem; margin-bottom: 1rem; }
+    .btn-add-asset { background: #e0f2e9; color: var(--primary); border: 1px dashed var(--primary); padding: 0.75rem; border-radius: 8px; width: 100%; font-weight: 500; }
+    .btn-add-asset:hover { background: #d1fae5; }
+    .btn-remove { background: #fee2e2; color: #dc2626; border: none; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.875rem; }
+    
+    .success-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15,23,42,0.5); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 9999; opacity: 0; visibility: hidden; transition: opacity 0.2s, visibility 0.2s; }
+    .success-overlay.show { opacity: 1; visibility: visible; }
+    .container { padding-top: 5.5rem; }
+  </style>
+</head>
+<body class="hr-form-page">
+  {% set active_page = 'hr' %}
+  {% include 'partials/main_navbar.html' with context %}
+
+  <div class="success-overlay" id="successModal">
+    <div class="success-modal">
+      <div style="width:64px;height:64px;background:linear-gradient(135deg,#10b981,#059669);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;"><svg width="32" height="32" fill="none" stroke="white" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg></div>
+      <h2 style="font-size:1.35rem;font-weight:700;color:#1e293b;">Form Submitted!</h2>
+      <p class="text-muted" style="margin:0.5rem 0;">Your asset form has been sent to HR for review.</p>
+      <div id="submissionId" style="background:#f1f5f9;padding:0.5rem 1rem;border-radius:8px;font-family:monospace;font-size:0.85rem;margin:1rem 0;"></div>
+      <button class="btn hr-form-submit" onclick="goToMyRequests()">View My Requests</button>
+    </div>
+  </div>
+
+  <div class="container py-4">
+    <div class="form-container">
+      <a href="/hr/" class="back-link">
+        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        Back to HR Module
+      </a>
+      
+      <div class="form-card">
+        <div class="form-header">
+          <h1 style="font-size: 1.5rem; font-weight: 700; margin: 0;">Asset Transfer & Register</h1>
+          <p style="margin: 0.5rem 0 0; opacity: 0.9;">Register new assets or transfer existing ones</p>
+        </div>
+        
+        <form id="assetForm">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Form Type *</label>
+              <select class="form-select" name="asset_form_type" id="assetFormType" required>
+                <option value="">Select Type</option>
+                <option value="register">New Asset Registration</option>
+                <option value="transfer">Asset Transfer</option>
+                <option value="return">Asset Return</option>
+                <option value="disposal">Asset Disposal</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Date *</label>
+              <input type="date" class="form-control" name="form_date" value="" required>
+            </div>
+            
+            <div class="col-12"><h5 class="section-title">Employee Information</h5></div>
+            
+            <div class="col-md-6">
+              <label class="form-label">Employee Name *</label>
+              <input type="text" class="form-control" name="employee_name" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Employee ID *</label>
+              <input type="text" class="form-control" name="employee_id" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Department *</label>
+              <select class="form-select" name="department" required>
+                <option value="">Select Department</option>
+                <option value="operations">Operations</option>
+                <option value="hr">Human Resources</option>
+                <option value="finance">Finance</option>
+                <option value="procurement">Procurement</option>
+                <option value="business_development">Business Development</option>
+                <option value="maintenance">Maintenance</option>
+                <option value="cleaning">Cleaning</option>
+              </select>
+            </div>
+            <div class="col-md-6" id="transferToSection" style="display: none;">
+              <label class="form-label">Transfer To (Employee Name)</label>
+              <input type="text" class="form-control" name="transfer_to_name">
+            </div>
+            
+            <div class="col-12"><h5 class="section-title">Asset Details</h5></div>
+            
+            <div class="col-12" id="assetsContainer">
+              <div class="asset-item" data-index="0">
+                <div class="row g-3">
+                  <div class="col-md-4">
+                    <label class="form-label">Asset Type *</label>
+                    <select class="form-select" name="assets[0][type]" required>
+                      <option value="">Select Type</option>
+                      <option value="laptop">Laptop</option>
+                      <option value="desktop">Desktop Computer</option>
+                      <option value="phone">Mobile Phone</option>
+                      <option value="tablet">Tablet</option>
+                      <option value="monitor">Monitor</option>
+                      <option value="printer">Printer</option>
+                      <option value="vehicle">Vehicle</option>
+                      <option value="furniture">Furniture</option>
+                      <option value="tools">Tools/Equipment</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Asset Tag/Serial Number *</label>
+                    <input type="text" class="form-control" name="assets[0][serial]" required placeholder="e.g., INJ-LAP-001">
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Brand/Model</label>
+                    <input type="text" class="form-control" name="assets[0][brand]" placeholder="e.g., Dell Latitude 5520">
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">Description</label>
+                    <input type="text" class="form-control" name="assets[0][description]" placeholder="Brief description">
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label">Condition *</label>
+                    <select class="form-select" name="assets[0][condition]" required>
+                      <option value="new">New</option>
+                      <option value="good">Good</option>
+                      <option value="fair">Fair</option>
+                      <option value="poor">Poor</option>
+                      <option value="damaged">Damaged</option>
+                    </select>
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label">Value (AED)</label>
+                    <input type="number" class="form-control" name="assets[0][value]" placeholder="0.00">
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="col-12">
+              <button type="button" class="btn-add-asset" onclick="addAsset()">+ Add Another Asset</button>
+            </div>
+            
+            <div class="col-12"><h5 class="section-title">Additional Information</h5></div>
+            
+            <div class="col-12">
+              <label class="form-label">Remarks/Notes</label>
+              <textarea class="form-control" name="remarks" rows="3" placeholder="Any additional notes or comments"></textarea>
+            </div>
+            
+            <div class="col-12 mt-4">
+              <button type="submit" class="btn-submit w-100">Submit Asset Form</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    // Set today's date
+    document.querySelector('[name="form_date"]').value = new Date().toISOString().split('T')[0];
+    
+    // Show/hide transfer section
+    document.getElementById('assetFormType').addEventListener('change', function() {
+      const transferSection = document.getElementById('transferToSection');
+      transferSection.style.display = this.value === 'transfer' ? 'block' : 'none';
+    });
+    
+    let assetIndex = 1;
+    
+    function addAsset() {
+      const container = document.getElementById('assetsContainer');
+      const newItem = document.createElement('div');
+      newItem.className = 'asset-item';
+      newItem.dataset.index = assetIndex;
+      newItem.innerHTML = `
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <strong>Asset #${assetIndex + 1}</strong>
+          <button type="button" class="btn-remove" onclick="removeAsset(this)">Remove</button>
+        </div>
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label">Asset Type *</label>
+            <select class="form-select" name="assets[${assetIndex}][type]" required>
+              <option value="">Select Type</option>
+              <option value="laptop">Laptop</option>
+              <option value="desktop">Desktop Computer</option>
+              <option value="phone">Mobile Phone</option>
+              <option value="tablet">Tablet</option>
+              <option value="monitor">Monitor</option>
+              <option value="printer">Printer</option>
+              <option value="vehicle">Vehicle</option>
+              <option value="furniture">Furniture</option>
+              <option value="tools">Tools/Equipment</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Asset Tag/Serial Number *</label>
+            <input type="text" class="form-control" name="assets[${assetIndex}][serial]" required>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Brand/Model</label>
+            <input type="text" class="form-control" name="assets[${assetIndex}][brand]">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Description</label>
+            <input type="text" class="form-control" name="assets[${assetIndex}][description]">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Condition *</label>
+            <select class="form-select" name="assets[${assetIndex}][condition]" required>
+              <option value="new">New</option>
+              <option value="good">Good</option>
+              <option value="fair">Fair</option>
+              <option value="poor">Poor</option>
+              <option value="damaged">Damaged</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Value (AED)</label>
+            <input type="number" class="form-control" name="assets[${assetIndex}][value]">
+          </div>
+        </div>
+      `;
+      container.appendChild(newItem);
+      assetIndex++;
+    }
+    
+    function removeAsset(btn) {
+      btn.closest('.asset-item').remove();
+    }
+    
+    document.getElementById('assetForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const formData = new FormData(e.target);
+      const data = {};
+      
+      // Process form data
+      for (let [key, value] of formData.entries()) {
+        if (key.startsWith('assets[')) {
+          if (!data.assets) data.assets = [];
+          const match = key.match(/assets\[(\d+)\]\[(\w+)\]/);
+          if (match) {
+            const idx = parseInt(match[1]);
+            const field = match[2];
+            if (!data.assets[idx]) data.assets[idx] = {};
+            data.assets[idx][field] = value;
+          }
+        } else {
+          data[key] = value;
+        }
+      }
+      
+      // Clean up assets array
+      if (data.assets) {
+        data.assets = data.assets.filter(a => a && a.type);
+      }
+      
+      data.form_type = 'asset';
+      
+      try {
+        const token = localStorage.getItem('access_token');
+        const response = await fetch('/hr/api/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+          showSuccessModal(result.submission_id);
+        } else {
+          showErrorMessage('Error: ' + result.error);
+        }
+      } catch (error) {
+        showErrorMessage('Error: ' + error.message);
+      }
+    });
+    
+    function showSuccessModal(submissionId) {
+      document.getElementById('submissionId').textContent = submissionId;
+      document.getElementById('successModal').classList.add('show');
+    }
+    function goToMyRequests() { window.location.href = '/hr/my-requests'; }
+    function showErrorMessage(message) {
+      const toast = document.createElement('div');
+      toast.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #fee2e2; color: #dc2626; padding: 1rem 1.5rem; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); z-index: 9999; font-weight: 500;';
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 5000);
+    }
+  </script>
+  <script src="{{ url_for('static', filename='api-client.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>

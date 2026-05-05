@@ -1,0 +1,46 @@
+[flake8]
+# Flake8 configuration for Injaaz App
+max-line-length = 120
+exclude =
+    .git,
+    __pycache__,
+    .venv,
+    venv,
+    env,
+    .env,
+    node_modules,
+    generated,
+    logs,
+    *.pyc,
+    *.pyo,
+    *.pyd,
+    .pytest_cache,
+    .coverage,
+    htmlcov,
+    dist,
+    build,
+    *.egg-info,
+    android,
+    ios,
+    .capacitor
+
+# Ignore specific errors
+ignore =
+    E501,  # Line too long (handled by max-line-length)
+    W503,  # Line break before binary operator (conflicts with E502)
+    E203,  # Whitespace before ':' (conflicts with black)
+
+# Per-file ignores
+per-file-ignores =
+    __init__.py:F401  # Unused imports in __init__.py are OK
+    */migrations/*:E501  # Migration files can have long lines
+
+# Maximum complexity
+max-complexity = 15
+
+# Show source
+show-source = True
+
+# Statistics
+statistics = False
+

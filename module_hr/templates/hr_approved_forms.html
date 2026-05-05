@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+  <title>Approved Forms - Injaaz Application</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/static/animations.css">
+  <link rel="stylesheet" href="/static/css/dashboard.css">
+  <link rel="stylesheet" href="/static/css/hr-forms.css">
+  <link rel="stylesheet" href="/static/mobile_responsive.css">
+  <style>
+    :root { --primary: #125435; --primary-light: #1a7a4c; }
+    body { background: #f1f5f9; }
+    .page-header { background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 2rem; border-radius: 16px; margin-bottom: 2rem; }
+    .back-link {
+      display: inline-flex; align-items: center; gap: 0.5rem; color: #047857 !important;
+      background: rgba(255,255,255,0.95); text-decoration: none; font-weight: 600;
+      padding: 0.5rem 1rem; border-radius: 8px; margin-bottom: 1rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1); transition: all 0.2s;
+    }
+    .back-link:hover { color: #047857 !important; background: white; box-shadow: 0 4px 12px rgba(0,0,0,0.15); transform: translateX(-2px); }
+    .review-card { background: white; border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem; border: 1px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,0.06); cursor: pointer; transition: all 0.2s; }
+    .review-card:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.12); border-color: #10b981; }
+    .form-type-badge { padding: 0.35rem 0.75rem; border-radius: 6px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
+    .type-leave, .type-leave_application { background: #d1fae5; color: #047857; }
+    .type-termination { background: #fee2e2; color: #dc2626; }
+    .type-long_vacation { background: #dbeafe; color: #1d4ed8; }
+    .type-asset { background: #fef3c7; color: #b45309; }
+    .type-grievance, .type-passport_release, .type-duty_resumption { background: #dbeafe; color: #1d4ed8; }
+    .detail-tab { padding: 1rem 1.5rem; font-weight: 600; font-size: 0.9rem; cursor: pointer; color: #64748b; border-bottom: 3px solid transparent; transition: all 0.2s; }
+    .detail-tab:hover { color: var(--primary); }
+    .detail-tab.active { color: var(--primary); border-bottom-color: var(--primary); background: white; }
+    .detail-section-title { font-weight: 700; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid var(--primary); }
+    .workflow-timeline { margin-top: 0.65rem; --tl-line: #e2e8f0; }
+    .timeline-item {
+      display: flex; gap: 0.85rem; align-items: flex-start;
+      position: relative; padding: 0 0 1rem 0;
+    }
+    .timeline-item:last-child { padding-bottom: 0; }
+    .timeline-item::before {
+      content: ''; position: absolute; left: 7px; top: 1.5rem; bottom: 0;
+      width: 2px; background: var(--tl-line); border-radius: 1px;
+    }
+    .timeline-item:last-child::before { display: none; }
+    .timeline-dot {
+      position: relative; flex-shrink: 0;
+      margin-top: 0.3rem;
+      width: 16px; height: 16px; border-radius: 50%; z-index: 1;
+      background: #e2e8f0;
+      border: 2px solid white;
+      box-shadow: 0 0 0 2px #e2e8f0;
+    }
+    .timeline-dot.completed { background: #10b981; box-shadow: 0 0 0 2px rgba(16,185,129,0.35); }
+    .timeline-dot.current { background: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.4); }
+    .timeline-dot.rejected { background: #ef4444; box-shadow: 0 0 0 2px rgba(239,68,68,0.35); }
+    .timeline-body { flex: 1; min-width: 0; padding-bottom: 0.15rem; }
+    .timeline-title { font-weight: 700; font-size: 0.9125rem; color: #0f172a; letter-spacing: -0.015em; }
+    .timeline-meta { font-size: 0.8rem; color: #64748b; margin-top: 0.2rem; line-height: 1.45; }
+    .timeline-card {
+      margin-top: 0.6rem;
+      padding: 0.62rem 0.82rem;
+      background: #fff;
+      border: 1px solid #eef0f4;
+      border-radius: 10px;
+      box-shadow: 0 1px 3px rgba(15,23,42,0.04);
+    }
+    .timeline-card--alert {
+      border-color: #fecaca;
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(239,68,68,0.06);
+    }
+    .timeline-dl { margin: 0; display: grid; grid-template-columns: 5.25rem 1fr; gap: 0.3rem 0.72rem; font-size: 0.8075rem; align-items: start; }
+    .timeline-dl + .timeline-dl { margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid #f1f5f9; }
+    .timeline-dl dt { margin: 0; font-weight: 600; color: #64748b; }
+    .timeline-dl dd { margin: 0; color: #1e293b; word-break: break-word; white-space: pre-wrap; line-height: 1.48; }
+    .timeline-dd-muted { color: #94a3b8 !important; }
+    .timeline-sig {
+      box-sizing: border-box;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: min(280px, 100%);
+      height: 92px;
+      flex-shrink: 0;
+      padding: 0.4rem 0.5rem;
+      margin: 0;
+      background: #fff;
+      border: 1px solid #e5e9ef;
+      border-radius: 10px;
+      overflow: hidden;
+      line-height: 0;
+    }
+    .timeline-sig img {
+      display: block;
+      margin: 0;
+      max-width: 100%;
+      max-height: 100%;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      object-position: center center;
+    }
+  </style>
+  <style>body.has-main-nav { padding-top: 5.5rem; }</style>
+</head>
+<body class="has-main-nav">
+  {% set active_page = 'hr' %}
+  {% include 'partials/main_navbar.html' with context %}
+  <div class="container py-4">
+    <div class="page-header">
+      <a href="/hr/" class="back-link">
+        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        Back to HR Module
+      </a>
+      <h1 style="font-size: 1.75rem; font-weight: 700; margin-bottom: 0.5rem;">Approved Forms</h1>
+      <p style="opacity: 0.9; margin: 0;">HR requests fully approved – click to view details</p>
+    </div>
+    
+    <div id="approvedList">
+      <div class="text-center py-5">
+        <div class="spinner-border text-primary"></div>
+        <p class="mt-2 text-muted">Loading approved forms...</p>
+      </div>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    const HR_SUPPORTED_DOCX_FORMS = {{ (supported_docx_forms or [])|tojson }};
+    const HR_SUPPORTED_PDF_FORMS = {{ (supported_pdf_forms or [])|tojson }};
+    const token = localStorage.getItem('access_token');
+    let approvedSubmissionsList = [];
+
+    async function downloadHrPdf(submissionId) {
+      if (!token) { alert('Please log in again.'); return; }
+      try {
+        const res = await fetch('/hr/download-pdf/' + encodeURIComponent(submissionId), { headers: { 'Authorization': 'Bearer ' + token } });
+        if (!res.ok) { const err = await res.json().catch(() => ({})); alert(err.error || 'PDF download failed.'); return; }
+        const blob = await res.blob();
+        const disp = res.headers.get('Content-Disposition');
+        const m = disp && (disp.match(/filename\*?=(?:UTF-8'')?["']?([^"';]+)["']?/i) || disp.match(/filename=["']?([^"';]+)["']?/));
+        const name = (m && m[1]) ? m[1].trim() : ('Leave_Application_' + submissionId + '.pdf');
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = name; a.click();
+        URL.revokeObjectURL(url);
+      } catch (e) { alert('Download failed: ' + (e.message || 'Network error')); }
+    }
+    async function downloadHrDocx(submissionId) {
+      if (!token) { alert('Please log in again.'); return; }
+      try {
+        const res = await fetch('/hr/download-docx/' + encodeURIComponent(submissionId), { headers: { 'Authorization': 'Bearer ' + token } });
+        if (!res.ok) { const err = await res.json().catch(() => ({})); alert(err.error || 'DOCX download failed.'); return; }
+        const blob = await res.blob();
+        const disp = res.headers.get('Content-Disposition');
+        const m = disp && (disp.match(/filename\*?=(?:UTF-8'')?["']?([^"';]+)["']?/i) || disp.match(/filename=["']?([^"';]+)["']?/));
+        const name = (m && m[1]) ? m[1].trim() : ('HR_Form_' + submissionId + '.docx');
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = name; a.click();
+        URL.revokeObjectURL(url);
+      } catch (e) { alert('Download failed: ' + (e.message || 'Network error')); }
+    }
+    
+    function escapeHtml(text) {
+      if (text == null || text === '') return '';
+      const div = document.createElement('div');
+      div.textContent = String(text);
+      return div.innerHTML;
+    }
+    function fmtDate(v) {
+      if (!v) return '-';
+      try { return new Date(v).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }); } catch { return v; }
+    }
+    function getFormTypeClass(type) { return `type-${(type || '').replace('hr_', '')}`; }
+    function getFormTypeLabel(type) { return (type || '').replace('hr_', '').replace(/_/g, ' ').toUpperCase(); }
+    
+    function renderFormAsFilled(formType, formData, submissionId) {
+      if (formType === 'leave_application') return renderLeaveFormAsFilled(formData, submissionId);
+      if (formType === 'grievance') return renderGrievanceFormAsFilled(formData, submissionId);
+      if (formType === 'passport_release') return renderPassportFormAsFilled(formData, submissionId);
+      if (formType === 'duty_resumption') return renderDutyResumptionFormAsFilled(formData, submissionId);
+      return renderGenericFormAsFilled(formData, submissionId);
+    }
+    function renderGenericFormAsFilled(fd, submissionId) {
+      const skipKeys = ['submitted_by_id', 'submitted_by_name', 'submitted_at', 'form_type'];
+      const rows = [];
+      for (const [key, value] of Object.entries(fd || {})) {
+        if (skipKeys.includes(key) || key.startsWith('hr_') || key.startsWith('gm_')) continue;
+        if (value == null || value === '') continue;
+        const label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        let cell = escapeHtml(String(value));
+        if (typeof value === 'string' && value.startsWith('data:image')) {
+          cell = `<img src="${value}" style="max-width:200px;max-height:80px;border:1px solid #e2e8f0;border-radius:6px;" alt="Signature">`;
+        } else if (key.includes('date') && /^\d{4}-\d{2}-\d{2}/.test(String(value))) {
+          cell = escapeHtml(fmtDate(value));
+        }
+        rows.push(`<tr><td class="label">${label}</td><td>${cell}</td></tr>`);
+      }
+      return `<div class="doc-form" style="padding:1rem;box-shadow:none;max-width:100%;"><div class="doc-section-title" style="margin-bottom:0.5rem;">${escapeHtml(submissionId)}</div><div class="doc-form-grid form-single"><div class="doc-form-col"><table class="doc-table">${rows.join('')}</table></div></div></div>`;
+    }
+    function row(label, val) { return `<tr><td class="label">${label}</td><td>${val != null && val !== '' ? escapeHtml(String(val)) : '-'}</td></tr>`; }
+    function renderGrievanceFormAsFilled(fd, sid) {
+      const sig = fd.complainant_signature && fd.complainant_signature.startsWith('data:image') ? `<img src="${fd.complainant_signature}" style="max-width:200px;max-height:80px;border:1px solid #e2e8f0;border-radius:6px;" alt="Signature">` : '-';
+      const loc = { camp: 'Camp', site: 'Site', head_office: 'Head Office' };
+      return `<div class="doc-form" style="padding:1rem;box-shadow:none;max-width:100%;"><div class="doc-section-title">${escapeHtml(sid)}</div><table class="doc-table">${row('Complainant', fd.complainant_name)}${row('Employee ID', fd.complainant_id)}${row('Date of Incident', fmtDate(fd.date_of_incident))}${row('Description', fd.complaint_description)}<tr><td class="label">Signature</td><td>${sig}</td></tr></table></div>`;
+    }
+    function renderPassportFormAsFilled(fd, sid) {
+      const sig = fd.employee_signature && fd.employee_signature.startsWith('data:image') ? `<img src="${fd.employee_signature}" style="max-width:200px;max-height:80px;border:1px solid #e2e8f0;border-radius:6px;" alt="Signature">` : '-';
+      return `<div class="doc-form" style="padding:1rem;box-shadow:none;max-width:100%;"><div class="doc-section-title">${escapeHtml(sid)}</div><table class="doc-table">${row('Requester', fd.requester)}${row('Employee Name', fd.employee_name)}${row('Employee ID', fd.employee_id)}${row('Job Title', fd.job_title)}<tr><td class="label">Signature</td><td>${sig}</td></tr></table></div>`;
+    }
+    function renderDutyResumptionFormAsFilled(fd, sid) {
+      const sig = fd.employee_signature && fd.employee_signature.startsWith('data:image') ? `<img src="${fd.employee_signature}" style="max-width:200px;max-height:80px;border:1px solid #e2e8f0;border-radius:6px;" alt="Signature">` : '-';
+      return `<div class="doc-form" style="padding:1rem;box-shadow:none;max-width:100%;"><div class="doc-section-title">${escapeHtml(sid)}</div><table class="doc-table">${row('Requester', fd.requester)}${row('Employee Name', fd.employee_name)}${row('Leave Started', fmtDate(fd.leave_started))}${row('Actual Resumption', fmtDate(fd.actual_resumption_date))}<tr><td class="label">Signature</td><td>${sig}</td></tr></table></div>`;
+    }
+    function renderLeaveFormAsFilled(fd, sid) {
+      const row = (label, val) => {
+        const v = (val != null && val !== '') ? escapeHtml(String(val)) : '-';
+        return `<tr><td class="label">${label}</td><td>${v}</td></tr>`;
+      };
+      const sigHtml = (url, alt) => (url && typeof url === 'string' && url.startsWith('data:image'))
+        ? `<span class="doc-sig-wrap"><img src="${url}" class="doc-sig-img" alt="${alt || 'Signature'}"></span>` : '-';
+      const leaveLabels = { annual: 'Annual Leave', sick: 'Sick Leave', ot_compensatory: 'OT Compensatory Off', unpaid: 'Unpaid Leave', compassionate: 'Compassionate Leave', study: 'Study Leave', examination: 'Examination Leave (UAE Nationals)', hajj: 'Hajj Leave', other: 'Other' };
+      const leaveTypeRaw = leaveLabels[fd.leave_type] || fd.leave_type || '-';
+      const leaveTypeCell = escapeHtml(String(leaveTypeRaw)) + (fd.leave_type === 'other' && fd.leave_type_other ? ' — ' + escapeHtml(fd.leave_type_other) : '');
+      const salaryStr = fd.salary_advance === 'yes' ? 'YES' : fd.salary_advance === 'no' ? 'NO' : '-';
+      const ref = escapeHtml(sid || '');
+      return `
+        <div class="doc-form doc-form--preview" style="box-shadow:none;border:none;background:transparent;padding:0;max-width:100%;">
+          <div class="doc-submission-ref">Reference: ${ref}</div>
+          <div class="doc-form-grid doc-form-grid--leave">
+            <div class="doc-panel">
+              <div class="doc-section-title">Employee Details</div>
+              <table class="doc-table">
+                ${row('Name', fd.employee_name)}
+                ${row('Job Title', fd.job_title)}
+                ${row('Employee ID', fd.employee_id)}
+                ${row('Date of Joining', fmtDate(fd.date_of_joining))}
+                ${row('Last Leave Date', fmtDate(fd.last_leave_date))}
+                ${row("Today's Date", fmtDate(fd.today_date))}
+                ${row('Department', fd.department)}
+                ${row('Mobile No.', fd.mobile_no)}
+              </table>
+            </div>
+            <div class="doc-panel">
+              <div class="doc-section-title">Details of Leave</div>
+              <table class="doc-table">
+                <tr><td class="label">Type of Leave</td><td>${leaveTypeCell}</td></tr>
+                ${row('No. of Days', fd.number_of_days)}
+                ${row('Total No. of Days Requested', fd.total_days_requested || fd.total_days)}
+                ${row('First Day of Leave', fmtDate(fd.first_day_of_leave || fd.start_date))}
+                ${row('Last Day of Leave', fmtDate(fd.last_day_of_leave || fd.end_date))}
+                ${row('Date Returning to Work', fmtDate(fd.date_returning_to_work))}
+                ${row('Leave Salary Advance', salaryStr)}
+                ${row('Telephone (reachable)', fd.telephone_reachable)}
+                ${row('Replacement Name', fd.replacement_name)}
+                <tr><td class="label">Employee Signature</td><td>${sigHtml(fd.employee_signature, 'Employee')}</td></tr>
+              </table>
+            </div>
+          </div>
+          <div class="doc-panel doc-panel--hr">
+            <div class="doc-section-title doc-section-title--hr">For Human Resources Only</div>
+            <table class="doc-table">
+              ${row('Checked by HR', fd.hr_checked)}
+              ${row('HR Comments', fd.hr_comments)}
+              ${row('Balance C/F', fd.hr_balance_cf)}
+              ${row('Contract Year', fd.hr_contract_year)}
+              ${row('Paid', fd.hr_paid)}
+              ${row('Unpaid', fd.hr_unpaid)}
+              <tr><td class="label">HR Signature</td><td>${sigHtml(fd.hr_signature, 'HR')}</td></tr>
+              <tr><td class="label">GM Signature</td><td>${sigHtml(fd.gm_signature, 'GM')}</td></tr>
+            </table>
+          </div>
+        </div>`;
+    }
+    
+    function mergeHrTimelineComment(a, b) {
+      const x = (a != null && String(a).trim()) ? String(a).trim() : '';
+      const y = (b != null && String(b).trim()) ? String(b).trim() : '';
+      if (x && y && x !== y) return x + '\n\n' + y;
+      return x || y;
+    }
+
+    function buildTimelineItem(title, by, date, status, comment, signature, opts) {
+      opts = opts || {};
+      const d = date ? fmtDate(date) : '';
+      const hasSig = signature && typeof signature === 'string' && signature.startsWith('data:image');
+      const text = (comment != null && String(comment).trim()) ? String(comment).trim() : '';
+      let h = '<div class="timeline-item"><div class="timeline-dot ' + status + '" role="presentation"></div><div class="timeline-body"><div class="timeline-title">' + escapeHtml(title) + '</div><div class="timeline-meta">' + escapeHtml(by || '—') + (d ? ' · ' + escapeHtml(d) : '') + '</div>';
+      if (status === 'rejected' && text) {
+        h += '<div class="timeline-card timeline-card--alert"><dl class="timeline-dl"><dt>Reason</dt><dd>' + escapeHtml(text) + '</dd></dl></div>';
+      } else if (status === 'completed' && (opts.fillEmptyComment || text || hasSig)) {
+        h += '<div class="timeline-card">';
+        if (opts.fillEmptyComment || text) {
+          h += '<dl class="timeline-dl"><dt>Comment</dt><dd' + (text ? '' : ' class="timeline-dd-muted"') + '>' + (text ? escapeHtml(text) : 'None') + '</dd></dl>';
+        }
+        if (hasSig) {
+          h += '<dl class="timeline-dl"><dt>Signature</dt><dd><div class="timeline-sig"><img src="' + signature.replace(/"/g, '&quot;') + '" alt="Signature"></div></dd></dl>';
+        }
+        h += '</div>';
+      }
+      return h + '</div></div>';
+    }
+    
+    async function loadApproved() {
+      try {
+        const response = await fetch('/hr/api/approved-hr-submissions', { headers: { 'Authorization': `Bearer ${token}` } });
+        const data = await response.json();
+        const container = document.getElementById('approvedList');
+        
+        if (data.submissions && data.submissions.length > 0) {
+          approvedSubmissionsList = data.submissions;
+          container.innerHTML = data.submissions.map((s, i) => `
+            <div class="review-card" onclick="viewApproved(${i})">
+              <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                <div>
+                  <span class="form-type-badge ${getFormTypeClass(s.module_type)}">${getFormTypeLabel(s.module_type)}</span>
+                  <h5 style="font-weight: 600; margin: 0.5rem 0 0.25rem;">${escapeHtml(s.submission_id)}</h5>
+                  <p class="text-muted mb-0" style="font-size: 0.875rem;">
+                    ${escapeHtml((s.form_data && s.form_data.employee_name) || s.submitter_name || 'Unknown')} •
+                    ${new Date(s.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </p>
+                </div>
+                <span style="font-size: 0.7rem; font-weight: 700; padding: 0.3rem 0.65rem; border-radius: 20px; background: linear-gradient(135deg,#34d399,#10b981); color: white;">Approved</span>
+              </div>
+            </div>
+          `).join('');
+        } else {
+          container.innerHTML = `
+            <div class="text-center py-5 bg-white rounded-3">
+              <div style="font-size: 3rem; margin-bottom: 1rem;">📋</div>
+              <h5>No approved forms yet</h5>
+              <p class="text-muted">Approved HR requests will appear here</p>
+            </div>
+          `;
+        }
+      } catch (e) {
+        document.getElementById('approvedList').innerHTML = '<div class="alert alert-danger">Error loading approved forms</div>';
+      }
+    }
+    
+    function viewApproved(index) {
+      const s = approvedSubmissionsList[index];
+      if (!s) return;
+      const formType = (s.module_type || '').replace('hr_', '');
+      const fd = s.form_data || {};
+      const formHtml = renderFormAsFilled(formType, fd, s.submission_id);
+      let workflowHtml = '<div class="detail-section"><h5 class="detail-section-title" style="font-size: 1rem; color: var(--primary);">Approval Timeline</h5><div class="workflow-timeline">';
+      workflowHtml += buildTimelineItem('Submitted', fd.submitted_by_name || s.submitter_name, fd.submitted_at || s.created_at, 'completed');
+      if (fd.hr_reviewed_at) workflowHtml += buildTimelineItem('HR Reviewed', fd.hr_reviewed_by_name, fd.hr_reviewed_at, 'completed',
+        mergeHrTimelineComment(fd.hr_comments, fd.hr_remarks), fd.hr_signature, { fillEmptyComment: true });
+      if (fd.gm_approved_at) workflowHtml += buildTimelineItem('GM Approved', fd.gm_approved_by_name, fd.gm_approved_at, 'completed',
+        fd.gm_comments, fd.gm_signature, { fillEmptyComment: true });
+      workflowHtml += '</div></div>';
+      
+      const div = document.createElement('div');
+      div.className = 'modal fade';
+      div.setAttribute('tabindex', '-1');
+      div.innerHTML = '<div class="modal-dialog modal-xl modal-dialog-scrollable"><div class="modal-content" style="border-radius:20px; overflow:hidden; box-shadow: 0 24px 48px rgba(0,0,0,0.18);">' +
+        '<div class="modal-header" style="background:linear-gradient(135deg,#0f172a 0%,#1e293b 100%); color:white; border:none; padding:1.5rem 1.75rem; display:flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">' +
+        '<div style="flex: 1; min-width: 0;">' +
+        '<span class="form-type-badge" style="background:rgba(255,255,255,0.2); color:white; display: inline-block; margin-bottom: 0.4rem;">' + escapeHtml(getFormTypeLabel(s.module_type)) + '</span>' +
+        '<h5 class="modal-title" style="color:white; font-weight:700; margin: 0.5rem 0 0; font-size: 1.15rem; line-height: 1.4;">' + escapeHtml(s.submission_id) + ' <span style="font-weight:500; opacity:0.9;">(Approved)</span></h5>' +
+        '</div>' +
+        '<div style="display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0;">' +
+        '<a href="/hr/print/' + encodeURIComponent(s.submission_id) + '" target="_blank" class="btn btn-sm btn-outline-light">🖨️ Print (HR Document)</a>' +
+        ((HR_SUPPORTED_DOCX_FORMS || []).includes((s.module_type || '').replace('hr_', '')) ? '<a href="#" class="btn btn-sm btn-outline-light hr-download-docx" data-sid="' + escapeHtml(s.submission_id) + '">📄 DOCX</a>' : '') +
+        ((HR_SUPPORTED_PDF_FORMS || []).includes((s.module_type || '').replace('hr_', '')) ? '<a href="#" class="btn btn-sm btn-outline-light hr-download-pdf" data-sid="' + escapeHtml(s.submission_id) + '">📕 PDF</a>' : '') +
+        '<button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>' +
+        '</div></div>' +
+        '<div class="modal-body p-0" style="background:#fff;"><div class="detail-tabs" style="display:flex; gap:0; border-bottom:2px solid #e2e8f0; background:#fff;">' +
+        '<div class="detail-tab" data-tab="form" onclick="window._switchTab(this,\'form\')">Form</div>' +
+        '<div class="detail-tab active" data-tab="workflow" onclick="window._switchTab(this,\'workflow\')">Workflow</div></div>' +
+        '<div id="apFormPane" class="detail-tab-pane" style="display:none; padding:1.5rem; overflow-y:auto; max-height:60vh; background:#fff;">' +
+        '<div style="background:#fff; border-radius:12px; padding:1.5rem; border:1px solid #eef0f4;">' + formHtml + '</div></div>' +
+        '<div id="apWorkflowPane" class="detail-tab-pane active" style="display:block; padding:1.5rem; overflow-y:auto; max-height:60vh; background:#fff;">' + workflowHtml + '</div></div></div></div>';
+      document.body.appendChild(div);
+      div.querySelectorAll('.hr-download-pdf').forEach(function(a) {
+        a.addEventListener('click', function(e) { e.preventDefault(); downloadHrPdf(this.getAttribute('data-sid')); });
+      });
+      div.querySelectorAll('.hr-download-docx').forEach(function(a) {
+        a.addEventListener('click', function(e) { e.preventDefault(); downloadHrDocx(this.getAttribute('data-sid')); });
+      });
+      window._switchTab = function(btn, tab) {
+        const mod = btn.closest('.modal');
+        if (!mod) return;
+        mod.querySelectorAll('.detail-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+        const fp = mod.querySelector('#apFormPane'); const wp = mod.querySelector('#apWorkflowPane');
+        if (fp) fp.style.display = tab === 'form' ? 'block' : 'none';
+        if (wp) wp.style.display = tab === 'workflow' ? 'block' : 'none';
+      };
+      const m = new bootstrap.Modal(div);
+      m.show();
+      div.addEventListener('hidden.bs.modal', () => { div.remove(); delete window._switchTab; });
+    }
+    
+    loadApproved();
+  </script>
+  <script src="{{ url_for('static', filename='api-client.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>

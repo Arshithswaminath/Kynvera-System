@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+  
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+  {% include 'partials/caveat_font.html' %}
+<title>Inspection Form - Injaaz Application</title>
+  <meta name="theme-color" content="#125435">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <style>
+    :root {
+      --primary: #125435;
+      --primary-light: #1a7a4c;
+      --secondary: #6366f1;
+    }
+    /* Inspection module: match HR module - green gradient at top */
+    .inspection-dashboard {
+      background: #F8FAF8;
+    }
+    .inspection-dashboard .modules-section {
+      background: #F8FAF8 !important;
+    }
+    .inspection-hero {
+      padding: 9rem 0 5rem;
+    }
+    .inspection-modules-section::before {
+      display: none;
+    }
+    .inspection-stats-widget .dashboard-stats-grid {
+      margin-bottom: 0;
+    }
+  </style>
+</head>
+<body class="inspection-dashboard">
+  {% set active_page = 'inspection' %}
+  {% include 'partials/main_navbar.html' with context %}
+
+  <!-- Hero: gradient at top (matches HR module) -->
+  <header class="hero hero-split inspection-hero">
+    <div class="hero-content hero-split-inner">
+      <div class="hero-left">
+        <a href="/dashboard" class="back-btn">
+          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+          </svg>
+          Back to Dashboard
+        </a>
+        <p class="hero-tagline">Inspection Module</p>
+        <h1 class="hero-title">Inspection <span class="hero-title-accent">Forms</span></h1>
+      </div>
+      <div class="hero-right">
+        <div class="dashboard-widget inspection-stats-widget">
+          <div class="dashboard-widget-header">
+            <div class="dashboard-widget-dots">
+              <span></span><span></span><span></span>
+            </div>
+            <div class="dashboard-widget-bar"></div>
+          </div>
+          <div class="dashboard-widget-body">
+            <div class="dashboard-stats-grid" id="inspection-stats-grid">
+              <div class="dashboard-stat-card">
+                <div class="dashboard-stat-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div>
+                <span class="dashboard-stat-label" id="insp-stat-label-0">Forms submitted</span>
+                <span class="dashboard-stat-value" id="insp-stat-value-0">—</span>
+              </div>
+              <div class="dashboard-stat-card">
+                <div class="dashboard-stat-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg></div>
+                <span class="dashboard-stat-label" id="insp-stat-label-1">Pending review</span>
+                <span class="dashboard-stat-value" id="insp-stat-value-1">—</span>
+              </div>
+              <div class="dashboard-stat-card">
+                <div class="dashboard-stat-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg></div>
+                <span class="dashboard-stat-label" id="insp-stat-label-2">Unique submitters</span>
+                <span class="dashboard-stat-value" id="insp-stat-value-2">—</span>
+              </div>
+              <div class="dashboard-stat-card">
+                <div class="dashboard-stat-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg></div>
+                <span class="dashboard-stat-label" id="insp-stat-label-3">Completion rate</span>
+                <span class="dashboard-stat-value" id="insp-stat-value-3">—</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Inspection Forms (HVAC, Civil, Cleaning - module-card style like HR) -->
+  <section class="modules-section inspection-modules-section" id="modules">
+    <div class="modules-inner">
+      <h2 class="modules-section-label">Inspection Forms</h2>
+      <div class="modules-grid" id="inspectionFormsGrid">
+        <a href="/hvac-mep/form" class="module-card" id="inspection-hvac" style="display: none;">
+          <div class="card-body">
+            <span class="module-number">01 &mdash; Inspection</span>
+            <div class="module-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17 17.25 21A2.652 2.652 0 0 0 21 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 1 1-3.586-3.586l5.653-4.655m5.8-5.8 4.215-4.215a2.652 2.652 0 0 1 3.586 3.586l-4.215 4.215M9.78 8.22l2.496-3.03a2.652 2.652 0 0 1 3.586 3.586L12.28 12" /></svg></div>
+            <h2 class="module-title">HVAC &amp; MEP</h2>
+            <p class="module-description">Heating, Ventilation, Air Conditioning, and Mechanical, Electrical &amp; Plumbing systems inspection and reporting.</p>
+            <span class="module-arrow">Start Inspection <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
+          </div>
+        </a>
+        <a href="/civil/form" class="module-card" id="inspection-civil" style="display: none;">
+          <div class="card-body">
+            <span class="module-number">02 &mdash; Inspection</span>
+            <div class="module-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Z" /></svg></div>
+            <h2 class="module-title">Civil Works</h2>
+            <p class="module-description">Construction site inspections, structural assessments, and civil engineering documentation.</p>
+            <span class="module-arrow">Start Inspection <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
+          </div>
+        </a>
+        <a href="/cleaning/form" class="module-card" id="inspection-cleaning" style="display: none;">
+          <div class="card-body">
+            <span class="module-number">03 &mdash; Inspection</span>
+            <div class="module-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 0 1-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 0 1 4.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0 1 12 15a9.065 9.065 0 0 1-6.23-.693L5 14.5m14.8.8 1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0 1 12 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5" /></svg></div>
+            <h2 class="module-title">Cleaning Services</h2>
+            <p class="module-description">Facility cleaning inspections, maintenance checklists, and service quality reports.</p>
+            <span class="module-arrow">Start Inspection <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
+          </div>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-brand">Injaaz</div>
+      <p class="footer-copy">© {{ now().year }} Injaaz Application / built by <span class="footer-built-by-name">Arshith Swaminath P</span></p>
+    </div>
+  </footer>
+
+  <!-- Profile & Contact modals are in main_navbar partial -->
+
+  <script>
+    // Show inspection form cards based on user access
+    (function() {
+      const userStr = localStorage.getItem('user');
+      if (!userStr) {
+        fetch('/api/auth/me', { headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('access_token') || '') } })
+          .then(r => r.ok ? r.json() : null)
+          .then(data => {
+            if (data && data.user) {
+              localStorage.setItem('user', JSON.stringify(data.user));
+              updateInspectionCards(data.user);
+            }
+          })
+          .catch(() => {});
+        return;
+      }
+      try {
+        const user = JSON.parse(userStr);
+        updateInspectionCards(user);
+      } catch (e) {}
+    })();
+
+    function updateInspectionCards(user) {
+      if (!user) return;
+      const isAdmin = user.role === 'admin';
+      const hvac = document.getElementById('inspection-hvac');
+      const civil = document.getElementById('inspection-civil');
+      const cleaning = document.getElementById('inspection-cleaning');
+      if (hvac) hvac.style.display = (isAdmin || user.access_hvac) ? 'flex' : 'none';
+      if (civil) civil.style.display = (isAdmin || user.access_civil) ? 'flex' : 'none';
+      if (cleaning) cleaning.style.display = (isAdmin || user.access_cleaning) ? 'flex' : 'none';
+    }
+  </script>
+  <script src="{{ url_for('static', filename='pwa-install.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='mobile_utils.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='api-client.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>

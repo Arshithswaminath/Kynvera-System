@@ -1,0 +1,460 @@
+<!-- 
+  Reusable Workflow Signature Component
+  5-Stage Approval Workflow Signature Sections
+  
+  Usage: Include this partial in form templates
+  Required variables:
+  - formData: Form data object
+  - isReviewMode: Boolean indicating if in review/edit mode
+  - userDesignation: Current user's designation
+  - workflowStatus: Current workflow status
+-->
+
+<!-- Stage 1: Supervisor/Inspector Signature -->
+<div class="signature-section mb-4">
+    <h5 class="mb-3">
+        <i class="fas fa-user-check text-primary"></i>
+        Stage 1: Supervisor/Inspector
+    </h5>
+    
+    <div class="row">
+        <div class="col-md-6">
+            <div class="form-group">
+                <label>Supervisor Name</label>
+                <input type="text" class="form-control" id="supervisorName" 
+                       value="" readonly>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="form-group">
+                <label>Submitted Date</label>
+                <input type="text" class="form-control" id="supervisorDate" 
+                       value="" readonly>
+            </div>
+        </div>
+    </div>
+    
+    <div class="signature-pad-container">
+        <label>Supervisor Signature</label>
+        <canvas id="supervisorSignaturePad" class="signature-canvas"></canvas>
+        <div class="signature-actions mt-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary" 
+                    id="clearSupervisor">
+                <i class="fas fa-eraser"></i> Clear
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Stage 2: Operations Manager -->
+<div class="signature-section mb-4" id="opsMgrSection" 
+     style="display: none;">
+    <h5 class="mb-3">
+        <i class="fas fa-user-tie text-success"></i>
+        Stage 2: Operations Manager
+    </h5>
+    
+    <div class="row">
+        <div class="col-md-6">
+            <div class="form-group">
+                <label>Operations Manager Name</label>
+                <input type="text" class="form-control" id="opsMgrName" 
+                       value="" readonly>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="form-group">
+                <label>Approval Date</label>
+                <input type="text" class="form-control" id="opsMgrDate" 
+                       value="" readonly>
+            </div>
+        </div>
+    </div>
+    
+    <div class="form-group">
+        <label>Comments (Optional)</label>
+        <textarea class="form-control" id="opsMgrComments" rows="3" 
+                  placeholder="Add your comments here..."></textarea>
+    </div>
+    
+    <div class="signature-pad-container">
+        <label>Operations Manager Signature</label>
+        <canvas id="opsMgrSignaturePad" class="signature-canvas"></canvas>
+        <div class="signature-actions mt-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary" 
+                    id="clearOpsMgr">
+                <i class="fas fa-eraser"></i> Clear
+            </button>
+        </div>
+    </div>
+    
+    <div class="approval-actions mt-3">
+        <button type="button" class="btn btn-success" id="btnApproveOpsMgr">
+            <i class="fas fa-check"></i> Approve & Forward
+        </button>
+        <button type="button" class="btn btn-danger" id="btnRejectOpsMgr">
+            <i class="fas fa-times"></i> Reject
+        </button>
+    </div>
+</div>
+
+<!-- Stage 3: Business Development -->
+<div class="signature-section mb-4" id="bdSection" style="display: none;">
+    <h5 class="mb-3">
+        <i class="fas fa-briefcase text-info"></i>
+        Stage 3A: Business Development
+    </h5>
+    
+    <div class="row">
+        <div class="col-md-6">
+            <div class="form-group">
+                <label>BD Representative Name</label>
+                <input type="text" class="form-control" id="bdName" 
+                       value="" readonly>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="form-group">
+                <label>Approval Date</label>
+                <input type="text" class="form-control" id="bdDate" 
+                       value="" readonly>
+            </div>
+        </div>
+    </div>
+    
+    <div class="form-group">
+        <label>Comments (Optional)</label>
+        <textarea class="form-control" id="bdComments" rows="3" 
+                  placeholder="Add your comments here..."></textarea>
+    </div>
+    
+    <div class="approval-actions mt-3">
+        <button type="button" class="btn btn-success" id="btnApproveBD">
+            <i class="fas fa-check"></i> Approve
+        </button>
+        <button type="button" class="btn btn-danger" id="btnRejectBD">
+            <i class="fas fa-times"></i> Reject
+        </button>
+    </div>
+    
+    <div class="alert alert-info mt-2" id="bdWaitingMsg" style="display: none;">
+        <i class="fas fa-clock"></i> Waiting for Procurement approval...
+    </div>
+</div>
+
+<!-- Stage 3: Procurement -->
+<div class="signature-section mb-4" id="procurementSection" style="display: none;">
+    <h5 class="mb-3">
+        <i class="fas fa-shopping-cart text-info"></i>
+        Stage 3B: Procurement
+    </h5>
+    
+    <div class="row">
+        <div class="col-md-6">
+            <div class="form-group">
+                <label>Procurement Officer Name</label>
+                <input type="text" class="form-control" id="procurementName" 
+                       value="" readonly>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="form-group">
+                <label>Approval Date</label>
+                <input type="text" class="form-control" id="procurementDate" 
+                       value="" readonly>
+            </div>
+        </div>
+    </div>
+    
+    <div class="form-group">
+        <label>Comments (Optional)</label>
+        <textarea class="form-control" id="procurementComments" rows="3" 
+                  placeholder="Add your comments here..."></textarea>
+    </div>
+    
+    <div class="approval-actions mt-3">
+        <button type="button" class="btn btn-success" id="btnApproveProcurement">
+            <i class="fas fa-check"></i> Approve
+        </button>
+        <button type="button" class="btn btn-danger" id="btnRejectProcurement">
+            <i class="fas fa-times"></i> Reject
+        </button>
+    </div>
+    
+    <div class="alert alert-info mt-2" id="procurementWaitingMsg" style="display: none;">
+        <i class="fas fa-clock"></i> Waiting for Business Development approval...
+    </div>
+</div>
+
+<!-- Stage 4: General Manager -->
+<div class="signature-section mb-4" id="gmSection" style="display: none;">
+    <h5 class="mb-3">
+        <i class="fas fa-crown text-warning"></i>
+        Stage 4: General Manager - Final Approval
+    </h5>
+    
+    <div class="row">
+        <div class="col-md-6">
+            <div class="form-group">
+                <label>General Manager Name</label>
+                <input type="text" class="form-control" id="gmName" 
+                       value="" readonly>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="form-group">
+                <label>Approval Date</label>
+                <input type="text" class="form-control" id="gmDate" 
+                       value="" readonly>
+            </div>
+        </div>
+    </div>
+    
+    <div class="form-group">
+        <label>Final Comments (Optional)</label>
+        <textarea class="form-control" id="gmComments" rows="3" 
+                  placeholder="Add final comments here..."></textarea>
+    </div>
+    
+    <div class="signature-pad-container">
+        <label>General Manager Signature</label>
+        <canvas id="gmSignaturePad" class="signature-canvas"></canvas>
+        <div class="signature-actions mt-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary" 
+                    id="clearGM">
+                <i class="fas fa-eraser"></i> Clear
+            </button>
+        </div>
+    </div>
+    
+    <div class="approval-actions mt-3">
+        <button type="button" class="btn btn-success btn-lg" id="btnApproveGM">
+            <i class="fas fa-check-double"></i> Final Approval
+        </button>
+        <button type="button" class="btn btn-danger" id="btnRejectGM">
+            <i class="fas fa-times"></i> Reject
+        </button>
+    </div>
+</div>
+
+<!-- Workflow Status Indicator -->
+<div class="workflow-status-indicator mt-4 p-3 border rounded">
+    <h6 class="mb-2">
+        <i class="fas fa-project-diagram"></i> Workflow Progress
+    </h6>
+    <div class="workflow-progress">
+        <div class="progress" style="height: 25px;">
+            <div class="progress-bar" id="workflowProgressBar" 
+                 role="progressbar" style="width: 25%;" 
+                 aria-valuenow="25" aria-valuemin="0" aria-valuemax="100">
+                Stage 1
+            </div>
+        </div>
+        <small class="text-muted mt-2 d-block" id="workflowStatusText">
+            Submitted by Supervisor - Awaiting Operations Manager Review
+        </small>
+    </div>
+</div>
+
+<!-- Rejection Modal -->
+<div class="modal fade" id="rejectionModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle"></i> Reject Submission
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Reason for Rejection <span class="text-danger">*</span></label>
+                    <textarea class="form-control" id="rejectionReason" rows="4" 
+                              placeholder="Please provide a detailed reason for rejection..." 
+                              required></textarea>
+                </div>
+                <div class="alert alert-warning">
+                    <i class="fas fa-info-circle"></i> 
+                    This will send the form back to the supervisor for revision.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmReject">
+                    <i class="fas fa-check"></i> Confirm Rejection
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.signature-section {
+    border: 1px solid #dee2e6;
+    padding: 20px;
+    border-radius: 8px;
+    background-color: #f8f9fa;
+}
+
+.signature-section h5 {
+    border-bottom: 2px solid #007bff;
+    padding-bottom: 10px;
+}
+
+.signature-canvas {
+    border: 2px solid #495057;
+    border-radius: 4px;
+    background-color: white;
+    width: 100%;
+    height: 200px;
+    touch-action: none;
+}
+
+.signature-pad-container {
+    margin-top: 15px;
+}
+
+.approval-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.workflow-status-indicator {
+    background-color: #e7f3ff;
+}
+
+.workflow-progress .progress-bar {
+    transition: width 0.5s ease;
+}
+</style>
+
+<script>
+// Workflow Signature Management
+(function() {
+    'use strict';
+    
+    // Initialize signature pads
+    let supervisorPad, opsMgrPad, gmPad;
+    
+    function initializeSignaturePads() {
+        // Supervisor signature pad
+        const supervisorCanvas = document.getElementById('supervisorSignaturePad');
+        if (supervisorCanvas) {
+            supervisorPad = new SignaturePad(supervisorCanvas, {
+                backgroundColor: 'rgb(255, 255, 255)',
+                penColor: 'rgb(0, 0, 0)'
+            });
+            
+            document.getElementById('clearSupervisor')?.addEventListener('click', () => {
+                supervisorPad.clear();
+            });
+        }
+        
+        // Operations Manager signature pad
+        const opsMgrCanvas = document.getElementById('opsMgrSignaturePad');
+        if (opsMgrCanvas) {
+            opsMgrPad = new SignaturePad(opsMgrCanvas, {
+                backgroundColor: 'rgb(255, 255, 255)',
+                penColor: 'rgb(0, 0, 0)'
+            });
+            
+            document.getElementById('clearOpsMgr')?.addEventListener('click', () => {
+                opsMgrPad.clear();
+            });
+        }
+        
+        // General Manager signature pad
+        const gmCanvas = document.getElementById('gmSignaturePad');
+        if (gmCanvas) {
+            gmPad = new SignaturePad(gmCanvas, {
+                backgroundColor: 'rgb(255, 255, 255)',
+                penColor: 'rgb(0, 0, 0)'
+            });
+            
+            document.getElementById('clearGM')?.addEventListener('click', () => {
+                gmPad.clear();
+            });
+        }
+    }
+    
+    // Update workflow UI based on current status and user designation
+    function updateWorkflowUI(workflowStatus, userDesignation) {
+        const statusMap = {
+            'submitted': 25,
+            'operations_manager_review': 40,
+            'operations_manager_approved': 50,
+            'bd_procurement_review': 65,
+            'general_manager_review': 80,
+            'completed': 100,
+            'rejected': 0
+        };
+        
+        const progress = statusMap[workflowStatus] || 25;
+        const progressBar = document.getElementById('workflowProgressBar');
+        
+        if (progressBar) {
+            progressBar.style.width = progress + '%';
+            progressBar.setAttribute('aria-valuenow', progress);
+            progressBar.textContent = getStageText(workflowStatus);
+        }
+        
+        // Show/hide sections based on workflow status and user designation
+        showRelevantSections(workflowStatus, userDesignation);
+    }
+    
+    function getStageText(status) {
+        const stageTexts = {
+            'submitted': 'Stage 1: Submitted',
+            'operations_manager_review': 'Stage 2: Ops Manager Review',
+            'operations_manager_approved': 'Stage 2: Approved',
+            'bd_procurement_review': 'Stage 3: BD & Procurement',
+            'general_manager_review': 'Stage 4: GM Review',
+            'completed': 'Completed',
+            'rejected': 'Rejected'
+        };
+        return stageTexts[status] || 'In Progress';
+    }
+    
+    function showRelevantSections(workflowStatus, userDesignation) {
+        // Hide all sections first
+        document.getElementById('opsMgrSection').style.display = 'none';
+        document.getElementById('bdSection').style.display = 'none';
+        document.getElementById('procurementSection').style.display = 'none';
+        document.getElementById('gmSection').style.display = 'none';
+        
+        // Show based on status and designation
+        if (workflowStatus === 'operations_manager_review' && userDesignation === 'operations_manager') {
+            document.getElementById('opsMgrSection').style.display = 'block';
+        }
+        
+        if (workflowStatus === 'bd_procurement_review') {
+            if (userDesignation === 'business_development') {
+                document.getElementById('bdSection').style.display = 'block';
+            }
+            if (userDesignation === 'procurement') {
+                document.getElementById('procurementSection').style.display = 'block';
+            }
+        }
+        
+        if (workflowStatus === 'general_manager_review' && userDesignation === 'general_manager') {
+            document.getElementById('gmSection').style.display = 'block';
+        }
+    }
+    
+    // Export functions for use in form templates
+    window.WorkflowSignatures = {
+        init: initializeSignaturePads,
+        updateUI: updateWorkflowUI,
+        getPads: () => ({ supervisorPad, opsMgrPad, gmPad })
+    };
+    
+    // Initialize on load
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeSignaturePads);
+    } else {
+        initializeSignaturePads();
+    }
+})();
+</script>

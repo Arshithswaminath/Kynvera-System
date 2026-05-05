@@ -1,0 +1,122 @@
+{# Main dashboard navigation bar - use across all modules #}
+{# Optional: active_page = 'home' | 'about' | 'admin' | 'personal-progress' | 'report' | 'mmr-chargeable' | 'hr' | ... #}
+{# Include with `with context` so routes can pass active_page: {% include 'partials/main_navbar.html' with context %} #}
+{# About: white full wordmark. Everywhere else: official mark (PNG). #}
+{% set _about_nav_logo = active_page is defined and active_page == 'about' %}
+<nav class="nav" id="nav">
+  <div class="nav-container">
+    <a href="/dashboard" class="logo" aria-label="Injaaz Home">
+      <img src="{{ url_for('static', filename=('icons/INJAAZ Logo - Edited.png' if _about_nav_logo else 'icons/icon-144x144.png')) }}" alt="Injaaz Facilities Management" class="{{ 'logo-img-about' if _about_nav_logo else 'logo-img-official' }}" width="{{ '200' if _about_nav_logo else '40' }}" height="{{ '40' if _about_nav_logo else '40' }}" decoding="async">
+      <div class="logo-text">
+        <span class="logo-brand">Injaaz</span>
+        <span id="welcome-text" class="nav-welcome">Injaaz Application</span>
+      </div>
+    </a>
+    <div class="nav-center">
+      <ul class="nav-menu">
+        <li><a href="/dashboard" {% if active_page == 'home' %}style="color: var(--primary); font-weight: 600;"{% endif %}>Home</a></li>
+        <li><a href="/about" {% if active_page == 'about' %}style="color: var(--primary); font-weight: 600;"{% endif %}>About</a></li>
+        {% if active_page == 'about' %}
+        <li class="about-details-nav-item"><a href="#details">Details</a></li>
+        {% endif %}
+        <li><a href="javascript:void(0)" id="profileLink" role="button" onclick="if(typeof openProfileModal==='function'){openProfileModal();}">Profile</a></li>
+        <li><a href="javascript:void(0)" id="contactLink" role="button" onclick="if(typeof openContactModal==='function'){openContactModal();}">Contact</a></li>
+        <li id="inspection-forms-menu-item">
+          <a href="/inspection/" {% if active_page == 'inspection' %}style="color: var(--primary); font-weight: 600;"{% endif %}>Inspection Form</a>
+        </li>
+        <li id="hr-forms-menu-item">
+          <a href="/hr/" {% if active_page == 'hr' %}style="color: var(--primary); font-weight: 600;"{% endif %}>HR Forms</a>
+        </li>
+        <li id="procurement-menu-item" style="display: none;">
+          <a href="/procurement/" {% if active_page == 'procurement' %}style="color: var(--primary); font-weight: 600;"{% endif %}>Procurement</a>
+        </li>
+        <li id="submitted-forms-menu-item" style="display: none;">
+          <a href="/workflow/submitted-forms" {% if active_page == 'submitted-forms' %}style="color: var(--primary); font-weight: 600;"{% endif %}>
+            Submitted Forms
+            <span id="navSubmittedBadge" style="display: none; background: #ef4444; color: white; font-size: 0.65rem; padding: 2px 6px; border-radius: 10px; margin-left: 4px; font-weight: 600;">0</span>
+          </a>
+        </li>
+        <li id="pending-review-menu-item" style="display: none;">
+          <a href="/workflow/pending-reviews" {% if active_page == 'pending-review' %}style="color: var(--primary); font-weight: 600;"{% endif %}>
+            Pending Review
+            <span id="navPendingBadge" style="display: none; background: #ef4444; color: white; font-size: 0.65rem; padding: 2px 6px; border-radius: 10px; margin-left: 4px; font-weight: 600;">0</span>
+          </a>
+        </li>
+        <li id="review-history-menu-item" style="display: none;">
+          <a href="/api/workflow/history" {% if active_page == 'all-submissions' %}style="color: var(--primary); font-weight: 600;"{% endif %}>Submitted Forms</a>
+        </li>
+        <li id="report-gen-menu-item" style="display: none;">
+          <a href="/admin/mmr/" {% if active_page == 'report' or active_page == 'mmr-chargeable' %}style="color: var(--primary); font-weight: 600;"{% endif %}>Report Generation</a>
+        </li>
+        <li id="admin-menu-item" style="display: none;">
+          <a href="/admin/dashboard" {% if active_page == 'admin' or active_page == 'personal-progress' %}style="color: var(--primary); font-weight: 600;"{% endif %}>Administrative</a>
+        </li>
+        <li id="device-management-menu-item" style="display: none;">
+          <a href="/admin/devices" {% if active_page == 'devices' %}style="color: var(--primary); font-weight: 600;"{% endif %}>Device Management</a>
+        </li>
+        <li id="bd-email-menu-item" style="display: none;">
+          <a href="/bd/email-module" {% if active_page == 'bd-email' %}style="color: var(--primary); font-weight: 600;"{% endif %}>Email Module</a>
+        </li>
+        <li id="bd-module-menu-item" style="display: none;">
+          <a href="/admin/bd" {% if active_page == 'bd-module' %}style="color: var(--primary); font-weight: 600;"{% endif %}>Business Development</a>
+        </li>
+        <li id="dochub-menu-item">
+          <a href="/dochub" {% if active_page == 'dochub' %}style="color: var(--primary); font-weight: 600;"{% endif %}>DocHub</a>
+        </li>
+      </ul>
+    </div>
+    <div class="nav-right">
+      <button type="button" class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle menu" aria-expanded="false">
+        <span></span>
+      </button>
+      <div class="todo-nav-wrapper">
+        <button type="button" class="notification-btn todo-nav-btn" id="todoNavBtn" title="To-do list" aria-label="To-do list" aria-expanded="false" aria-controls="todoPanel">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="22" height="22" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+          </svg>
+          <span class="notification-badge todo-nav-badge" id="todoNavBadge" style="display: none;">0</span>
+        </button>
+      </div>
+      <div class="notification-wrapper" id="notificationWrapper">
+        <button class="notification-btn" id="notificationBtn" type="button" title="Notifications">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="22" height="22">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+          </svg>
+          <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
+        </button>
+        <div class="notification-dropdown" id="notificationDropdown">
+          <div class="notification-header">
+            <h4>Notifications</h4>
+            <button class="mark-all-read" id="markAllRead">Mark all read</button>
+          </div>
+          <div class="notification-list" id="notificationList">
+            <div class="notification-empty">No notifications</div>
+          </div>
+        </div>
+      </div>
+      <div id="pwa-install-slot" class="pwa-install-slot"></div>
+      {% if show_inspection_save_draft %}
+      <button type="button" id="saveDraftBtn" class="nav-save-draft-btn" title="Save Draft">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="22" height="22" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+        </svg>
+        <span>Save Draft</span>
+      </button>
+      {% endif %}
+      <button class="logout-btn" id="logoutBtn" type="button">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="22" height="22" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 9V5.25A2.25 2.25 0 0 1 10.5 3h6a2.25 2.25 0 0 1 2.25 2.25v13.5A2.25 2.25 0 0 1 16.5 21h-6a2.25 2.25 0 0 1-2.25-2.25V15m-3 0-3-3m0 0 3-3m-3 3h12.75" />
+        </svg>
+        <span>Logout</span>
+      </button>
+    </div>
+  </div>
+</nav>
+<div class="mobile-menu-drawer" id="mobileMenuDrawer" aria-hidden="true">
+  <ul class="mobile-menu-drawer-list" id="mobileMenuDrawerList"></ul>
+</div>
+<div class="mobile-overlay" id="mobileOverlay"></div>
+{% include 'partials/contact_modal.html' %}
+{% include 'partials/profile_modal.html' %}
+{% include 'partials/todo_modal.html' %}
+<script src="{{ url_for('static', filename='js/todo_list.js') }}" defer></script>

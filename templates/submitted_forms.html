@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+  
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+<title>Submitted Forms - Injaaz Application</title>
+  
+  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
+  
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  
+  <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  
+  <style>
+    :root {
+      --primary: #125435;
+      --primary-light: #1a7a4e;
+      --primary-dark: #0d3d25;
+      --secondary: #e5f5ed;
+      --text-dark: #1a1a1a;
+      --text-light: #6b7280;
+      --background: #ffffff;
+      --surface: #f9fafb;
+      --border: #e5e7eb;
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+      background: var(--surface);
+      color: var(--text-dark);
+      line-height: 1.6;
+      padding-top: 5.5rem;
+    }
+    @media (max-width: 600px) {
+      body { padding-top: 4.5rem; }
+    }
+    
+    .container-custom {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2.5rem 1.5rem;
+    }
+    
+    .page-header {
+      margin-bottom: 2rem;
+      text-align: center;
+    }
+    
+    .page-header h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 0.5rem;
+    }
+    
+    .page-header p {
+      font-size: 1.1rem;
+      color: var(--text-light);
+    }
+    
+    .submissions-container {
+      background: var(--background);
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    
+    .submission-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-bottom: 1rem;
+      transition: all 0.3s ease;
+      position: relative;
+    }
+    
+    .submission-card:hover {
+      box-shadow: 0 4px 12px rgba(18, 84, 53, 0.1);
+      border-color: var(--primary);
+    }
+    
+    .submission-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    
+    .submission-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--text-dark);
+      margin-bottom: 0.25rem;
+    }
+    
+    .submission-module {
+      font-size: 0.9rem;
+      color: var(--text-light);
+    }
+    
+    .submission-status {
+      display: inline-block;
+      padding: 0.4rem 1rem;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .status-pending {
+      background: #fff4e5;
+      color: #ff9800;
+    }
+    
+    .status-reviewing {
+      background: #e3f2fd;
+      color: #2196f3;
+    }
+    
+    .status-approved {
+      background: #e8f5e9;
+      color: #4caf50;
+    }
+    
+    .status-completed {
+      background: #f3e5f5;
+      color: #9c27b0;
+    }
+    
+    .status-rejected {
+      background: #ffebee;
+      color: #f44336;
+    }
+    
+    .status-draft {
+      background: #fff8e1;
+      color: #f57f17;
+    }
+    
+    .draft-card {
+      border-left: 4px solid #f57f17;
+    }
+    
+    .btn-danger-custom {
+      background: #ef4444;
+      color: white;
+      border: 1px solid #ef4444;
+    }
+    
+    .btn-danger-custom:hover {
+      background: #dc2626;
+      border-color: #dc2626;
+    }
+    
+    .submission-details {
+      display: flex;
+      gap: 2rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+      color: var(--text-light);
+    }
+    
+    .submission-detail-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .submission-actions {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+    
+    .btn-custom {
+      padding: 0.6rem 1.2rem;
+      border-radius: 6px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      border: none;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    
+    .btn-primary-custom {
+      background: var(--primary);
+      color: white;
+    }
+    
+    .btn-primary-custom:hover {
+      background: var(--primary-light);
+      color: white;
+    }
+    
+    .btn-outline-custom {
+      background: transparent;
+      color: var(--primary);
+      border: 2px solid var(--primary);
+    }
+    
+    .btn-outline-custom:hover {
+      background: var(--primary);
+      color: white;
+    }
+    
+    .btn-danger-custom {
+      background: #f44336;
+      color: white;
+    }
+    
+    .btn-danger-custom:hover {
+      background: #d32f2f;
+      color: white;
+    }
+    
+    .empty-state {
+      text-align: center;
+      padding: 4rem 2rem;
+      color: var(--text-light);
+    }
+    
+    .empty-state-icon {
+      font-size: 4rem;
+      margin-bottom: 1rem;
+      opacity: 0.5;
+    }
+    
+    .empty-state h3 {
+      font-size: 1.5rem;
+      color: var(--text-dark);
+      margin-bottom: 0.5rem;
+    }
+    
+    .loading-spinner {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 4rem;
+    }
+    
+    .spinner {
+      border: 4px solid var(--border);
+      border-top: 4px solid var(--primary);
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    @media (max-width: 768px) {
+      .container-custom {
+        padding: 0.75rem 0.875rem !important;
+        margin: 0 !important;
+        max-width: 100% !important;
+      }
+
+      .page-header {
+        padding: 0.5rem 0 0.75rem;
+        text-align: left;
+      }
+
+      .page-header h1 {
+        font-size: 1.3rem;
+        margin-bottom: 0.25rem;
+      }
+
+      .page-header p {
+        font-size: 0.85rem;
+      }
+
+      .filter-section {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 0.5rem !important;
+      }
+
+      .filter-section select {
+        width: 100% !important;
+        min-width: 0 !important;
+      }
+
+      .submission-card {
+        padding: 0.875rem !important;
+        margin-bottom: 0.75rem !important;
+        border-radius: 10px !important;
+      }
+
+      .submission-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+      }
+
+      .submission-header h4 {
+        font-size: 1rem;
+      }
+
+      .submission-details {
+        flex-direction: column;
+        gap: 0.375rem;
+        width: 100%;
+        margin-bottom: 0.625rem;
+      }
+
+      .submission-details span {
+        font-size: 0.8rem;
+      }
+
+      .submissions-container {
+        padding: 0;
+        border-radius: 10px;
+      }
+
+      .submission-actions {
+        gap: 0.5rem;
+      }
+
+      .btn-custom {
+        padding: 0.6rem 0.875rem !important;
+        font-size: 0.85rem !important;
+        min-height: 38px !important;
+      }
+
+      .status-badge {
+        font-size: 0.72rem;
+        padding: 0.3rem 0.625rem;
+      }
+
+      .status-message {
+        font-size: 0.85rem;
+        padding: 0.625rem;
+      }
+    }
+    
+    @media (max-width: 480px) {
+      .page-header h1 {
+        font-size: 1.35rem;
+      }
+      
+      .submission-card {
+        border-radius: 12px !important;
+      }
+    }
+  </style>
+</head>
+<body class="submitted-forms-page">
+  {% set active_page = 'submitted-forms' %}
+  {% include 'partials/main_navbar.html' with context %}
+  <div class="container-custom">
+    <div class="page-header">
+      <h1>My Submitted Forms</h1>
+      <p>View, edit, and resubmit your inspection forms</p>
+    </div>
+    
+    <!-- Filter Section -->
+    <div class="filter-section" style="margin-bottom: 1.5rem; display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+      <label style="font-weight: 600; color: var(--text-dark);">Filter by:</label>
+      <select id="statusFilter" class="form-select" style="width: auto; min-width: 180px; padding: 0.625rem 2.5rem 0.625rem 1rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem; background: white; cursor: pointer;">
+        <option value="all">All Forms</option>
+        <option value="submitted">Submitted Only</option>
+        <option value="draft">Drafts Only</option>
+      </select>
+      <span id="filterCount" style="color: var(--text-light); font-size: 0.9rem;"></span>
+    </div>
+    
+    <div class="submissions-container">
+      <div id="loadingSpinner" class="loading-spinner">
+        <div class="spinner"></div>
+      </div>
+      
+      <div id="submissionsList" style="display: none;"></div>
+      
+      <div id="emptyState" class="empty-state" style="display: none;">
+        <div class="empty-state-icon">📋</div>
+        <h3>No Submitted Forms</h3>
+        <p>You haven't submitted any forms yet. Create a new inspection to get started.</p>
+      </div>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  
+  <script>
+    // Get status display text and class
+    function getStatusDisplay(status) {
+      const statusMap = {
+        'draft': { text: '📝 Draft', class: 'status-draft', message: 'This form is saved as a draft. Continue editing and submit when ready.' },
+        'submitted': { text: 'Sent to Operations Manager', class: 'status-pending', message: 'Your form has been submitted and is pending review by the Operations Manager.' },
+        'operations_manager_review': { text: 'Operations Manager Reviewing', class: 'status-reviewing', message: 'Operations Manager is currently reviewing your form.' },
+        'operations_manager_approved': { text: 'Operations Manager Signed', class: 'status-approved', message: 'Operations Manager has signed your form. It has been sent to Business Development, Procurement, and General Manager.' },
+        'bd_procurement_review': { text: 'BD & Procurement Reviewing', class: 'status-reviewing', message: 'Business Development and Procurement are reviewing your form.' },
+        'general_manager_review': { text: 'General Manager Reviewing', class: 'status-reviewing', message: 'General Manager is reviewing your form for final approval.' },
+        'completed': { text: 'Fully Approved ✓', class: 'status-completed', message: 'Your form has been fully approved by all reviewers.' },
+        'rejected': { text: 'Returned for Revision', class: 'status-rejected', message: 'Your form has been returned and requires changes.' }
+      };
+      
+      return statusMap[status] || { text: status, class: 'status-pending', message: '' };
+    }
+    
+    // Current filter value
+    let currentFilter = 'all';
+    
+    // Format date and time - Convert from UTC to Dubai time (GST)
+    function formatDateTime(dateString) {
+      if (!dateString) return 'N/A';
+      try {
+        // Ensure date string is treated as UTC (append 'Z' if not present)
+        let utcDateString = dateString;
+        if (!utcDateString.endsWith('Z') && !utcDateString.includes('+') && !utcDateString.includes('-', 10)) {
+          // If no timezone indicator, assume it's UTC and append 'Z'
+          utcDateString = utcDateString.endsWith('Z') ? utcDateString : utcDateString + 'Z';
+        }
+        const date = new Date(utcDateString);
+        return date.toLocaleString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          timeZone: 'Asia/Dubai'
+        }) + ' (GST)';
+      } catch {
+        return dateString;
+      }
+    }
+    
+    // Get module URL
+    function getModuleUrl(module) {
+      const moduleMap = {
+        'hvac': 'hvac-mep',
+        'hvac_mep': 'hvac-mep',
+        'civil': 'civil',
+        'cleaning': 'cleaning'
+      };
+      return moduleMap[module] || module;
+    }
+    
+    // Escape HTML to prevent XSS
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+    
+    // Store last update timestamp for polling
+    let lastUpdateTime = null;
+    let pollingInterval = null;
+    
+    // Helper function to refresh access token using refresh token
+    async function refreshAccessToken() {
+      try {
+        const refreshToken = localStorage.getItem('refresh_token');
+        if (!refreshToken) {
+          return null;
+        }
+        
+        const response = await fetch('/api/auth/refresh', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${refreshToken}`
+          },
+          credentials: 'include'
+        });
+        
+        if (!response.ok) {
+          // If refresh fails (401 = expired/invalid refresh token, 422 = malformed token), clear tokens
+          if (response.status === 401 || response.status === 422) {
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+            localStorage.removeItem('user');
+          }
+          return null;
+        }
+        
+        const data = await response.json();
+        if (data.access_token) {
+          localStorage.setItem('access_token', data.access_token);
+          return data.access_token;
+        }
+        return null;
+      } catch (error) {
+        return null;
+      }
+    }
+    
+    // Helper function to make authenticated fetch with automatic token refresh
+    async function authenticatedFetch(url, options = {}) {
+      let token = localStorage.getItem('access_token');
+      if (!token) {
+        return { ok: false, status: 401 };
+      }
+      
+      // Make initial request
+      const response = await fetch(url, {
+        ...options,
+        headers: {
+          ...options.headers,
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      // If 401, try to refresh token and retry once
+      if (response.status === 401) {
+        const newToken = await refreshAccessToken();
+        if (newToken) {
+          // Retry with new token
+          return fetch(url, {
+            ...options,
+            headers: {
+              ...options.headers,
+              'Authorization': `Bearer ${newToken}`
+            }
+          });
+        } else {
+          // Refresh failed, redirect to login
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+          localStorage.removeItem('user');
+          window.location.href = '/login';
+          return { ok: false, status: 401 };
+        }
+      }
+      
+      return response;
+    }
+    
+    // Load submissions
+    async function loadSubmissions() {
+      const loadingSpinner = document.getElementById('loadingSpinner');
+      const submissionsList = document.getElementById('submissionsList');
+      const emptyState = document.getElementById('emptyState');
+      const filterCount = document.getElementById('filterCount');
+      
+      try {
+        const response = await authenticatedFetch(`/api/workflow/submissions/my-submissions?status=${currentFilter}`);
+        
+        if (!response || !response.ok) {
+          // If response is null or not ok, token refresh will handle redirect if needed
+          if (response && response.status === 401) {
+            // Already handled by authenticatedFetch - will redirect to login
+            return;
+          }
+          throw new Error('Failed to load submissions');
+        }
+        
+        const data = await response.json();
+        const submissions = data.submissions || [];
+        
+        // Update last update time for polling
+        const currentUpdateTime = submissions.length > 0 ? submissions[0].updated_at : null;
+        const hasUpdates = lastUpdateTime && currentUpdateTime && currentUpdateTime !== lastUpdateTime;
+        lastUpdateTime = currentUpdateTime;
+        
+        loadingSpinner.style.display = 'none';
+        
+        // Update filter count
+        const filterLabels = { all: 'All', submitted: 'Submitted', draft: 'Drafts' };
+        filterCount.textContent = `Showing ${submissions.length} ${filterLabels[currentFilter] || ''} form(s)`;
+        
+        if (submissions.length === 0) {
+          emptyState.style.display = 'block';
+          submissionsList.style.display = 'none';
+          emptyState.querySelector('h3').textContent = currentFilter === 'draft' ? 'No Drafts' : 'No Submitted Forms';
+          emptyState.querySelector('p').textContent = currentFilter === 'draft' 
+            ? 'You don\'t have any draft forms. Start a new inspection to create one.'
+            : 'You haven\'t submitted any forms yet. Create a new inspection to get started.';
+          return;
+        }
+        
+        emptyState.style.display = 'none';
+        submissionsList.style.display = 'block';
+        
+        // Show notification if there are updates
+        if (hasUpdates && document.visibilityState === 'visible') {
+          // Show a subtle notification that the page has been updated
+          const notification = document.createElement('div');
+          notification.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #10b981; color: white; padding: 12px 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 10000; font-size: 0.9rem;';
+          notification.innerHTML = '🔄 Form updated!';
+          document.body.appendChild(notification);
+          setTimeout(() => {
+            notification.style.transition = 'opacity 0.3s';
+            notification.style.opacity = '0';
+            setTimeout(() => notification.remove(), 300);
+          }, 3000);
+        }
+        
+        // Check if current user is admin (for showing Reviewer Comments)
+        const userStr = localStorage.getItem('user');
+        let isAdmin = false;
+        try {
+          if (userStr) {
+            const user = JSON.parse(userStr);
+            isAdmin = user.role === 'admin';
+          }
+        } catch (e) {
+          console.error('Error parsing user data:', e);
+        }
+        
+        // Render submissions
+        submissionsList.innerHTML = submissions.map(submission => {
+          const isDraft = submission.status === 'draft' || submission.workflow_status === 'draft';
+          const statusInfo = getStatusDisplay(isDraft ? 'draft' : (submission.workflow_status || submission.status));
+          const moduleUrl = getModuleUrl(submission.module);
+          const canEdit = submission.workflow_status === 'rejected' || submission.status === 'rejected' || isDraft;
+          
+          return `
+            <div class="submission-card ${isDraft ? 'draft-card' : ''}">
+              <div class="submission-header">
+                <div>
+                  <div class="submission-title">${submission.site_name || 'Untitled Draft'}</div>
+                  <div class="submission-module">${submission.module_name || submission.module}</div>
+                </div>
+                <span class="submission-status ${statusInfo.class}">${statusInfo.text}</span>
+              </div>
+              
+              ${statusInfo.message ? `
+                <div class="alert ${isDraft ? 'alert-warning' : 'alert-info'}" style="margin-bottom: 1rem; font-size: 0.9rem; ${isDraft ? 'background: #fff8e1; border: 1px solid #ffe082; color: #f57f17;' : 'background: #e3f2fd; border: 1px solid #90caf9; color: #1565c0;'}">
+                  <strong>${isDraft ? '📝' : '📋'} Status:</strong> ${statusInfo.message}
+                </div>
+              ` : ''}
+              
+              <div class="submission-details">
+                <div class="submission-detail-item">
+                  <span>📅</span>
+                  <span><strong>${isDraft ? 'Created:' : 'Submitted:'}</strong> ${formatDateTime(submission.created_at)}</span>
+                </div>
+                <div class="submission-detail-item">
+                  <span>🔄</span>
+                  <span><strong>Last Updated:</strong> ${formatDateTime(submission.updated_at)}</span>
+                </div>
+                <div class="submission-detail-item">
+                  <span>📝</span>
+                  <span><strong>Form ID:</strong> ${submission.submission_id}</span>
+                </div>
+              </div>
+              
+              ${submission.rejection_reason ? `
+                <div class="alert alert-danger" style="margin-bottom: 1rem; font-size: 0.9rem;">
+                  <strong>⚠️ Rejection Reason:</strong> ${submission.rejection_reason}
+                </div>
+              ` : ''}
+              
+              ${isAdmin && submission.reviewers && submission.reviewers.length > 0 ? `
+                <div class="reviewers-section" style="margin-top: 1rem; margin-bottom: 1rem; padding: 1rem; background: #f8faf9; border-radius: 8px; border: 1px solid #e5e7eb;">
+                  <h6 style="color: var(--primary); font-weight: 600; margin-bottom: 0.75rem; font-size: 0.95rem;">📋 Reviewer Comments</h6>
+                  ${submission.reviewers.map((reviewer, index) => {
+                    const isLast = index === submission.reviewers.length - 1;
+                    return `
+                    <div class="reviewer-item" style="margin-bottom: ${isLast ? '0' : '1rem'}; padding-bottom: ${isLast ? '0' : '1rem'}; ${isLast ? '' : 'border-bottom: 1px solid #e5e7eb;'}">
+                      <div>
+                        <strong style="color: var(--primary); font-size: 0.9rem;">${reviewer.role}:</strong>
+                        ${reviewer.comments ? `
+                          <div style="margin-top: 0.5rem; padding: 0.75rem; background: white; border-radius: 4px; border-left: 3px solid var(--primary); font-size: 0.875rem; color: #374151;">
+                            ${escapeHtml(reviewer.comments)}
+                          </div>
+                        ` : '<div style="margin-top: 0.25rem; font-size: 0.85rem; color: #6b7280; font-style: italic;">No comments provided</div>'}
+                        ${reviewer.approved_at ? `
+                          <div style="margin-top: 0.5rem; font-size: 0.8rem; color: #6b7280;">
+                            ✓ Approved on ${formatDateTime(reviewer.approved_at)}
+                          </div>
+                        ` : ''}
+                      </div>
+                    </div>
+                  `;
+                  }).join('')}
+                </div>
+              ` : ''}
+              
+              <div class="submission-actions">
+                ${isDraft ? `
+                  <a href="/${moduleUrl}/form?edit=${submission.submission_id}" class="btn-custom btn-primary-custom">
+                    Continue Editing
+                  </a>
+                  <button onclick="deleteDraft('${submission.submission_id}')" class="btn-custom btn-danger-custom">
+                    Delete Draft
+                  </button>
+                ` : `
+                  <a href="/${moduleUrl}/form?edit=${submission.submission_id}" class="btn-custom btn-primary-custom">
+                    View Form
+                  </a>
+                  ${canEdit ? `
+                    <a href="/${moduleUrl}/form?edit=${submission.submission_id}" class="btn-custom btn-outline-custom">
+                      Edit & Resubmit
+                    </a>
+                  ` : ''}
+                  ${submission.latest_job_id ? `
+                    <a href="/${moduleUrl}/download/${submission.latest_job_id}/pdf" class="btn-custom btn-outline-custom" target="_blank">
+                      PDF
+                    </a>
+                    <a href="/${moduleUrl}/download/${submission.latest_job_id}/excel" class="btn-custom btn-outline-custom" target="_blank">
+                      Excel
+                    </a>
+                  ` : ''}
+                `}
+              </div>
+            </div>
+          `;
+        }).join('');
+        
+      } catch (error) {
+        console.error('Error loading submissions:', error);
+        loadingSpinner.style.display = 'none';
+        submissionsList.style.display = 'block';
+        submissionsList.innerHTML = `
+          <div class="alert alert-danger" role="alert">
+            <h5 class="alert-heading">⚠️ Error Loading Submissions</h5>
+            <p>${error.message || 'Failed to load your submitted forms. Please try again.'}</p>
+            <hr>
+            <button class="btn btn-primary" onclick="loadSubmissions()">Retry</button>
+          </div>
+        `;
+      }
+    }
+    
+    // Start polling for updates every 30 seconds
+    function startPolling() {
+      // Clear any existing interval
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+      }
+      
+      // Poll every 30 seconds
+      pollingInterval = setInterval(() => {
+        // Only poll if page is visible
+        if (document.visibilityState === 'visible') {
+          loadSubmissions();
+        }
+      }, 30000); // 30 seconds
+    }
+    
+    // Stop polling when page is hidden, resume when visible
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        // Reload immediately when page becomes visible
+        loadSubmissions();
+        startPolling();
+      } else {
+        // Stop polling when page is hidden
+        if (pollingInterval) {
+          clearInterval(pollingInterval);
+          pollingInterval = null;
+        }
+      }
+    });
+    
+    // Load submissions on page load and start polling
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSubmissions();
+      startPolling();
+      
+      // Filter change handler
+      document.getElementById('statusFilter').addEventListener('change', (e) => {
+        currentFilter = e.target.value;
+        loadSubmissions();
+      });
+    });
+    
+    // Clean up polling on page unload
+    window.addEventListener('beforeunload', () => {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+      }
+    });
+    
+    // Delete draft function
+    async function deleteDraft(submissionId) {
+      if (!confirm('Are you sure you want to delete this draft? This action cannot be undone.')) {
+        return;
+      }
+      
+      try {
+        const response = await authenticatedFetch(`/api/workflow/submissions/draft/${submissionId}`, {
+          method: 'DELETE'
+        });
+        
+        if (response.ok) {
+          // Show success message
+          const notification = document.createElement('div');
+          notification.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #10b981; color: white; padding: 12px 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 10000; font-size: 0.9rem;';
+          notification.innerHTML = '✓ Draft deleted successfully';
+          document.body.appendChild(notification);
+          setTimeout(() => {
+            notification.style.transition = 'opacity 0.3s';
+            notification.style.opacity = '0';
+            setTimeout(() => notification.remove(), 300);
+          }, 3000);
+          
+          // Reload submissions
+          loadSubmissions();
+        } else {
+          const data = await response.json();
+          alert(data.error || 'Failed to delete draft');
+        }
+      } catch (error) {
+        console.error('Error deleting draft:', error);
+        alert('Failed to delete draft. Please try again.');
+      }
+    }
+  </script>
+  <script src="{{ url_for('static', filename='api-client.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+  <script src="{{ url_for('static', filename='mobile_utils.js') }}" defer></script>
+</body>
+</html>

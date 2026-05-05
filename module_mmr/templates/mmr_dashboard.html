@@ -1,0 +1,4212 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+  
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+<title>Report Generation – Injaaz</title>
+  <link rel="icon" type="image/png" href="/static/logo.png">
+  <link rel="stylesheet" href="/static/mobile_responsive.css">
+  <link rel="stylesheet" href="/static/animations.css">
+  <link rel="stylesheet" href="/static/css/dashboard.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --primary: #125435;
+      --primary-light: #1a7a4d;
+      --text: #111827;
+      --text-muted: #6b7280;
+      --bg: #fafafa;
+      --white: #fff;
+      --border: #e5e7eb;
+      --success: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --info: #3b82f6;
+      --radius: 8px;
+      /* MMR upload row — shared surface (upload zone, schedule card, automation strip) */
+      --mmr-surface: #ffffff;
+      --mmr-surface-muted: #f6faf8;
+      --mmr-card-border: #d8ebe3;
+      --mmr-card-radius: 12px;
+    }
+
+    body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+    /* Full width under flex body (dashboard.css); avoids narrow column after Chart init in hidden section */
+    body.mmr-dashboard { padding-top: 72px; width: 100%; align-items: stretch; }
+
+    /* Buttons and components (nav uses dashboard.css) */
+    .btn {
+      padding: .5rem 1rem; border: none; border-radius: var(--radius);
+      font-size: .875rem; font-weight: 500; cursor: pointer;
+      transition: opacity .15s; text-decoration: none;
+      display: inline-flex; align-items: center; gap: .4rem;
+    }
+    .btn-ghost { background: transparent; color: var(--text-muted); }
+    .btn-ghost:hover { color: var(--text); }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { opacity: .9; }
+    .btn-outline { background: transparent; color: var(--primary); border: 1px solid var(--border); }
+    .btn-outline:hover { background: #f9fafb; }
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-sm { padding: .4rem .75rem; font-size: .8125rem; }
+    .btn-automation {
+      display: inline-flex; align-items: center; gap: .4rem;
+      padding: .4rem .75rem; border-radius: var(--radius);
+      font-size: .8125rem; font-weight: 600; border: none;
+      cursor: pointer; transition: all .2s;
+    }
+    .btn-automation-pending {
+      background: #fef3c7; color: #92400e;
+      border: 1px solid rgba(245,158,11,.4);
+    }
+    .btn-automation-pending:hover { background: #fde68a; }
+    .btn-automation-completed {
+      background: #d1fae5; color: #065f46;
+      border: 1px solid rgba(16,185,129,.4);
+    }
+    .btn-automation-completed:hover { background: #a7f3d0; }
+    .btn-automation-disabled {
+      background: #f1f5f9; color: var(--text-muted);
+      border: 1px solid var(--border);
+      cursor: default;
+    }
+    .btn-automation-paused {
+      background: #e5e7eb; color: #4b5563;
+      border: 1px solid var(--border);
+    }
+    .btn-automation-paused:hover { background: #d1d5db; }
+    .automation-dot { width: 6px; height: 6px; border-radius: 50%; }
+    .btn-automation-completed .automation-dot { background: #059669; }
+    .btn-automation-pending .automation-dot { background: #d97706; }
+    .btn-automation-paused .automation-dot { background: #6b7280; }
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(15,23,42,.5);
+      backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 9999; padding: 1rem;
+      opacity: 0; visibility: hidden;
+      transition: opacity .2s, visibility .2s;
+    }
+    .modal-overlay.active { opacity: 1; visibility: visible; }
+    .modal-automation {
+      background: var(--white); border-radius: var(--radius);
+      max-width: 520px; width: 100%;
+      box-shadow: 0 20px 40px -8px rgba(0,0,0,.15);
+      border: 1px solid var(--border);
+    }
+    .modal-automation.modal-automation-wide { max-width: 560px; }
+    .modal-automation-header {
+      padding: 1rem 1.25rem; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .modal-automation-header.modal-automation-header--close-left {
+      justify-content: flex-start;
+      gap: 0.75rem;
+    }
+    .modal-automation-header--close-left .modal-automation-title {
+      flex: 1;
+      min-width: 0;
+      margin: 0;
+    }
+    .modal-automation-title { font-size: 1rem; font-weight: 700; color: var(--text); }
+    .modal-automation-close {
+      width: 28px; height: 28px; border-radius: 6px;
+      border: none; background: transparent; color: var(--text-muted);
+      cursor: pointer; font-size: 1.2rem;
+    }
+    .modal-automation-close:hover { background: #f3f4f6; color: var(--text); }
+    .modal-automation-body { padding: 1.25rem; }
+    .automation-detail-row { margin-bottom: 1rem; }
+    .automation-detail-row:last-child { margin-bottom: 0; }
+    .automation-detail-label {
+      font-size: .7rem; font-weight: 600; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: .04em; display: block; margin-bottom: .2rem;
+    }
+    .automation-detail-value { font-size: .875rem; color: var(--text); word-break: break-word; }
+    .automation-status-badge {
+      display: inline-flex; align-items: center; gap: .3rem;
+      padding: .3rem .6rem; border-radius: 6px;
+      font-size: .75rem; font-weight: 600;
+    }
+    .automation-status-badge.success { background: #d1fae5; color: #065f46; }
+    .automation-status-badge.pending { background: #fef3c7; color: #92400e; }
+    .automation-status-badge.paused { background: #e5e7eb; color: #4b5563; }
+    .automation-dialog-actions { display: flex; gap: .5rem; margin-top: 1rem; flex-wrap: wrap; }
+    .automation-dialog-actions .btn { font-size: .8125rem; padding: .45rem .85rem; }
+    .modal-report-folder { max-width: 600px; }
+    .modal-report-folder .modal-automation-body { padding: 1.5rem; }
+    .modal-report-folder .report-folder-subtitle {
+      font-size: .875rem; color: var(--text-muted); margin-bottom: 1.25rem; line-height: 1.5;
+    }
+    .report-folder-list {
+      max-height: 360px; overflow-y: auto;
+      scrollbar-width: thin; scrollbar-color: rgba(18,84,53,.25) transparent;
+    }
+    .report-folder-list::-webkit-scrollbar { width: 8px; }
+    .report-folder-list::-webkit-scrollbar-track { background: #f8fafc; border-radius: 4px; }
+    .report-folder-list::-webkit-scrollbar-thumb { background: rgba(18,84,53,.2); border-radius: 4px; }
+    .report-folder-list::-webkit-scrollbar-thumb:hover { background: rgba(18,84,53,.35); }
+    .report-folder-item {
+      display: flex; align-items: stretch; gap: 1rem;
+      padding: 1rem 1.25rem; border-radius: 10px;
+      margin-bottom: .75rem; font-size: .8125rem;
+      background: #fff; border: 1px solid var(--border);
+      box-shadow: 0 1px 2px rgba(0,0,0,.04);
+      transition: box-shadow .2s, border-color .2s;
+    }
+    .report-folder-item:hover {
+      border-color: rgba(18,84,53,.25);
+      box-shadow: 0 4px 12px rgba(18,84,53,.08);
+    }
+    .report-folder-item:last-child { margin-bottom: 0; }
+    .report-folder-item > .report-folder-content {
+      flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center;
+    }
+    .report-folder-name {
+      color: var(--text); font-weight: 500; line-height: 1.4;
+      word-break: break-word; hyphens: auto;
+    }
+    .report-folder-meta {
+      font-size: .75rem; color: var(--text-muted); margin-top: .35rem;
+      display: flex; align-items: center; gap: .5rem; flex-wrap: wrap;
+    }
+    .report-folder-meta span { display: inline-flex; align-items: center; gap: .25rem; }
+    .report-folder-actions {
+      display: flex; align-items: center; gap: .5rem; flex-shrink: 0;
+    }
+    .report-folder-open {
+      padding: .5rem .85rem; font-size: .8125rem; font-weight: 500;
+      background: transparent; color: var(--primary);
+      border: 1px solid var(--primary); border-radius: 8px;
+      cursor: pointer; transition: all .2s;
+    }
+    .report-folder-open:hover {
+      background: rgba(18,84,53,.06); border-color: var(--primary-light);
+    }
+    .report-folder-dl {
+      padding: .5rem .85rem; font-size: .8125rem; font-weight: 500;
+      background: var(--primary); color: #fff; border: none;
+      border-radius: 8px; cursor: pointer; transition: all .2s;
+    }
+    .report-folder-dl:hover { background: var(--primary-light); transform: translateY(-1px); }
+    .report-folder-empty {
+      text-align: center; padding: 3rem 2rem; color: var(--text-muted);
+      font-size: .9375rem; line-height: 1.6; background: #fafafa;
+      border-radius: 10px; border: 1px dashed var(--border);
+    }
+
+    /* Page */
+    .page { width: 100%; max-width: 1400px; margin: 0 auto; padding: 1.5rem; box-sizing: border-box; }
+    #dashboardSection { width: 100%; }
+
+    /* Upload row: left = upload + actions + automation | right = Schedule & last send card */
+    .upload-row {
+      display: flex;
+      align-items: stretch;
+      justify-content: center;
+      gap: 1.25rem;
+      margin: 3rem 0 2rem;
+      flex-wrap: wrap;
+    }
+    .upload-col-main {
+      flex: 1 1 380px;
+      min-width: 0;
+      max-width: 560px;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.625rem;
+      min-height: 0;
+      box-sizing: border-box;
+      align-self: stretch;
+    }
+    .upload-col-schedule {
+      flex: 0 1 340px;
+      width: 340px;
+      max-width: min(340px, 100%);
+      min-width: 260px;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      align-self: stretch;
+      min-height: 0;
+      box-sizing: border-box;
+    }
+    .upload-wrap {
+      width: 100%;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    /* Saved Report + Report settings + automation — full width of upload column */
+    .upload-col-actions-centered {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.625rem;
+    }
+    .upload-col-actions-centered .upload-side-primary-row,
+    .upload-col-actions-centered .automation-status-row {
+      width: 100%;
+      max-width: none;
+    }
+    /* Live schedule + last send — tall card in the right column */
+    .upload-side-insight {
+      flex: 1 1 auto;
+      min-height: 8rem;
+      min-width: 0;
+      margin-top: 0;
+      padding: 0.75rem 0.85rem 0.65rem;
+      border-radius: var(--mmr-card-radius);
+      border: 1px solid var(--mmr-card-border);
+      background: var(--mmr-surface);
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+      text-align: left;
+    }
+    .upload-side-insight-hdr {
+      font-size: 0.625rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      width: 100%;
+      text-align: left;
+    }
+    .upload-side-insight-body {
+      font-size: 0.8125rem;
+      line-height: 1.45;
+      color: var(--text);
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.5rem;
+    }
+    .upload-side-insight-main {
+      flex: 0 0 auto;
+      width: 100%;
+      text-align: left;
+    }
+    .upload-side-insight-main p { margin: 0 0 0.4rem; }
+    .upload-side-insight-main p:last-child { margin-bottom: 0; }
+    .upload-side-insight-body strong { color: var(--primary); font-weight: 600; }
+    .upload-side-insight-muted { color: var(--text-muted) !important; font-size: 0.78rem !important; }
+    .upload-side-insight-smart {
+      flex: 1 1 auto;
+      min-height: 2.5rem;
+      display: flex;
+      align-items: stretch;
+      justify-content: flex-start;
+      padding: 0.15rem 0;
+    }
+    .upload-side-insight-tip {
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
+      padding: 0.55rem 0.65rem;
+      border-radius: 10px;
+      border: 1px solid var(--mmr-card-border);
+      background: var(--mmr-surface-muted);
+      text-align: left;
+    }
+    .upload-side-insight-tip-title {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--primary);
+    }
+    .upload-side-insight-tip-sub {
+      margin-top: 0.3rem;
+      font-size: 0.72rem;
+      line-height: 1.4;
+      color: var(--text-muted);
+    }
+    .upload-side-insight-jump {
+      align-self: flex-start;
+      margin-top: 0.15rem;
+      padding: 0.35rem 0.5rem;
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-align: left;
+      color: var(--primary);
+      background: var(--mmr-surface-muted);
+      border: 1px solid var(--mmr-card-border);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .upload-side-insight-jump:hover {
+      background: #edf5f1;
+      border-color: rgba(18, 84, 53, 0.28);
+    }
+    .upload-side-primary-row {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: nowrap;
+      align-items: stretch;
+      gap: 0.5rem;
+      width: 100%;
+      min-width: 0;
+    }
+    .upload-side-primary-row .btn-report-folder,
+    .upload-side-primary-row #mmr-report-settings-btn.btn-report-settings {
+      display: flex;
+      flex-direction: row;
+      flex: 1 1 0%;
+      min-width: 0;
+      width: auto;
+      justify-content: center;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.55rem 0.65rem;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background .2s, border-color .2s, color .2s;
+      line-height: 1.25;
+      text-align: center;
+    }
+    .upload-col-main .btn-automation {
+      min-width: 0;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background .2s, border-color .2s, color .2s;
+      line-height: 1.35;
+    }
+    .upload-col-main .btn-report-folder {
+      background: var(--primary);
+      color: #fff;
+      border: 1px solid var(--primary);
+    }
+    .upload-col-main .btn-report-folder:hover {
+      background: var(--primary-light);
+      color: #fff;
+    }
+    .upload-col-main .btn-automation.btn-automation-completed {
+      background: var(--mmr-surface-muted);
+      color: var(--primary);
+      border: 1px solid var(--mmr-card-border);
+    }
+    .upload-col-main .btn-automation.btn-automation-completed:hover {
+      background: #edf5f1;
+      border-color: rgba(18, 84, 53, 0.28);
+    }
+    .upload-col-main .btn-automation.btn-automation-completed .automation-dot {
+      background: var(--primary);
+    }
+    .upload-col-main .btn-automation.btn-automation-pending {
+      background: #fffbeb;
+      color: #92400e;
+      border: 1px solid rgba(245, 158, 11, 0.35);
+    }
+    .upload-col-main .btn-automation.btn-automation-pending:hover {
+      background: #fef3c7;
+    }
+    .upload-col-main .btn-automation.btn-automation-paused {
+      background: var(--mmr-surface-muted);
+      color: #4b5563;
+      border: 1px solid var(--mmr-card-border);
+    }
+    .upload-col-main .btn-automation.btn-automation-paused:hover {
+      background: #edf5f1;
+    }
+    .upload-col-main .btn-automation.btn-automation-disabled {
+      background: var(--mmr-surface);
+      color: var(--text-muted);
+      border: 1px solid var(--mmr-card-border);
+    }
+    .upload-col-main .btn-automation.btn-automation-disabled:hover {
+      background: var(--mmr-surface-muted);
+      border-color: rgba(18, 84, 53, 0.22);
+    }
+    .upload-col-main .btn-automation.btn-automation-disabled .automation-dot {
+      background: var(--text-muted);
+    }
+    /* Bottom row layout: see MMR_UPLOAD_SIDEBAR_LOCK at end of this <style> (must load last). */
+    .btn-automation-refresh svg {
+      width: 16px;
+      height: 16px;
+    }
+    .upload-col-main .btn-automation-refresh:hover {
+      background: var(--mmr-surface-muted);
+      border-color: rgba(18, 84, 53, 0.28);
+    }
+    .btn-automation-refresh:disabled {
+      opacity: .45;
+      cursor: not-allowed;
+    }
+    .btn-automation-refresh.spinning svg {
+      animation: mmr-refresh-spin .65s linear infinite;
+    }
+    @keyframes mmr-refresh-spin {
+      to { transform: rotate(360deg); }
+    }
+    #mmr-report-settings-btn.btn-report-settings {
+      /* display toggled inline for admin; layout matches .upload-col-main primary row */
+      display: none;
+      background: var(--mmr-surface);
+      color: var(--primary);
+      border: 1px solid var(--mmr-card-border);
+    }
+    #mmr-report-settings-btn.btn-report-settings:hover {
+      background: var(--mmr-surface-muted);
+      border-color: rgba(18, 84, 53, 0.28);
+    }
+    /*
+      Report settings: centered modal; fully transparent ::backdrop (dashboard stays visible).
+      White panel uses shadow/border so the box stays readable without a dim layer.
+    */
+    #reportSettingsModal.mmr-rs-native {
+      position: fixed;
+      inset: auto;
+      top: 50%;
+      left: 50%;
+      margin: 0;
+      padding: 0;
+      border: none;
+      width: min(99.5vw, 1760px);
+      height: min(97vh, 1200px);
+      max-width: none;
+      max-height: none;
+      background: transparent;
+      color: inherit;
+      overflow: visible;
+      transform: translate(-50%, -50%);
+    }
+    #reportSettingsModal.mmr-rs-native::backdrop {
+      background: transparent;
+    }
+    #reportSettingsModal.mmr-rs-native .mmr-rs-panel {
+      background: #ffffff;
+      border: 1px solid rgba(226, 232, 240, 0.95);
+      border-radius: 16px;
+      box-shadow: 0 20px 50px rgba(15, 23, 42, 0.18), 0 0 0 1px rgba(15, 23, 42, 0.06);
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      max-height: none;
+      overflow: hidden;
+    }
+    #reportSettingsModal.mmr-rs-native #reportSettingsFrame {
+      flex: 1;
+      width: 100%;
+      min-height: 0;
+      border: none;
+      background: #ffffff;
+    }
+    @media (max-width: 640px) {
+      #reportSettingsModal.mmr-rs-native {
+        width: min(100vw, 1760px);
+        height: min(98vh, 1200px);
+      }
+    }
+    .upload-zone {
+      background: var(--mmr-surface);
+      border: 1px solid var(--mmr-card-border);
+      border-radius: var(--mmr-card-radius);
+      padding: 0;
+      cursor: pointer;
+      transition: border-color .2s, box-shadow .2s;
+      overflow: hidden;
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .upload-zone:hover, .upload-zone.drag-over {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(18, 84, 53, .08);
+    }
+    .upload-zone-inner {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+      padding: 1.25rem 1.5rem;
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+    .upload-icon-box {
+      width: 48px;
+      height: 48px;
+      border-radius: 10px;
+      background: rgba(18, 84, 53, .08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      flex-shrink: 0;
+    }
+    .upload-zone:hover .upload-icon-box { background: rgba(18, 84, 53, .12); }
+    .upload-zone-text { flex: 1; min-width: 0; }
+    .upload-zone h3 { font-size: .9375rem; font-weight: 600; color: var(--text); margin-bottom: .15rem; }
+    .upload-zone p { color: var(--text-muted); font-size: .8125rem; }
+    .upload-zone-cta {
+      padding: .5rem 1rem;
+      background: var(--primary);
+      color: #fff;
+      font-size: .8125rem;
+      font-weight: 500;
+      border-radius: 8px;
+      flex-shrink: 0;
+    }
+    .upload-zone:hover .upload-zone-cta { background: #1a7a4d; }
+    .upload-zone-footer {
+      padding: .5rem 1.5rem;
+      background: var(--mmr-surface-muted);
+      font-size: .75rem;
+      color: var(--text-muted);
+      border-top: 1px solid var(--mmr-card-border);
+    }
+    #fileInput { display: none; }
+    .upload-progress { display: none; margin: 0 1.5rem .75rem; height: 4px; background: #e5e7eb; border-radius: 2px; overflow: hidden; }
+    .upload-progress-bar { height: 100%; width: 0; background: var(--primary); transition: width .3s; }
+
+    /* Alert */
+    .alert { padding: .875rem 1rem; border-radius: var(--radius); margin-bottom: 1rem; font-size: .875rem; }
+    .alert-success { background: #ecfdf5; color: #065f46; }
+    .alert-danger { background: #fef2f2; color: #991b1b; }
+    .alert-info { background: #eff6ff; color: #1e3a8a; }
+
+    /* Card */
+    .card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+    }
+    .card-title { font-size: .9375rem; font-weight: 600; color: var(--text); margin-bottom: 1rem; }
+
+    /* KPIs — grid row so Download column matches full height of KPI grid */
+    .kpi-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 140px;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+      align-items: stretch;
+    }
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: .75rem;
+      min-width: 0;
+    }
+    .kpi-download-wrap {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      min-height: 0;
+      width: 140px;
+      max-width: 100%;
+      box-sizing: border-box;
+    }
+    .kpi-download {
+      background: var(--primary);
+      border: 1px solid var(--primary);
+      border-radius: var(--radius);
+      padding: 1rem;
+      text-align: center;
+      width: 100%;
+      flex: 1 1 auto;
+      min-height: 68px;
+      box-sizing: border-box;
+      cursor: pointer;
+      transition: opacity .2s;
+      text-decoration: none;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: .25rem;
+    }
+    .kpi-download:hover:not(:disabled) { opacity: .9; }
+    .kpi-download:focus { outline: none; }
+    .kpi-download:disabled { opacity: .5; cursor: not-allowed; pointer-events: none; }
+    .kpi-download .kpi-value,
+    .kpi-download .kpi-label {
+      display: block;
+      width: 100%;
+      max-width: 100%;
+      text-align: center;
+      box-sizing: border-box;
+    }
+    .kpi-download .kpi-value { font-size: 1.25rem; color: #fff; line-height: 1.2; }
+    .kpi-download .kpi-label {
+      font-size: .8125rem;
+      font-weight: 500;
+      color: rgba(255,255,255,.95);
+      text-transform: uppercase;
+      letter-spacing: .03em;
+      line-height: 1.25;
+      text-wrap: balance;
+    }
+    /* Download mode modal – pinned near the top */
+    .modal-dl-picker {
+      align-items: flex-start;
+      padding-top: 80px;
+    }
+
+    /* ── Top download progress bar ── */
+    /* When hidden, translateY(-110%) moves this bar up over the navbar strip; z-index was 9990 > .nav (1000),
+       so the invisible bar was still capturing clicks and blocking all nav links. */
+    #dlTopBar {
+      position: fixed;
+      top: 72px; /* sits flush under the navbar */
+      left: 0; right: 0;
+      z-index: 1001;
+      background: #fff;
+      border-bottom: 1px solid var(--border);
+      box-shadow: 0 2px 12px rgba(0,0,0,.10);
+      padding: .55rem 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: .85rem;
+      transform: translateY(-110%);
+      transition: transform .28s cubic-bezier(.4,0,.2,1), opacity .28s;
+      opacity: 0;
+      pointer-events: none;
+    }
+    #dlTopBar.visible {
+      transform: translateY(0);
+      opacity: 1;
+      pointer-events: auto;
+    }
+    #dlTopBar .dl-bar-icon {
+      font-size: 1.1rem;
+      flex-shrink: 0;
+      animation: dl-pulse 1.4s ease-in-out infinite;
+    }
+    @keyframes dl-pulse {
+      0%,100% { opacity:1; } 50% { opacity:.45; }
+    }
+    #dlTopBar.dl-done .dl-bar-icon { animation: none; }
+    #dlTopBar .dl-bar-info {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: .2rem;
+    }
+    #dlTopBar .dl-bar-label {
+      font-size: .8125rem;
+      font-weight: 600;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    #dlTopBar .dl-bar-sub {
+      font-size: .7rem;
+      color: var(--text-muted);
+    }
+    #dlTopBar .dl-bar-track {
+      flex: 0 0 200px;
+      height: 6px;
+      background: #e5e7eb;
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    #dlTopBar .dl-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--primary) 0%, var(--primary-light) 100%);
+      border-radius: 99px;
+      transition: width .25s ease;
+    }
+    #dlTopBar.dl-indeterminate .dl-bar-fill {
+      width: 40% !important;
+      animation: dl-indeterminate 1.4s ease-in-out infinite;
+    }
+    @keyframes dl-indeterminate {
+      0%   { margin-left: -40%; }
+      100% { margin-left: 100%; }
+    }
+    #dlTopBar .dl-bar-pct {
+      font-size: .8125rem;
+      font-weight: 700;
+      color: var(--primary);
+      min-width: 36px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+    #dlTopBar .dl-bar-cancel {
+      flex-shrink: 0;
+      width: 26px; height: 26px;
+      border-radius: 50%;
+      border: 1.5px solid var(--border);
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: .9rem;
+      display: flex; align-items: center; justify-content: center;
+      transition: background .15s, color .15s, border-color .15s;
+    }
+    #dlTopBar .dl-bar-cancel:hover {
+      background: #fee2e2;
+      border-color: #fca5a5;
+      color: var(--danger);
+    }
+    #dlTopBar.dl-done .dl-bar-cancel {
+      border-color: #6ee7b7;
+      color: var(--success);
+      background: #d1fae5;
+      pointer-events: none;
+    }
+    @media (max-width: 600px) {
+      #dlTopBar .dl-bar-track { flex: 0 0 100px; }
+      #dlTopBar .dl-bar-sub   { display: none; }
+    }
+    .kpi {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 0;
+    }
+    .kpi-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.2;
+      width: 100%;
+      max-width: 100%;
+      text-align: center;
+    }
+    .kpi-label {
+      font-size: .6875rem;
+      color: var(--text-muted);
+      margin-top: .25rem;
+      text-transform: uppercase;
+      letter-spacing: .03em;
+      width: 100%;
+      max-width: 100%;
+      text-align: center;
+    }
+    .kpi.accent .kpi-value { color: var(--info); }
+    .kpi.warn .kpi-value { color: var(--warning); }
+    .kpi.kpi-priority {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .kpi-priority .priority-breakdown {
+      display: flex;
+      gap: .6rem;
+      margin-top: .35rem;
+      font-size: .8125rem;
+      font-weight: 600;
+      color: var(--text);
+      flex-wrap: wrap;
+      justify-content: center;
+      width: 100%;
+      text-align: center;
+    }
+    .kpi-priority .priority-breakdown .p1 { color: var(--info); }
+    .kpi-priority .priority-breakdown .p2 { color: var(--text-muted); }
+    .kpi-priority .priority-breakdown .p3 { color: var(--text); }
+
+    /* Filters */
+    .filter-bar {
+      display: flex; flex-wrap: nowrap; gap: .5rem; align-items: center;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: .75rem 1rem;
+      margin-bottom: 1rem;
+      overflow-x: auto;
+    }
+    .filter-bar label { font-size: .75rem; font-weight: 500; color: var(--text-muted); white-space: nowrap; }
+    .filter-select {
+      padding: .4rem .5rem; border: 1px solid var(--border);
+      border-radius: 6px; font-size: .8rem; background: var(--white);
+      min-width: 90px; max-width: 150px;
+    }
+    .filter-select:focus { outline: none; border-color: var(--primary); }
+    .filter-reset {
+      margin-left: auto; padding: .4rem .75rem; font-size: .75rem; font-weight: 500;
+      background: var(--primary); color: #fff; border: 1px solid var(--primary);
+      border-radius: 6px; cursor: pointer; white-space: nowrap; flex-shrink: 0;
+      transition: opacity .15s;
+    }
+    .filter-reset:hover { opacity: .9; }
+
+    /* Charts */
+    .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; width: 100%; min-width: 0; }
+    .charts-row-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1rem; width: 100%; min-width: 0; }
+    .chart-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; min-width: 0; }
+    .chart-label { font-size: .8125rem; font-weight: 600; color: var(--text); margin-bottom: .75rem; }
+    .chart-wrap { position: relative; width: 100%; min-width: 0; }
+
+    /* Table */
+    .table-controls { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .5rem; margin-bottom: .5rem; }
+    .search-box { padding: .4rem .65rem; border: 1px solid var(--border); border-radius: 6px; font-size: .8125rem; width: 240px; }
+    .search-box:focus { outline: none; border-color: var(--primary); }
+    .table-scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); }
+    table.data-table { width: 100%; border-collapse: collapse; min-width: 800px; font-size: .8125rem; }
+    table.data-table thead th {
+      background: #f9fafb;
+      padding: .6rem .75rem;
+      font-weight: 600;
+      color: var(--text);
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+    }
+    table.data-table thead th:hover { background: #f3f4f6; }
+    table.data-table tbody tr { border-bottom: 1px solid var(--border); }
+    table.data-table tbody tr:hover { background: #f9fafb; }
+    table.data-table tbody td { padding: .6rem .75rem; }
+    .badge-status { padding: .15rem .5rem; border-radius: 4px; font-size: .6875rem; font-weight: 500; }
+    .badge-pending { background: #fef3c7; color: #92400e; }
+    .badge-completed { background: #d1fae5; color: #065f46; }
+    .badge-closed { background: #e5e7eb; color: #374151; }
+    .badge-open { background: #dbeafe; color: #1e40af; }
+    .badge-p1 { background: #fee2e2; color: #991b1b; }
+    .badge-p2 { background: #fef3c7; color: #92400e; }
+    .badge-p3 { background: #dbeafe; color: #1e40af; }
+    .pagination { display: flex; gap: .25rem; margin-top: .75rem; justify-content: flex-end; }
+    .pagination button { padding: .35rem .6rem; border: 1px solid var(--border); border-radius: 6px; font-size: .75rem; background: var(--white); cursor: pointer; }
+    .pagination button.active, .pagination button:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .page-info { font-size: .75rem; color: var(--text-muted); }
+
+    /* Email */
+    .email-section { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+    .form-group { margin-bottom: .875rem; }
+    .form-label { font-size: .8125rem; font-weight: 500; color: var(--text); display: block; margin-bottom: .25rem; }
+    .form-input, .form-textarea { width: 100%; padding: .5rem .65rem; border: 1px solid var(--border); border-radius: 6px; font-size: .875rem; }
+    .form-input:focus, .form-textarea:focus { outline: none; border-color: var(--primary); }
+    .form-input.input-error { border-color: var(--danger); }
+    .field-error { font-size: .75rem; color: var(--danger); margin-top: .2rem; }
+    .form-textarea { min-height: 100px; resize: vertical; }
+    .report-format-row .form-label { margin-bottom: .4rem; }
+    .report-format-hint { font-size: .75rem; color: var(--text-muted); margin: .4rem 0 0; line-height: 1.4; max-width: 42rem; }
+    .report-format-seg {
+      display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+      background: #f9fafb;
+    }
+    .report-format-seg .seg-btn {
+      border: none; background: transparent; padding: .45rem 1rem; font-size: .8rem; font-weight: 600;
+      cursor: pointer; color: var(--text-muted); transition: background .15s, color .15s;
+    }
+    .report-format-seg .seg-btn + .seg-btn { border-left: 1px solid var(--border); }
+    .report-format-seg .seg-btn:hover { background: #f3f4f6; color: var(--text); }
+    .report-format-seg .seg-btn.active { background: var(--primary); color: #fff; }
+    .schedule-row { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; padding: .875rem; background: #f9fafb; border-radius: var(--radius); margin-top: .5rem; }
+    .toggle-wrap { display: flex; align-items: center; gap: .5rem; }
+    .toggle { position: relative; width: 36px; height: 20px; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; inset: 0; background: #d1d5db; border-radius: 20px; cursor: pointer; transition: .2s; }
+    .slider::before { content: ''; position: absolute; width: 16px; height: 16px; left: 2px; bottom: 2px; background: #fff; border-radius: 50%; transition: .2s; }
+    input:checked + .slider { background: var(--primary); }
+    input:checked + .slider::before { transform: translateX(16px); }
+    .time-input { padding: .4rem .5rem; border: 1px solid var(--border); border-radius: 6px; font-size: .875rem; width: 60px; }
+    .time-input:focus { outline: none; border-color: var(--primary); }
+
+    .hidden { display: none !important; }
+
+    /* Toast */
+    #toast-container {
+      position: fixed; top: 1.25rem; right: 1.25rem; z-index: 9999;
+      display: flex; flex-direction: column; gap: .5rem;
+    }
+    .toast {
+      padding: .85rem 1.25rem; border-radius: 8px; font-size: .88rem;
+      font-weight: 500; color: #fff; min-width: 240px;
+      box-shadow: 0 4px 16px rgba(0,0,0,.15);
+      animation: slideIn .25s ease-out;
+    }
+    .toast-success { background: var(--success); }
+    .toast-error   { background: var(--danger); }
+    .toast-info    { background: var(--info); }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: none; opacity: 1; } }
+
+    @media (max-width: 900px) {
+      .charts-row, .charts-row-3, .email-section { grid-template-columns: 1fr; }
+      .page { padding: 1rem; }
+    }
+    @media (max-width: 768px) {
+      .page { padding: 1rem; }
+      .upload-row { flex-direction: column; align-items: stretch; }
+      .upload-col-main { max-width: 100%; flex: 1 1 auto; width: 100%; }
+      .upload-col-schedule {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        flex: 1 1 auto;
+      }
+      .upload-wrap { max-width: 100%; }
+      .upload-side-primary-row {
+        width: 100%;
+        gap: 0.4rem;
+      }
+      .upload-side-primary-row .btn-report-folder,
+      .upload-side-primary-row #mmr-report-settings-btn {
+        flex: 1 1 0%;
+        min-width: 0;
+        padding: 0.5rem 0.5rem;
+        font-size: 0.75rem;
+      }
+      .upload-col-main .automation-status-row { width: 100%; }
+      .upload-zone-inner { flex-direction: column; text-align: center; }
+      .upload-zone-cta { width: 100%; }
+      .kpi-row { grid-template-columns: 1fr; }
+      .kpi-download-wrap {
+        width: 100%;
+        max-width: none;
+      }
+      .kpi-download { flex: 0 0 auto; min-height: 72px; }
+      .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+      .schedule-row { flex-direction: column; align-items: flex-start; }
+    }
+
+    /* ── Roadmap Drawer ─────────────────────────────────────────── */
+    /* Below .nav (z-index 1000 in dashboard.css) so top menu stays clickable; above page content */
+    /* Backdrop: click outside the drawer closes the panel (panel uses stopPropagation) */
+    .roadmap-overlay {
+      position: fixed; inset: 0;
+      background: transparent;
+      z-index: 998;
+      opacity: 0; visibility: hidden;
+      transition: opacity .25s, visibility .25s;
+      pointer-events: none;
+    }
+    .roadmap-overlay.active { opacity: 1; visibility: visible; pointer-events: auto; }
+    .roadmap-panel {
+      position: fixed; top: 0; right: 0; bottom: 0;
+      width: min(900px, 96vw);
+      background: var(--white);
+      box-shadow: -8px 0 48px rgba(0,0,0,.22);
+      z-index: 1;
+      pointer-events: auto;
+      display: flex; flex-direction: column;
+      transform: translateX(100%);
+      transition: transform .3s cubic-bezier(.4,0,.2,1);
+    }
+    .roadmap-overlay.active .roadmap-panel { transform: none; }
+    .roadmap-panel-hdr {
+      position: relative;
+      padding: 1.1rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: flex-start; justify-content: flex-start;
+      gap: 0.75rem;
+      flex-shrink: 0; background: var(--white);
+    }
+    .roadmap-panel-hdr-text {
+      min-width: 0;
+      flex: 1;
+      padding-right: 0.25rem;
+    }
+    .roadmap-panel-title { font-size: 1rem; font-weight: 700; }
+    .roadmap-panel-sub {
+      font-size: .8125rem; color: var(--text-muted); margin-top: .15rem;
+      word-break: break-word;
+    }
+    .roadmap-close {
+      width: 44px; height: 44px; border: none; background: transparent;
+      color: var(--text); font-size: 1.65rem; font-weight: 300; cursor: pointer;
+      border-radius: 8px; flex-shrink: 0; line-height: 1;
+      display: inline-flex; align-items: center; justify-content: center;
+    }
+    .roadmap-panel-hdr > .roadmap-close:first-child {
+      flex-shrink: 0;
+      margin-top: 0.1rem;
+    }
+    .roadmap-close:hover { background: #f3f4f6; color: var(--text); }
+    .roadmap-close:focus-visible {
+      outline: 2px solid var(--primary); outline-offset: 2px;
+    }
+    .roadmap-body {
+      flex: 1; overflow-y: auto; padding: 1.5rem;
+      scrollbar-width: thin; scrollbar-color: rgba(18,84,53,.2) transparent;
+    }
+    .roadmap-body::-webkit-scrollbar { width: 6px; }
+    .roadmap-body::-webkit-scrollbar-thumb { background: rgba(18,84,53,.2); border-radius: 3px; }
+    .roadmap-section-title {
+      font-size: .75rem; font-weight: 700; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: .07em; margin-bottom: 1rem;
+    }
+    /* Pipeline track */
+    .pipeline-wrap { position: relative; margin-bottom: 1.5rem; }
+    .pipeline-track { display: flex; position: relative; }
+    .pipeline-track::before {
+      content: '';
+      position: absolute; top: 19px; left: 12.5%; right: 12.5%;
+      height: 2px; background: var(--border); z-index: 0;
+    }
+    .pipeline-progress {
+      position: absolute; top: 19px; left: 12.5%;
+      height: 2px; background: var(--primary); z-index: 1;
+      transition: width .5s ease;
+    }
+    .pipeline-step {
+      flex: 1; display: flex; flex-direction: column; align-items: center;
+      position: relative; z-index: 2; padding: 0 .35rem;
+    }
+    .pipeline-dot {
+      width: 38px; height: 38px; border-radius: 50%;
+      border: 2.5px solid var(--border); background: var(--white);
+      display: flex; align-items: center; justify-content: center;
+      font-size: .9rem; font-weight: 700; margin-bottom: .6rem;
+      transition: all .25s;
+    }
+    .pipeline-step.ps-done .pipeline-dot { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .pipeline-step.ps-active .pipeline-dot { border-color: var(--primary); color: var(--primary); box-shadow: 0 0 0 4px rgba(18,84,53,.1); }
+    .pipeline-step.ps-locked .pipeline-dot { background: #f1f5f9; border-color: #cbd5e1; color: #94a3b8; }
+    .pipeline-step-name { font-size: .75rem; font-weight: 600; text-align: center; color: var(--text-muted); line-height: 1.3; }
+    .pipeline-step.ps-done .pipeline-step-name { color: var(--primary); }
+    .pipeline-step.ps-active .pipeline-step-name { color: var(--text); }
+
+    /* Step cards */
+    .step-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: .625rem; margin-bottom: 1.5rem; }
+    .step-card {
+      border: 1px solid var(--border); border-radius: var(--radius);
+      padding: .875rem; background: var(--white);
+      display: flex; flex-direction: column; gap: .25rem;
+    }
+    .step-card.sc-done { border-color: rgba(16,185,129,.35); background: #f0fdf4; }
+    .step-card.sc-active { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(18,84,53,.06); }
+    .step-card.sc-locked { background: #f8fafc; border-color: #e2e8f0; }
+    .sc-num { font-size: .65rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); }
+    .sc-title { font-size: .8rem; font-weight: 700; color: var(--text); }
+    .sc-body { font-size: .75rem; color: var(--text-muted); line-height: 1.45; flex: 1; }
+    .step-card.sc-done .sc-body { color: #047857; }
+    .step-card.sc-active .sc-body { color: var(--text); }
+    .step-card.sc-locked .sc-title { color: var(--text-muted); }
+    .sc-time { font-size: .7rem; color: var(--text-muted); margin-top: .2rem; }
+    .sc-btn {
+      margin-top: .5rem; padding: .45rem .65rem;
+      font-size: .75rem; font-weight: 600;
+      border: none; border-radius: 6px; cursor: pointer;
+      transition: opacity .15s; width: 100%; text-align: center;
+    }
+    .sc-btn-approve { background: var(--primary); color: #fff; }
+    .sc-btn-approve:hover { opacity: .9; }
+    .sc-btn-send { background: var(--success); color: #fff; }
+    .sc-btn-send:hover { opacity: .9; }
+    .sc-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* Auto controls strip */
+    .auto-strip {
+      display: flex; align-items: center; gap: .75rem; flex-wrap: wrap;
+      padding: .875rem 1rem;
+      background: #f9fafb; border: 1px solid var(--border);
+      border-radius: var(--radius); margin-bottom: 1rem;
+      font-size: .8125rem;
+    }
+    .auto-strip-label { font-weight: 600; color: var(--text-muted); flex-shrink: 0; }
+    .auto-strip-val { flex: 1; color: var(--text); }
+
+    /* Live automation activity feed (roadmap) */
+    .mmr-activity-section { margin-bottom: 1.25rem; }
+    .mmr-activity-head {
+      display: flex; align-items: center; justify-content: space-between; gap: .75rem;
+      flex-wrap: wrap; margin-bottom: .35rem;
+    }
+    .mmr-activity-sub {
+      font-size: .75rem; color: var(--text-muted); margin: 0 0 .75rem; line-height: 1.45;
+    }
+    .mmr-activity-live {
+      display: inline-flex; align-items: center; gap: .35rem;
+      font-size: .65rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+      color: var(--primary);
+    }
+    .mmr-live-pulse {
+      width: 7px; height: 7px; border-radius: 50%; background: #22c55e;
+      box-shadow: 0 0 0 0 rgba(34, 197, 94, .5);
+      animation: mmrLivePulse 2s ease-out infinite;
+    }
+    @keyframes mmrLivePulse {
+      0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, .45); }
+      70% { box-shadow: 0 0 0 8px rgba(34, 197, 94, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+    }
+    .mmr-activity-feed {
+      max-height: 280px; overflow-y: auto;
+      border: 1px solid var(--border); border-radius: var(--radius);
+      background: #fafafa;
+      scrollbar-width: thin;
+    }
+    .mmr-activity-feed--loading { padding: 1rem; font-size: .8125rem; color: var(--text-muted); }
+    .mmr-activity-row {
+      display: flex; gap: .65rem; padding: .65rem .85rem;
+      border-bottom: 1px solid var(--border); background: var(--white);
+      font-size: .78rem; line-height: 1.4; align-items: flex-start;
+    }
+    .mmr-activity-feed > .mmr-activity-row:last-child { border-bottom: none; }
+    .mmr-activity-row.mmr-activity-row--new {
+      animation: mmrActFlash .85s ease-out;
+    }
+    @keyframes mmrActFlash {
+      from { background: #ecfdf5; }
+      to { background: var(--white); }
+    }
+    .mmr-activity-icon {
+      flex-shrink: 0; width: 1.75rem; height: 1.75rem; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .95rem; background: #f1f5f9;
+    }
+    .mmr-activity-row.t-email_sent .mmr-activity-icon { background: #d1fae5; }
+    .mmr-activity-row.t-email_failed .mmr-activity-icon { background: #fee2e2; }
+    .mmr-activity-row.t-run_skipped .mmr-activity-icon { background: #fef3c7; }
+    .mmr-activity-row.t-reminder_sent .mmr-activity-icon { background: #e0e7ff; }
+    .mmr-activity-row.t-excel_uploaded .mmr-activity-icon { background: #dbeafe; }
+    .mmr-activity-row.t-excel_cleared .mmr-activity-icon { background: #f3f4f6; }
+    .mmr-activity-row.t-paused .mmr-activity-icon,
+    .mmr-activity-row.t-resumed .mmr-activity-icon,
+    .mmr-activity-row.t-resume_blocked .mmr-activity-icon { background: #e5e7eb; }
+    .mmr-activity-row.t-schedule_on .mmr-activity-icon { background: #d1fae5; }
+    .mmr-activity-row.t-schedule_off .mmr-activity-icon { background: #fecaca; }
+    .mmr-activity-row.t-cycle_approved .mmr-activity-icon { background: #cffafe; }
+    .mmr-activity-row.t-cycle_completed .mmr-activity-icon { background: #d1fae5; }
+    .mmr-activity-main { flex: 1; min-width: 0; }
+    .mmr-activity-msg { color: var(--text); font-weight: 500; }
+    .mmr-activity-detail { color: var(--text-muted); font-size: .72rem; margin-top: .2rem; word-break: break-word; }
+    .mmr-activity-time { flex-shrink: 0; font-size: .68rem; color: var(--text-muted); white-space: nowrap; }
+
+    .mmr-live-cycle-banner {
+      display: flex;
+      flex-direction: column;
+      gap: .2rem;
+      padding: .55rem .75rem;
+      font-size: .72rem;
+      line-height: 1.35;
+      background: #ecfdf5;
+      color: #065f46;
+      border-bottom: 1px solid var(--border);
+    }
+    .mmr-live-cycle-banner--idle {
+      background: #fefce8;
+      color: #854d0e;
+    }
+    .mmr-live-cycle-title { font-weight: 700; }
+    .mmr-live-cycle-hint {
+      font-weight: 500;
+      color: var(--text-muted);
+      font-size: .68rem;
+    }
+    .mmr-live-cycle-banner--idle .mmr-live-cycle-hint { color: #a16207; }
+    .mmr-activity-empty {
+      padding: .85rem .75rem;
+      font-size: .78rem;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    .roadmap-timing-prompt {
+      padding: 1rem 1.25rem; margin-bottom: 1.5rem;
+      background: #f0fdf4; border: 1px solid rgba(16,185,129,.3);
+      border-radius: var(--radius); font-size: .8125rem;
+    }
+    .roadmap-timing-question {
+      font-weight: 600; color: var(--text); margin-bottom: .75rem;
+    }
+    .roadmap-timing-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+
+    /* Cycle history list */
+    .cycle-history { display: flex; flex-direction: column; gap: .5rem; }
+    .cycle-item {
+      display: flex; align-items: center; gap: .875rem;
+      padding: .7rem 1rem; border: 1px solid var(--border);
+      border-radius: var(--radius); background: var(--white); font-size: .8125rem;
+    }
+    .cycle-item:hover { border-color: rgba(18,84,53,.25); }
+    .cycle-badge {
+      width: 34px; height: 34px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .8rem; font-weight: 700; flex-shrink: 0;
+    }
+    .cb-sent    { background: #d1fae5; color: #065f46; }
+    .cb-failed  { background: #fee2e2; color: #991b1b; }
+    .cb-partial { background: #fef3c7; color: #92400e; }
+    .cycle-info { flex: 1; min-width: 0; }
+    .cycle-info-top { font-weight: 600; color: var(--text); }
+    .cycle-info-sub { font-size: .7rem; color: var(--text-muted); margin-top: .1rem; }
+    /* Cycle history: expandable rows (logs load under each cycle) */
+    details.cycle-history-item {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--white);
+      margin-bottom: .5rem;
+      overflow: hidden;
+    }
+    summary.cycle-history-sum {
+      list-style: none;
+      cursor: pointer;
+      padding: .65rem 1rem;
+      transition: background .15s;
+    }
+    summary.cycle-history-sum::-webkit-details-marker { display: none; }
+    summary.cycle-history-sum:hover { background: #fafafa; }
+    summary.cycle-history-sum:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: -2px;
+    }
+    .cycle-history-sum-row {
+      display: flex;
+      align-items: center;
+      gap: .65rem;
+    }
+    .cycle-history-item .cycle-item-inner {
+      display: flex;
+      align-items: center;
+      gap: .875rem;
+      flex: 1;
+      min-width: 0;
+    }
+    .cycle-history-chev {
+      flex-shrink: 0;
+      font-size: .72rem;
+      color: var(--text-muted);
+      transition: transform .18s ease;
+      width: 1.1rem;
+      text-align: center;
+    }
+    details.cycle-history-item[open] > summary .cycle-history-chev { transform: rotate(90deg); }
+    details.cycle-history-item[open] > summary {
+      border-bottom: 1px solid var(--border);
+      background: #f8fafc;
+    }
+    .cycle-history-logs {
+      padding: .85rem 1rem 1rem;
+      background: #fafafa;
+      font-size: .8rem;
+    }
+    .cycle-history-loading { color: var(--text-muted); font-size: .8rem; margin: 0; }
+    .cycle-detail-hint { font-size: .75rem; color: var(--text-muted); margin-bottom: 1rem; line-height: 1.45; }
+    .cd-section-title {
+      font-size: .72rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .06em; color: var(--text-muted); margin: 1rem 0 .5rem;
+    }
+    .cd-section-title:first-child { margin-top: 0; }
+    .cd-timeline-row {
+      display: flex; gap: .65rem; padding: .55rem 0;
+      border-bottom: 1px solid var(--border); font-size: .8rem;
+    }
+    .cd-timeline-row:last-child { border-bottom: none; }
+    .cd-timeline-dot {
+      flex-shrink: 0; width: 8px; height: 8px; border-radius: 50%;
+      background: var(--primary); margin-top: .4rem;
+    }
+    .cd-timeline-body { flex: 1; min-width: 0; }
+    .cd-timeline-title { font-weight: 600; color: var(--text); }
+    .cd-timeline-meta { font-size: .72rem; color: var(--text-muted); margin-top: .15rem; }
+    .cd-timeline-detail { font-size: .75rem; color: var(--text-muted); margin-top: .25rem; line-height: 1.45; word-break: break-word; }
+    .cd-act-row { font-size: .76rem; padding: .5rem 0; border-bottom: 1px solid #f1f5f9; line-height: 1.4; }
+    .cd-act-row:last-child { border-bottom: none; }
+    .cd-act-type { font-weight: 600; color: var(--text); }
+    .cd-act-sub { font-size: .7rem; color: var(--text-muted); margin-top: .2rem; }
+
+    @media (max-width: 640px) { .step-cards { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 400px) { .step-cards { grid-template-columns: 1fr; } }
+
+    /* Report Folder right-open panel (same pattern as roadmap) */
+    .reportfolder-overlay {
+      position: fixed; inset: 0;
+      background: transparent;
+      z-index: 998;
+      opacity: 0; visibility: hidden;
+      transition: opacity .25s, visibility .25s;
+      pointer-events: none;
+    }
+    .reportfolder-overlay.active { opacity: 1; visibility: visible; pointer-events: auto; }
+    .reportfolder-panel {
+      position: fixed; top: 0; right: 0; bottom: 0;
+      width: min(560px, 96vw);
+      background: var(--white);
+      box-shadow: -8px 0 48px rgba(0,0,0,.22);
+      z-index: 1;
+      pointer-events: auto;
+      display: flex; flex-direction: column;
+      transform: translateX(100%);
+      transition: transform .3s cubic-bezier(.4,0,.2,1);
+    }
+    .reportfolder-overlay.active .reportfolder-panel { transform: none; }
+    .reportfolder-panel-hdr {
+      padding: 1.1rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 0.75rem;
+      flex-shrink: 0; background: var(--white);
+    }
+    .reportfolder-panel-hdr-left {
+      display: flex; align-items: center; gap: 0.75rem;
+      min-width: 0; flex: 1;
+    }
+    .reportfolder-panel-hdr-left .roadmap-close { flex-shrink: 0; }
+    .reportfolder-panel-hdr-left .reportfolder-panel-title { margin: 0; }
+    .reportfolder-panel-title { font-size: 1rem; font-weight: 700; }
+    .reportfolder-panel-body {
+      flex: 1;
+      padding: 1.5rem;
+      min-height: 0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      gap: .75rem;
+    }
+    .reportfolder-panel-body .report-folder-list {
+      max-height: none;
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(18,84,53,.2) transparent;
+      padding-right: .2rem;
+    }
+    .reportfolder-panel-body .report-folder-list::-webkit-scrollbar { width: 6px; }
+    .reportfolder-panel-body .report-folder-list::-webkit-scrollbar-thumb { background: rgba(18,84,53,.2); border-radius: 3px; }
+
+    /* ========== MMR_UPLOAD_SIDEBAR_LOCK — keep last ========== */
+    body.mmr-dashboard .upload-col-main {
+      align-items: stretch !important;
+      align-self: stretch !important;
+      max-width: 560px !important;
+      min-height: 0 !important;
+      box-sizing: border-box !important;
+    }
+    body.mmr-dashboard .upload-col-schedule {
+      align-items: stretch !important;
+      align-self: stretch !important;
+      width: 340px !important;
+      max-width: min(340px, 100%) !important;
+      min-height: 0 !important;
+      box-sizing: border-box !important;
+    }
+    body.mmr-dashboard .upload-col-schedule .upload-side-insight {
+      flex: 1 1 auto !important;
+      min-height: 8rem !important;
+      min-width: 0 !important;
+    }
+    body.mmr-dashboard .upload-side-insight-body {
+      display: flex !important;
+      flex-direction: column !important;
+      flex: 1 1 auto !important;
+      min-height: 0 !important;
+      align-items: stretch !important;
+    }
+    body.mmr-dashboard .upload-side-primary-row {
+      display: flex !important;
+      flex-direction: row !important;
+      flex-wrap: nowrap !important;
+      width: 100% !important;
+      gap: 0.5rem !important;
+      min-width: 0 !important;
+    }
+    body.mmr-dashboard .upload-side-primary-row .btn-report-folder,
+    body.mmr-dashboard .upload-side-primary-row #mmr-report-settings-btn {
+      flex: 1 1 0% !important;
+      min-width: 0 !important;
+      width: auto !important;
+    }
+    body.mmr-dashboard .upload-col-main .upload-col-actions-centered .automation-status-row {
+      display: flex !important;
+      flex-direction: row !important;
+      flex-wrap: nowrap !important;
+      align-items: stretch !important;
+      gap: 0.5rem !important;
+      width: 100% !important;
+      min-width: 0 !important;
+      box-sizing: border-box !important;
+    }
+    body.mmr-dashboard .upload-col-main .automation-status-main {
+      flex: 1 1 0% !important;
+      min-width: 0 !important;
+      display: block !important;
+    }
+    body.mmr-dashboard .upload-col-main #btnAutomation {
+      -webkit-appearance: none !important;
+      appearance: none !important;
+      margin: 0 !important;
+      width: 100% !important;
+      max-width: none !important;
+      min-width: 0 !important;
+      box-sizing: border-box !important;
+      display: flex !important;
+      flex-direction: row !important;
+      align-items: center !important;
+      justify-content: center !important;
+      text-align: center !important;
+      white-space: normal !important;
+      min-height: 44px !important;
+      padding: 0.55rem 0.85rem !important;
+    }
+    body.mmr-dashboard .upload-col-main #btnAutomation #automationLabel {
+      flex: 0 1 auto !important;
+      min-width: 0 !important;
+      text-align: center !important;
+      word-break: break-word !important;
+    }
+    body.mmr-dashboard .upload-col-main #btnAutomationRefresh {
+      flex: 0 0 44px !important;
+      width: 44px !important;
+      height: 44px !important;
+      min-width: 44px !important;
+      max-width: 44px !important;
+      align-self: center !important;
+      box-sizing: border-box !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      border-radius: 10px !important;
+      border: 1px solid var(--mmr-card-border) !important;
+      background: var(--mmr-surface) !important;
+      color: var(--primary) !important;
+      cursor: pointer !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+    }
+    @media (max-width: 768px) {
+      body.mmr-dashboard .upload-col-main {
+        max-width: 100% !important;
+        width: 100% !important;
+      }
+      body.mmr-dashboard .upload-col-schedule {
+        width: 100% !important;
+        max-width: 100% !important;
+      }
+    }
+  </style>
+</head>
+<body class="mmr-dashboard">
+  <script>
+  (function () {
+    function openModal() {
+      var d = document.getElementById('reportSettingsModal');
+      var fr = document.getElementById('reportSettingsFrame');
+      if (!d || !fr) {
+        window.open('/admin/mmr-chargeable', '_blank', 'noopener,noreferrer');
+        return;
+      }
+      try { fr.src = '/admin/mmr-chargeable?embed=1&t=' + Date.now(); } catch (e) {}
+      if (typeof d.showModal !== 'function') {
+        window.open('/admin/mmr-chargeable', '_blank', 'noopener,noreferrer');
+        return;
+      }
+      try {
+        if (!d.open) d.showModal();
+      } catch (err) {
+        window.open('/admin/mmr-chargeable', '_blank', 'noopener,noreferrer');
+        return;
+      }
+      d.setAttribute('aria-hidden', 'false');
+      document.body.style.overflow = 'hidden';
+    }
+    function closeModal() {
+      var d = document.getElementById('reportSettingsModal');
+      if (!d) return;
+      if (typeof d.close === 'function' && d.open) {
+        try { d.close(); } catch (e) {}
+      }
+      d.classList.remove('active');
+      d.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
+    }
+    window.mmrOpenReportSettings = function (ev) {
+      if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+      openModal();
+    };
+    window.mmrCloseReportSettings = closeModal;
+    window.openReportSettingsModal = openModal;
+    window.closeReportSettingsModal = closeModal;
+    document.addEventListener('DOMContentLoaded', function () {
+      var rsDlg = document.getElementById('reportSettingsModal');
+      if (!rsDlg || !rsDlg.addEventListener) return;
+      rsDlg.addEventListener('close', function () {
+        rsDlg.setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
+        rsDlg.classList.remove('active');
+      });
+    });
+  })();
+  </script>
+  {% set active_page = 'report' %}
+  {% include 'partials/main_navbar.html' with context %}
+
+<!-- Top download progress bar -->
+<div id="dlTopBar" role="status" aria-live="polite" aria-label="Download progress">
+  <span class="dl-bar-icon">📥</span>
+  <div class="dl-bar-info">
+    <span class="dl-bar-label" id="dlBarLabel">Preparing download…</span>
+    <span class="dl-bar-sub" id="dlBarSub">Click × to cancel</span>
+  </div>
+  <div class="dl-bar-track"><div class="dl-bar-fill" id="dlBarFill"></div></div>
+  <span class="dl-bar-pct" id="dlBarPct"></span>
+  <button type="button" class="dl-bar-cancel" id="dlBarCancel" title="Cancel download" onclick="cancelDownload()">✕</button>
+</div>
+
+<div class="page">
+  <!-- Alert -->
+  <div id="alertBox"></div>
+
+  <!-- Upload row: main column (upload + actions + automation) | schedule card -->
+  <div class="upload-row">
+    <div class="upload-col-main">
+      <div class="upload-wrap">
+      <div class="upload-zone" id="uploadZone"
+           ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)"
+           onclick="document.getElementById('fileInput').click()">
+        <div class="upload-zone-inner">
+          <div class="upload-icon-box">📊</div>
+          <div class="upload-zone-text">
+            <h3>Upload MMR Excel File</h3>
+            <p>Reactive Work Order Excel · drag &amp; drop or click to browse</p>
+          </div>
+          <span class="upload-zone-cta">Browse files</span>
+        </div>
+        <div class="upload-progress" id="uploadProgress">
+          <div class="upload-progress-bar" id="uploadProgressBar"></div>
+        </div>
+        <div class="upload-zone-footer">Supports .xlsx .xls</div>
+        <input type="file" id="fileInput" accept=".xlsx,.xls" onchange="onFileSelected(event)">
+      </div>
+      </div>
+      <div class="upload-col-actions-centered">
+      <div class="upload-side-primary-row">
+      <button type="button" id="btnReportFolder" class="btn btn-outline btn-report-folder" onclick="openReportFolderPanel()" title="View saved reports">
+        📁 Saved Report
+      </button>
+      <button type="button" id="mmr-report-settings-btn" class="btn btn-outline btn-report-settings" title="Chargeable rules and location register (admin)"
+        {% if is_admin %}style="display:flex"{% else %}style="display:none"{% endif %}
+        onclick="window.mmrOpenReportSettings && window.mmrOpenReportSettings(event)">
+        ⚙ Report settings
+      </button>
+      </div>
+      <div class="automation-status-row">
+        <div class="automation-status-main">
+        <button type="button" id="btnAutomation" class="btn-automation btn-automation-disabled" onclick="openRoadmapPanel()" disabled title="View automation roadmap">
+          <span class="automation-dot"></span>
+          <span id="automationLabel">—</span>
+        </button>
+        </div>
+        <button type="button" id="btnAutomationRefresh" class="btn-automation-refresh" onclick="refreshMmrDashboard()" title="Clear report — new upload (removes current workbook from server)" aria-label="Clear report and start new upload">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        </button>
+      </div>
+      </div>
+    </div>
+    <div class="upload-col-schedule">
+      <div class="upload-side-insight" id="uploadSideInsight" aria-live="polite">
+        <div class="upload-side-insight-hdr">Schedule &amp; last send</div>
+        <div class="upload-side-insight-body" id="uploadSideInsightBody">
+          <p class="upload-side-insight-muted">Loading schedule…</p>
+        </div>
+        <button type="button" class="upload-side-insight-jump" id="uploadSideInsightJump" onclick="mmrScrollToEmailOrRoadmap()">Email schedule ↓</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── DASHBOARD (hidden until data loads) ── -->
+  <div id="dashboardSection" class="hidden">
+
+    <div class="kpi-row">
+      <div class="kpi-grid" id="kpiGrid"></div>
+      <div class="kpi-download-wrap">
+        <button type="button" class="kpi-download" id="btnDownloadReport" onclick="handleDownloadClick()" disabled title="Download Excel report">
+          <span class="kpi-value">📥</span>
+          <span class="kpi-label">Download Report</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="filter-bar" id="filterBar">
+      <label>Client</label>
+      <select class="filter-select" id="fClient" onchange="updateContractOptions(); applyFilters()"><option value="">All</option></select>
+      <label>Contract</label>
+      <select class="filter-select" id="fContract" onchange="updateClientFromContract(); applyFilters()"><option value="">All</option></select>
+      <label>Service Group</label>
+      <select class="filter-select" id="fServiceGroup" onchange="applyFilters()"><option value="">All</option></select>
+      <label>Space</label>
+      <select class="filter-select" id="fSpace" onchange="applyFilters()"><option value="">All</option></select>
+      <label>Status</label>
+      <select class="filter-select" id="fStatus" onchange="applyFilters()"><option value="">All</option></select>
+      <label>Priority</label>
+      <select class="filter-select" id="fPriority" onchange="applyFilters()"><option value="">All</option></select>
+      <button class="filter-reset" onclick="resetFilters()">✕ Reset</button>
+    </div>
+
+    <div class="charts-row">
+      <div class="chart-card">
+        <div class="chart-label">📋 Work Orders by Client</div>
+        <div class="chart-wrap" style="height:260px">
+          <canvas id="chartClient"></canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-label">📁 Work Orders by Contract</div>
+        <div class="chart-wrap" style="height:260px">
+          <canvas id="chartContract"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts row 2: Service Group + Status + Priority -->
+    <div class="charts-row-3">
+      <div class="chart-card">
+        <div class="chart-label">🔧 By Service Group</div>
+        <div class="chart-wrap" style="height:260px">
+          <canvas id="chartServiceGroup"></canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-label">📊 Work Orders by Status</div>
+        <div class="chart-wrap" style="height:260px">
+          <canvas id="chartStatus"></canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-label">⚡ Work Orders by Priority</div>
+        <div class="chart-wrap" style="height:260px">
+          <canvas id="chartPriority"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts row 3: Chargeable pie + Chargeable table -->
+    <div class="charts-row">
+      <div class="chart-card">
+        <div class="chart-label">💰 Chargeable vs Non-Chargeable</div>
+        <div class="chart-wrap" style="height:260px">
+          <canvas id="chartSpace"></canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-label">📋 Chargeable Breakdown</div>
+        <div id="chargeableTable" style="overflow-x:auto;margin-top:.25rem"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📋 Work Orders Detail</div>
+      <div class="table-controls">
+        <input class="search-box" id="searchBox" placeholder="🔍 Search work orders…"
+               oninput="applyFilters()">
+        <span class="page-info" id="tableInfo"></span>
+      </div>
+      <div class="table-scroll">
+        <table class="data-table" id="dataTable">
+          <thead id="tableHead"></thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+      <div class="pagination" id="paginationBar"></div>
+    </div>
+
+    <div class="card" id="emailCard">
+      <div class="card-title">📧 Email Report</div>
+      <div class="email-section">
+        <!-- Compose -->
+        <div>
+          <div class="form-group">
+            <label class="form-label">
+              To <span style="color:red">*</span>
+              <span style="font-weight:400;color:var(--text-muted);font-size:.75rem;margin-left:.4rem;">(@injaaz.ae only)</span>
+            </label>
+            <button type="button" class="btn btn-outline btn-sm" id="btnSavedAddresses" onclick="fillSavedAddresses()" style="margin-bottom:.5rem" title="Fill or clear To and CC with saved addresses">
+              📋 Use saved addresses
+            </button>
+            <input class="form-input" id="emailTo" type="text"
+                   placeholder="name@injaaz.ae, name2@injaaz.ae"
+                   oninput="validateEmailField(this)">
+            <div class="field-error" id="emailToError"></div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">
+              CC
+              <span style="font-weight:400;color:var(--text-muted);font-size:.75rem;margin-left:.4rem;">(@injaaz.ae only)</span>
+            </label>
+            <input class="form-input" id="emailCc" type="text"
+                   placeholder="name@injaaz.ae"
+                   oninput="validateEmailField(this)">
+            <div class="field-error" id="emailCcError"></div>
+          </div>
+          <div class="form-group report-format-row">
+            <span class="form-label">Report format</span>
+            <div class="report-format-seg" role="group" aria-label="Daily or monthly wording for email and Excel">
+              <button type="button" class="seg-btn active" id="fmtDailyBtn" onclick="setReportFormat('daily', true)">Daily</button>
+              <button type="button" class="seg-btn" id="fmtMonthlyBtn" onclick="setReportFormat('monthly', true)">Monthly</button>
+            </div>
+            <p class="report-format-hint">Chooses the wording for the email subject/body and for Excel filenames and attachments (<strong>Daily Report …</strong> vs <strong>Monthly Report …</strong>). The timed schedule below still runs once per day; upload data that matches the period you need. After switching Daily/Monthly, subject and body update to the matching template—click <strong>Save Config</strong> to keep them. Use <strong>Download Excel</strong> / <strong>Monthly Excel (ZIP)</strong> in the row below for exports.</p>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Subject</label>
+            <input class="form-input" id="emailSubject" type="text">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Body</label>
+            <textarea class="form-textarea" id="emailBody"></textarea>
+          </div>
+          <div style="display:flex;gap:.75rem;flex-wrap:wrap">
+            <button class="btn btn-success" id="btnSendEmail" onclick="sendEmailNow()">
+              ✉️ Send Email Now
+            </button>
+            <button class="btn btn-outline" id="btnSaveToFolder" onclick="saveToFolder()" disabled title="Save current report (filtered or full) to Report folder">
+              📁 Save to Folder
+            </button>
+            <button class="btn btn-outline" id="btnSaveToDrive" onclick="saveToDrive()" disabled title="Save report to General\CAFM and CAFM\Daily Generated Report">
+              💾 Save to Drive
+            </button>
+            <button class="btn btn-outline" onclick="saveEmailConfig()">
+              💾 Save Config
+            </button>
+            <button type="button" class="btn btn-outline" id="btnEmailDownloadExcel" onclick="handleDownloadClick()" disabled title="Download Excel (same as top KPI; filename follows Daily/Monthly after Save Config)">
+              📥 Download Excel
+            </button>
+            <button type="button" class="btn btn-outline hidden" id="btnEmailDownloadMonthlyZip" onclick="downloadReportMonthly()" disabled title="ZIP with one workbook per calendar month">
+              📥 Monthly Excel (ZIP)
+            </button>
+          </div>
+        </div>
+
+        <!-- Schedule -->
+        <div>
+          <div class="card-title" style="margin-bottom:.75rem">⏰ Schedule</div>
+          <p style="font-size:.85rem;color:var(--text-muted);margin-bottom:1rem">
+            Automatically send the report every day at the configured time (using the last uploaded Excel file). Uses the <strong>Report format</strong> (Daily/Monthly) on the left for subject, body, and attachment filename.
+          </p>
+          <div class="schedule-row">
+            <div class="toggle-wrap">
+              <label class="toggle">
+                <input type="checkbox" id="scheduleEnabled" onchange="onScheduleToggle()">
+                <span class="slider"></span>
+              </label>
+              <span style="font-size:.88rem;font-weight:600">Enable daily schedule</span>
+            </div>
+            <label style="font-size:.85rem;font-weight:600">Send at:</label>
+            <input class="time-input" type="number" id="scheduleHour"
+                   min="0" max="23" placeholder="10" value="10">
+            <span style="font-weight:700">:</span>
+            <input class="time-input" type="number" id="scheduleMinute"
+                   min="0" max="59" placeholder="00" value="0">
+            <span style="font-size:.78rem;color:var(--text-muted)">(24h, GST)</span>
+          </div>
+          <div style="margin-top:1rem;display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
+            <button class="btn btn-primary btn-sm" onclick="saveSchedule()">
+              ✔ Save Schedule
+            </button>
+            <button type="button" id="btnStopAutoCard" class="btn btn-danger btn-sm hidden" onclick="stopAutomation()" title="Disable the schedule and stop all automated sending">
+              🛑 Stop Automation
+            </button>
+            <span id="scheduleStatus" style="font-size:.83rem;color:var(--text-muted)"></span>
+          </div>
+          <div style="margin-top:1.5rem;padding:1rem;background:var(--accent);border-radius:8px">
+            <p style="font-size:.82rem;font-weight:600;color:var(--primary);margin-bottom:.4rem">ℹ️ Note</p>
+            <p style="font-size:.82rem;color:var(--text-muted)">
+              The scheduled email uses the <em>last uploaded</em> Excel file.
+              Upload a fresh file and re-save to refresh the data.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /dashboardSection -->
+</div><!-- /page -->
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<!-- ════════ Roadmap Panel ════════ -->
+<div id="roadmapOverlay" class="roadmap-overlay" aria-hidden="true" onclick="if(event.target===this)closeRoadmapPanel()">
+  <div class="roadmap-panel" onclick="event.stopPropagation()">
+    <div class="roadmap-panel-hdr">
+      <button type="button" class="roadmap-close" onclick="closeRoadmapPanel()" title="Close" aria-label="Close panel">&times;</button>
+      <div class="roadmap-panel-hdr-text">
+        <div class="roadmap-panel-title">📊 Email Automation Roadmap</div>
+        <div class="roadmap-panel-sub" id="roadmapSub">Loading…</div>
+      </div>
+    </div>
+    <div class="roadmap-body" id="roadmapBody">
+      <p style="color:var(--text-muted);font-size:.875rem">Loading…</p>
+    </div>
+  </div>
+</div>
+
+<!-- Automation status modal (comprehensive) -->
+<div id="automationModal" class="modal-overlay" onclick="if(event.target===this)closeAutomationModal()">
+  <div class="modal-automation modal-automation-wide" onclick="event.stopPropagation()">
+    <div class="modal-automation-header modal-automation-header--close-left">
+      <button type="button" class="modal-automation-close" onclick="closeAutomationModal()" aria-label="Close">&times;</button>
+      <h3 class="modal-automation-title">📧 Email Automation</h3>
+    </div>
+    <div class="modal-automation-body" id="automationModalBody">
+      <p style="color:var(--text-muted)">Loading…</p>
+    </div>
+  </div>
+</div>
+
+<!-- Download mode picker modal (shown when data spans multiple months) -->
+<div id="downloadModeModal" class="modal-overlay modal-dl-picker" onclick="if(event.target===this)closeDownloadModeModal()">
+  <div class="modal-automation" onclick="event.stopPropagation()" style="max-width:420px">
+    <div class="modal-automation-header">
+      <h3 class="modal-automation-title">📥 Download Report</h3>
+      <button type="button" class="modal-automation-close" onclick="closeDownloadModeModal()" aria-label="Close">&times;</button>
+    </div>
+    <div class="modal-automation-body">
+      <p style="color:var(--text-muted);margin-bottom:1rem;line-height:1.6">
+        The data spans <strong id="dlModalMonthCount"></strong>.
+        How would you like to download the report?
+      </p>
+      <div style="display:flex;flex-direction:column;gap:.65rem">
+        <button type="button" class="btn btn-primary" style="justify-content:center" onclick="closeDownloadModeModal();downloadReport()">
+          📄 As a whole (single file)
+        </button>
+        <button type="button" class="btn btn-outline" style="justify-content:center" onclick="closeDownloadModeModal();downloadReportMonthly()">
+          📦 Month by month (ZIP archive)
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Report Folder right-open panel (same as Automation Roadmap) -->
+<div id="reportFolderOverlay" class="reportfolder-overlay" aria-hidden="true" onclick="if(event.target===this)closeReportFolderPanel()">
+  <div class="reportfolder-panel" onclick="event.stopPropagation()">
+    <div class="reportfolder-panel-hdr">
+      <div class="reportfolder-panel-hdr-left">
+        <button type="button" class="roadmap-close" onclick="closeReportFolderPanel()" title="Close" aria-label="Close">✕</button>
+        <div class="reportfolder-panel-title">📁 Report Folder</div>
+      </div>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="loadReportFolder(); toast('List refreshed', 'info')" title="Refresh list">↻</button>
+    </div>
+    <div class="reportfolder-panel-body">
+      <p class="report-folder-subtitle" style="font-size:.875rem;color:var(--text-muted);margin-bottom:1rem">Reports sent via email or saved manually.</p>
+      <div id="reportFolderList" class="report-folder-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Report settings (admin): full-screen dialog; iframe loads chargeable page with ?embed=1 (transparent, no nav) -->
+<dialog id="reportSettingsModal" class="mmr-rs-native" aria-label="Report settings — chargeable rules and location register" aria-hidden="true">
+  <div class="mmr-rs-panel">
+    <iframe id="reportSettingsFrame" src="about:blank" title="Report settings — chargeable rules and location register"></iframe>
+  </div>
+</dialog>
+
+<script>
+// ════════════════════════════════════════════════════════════════
+// State
+// ════════════════════════════════════════════════════════════════
+let allRows = [];
+let filteredRows = [];
+let currentPage = 1;
+const PAGE_SIZE = 20;
+let sortCol = null;
+let sortDir = 1;
+
+const COLS = ['WorkOrder No','Reported Date','Priority','Work Description',
+              'Client','Reported By','Service Group','Assigned Date',
+              'Work Start Date','Closed By','Status','Contract','BaseUnit','Space'];
+
+const CHART_COLORS = [
+  '#125435','#1a7a4d','#2E7D32','#388E3C','#43A047',
+  '#4CAF50','#66BB6A','#81C784','#A5D6A7','#C8E6C9',
+  '#33691E','#558B2F','#689F38','#7CB342','#8BC34A',
+];
+
+let charts = {};
+let dashboardData = null;
+
+// ════════════════════════════════════════════════════════════════
+// Auth helper
+// ════════════════════════════════════════════════════════════════
+async function getToken() {
+  let token = localStorage.getItem('access_token');
+  if (!token) return null;
+  return token;
+}
+
+async function authFetch(url, opts = {}) {
+  let token = await getToken();
+  const headers = { ...(opts.headers || {}) };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const resp = await fetch(url, { ...opts, headers });
+  if (resp.status === 401) {
+    // Try refresh
+    const refresh = localStorage.getItem('refresh_token');
+    if (refresh) {
+      const r = await fetch('/api/auth/refresh', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${refresh}` }
+      });
+      if (r.ok) {
+        const d = await r.json();
+        if (d.access_token) {
+          localStorage.setItem('access_token', d.access_token);
+          headers['Authorization'] = `Bearer ${d.access_token}`;
+          return fetch(url, { ...opts, headers });
+        }
+      }
+    }
+    window.location.href = '/login';
+  }
+  return resp;
+}
+
+// ════════════════════════════════════════════════════════════════
+// Toast
+// ════════════════════════════════════════════════════════════════
+function toast(msg, type = 'info') {
+  const el = document.createElement('div');
+  el.className = `toast toast-${type}`;
+  el.textContent = msg;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(() => el.remove(), 4000);
+}
+
+// ════════════════════════════════════════════════════════════════
+// Upload handlers
+// ════════════════════════════════════════════════════════════════
+function onDragOver(e) { e.preventDefault(); document.getElementById('uploadZone').classList.add('drag-over'); }
+function onDragLeave()  { document.getElementById('uploadZone').classList.remove('drag-over'); }
+function onDrop(e) {
+  e.preventDefault();
+  document.getElementById('uploadZone').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) uploadFile(file);
+}
+function onFileSelected(e) { if (e.target.files[0]) uploadFile(e.target.files[0]); }
+
+async function uploadFile(file) {
+  const prog = document.getElementById('uploadProgress');
+  const bar  = document.getElementById('uploadProgressBar');
+  prog.style.display = 'block'; bar.style.width = '30%';
+
+  const fd = new FormData();
+  fd.append('file', file);
+
+  try {
+    bar.style.width = '60%';
+    const resp = await authFetch('/admin/mmr/api/upload', { method: 'POST', body: fd });
+    bar.style.width = '100%';
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || 'Upload failed');
+    allRows = data.rows;
+    dashboardData = data.dashboard;
+    document.getElementById('dashboardSection').classList.remove('hidden');
+    renderDashboard(dashboardData);
+    filterRows();
+    applyStoredFiltersIfAny();
+    mmrResizeAllCharts();
+    toast(`✅ Loaded ${data.total} work orders`, 'success');
+    document.getElementById('btnDownloadReport').disabled = false;
+    document.getElementById('btnSaveToFolder').disabled = false;
+    document.getElementById('btnSaveToDrive').disabled = false;
+    document.getElementById('uploadZone').style.borderColor = 'var(--success)';
+    updateEmailSectionDownloadButtons();
+    await loadAutomationStatus();
+    await loadCycleData();
+  } catch(err) {
+    setAlert(err.message, 'danger');
+    toast(err.message, 'error');
+  } finally {
+    setTimeout(() => { prog.style.display = 'none'; bar.style.width = '0'; }, 600);
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+// Dashboard render
+// ════════════════════════════════════════════════════════════════
+function renderDashboard(d) {
+  renderKPIs(d);
+  populateFilters(d.filters);
+  renderAllCharts(d);
+  buildTableHeader();
+}
+
+function renderKPIs(d) {
+  const priorities = d.by_priority || {};
+  const spaces    = d.by_space   || {};
+  const statuses  = d.by_status  || {};
+  let pending = 0;
+  for (const [k, v] of Object.entries(statuses)) {
+    if (k.toLowerCase().includes('pend')) pending += v;
+  }
+  const chargeable = spaces['Chargeable'] || 0;
+  const nonChargeable = spaces['Non-Chargeable'] || 0;
+  const p1 = priorities['P1'] || 0;
+  const p2 = priorities['P2'] || 0;
+  const p3 = priorities['P3'] || 0;
+  const contracts = Object.keys(d.by_contract || {}).length;
+  const clients   = Object.keys(d.by_client  || {}).length;
+
+  document.getElementById('kpiGrid').innerHTML = `
+    <div class="kpi"><div class="kpi-value">${d.total}</div><div class="kpi-label">Total Work Orders</div></div>
+    <div class="kpi warn"><div class="kpi-value">${pending}</div><div class="kpi-label">Pending</div></div>
+    <div class="kpi"><div class="kpi-value">${chargeable}</div><div class="kpi-label">Chargeable</div></div>
+    <div class="kpi"><div class="kpi-value">${nonChargeable}</div><div class="kpi-label">Non-Chargeable</div></div>
+    <div class="kpi kpi-priority">
+      <div class="kpi-label">Priority</div>
+      <div class="priority-breakdown">
+        <span class="p1">P1: ${p1}</span><span class="p2">P2: ${p2 || '–'}</span><span class="p3">P3: ${p3}</span>
+      </div>
+    </div>
+    <div class="kpi"><div class="kpi-value">${clients}</div><div class="kpi-label">Clients</div></div>
+    <div class="kpi"><div class="kpi-value">${contracts}</div><div class="kpi-label">Contracts</div></div>
+  `;
+}
+
+function populateFilters(filters) {
+  const map = {
+    fClient: filters?.clients, fContract: filters?.contracts,
+    fServiceGroup: filters?.service_groups, fSpace: filters?.spaces,
+    fStatus: filters?.statuses, fPriority: filters?.priorities,
+  };
+  for (const [id, vals] of Object.entries(map)) {
+    const sel = document.getElementById(id);
+    if (!sel) continue;
+    sel.innerHTML = '<option value="">All</option>';
+    (vals || []).forEach(v => {
+      const opt = document.createElement('option');
+      opt.value = v; opt.textContent = v;
+      sel.appendChild(opt);
+    });
+  }
+}
+
+/** When Client changes: show contracts for that client, or all contracts when Client=All (unchecked). */
+function updateContractOptions() {
+  const clientSel = document.getElementById('fClient');
+  const contractSel = document.getElementById('fContract');
+  if (!clientSel || !contractSel) return;
+  const client = clientSel.value || '';
+  let list = [];
+  if (client) {
+    const set = new Set();
+    allRows.forEach(r => { if ((r['Client'] || '').trim() === client) set.add((r['Contract'] || '').trim()); });
+    set.delete('');
+    list = [...set].sort();
+  } else {
+    list = (dashboardData && dashboardData.filters && dashboardData.filters.contracts) ? dashboardData.filters.contracts : [];
+  }
+  const prevContract = contractSel.value;
+  contractSel.innerHTML = '<option value="">All</option>';
+  list.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c; opt.textContent = c;
+    contractSel.appendChild(opt);
+  });
+  contractSel.value = list.includes(prevContract) ? prevContract : '';
+}
+
+/** When Contract changes: if Client=All and a contract is selected, auto-select the client that owns it. */
+function updateClientFromContract() {
+  const clientSel = document.getElementById('fClient');
+  const contractSel = document.getElementById('fContract');
+  if (!clientSel || !contractSel) return;
+  if ((clientSel.value || '') !== '' || !contractSel.value) return;
+  const contract = contractSel.value.trim();
+  for (const r of allRows) {
+    if ((r['Contract'] || '').trim() === contract) {
+      const clientName = (r['Client'] || '').trim();
+      if (clientName) {
+        clientSel.value = clientName;
+        break;
+      }
+    }
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+// Charts
+// ════════════════════════════════════════════════════════════════
+function renderAllCharts(d) {
+  destroyCharts();
+  renderBarChart('chartClient', d.by_client, 'vertical');
+  renderBarChart('chartContract', d.by_contract, 'horizontal');
+  renderBarChart('chartServiceGroup', d.by_service_group, 'horizontal');
+  renderPieChart('chartStatus', d.by_status);
+  renderPieChart('chartSpace', d.by_space);
+  renderPieChart('chartPriority', d.by_priority, true);
+  renderChargeableTable(d.by_space);
+}
+
+function destroyCharts() {
+  for (const c of Object.values(charts)) { try { c.destroy(); } catch(e){} }
+  charts = {};
+}
+
+/** Chart.js measures parent size at create time; if #dashboardSection was display:none, resize after layout. */
+function mmrResizeAllCharts() {
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      for (const c of Object.values(charts)) {
+        try { c.resize(); } catch (e) {}
+      }
+    });
+  });
+}
+
+function renderBarChart(id, dataObj, direction = 'vertical') {
+  if (!dataObj) return;
+  const labels = Object.keys(dataObj);
+  const values = Object.values(dataObj);
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  const horizontal = direction === 'horizontal';
+  charts[id] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{ data: values, backgroundColor: CHART_COLORS.slice(0, labels.length),
+                   borderRadius: 5, borderSkipped: false }],
+    },
+    options: {
+      indexAxis: horizontal ? 'y' : 'x',
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false },
+                 tooltip: { callbacks: { label: c => ` ${c.parsed[horizontal ? 'x' : 'y']} WOs` } } },
+      scales: {
+        x: { grid: { display: !horizontal }, ticks: { font: { size: 10 } } },
+        y: { grid: { display: horizontal  }, ticks: { font: { size: 10 } } },
+      },
+    },
+  });
+}
+
+function renderPieChart(id, dataObj, isDoughnut = false) {
+  if (!dataObj) return;
+  const labels = Object.keys(dataObj);
+  const values = Object.values(dataObj);
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  charts[id] = new Chart(ctx, {
+    type: isDoughnut ? 'doughnut' : 'pie',
+    data: {
+      labels,
+      datasets: [{ data: values, backgroundColor: CHART_COLORS.slice(0, labels.length),
+                   hoverOffset: 8 }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12 } },
+      },
+    },
+  });
+}
+
+function renderChargeableTable(dataObj) {
+  const container = document.getElementById('chargeableTable');
+  if (!container) return;
+  if (!dataObj || Object.keys(dataObj).length === 0) {
+    container.innerHTML = '<p style="color:var(--text-muted);font-size:.8125rem;padding:.5rem 0">No data available</p>';
+    return;
+  }
+  const total = Object.values(dataObj).reduce((a, b) => a + b, 0);
+  const rows = Object.entries(dataObj).sort((a, b) => b[1] - a[1]);
+  const pct = (n) => total ? ((n / total) * 100).toFixed(1) + '%' : '0%';
+
+  const thStyle = 'padding:.5rem .75rem;font-weight:600;font-size:.8rem;color:var(--text);background:#f9fafb;border-bottom:1px solid var(--border);text-align:left;';
+  const tdStyle = 'padding:.5rem .75rem;font-size:.8125rem;border-bottom:1px solid var(--border);';
+  const tdNum   = tdStyle + 'text-align:center;';
+
+  const bodyRows = rows.map(([k, v], i) => {
+    const bg = i % 2 ? 'background:#f9fafb;' : '';
+    return `<tr style="${bg}">
+      <td style="${tdStyle}">${escHtml(k)}</td>
+      <td style="${tdNum}font-weight:600;color:var(--primary);">${v}</td>
+      <td style="${tdNum}">
+        <div style="display:flex;align-items:center;gap:.4rem">
+          <div style="flex:1;background:#e5e7eb;border-radius:4px;height:6px;overflow:hidden">
+            <div style="width:${pct(v)};background:var(--primary);height:6px;border-radius:4px"></div>
+          </div>
+          <span style="white-space:nowrap;min-width:36px">${pct(v)}</span>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  container.innerHTML = `
+    <table style="width:100%;border-collapse:collapse;">
+      <thead>
+        <tr>
+          <th style="${thStyle}">Type</th>
+          <th style="${thStyle}text-align:center;">Count</th>
+          <th style="${thStyle}">Share</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${bodyRows}
+        <tr style="background:#f0fdf4;">
+          <td style="${tdStyle}font-weight:700;">Total</td>
+          <td style="${tdNum}font-weight:700;color:var(--primary);">${total}</td>
+          <td style="${tdNum}font-weight:700;">100%</td>
+        </tr>
+      </tbody>
+    </table>`;
+}
+
+// ════════════════════════════════════════════════════════════════
+// Filters & table
+// ════════════════════════════════════════════════════════════════
+function getFilters() {
+  const el = id => document.getElementById(id);
+  return {
+    client:       (el('fClient')?.value || ''),
+    contract:     (el('fContract')?.value || ''),
+    serviceGroup: (el('fServiceGroup')?.value || ''),
+    space:        (el('fSpace')?.value || ''),
+    status:       (el('fStatus')?.value || ''),
+    priority:     (el('fPriority')?.value || ''),
+    search:       (el('searchBox')?.value || '').toLowerCase().trim(),
+  };
+}
+
+function resetFilters() {
+  ['fClient','fContract','fServiceGroup','fSpace','fStatus','fPriority']
+    .forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+  const sb = document.getElementById('searchBox'); if (sb) sb.value = '';
+  applyFilters();
+}
+
+function applyFilters() {
+  const f = getFilters();
+  filteredRows = allRows.filter(row => {
+    if (f.client       && row['Client']        !== f.client)       return false;
+    if (f.contract     && row['Contract']       !== f.contract)     return false;
+    if (f.serviceGroup && row['Service Group']  !== f.serviceGroup) return false;
+    if (f.space        && row['Space']          !== f.space)        return false;
+    if (f.status       && row['Status']         !== f.status)       return false;
+    if (f.priority     && row['Priority']       !== f.priority)     return false;
+    if (f.search) {
+      const hay = Object.values(row).join(' ').toLowerCase();
+      if (!hay.includes(f.search)) return false;
+    }
+    return true;
+  });
+
+  // Update charts with filtered data
+  if (filteredRows.length < allRows.length && dashboardData) {
+    updateChartsFromRows(filteredRows);
+  } else if (dashboardData) {
+    renderAllCharts(dashboardData);
+  }
+
+  // Update KPIs
+  updateKPIs(filteredRows);
+
+  currentPage = 1;
+  renderTable();
+}
+
+function updateKPIs(rows) {
+  const total = rows.length;
+  let pending = 0, p1 = 0, p2 = 0, p3 = 0, chargeable = 0, nonChargeable = 0;
+  const clientSet = new Set(), contractSet = new Set();
+  rows.forEach(r => {
+    if ((r['Status'] || '').toLowerCase().includes('pend')) pending++;
+    if (r['Priority'] === 'P1') p1++;
+    if (r['Priority'] === 'P2') p2++;
+    if (r['Priority'] === 'P3') p3++;
+    const space = (r['Space'] || '').trim();
+    if (space === 'Chargeable') chargeable++;
+    else if (space === 'Non-Chargeable') nonChargeable++;
+    if (r['Client'])   clientSet.add(r['Client']);
+    if (r['Contract']) contractSet.add(r['Contract']);
+  });
+  document.getElementById('kpiGrid').innerHTML = `
+    <div class="kpi"><div class="kpi-value">${total}</div><div class="kpi-label">Work Orders (filtered)</div></div>
+    <div class="kpi warn"><div class="kpi-value">${pending}</div><div class="kpi-label">Pending</div></div>
+    <div class="kpi"><div class="kpi-value">${chargeable}</div><div class="kpi-label">Chargeable</div></div>
+    <div class="kpi"><div class="kpi-value">${nonChargeable}</div><div class="kpi-label">Non-Chargeable</div></div>
+    <div class="kpi kpi-priority">
+      <div class="kpi-label">Priority</div>
+      <div class="priority-breakdown">
+        <span class="p1">P1: ${p1}</span><span class="p2">P2: ${p2 || '–'}</span><span class="p3">P3: ${p3}</span>
+      </div>
+    </div>
+    <div class="kpi"><div class="kpi-value">${clientSet.size}</div><div class="kpi-label">Clients</div></div>
+    <div class="kpi"><div class="kpi-value">${contractSet.size}</div><div class="kpi-label">Contracts</div></div>
+  `;
+}
+
+function updateChartsFromRows(rows) {
+  const agg = (col) => {
+    const m = {};
+    rows.forEach(r => { const v = r[col] || 'Unknown'; m[v] = (m[v] || 0) + 1; });
+    return m;
+  };
+  destroyCharts();
+  renderBarChart('chartClient',       agg('Client'),        'vertical');
+  renderBarChart('chartContract',     agg('Contract'),      'horizontal');
+  renderBarChart('chartServiceGroup', agg('Service Group'), 'horizontal');
+  renderPieChart('chartStatus',       agg('Status'));
+  renderPieChart('chartSpace',        agg('Space'));
+  renderPieChart('chartPriority',     agg('Priority'), true);
+  renderChargeableTable(agg('Space'));
+}
+
+function filterRows() { filteredRows = [...allRows]; renderTable(); }
+
+// ────────────────────────────────────────────────────────────────
+// Table
+// ────────────────────────────────────────────────────────────────
+function buildTableHeader() {
+  const head = document.getElementById('tableHead');
+  head.innerHTML = `<tr>${COLS.map((c, i) =>
+    `<th onclick="sortTable(${i})">${c} <span class="sort-arrow">↕</span></th>`
+  ).join('')}</tr>`;
+}
+
+function sortTable(colIdx) {
+  const col = COLS[colIdx];
+  if (sortCol === col) sortDir *= -1;
+  else { sortCol = col; sortDir = 1; }
+  filteredRows.sort((a, b) => {
+    const va = a[col] || '', vb = b[col] || '';
+    return va < vb ? -sortDir : va > vb ? sortDir : 0;
+  });
+  renderTable();
+}
+
+function renderTable() {
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const page  = filteredRows.slice(start, start + PAGE_SIZE);
+  const body  = document.getElementById('tableBody');
+  const info  = document.getElementById('tableInfo');
+  info.textContent = `Showing ${start + 1}–${Math.min(start + PAGE_SIZE, filteredRows.length)} of ${filteredRows.length}`;
+
+  body.innerHTML = page.map(row => `<tr>${COLS.map(c => {
+    const val = row[c] || '';
+    if (c === 'Status')   return `<td><span class="badge-status ${badgeStatus(val)}">${val || '–'}</span></td>`;
+    if (c === 'Priority') return `<td><span class="badge-status ${badgePriority(val)}">${val || '–'}</span></td>`;
+    if (c === 'Work Description') return `<td style="max-width:250px;white-space:normal;font-size:.8rem">${escHtml(val)}</td>`;
+    return `<td>${escHtml(val)}</td>`;
+  }).join('')}</tr>`).join('');
+
+  renderPagination();
+}
+
+function renderPagination() {
+  const total = Math.ceil(filteredRows.length / PAGE_SIZE);
+  const bar = document.getElementById('paginationBar');
+  if (total <= 1) { bar.innerHTML = ''; return; }
+  let html = '';
+  if (currentPage > 1) html += `<button onclick="goPage(${currentPage - 1})">‹</button>`;
+  const start = Math.max(1, currentPage - 2);
+  const end   = Math.min(total, currentPage + 2);
+  for (let p = start; p <= end; p++)
+    html += `<button class="${p === currentPage ? 'active' : ''}" onclick="goPage(${p})">${p}</button>`;
+  if (currentPage < total) html += `<button onclick="goPage(${currentPage + 1})">›</button>`;
+  bar.innerHTML = html;
+}
+function goPage(p) { currentPage = p; renderTable(); window.scrollTo(0, document.getElementById('dataTable').offsetTop - 80); }
+
+function badgeStatus(s) {
+  s = (s || '').toLowerCase();
+  if (s.includes('pend'))   return 'badge-pending';
+  if (s.includes('comp'))   return 'badge-completed';
+  if (s.includes('clos'))   return 'badge-closed';
+  return 'badge-open';
+}
+function badgePriority(p) {
+  if (p === 'P1') return 'badge-p1';
+  if (p === 'P2') return 'badge-p2';
+  if (p === 'P3') return 'badge-p3';
+  return '';
+}
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ════════════════════════════════════════════════════════════════
+// Download
+// ════════════════════════════════════════════════════════════════
+function getReportFilename() {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  const day = d.getDate();
+  const suffix = (day >= 11 && day <= 13) ? 'th' : {1:'st',2:'nd',3:'rd'}[day % 10] || 'th';
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const dateStr = `${day}${suffix} of ${months[d.getMonth()]} ${d.getFullYear()}`;
+  return `Daily Report on Resolved and Pending Complaints for ${dateStr}.xlsx`;
+}
+
+/** Count how many distinct calendar months (YYYY-MM) are present in allRows. */
+function getDistinctMonths(rows) {
+  if (!rows || !rows.length) return [];
+  const seen = new Set();
+  for (const r of rows) {
+    const rd = r['Reported Date'];
+    if (!rd) continue;
+    // rd may be 'YYYY-MM-DD' string or a Date-like value
+    const s = String(rd).slice(0, 7); // 'YYYY-MM'
+    if (s.length === 7 && s[4] === '-') seen.add(s);
+  }
+  return [...seen].sort();
+}
+
+function closeDownloadModeModal() {
+  document.getElementById('downloadModeModal').classList.remove('active');
+}
+
+function handleDownloadClick() {
+  const months = getDistinctMonths(allRows);
+  if (months.length <= 1) {
+    downloadReport();
+    return;
+  }
+  // Build a readable label: "3 months (Jan 2026 – Mar 2026)"
+  const fmt = ym => {
+    const [y, m] = ym.split('-');
+    const names = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return `${names[parseInt(m, 10) - 1]} ${y}`;
+  };
+  const first = fmt(months[0]), last = fmt(months[months.length - 1]);
+  const label = months.length === 2
+    ? `2 months (${first} & ${last})`
+    : `${months.length} months (${first} – ${last})`;
+  document.getElementById('dlModalMonthCount').textContent = label;
+  document.getElementById('downloadModeModal').classList.add('active');
+}
+
+// ── Top-bar download progress controller ──────────────────────────────────
+let _dlAbortCtrl = null;
+
+const _dlBar = {
+  el:     () => document.getElementById('dlTopBar'),
+  label:  () => document.getElementById('dlBarLabel'),
+  sub:    () => document.getElementById('dlBarSub'),
+  fill:   () => document.getElementById('dlBarFill'),
+  pct:    () => document.getElementById('dlBarPct'),
+
+  /** Phase 1 – indeterminate bounce: server is building the file */
+  generating(labelText, subText = 'Click × to cancel') {
+    const bar = this.el(); if (!bar) return;
+    bar.classList.remove('dl-done');
+    bar.classList.add('dl-indeterminate');
+    if (this.label()) this.label().textContent = labelText;
+    if (this.sub())   this.sub().textContent   = subText;
+    if (this.pct())   this.pct().textContent   = '';
+    bar.classList.add('visible');
+  },
+
+  /** Phase 2 – determinate: we know the total size, bytes are flowing */
+  startProgress(labelText) {
+    const bar = this.el(); if (!bar) return;
+    bar.classList.remove('dl-indeterminate');
+    if (this.label()) this.label().textContent = labelText;
+    if (this.fill())  this.fill().style.width  = '0%';
+    if (this.pct())   this.pct().textContent   = '0%';
+  },
+
+  update(pct) {
+    if (this.fill()) this.fill().style.width = `${pct}%`;
+    if (this.pct())  this.pct().textContent  = `${pct}%`;
+  },
+
+  done(labelText = 'Download complete') {
+    const bar = this.el(); if (!bar) return;
+    bar.classList.remove('dl-indeterminate');
+    bar.classList.add('dl-done');
+    if (this.fill())  this.fill().style.width  = '100%';
+    if (this.pct())   this.pct().textContent   = '100%';
+    if (this.label()) this.label().textContent = labelText;
+    if (this.sub())   this.sub().textContent   = 'Saved to your Downloads folder';
+    const cancel = document.getElementById('dlBarCancel');
+    if (cancel) {
+      cancel.textContent = '✓'; cancel.title = 'Close';
+      cancel.onclick = () => _dlBar.hide(); cancel.style.pointerEvents = 'auto';
+    }
+    setTimeout(() => _dlBar.hide(), 3500);
+  },
+
+  hide() {
+    const bar = this.el(); if (!bar) return;
+    bar.classList.remove('visible');
+    setTimeout(() => bar.classList.remove('dl-done', 'dl-indeterminate'), 350);
+    const cancel = document.getElementById('dlBarCancel');
+    if (cancel) {
+      cancel.textContent = '✕'; cancel.title = 'Cancel download';
+      cancel.onclick = () => cancelDownload(); cancel.style.pointerEvents = '';
+    }
+  },
+
+  error(msg) {
+    const bar = this.el(); if (!bar) return;
+    bar.classList.remove('dl-indeterminate', 'dl-done');
+    if (this.label()) this.label().textContent = 'Download failed';
+    if (this.sub())   this.sub().textContent   = msg || 'An error occurred';
+    if (this.pct())   this.pct().textContent   = '';
+    const fill = this.fill();
+    if (fill) { fill.style.background = 'var(--danger)'; fill.style.width = '100%'; }
+    setTimeout(() => {
+      if (fill) fill.style.background = '';
+      _dlBar.hide();
+    }, 3000);
+  }
+};
+
+function cancelDownload() {
+  if (_dlAbortCtrl) { _dlAbortCtrl.abort(); _dlAbortCtrl = null; }
+  _dlBar.hide();
+  const btn = document.getElementById('btnDownloadReport');
+  if (btn) btn.disabled = false;
+}
+
+function reportFilenameLabelPrefix() {
+  return getReportFormat() === 'monthly'
+    ? 'Monthly Report on Resolved and Pending Complaints for'
+    : 'Daily Report on Resolved and Pending Complaints for';
+}
+
+/**
+ * Build the correct report filename from the data currently in allRows,
+ * matching the server-side naming convention (Daily vs Monthly from Report format).
+ */
+function getReportFilenameFromRows(rows) {
+  const labelPrefix = reportFilenameLabelPrefix();
+  const fmtDay = d => {
+    const n = d.getDate();
+    const sfx = (n >= 11 && n <= 13) ? 'th'
+      : { 1:'st', 2:'nd', 3:'rd' }[n % 10] || 'th';
+    const mo = ['January','February','March','April','May','June',
+                 'July','August','September','October','November','December'][d.getMonth()];
+    return `${n}${sfx} of ${mo} ${d.getFullYear()}`;
+  };
+
+  const dates = new Set();
+  for (const r of (rows || [])) {
+    const raw = r['Reported Date'];
+    if (!raw) continue;
+    const s = String(raw).slice(0, 10);   // 'YYYY-MM-DD'
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) dates.add(s);
+  }
+
+  if (!dates.size) {
+    // absolute fallback – yesterday
+    const y = new Date(); y.setDate(y.getDate() - 1);
+    return `${labelPrefix} ${fmtDay(y)}.xlsx`;
+  }
+
+  const sorted = [...dates].sort();
+  const min = new Date(sorted[0] + 'T00:00:00');
+  const max = new Date(sorted[sorted.length - 1] + 'T00:00:00');
+
+  let datePart;
+  if (sorted.length === 1) {
+    datePart = fmtDay(min);
+  } else if (sorted.length === 2) {
+    datePart = `${fmtDay(min)} & ${fmtDay(max)}`;
+  } else {
+    datePart = `${fmtDay(min)} - ${fmtDay(max)}`;
+  }
+  return `${labelPrefix} ${datePart}.xlsx`;
+}
+
+/**
+ * Parse the filename out of a Content-Disposition response header.
+ * Handles both plain and UTF-8 encoded forms.
+ */
+function _filenameFromCD(cd) {
+  if (!cd) return null;
+  // RFC 5987 encoded: filename*=UTF-8''name
+  const star = cd.match(/filename\*\s*=\s*UTF-8''([^;\r\n]+)/i);
+  if (star) return decodeURIComponent(star[1].trim());
+  // Plain: filename="name" or filename=name
+  const plain = cd.match(/filename\s*=\s*["']?([^"';\r\n]+)["']?/i);
+  return plain ? plain[1].trim() : null;
+}
+
+/**
+ * Fetch a download endpoint with a two-phase progress bar:
+ *   1. Indeterminate bounce while the server generates the file.
+ *   2. Determinate fill as bytes stream in (requires Content-Length).
+ * Returns { blob, filename } – filename from Content-Disposition or null.
+ */
+async function _fetchWithProgress(url, genLabel, dlLabel, subLabel = 'Click × to cancel') {
+  _dlAbortCtrl = new AbortController();
+  const btn = document.getElementById('btnDownloadReport');
+  if (btn) btn.disabled = true;
+
+  // Phase 1 – indeterminate while server builds the file
+  _dlBar.generating(genLabel, subLabel);
+
+  const resp = await authFetch(url, { signal: _dlAbortCtrl.signal });
+  if (!resp.ok) {
+    const d = await resp.json().catch(() => ({}));
+    throw new Error(d.error || `Server error ${resp.status}`);
+  }
+
+  const serverFilename = _filenameFromCD(resp.headers.get('Content-Disposition'));
+  const total = parseInt(resp.headers.get('Content-Length') || '0', 10);
+
+  if (!resp.body || !total) {
+    // No size info – stay indeterminate, update label to download phase
+    const lbl = document.getElementById('dlBarLabel');
+    if (lbl) lbl.textContent = dlLabel;
+    const blob = await resp.blob();
+    return { blob, filename: serverFilename };
+  }
+
+  // Phase 2 – determinate streaming
+  _dlBar.startProgress(dlLabel);
+
+  const reader = resp.body.getReader();
+  const chunks = [];
+  let received = 0;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    received += value.length;
+    _dlBar.update(Math.min(99, Math.round((received / total) * 100)));
+  }
+
+  const all = new Uint8Array(received);
+  let pos = 0;
+  for (const c of chunks) { all.set(c, pos); pos += c.length; }
+  return { blob: new Blob([all]), filename: serverFilename };
+}
+
+function _triggerBlobDownload(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a   = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 15000);
+}
+
+async function downloadReport() {
+  try {
+    const rf = encodeURIComponent(getReportFormat());
+    const { blob, filename } = await _fetchWithProgress(
+      `/admin/mmr/api/download-report?report_format=${rf}`,
+      'Generating report on server…',
+      'Downloading report…'
+    );
+    const name = filename || getReportFilenameFromRows(allRows);
+    _triggerBlobDownload(blob, name);
+    _dlBar.done('Report downloaded');
+  } catch(e) {
+    if (e.name === 'AbortError') return;
+    _dlBar.error(e.message);
+    toast(e.message, 'error');
+  } finally {
+    _dlAbortCtrl = null;
+    const btn = document.getElementById('btnDownloadReport');
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function downloadReportMonthly() {
+  try {
+    const rf = encodeURIComponent(getReportFormat());
+    const { blob, filename } = await _fetchWithProgress(
+      `/admin/mmr/api/download-report-monthly?report_format=${rf}`,
+      'Building monthly ZIP on server…',
+      'Downloading ZIP archive…',
+      'This may take a moment – click × to cancel'
+    );
+    const months = getDistinctMonths(allRows);
+    const fmt = ym => {
+      const [y, m] = ym.split('-');
+      return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+m - 1] + ' ' + y;
+    };
+    const fallbackZip = months.length
+      ? `Reports ${fmt(months[0])}${months.length > 1 ? ' – ' + fmt(months[months.length - 1]) : ''}.zip`
+      : 'Reports.zip';
+    _triggerBlobDownload(blob, filename || fallbackZip);
+    _dlBar.done(`${months.length} monthly report${months.length !== 1 ? 's' : ''} downloaded`);
+  } catch(e) {
+    if (e.name === 'AbortError') return;
+    _dlBar.error(e.message);
+    toast(e.message, 'error');
+  } finally {
+    _dlAbortCtrl = null;
+    const btn = document.getElementById('btnDownloadReport');
+    if (btn) btn.disabled = false;
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+// Email
+// ════════════════════════════════════════════════════════════════
+const MMR_EMAIL_PRESETS_FALLBACK = {
+  daily: {
+    subject: 'Daily Report on Resolved and Pending Complaints for {{REPORT_DATE}}',
+    body: 'Dear FM Team,\n\nPlease find below comprehensive Daily Report of ({{REPORT_DATE}}) generated from our CAFM system / Injaaz Application for all Pending & Resolved work orders.\n\nRegards,\nCAFM Team',
+  },
+  monthly: {
+    subject: 'Monthly Report on Resolved and Pending Complaints for {{REPORT_DATE}}',
+    body: 'Dear FM Team,\n\nPlease find below comprehensive Monthly Report of ({{REPORT_DATE}}) generated from our CAFM system / Injaaz Application for all Pending & Resolved work orders.\n\nRegards,\nCAFM Team',
+  },
+};
+let mmrEmailPresets = MMR_EMAIL_PRESETS_FALLBACK;
+
+function getReportFormat() {
+  const m = document.getElementById('fmtMonthlyBtn');
+  return (m && m.classList.contains('active')) ? 'monthly' : 'daily';
+}
+
+/** @param {'daily'|'monthly'} mode @param {boolean} [applyPresets] */
+function setReportFormat(mode, applyPresets) {
+  const dailyBtn = document.getElementById('fmtDailyBtn');
+  const monthlyBtn = document.getElementById('fmtMonthlyBtn');
+  if (!dailyBtn || !monthlyBtn) return;
+  const isDaily = mode === 'daily';
+  dailyBtn.classList.toggle('active', isDaily);
+  monthlyBtn.classList.toggle('active', !isDaily);
+  if (applyPresets) {
+    const p = mmrEmailPresets[mode] || MMR_EMAIL_PRESETS_FALLBACK[mode];
+    if (p && p.subject) document.getElementById('emailSubject').value = p.subject;
+    if (p && p.body) document.getElementById('emailBody').value = p.body;
+  }
+  updateEmailSectionDownloadButtons();
+}
+
+async function loadEmailConfig() {
+  try {
+    const resp = await authFetch('/admin/mmr/api/email-config');
+    if (!resp.ok) return;
+    const cfg = await resp.json();
+    mmrEmailPresets = cfg.presets || MMR_EMAIL_PRESETS_FALLBACK;
+    const rf = (cfg.report_format || 'daily').toString().toLowerCase() === 'monthly' ? 'monthly' : 'daily';
+    setReportFormat(rf, false);
+    document.getElementById('emailTo').value       = cfg.to      || '';
+    document.getElementById('emailCc').value       = cfg.cc      || '';
+    const p = mmrEmailPresets[rf] || MMR_EMAIL_PRESETS_FALLBACK[rf];
+    const sub = (cfg.subject || '').trim();
+    const bod = (cfg.body || '').trim();
+    const needsPreset =
+      !sub || !bod ||
+      (rf === 'monthly' && (/Daily Report on Resolved/i.test(sub) || /comprehensive Daily Report/i.test(bod))) ||
+      (rf === 'daily' && (/Monthly Report on Resolved/i.test(sub) || /comprehensive Monthly Report/i.test(bod)));
+    document.getElementById('emailSubject').value = needsPreset ? p.subject : (cfg.subject || p.subject);
+    document.getElementById('emailBody').value    = needsPreset ? p.body : (cfg.body || p.body);
+    document.getElementById('scheduleEnabled').checked = !!cfg.schedule_enabled;
+    document.getElementById('scheduleHour').value   = cfg.schedule_hour   ?? 10;
+    document.getElementById('scheduleMinute').value = cfg.schedule_minute ?? 0;
+    updateScheduleStatus(cfg);
+    updateEmailSectionDownloadButtons();
+  } catch(e) { console.warn('Could not load email config', e); }
+}
+
+function updateEmailSectionDownloadButtons() {
+  const main = document.getElementById('btnDownloadReport');
+  const ex = document.getElementById('btnEmailDownloadExcel');
+  const zip = document.getElementById('btnEmailDownloadMonthlyZip');
+  if (!ex || !zip) return;
+  const en = main && !main.disabled;
+  ex.disabled = !en;
+  zip.disabled = !en;
+  if (getReportFormat() === 'monthly') {
+    zip.classList.remove('hidden');
+  } else {
+    zip.classList.add('hidden');
+  }
+}
+
+async function saveEmailConfig() {
+  const payload = {
+    to:      document.getElementById('emailTo').value,
+    cc:      document.getElementById('emailCc').value,
+    subject: document.getElementById('emailSubject').value,
+    body:    document.getElementById('emailBody').value,
+    report_format: getReportFormat(),
+  };
+  const resp = await authFetch('/admin/mmr/api/email-config', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (resp.ok) toast('Email config saved', 'success');
+  else toast('Failed to save config', 'error');
+}
+
+const ALLOWED_DOMAIN = 'injaaz.ae';
+
+const SAVED_ADDRESSES = {
+  to: 'dennis@injaaz.ae, shakeel@injaaz.ae, araki@injaaz.ae, abbas@injaaz.ae, a.mohammed@injaaz.ae',
+  cc: 'taha@injaaz.ae, george@injaaz.ae, arshith@injaaz.ae, eslam@injaaz.ae, alaa@injaaz.ae, mona@injaaz.ae, siraj@injaaz.ae, jismon@injaaz.ae, ousman@injaaz.ae',
+};
+
+function fillSavedAddresses() {
+  const toEl = document.getElementById('emailTo');
+  const ccEl = document.getElementById('emailCc');
+  const btn = document.getElementById('btnSavedAddresses');
+  const isFilled = btn && btn.getAttribute('data-filled') === 'true';
+  if (isFilled) {
+    toEl.value = '';
+    ccEl.value = '';
+    btn.setAttribute('data-filled', 'false');
+    btn.textContent = '📋 Use saved addresses';
+    toast('To and CC cleared', 'info');
+  } else {
+    toEl.value = SAVED_ADDRESSES.to;
+    ccEl.value = SAVED_ADDRESSES.cc;
+    btn.setAttribute('data-filled', 'true');
+    btn.textContent = '✕ Clear saved addresses';
+    toast('To and CC filled with saved addresses', 'info');
+  }
+  validateEmailField(toEl);
+  validateEmailField(ccEl);
+}
+
+function validateEmailField(input) {
+  const errorEl = document.getElementById(input.id + 'Error');
+  if (!input.value.trim()) { input.classList.remove('input-error'); if (errorEl) errorEl.textContent = ''; return true; }
+  const emails = input.value.split(',').map(e => e.trim()).filter(Boolean);
+  const bad = emails.filter(e => !e.toLowerCase().endsWith('@' + ALLOWED_DOMAIN));
+  if (bad.length) {
+    input.classList.add('input-error');
+    if (errorEl) errorEl.textContent = `Only @${ALLOWED_DOMAIN} addresses allowed. Invalid: ${bad.join(', ')}`;
+    return false;
+  }
+  input.classList.remove('input-error');
+  if (errorEl) errorEl.textContent = '';
+  return true;
+}
+
+function validateAllEmailFields() {
+  const toOk = validateEmailField(document.getElementById('emailTo'));
+  const ccEl = document.getElementById('emailCc');
+  const ccOk = ccEl.value.trim() ? validateEmailField(ccEl) : true;
+  return toOk && ccOk;
+}
+
+async function sendEmailNow() {
+  const to = document.getElementById('emailTo').value.trim();
+  if (!to) { toast('Please enter at least one recipient', 'error'); return; }
+  if (!validateAllEmailFields()) { toast('Fix the email address errors before sending', 'error'); return; }
+
+  const btn = document.getElementById('btnSendEmail');
+  btn.disabled = true; btn.textContent = 'Sending…';
+
+  const payload = {
+    to,
+    cc:      document.getElementById('emailCc').value,
+    subject: document.getElementById('emailSubject').value,
+    body:    document.getElementById('emailBody').value,
+    report_format: getReportFormat(),
+  };
+  try {
+    const resp = await authFetch('/admin/mmr/api/send-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await resp.json();
+    if (resp.ok) {
+      toast('✅ ' + (data.message || 'Email sent successfully'), 'success');
+      await loadAutomationStatus();
+      await loadCycleData();
+    } else toast('❌ ' + (data.error || 'Email failed'), 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = '✉️ Send Email Now';
+  }
+}
+
+async function saveSchedule() {
+  if (!validateAllEmailFields()) { toast('Fix the email address errors before saving', 'error'); return; }
+  const payload = {
+    schedule_enabled: document.getElementById('scheduleEnabled').checked,
+    schedule_hour:    parseInt(document.getElementById('scheduleHour').value)   || 10,
+    schedule_minute:  parseInt(document.getElementById('scheduleMinute').value) || 0,
+    // Also persist compose fields
+    to:      document.getElementById('emailTo').value,
+    cc:      document.getElementById('emailCc').value,
+    subject: document.getElementById('emailSubject').value,
+    body:    document.getElementById('emailBody').value,
+    report_format: getReportFormat(),
+  };
+  const resp = await authFetch('/admin/mmr/api/email-config', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const data = await resp.json();
+  if (resp.ok) {
+    toast('Schedule saved', 'success');
+    updateScheduleStatus(payload);
+    loadAutomationStatus();
+  } else {
+    toast('Failed: ' + (data.error || 'unknown'), 'error');
+  }
+}
+
+function onScheduleToggle() {
+  const el = document.getElementById('scheduleEnabled');
+  document.getElementById('scheduleStatus').textContent =
+    el.checked ? '' : 'Scheduling is disabled';
+}
+
+function updateScheduleStatus(cfg) {
+  const el = document.getElementById('scheduleStatus');
+  if (cfg.schedule_enabled) {
+    const h = String(cfg.schedule_hour   ?? 10).padStart(2, '0');
+    const m = String(cfg.schedule_minute ??  0).padStart(2, '0');
+    el.textContent = `✅ Active – daily at ${h}:${m}`;
+    el.style.color = 'var(--success)';
+  } else {
+    el.textContent = 'Disabled';
+    el.style.color = 'var(--text-muted)';
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+// Alert
+// ════════════════════════════════════════════════════════════════
+function setAlert(msg, type = 'info') {
+  document.getElementById('alertBox').innerHTML =
+    `<div class="alert alert-${type}"><span>⚠️</span> ${msg}</div>`;
+  setTimeout(() => document.getElementById('alertBox').innerHTML = '', 6000);
+}
+
+// ════════════════════════════════════════════════════════════════
+// Init
+// ════════════════════════════════════════════════════════════════
+// Automation status
+// ════════════════════════════════════════════════════════════════
+let automationStatus = null;
+
+async function loadAutomationStatus() {
+  try {
+    const resp = await authFetch('/admin/mmr/api/automation-status');
+    if (!resp.ok) {
+      automationStatus = null;
+      updateAutomationButton();
+      updateUploadSideInsight();
+      return;
+    }
+    automationStatus = await resp.json();
+    updateAutomationButton();
+  } catch (e) {
+    console.error('Automation status load failed:', e);
+    automationStatus = null;
+    updateAutomationButton();
+    updateUploadSideInsight();
+  }
+}
+
+function mmrEscInsight(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/** Contextual tip in the schedule card — fills vertical space above the Email schedule action. */
+function buildInsightSmartHtml(s) {
+  if (!s) return '';
+  let title = '';
+  let sub = '';
+  if (!s.schedule_enabled) {
+    title = 'Set up once';
+    sub =
+      'After you upload, open Email Report to choose time, recipients, and CC — then automation can run daily.';
+  } else if (s.schedule_paused) {
+    title = 'Paused cycle';
+    sub = s.excel_uploaded
+      ? 'Resume from Email Report or the automation roadmap after you upload a fresh workbook.'
+      : 'Upload your CAFM export first, then resume when you are ready to send again.';
+  } else if (s.automation_status === 'completed') {
+    title = 'Send complete';
+    sub =
+      'Upload a new Excel file when you want the next cycle. The current workbook stays on the server until you replace or clear it.';
+  } else if (s.automation_status === 'pending') {
+    title = 'Before the run';
+    sub = s.excel_uploaded
+      ? 'You can filter, chart, and download until send time. Change recipients in Email Report if you need to.'
+      : 'Upload a workbook so the scheduled job has a report to deliver.';
+  } else {
+    title = 'Automation';
+    sub = 'Open the roadmap from the automation button for the full timeline and controls.';
+  }
+  return (
+    '<div class="upload-side-insight-smart" role="status">' +
+    '<div class="upload-side-insight-tip">' +
+    `<div class="upload-side-insight-tip-title">${mmrEscInsight(title)}</div>` +
+    `<div class="upload-side-insight-tip-sub">${mmrEscInsight(sub)}</div>` +
+    '</div></div>'
+  );
+}
+
+function updateUploadSideInsight() {
+  const root = document.getElementById('uploadSideInsightBody');
+  if (!root) return;
+  if (!automationStatus) {
+    root.innerHTML =
+      '<div class="upload-side-insight-main"><p class="upload-side-insight-muted">Could not load schedule. Refresh the page or try again.</p></div>' +
+      '<div class="upload-side-insight-smart"><div class="upload-side-insight-tip">' +
+      '<div class="upload-side-insight-tip-title">Retry</div>' +
+      '<div class="upload-side-insight-tip-sub">Check your connection and reload — we will fetch schedule and last send again.</div>' +
+      '</div></div>';
+    return;
+  }
+  const s = automationStatus;
+  const mainParts = [];
+  if (!s.schedule_enabled) {
+    mainParts.push(
+      '<p>Enable <strong>daily email</strong> in the Email Report section after you upload a file to automate sends.</p>'
+    );
+  } else if (s.schedule_paused) {
+    mainParts.push(
+      '<p>Schedule is <strong>paused</strong> after the last send. Upload a new workbook, then resume from the roadmap or Email section.</p>'
+    );
+  } else {
+    const t =
+      s.next_run_at ||
+      `${String(s.schedule_hour ?? 10).padStart(2, '0')}:${String(s.schedule_minute ?? 0).padStart(2, '0')}`;
+    const day = s.next_run_tomorrow ? 'Tomorrow' : 'Today';
+    mainParts.push(
+      `<p>Next automatic send <strong>${day}</strong> at <strong>${mmrEscInsight(t)}</strong> GST.</p>`
+    );
+  }
+  if (s.last_run && s.last_run.status === 'success' && s.last_run.at_formatted) {
+    const n = Number(s.last_run.recipient_count) || 0;
+    mainParts.push(
+      `<p class="upload-side-insight-muted">Last send: ${mmrEscInsight(s.last_run.at_formatted)} · ${n} recipients</p>`
+    );
+  } else if (
+    s.schedule_enabled &&
+    !s.schedule_paused &&
+    s.automation_status === 'pending' &&
+    !s.last_run
+  ) {
+    mainParts.push('<p class="upload-side-insight-muted">No successful send logged yet today.</p>');
+  }
+  root.innerHTML =
+    `<div class="upload-side-insight-main">${mainParts.join('')}</div>` +
+    buildInsightSmartHtml(s);
+}
+
+function mmrScrollToEmailOrRoadmap() {
+  const dash = document.getElementById('dashboardSection');
+  const card = document.getElementById('emailCard');
+  if (dash && !dash.classList.contains('hidden') && card) {
+    card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    return;
+  }
+  if (typeof openRoadmapPanel === 'function') openRoadmapPanel();
+}
+
+function updateAutomationButton() {
+  const btn = document.getElementById('btnAutomation');
+  const label = document.getElementById('automationLabel');
+  if (!btn || !label) {
+    updateUploadSideInsight();
+    return;
+  }
+
+  // Show / hide the Stop buttons (navbar + card)
+  const stopNavBtn  = document.getElementById('btnStopAuto');
+  const stopCardBtn = document.getElementById('btnStopAutoCard');
+  const schedActive = automationStatus && automationStatus.schedule_enabled && !automationStatus.schedule_paused;
+  if (stopNavBtn)  stopNavBtn.classList.toggle('hidden', !schedActive);
+  if (stopCardBtn) stopCardBtn.classList.toggle('hidden', !schedActive);
+
+  if (!automationStatus) {
+    btn.className = 'btn-automation btn-automation-disabled';
+    btn.disabled = true;
+    label.textContent = '—';
+    btn.title = 'Automation status unavailable';
+    updateUploadSideInsight();
+    return;
+  }
+  btn.disabled = false;
+  const status = automationStatus.automation_status;
+  const next = automationStatus.next_run_at || '';
+  const excelReq = !automationStatus.excel_uploaded ? ' · Excel required' : '';
+  const nextBit = next ? ` · Next ${next}` : '';
+
+  if (status === 'completed') {
+    btn.className = 'btn-automation btn-automation-completed';
+    label.textContent = `Automation finished · Pending new upload${excelReq}`;
+    btn.title = "Today's scheduled email has been sent. Upload a new Excel file to start the next cycle. Open panel for details.";
+  } else if (status === 'pending') {
+    btn.className = 'btn-automation btn-automation-pending';
+    label.textContent = next
+      ? `Automation started${nextBit}${excelReq}`
+      : `Automation started${excelReq}`;
+    btn.title = 'Daily automation is active. The report sends at the next scheduled time. The dashboard stays usable while this runs. Open for the full roadmap.';
+  } else if (status === 'paused') {
+    btn.className = 'btn-automation btn-automation-paused';
+    label.textContent = 'Paused · Upload to resume';
+    btn.title = 'Automation is paused after a successful send. Upload a new Excel file, then resume from the roadmap or Email section.';
+  } else {
+    btn.className = 'btn-automation btn-automation-disabled';
+    label.textContent = 'Automation off';
+    btn.title = 'Enable the daily schedule under Email Report to use automation.';
+  }
+  updateUploadSideInsight();
+}
+
+/** Reset view to upload-only (no workbook on server or user chose clear slate). */
+function resetMmrToNewReportView() {
+  destroyCharts();
+  allRows = [];
+  filteredRows = [];
+  dashboardData = null;
+  currentPage = 1;
+  sortCol = null;
+  sortDir = 1;
+  const sec = document.getElementById('dashboardSection');
+  if (sec) sec.classList.add('hidden');
+  const dl = document.getElementById('btnDownloadReport');
+  const sf = document.getElementById('btnSaveToFolder');
+  const sd = document.getElementById('btnSaveToDrive');
+  if (dl) dl.disabled = true;
+  if (sf) sf.disabled = true;
+  if (sd) sd.disabled = true;
+  updateEmailSectionDownloadButtons();
+  const uz = document.getElementById('uploadZone');
+  if (uz) uz.style.borderColor = '';
+  const sb = document.getElementById('searchBox');
+  if (sb) sb.value = '';
+  document.getElementById('tableBody')?.replaceChildren();
+  document.getElementById('paginationBar')?.replaceChildren();
+  const info = document.getElementById('tableInfo');
+  if (info) info.textContent = '';
+  ['fClient', 'fContract', 'fServiceGroup', 'fSpace', 'fStatus', 'fPriority'].forEach((id) => {
+    const sel = document.getElementById(id);
+    if (sel) sel.innerHTML = '<option value="">All</option>';
+  });
+  document.getElementById('kpiGrid')?.replaceChildren();
+  document.getElementById('tableHead')?.replaceChildren();
+  document.getElementById('chargeableTable')?.replaceChildren();
+}
+
+/**
+ * Circular refresh: clear the report from this page and delete mmr_latest.xlsx on the server,
+ * then refresh automation — same as a blank “new report” until you upload again.
+ */
+async function refreshMmrDashboard() {
+  const btn = document.getElementById('btnAutomationRefresh');
+  if (btn) btn.classList.add('spinning');
+  try {
+    const resp = await authFetch('/admin/mmr/api/clear-upload', { method: 'POST' });
+    const payload = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      throw new Error(payload.error || 'Could not clear uploaded workbook');
+    }
+    resetMmrToNewReportView();
+    await loadAutomationStatus();
+    await loadCycleData();
+    toast('Report cleared. Upload a new Excel when you are ready.', 'success');
+  } catch (e) {
+    console.warn('refreshMmrDashboard', e);
+    toast(e.message || 'Could not clear report', 'error');
+  } finally {
+    if (btn) btn.classList.remove('spinning');
+  }
+}
+
+async function stopAutomation() {
+  if (!confirm('Stop automation? This will disable the daily schedule immediately. You can re-enable it anytime from the Email Report section.')) return;
+  const navBtn  = document.getElementById('btnStopAuto');
+  const cardBtn = document.getElementById('btnStopAutoCard');
+  if (navBtn)  { navBtn.disabled = true;  navBtn.textContent  = 'Stopping…'; }
+  if (cardBtn) { cardBtn.disabled = true; cardBtn.textContent = '🛑 Stopping…'; }
+  try {
+    const resp = await authFetch('/admin/mmr/api/email-config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ schedule_enabled: false, schedule_paused: true }),
+    });
+    if (resp.ok) {
+      toast('✅ Automation stopped. No more scheduled emails will be sent.', 'success');
+      document.getElementById('scheduleEnabled').checked = false;
+      updateScheduleStatus({ schedule_enabled: false });
+      await loadAutomationStatus();
+      await loadCycleData();
+    } else {
+      const d = await resp.json();
+      toast('❌ ' + (d.error || 'Failed to stop automation'), 'error');
+    }
+  } catch (e) {
+    toast('Request failed', 'error');
+  } finally {
+    if (navBtn)  { navBtn.disabled = false;  navBtn.textContent  = '🛑 Stop'; }
+    if (cardBtn) { cardBtn.disabled = false; cardBtn.textContent = '🛑 Stop Automation'; }
+  }
+}
+
+function openAutomationModal() {
+  const modal = document.getElementById('automationModal');
+  const body = document.getElementById('automationModalBody');
+  if (!modal || !body) return;
+  if (!automationStatus) {
+    body.innerHTML = '<p style="color:var(--text-muted)">No automation data.</p>';
+    modal.classList.add('active');
+    return;
+  }
+  const s = automationStatus;
+  const h = String(s.schedule_hour ?? 10).padStart(2, '0');
+  const m = String(s.schedule_minute ?? 0).padStart(2, '0');
+  const status = s.automation_status;
+  const r = s.last_run;
+
+  let html = '';
+
+  // ── Status badge ──
+  if (status === 'completed') {
+    html += `<div class="automation-detail-row"><span class="automation-detail-label">Status</span><span class="automation-status-badge success">✓ Today's run completed</span></div>`;
+  } else if (status === 'pending') {
+    html += `<div class="automation-detail-row"><span class="automation-detail-label">Status</span><span class="automation-status-badge pending">⏳ Pending</span></div>`;
+  } else if (status === 'paused') {
+    html += `<div class="automation-detail-row"><span class="automation-detail-label">Status</span><span class="automation-status-badge paused">⏸ Paused</span></div>`;
+  }
+
+  // ── Schedule ──
+  if (s.schedule_enabled) {
+    html += `<div class="automation-detail-row"><span class="automation-detail-label">Schedule</span><span class="automation-detail-value">Daily at ${h}:${m} (GST)</span></div>`;
+  }
+
+  // ── Excel file ──
+  if (s.schedule_enabled) {
+    if (s.excel_uploaded) {
+      html += `<div class="automation-detail-row"><span class="automation-detail-label">Excel file</span><span class="automation-detail-value" style="color:var(--success)">✓ Uploaded</span></div>`;
+    } else {
+      html += `<div class="automation-detail-row"><span class="automation-detail-label">Excel file</span><span class="automation-detail-value" style="color:var(--warning)">⚠ Upload required – browse file above to load data</span></div>`;
+    }
+  }
+
+  // ── Next run ──
+  if (s.schedule_enabled && !s.schedule_paused) {
+    const nextMsg = s.next_run_tomorrow ? `Tomorrow at ${h}:${m} (GST)` : (s.next_run_at ? `Today at ${s.next_run_at}` : `${h}:${m}`);
+    html += `<div class="automation-detail-row"><span class="automation-detail-label">Next run</span><span class="automation-detail-value">${nextMsg}</span></div>`;
+  } else if (status === 'paused') {
+    html += `<div class="automation-detail-row"><span class="automation-detail-label">Next run</span><span class="automation-detail-value">Upload new Excel file above to resume – automation will run at ${h}:${m} (GST)</span></div>`;
+  }
+
+  // ── Last run details (when we have them) ──
+  if (r) {
+    html += `<div class="automation-detail-row" style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)"><span class="automation-detail-label">Last run</span><span class="automation-detail-value">${r.at_formatted || r.at} · ${r.status === 'success' ? '✓ Sent' : 'Failed'}</span></div>`;
+    html += `<div class="automation-detail-row"><span class="automation-detail-label">To</span><span class="automation-detail-value">${(r.to || '—').replace(/,/g, ', ')}</span></div>`;
+    if (r.cc) html += `<div class="automation-detail-row"><span class="automation-detail-label">CC</span><span class="automation-detail-value">${r.cc.replace(/,/g, ', ')}</span></div>`;
+    html += `<div class="automation-detail-row"><span class="automation-detail-label">Subject</span><span class="automation-detail-value">${r.subject || '—'}</span></div>`;
+    html += `<div class="automation-detail-row"><span class="automation-detail-label">Recipients</span><span class="automation-detail-value">${r.recipient_count || 0}</span></div>`;
+  }
+
+  // ── Pause / Resume actions ──
+  if (s.schedule_enabled) {
+    html += `<div class="automation-dialog-actions">`;
+    if (s.schedule_paused) {
+      const canResume = s.excel_uploaded;
+      html += `<button type="button" class="btn btn-primary" onclick="resumeAutomation()" ${!canResume ? 'disabled' : ''}>▶ Resume</button>`;
+      html += `<span style="font-size:.8rem;color:var(--text-muted);align-self:center">${canResume ? 'Ready to resume' : 'Upload Excel file above to resume'}</span>`;
+    } else {
+      html += `<button type="button" class="btn btn-outline" onclick="pauseAutomation()">⏸ Pause</button>`;
+    }
+    html += `</div>`;
+  }
+
+  if (!s.schedule_enabled) {
+    html = `<p style="color:var(--text-muted)">Automation is disabled. Enable the daily schedule in the Email Report section below to send emails automatically.</p>`;
+  }
+
+  body.innerHTML = html;
+  modal.classList.add('active');
+}
+
+async function pauseAutomation() {
+  try {
+    const resp = await authFetch('/admin/mmr/api/automation-pause', { method: 'POST' });
+    if (resp.ok) {
+      toast('Automation paused', 'success');
+      await loadAutomationStatus();
+      renderRoadmap();
+    } else toast('Failed to pause', 'error');
+  } catch (e) { toast('Failed to pause', 'error'); }
+}
+
+async function resumeAutomation() {
+  try {
+    const resp = await authFetch('/admin/mmr/api/automation-resume', { method: 'POST' });
+    const data = await resp.json();
+    if (resp.ok) {
+      toast('Automation resumed', 'success');
+      await loadAutomationStatus();
+      renderRoadmap();
+    } else toast(data.error || 'Failed to resume', 'error');
+  } catch (e) { toast('Failed to resume', 'error'); }
+}
+
+function closeAutomationModal() {
+  document.getElementById('automationModal')?.classList.remove('active');
+}
+
+// ════════════════════════════════════════════════════════════════
+// Save to Folder & Report Folder
+// ════════════════════════════════════════════════════════════════
+function getCurrentFilters() {
+  return {
+    client:       (document.getElementById('fClient')?.value || '').trim(),
+    contract:     (document.getElementById('fContract')?.value || '').trim(),
+    serviceGroup: (document.getElementById('fServiceGroup')?.value || '').trim(),
+    space:        (document.getElementById('fSpace')?.value || '').trim(),
+    status:       (document.getElementById('fStatus')?.value || '').trim(),
+    priority:     (document.getElementById('fPriority')?.value || '').trim(),
+  };
+}
+
+function applyFiltersFromState(filters) {
+  if (!filters || typeof filters !== 'object') return;
+  const ids = ['fClient','fContract','fServiceGroup','fSpace','fStatus','fPriority'];
+  const keys = ['client','contract','serviceGroup','space','status','priority'];
+  keys.forEach((k, i) => {
+    const el = document.getElementById(ids[i]);
+    if (el && filters[k]) el.value = filters[k];
+  });
+  updateContractOptions();
+  updateClientFromContract();
+  applyFilters();
+}
+
+function applyStoredFiltersIfAny() {
+  try {
+    const stored = sessionStorage.getItem('mmr_restore_filters');
+    if (stored) {
+      const filters = JSON.parse(stored);
+      sessionStorage.removeItem('mmr_restore_filters');
+      applyFiltersFromState(filters);
+      toast('Dashboard filters restored from saved report', 'success');
+    }
+  } catch (e) {
+    sessionStorage.removeItem('mmr_restore_filters');
+  }
+}
+
+/** After refresh: reload dashboard when mmr_latest.xlsx exists on the server (same data as last upload). */
+async function restoreDashboardFromServerIfNeeded() {
+  try {
+    const resp = await authFetch('/admin/mmr/api/current-upload');
+    if (!resp.ok) return;
+    const data = await resp.json();
+    if (!data.success || !data.has_file || !Array.isArray(data.rows) || data.rows.length === 0) {
+      return;
+    }
+    allRows = data.rows;
+    dashboardData = data.dashboard;
+    document.getElementById('dashboardSection').classList.remove('hidden');
+    renderDashboard(dashboardData);
+    filterRows();
+    applyStoredFiltersIfAny();
+    mmrResizeAllCharts();
+    document.getElementById('btnDownloadReport').disabled = false;
+    document.getElementById('btnSaveToFolder').disabled = false;
+    document.getElementById('btnSaveToDrive').disabled = false;
+    document.getElementById('uploadZone').style.borderColor = 'var(--success)';
+    updateEmailSectionDownloadButtons();
+    await loadAutomationStatus();
+    await loadCycleData();
+  } catch (e) {
+    console.warn('MMR: could not restore last upload', e);
+  }
+}
+
+async function saveToFolder() {
+  const btn = document.getElementById('btnSaveToFolder');
+  if (btn?.disabled) return;
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+  try {
+    const payload = {
+      rows: filteredRows.length > 0 ? filteredRows : null,
+      filters: getCurrentFilters(),
+      report_format: getReportFormat(),
+    };
+    const resp = await authFetch('/admin/mmr/api/save-to-folder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await resp.json();
+    if (resp.ok && data.success) {
+      toast('Saved to Report folder', 'success');
+      loadReportFolder();
+    } else {
+      toast(data.error || 'Failed to save', 'error');
+    }
+  } catch (e) {
+    toast('Failed to save', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '📁 Save to Folder';
+  }
+}
+
+async function saveToDrive() {
+  const btn = document.getElementById('btnSaveToDrive');
+  if (btn?.disabled) return;
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+  try {
+    const payload = {
+      rows: filteredRows.length > 0 ? filteredRows : null,
+      filters: getCurrentFilters(),
+      report_format: getReportFormat(),
+    };
+    const resp = await authFetch('/admin/mmr/api/save-to-drive', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await resp.json();
+    if (resp.ok && data.success) {
+      btn.textContent = '✓ Saved';
+      const msg = data.saved_locally
+        ? `✓ Saved locally (network drive unavailable): ${data.filename || 'report'}. Check Saved Report folder.`
+        : data.saved_to_both
+        ? `✓ Saved to both network locations: ${data.filename || 'report'}`
+        : `✓ File saved: ${data.filename || 'report'}`;
+      toast(msg, 'success');
+      setTimeout(() => {
+        btn.textContent = '💾 Save to Drive';
+        btn.disabled = false;
+      }, 1500);
+    } else {
+      toast(data.error || 'Failed to save to drive', 'error');
+      btn.disabled = false;
+      btn.textContent = '💾 Save to Drive';
+    }
+  } catch (e) {
+    toast('Failed to save to drive', 'error');
+    btn.disabled = false;
+    btn.textContent = '💾 Save to Drive';
+  }
+}
+
+async function loadReportFolder() {
+  try {
+    const resp = await authFetch('/admin/mmr/api/report-folder');
+    if (!resp.ok) return;
+    const data = await resp.json();
+    renderReportFolderList(data.files || []);
+  } catch (e) {
+    console.error('Report folder load failed:', e);
+  }
+}
+
+function escapeAttr(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function renderReportFolderList(files) {
+  const el = document.getElementById('reportFolderList');
+  if (!el) return;
+  if (!files.length) {
+    el.innerHTML = '<div class="report-folder-empty">No reports saved yet. Send an email or use Save to Folder.</div>';
+    return;
+  }
+  const sortedFiles = [...files].sort((a, b) => {
+    const ta = a?.modified ? new Date(a.modified).getTime() : 0;
+    const tb = b?.modified ? new Date(b.modified).getTime() : 0;
+    return tb - ta;
+  });
+  const isOnMmrPage = !!document.getElementById('dashboardSection');
+  el.innerHTML = sortedFiles.map(f => {
+    const dt = f.modified ? new Date(f.modified).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '';
+    const size = f.size ? (f.size < 1024 ? f.size + ' B' : (f.size / 1024).toFixed(1) + ' KB') : '';
+    const fn = (f.name || '').replace(/"/g, '&quot;');
+    const filtersAttr = escapeAttr(JSON.stringify(f.filters || {}));
+    const filenameAttr = escapeAttr(f.name || '');
+    const openBtn = isOnMmrPage
+      ? `<button type="button" class="report-folder-open" data-filters="${filtersAttr}" data-filename="${filenameAttr}" onclick="openReportAndRestoreFilters(this); closeReportFolderPanel();" title="Open report in dashboard">Open</button>`
+      : `<button type="button" class="report-folder-open" data-filters="${filtersAttr}" data-filename="${filenameAttr}" onclick="openReportFromAdmin(this)" title="Open Report Generation with saved filters">Open</button>`;
+    return `<div class="report-folder-item">
+      <div class="report-folder-content">
+        <div class="report-folder-name">${escHtml(f.name)}</div>
+        <div class="report-folder-meta">${dt ? `<span>${dt}</span>` : ''}${size ? `<span>${size}</span>` : ''}</div>
+      </div>
+      <div class="report-folder-actions">
+        ${openBtn}
+        <button type="button" class="report-folder-dl" onclick="downloadReportFile(this.dataset.fn)" data-fn="${fn}">Download</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function openReportAndRestoreFilters(btn) {
+  try {
+    const filters = JSON.parse(btn?.dataset?.filters || '{}');
+    const filename = btn?.dataset?.filename || '';
+
+    if (!filename) {
+      if (allRows.length > 0) {
+        applyFiltersFromState(filters);
+        toast('Dashboard filters restored', 'success');
+      } else {
+        sessionStorage.setItem('mmr_restore_filters', JSON.stringify(filters || {}));
+        toast('Filters saved. Upload a file to see the dashboard with these filters applied.', 'info');
+      }
+      return;
+    }
+
+    toast('Loading report…', 'info');
+    const resp = await authFetch('/admin/mmr/api/report-folder/open/' + encodeURIComponent(filename));
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || 'Failed to load report');
+
+    allRows = data.rows;
+    dashboardData = data.dashboard;
+    destroyCharts();
+    document.getElementById('dashboardSection').classList.remove('hidden');
+    renderDashboard(dashboardData);
+    filterRows();
+    applyFiltersFromState(filters);
+    mmrResizeAllCharts();
+    document.getElementById('btnDownloadReport').disabled = false;
+    document.getElementById('btnSaveToFolder').disabled = false;
+    document.getElementById('btnSaveToDrive').disabled = false;
+    document.getElementById('uploadZone').style.borderColor = 'var(--success)';
+    updateEmailSectionDownloadButtons();
+    await loadAutomationStatus();
+    await loadCycleData();
+    toast('Report loaded. Dashboard updated.', 'success');
+  } catch (e) {
+    toast(e.message || 'Could not load report', 'error');
+  }
+}
+
+function openReportFromAdmin(btn) {
+  try {
+    const filters = JSON.parse(btn?.dataset?.filters || '{}');
+    const filename = btn?.dataset?.filename || '';
+    sessionStorage.setItem('mmr_restore_filters', JSON.stringify(filters || {}));
+    sessionStorage.setItem('mmr_restore_filename', filename);
+    window.location.href = '/admin/mmr/';
+  } catch (e) {
+    toast('Could not open report', 'error');
+  }
+}
+
+function openReportFolderPanel() {
+  const el = document.getElementById('reportFolderOverlay');
+  if (el) {
+    el.classList.add('active');
+    el.setAttribute('aria-hidden', 'false');
+  }
+  loadReportFolder();
+}
+
+function closeReportFolderPanel() {
+  const el = document.getElementById('reportFolderOverlay');
+  if (el) {
+    el.classList.remove('active');
+    el.setAttribute('aria-hidden', 'true');
+  }
+}
+
+async function downloadReportFile(filename) {
+  if (!filename) return;
+  try {
+    const resp = await authFetch('/admin/mmr/api/report-folder/download/' + encodeURIComponent(String(filename)));
+    if (!resp.ok) throw new Error('Download failed');
+    const blob = await resp.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  } catch (e) {
+    toast('Download failed', 'error');
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+// Roadmap Panel
+// ════════════════════════════════════════════════════════════════
+let cycleLog = null;
+
+// —— Live automation activity (server-backed timeline + polling) ——
+let mmrActivityPollTimer = null;
+let mmrActivityRelTimer = null;
+
+function mmrActivityIcon(type) {
+  const m = {
+    email_sent: '✉️',
+    email_failed: '⚠️',
+    run_skipped: '⏭️',
+    reminder_sent: '🔔',
+    excel_uploaded: '📤',
+    excel_cleared: '🗑️',
+    paused: '⏸️',
+    resumed: '▶️',
+    resume_blocked: '🚫',
+    schedule_on: '✅',
+    schedule_off: '⏹️',
+    cycle_approved: '✓',
+    cycle_completed: '📋',
+  };
+  return m[type] || '•';
+}
+
+function mmrParseActivityTs(iso) {
+  if (!iso) return null;
+  const s = String(iso).replace('Z', '+00:00');
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function mmrFormatRelTime(isoUtc) {
+  const d = mmrParseActivityTs(isoUtc);
+  if (!d) return '';
+  const sec = Math.floor((Date.now() - d.getTime()) / 1000);
+  if (sec < 45) return 'Just now';
+  if (sec < 3600) return `${Math.floor(sec / 60)}m ago`;
+  if (sec < 86400) return `${Math.floor(sec / 3600)}h ago`;
+  if (sec < 172800) return 'Yesterday';
+  return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+}
+
+function mmrBuildActivityRow(a, flash) {
+  const t = a.type || 'unknown';
+  const tCls = String(t).replace(/[^\w-]/g, '');
+  const icon = mmrActivityIcon(t);
+  const rel = mmrFormatRelTime(a.ts);
+  const detail = a.detail ? escHtml(a.detail) : '';
+  const flashCls = flash ? ' mmr-activity-row--new' : '';
+  return `<div class="mmr-activity-row t-${tCls}${flashCls}" data-activity-id="${a.id}">
+    <div class="mmr-activity-icon" aria-hidden="true">${icon}</div>
+    <div class="mmr-activity-main">
+      <div class="mmr-activity-msg">${escHtml(a.message || '')}</div>
+      ${detail ? `<div class="mmr-activity-detail">${detail}</div>` : ''}
+    </div>
+    <div class="mmr-activity-time" data-mmr-ts="${escHtml(a.ts || '')}">${escHtml(rel)}</div>
+  </div>`;
+}
+
+function mmrLiveActivityBanner(curNum) {
+  const hasActiveCycle = Number.isFinite(curNum);
+  if (hasActiveCycle) {
+    return `<div class="mmr-live-cycle-banner"><span class="mmr-live-cycle-title">Live · Cycle #${curNum}</span><span class="mmr-live-cycle-hint">Newest first. When this cycle finishes, it moves to <strong>Cycle History</strong> below.</span></div>`;
+  }
+  return `<div class="mmr-live-cycle-banner mmr-live-cycle-banner--idle"><span class="mmr-live-cycle-title">Ready for the next cycle</span><span class="mmr-live-cycle-hint">Upload a <strong>new Excel</strong> file to start. Past runs stay in <strong>Cycle History</strong> below — expand a row to see full logs.</span></div>`;
+}
+
+async function mmrLoadActivityFeed(initial) {
+  const feed = document.getElementById('mmrActivityFeed');
+  if (!feed) return;
+  try {
+    const resp = await authFetch('/admin/mmr/api/automation-activities?limit=80&mode=live');
+    if (!resp.ok) throw new Error('bad response');
+    const data = await resp.json();
+    const list = data.activities || [];
+    const ctx = data.live_context;
+    const curNum = ctx && ctx.active_cycle_id != null ? Number(ctx.active_cycle_id) : NaN;
+    const hasActiveCycle = Number.isFinite(curNum);
+    const banner = mmrLiveActivityBanner(curNum);
+    feed.classList.remove('mmr-activity-feed--loading');
+    if (!list.length) {
+      const emptyMsg = hasActiveCycle
+        ? 'No events for this cycle yet.'
+        : 'No live feed until you upload a new workbook. Use the upload area on the dashboard, then open this panel again to see this cycle’s stream.';
+      feed.innerHTML = `${banner}<div class="mmr-activity-empty">${emptyMsg}</div>`;
+      return;
+    }
+    const rows = list.map((a) => mmrBuildActivityRow(a, false)).join('');
+    feed.innerHTML = banner + rows;
+  } catch (e) {
+    if (initial) {
+      feed.classList.remove('mmr-activity-feed--loading');
+      feed.innerHTML = '<div class="mmr-activity-feed--loading" style="border:none;color:var(--danger)">Could not load activity.</div>';
+    }
+  }
+}
+
+function mmrRefreshActivityRelTimes() {
+  document.querySelectorAll('#mmrActivityFeed [data-mmr-ts]').forEach((el) => {
+    const ts = el.getAttribute('data-mmr-ts');
+    if (ts) el.textContent = mmrFormatRelTime(ts);
+  });
+}
+
+function mmrStopActivityPolling() {
+  if (mmrActivityPollTimer) {
+    clearInterval(mmrActivityPollTimer);
+    mmrActivityPollTimer = null;
+  }
+  if (mmrActivityRelTimer) {
+    clearInterval(mmrActivityRelTimer);
+    mmrActivityRelTimer = null;
+  }
+  const badge = document.getElementById('mmrActivityLiveBadge');
+  if (badge) badge.hidden = true;
+}
+
+function mmrStartActivityPolling() {
+  mmrStopActivityPolling();
+  const overlay = document.getElementById('roadmapOverlay');
+  if (!overlay || !overlay.classList.contains('active')) return;
+  const badge = document.getElementById('mmrActivityLiveBadge');
+  if (badge) badge.hidden = false;
+  mmrActivityPollTimer = setInterval(() => mmrLoadActivityFeed(false), 10000);
+  mmrActivityRelTimer = setInterval(mmrRefreshActivityRelTimes, 45000);
+}
+
+function mmrOnRoadmapRendered() {
+  const overlay = document.getElementById('roadmapOverlay');
+  if (!overlay || !overlay.classList.contains('active')) return;
+  mmrLoadActivityFeed(true);
+  mmrStartActivityPolling();
+}
+
+function mmrCollectOpenCycleHistoryIds() {
+  const rb = document.getElementById('roadmapBody');
+  if (!rb) return new Set();
+  const s = new Set();
+  rb.querySelectorAll('details.cycle-history-item[open]').forEach((d) => {
+    const id = d.getAttribute('data-cycle-id');
+    if (id != null) s.add(id);
+  });
+  return s;
+}
+
+function mmrRestoreCycleHistoryDetails(ids) {
+  ids.forEach((id) => {
+    const el = document.querySelector(`details.cycle-history-item[data-cycle-id="${id}"]`);
+    if (el) el.open = true;
+  });
+}
+
+function mmrRenderCycleDetailPanelHtml(cycleId, d) {
+  const tl = (d.timeline || []).map((row) => `
+      <div class="cd-timeline-row">
+        <div class="cd-timeline-dot" aria-hidden="true"></div>
+        <div class="cd-timeline-body">
+          <div class="cd-timeline-title">${escHtml(row.title || '')}</div>
+          <div class="cd-timeline-meta">${escHtml(fmtDT(row.at) || '—')}</div>
+          ${row.detail ? `<div class="cd-timeline-detail">${escHtml(row.detail)}</div>` : ''}
+        </div>
+      </div>`).join('');
+  const actRows = (d.activities || []).map((a) => `
+      <div class="cd-act-row">
+        <div class="cd-act-type">${mmrActivityIcon(a.type)} ${escHtml(a.message || '')}</div>
+        <div class="cd-act-sub">${escHtml(fmtDT(a.ts) || a.ts || '')}</div>
+        ${a.detail ? `<div class="cd-act-sub">${escHtml(a.detail)}</div>` : ''}
+      </div>`).join('');
+  const actsBlock = actRows
+    ? actRows
+    : '<p style="font-size:.78rem;color:var(--text-muted)">No automation log lines are tagged to this cycle yet (older runs may predate this feature).</p>';
+  return `
+      <p class="cycle-detail-hint">Cycle #${cycleId} — <strong>newest first</strong> (scroll down for the start of the run). <strong>Live activity</strong> above shows the current cycle only.</p>
+      <div class="cd-section-title">Milestones</div>
+      ${tl || '<p style="font-size:.8rem;color:var(--text-muted)">No milestone data stored for this cycle.</p>'}
+      <div class="cd-section-title">Automation log (this cycle)</div>
+      ${actsBlock}
+    `;
+}
+
+async function mmrLoadCycleHistoryLogs(detailEl) {
+  const panel = detailEl.querySelector('.cycle-history-logs');
+  if (!panel) return;
+  if (panel.dataset.loaded === '1' || panel.dataset.loading === '1') return;
+  const cycleId = detailEl.getAttribute('data-cycle-id');
+  if (!cycleId) return;
+  panel.dataset.loading = '1';
+  panel.innerHTML = '<p class="cycle-history-loading">Loading…</p>';
+  try {
+    const resp = await authFetch(`/admin/mmr/api/cycle/${encodeURIComponent(cycleId)}/detail`);
+    const d = await resp.json();
+    if (!resp.ok) throw new Error(d.error || 'Could not load cycle');
+    panel.innerHTML = mmrRenderCycleDetailPanelHtml(cycleId, d);
+    panel.dataset.loaded = '1';
+  } catch (e) {
+    panel.innerHTML = `<p style="color:var(--danger);font-size:.8rem">${escHtml(e.message || 'Failed to load')}</p>`;
+    delete panel.dataset.loaded;
+  } finally {
+    delete panel.dataset.loading;
+  }
+}
+
+async function openRoadmapPanel() {
+  const el = document.getElementById('roadmapOverlay');
+  if (el) {
+    el.classList.add('active');
+    el.setAttribute('aria-hidden', 'false');
+  }
+  await loadAutomationStatus();
+  await loadCycleData();
+}
+
+function closeRoadmapPanel() {
+  mmrStopActivityPolling();
+  const el = document.getElementById('roadmapOverlay');
+  if (el) {
+    el.classList.remove('active');
+    el.setAttribute('aria-hidden', 'true');
+  }
+}
+
+async function loadCycleData() {
+  try {
+    const resp = await authFetch('/admin/mmr/api/cycles');
+    if (!resp.ok) return;
+    cycleLog = await resp.json();
+    renderRoadmap();
+  } catch (e) {
+    console.error('Cycle data load failed:', e);
+  }
+}
+
+function fmtDT(iso) {
+  if (!iso) return null;
+  try { return new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }); }
+  catch { return iso; }
+}
+
+function fmtD(iso) {
+  if (!iso) return null;
+  try { return new Date(iso).toLocaleDateString(undefined, { dateStyle: 'medium' }); }
+  catch { return iso; }
+}
+
+function buildStepCard(num, title, cls, body, time, actionHtml) {
+  return `<div class="step-card ${cls}">
+    <div class="sc-num">Step ${num}</div>
+    <div class="sc-title">${title}</div>
+    <div class="sc-body">${body}</div>
+    ${time ? `<div class="sc-time">🕐 ${time}</div>` : ''}
+    ${actionHtml || ''}
+  </div>`;
+}
+
+function renderRoadmap() {
+  const body   = document.getElementById('roadmapBody');
+  const subEl  = document.getElementById('roadmapSub');
+  if (!body) return;
+
+  const mmrHistoryOpen = mmrCollectOpenCycleHistoryIds();
+
+  const s       = automationStatus || {};
+  const current = cycleLog?.current;
+  const history = cycleLog?.history || [];
+
+  // Header sub-line
+  if (current) {
+    const cycleDate = fmtD(current.upload_at) || '—';
+    subEl.textContent = `Cycle #${current.cycle_id} · ${cycleDate}`;
+  } else {
+    subEl.textContent = 'No active cycle – upload an Excel file to begin';
+  }
+
+  // ── Step states ──
+  const s1 = !!(current?.upload_at);
+  const s2 = !!(current?.approved_at);
+  const s3 = !!(current?.sent_at);
+  const hasCurrent = !!current;
+
+  const psDot = (done, active) => done ? 'ps-done' : active ? 'ps-active' : 'ps-locked';
+  const scCard = (done, active) => done ? 'sc-done' : active ? 'sc-active' : 'sc-locked';
+
+  const dot1 = psDot(s1, !s1);
+  const dot2 = psDot(s2, hasCurrent && s1 && !s2 && !s3);
+  const dot3 = psDot(s3, hasCurrent && s1 && !s3);
+  const dot4 = psDot(false, hasCurrent && s3);
+
+  const cd1 = scCard(s1, !s1);
+  const cd2 = scCard(s2, hasCurrent && s1 && !s3);
+  const cd3 = scCard(s3, hasCurrent && s1);
+  const cd4 = scCard(!!(hasCurrent && s3), false);
+
+  // Progress bar width (steps completed → fill from dot1 to next dot)
+  const progressWidth = s3 ? '75%' : s2 ? '50%' : s1 ? '25%' : '0%';
+
+  // ── Pipeline track ──
+  const dots = [
+    { icon: s1 ? '✓' : '1', name: 'Upload',       cls: dot1 },
+    { icon: s2 ? '✓' : '2', name: 'Review &<br>Approve', cls: dot2 },
+    { icon: s3 ? '✓' : '3', name: 'Send Email',   cls: dot3 },
+    { icon: hasCurrent && s3 ? '🔒' : '4', name: 'Lock &<br>History', cls: dot4 },
+  ];
+  const pipelineHtml = `
+    <div class="pipeline-wrap">
+      <div class="pipeline-track">
+        <div class="pipeline-progress" style="width:${progressWidth}"></div>
+        ${dots.map(d => `<div class="pipeline-step ${d.cls}">
+          <div class="pipeline-dot">${d.icon}</div>
+          <div class="pipeline-step-name">${d.name}</div>
+        </div>`).join('')}
+      </div>
+    </div>`;
+
+  // ── Step cards ──
+  // Card 1 – Upload
+  const card1 = buildStepCard(1, 'Upload Excel', cd1,
+    s1
+      ? `✓ File loaded${current.upload_by ? ` by <strong>${escHtml(current.upload_by)}</strong>` : ''}`
+      : 'Upload a new CAFM work-order Excel file to begin a dispatch cycle.',
+    s1 ? fmtDT(current.upload_at) : null, null);
+
+  // Card 2 – Approve
+  const approveBtnHtml = (s1 && !s2 && !s3)
+    ? `<button class="sc-btn sc-btn-approve" id="btnApprove" onclick="approveCycleAction()">✓ Mark Reviewed</button>`
+    : '';
+  const card2 = buildStepCard(2, 'Review & Approve', cd2,
+    s2
+      ? `✓ Approved by <strong>${escHtml(current.approved_by || 'admin')}</strong>`
+      : s1
+        ? 'Review the dashboard data below, then mark it as approved.'
+        : 'Awaiting upload.',
+    s2 ? fmtDT(current.approved_at) : null, approveBtnHtml);
+
+  // Card 3 – Send
+  const schedNote = (s.schedule_enabled && !s3)
+    ? `<br><small>Auto scheduled at ${String(s.schedule_hour ?? 10).padStart(2,'0')}:${String(s.schedule_minute ?? 0).padStart(2,'0')} GST</small>`
+    : '';
+  const automationRunning = s.schedule_enabled && !s.schedule_paused;
+  const sendBtnHtml = (s1 && !s3)
+    ? (automationRunning
+        ? `<button class="sc-btn sc-btn-send" disabled style="opacity:.85;cursor:default">✓ Automation started</button>`
+        : `<button class="sc-btn sc-btn-send" id="roadmapStartBtn" onclick="startAutomationFromRoadmap()">▶ Start the automation</button>`)
+    : '';
+  const card3 = buildStepCard(3, 'Send Email Report', cd3,
+    s3
+      ? `✓ Sent to <strong>${current.recipient_count || 0}</strong> recipients${current.sent_by ? ` by <strong>${escHtml(current.sent_by)}</strong>` : ''}`
+      : s1
+        ? `Ready to dispatch.${schedNote}`
+        : 'Awaiting upload.',
+    s3 ? fmtDT(current.sent_at) : null, sendBtnHtml);
+
+  // Card 4 – After send, cycle is archived; pipeline resets until next upload
+  const lockBody = !hasCurrent
+    ? 'Completed cycles are listed below — <strong>expand a cycle</strong> to see its logs underneath. <strong>Live activity</strong> above keeps showing new events. Upload a new Excel file to begin again.'
+    : (s3
+      ? '<span style="color:var(--success);font-weight:600">✓ This cycle is complete.</span> It will move to history after the next refresh.'
+      : 'Once the report email is sent, this cycle is saved to history and the roadmap resets until you upload a new Excel file.');
+  const card4 = buildStepCard(4, 'History & next cycle', cd4, lockBody, null, null);
+
+  const stepCardsHtml = `<div class="step-cards">${card1}${card2}${card3}${card4}</div>`;
+
+  // ── Schedule / automation strip ──
+  let autoHtml = '';
+  if (s.schedule_enabled !== undefined) {
+    const schedLabel = s.schedule_enabled
+      ? `Daily at ${String(s.schedule_hour ?? 10).padStart(2,'0')}:${String(s.schedule_minute ?? 0).padStart(2,'0')} GST`
+      : 'Automation';
+    const statusBadge = s.automation_status === 'pending'
+      ? `<span class="automation-status-badge pending" style="font-size:.75rem">⏳ Pending</span>`
+      : s.automation_status === 'paused'
+        ? `<span class="automation-status-badge paused" style="font-size:.75rem">⏸ Paused</span>`
+        : '';
+    const prBtn = s.schedule_enabled
+      ? (s.schedule_paused
+          ? `<button type="button" class="btn btn-primary btn-sm" onclick="resumeAutomation()" ${!s.excel_uploaded ? 'disabled' : ''} style="font-size:.75rem">▶ Resume</button>`
+          : `<button type="button" class="btn btn-outline btn-sm" onclick="pauseAutomation()" style="font-size:.75rem">⏸ Pause</button>
+             <button type="button" class="btn btn-danger btn-sm" onclick="stopAutomation()" style="font-size:.75rem">🛑 Stop</button>`)
+      : '';
+    let timingPrompt = '';
+    if (s.schedule_enabled && s.automation_waiting_for_fresh_upload && !hasCurrent) {
+      timingPrompt = `
+      <div class="roadmap-timing-prompt">
+        <p class="roadmap-timing-question">Next cycle: keep the same send time or change it?</p>
+        <div class="roadmap-timing-actions">
+          <button type="button" class="btn btn-outline btn-sm" onclick="toast('✓ Same schedule time stays active for the next run after you upload.', 'success')" style="font-size:.75rem">Same timing</button>
+          <button type="button" class="btn btn-primary btn-sm" onclick="closeRoadmapPanel(); document.getElementById('emailCard')?.scrollIntoView({behavior:'smooth'})" style="font-size:.75rem">Set new timing</button>
+        </div>
+      </div>`;
+    }
+    autoHtml = `
+      <div class="auto-strip">
+        <span class="auto-strip-label">⏰ Schedule</span>
+        <span class="auto-strip-val">${schedLabel}</span>
+        ${statusBadge}
+        ${prBtn}
+      </div>
+      ${timingPrompt}`;
+  }
+
+  // ── Cycle history (expand row → logs load inline beneath; Live activity stays above)
+  const displayHistory = history;
+  let histHtml = '<div class="roadmap-section-title" style="margin-top:0">Cycle History</div>';
+  histHtml += '<p style="color:var(--text-muted);font-size:.75rem;margin:-.25rem 0 .75rem">Click a cycle to expand — milestones and logs appear <strong>under</strong> that row. New events keep streaming in <strong>Live activity</strong> above.</p>';
+  if (displayHistory.length) {
+    histHtml += `<div class="cycle-history">${displayHistory.map(c => {
+      const isSent   = c.status === 'sent';
+      const isFailed = c.status === 'failed';
+      const badgeCls = isSent ? 'cb-sent' : isFailed ? 'cb-failed' : 'cb-partial';
+      const icon     = isSent ? '✓' : isFailed ? '✗' : '–';
+      const label    = isSent ? 'Sent' : isFailed ? 'Failed' : 'Incomplete';
+      const dateStr  = fmtD(c.sent_at || c.upload_at) || '';
+      const recip    = isSent ? ` · ${c.recipient_count || 0} recipients` : '';
+      const subjShort = c.subject
+        ? (c.subject.length > 48 ? c.subject.substring(0, 48) + '…' : c.subject)
+        : '';
+      const subjLine  = subjShort ? `<br><span style="font-size:.68rem">${escHtml(subjShort)}</span>` : '';
+      const cid = c.cycle_id;
+      return `<details class="cycle-history-item" data-cycle-id="${cid}">
+        <summary class="cycle-history-sum" aria-label="Show or hide logs for cycle ${cid}">
+          <div class="cycle-history-sum-row">
+            <div class="cycle-item-inner">
+              <div class="cycle-badge ${badgeCls}">${icon}</div>
+              <div class="cycle-info">
+                <div class="cycle-info-top">Cycle #${cid} · ${label}</div>
+                <div class="cycle-info-sub">${dateStr}${recip}${subjLine}</div>
+              </div>
+            </div>
+            <span class="cycle-history-chev" aria-hidden="true">▸</span>
+          </div>
+        </summary>
+        <div class="cycle-history-logs" aria-live="polite"></div>
+      </details>`;
+    }).join('')}</div>`;
+  } else {
+    histHtml += `<p style="color:var(--text-muted);font-size:.8125rem">No cycles in history yet. After you send a report, the cycle is saved here automatically.</p>`;
+  }
+
+  body.innerHTML = `
+    <div class="roadmap-section-title">Current Cycle</div>
+    ${pipelineHtml}
+    ${stepCardsHtml}
+    ${autoHtml}
+    <hr style="border:none;border-top:1px solid var(--border);margin:1.5rem 0 1.25rem">
+    <div class="mmr-activity-section">
+      <div class="mmr-activity-head">
+        <span class="roadmap-section-title" style="margin-bottom:0">Live activity</span>
+        <span class="mmr-activity-live" id="mmrActivityLiveBadge" hidden><span class="mmr-live-pulse" aria-hidden="true"></span>Live</span>
+      </div>
+      <p class="mmr-activity-sub">Shows the <strong>active cycle</strong> only (newest first). When a cycle ends, this area clears until you upload a new file — full logs for each finished run are under <strong>Cycle History</strong>. Refreshes every 10 seconds while this panel is open.</p>
+      <div id="mmrActivityFeed" class="mmr-activity-feed mmr-activity-feed--loading" aria-live="polite">Loading…</div>
+    </div>
+    ${histHtml}
+  `;
+  mmrRestoreCycleHistoryDetails(mmrHistoryOpen);
+  mmrOnRoadmapRendered();
+}
+
+// Refresh automation process (Step 4) – reload data, no full page reload
+async function refreshToStartNextCycle() {
+  try {
+    await loadAutomationStatus();
+    await loadCycleData();
+    renderRoadmap();
+  } catch (e) {
+    toast('Could not refresh', 'error');
+  }
+}
+
+// Approve the current cycle (Step 2)
+async function approveCycleAction() {
+  const btn = document.getElementById('btnApprove');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+  try {
+    const resp = await authFetch('/admin/mmr/api/approve', { method: 'POST' });
+    const data = await resp.json();
+    if (resp.ok) {
+      toast('✓ Cycle marked as reviewed', 'success');
+      await loadCycleData();
+    } else {
+      toast(data.error || 'Could not approve', 'error');
+      if (btn) { btn.disabled = false; btn.textContent = '✓ Mark Reviewed'; }
+    }
+  } catch (e) {
+    toast('Request failed', 'error');
+    if (btn) { btn.disabled = false; btn.textContent = '✓ Mark Reviewed'; }
+  }
+}
+
+// Start the automation from roadmap (Step 3) – resumes schedule, does NOT send immediately
+async function startAutomationFromRoadmap() {
+  const btn = document.getElementById('roadmapStartBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Starting…'; }
+  try {
+    const resp = await authFetch('/admin/mmr/api/automation-resume', { method: 'POST' });
+    const data = await resp.json();
+    if (resp.ok) {
+      const h = String(automationStatus?.schedule_hour ?? 10).padStart(2, '0');
+      const m = String(automationStatus?.schedule_minute ?? 0).padStart(2, '0');
+      toast(`Automation started. Email will be sent at ${h}:${m} GST.`, 'success');
+      await loadAutomationStatus();
+      await loadCycleData();
+      renderRoadmap();
+    } else {
+      toast(data.error || 'Failed to start automation', 'error');
+      if (btn) { btn.disabled = false; btn.textContent = '▶ Start the automation'; }
+    }
+  } catch (e) {
+    toast(e.message || 'Failed to start automation', 'error');
+    if (btn) { btn.disabled = false; btn.textContent = '▶ Start the automation'; }
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', async () => {
+  loadEmailConfig();
+  await loadAutomationStatus();
+  await loadCycleData();
+
+  document.getElementById('roadmapBody')?.addEventListener('toggle', (e) => {
+    const t = e.target;
+    if (t && t.matches && t.matches('details.cycle-history-item') && t.open) {
+      mmrLoadCycleHistoryLogs(t);
+    }
+  }, true);
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    closeRoadmapPanel();
+    closeReportFolderPanel();
+    const rs = document.getElementById('reportSettingsModal');
+    const rsOpen = rs && (rs.open || rs.classList.contains('active'));
+    if (rsOpen && typeof window.closeReportSettingsModal === 'function') {
+      window.closeReportSettingsModal();
+    }
+  });
+
+  const filename = sessionStorage.getItem('mmr_restore_filename');
+  const filtersJson = sessionStorage.getItem('mmr_restore_filters');
+  if (filename) {
+    sessionStorage.removeItem('mmr_restore_filename');
+    sessionStorage.removeItem('mmr_restore_filters');
+    try {
+      toast('Loading report…', 'info');
+      const resp = await authFetch('/admin/mmr/api/report-folder/open/' + encodeURIComponent(filename));
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'Failed to load report');
+
+      allRows = data.rows;
+      dashboardData = data.dashboard;
+      document.getElementById('dashboardSection').classList.remove('hidden');
+      renderDashboard(dashboardData);
+      filterRows();
+      const filters = filtersJson ? JSON.parse(filtersJson) : {};
+      applyFiltersFromState(filters);
+      mmrResizeAllCharts();
+      document.getElementById('btnDownloadReport').disabled = false;
+      document.getElementById('btnSaveToFolder').disabled = false;
+      document.getElementById('btnSaveToDrive').disabled = false;
+      document.getElementById('uploadZone').style.borderColor = 'var(--success)';
+      updateEmailSectionDownloadButtons();
+      await loadAutomationStatus();
+      await loadCycleData();
+      toast('Report loaded. Dashboard filters restored.', 'success');
+    } catch (e) {
+      toast(e.message || 'Could not load report', 'error');
+      await restoreDashboardFromServerIfNeeded();
+    }
+  } else {
+    await restoreDashboardFromServerIfNeeded();
+  }
+});
+</script>
+  <script src="{{ url_for('static', filename='mobile_utils.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='api-client.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>

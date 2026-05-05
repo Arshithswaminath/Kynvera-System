@@ -1,0 +1,1829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+  <title>BD Email Module - Injaaz Application</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <style>
+    :root {
+      --primary: #125435;
+      --primary-light: #1a7a4d;
+      --primary-dark: #0d3d24;
+      --text-dark: #111827;
+      --text-light: #6b7280;
+      --border: #e5e7eb;
+      --bg: #f9fafb;
+      --bg-light: #fafafa;
+      --white: #ffffff;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: var(--bg-light);
+      color: var(--text-dark);
+      padding-top: 96px;
+      animation: pageFade 0.35s ease;
+    }
+
+    .nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 1000;
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(30px) saturate(180%);
+      border-bottom: 1px solid rgba(18, 84, 53, 0.08);
+      box-shadow: 0 2px 20px rgba(0, 0, 0, 0.02);
+      transition: all 0.3s ease;
+    }
+
+    .nav-container {
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: 1rem 4rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 2rem;
+      min-height: 80px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      text-decoration: none;
+      transition: all 0.3s ease;
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .logo img {
+      height: 45px;
+      width: auto;
+      filter: drop-shadow(0 2px 8px rgba(18, 84, 53, 0.15));
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .logo span {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--primary);
+      letter-spacing: -0.5px;
+      transition: all 0.3s ease;
+      white-space: nowrap;
+    }
+
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 3rem;
+      flex-shrink: 0;
+    }
+
+    .nav-menu {
+      display: flex;
+      align-items: center;
+      gap: 2.5rem;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .nav-menu a {
+      color: var(--text-light);
+      text-decoration: none;
+      font-size: 0.95rem;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+      transition: all 0.3s ease;
+      position: relative;
+      padding: 0.5rem 0;
+      white-space: nowrap;
+    }
+
+    .nav-menu a::before {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      width: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--primary-light), var(--primary));
+      transform: translateX(-50%);
+      transition: width 0.3s ease;
+    }
+
+    .nav-menu a:hover {
+      color: var(--primary);
+    }
+
+    .nav-menu a:hover::before {
+      width: 100%;
+    }
+
+    .logout-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.625rem 1.25rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: white;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+      border: none;
+      border-radius: 8px;
+      text-decoration: none;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(18, 84, 53, 0.2);
+      letter-spacing: 0.3px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .logout-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+      transition: left 0.5s;
+    }
+
+    .logout-btn:hover::before {
+      left: 100%;
+    }
+
+    .btn {
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      padding: 0.6rem 1.1rem;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease;
+    }
+
+    .btn-secondary {
+      background: #eef2f7;
+      color: #1f2937;
+    }
+
+    .btn-secondary.btn-selected {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .btn-secondary.btn-selected:hover {
+      background: var(--primary-light);
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 14px rgba(18, 84, 53, 0.15);
+    }
+
+    .container {
+      max-width: 1360px;
+      margin: 2rem auto;
+      padding: 0 1.25rem;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 1.45fr 1.25fr;
+      gap: 1.5rem;
+      align-items: start;
+    }
+
+    .card {
+      background: #ffffff;
+      border-radius: 16px;
+      border: 1px solid #eef2f7;
+      padding: 1.75rem;
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+    }
+
+    .card.panel {
+      display: flex;
+      flex-direction: column;
+    }
+
+    #reviewPanel {
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+
+    .card-title {
+      margin: 0 0 0.85rem;
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      margin-bottom: 1rem;
+    }
+
+    .field label {
+      font-weight: 600;
+      color: var(--text-dark);
+    }
+
+    .field input,
+    .field textarea {
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 0.7rem 0.85rem;
+      font-size: 0.95rem;
+      width: 100%;
+      background: #ffffff;
+      box-sizing: border-box;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .recipient-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 0.6rem;
+      align-items: center;
+      width: 100%;
+    }
+
+    .recipient-row input {
+      min-width: 0;
+      width: 100%;
+    }
+
+    .recipient-row .btn {
+      width: auto !important;
+      white-space: nowrap;
+    }
+
+    .recipient-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 0.25rem;
+    }
+
+    .recipient-chip {
+      padding: 0.25rem 0.6rem;
+      border-radius: 999px;
+      background: #f1f5f9;
+      color: #0f172a;
+      font-size: 0.82rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .recipient-chip button {
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      color: #64748b;
+      font-weight: 700;
+    }
+
+    .recipient-actions {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 0.6rem;
+      margin-top: 0.5rem;
+    }
+
+    .group-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 0.6rem;
+      align-items: center;
+    }
+
+    .group-button-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .group-buttons .btn.btn-secondary {
+      margin: 0;
+    }
+
+    .group-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.2rem;
+    }
+
+    .group-edit-btn,
+    .group-remove-btn {
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      color: #64748b;
+      font-weight: 700;
+      font-size: 0.9rem;
+      padding: 0.15rem 0.3rem;
+      line-height: 1;
+      border-radius: 6px;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    .group-edit-btn {
+      font-size: 0.85rem;
+    }
+
+    .group-edit-btn:hover {
+      background: rgba(18, 84, 53, 0.12);
+      color: var(--primary);
+    }
+
+    .group-remove-btn:hover {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .group-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+    }
+
+    .group-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 999px;
+      background: #f1f5f9;
+      font-size: 0.82rem;
+      color: #0f172a;
+    }
+
+    .group-item button {
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      color: #64748b;
+      font-weight: 700;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.4);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+    }
+
+    .modal-backdrop.active {
+      display: flex;
+    }
+
+    .modal-card {
+      background: #ffffff;
+      border-radius: 14px;
+      border: 1px solid #eef2f7;
+      padding: 1.25rem;
+      width: min(560px, 92vw);
+      box-shadow: 0 18px 40px rgba(15, 23, 42, 0.18);
+    }
+
+    .modal-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+      color: #0f172a;
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.6rem;
+      margin-top: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .modal-card .field input,
+    .modal-card .field textarea {
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .modal-card .field textarea {
+      min-height: 160px;
+    }
+
+    @media (max-width: 640px) {
+      .modal-card {
+        width: min(92vw, 92vw);
+        padding: 1rem;
+      }
+
+      .modal-actions {
+        justify-content: stretch;
+      }
+
+      .modal-actions .btn {
+        width: 100%;
+      }
+    }
+
+    .field input:focus,
+    .field textarea:focus {
+      outline: none;
+      border-color: rgba(18, 84, 53, 0.55);
+      box-shadow: 0 0 0 4px rgba(18, 84, 53, 0.12);
+    }
+
+    .field textarea {
+      min-height: 240px;
+      resize: none;
+    }
+
+    .attachments-box {
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      background: #ffffff;
+      padding: 0.85rem;
+      min-height: 88px;
+      font-size: 0.9rem;
+      box-sizing: border-box;
+    }
+
+    .attachments-list {
+      display: grid;
+      gap: 0.5rem;
+    }
+
+    .attachment-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem 1rem;
+      align-items: center;
+    }
+
+    .attachment-row strong {
+      font-weight: 600;
+    }
+
+    .attachment-link {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 600;
+      padding: 0.2rem 0.5rem;
+      border-radius: 999px;
+      background: rgba(18, 84, 53, 0.08);
+    }
+
+    .attachment-link:hover {
+      background: rgba(18, 84, 53, 0.14);
+      text-decoration: none;
+    }
+
+    .helper {
+      font-size: 0.85rem;
+      color: var(--text-light);
+    }
+
+    .actions {
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+      justify-content: flex-end;
+    }
+
+    .filters {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+      width: 100%;
+    }
+
+    .search-box {
+      width: 100%;
+      position: relative;
+    }
+
+    .filter-row {
+      display: grid;
+      grid-template-columns: 1fr 0.6fr 0.6fr;
+      gap: 0.75rem;
+      align-items: center;
+    }
+
+    .filter-select {
+      width: 100%;
+      padding: 0.65rem 0.9rem;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      background: #ffffff;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 0.7rem 1rem 0.7rem 2.25rem;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      font-size: 0.9rem;
+      transition: all 0.3s ease;
+      display: block;
+      box-sizing: border-box;
+    }
+
+    .search-input:focus {
+      outline: none;
+      border-color: rgba(18, 84, 53, 0.55);
+      box-shadow: 0 0 0 4px rgba(18, 84, 53, 0.12);
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 0.75rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-light);
+      font-size: 0.85rem;
+    }
+
+    .filter-actions {
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+      justify-content: flex-start;
+      flex-wrap: wrap;
+    }
+
+    .filter-actions .btn {
+      white-space: nowrap;
+    }
+
+    .history-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+
+    .history-table th,
+    .history-table td {
+      padding: 0.85rem 0.9rem;
+      text-align: left;
+      border-bottom: 1px solid #f3f4f6;
+      vertical-align: top;
+    }
+
+    .history-table th {
+      background: #f8fafc;
+      font-weight: 600;
+      color: #64748b;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+    }
+
+    .history-table th:first-child,
+    .history-table td:first-child {
+      width: 28px;
+    }
+
+    .history-table td {
+      font-size: 0.85rem;
+    }
+
+    .history-table tr:hover {
+      background: #f8fafc;
+    }
+
+    .history-table tr.row-selected {
+      background: #ecfdf5;
+    }
+
+    .pagination {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+      padding-bottom: 0.25rem;
+      font-size: 0.85rem;
+      color: var(--text-light);
+      flex-wrap: wrap;
+    }
+
+    #reviewPanel .pagination {
+      margin-top: auto;
+      justify-content: center;
+    }
+
+    .pagination .btn {
+      padding: 0.4rem 0.8rem;
+      font-size: 0.85rem;
+      min-width: 64px;
+      height: 32px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    @keyframes pageFade {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.3rem 0.65rem;
+      border-radius: 20px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      transition: transform 0.2s ease;
+    }
+
+    .badge:hover {
+      transform: translateY(-1px);
+    }
+
+    .badge-submitted { background: #e0f2fe; color: #0369a1; }
+    .badge-reviewing { background: #fef3c7; color: #92400e; }
+    .badge-approved { background: #d1fae5; color: #065f46; }
+    .badge-rejected { background: #fee2e2; color: #991b1b; }
+    .badge-closed { background: #e5e7eb; color: #374151; }
+
+    .module-tag {
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 0.2rem 0.45rem;
+      border-radius: 6px;
+      background: #f1f5f9;
+      color: #475569;
+      display: inline-block;
+      transition: transform 0.2s ease;
+    }
+
+    .module-tag:hover {
+      transform: translateY(-1px);
+    }
+
+    .table-wrapper {
+      max-height: none;
+      overflow: hidden;
+      border-radius: 14px;
+      border: 1px solid #eef2f7;
+      margin-top: 0.75rem;
+      box-shadow: inset 0 1px 0 rgba(15, 23, 42, 0.03);
+    }
+
+    #reviewPanel .table-wrapper {
+      flex: 1;
+    }
+
+    @media (max-width: 900px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+    }
+    
+    /* Mobile menu toggle (hidden by default) */
+    .mobile-menu-toggle { display: none; }
+    .mobile-overlay { display: none; position: fixed; top: 56px; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); z-index: 998; opacity: 0; transition: opacity 0.3s; }
+    .mobile-overlay.active { display: block; opacity: 1; }
+    
+    @media (max-width: 768px) {
+      .nav-container {
+        padding: 0.75rem 1rem !important;
+        gap: 0.5rem !important;
+      }
+      .logo img { height: 28px !important; }
+      .logo span { font-size: 0.9rem !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
+      .nav-right { gap: 0.375rem !important; }
+      
+      .mobile-menu-toggle {
+        display: flex !important;
+        align-items: center; justify-content: center;
+        width: 40px; height: 40px; min-width: 40px; min-height: 40px;
+        border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.1);
+        border-radius: 8px; cursor: pointer; padding: 0;
+        color: white;
+      }
+      .mobile-menu-toggle span {
+        display: block; width: 18px; height: 2px; background: currentColor;
+        position: relative; transition: all 0.3s;
+      }
+      .mobile-menu-toggle span::before,
+      .mobile-menu-toggle span::after {
+        content: ''; position: absolute; left: 0; width: 18px; height: 2px;
+        background: currentColor; transition: all 0.3s;
+      }
+      .mobile-menu-toggle span::before { top: -6px; }
+      .mobile-menu-toggle span::after { bottom: -6px; }
+      .mobile-menu-toggle.active span { background: transparent; }
+      .mobile-menu-toggle.active span::before { top: 0; transform: rotate(45deg); }
+      .mobile-menu-toggle.active span::after { bottom: 0; transform: rotate(-45deg); }
+      
+      .nav-menu {
+        position: fixed !important; top: 56px; left: -100%;
+        width: min(280px, 80vw); height: calc(100vh - 56px);
+        background: white; box-shadow: 4px 0 20px rgba(0,0,0,0.08);
+        flex-direction: column; display: flex !important;
+        padding: 0.5rem 0; gap: 0 !important;
+        transition: left 0.3s ease; z-index: 999;
+        overflow-y: auto; border-right: 1px solid #e5e7eb;
+      }
+      .nav-menu.active { left: 0; }
+      .nav-menu li { width: 100%; padding: 0; display: block; list-style: none; }
+      .nav-menu a {
+        display: flex !important; align-items: center; padding: 0.9rem 1.25rem !important;
+        border-radius: 0 !important; font-size: 0.95rem !important; font-weight: 500;
+        color: #1f2937 !important; border-bottom: 1px solid #f3f4f6 !important;
+        min-height: 48px; width: 100%;
+      }
+      .nav-menu a:hover { background: #f9fafb; }
+      .nav-menu a::before { display: none !important; }
+      
+      .logout-btn { padding: 0.45rem 0.6rem !important; font-size: 0.8rem !important; }
+      .logout-btn span { display: none !important; }
+      .logout-btn svg { width: 18px !important; height: 18px !important; }
+      
+      .container { margin-top: 1rem; padding: 0 0.75rem; }
+    }
+
+    .alert {
+      margin-top: 1rem;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
+    }
+
+    .alert.success {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .alert.error {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+  </style>
+</head>
+<body>
+  {% set active_page = 'bd-email' %}
+  {% include 'partials/main_navbar.html' with context %}
+
+  <div class="container">
+    <div class="layout">
+      <div class="card panel" id="emailPanel">
+        <h1 class="card-title">Send Email to General Manager</h1>
+        <p class="helper">Use this form to notify the GM. You can customize To/CC, subject, and message.</p>
+
+        <form id="emailForm">
+          <input type="hidden" id="selectedSubmissionIds" name="submission_ids" value="">
+          <div class="field">
+            <label for="toEmail">To (Info)</label>
+            <input id="toEmail" name="to" type="text" value="{{ gm_emails|join(', ') }}" placeholder="gm@example.com">
+            <span class="helper">Separate multiple emails with commas.</span>
+            <div class="recipient-actions">
+              <button type="button" class="btn btn-secondary" id="addAllGmBtn">Add GM</button>
+              <button type="button" class="btn btn-secondary" id="addAllBdBtn">Add BD</button>
+              <button type="button" class="btn btn-secondary" id="addAllPoBtn">Add PO</button>
+              <button type="button" class="btn btn-secondary" id="addAllOmBtn">Add OM</button>
+              <button type="button" class="btn btn-secondary" id="addAllSupervisorBtn">Add Supervisors</button>
+              <button type="button" class="btn btn-secondary" id="addToGroupBtn">Add Group</button>
+            </div>
+            <div class="recipient-list" id="recipientList"></div>
+            <div class="group-buttons" id="toGroupButtons"></div>
+            <div class="group-list" id="toGroupList"></div>
+          </div>
+
+          <div class="field">
+            <label for="ccEmail">CC (Info)</label>
+            <input id="ccEmail" name="cc" type="text" placeholder="cc@example.com">
+            <span class="helper">Separate multiple emails with commas.</span>
+            <div class="recipient-actions">
+              <button type="button" class="btn btn-secondary" id="addCcGmBtn">Add GM</button>
+              <button type="button" class="btn btn-secondary" id="addCcBdBtn">Add BD</button>
+              <button type="button" class="btn btn-secondary" id="addCcPoBtn">Add PO</button>
+              <button type="button" class="btn btn-secondary" id="addCcOmBtn">Add OM</button>
+              <button type="button" class="btn btn-secondary" id="addCcSupervisorBtn">Add Supervisors</button>
+              <button type="button" class="btn btn-secondary" id="addCcGroupBtn">Add Group</button>
+            </div>
+            <div class="recipient-list" id="ccRecipientList"></div>
+            <div class="group-buttons" id="ccGroupButtons"></div>
+            <div class="group-list" id="ccGroupList"></div>
+          </div>
+
+          <div class="field">
+            <label for="subject">Subject</label>
+            <input id="subject" name="subject" type="text" placeholder="Approval Update - Submission">
+          </div>
+
+          <div class="field">
+            <label for="message">Message</label>
+            <textarea id="message" name="message" placeholder="Type your message here..."></textarea>
+          </div>
+          <div class="field">
+            <label>Attachments</label>
+            <div class="attachments-box" id="attachmentsBox">
+              <div class="helper">Select submissions to view attachments.</div>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button type="button" class="btn btn-secondary" onclick="resetForm()">Clear</button>
+            <button type="submit" class="btn">Send Email</button>
+          </div>
+        </form>
+
+        <div id="alertBox"></div>
+      </div>
+
+      <div class="card panel" id="reviewPanel">
+        <h2 class="card-title">Reviewed Forms</h2>
+        <p class="helper">Select one or more forms and add to the email.</p>
+        <div class="filters">
+          <div class="filter-row">
+            <div class="search-box">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="searchInput" class="search-input" placeholder="Search by site, ID, module, or status">
+            </div>
+            <select id="moduleFilter" class="filter-select">
+              <option value="">All Modules</option>
+              <option value="hvac_mep">HVAC & MEP</option>
+              <option value="civil">Civil Works</option>
+              <option value="cleaning">Cleaning</option>
+            </select>
+            <select id="statusFilter" class="filter-select">
+              <option value="">All Status</option>
+              <option value="completed">Completed</option>
+              <option value="closed">Closed</option>
+              <option value="rejected">Rejected</option>
+              <option value="submitted">Submitted</option>
+              <option value="review">In Review</option>
+            </select>
+          </div>
+          <div class="filter-actions">
+            <button type="button" class="btn" id="addSelectedBtn">Add to Email</button>
+            <button type="button" class="btn btn-secondary" id="clearSelectedBtn">Clear Selection</button>
+          </div>
+        </div>
+        <div class="table-wrapper">
+          <table class="history-table">
+            <thead>
+              <tr>
+                <th style="width: 26px;"><input type="checkbox" id="selectAllRows"></th>
+                <th>Submission</th>
+                <th>Module</th>
+                <th>Visit</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="submissionTableBody">
+              {% if submissions %}
+                {% for submission in submissions %}
+                  {% set status_value = submission.workflow_status or submission.status or 'submitted' %}
+                  <tr class="submission-row"
+                      data-id="{{ submission.submission_id }}"
+                      data-module="{{ submission.module_type }}"
+                      data-site="{{ submission.site_name or '' }}"
+                      data-visit="{{ submission.visit_date.strftime('%Y-%m-%d') if submission.visit_date else '' }}"
+                      data-status="{{ status_value }}">
+                    <td><input type="checkbox" class="row-check"></td>
+                    <td>
+                      <strong>{{ submission.site_name or 'N/A' }}</strong>
+                      <div class="helper">{{ submission.submission_id }}</div>
+                    </td>
+                    <td>
+                      <span class="module-tag">
+                        {% if submission.module_type == 'hvac_mep' %}HVAC & MEP{% elif submission.module_type == 'civil' %}Civil Works{% elif submission.module_type == 'cleaning' %}Cleaning{% else %}{{ submission.module_type }}{% endif %}
+                      </span>
+                    </td>
+                    <td>{{ submission.visit_date.strftime('%Y-%m-%d') if submission.visit_date else 'N/A' }}</td>
+                    <td>
+                      {% if status_value in ['completed', 'approved', 'gm_approved', 'general_manager_approved'] %}
+                        <span class="badge badge-approved">Completed</span>
+                      {% elif status_value in ['rejected'] %}
+                        <span class="badge badge-rejected">Rejected</span>
+                      {% elif status_value in ['closed', 'closed_by_admin'] %}
+                        <span class="badge badge-closed">Closed</span>
+                      {% elif status_value in ['submitted'] %}
+                        <span class="badge badge-submitted">Submitted</span>
+                      {% else %}
+                        <span class="badge badge-reviewing">In Review</span>
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% endfor %}
+              {% else %}
+                <tr>
+                  <td colspan="5" class="helper" style="padding: 1.5rem;">No reviewed forms available.</td>
+                </tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+        <div class="pagination" id="reviewPagination"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="groupModal">
+    <div class="modal-card">
+      <div class="modal-title" id="groupModalTitle">Add Group</div>
+      <div class="field">
+        <label for="groupNameInput">Group Name</label>
+        <input id="groupNameInput" type="text" placeholder="e.g. Facilities Team">
+      </div>
+      <div class="field">
+        <label for="groupEmailsInput">Group Emails</label>
+        <textarea id="groupEmailsInput" placeholder="email1@domain.com, email2@domain.com"></textarea>
+        <span class="helper">Separate multiple emails with commas.</span>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" id="groupCancelBtn">Cancel</button>
+        <button type="button" class="btn" id="groupSaveBtn">Save Group</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById('emailForm');
+    const alertBox = document.getElementById('alertBox');
+    const submissionTableBody = document.getElementById('submissionTableBody');
+    const searchInput = document.getElementById('searchInput');
+    const moduleFilter = document.getElementById('moduleFilter');
+    const statusFilter = document.getElementById('statusFilter');
+    const selectAllRows = document.getElementById('selectAllRows');
+    const addSelectedBtn = document.getElementById('addSelectedBtn');
+    const clearSelectedBtn = document.getElementById('clearSelectedBtn');
+    const selectedSubmissionIdsInput = document.getElementById('selectedSubmissionIds');
+    const attachmentsBox = document.getElementById('attachmentsBox');
+    const appBaseUrl = "{{ config.get('APP_BASE_URL', '') }}";
+    const addAllGmBtn = document.getElementById('addAllGmBtn');
+    const addAllBdBtn = document.getElementById('addAllBdBtn');
+    const addAllPoBtn = document.getElementById('addAllPoBtn');
+    const addAllOmBtn = document.getElementById('addAllOmBtn');
+    const addAllSupervisorBtn = document.getElementById('addAllSupervisorBtn');
+    const addToGroupBtn = document.getElementById('addToGroupBtn');
+    const recipientList = document.getElementById('recipientList');
+    const gmEmails = {{ gm_emails|tojson }};
+    const bdEmails = {{ bd_emails|tojson }};
+    const poEmails = {{ po_emails|tojson }};
+    const omEmails = {{ om_emails|tojson }};
+    const supervisorEmails = {{ supervisor_emails|tojson }};
+    const addCcGroupBtn = document.getElementById('addCcGroupBtn');
+    const ccRecipientList = document.getElementById('ccRecipientList');
+    const toGroupList = document.getElementById('toGroupList');
+    const ccGroupList = document.getElementById('ccGroupList');
+    const toGroupButtons = document.getElementById('toGroupButtons');
+    const ccGroupButtons = document.getElementById('ccGroupButtons');
+    const sharedGroups = [];
+
+    function moduleDisplay(moduleType) {
+      if (moduleType === 'hvac_mep') return 'HVAC & MEP';
+      if (moduleType === 'civil') return 'Civil Works';
+      if (moduleType === 'cleaning') return 'Cleaning Services';
+      return moduleType || 'Form';
+    }
+
+    function showAlert(message, type) {
+      alertBox.innerHTML = `<div class="alert ${type}">${message}</div>`;
+    }
+
+    function resetForm() {
+      document.getElementById('subject').value = '';
+      document.getElementById('message').value = '';
+      document.getElementById('ccEmail').value = '';
+    }
+
+    function parseEmails(value) {
+      if (!value) return [];
+      return value
+        .split(/[;,]/)
+        .map(val => val.trim())
+        .filter(Boolean);
+    }
+
+    function updateRecipientsField(targetInput, listElement, emails) {
+      const unique = Array.from(new Set(emails));
+      if (targetInput) {
+        targetInput.value = unique.join(', ');
+      }
+      if (listElement) {
+        listElement.innerHTML = unique.map(email => `
+          <span class="recipient-chip">
+            ${email}
+            <button type="button" data-email="${email}">×</button>
+          </span>
+        `).join('');
+      }
+    }
+
+    function toggleEmailsInField(targetInput, listElement, emailsToToggle) {
+      if (!targetInput || !emailsToToggle || !emailsToToggle.length) return;
+      const cur = parseEmails(targetInput.value);
+      const allPresent = emailsToToggle.every(e => cur.includes(e));
+      const next = allPresent
+        ? cur.filter(e => !emailsToToggle.includes(e))
+        : Array.from(new Set(cur.concat(emailsToToggle)));
+      updateRecipientsField(targetInput, listElement, next);
+    }
+
+    function updateRecipientButtonStates() {
+      const toEl = document.getElementById('toEmail');
+      const ccEl = document.getElementById('ccEmail');
+      const toEmails = parseEmails(toEl?.value);
+      const ccEmails = parseEmails(ccEl?.value);
+      const roles = [
+        { emails: gmEmails || [], toId: 'addAllGmBtn', ccId: 'addCcGmBtn' },
+        { emails: bdEmails || [], toId: 'addAllBdBtn', ccId: 'addCcBdBtn' },
+        { emails: poEmails || [], toId: 'addAllPoBtn', ccId: 'addCcPoBtn' },
+        { emails: omEmails || [], toId: 'addAllOmBtn', ccId: 'addCcOmBtn' },
+        { emails: supervisorEmails || [], toId: 'addAllSupervisorBtn', ccId: 'addCcSupervisorBtn' }
+      ];
+      roles.forEach(({ emails, toId, ccId }) => {
+        const allInTo = emails.length > 0 && emails.every(e => toEmails.includes(e));
+        const allInCc = emails.length > 0 && emails.every(e => ccEmails.includes(e));
+        const toBtn = document.getElementById(toId);
+        const ccBtn = document.getElementById(ccId);
+        toBtn?.classList.toggle('btn-selected', !!allInTo);
+        ccBtn?.classList.toggle('btn-selected', !!allInCc);
+      });
+      const toGroups = document.getElementById('toGroupButtons');
+      const ccGroups = document.getElementById('ccGroupButtons');
+      [toGroups, ccGroups].forEach((container, idx) => {
+        const emails = idx === 0 ? toEmails : ccEmails;
+        if (!container) return;
+        container.querySelectorAll('button[data-group]').forEach(btn => {
+          const g = sharedGroups.find(x => x.name === btn.dataset.group);
+          if (!g || !g.emails) return;
+          const allIn = g.emails.length > 0 && g.emails.every(e => emails.includes(e));
+          btn.classList.toggle('btn-selected', !!allIn);
+        });
+      });
+    }
+
+    function getGroupEmails(groups) {
+      return groups.flatMap(group => group.emails || []);
+    }
+
+    function removeGroupByName(name) {
+      const idx = sharedGroups.findIndex(g => g.name === name);
+      if (idx === -1) return;
+      const group = sharedGroups[idx];
+      sharedGroups.splice(idx, 1);
+      const toRemove = group.emails || [];
+      for (const { input, list } of [
+        { input: toEmailField, list: recipientList },
+        { input: ccEmailField, list: ccRecipientList }
+      ]) {
+        if (!input) continue;
+        const cur = parseEmails(input.value);
+        const next = cur.filter(e => !toRemove.includes(e));
+        updateRecipientsField(input, list, next);
+      }
+      rerenderAllGroupLists();
+    }
+
+    function rerenderAllGroupLists() {
+      renderGroupList(toGroupList, sharedGroups, toEmailField, recipientList);
+      renderGroupList(ccGroupList, sharedGroups, ccEmailField, ccRecipientList);
+      renderGroupButtons();
+      updateRecipientButtonStates();
+    }
+
+    function renderGroupList(listElement, groups, targetInput, listElementForEmails) {
+      if (!listElement) return;
+      listElement.innerHTML = groups.map((group, idx) => `
+        <div class="group-item">
+          <span>${group.name} (${group.emails.length})</span>
+          <button type="button" data-index="${idx}">×</button>
+        </div>
+      `).join('');
+
+      listElement.addEventListener('click', (event) => {
+        const btn = event.target.closest('button[data-index]');
+        if (!btn) return;
+        const index = Number(btn.getAttribute('data-index'));
+        const group = groups[index];
+        if (group) removeGroupByName(group.name);
+      }, { once: true });
+    }
+
+    function renderGroupButtons() {
+      const editIcon = '✎';
+      const html = sharedGroups.map(group => `
+        <span class="group-button-wrap">
+          <button type="button" class="btn btn-secondary" data-group="${group.name}">${group.name}</button>
+          <span class="group-actions">
+            <button type="button" class="group-edit-btn" data-edit-group="${group.name}" title="Edit group">${editIcon}</button>
+            <button type="button" class="group-remove-btn" data-remove-group="${group.name}" title="Remove group">×</button>
+          </span>
+        </span>
+      `).join('');
+      if (toGroupButtons) toGroupButtons.innerHTML = html;
+      if (ccGroupButtons) ccGroupButtons.innerHTML = html;
+    }
+
+    function syncRecipientsFromField(targetInput, listElement, groups, groupListElement) {
+      if (!targetInput) return;
+      const groupEmails = getGroupEmails(groups);
+      const manual = parseEmails(targetInput.value).filter(email => !groupEmails.includes(email));
+      updateRecipientsField(targetInput, listElement, manual.concat(groupEmails));
+      renderGroupList(groupListElement, groups, targetInput, listElement);
+      updateRecipientButtonStates();
+    }
+
+    function openGroupModal(target) {
+      const modal = document.getElementById('groupModal');
+      const title = document.getElementById('groupModalTitle');
+      const nameInput = document.getElementById('groupNameInput');
+      const emailsInput = document.getElementById('groupEmailsInput');
+      delete modal.dataset.mode;
+      delete modal.dataset.editGroup;
+      modal.dataset.target = target;
+      title.textContent = target === 'cc' ? 'Add CC Group' : 'Add To Group';
+      nameInput.value = '';
+      emailsInput.value = '';
+      modal.classList.add('active');
+    }
+
+    function openGroupModalForEdit(groupName) {
+      const modal = document.getElementById('groupModal');
+      const title = document.getElementById('groupModalTitle');
+      const nameInput = document.getElementById('groupNameInput');
+      const emailsInput = document.getElementById('groupEmailsInput');
+      const group = sharedGroups.find(g => g.name === groupName);
+      if (!group) return;
+      modal.dataset.mode = 'edit';
+      modal.dataset.editGroup = groupName;
+      delete modal.dataset.target;
+      title.textContent = 'Edit Group';
+      nameInput.value = group.name;
+      emailsInput.value = (group.emails || []).join(', ');
+      modal.classList.add('active');
+    }
+
+    function closeGroupModal() {
+      const modal = document.getElementById('groupModal');
+      delete modal.dataset.mode;
+      delete modal.dataset.editGroup;
+      modal.classList.remove('active');
+    }
+
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', async () => {
+        try {
+          const token = localStorage.getItem('access_token');
+          if (token) {
+            await fetch('/api/auth/logout', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              }
+            });
+          }
+        } finally {
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+          localStorage.removeItem('user');
+          window.location.href = '/login';
+        }
+      });
+    }
+
+    // Mobile menu
+    const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+    const navMenu = document.querySelector('.nav-menu');
+    const mobileOverlay = document.getElementById('mobileOverlay');
+    function closeMobileMenu() {
+      if (mobileMenuToggle) mobileMenuToggle.classList.remove('active');
+      if (navMenu) navMenu.classList.remove('active');
+      if (mobileOverlay) mobileOverlay.classList.remove('active');
+      document.body.style.overflow = '';
+    }
+    if (mobileMenuToggle && navMenu) {
+      mobileMenuToggle.addEventListener('click', function() {
+        const isOpen = navMenu.classList.contains('active');
+        if (isOpen) { closeMobileMenu(); } else {
+          mobileMenuToggle.classList.add('active');
+          navMenu.classList.add('active');
+          if (mobileOverlay) mobileOverlay.classList.add('active');
+          document.body.style.overflow = 'hidden';
+        }
+      });
+    }
+    if (mobileOverlay) mobileOverlay.addEventListener('click', closeMobileMenu);
+    if (navMenu) navMenu.querySelectorAll('a').forEach(l => l.addEventListener('click', closeMobileMenu));
+
+    function buildSubmissionBlock(row) {
+      if (!row) return;
+      const submissionId = row.getAttribute('data-id');
+      const moduleType = row.getAttribute('data-module');
+      const siteName = row.getAttribute('data-site') || 'N/A';
+      const visitDate = row.getAttribute('data-visit') || 'N/A';
+      const moduleName = moduleDisplay(moduleType);
+
+      return [
+        `Submission ID: ${submissionId}`,
+        `Module: ${moduleName}`,
+        `Site/Project: ${siteName}`,
+        `Visit Date: ${visitDate}`,
+        `Attachments: PDF, Excel`
+      ].join('\n');
+    }
+
+    function getSelectedRows() {
+      if (!submissionTableBody) return [];
+      return Array.from(submissionTableBody.querySelectorAll('.submission-row'))
+        .filter(row => {
+          const checkbox = row.querySelector('.row-check');
+          return checkbox && checkbox.checked;
+        });
+    }
+
+    function updateSelectedIds() {
+      if (!submissionTableBody || !selectedSubmissionIdsInput) return;
+      const selectedRows = getSelectedRows();
+      const ids = selectedRows.map(row => row.getAttribute('data-id')).filter(Boolean);
+      selectedSubmissionIdsInput.value = ids.join(',');
+    }
+
+    async function updateAttachmentView() {
+      if (!attachmentsBox) return;
+      const selectedRows = getSelectedRows();
+      if (selectedRows.length === 0) {
+        attachmentsBox.innerHTML = '<div class="helper">Select submissions to view attachments.</div>';
+        return;
+      }
+
+      attachmentsBox.innerHTML = '<div class="helper">Loading attachments...</div>';
+      const ids = selectedRows.map(row => row.getAttribute('data-id')).filter(Boolean);
+      const token = localStorage.getItem('access_token');
+      try {
+        const response = await fetch(`/bd/email-module/attachments?ids=${encodeURIComponent(ids.join(','))}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+          attachmentsBox.innerHTML = `<div class="helper">${data.error || 'Unable to load attachments.'}</div>`;
+          return;
+        }
+
+        if (!data.items || data.items.length === 0) {
+          attachmentsBox.innerHTML = '<div class="helper">No attachments available for the selected submissions.</div>';
+          return;
+        }
+
+        const rowsHtml = data.items.map(item => {
+          const pdfLink = item.pdf_url
+            ? `<a class="attachment-link" href="${item.pdf_url}" target="_blank">PDF</a>`
+            : `<span class="helper">PDF not available</span>`;
+          const excelLink = item.excel_url
+            ? `<a class="attachment-link" href="${item.excel_url}" target="_blank">Excel</a>`
+            : `<span class="helper">Excel not available</span>`;
+          return `
+            <div class="attachment-row">
+              <strong>${item.submission_id}</strong>
+              ${pdfLink}
+              ${excelLink}
+            </div>
+          `;
+        }).join('');
+
+        attachmentsBox.innerHTML = `<div class="attachments-list">${rowsHtml}</div>`;
+      } catch (error) {
+        attachmentsBox.innerHTML = '<div class="helper">Unable to load attachments.</div>';
+      }
+    }
+
+    function updateSubjectAndMessage() {
+      const selectedRows = getSelectedRows();
+      const subjectField = document.getElementById('subject');
+      const messageField = document.getElementById('message');
+
+      if (subjectField) {
+        const isAutoSubject = subjectField.dataset.auto === 'true';
+        if (!subjectField.value || isAutoSubject) {
+          if (selectedRows.length === 1) {
+            const first = selectedRows[0];
+            const moduleName = moduleDisplay(first.getAttribute('data-module'));
+            const siteName = first.getAttribute('data-site') || 'N/A';
+            subjectField.value = `GM Review - ${moduleName} - ${siteName}`;
+          } else if (selectedRows.length > 1) {
+            subjectField.value = `GM Review - ${selectedRows.length} Submissions`;
+          } else {
+            subjectField.value = '';
+          }
+          subjectField.dataset.auto = 'true';
+        }
+      }
+
+      if (messageField) {
+        const isAutoMessage = messageField.dataset.auto === 'true';
+        if (!messageField.value || isAutoMessage) {
+          if (selectedRows.length === 0) {
+            messageField.value = '';
+          } else {
+            const header = "Hello,\n\nPlease review the following submissions:\n";
+            const footer = "\nThank you.";
+            const blocks = selectedRows.map(row => buildSubmissionBlock(row)).join('\n\n');
+            messageField.value = `${header}\n${blocks}${footer}`;
+          }
+          messageField.dataset.auto = 'true';
+        }
+      }
+    }
+
+    function applyFilters() {
+      if (!submissionTableBody) return;
+      const query = (searchInput?.value || '').toLowerCase();
+      const moduleVal = moduleFilter?.value || '';
+      const statusVal = statusFilter?.value || '';
+      const rows = submissionTableBody.querySelectorAll('.submission-row');
+      rows.forEach(row => {
+        const id = row.getAttribute('data-id') || '';
+        const site = row.getAttribute('data-site') || '';
+        const moduleType = row.getAttribute('data-module') || '';
+        const status = row.getAttribute('data-status') || '';
+        const matchesQuery = !query || [id, site, moduleType, status].some(val => val.toLowerCase().includes(query));
+        const matchesModule = !moduleVal || moduleVal === moduleType;
+        const matchesStatus = !statusVal || status.includes(statusVal);
+        row.dataset.filtered = matchesQuery && matchesModule && matchesStatus ? '1' : '0';
+      });
+      applyReviewPagination();
+    }
+
+    let reviewPage = 1;
+    let reviewRowsPerPage = 8;
+    const reviewTargetHeight = 220;
+
+    function calculateReviewRowsPerPage() {
+      const leftPanel = document.getElementById('emailPanel');
+      const reviewPanel = document.getElementById('reviewPanel');
+      const tableHeader = reviewPanel?.querySelector('thead');
+      const filters = reviewPanel?.querySelector('.filters');
+      const title = reviewPanel?.querySelector('.card-title');
+      const firstRow = submissionTableBody?.querySelector('.submission-row');
+      const tableWrapper = reviewPanel?.querySelector('.table-wrapper');
+      if (!leftPanel || !reviewPanel || !firstRow) return;
+      const rowHeight = firstRow.getBoundingClientRect().height || 48;
+      let available = tableWrapper?.getBoundingClientRect().height || 0;
+      if (!available) {
+        available = leftPanel.getBoundingClientRect().height;
+        if (title) available -= title.getBoundingClientRect().height;
+        if (filters) available -= filters.getBoundingClientRect().height;
+        if (tableHeader) available -= tableHeader.getBoundingClientRect().height;
+        available -= 48;
+      }
+      const rows = Math.floor(available / rowHeight);
+      reviewRowsPerPage = Math.max(4, rows);
+    }
+
+    function applyReviewPagination() {
+      const pagination = document.getElementById('reviewPagination');
+      if (!pagination || !submissionTableBody) return;
+      const rows = Array.from(submissionTableBody.querySelectorAll('.submission-row'));
+      rows.forEach(row => {
+        if (!row.dataset.filtered) row.dataset.filtered = '1';
+      });
+      const filtered = rows.filter(row => row.dataset.filtered !== '0');
+      const totalPages = Math.max(1, Math.ceil(filtered.length / reviewRowsPerPage));
+      if (reviewPage > totalPages) reviewPage = totalPages;
+      const start = (reviewPage - 1) * reviewRowsPerPage;
+      const end = start + reviewRowsPerPage;
+      filtered.forEach((row, idx) => {
+        row.style.display = idx >= start && idx < end ? '' : 'none';
+      });
+      rows.filter(row => row.dataset.filtered === '0').forEach(row => {
+        row.style.display = 'none';
+      });
+      pagination.innerHTML = `
+        <button type="button" class="btn btn-secondary" data-page="prev" ${reviewPage === 1 ? 'disabled' : ''}>Prev</button>
+        <span>Page ${reviewPage} of ${totalPages}</span>
+        <button type="button" class="btn btn-secondary" data-page="next" ${reviewPage === totalPages ? 'disabled' : ''}>Next</button>
+      `;
+      if (!pagination.dataset.bound) {
+        pagination.addEventListener('click', (event) => {
+          const btn = event.target.closest('button[data-page]');
+          if (!btn) return;
+          if (btn.dataset.page === 'prev' && reviewPage > 1) reviewPage -= 1;
+          if (btn.dataset.page === 'next') reviewPage += 1;
+          applyReviewPagination();
+        });
+        pagination.dataset.bound = '1';
+      }
+    }
+
+    function syncPanelHeights() {
+      const leftPanel = document.getElementById('emailPanel');
+      const rightPanel = document.getElementById('reviewPanel');
+      if (!leftPanel || !rightPanel) return;
+      const leftHeight = leftPanel.getBoundingClientRect().height;
+      if (leftHeight > 0) {
+        rightPanel.style.height = `${leftHeight}px`;
+      }
+    }
+
+    function syncEmailBodyAndFormListHeights() {
+      const messageField = document.getElementById('message');
+      const tableWrapper = document.querySelector('#reviewPanel .table-wrapper');
+      if (!messageField || !tableWrapper) return;
+      messageField.style.height = `${reviewTargetHeight}px`;
+      tableWrapper.style.height = `${reviewTargetHeight}px`;
+    }
+
+    if (searchInput) searchInput.addEventListener('input', applyFilters);
+    if (moduleFilter) moduleFilter.addEventListener('change', applyFilters);
+    if (statusFilter) statusFilter.addEventListener('change', applyFilters);
+    requestAnimationFrame(() => {
+      syncPanelHeights();
+      calculateReviewRowsPerPage();
+      applyReviewPagination();
+      syncEmailBodyAndFormListHeights();
+    });
+    window.addEventListener('resize', () => {
+      clearTimeout(window.__reviewResizeTimer);
+      window.__reviewResizeTimer = setTimeout(() => {
+        syncPanelHeights();
+        calculateReviewRowsPerPage();
+        applyReviewPagination();
+        syncEmailBodyAndFormListHeights();
+      }, 150);
+    });
+
+    const subjectField = document.getElementById('subject');
+    const messageField = document.getElementById('message');
+    if (subjectField) {
+      subjectField.addEventListener('input', () => {
+        subjectField.dataset.auto = 'false';
+      });
+    }
+    if (messageField) {
+      messageField.addEventListener('input', () => {
+        messageField.dataset.auto = 'false';
+      });
+    }
+
+    const toEmailField = document.getElementById('toEmail');
+    if (toEmailField) {
+      toEmailField.addEventListener('input', () => syncRecipientsFromField(toEmailField, recipientList, sharedGroups, toGroupList));
+      syncRecipientsFromField(toEmailField, recipientList, sharedGroups, toGroupList);
+    }
+
+    if (addAllGmBtn) {
+      addAllGmBtn.addEventListener('click', () => {
+        toggleEmailsInField(toEmailField, recipientList, gmEmails || []);
+        updateRecipientButtonStates();
+      });
+    }
+    if (addAllBdBtn) {
+      addAllBdBtn.addEventListener('click', () => {
+        toggleEmailsInField(toEmailField, recipientList, bdEmails || []);
+        updateRecipientButtonStates();
+      });
+    }
+    if (addAllPoBtn) {
+      addAllPoBtn.addEventListener('click', () => {
+        toggleEmailsInField(toEmailField, recipientList, poEmails || []);
+        updateRecipientButtonStates();
+      });
+    }
+    if (addAllOmBtn) {
+      addAllOmBtn.addEventListener('click', () => {
+        toggleEmailsInField(toEmailField, recipientList, omEmails || []);
+        updateRecipientButtonStates();
+      });
+    }
+    if (addAllSupervisorBtn) {
+      addAllSupervisorBtn.addEventListener('click', () => {
+        toggleEmailsInField(toEmailField, recipientList, supervisorEmails || []);
+        updateRecipientButtonStates();
+      });
+    }
+    if (addToGroupBtn) {
+      addToGroupBtn.addEventListener('click', () => openGroupModal('to'));
+    }
+
+    if (recipientList) {
+      recipientList.addEventListener('click', (event) => {
+        const btn = event.target.closest('button[data-email]');
+        if (!btn) return;
+        const email = btn.getAttribute('data-email');
+        const current = parseEmails(toEmailField.value)
+          .filter(val => val !== email);
+        updateRecipientsField(toEmailField, recipientList, current);
+        updateRecipientButtonStates();
+      });
+    }
+
+    const ccEmailField = document.getElementById('ccEmail');
+    const addCcGmBtn = document.getElementById('addCcGmBtn');
+    const addCcBdBtn = document.getElementById('addCcBdBtn');
+    const addCcPoBtn = document.getElementById('addCcPoBtn');
+    const addCcOmBtn = document.getElementById('addCcOmBtn');
+    const addCcSupervisorBtn = document.getElementById('addCcSupervisorBtn');
+    if (ccEmailField) {
+      ccEmailField.addEventListener('input', () => syncRecipientsFromField(ccEmailField, ccRecipientList, sharedGroups, ccGroupList));
+      syncRecipientsFromField(ccEmailField, ccRecipientList, sharedGroups, ccGroupList);
+    }
+
+    if (addCcGmBtn) {
+      addCcGmBtn.addEventListener('click', () => {
+        toggleEmailsInField(ccEmailField, ccRecipientList, gmEmails || []);
+        updateRecipientButtonStates();
+      });
+    }
+    if (addCcBdBtn) {
+      addCcBdBtn.addEventListener('click', () => {
+        toggleEmailsInField(ccEmailField, ccRecipientList, bdEmails || []);
+        updateRecipientButtonStates();
+      });
+    }
+    if (addCcPoBtn) {
+      addCcPoBtn.addEventListener('click', () => {
+        toggleEmailsInField(ccEmailField, ccRecipientList, poEmails || []);
+        updateRecipientButtonStates();
+      });
+    }
+    if (addCcOmBtn) {
+      addCcOmBtn.addEventListener('click', () => {
+        toggleEmailsInField(ccEmailField, ccRecipientList, omEmails || []);
+        updateRecipientButtonStates();
+      });
+    }
+    if (addCcSupervisorBtn) {
+      addCcSupervisorBtn.addEventListener('click', () => {
+        toggleEmailsInField(ccEmailField, ccRecipientList, supervisorEmails || []);
+        updateRecipientButtonStates();
+      });
+    }
+    if (addCcGroupBtn) {
+      addCcGroupBtn.addEventListener('click', () => openGroupModal('cc'));
+    }
+
+    if (ccRecipientList) {
+      ccRecipientList.addEventListener('click', (event) => {
+        const btn = event.target.closest('button[data-email]');
+        if (!btn) return;
+        const email = btn.getAttribute('data-email');
+        const current = parseEmails(ccEmailField.value)
+          .filter(val => val !== email);
+        updateRecipientsField(ccEmailField, ccRecipientList, current);
+        updateRecipientButtonStates();
+      });
+    }
+
+    const groupModal = document.getElementById('groupModal');
+    const groupSaveBtn = document.getElementById('groupSaveBtn');
+    const groupCancelBtn = document.getElementById('groupCancelBtn');
+    if (groupSaveBtn) {
+      groupSaveBtn.addEventListener('click', () => {
+        const nameInput = document.getElementById('groupNameInput');
+        const emailsInput = document.getElementById('groupEmailsInput');
+        const name = nameInput.value.trim();
+        const emails = parseEmails(emailsInput.value);
+        if (!name || emails.length === 0) return;
+        if (groupModal.dataset.mode === 'edit') {
+          const editGroup = groupModal.dataset.editGroup;
+          const group = sharedGroups.find(g => g.name === editGroup);
+          if (!group) return;
+          const oldEmails = (group.emails || []).slice();
+          group.name = name;
+          group.emails = emails;
+          for (const { input, list } of [
+            { input: toEmailField, list: recipientList },
+            { input: ccEmailField, list: ccRecipientList }
+          ]) {
+            if (!input) continue;
+            const cur = parseEmails(input.value);
+            const hadGroup = oldEmails.some(e => cur.includes(e));
+            if (!hadGroup) continue;
+            const withoutOld = cur.filter(e => !oldEmails.includes(e));
+            const next = Array.from(new Set([...withoutOld, ...emails]));
+            updateRecipientsField(input, list, next);
+          }
+        } else {
+          sharedGroups.push({ name, emails });
+          if (groupModal.dataset.target === 'cc') {
+            const currentCc = parseEmails(ccEmailField.value);
+            updateRecipientsField(ccEmailField, ccRecipientList, currentCc.concat(emails));
+          } else {
+            const currentTo = parseEmails(toEmailField.value);
+            updateRecipientsField(toEmailField, recipientList, currentTo.concat(emails));
+          }
+        }
+        rerenderAllGroupLists();
+        closeGroupModal();
+      });
+    }
+
+    rerenderAllGroupLists();
+
+    if (toGroupButtons) {
+      toGroupButtons.addEventListener('click', (event) => {
+        const editBtn = event.target.closest('button[data-edit-group]');
+        if (editBtn) {
+          openGroupModalForEdit(editBtn.dataset.editGroup);
+          return;
+        }
+        const removeBtn = event.target.closest('button[data-remove-group]');
+        if (removeBtn) {
+          removeGroupByName(removeBtn.dataset.removeGroup);
+          return;
+        }
+        const btn = event.target.closest('button[data-group]');
+        if (!btn) return;
+        const group = sharedGroups.find(g => g.name === btn.dataset.group);
+        if (!group) return;
+        toggleEmailsInField(toEmailField, recipientList, group.emails || []);
+        updateRecipientButtonStates();
+      });
+    }
+
+    if (ccGroupButtons) {
+      ccGroupButtons.addEventListener('click', (event) => {
+        const editBtn = event.target.closest('button[data-edit-group]');
+        if (editBtn) {
+          openGroupModalForEdit(editBtn.dataset.editGroup);
+          return;
+        }
+        const removeBtn = event.target.closest('button[data-remove-group]');
+        if (removeBtn) {
+          removeGroupByName(removeBtn.dataset.removeGroup);
+          return;
+        }
+        const btn = event.target.closest('button[data-group]');
+        if (!btn) return;
+        const group = sharedGroups.find(g => g.name === btn.dataset.group);
+        if (!group) return;
+        toggleEmailsInField(ccEmailField, ccRecipientList, group.emails || []);
+        updateRecipientButtonStates();
+      });
+    }
+
+    if (groupCancelBtn) {
+      groupCancelBtn.addEventListener('click', closeGroupModal);
+    }
+
+    if (groupModal) {
+      groupModal.addEventListener('click', (event) => {
+        if (event.target === groupModal) closeGroupModal();
+      });
+    }
+
+    if (selectAllRows) {
+      selectAllRows.addEventListener('change', () => {
+        if (!submissionTableBody) return;
+        const rows = submissionTableBody.querySelectorAll('.submission-row');
+        rows.forEach(row => {
+          if (row.style.display === 'none') return;
+          const checkbox = row.querySelector('.row-check');
+          if (checkbox) {
+            checkbox.checked = selectAllRows.checked;
+            row.classList.toggle('row-selected', checkbox.checked);
+          }
+        });
+        updateSelectedIds();
+        updateAttachmentView();
+        updateSubjectAndMessage();
+      });
+    }
+
+    if (submissionTableBody) {
+      submissionTableBody.addEventListener('change', (event) => {
+        const checkbox = event.target.closest('.row-check');
+        if (!checkbox) return;
+        const row = checkbox.closest('.submission-row');
+        if (row) {
+          row.classList.toggle('row-selected', checkbox.checked);
+        }
+        updateSelectedIds();
+        updateAttachmentView();
+        updateSubjectAndMessage();
+      });
+
+      submissionTableBody.addEventListener('click', (event) => {
+        const checkbox = event.target.closest('.row-check');
+        if (checkbox) return;
+        const row = event.target.closest('.submission-row');
+        if (!row) return;
+        const rowCheckbox = row.querySelector('.row-check');
+        if (rowCheckbox) {
+          rowCheckbox.checked = !rowCheckbox.checked;
+          row.classList.toggle('row-selected', rowCheckbox.checked);
+        }
+        updateSelectedIds();
+        updateAttachmentView();
+        updateSubjectAndMessage();
+      });
+    }
+
+    if (clearSelectedBtn) {
+      clearSelectedBtn.addEventListener('click', () => {
+        const rows = submissionTableBody ? submissionTableBody.querySelectorAll('.submission-row') : [];
+        rows.forEach(row => {
+          const checkbox = row.querySelector('.row-check');
+          if (checkbox) checkbox.checked = false;
+          row.classList.remove('row-selected');
+        });
+        if (selectAllRows) selectAllRows.checked = false;
+        updateSelectedIds();
+        updateAttachmentView();
+        updateSubjectAndMessage();
+      });
+    }
+
+    if (addSelectedBtn) {
+      addSelectedBtn.addEventListener('click', () => {
+        if (!submissionTableBody) return;
+        const selectedRows = Array.from(submissionTableBody.querySelectorAll('.submission-row'))
+          .filter(row => {
+            const checkbox = row.querySelector('.row-check');
+            return checkbox && checkbox.checked;
+          });
+
+        if (selectedRows.length === 0) {
+          showAlert('Select at least one reviewed form.', 'error');
+          return;
+        }
+
+        updateSubjectAndMessage();
+        updateSelectedIds();
+        updateAttachmentView();
+      });
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      showAlert('', '');
+
+      updateSelectedIds();
+      const idsValue = selectedSubmissionIdsInput ? selectedSubmissionIdsInput.value : '';
+      const payload = {
+        to: document.getElementById('toEmail').value,
+        cc: document.getElementById('ccEmail').value,
+        subject: document.getElementById('subject').value,
+        message: document.getElementById('message').value,
+        submission_ids: idsValue ? idsValue.split(',').filter(Boolean) : []
+      };
+
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        showAlert('You are not logged in.', 'error');
+        return;
+      }
+
+      try {
+        const response = await fetch('/bd/email-module/send', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await response.json();
+        if (response.ok && data.success) {
+          showAlert(data.message || 'Email sent successfully', 'success');
+        } else {
+          showAlert(data.error || 'Failed to send email', 'error');
+        }
+      } catch (error) {
+        showAlert('Failed to send email', 'error');
+      }
+    });
+  </script>
+  <script src="{{ url_for('static', filename='api-client.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>

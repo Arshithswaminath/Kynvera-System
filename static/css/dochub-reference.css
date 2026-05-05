@@ -1,0 +1,1991 @@
+/**
+ * DocHub — TechDocs reference UI (screenshot layout)
+ * Injaaz: navy shell #0A192F, mint #86efac, primary #125435
+ * Replaces previous dochub-techdocs / dochub-docs-website styling.
+ */
+:root {
+  /* Aliases for templates / JS inline */
+  --dh-primary: #125435;
+  --dh-primary-dark: #0a2e1d;
+  --dh-primary-light: #1a7a4d;
+  --dh-primary-soft: rgba(18, 84, 53, 0.12);
+  --dh-muted: #5a6e85;
+  --dh-dim: #94a3b8;
+  --dh-bg: #f5f8fc;
+  --dh-surface: #ffffff;
+  --dh-border: #dce6f0;
+  --dh-text: #1a2940;
+  --dh-green: #16a34a;
+  --dh-amber: #d97706;
+  --dh-purple: #7c3aed;
+  --dh-radius: 8px;
+  --dh-navy: #0a1628;
+  --dh-navy-mid: #0f1f17;
+  --dh-navy-deep: #050d18;
+  --dh-mint: #86efac;
+  --dh-mint-dark: #4ade80;
+  --dh-primary: #125435;
+  --dh-primary-light: #1a7a4d;
+  --dh-silver: #a8b8cc;
+  --dh-silver-dim: rgba(168, 184, 204, 0.55);
+  --dh-content-bg: #ffffff;
+  --dh-panel-bg: #f5f8fc;
+  --dh-border: #dce6f0;
+  --dh-text: #1a2940;
+  --dh-muted: #5a6e85;
+  --dh-nav-h: 72px;
+  /* Breathing room between main app navbar and DocHub bar */
+  --dh-topbar-gap: 12px;
+  --dh-topbar-h: 56px;
+  --dh-sidebar-w: 280px;
+  /* Status strip removed on DocHub — keep 0 so sidebar can extend to viewport bottom */
+  --dh-status-h: 0px;
+  --dh-font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", sans-serif;
+  --dh-font-display: ui-serif, "New York", "Iowan Old Style", Georgia, serif;
+  --dh-font-brand: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", sans-serif;
+}
+
+/* Single vertical scroll on html; body does not create a second track */
+html.dochub-root {
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
+}
+
+body.dochub-page.dochub-techdocs {
+  margin: 0;
+  font-family: var(--dh-font-ui);
+  background: var(--dh-panel-bg);
+  color: var(--dh-text);
+  overflow-x: hidden !important;
+  overflow-y: visible !important;
+  padding-top: var(--dh-nav-h) !important;
+  /* Break dashboard.css flex column + min-height chain that can nest a second scroll */
+  display: block !important;
+  min-height: 0 !important;
+  --dh-status-h: 0px;
+}
+
+body.dochub-page .dh-app.dh-docs-shell {
+  flex-direction: column;
+  overflow: visible !important;
+  min-height: auto !important;
+  background: transparent;
+}
+
+/* ═══════════ Top bar (reference: TD TechDocs + Enterprise + actions) ═══════════ */
+.dh-docs-topbar {
+  position: fixed;
+  top: calc(var(--dh-nav-h) + var(--dh-topbar-gap));
+  left: 0;
+  right: 0;
+  height: var(--dh-topbar-h);
+  z-index: 196;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 24px;
+  background: linear-gradient(180deg, var(--dh-navy) 0%, var(--dh-navy-mid) 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: 0 4px 24px rgba(5, 15, 35, 0.35);
+}
+
+.dh-docs-topbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.dh-docs-logo {
+  width: 34px;
+  height: 34px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, var(--dh-mint), var(--dh-primary));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--dh-font-brand);
+  font-size: 11px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.5px;
+}
+
+.dh-docs-name {
+  font-family: var(--dh-font-brand);
+  font-weight: 800;
+  font-size: 18px;
+  color: #fff;
+  letter-spacing: -0.3px;
+  text-decoration: none;
+}
+
+.dh-docs-name span {
+  color: var(--dh-mint);
+}
+
+/* Enterprise pill — mint field, dark text (reference) */
+.dh-docs-tag {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.85px;
+  text-transform: uppercase;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--dh-mint);
+  color: var(--dh-navy-deep);
+  border: none;
+  white-space: nowrap;
+}
+
+.dh-docs-topbar-tools {
+  display: flex;
+  align-items: center;
+  gap: 10px 12px;
+  flex: 1;
+  min-width: 0;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.dh-docs-topbar-tools .dh-breadcrumb {
+  color: var(--dh-silver);
+  font-size: 13px;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.dh-docs-topbar-tools .dh-breadcrumb .bc-current {
+  color: #fff;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dh-docs-topbar-tools .dh-breadcrumb .bc-sep {
+  color: var(--dh-silver-dim);
+}
+
+.dh-docs-topbar-tools .dh-search-box {
+  width: min(240px, 28vw);
+}
+
+.dh-docs-topbar-tools .dh-search-box input {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  color: #e8eef5;
+  font-size: 12.5px;
+}
+
+.dh-docs-topbar-tools .dh-search-box input::placeholder {
+  color: rgba(168, 184, 204, 0.5);
+}
+
+.dh-docs-topbar-tools .dh-search-box input:focus {
+  outline: none;
+  border-color: var(--dh-mint);
+  box-shadow: 0 0 0 2px rgba(134, 239, 172, 0.25);
+}
+
+.dh-docs-topbar-tools .dh-search-box .si {
+  color: var(--dh-silver-dim);
+}
+
+.dh-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dh-search-box {
+  position: relative;
+}
+
+/* Ghost admin (reference) */
+body.dochub-techdocs .dh-docs-topbar-tools .dh-btn-outline,
+.dh-docs-topbar-tools .dh-top-btn.dh-btn-outline {
+  background: transparent;
+  color: #e2e8f0;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+body.dochub-techdocs .dh-docs-topbar-tools .dh-btn-outline:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+/* Primary actions in top bar — outline mint border for secondary */
+.dh-docs-topbar-tools .dh-top-btn:not(.dh-btn-primary):not(.dh-btn-outline) {
+  background: rgba(255, 255, 255, 0.06);
+  color: #e8eef5;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+}
+
+/* Save / Publish — mint solid like reference */
+.dh-docs-topbar-tools .dh-top-btn.dh-btn-primary {
+  background: var(--dh-mint) !important;
+  color: var(--dh-navy-deep) !important;
+  border: none !important;
+  border-radius: 6px;
+  font-weight: 700;
+  box-shadow: 0 2px 12px rgba(134, 239, 172, 0.35) !important;
+}
+
+.dh-docs-topbar-tools .dh-top-btn.dh-btn-primary:hover {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+}
+
+/* ═══════════ Layout row ═══════════ */
+.dh-docs-row {
+  display: block;
+  width: 100%;
+  margin-top: calc(var(--dh-topbar-gap) + var(--dh-topbar-h));
+  overflow: visible;
+}
+
+/*
+ * Sidebar rail: fixed top + bottom:0 — height does NOT use 100vh/100dvh (those change when
+ * the browser UI or scroll position changes, so switching Overview vs Warranty looked like
+ * the menu “compromised”). Scroll only inside .dh-sidebar-nav.
+ */
+body.dochub-techdocs #dhSidebar.dh-sidebar {
+  --dh-sidebar-top: calc(var(--dh-nav-h) + var(--dh-topbar-gap) + var(--dh-topbar-h));
+  position: fixed !important;
+  top: var(--dh-sidebar-top);
+  left: 0 !important;
+  bottom: 0 !important;
+  /* Locked width — never shrinks when nav scrolls or sections expand */
+  width: var(--dh-sidebar-w) !important;
+  min-width: var(--dh-sidebar-w) !important;
+  max-width: var(--dh-sidebar-w) !important;
+  flex-shrink: 0 !important;
+  height: auto;
+  min-height: 0;
+  max-height: none;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  z-index: 100;
+  background: transparent !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.06) !important;
+  overflow: hidden;
+  padding-top: 16px;
+  display: flex;
+  flex-direction: column;
+  overscroll-behavior: contain;
+  box-sizing: border-box;
+  isolation: isolate;
+}
+
+/* Static background layer — never scrolls; only nav words scroll */
+body.dochub-techdocs #dhSidebar.dh-sidebar::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: var(--dh-navy) !important;
+  pointer-events: none;
+}
+
+.dh-sidebar-nav {
+  position: relative;
+  z-index: 1;
+  padding: 0 0 16px !important;
+  flex: 1 1 0;
+  min-height: 0;
+  min-width: 0;
+  align-self: stretch;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
+  overflow-y: auto;
+  /* Reserve scrollbar lane so expanding Software Management etc. doesn’t narrow menu labels */
+  scrollbar-gutter: stable;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  background: transparent !important;
+}
+
+body.dochub-techdocs #dhSidebar.dh-sidebar .dh-sidebar-nav::-webkit-scrollbar {
+  width: 4px;
+}
+
+body.dochub-techdocs #dhSidebar.dh-sidebar .dh-sidebar-nav::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 2px;
+}
+
+.dh-nav-group-toggle {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  cursor: pointer !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  letter-spacing: 1.2px !important;
+  text-transform: uppercase !important;
+  color: var(--dh-silver-dim) !important;
+  padding: 18px 20px 8px !important;
+  border-radius: 0 !important;
+}
+
+.dh-nav-collapse:not(.open) {
+  display: none !important;
+}
+
+.dh-nav-collapse.open {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+}
+
+.dh-nav-chevron {
+  font-size: 10px;
+  opacity: 0.7;
+  transition: transform 0.2s ease;
+}
+
+.dh-nav-chevron:not(.open) {
+  transform: rotate(-90deg);
+}
+
+.dh-nav-item {
+  display: flex !important;
+  align-items: center !important;
+  gap: 9px !important;
+  cursor: pointer !important;
+  border-radius: 0 !important;
+  margin-bottom: 0 !important;
+  padding: 10px 20px !important;
+  padding-left: 17px !important;
+  border-left: 3px solid transparent !important;
+  font-size: 13.5px !important;
+  color: var(--dh-silver) !important;
+  font-weight: 400 !important;
+}
+
+.dh-nav-item .ni {
+  font-size: 15px;
+  width: 20px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.dh-cat-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.dh-nav-item:hover {
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: #fff !important;
+}
+
+.dh-nav-item.active {
+  background: rgba(0, 87, 184, 0.18) !important;
+  color: #fff !important;
+  font-weight: 600 !important;
+  border-left-color: var(--dh-mint) !important;
+}
+
+.dh-nav-item .nbadge {
+  margin-left: auto;
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: rgba(200, 210, 230, 0.75) !important;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 10px;
+}
+
+.dh-nav-item.active .nbadge {
+  background: rgba(134, 239, 172, 0.2) !important;
+  color: var(--dh-mint) !important;
+}
+
+.dh-sidebar-bottom {
+  border-top: 1px solid rgba(255, 255, 255, 0.06) !important;
+  padding: 14px 12px !important;
+}
+
+.dh-user-av {
+  background: linear-gradient(135deg, var(--dh-mint), var(--dh-primary)) !important;
+}
+
+/* Main column — offset for fixed sidebar (all shells: sample / library / viewer / editor) */
+body.dochub-page.dochub-techdocs #layout.dh-docs-shell .dh-docs-row > #main.dh-main,
+body.dochub-techdocs #main.dh-main {
+  margin-left: var(--dh-sidebar-w);
+  overflow: visible !important;
+  padding-bottom: calc(var(--dh-status-h) + 20px);
+  min-height: calc(100vh - var(--dh-nav-h) - var(--dh-topbar-gap) - var(--dh-topbar-h) - 24px);
+  flex: none !important;
+  display: flex;
+  flex-direction: column;
+  width: auto;
+  max-width: none;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+/* Left rail: fully static — no transitions/animations anywhere in the sidebar */
+body.dochub-techdocs #dhSidebar.dh-sidebar,
+body.dochub-techdocs #dhSidebar.dh-sidebar * {
+  transition: none !important;
+  animation: none !important;
+}
+
+/* Right pane: layout only — no entrance motion (static UI) */
+.dh-main-shell {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+/*
+ * Desktop: sidebar is always the same fixed rail regardless of which main content is visible
+ * (#dhSampleShell vs #dhLibraryShell, document length, editor on/off).
+ */
+@media (min-width: 901px) {
+  body.dochub-page.dochub-techdocs #layout.dh-docs-shell .dh-docs-row > aside#dhSidebar.dh-sidebar,
+  body.dochub-techdocs #dhSidebar.dh-sidebar {
+    position: fixed !important;
+    left: 0 !important;
+    transform: none !important;
+    transition: none !important;
+    width: var(--dh-sidebar-w) !important;
+    min-width: var(--dh-sidebar-w) !important;
+    max-width: var(--dh-sidebar-w) !important;
+    flex-shrink: 0 !important;
+    --dh-sidebar-top: calc(var(--dh-nav-h) + var(--dh-topbar-gap) + var(--dh-topbar-h));
+    top: var(--dh-sidebar-top);
+    bottom: 0 !important;
+    height: auto;
+    max-height: none;
+    z-index: 100;
+  }
+
+  body.dochub-page.dochub-techdocs #layout.dh-docs-shell .dh-docs-row > #main.dh-main,
+  body.dochub-techdocs #main.dh-main {
+    margin-left: var(--dh-sidebar-w) !important;
+  }
+}
+
+.dh-content-area {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  overflow: visible !important;
+  min-height: auto !important;
+  width: 100%;
+  background: var(--dh-content-bg);
+}
+
+/* Window scroll model — no overflow traps on panels */
+body.dochub-techdocs .dh-body-split {
+  overflow: visible !important;
+  min-height: auto !important;
+}
+
+body.dochub-techdocs .dh-doc-panel {
+  overflow: visible !important;
+  display: flex;
+  flex-direction: column;
+}
+
+body.dochub-techdocs .dh-doc-list {
+  overflow-y: visible !important;
+  flex: none !important;
+  padding: 10px;
+}
+
+body.dochub-techdocs .dh-editor-area {
+  overflow: visible !important;
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  min-height: auto !important;
+  display: flex;
+  flex-direction: column;
+}
+
+body.dochub-techdocs .dh-viewer-pane.visible {
+  overflow: visible !important;
+  min-height: auto !important;
+}
+
+body.dochub-techdocs .dh-viewer-inner,
+body.dochub-techdocs .dh-viewer-content {
+  overflow: visible !important;
+  max-height: none !important;
+}
+
+body.dochub-techdocs .dh-editor-canvas {
+  overflow: visible !important;
+  max-height: none !important;
+}
+
+body.dochub-techdocs .dh-doc-info {
+  overflow: visible !important;
+}
+
+body.dochub-techdocs .dh-empty-state {
+  flex: none !important;
+  min-height: 280px;
+}
+
+/* ═══════════ Hero band (reference gradient + serif title) ═══════════ */
+.dh-hero-band {
+  display: none;
+  position: relative;
+  background: linear-gradient(135deg, var(--dh-navy) 0%, var(--dh-navy-mid) 50%, #0a1e3d 100%);
+  padding: 48px 48px 40px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.dh-hero-band.visible {
+  display: block;
+}
+
+.dh-hero-band::before {
+  content: '';
+  position: absolute;
+  right: -60px;
+  top: -60px;
+  width: 420px;
+  height: 420px;
+  background: radial-gradient(circle, rgba(134, 239, 172, 0.12) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.dh-hero-band::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--dh-mint), transparent);
+  opacity: 0.45;
+}
+
+.dh-hero-inner {
+  position: relative;
+  z-index: 1;
+  max-width: 960px;
+}
+
+.dh-hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--dh-mint-dark);
+  margin-bottom: 14px;
+  font-family: var(--dh-font-ui);
+}
+
+.dh-hero-eyebrow::before {
+  content: '';
+  width: 20px;
+  height: 2px;
+  background: var(--dh-mint);
+}
+
+.dh-hero-title {
+  font-family: var(--dh-font-display);
+  font-weight: 800;
+  font-size: clamp(1.75rem, 4vw, 2.25rem);
+  line-height: 1.15;
+  color: #fff;
+  letter-spacing: -0.03em;
+  margin: 0 0 14px;
+}
+
+.dh-hero-title .dh-hero-accent {
+  color: var(--dh-mint);
+}
+
+.dh-hero-subtitle {
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--dh-silver);
+  max-width: 680px;
+  margin: 0;
+}
+
+.dh-hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 18px;
+  margin-top: 26px;
+}
+
+.dh-hero-badge {
+  font-size: 12px;
+  color: rgba(168, 184, 204, 0.9);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dh-hero-badge .dh-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--dh-mint);
+  box-shadow: 0 0 8px rgba(134, 239, 172, 0.6);
+}
+
+.dh-hero-divider {
+  width: 1px;
+  height: 14px;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* ═══════════ Body split & panels ═══════════ */
+.dh-body-split {
+  display: flex;
+  align-items: stretch;
+  flex-wrap: nowrap;
+  border-top: 1px solid var(--dh-border);
+  min-height: auto;
+  overflow: visible;
+}
+
+.dh-doc-panel {
+  width: 300px;
+  min-width: 260px;
+  background: var(--dh-panel-bg) !important;
+  border-right: 1px solid var(--dh-border) !important;
+  flex-shrink: 0;
+}
+
+.dh-doc-header {
+  padding: 14px 16px !important;
+  background: #fff;
+  border-bottom: 1px solid var(--dh-border) !important;
+}
+
+.dh-dp-title {
+  flex: 1;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--dh-muted) !important;
+}
+
+.dh-dp-add {
+  border-radius: 6px !important;
+  background: var(--dh-primary) !important;
+}
+
+.dh-doc-filter {
+  padding: 10px 12px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  background: #fff;
+  border-bottom: 1px solid var(--dh-border) !important;
+}
+
+.dh-df-chip.active {
+  background: rgba(18, 84, 53, 0.12) !important;
+  border-color: var(--dh-primary) !important;
+  color: var(--dh-primary) !important;
+}
+
+.dh-doc-item {
+  border-radius: 8px !important;
+  border: 1px solid rgba(10, 25, 47, 0.08) !important;
+  background: #fff !important;
+  padding: 14px 12px;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-height: 52px;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.dh-doc-item:hover {
+  border-color: rgba(18, 84, 53, 0.25) !important;
+  background: #f8fdf9 !important;
+}
+
+.dh-doc-item.active {
+  border-color: var(--dh-primary) !important;
+  background: rgba(18, 84, 53, 0.06) !important;
+  box-shadow: none !important;
+}
+
+.dh-doc-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dh-dp-count {
+  background: var(--dh-bg);
+  border: 1px solid var(--dh-border);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--dh-muted);
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+
+.dh-dp-add {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 18px;
+  cursor: pointer;
+  border: none;
+  line-height: 1;
+  transition: transform 0.15s, filter 0.15s;
+}
+
+.dh-dp-add:hover {
+  filter: brightness(1.08);
+  transform: scale(1.04);
+}
+
+.dh-df-chip {
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--dh-border);
+  background: transparent;
+  color: var(--dh-muted);
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.dh-df-chip:hover {
+  border-color: #c5d0dc;
+  color: var(--dh-text);
+}
+
+.dh-doc-item-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+  background: #fff;
+  border: 1px solid var(--dh-border);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.dh-doc-item.active .dh-doc-item-icon {
+  border-color: rgba(18, 84, 53, 0.25);
+}
+
+.dh-doc-item-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.dh-doc-item-name {
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 5px;
+  color: var(--dh-primary);
+  line-height: 1.3;
+}
+
+.dh-doc-item:not(.active) .dh-doc-item-name {
+  color: var(--dh-text);
+}
+
+.dh-doc-item-meta {
+  font-size: 11px;
+  color: var(--dh-muted);
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.dh-doc-item-preview {
+  font-size: 11px;
+  color: var(--dh-dim);
+  margin-top: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-style: italic;
+}
+
+.dh-status-pip {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.pip-draft {
+  background: var(--dh-amber);
+}
+
+.pip-published {
+  background: var(--dh-green);
+}
+
+.pip-review {
+  background: var(--dh-purple);
+}
+
+.pip-archived {
+  background: var(--dh-dim);
+}
+
+/* Editor / viewer — white canvas */
+.dh-editor-area {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: #fff !important;
+  border-left: 1px solid var(--dh-border);
+}
+
+.dh-toc {
+  width: 220px;
+  min-width: 200px;
+  flex-shrink: 0;
+  padding: 1.5rem 1rem 2rem 1.5rem;
+  border-right: 1px solid var(--dh-border);
+  align-self: flex-start;
+  overflow-y: visible;
+  display: none;
+}
+
+.dh-toc.visible {
+  display: block;
+}
+
+.dh-toc-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--dh-text);
+  margin-bottom: 0.75rem;
+  padding-left: 0.5rem;
+}
+
+.dh-toc-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.dh-toc-list a {
+  display: block;
+  padding: 0.4rem 0.5rem 0.4rem 0.75rem;
+  font-size: 13px;
+  color: var(--dh-muted);
+  text-decoration: none;
+  margin-bottom: 2px;
+  border-radius: 0 4px 4px 0;
+  transition: background 0.15s, color 0.15s;
+  border-left: 3px solid transparent;
+}
+
+.dh-toc-list a:hover {
+  color: var(--dh-text);
+  background: rgba(18, 84, 53, 0.06);
+}
+
+.dh-toc-list a.active {
+  color: var(--dh-primary);
+  font-weight: 600;
+  border-left-color: var(--dh-primary);
+  background: rgba(18, 84, 53, 0.06);
+}
+
+.dh-toc-list a.dh-toc-h3 {
+  padding-left: 1.25rem;
+  font-size: 12px;
+}
+
+.dh-mode-tabs {
+  display: flex;
+  gap: 0;
+  background: #fff !important;
+  border-bottom: 1px solid var(--dh-border) !important;
+  padding: 0 20px !important;
+}
+
+.dh-mode-tab {
+  padding: 10px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--dh-muted);
+  cursor: pointer;
+  border: none;
+  background: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.15s, border-color 0.15s;
+  font-family: var(--dh-font-ui);
+}
+
+.dh-mode-tab:hover {
+  color: var(--dh-text);
+}
+
+.dh-mode-tab.active {
+  color: var(--dh-primary) !important;
+  border-bottom-color: var(--dh-primary) !important;
+}
+
+.dh-viewer-pane {
+  flex: none;
+  overflow: visible;
+  padding: 0;
+  display: none;
+  background: #fff;
+  flex-direction: column;
+}
+
+.dh-viewer-pane.visible {
+  display: flex;
+}
+
+.dh-viewer-inner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  flex: none;
+  min-height: auto;
+  border-top: 1px solid var(--dh-border);
+  width: 100%;
+}
+
+.dh-viewer-content {
+  flex: 1;
+  min-width: 0;
+  padding: 2.5rem 3rem 4rem;
+  max-width: 900px;
+  margin: 0 auto;
+  width: 100%;
+  font-family: var(--dh-font-ui);
+  font-size: 16px;
+  line-height: 1.75;
+  color: #1e293b;
+  background: transparent;
+}
+
+.dh-viewer-actions {
+  padding: 1rem 2rem 2rem;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  border-top: 1px solid var(--dh-border);
+  background: #f8fafc;
+}
+
+.dh-editor-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-wrap: wrap;
+  padding: 0 24px;
+  min-height: 46px;
+  border-bottom: 1px solid var(--dh-border);
+  background: #f8fafc !important;
+}
+
+.dh-toolbar-sep {
+  width: 1px;
+  height: 22px;
+  background: var(--dh-border);
+  margin: 0 6px;
+}
+
+.dh-tb-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--dh-muted);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.13s, color 0.13s;
+  font-family: inherit;
+}
+
+.dh-tb-btn:hover {
+  background: var(--dh-bg);
+  color: var(--dh-text);
+}
+
+.dh-tb-select {
+  height: 28px;
+  border: 1px solid var(--dh-border);
+  border-radius: 6px;
+  background: var(--dh-bg);
+  color: var(--dh-muted);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 0 8px;
+  cursor: pointer;
+  outline: none;
+}
+
+.dh-toolbar-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dh-save-status {
+  font-size: 11.5px;
+  color: var(--dh-dim);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.dh-save-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--dh-green);
+}
+
+.dh-doc-meta-bar {
+  padding: 0.75rem 2rem;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--dh-border);
+  background: #f8fafc !important;
+}
+
+.dh-doc-title-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-family: inherit;
+  font-size: 19px;
+  font-weight: 800;
+  color: var(--dh-text);
+  background: transparent;
+  letter-spacing: -0.3px;
+  min-width: 0;
+}
+
+.dh-doc-title-input::placeholder {
+  color: var(--dh-dim);
+}
+
+.dh-meta-tag {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--dh-border);
+  background: var(--dh-bg);
+  color: var(--dh-muted);
+  transition: border-color 0.13s, color 0.13s;
+  white-space: nowrap;
+}
+
+.dh-meta-tag:hover {
+  border-color: #c5d0dc;
+  color: var(--dh-text);
+}
+
+.dh-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.dh-sb-draft {
+  background: rgba(217, 119, 6, 0.1);
+  color: var(--dh-amber);
+  border: 1px solid rgba(217, 119, 6, 0.2);
+}
+
+.dh-sb-published {
+  background: rgba(22, 163, 74, 0.1);
+  color: var(--dh-green);
+  border: 1px solid rgba(22, 163, 74, 0.2);
+}
+
+.dh-sb-review {
+  background: rgba(124, 58, 237, 0.1);
+  color: var(--dh-purple);
+  border: 1px solid rgba(124, 58, 237, 0.2);
+}
+
+.dh-sb-archived {
+  background: var(--dh-bg);
+  color: var(--dh-dim);
+  border: 1px solid var(--dh-border);
+}
+
+.dh-editor-canvas {
+  flex: none;
+  overflow: visible;
+  padding: 0;
+  background: #fff;
+}
+
+.dh-article-wrap {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  border-top: 1px solid var(--dh-border);
+  min-height: auto;
+  flex: none;
+}
+
+.dh-article-main {
+  flex: 1;
+  min-width: 0;
+  padding: 2.5rem 3rem 4rem;
+  max-width: 900px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.dh-editor-content {
+  max-width: none;
+  margin: 0;
+  background: transparent;
+  border-radius: 0;
+  min-height: 200px;
+  box-shadow: none;
+  padding: 0;
+  outline: none;
+  font-family: var(--dh-font-ui);
+  font-size: 16px;
+  line-height: 1.75;
+  color: #1e293b;
+}
+
+.dh-editor-content:focus {
+  outline: none;
+}
+
+.dh-editor-canvas .dh-editor-content {
+  overflow-x: auto;
+}
+
+.dh-doc-info {
+  flex: none;
+  overflow: visible;
+  padding: 28px 40px;
+  display: none;
+  background: var(--dh-panel-bg) !important;
+}
+
+.dh-doc-info.visible {
+  display: block;
+}
+
+.dh-doc-card {
+  max-width: 640px;
+  margin: 0 auto;
+  min-height: 200px;
+  padding: 32px 40px;
+  border-radius: 12px !important;
+  border: 1px solid var(--dh-border) !important;
+  box-shadow: 0 4px 24px rgba(10, 22, 40, 0.08) !important;
+  background: var(--dh-surface);
+}
+
+.dh-doc-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px 24px;
+  margin-bottom: 24px;
+}
+
+.dh-doc-meta-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dh-doc-meta-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--dh-dim);
+}
+
+.dh-doc-meta-val {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--dh-text);
+}
+
+.dh-doc-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 24px;
+  flex-wrap: wrap;
+}
+
+.dh-doc-actions .dh-top-btn {
+  min-height: 40px;
+}
+
+.dh-info-panel {
+  width: 228px;
+  min-width: 228px;
+  overflow: visible;
+  display: flex;
+  flex-direction: column;
+  background: #fff !important;
+  border-left: 1px solid var(--dh-border);
+}
+
+.dh-ip-section {
+  padding: 14px 15px 12px;
+  border-bottom: 1px solid var(--dh-border);
+}
+
+.dh-ip-label {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--dh-dim);
+  margin-bottom: 10px;
+}
+
+.dh-ip-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 7px;
+}
+
+.dh-ip-key {
+  font-size: 11.5px;
+  color: var(--dh-muted);
+}
+
+.dh-ip-val {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--dh-text);
+}
+
+.dh-empty-state {
+  flex: none;
+  min-height: 280px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 14px;
+  color: var(--dh-muted);
+  padding: 24px 16px 48px;
+  background: #fff;
+}
+
+.dh-empty-state .ee-icon {
+  font-size: 48px;
+  opacity: 0.25;
+}
+
+.dh-empty-state h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--dh-muted);
+}
+
+.dh-empty-state p {
+  font-size: 13px;
+  color: var(--dh-dim);
+  text-align: center;
+  max-width: 280px;
+  line-height: 1.6;
+}
+
+.dh-sidebar-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.dh-sidebar-user:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.dh-user-av {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.dh-user-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.dh-user-role {
+  font-size: 10.5px;
+  color: rgba(200, 200, 224, 0.45);
+}
+
+.dh-top-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-family: var(--dh-font-ui);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, transform 0.15s;
+  white-space: nowrap;
+  text-decoration: none;
+  min-height: 36px;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.dh-btn-outline {
+  background: transparent;
+  color: var(--dh-muted);
+  border: 1px solid var(--dh-border);
+}
+
+.dh-btn-outline:hover {
+  background: var(--dh-bg);
+  color: var(--dh-text);
+  border-color: #c5d0dc;
+}
+
+/* Prose — reference: heading + blue underline → mint */
+.dh-viewer-content h2,
+.dh-editor-content h2 {
+  font-family: var(--dh-font-display);
+  font-weight: 700;
+  font-size: 1.5rem;
+  color: var(--dh-navy);
+  padding-bottom: 10px;
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 2px solid var(--dh-border);
+  position: relative;
+}
+
+.dh-viewer-content h2::after,
+.dh-editor-content h2::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 56px;
+  height: 2px;
+  background: var(--dh-primary);
+}
+
+.dh-viewer-content h1,
+.dh-editor-content h1 {
+  font-family: var(--dh-font-display);
+  color: var(--dh-navy);
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1.2;
+  margin: 0 0 1.25rem;
+  letter-spacing: -0.02em;
+}
+
+.dh-viewer-content h3,
+.dh-editor-content h3 {
+  font-family: var(--dh-font-ui);
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin: 1.5rem 0 0.5rem;
+  color: #334155;
+}
+
+.dh-viewer-content p,
+.dh-editor-content p {
+  margin: 0 0 1rem;
+}
+
+.dh-viewer-content ul,
+.dh-viewer-content ol,
+.dh-editor-content ul,
+.dh-editor-content ol {
+  margin: 0 0 1rem 1.25rem;
+}
+
+.dh-viewer-content li,
+.dh-editor-content li {
+  margin-bottom: 0.35rem;
+}
+
+.dh-viewer-content strong,
+.dh-editor-content strong {
+  font-weight: 700;
+}
+
+.dh-viewer-content em,
+.dh-editor-content em {
+  font-style: italic;
+  color: var(--dh-muted);
+}
+
+.dh-viewer-content blockquote,
+.dh-editor-content blockquote {
+  border-left: 3px solid var(--dh-primary);
+  padding: 0.75rem 1rem;
+  margin: 1rem 0;
+  background: var(--dh-primary-soft);
+  border-radius: 0 6px 6px 0;
+  font-style: italic;
+  color: var(--dh-muted);
+}
+
+.dh-viewer-content hr,
+.dh-editor-content hr {
+  border: none;
+  border-top: 1px solid var(--dh-border);
+  margin: 2rem 0;
+}
+
+.dh-viewer-content table,
+.dh-editor-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: 14px;
+}
+
+.dh-viewer-content th,
+.dh-editor-content th {
+  background: var(--dh-bg);
+  border: 1px solid var(--dh-border);
+  padding: 9px 13px;
+  font-weight: 700;
+  text-align: left;
+  color: var(--dh-muted);
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.dh-viewer-content td,
+.dh-editor-content td {
+  border: 1px solid var(--dh-border);
+  padding: 9px 13px;
+}
+
+.dh-viewer-content .callout,
+.dh-editor-content .callout {
+  border-radius: 10px;
+  padding: 13px 16px;
+  margin: 16px 0;
+  display: flex;
+  gap: 10px;
+  font-size: 13.5px;
+  background: rgba(217, 119, 6, 0.1);
+  border: 1px solid rgba(217, 119, 6, 0.25);
+}
+
+.dh-viewer-content .callout-green,
+.dh-editor-content .callout-green {
+  background: rgba(22, 163, 74, 0.1);
+  border: 1px solid rgba(22, 163, 74, 0.2);
+}
+
+.dh-viewer-content .callout-icon,
+.dh-editor-content .callout-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.dh-viewer-content .sig-block,
+.dh-editor-content .sig-block {
+  background: var(--dh-bg);
+  border: 1px solid var(--dh-border);
+  border-radius: 10px;
+  padding: 18px 22px;
+  margin-top: 24px;
+}
+
+.dh-viewer-content .sig-line,
+.dh-editor-content .sig-line {
+  display: flex;
+  gap: 24px;
+  margin-top: 12px;
+}
+
+.dh-viewer-content .sig-field,
+.dh-editor-content .sig-field {
+  flex: 1;
+  border-bottom: 1px solid var(--dh-border);
+  padding-bottom: 4px;
+  font-size: 12px;
+  color: var(--dh-muted);
+  min-width: 0;
+}
+
+.dh-viewer-content img,
+.dh-editor-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  display: block;
+  margin: 1rem 0;
+}
+
+.dh-viewer-content .dh-video-wrap,
+.dh-editor-content .dh-video-wrap {
+  position: relative;
+  padding-bottom: 56.25%;
+  height: 0;
+  overflow: hidden;
+  max-width: 100%;
+  margin: 1.25rem 0;
+  border-radius: 8px;
+  background: #0f172a;
+}
+
+.dh-viewer-content .dh-video-wrap iframe,
+.dh-editor-content .dh-video-wrap iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 8px;
+}
+
+.dh-viewer-content .callout-blue,
+.dh-editor-content .callout-blue {
+  background: linear-gradient(135deg, rgba(0, 87, 184, 0.06), rgba(134, 239, 172, 0.06)) !important;
+  border: 1px solid rgba(0, 87, 184, 0.15) !important;
+  border-left: 4px solid var(--dh-primary) !important;
+}
+
+.dh-doc-card h2 {
+  font-family: var(--dh-font-display);
+  color: var(--dh-navy) !important;
+}
+
+/* ═══════════ Status bar (reference bottom strip) ═══════════ */
+body.dochub-techdocs #dhStatusBar.dh-status-bar {
+  position: fixed;
+  bottom: 0;
+  left: var(--dh-sidebar-w);
+  right: 0;
+  z-index: 150;
+  height: var(--dh-status-h);
+  min-height: var(--dh-status-h);
+  padding: 0 20px;
+  background: var(--dh-navy) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: var(--dh-silver-dim) !important;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  font-family: var(--dh-font-ui);
+}
+
+.dh-status-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dh-status-divider {
+  width: 1px;
+  height: 14px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.dh-status-dot {
+  background: var(--dh-mint) !important;
+  box-shadow: 0 0 6px rgba(134, 239, 172, 0.5);
+}
+
+/* Primary buttons elsewhere (modals, cards) */
+body.dochub-techdocs .dh-top-btn.dh-btn-primary {
+  background: var(--dh-primary) !important;
+  color: #fff !important;
+}
+
+/* Modals */
+.dh-modal-overlay {
+  z-index: 500;
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 12, 24, 0.65);
+  backdrop-filter: blur(4px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.dh-modal-overlay.open {
+  display: flex;
+}
+
+.dh-modal {
+  background: var(--dh-surface);
+  border: 1px solid var(--dh-border);
+  border-radius: 16px;
+  padding: 28px;
+  width: 480px;
+  max-width: 96vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+  animation: dhModalIn 0.2s ease;
+}
+
+@keyframes dhModalIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.dh-modal h2 {
+  font-size: 18px;
+  font-weight: 800;
+  margin-bottom: 20px;
+  color: var(--dh-navy);
+}
+
+.dh-modal label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--dh-muted);
+  display: block;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.dh-modal input,
+.dh-modal select,
+.dh-modal textarea {
+  width: 100%;
+  border: 1px solid var(--dh-border);
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-family: var(--dh-font-ui);
+  font-size: 13.5px;
+  color: var(--dh-text);
+  background: var(--dh-bg);
+  outline: none;
+  margin-bottom: 14px;
+}
+
+.dh-modal input:focus,
+.dh-modal select:focus,
+.dh-modal textarea:focus {
+  border-color: var(--dh-primary);
+}
+
+.dh-modal textarea {
+  resize: vertical;
+  min-height: 72px;
+}
+
+.dh-modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.dh-cat-template-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.dh-cat-template-item {
+  border: 2px solid var(--dh-border);
+  border-radius: 10px;
+  padding: 12px 10px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.dh-cat-template-item:hover,
+.dh-cat-template-item.selected {
+  border-color: var(--dh-primary);
+  background: var(--dh-primary-soft);
+}
+
+.dh-ct-icon {
+  font-size: 22px;
+  margin-bottom: 5px;
+}
+
+.dh-ct-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--dh-muted);
+}
+
+.dh-cat-template-item.selected .dh-ct-label {
+  color: var(--dh-primary);
+}
+
+.dh-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: var(--dh-navy);
+  color: #e8eef5;
+  padding: 12px 22px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  z-index: 999;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.dh-toast.show {
+  transform: translateX(-50%) translateY(0);
+}
+
+.dh-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 12, 24, 0.5);
+  z-index: 140;
+  backdrop-filter: blur(2px);
+}
+
+.dh-overlay.active {
+  display: block;
+}
+
+/* Mobile menu: fixed bottom-left (outside topbar) */
+.dh-sidebar-toggle {
+  display: none;
+  position: fixed;
+  left: max(16px, env(safe-area-inset-left, 0px));
+  bottom: max(20px, env(safe-area-inset-bottom, 0px));
+  z-index: 198;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--dh-primary);
+  color: #fff;
+  border: none;
+  box-shadow: 0 2px 10px rgba(18, 84, 53, 0.28);
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  line-height: 1;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (max-width: 900px) {
+  .dh-sidebar-toggle {
+    display: inline-flex;
+  }
+}
+
+/* Hide legacy */
+.dh-td-appbar {
+  display: none !important;
+}
+
+/* ═══════════ Responsive ═══════════ */
+@media (max-width: 1024px) {
+  :root {
+    --dh-sidebar-w: 260px;
+  }
+}
+
+@media (max-width: 900px) {
+  :root {
+    --dh-sidebar-w: 0px;
+  }
+
+  .dh-docs-topbar {
+    position: relative;
+    top: auto;
+    height: auto;
+    min-height: 52px;
+    padding: 10px 16px;
+    flex-wrap: wrap;
+  }
+
+  .dh-docs-row {
+    margin-top: 0;
+  }
+
+  body.dochub-techdocs #dhSidebar.dh-sidebar {
+    --dh-sidebar-top: calc(128px + var(--dh-topbar-gap));
+    top: var(--dh-sidebar-top);
+    bottom: 0 !important;
+    left: 0;
+    height: auto;
+    max-height: none;
+    width: 280px !important;
+    min-width: 280px !important;
+    max-width: 280px !important;
+    flex-shrink: 0 !important;
+    transform: translateX(-100%);
+    transition: none !important;
+  }
+
+  body.dochub-techdocs #dhSidebar.dh-sidebar.open {
+    transform: translateX(0);
+  }
+
+  body.dochub-techdocs #main.dh-main {
+    margin-left: 0 !important;
+  }
+
+  body.dochub-techdocs #dhStatusBar.dh-status-bar {
+    left: 0 !important;
+  }
+
+  .dh-docs-tag {
+    display: none;
+  }
+
+  .dh-body-split {
+    flex-direction: column;
+  }
+
+  .dh-doc-panel {
+    width: 100% !important;
+    max-height: none;
+  }
+
+  /* One page scroll on small screens — avoid doc list + window double scroll */
+  .dh-doc-list {
+    max-height: none;
+    overflow-y: visible !important;
+  }
+
+  .dh-hero-band {
+    padding: 32px 24px 28px !important;
+  }
+}
+
+@media (max-width: 768px) {
+  :root {
+    --dh-nav-h: 56px;
+  }
+
+  body.dochub-techdocs #dhSidebar.dh-sidebar {
+    --dh-sidebar-top: calc(112px + var(--dh-topbar-gap));
+    top: var(--dh-sidebar-top);
+    bottom: 0 !important;
+    height: auto;
+    max-height: none;
+  }
+
+  #dhAdminBtn {
+    display: none !important;
+  }
+
+  .dh-cat-template-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  :root {
+    --dh-nav-h: 52px;
+  }
+
+  body.dochub-techdocs #dhSidebar.dh-sidebar {
+    --dh-sidebar-top: calc(108px + var(--dh-topbar-gap));
+    top: var(--dh-sidebar-top);
+    bottom: 0 !important;
+    height: auto;
+    max-height: none;
+  }
+}

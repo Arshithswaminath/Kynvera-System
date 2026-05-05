@@ -1,0 +1,548 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+  
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+<title>Pending Reviews - Injaaz Application</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
+  
+  <!-- PWA Meta Tags -->
+  <meta name="theme-color" content="#125435">
+  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    :root {
+      --primary: #125435;
+      --primary-light: #1a7a4d;
+      --text-dark: #1a1a1a;
+      --text-light: #6b6b6b;
+      --bg-light: #fafafa;
+      --white: #ffffff;
+      --bg-card: #ffffff;
+      --border-color: rgba(18, 84, 53, 0.08);
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+      background: var(--bg-light);
+      color: var(--text-dark);
+      line-height: 1.6;
+    }
+    
+    .nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 1000;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(30px);
+      border-bottom: 1px solid rgba(18, 84, 53, 0.08);
+      box-shadow: 0 2px 20px rgba(0, 0, 0, 0.02);
+    }
+    
+    .nav-container {
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 2rem;
+    }
+    
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      text-decoration: none;
+    }
+    
+    .logo img {
+      width: 50px;
+      height: 50px;
+    }
+    
+    .logo-text h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin: 0;
+    }
+    
+    .container {
+      max-width: 1400px;
+      margin: 100px auto 2rem;
+      padding: 0 2rem;
+    }
+    @media (max-width: 768px) {
+      .container { margin-top: 72px; padding: 0.75rem 0.875rem; }
+      .page-header { margin-bottom: 1rem; }
+      .page-header h1 { font-size: 1.4rem; }
+      .page-header p { font-size: 0.875rem; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 0.625rem; margin-bottom: 1rem; }
+      .stat-card { padding: 0.875rem; }
+      .stat-card h3 { font-size: 0.75rem; }
+      .stat-card .stat-value { font-size: 1.6rem; }
+      .submissions-list { border-radius: 10px; }
+      .submission-card { padding: 1rem; }
+    }
+    
+    .page-header {
+      margin-bottom: 2rem;
+    }
+    
+    .page-header h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 0.5rem;
+    }
+    
+    .page-header p {
+      color: var(--text-light);
+      font-size: 1.1rem;
+    }
+    
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    
+    .stat-card {
+      background: white;
+      padding: 1.5rem;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+    
+    .stat-card h3 {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text-light);
+      margin-bottom: 0.5rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .stat-card .stat-value {
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: var(--primary);
+    }
+    
+    .submissions-list {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      overflow: hidden;
+    }
+    
+    .submission-card {
+      padding: 1.5rem;
+      border-bottom: 1px solid #f0f0f0;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    
+    .submission-card:hover {
+      background: #f9f9f9;
+    }
+    
+    .submission-card:last-child {
+      border-bottom: none;
+    }
+    
+    .submission-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 1rem;
+    }
+    
+    .submission-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--text-dark);
+      margin-bottom: 0.25rem;
+    }
+    
+    .submission-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      color: var(--text-light);
+      font-size: 0.9rem;
+      margin-bottom: 1rem;
+    }
+    
+    .submission-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    
+    .tag {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+    
+    .tag-module {
+      background: #e3f2fd;
+      color: #1976d2;
+    }
+    
+    .tag-status {
+      background: #fff3e0;
+      color: #f57c00;
+    }
+    
+    .tag-date {
+      background: #f5f5f5;
+      color: var(--text-dark);
+    }
+    
+    .action-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .action-button:hover {
+      background: var(--primary-light);
+      transform: translateY(-2px);
+    }
+    
+    .empty-state {
+      text-align: center;
+      padding: 4rem 2rem;
+    }
+    
+    .empty-state-icon {
+      font-size: 4rem;
+      margin-bottom: 1rem;
+    }
+    
+    .empty-state h2 {
+      font-size: 1.5rem;
+      color: var(--text-dark);
+      margin-bottom: 0.5rem;
+    }
+    
+    .empty-state p {
+      color: var(--text-light);
+    }
+    
+    .loading {
+      text-align: center;
+      padding: 4rem 2rem;
+    }
+    
+    .spinner {
+      border: 4px solid rgba(18, 84, 53, 0.1);
+      border-top: 4px solid var(--primary);
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 1rem;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    @media (max-width: 768px) {
+      .nav-container {
+        padding: 0.75rem 1rem !important;
+        gap: 0.75rem !important;
+      }
+      
+      .logo img {
+        width: 32px !important;
+        height: 32px !important;
+      }
+      
+      .logo-text h1 {
+        font-size: 1rem !important;
+      }
+      
+      .action-button {
+        font-size: 0.85rem !important;
+        padding: 0.5rem 0.75rem !important;
+        white-space: nowrap !important;
+      }
+      
+      .container {
+        margin-top: 80px;
+        padding: 0 1rem;
+      }
+
+      .page-header h1 {
+        font-size: 1.75rem;
+      }
+      
+      .page-header p {
+        font-size: 0.9rem;
+      }
+
+      .submission-header {
+        flex-direction: column;
+      }
+
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .stat-card {
+        padding: 1rem !important;
+      }
+      
+      .submission-card {
+        padding: 1rem !important;
+      }
+    }
+    
+    @media (max-width: 480px) {
+      .logo-text h1 {
+        font-size: 0.9rem !important;
+      }
+      
+      .action-button {
+        font-size: 0.8rem !important;
+        padding: 0.4rem 0.6rem !important;
+      }
+      
+      .page-header h1 {
+        font-size: 1.5rem !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  {% set active_page = 'pending-review' %}
+  {% include 'partials/main_navbar.html' with context %}
+
+  <!-- Main Content -->
+  <div class="container">
+    <div class="page-header">
+      <h1>📋 Pending Reviews</h1>
+      <p>Forms awaiting your review and approval</p>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <h3>Pending Reviews</h3>
+        <div class="stat-value" id="totalPending">-</div>
+      </div>
+      <div class="stat-card">
+        <h3>Your Role</h3>
+        <div class="stat-value" style="font-size: 1.5rem;" id="userRole">-</div>
+      </div>
+    </div>
+
+    <!-- Submissions List -->
+    <div class="submissions-list" id="submissionsList">
+      <div class="loading">
+        <div class="spinner"></div>
+        <p>Loading pending submissions...</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+    
+    function getWorkflowAction(designation) {
+      const actionMap = {
+        'operations_manager': 'Operations Manager Review',
+        'business_development': 'Business Development Review',
+        'procurement': 'Procurement Review',
+        'general_manager': 'General Manager Approval'
+      };
+      return actionMap[designation] || 'Your Review';
+    }
+    
+    function getRoleDisplay(designation) {
+      const roleMap = {
+        'operations_manager': 'Operations Manager',
+        'business_development': 'Business Development',
+        'procurement': 'Procurement',
+        'general_manager': 'General Manager'
+      };
+      return roleMap[designation] || designation || 'Reviewer';
+    }
+    
+    async function loadPendingReviews() {
+      try {
+        // Get user from localStorage
+        const userStr = localStorage.getItem('user');
+        if (!userStr) {
+          window.location.href = '/login';
+          return;
+        }
+        
+        const user = JSON.parse(userStr);
+        
+        // Update role display
+        document.getElementById('userRole').textContent = getRoleDisplay(user.designation);
+        
+        // Fetch pending submissions
+        const token = localStorage.getItem('access_token');
+        const response = await fetch('/api/workflow/submissions/pending', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to load pending submissions');
+        }
+        
+        const data = await response.json();
+        const submissions = data.submissions || [];
+        
+        // Update count
+        document.getElementById('totalPending').textContent = submissions.length;
+        
+        const submissionsList = document.getElementById('submissionsList');
+        
+        if (submissions.length === 0) {
+          submissionsList.innerHTML = `
+            <div class="empty-state">
+              <div class="empty-state-icon">✅</div>
+              <h2>All Caught Up!</h2>
+              <p>You have no pending reviews at this time.</p>
+            </div>
+          `;
+          return;
+        }
+        
+        // Render submissions
+        submissionsList.innerHTML = submissions.map(sub => {
+          const moduleNames = {
+            'hvac_mep': 'HVAC & MEP',
+            'civil': 'Civil Works',
+            'cleaning': 'Cleaning'
+          };
+          const moduleName = moduleNames[sub.module_type] || sub.module_type;
+          const moduleUrl = sub.module_type === 'hvac_mep' ? 'hvac-mep' : sub.module_type;
+          const submittedBy = sub.user?.full_name || sub.user?.username || 'Unknown';
+          // Helper function to ensure UTC date strings are properly parsed
+          const parseUTCDate = (dateString) => {
+            if (!dateString) return null;
+            let utcString = dateString;
+            if (!utcString.endsWith('Z') && !utcString.includes('+') && !utcString.includes('-', 10)) {
+              utcString = utcString + 'Z';
+            }
+            return new Date(utcString);
+          };
+          
+          // Visit date is date-only, format it properly (no timezone indicator needed for dates)
+          let visitDate = 'N/A';
+          if (sub.visit_date) {
+            const dateStr = sub.visit_date;
+            if (dateStr.includes('T')) {
+              // Has time component, parse as UTC and convert to Dubai (but only show date)
+              const date = parseUTCDate(dateStr);
+              visitDate = date.toLocaleDateString('en-US', {
+                year: 'numeric', month: 'short', day: 'numeric',
+                timeZone: 'Asia/Dubai'
+              });
+            } else {
+              // Date only, parse as date
+              const [year, month, day] = dateStr.split('-').map(Number);
+              const date = new Date(year, month - 1, day);
+              visitDate = date.toLocaleDateString('en-US', {
+                year: 'numeric', month: 'short', day: 'numeric',
+                timeZone: 'Asia/Dubai'
+              });
+            }
+          }
+          const createdAt = sub.created_at ? parseUTCDate(sub.created_at).toLocaleString('en-US', {
+            year: 'numeric', month: 'short', day: 'numeric',
+            hour: '2-digit', minute: '2-digit',
+            timeZone: 'Asia/Dubai'
+          }) + ' (GST)' : '';
+          
+          return `
+            <div class="submission-card" onclick="openSubmissionForReview('${sub.submission_id}', '${moduleUrl}')">
+              <div class="submission-header">
+                <div>
+                  <h3 class="submission-title">${escapeHtml(sub.site_name || 'Untitled Submission')}</h3>
+                  <div class="submission-meta">
+                    <span>👤 Submitted by <strong>${escapeHtml(submittedBy)}</strong></span>
+                    <span>📅 Visit: ${visitDate}</span>
+                  </div>
+                </div>
+                <button class="action-button" onclick="event.stopPropagation(); openSubmissionForReview('${sub.submission_id}', '${moduleUrl}')">
+                  Review →
+                </button>
+              </div>
+              <div class="submission-tags">
+                <span class="tag tag-module">${moduleName}</span>
+                <span class="tag tag-status">Awaiting ${getWorkflowAction(user.designation)}</span>
+                <span class="tag tag-date">Created: ${createdAt}</span>
+              </div>
+            </div>
+          `;
+        }).join('');
+        
+      } catch (error) {
+        console.error('Error loading pending reviews:', error);
+        document.getElementById('submissionsList').innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">⚠️</div>
+            <h2>Error Loading Reviews</h2>
+            <p>Could not load pending reviews. Please refresh the page.</p>
+          </div>
+        `;
+      }
+    }
+    
+    async function openSubmissionForReview(submissionId, moduleUrl) {
+      try {
+        const token = localStorage.getItem('access_token');
+        
+        // Navigate to the form in edit/review mode
+        window.location.href = `/${moduleUrl}/form?edit=${submissionId}&review=true`;
+      } catch (error) {
+        console.error('Error opening submission:', error);
+        alert('Failed to open submission. Please try again.');
+      }
+    }
+    
+    // Load on page load
+    document.addEventListener('DOMContentLoaded', loadPendingReviews);
+  </script>
+  <script src="{{ url_for('static', filename='api-client.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+  <script src="{{ url_for('static', filename='mobile_utils.js') }}" defer></script>
+</body>
+</html>

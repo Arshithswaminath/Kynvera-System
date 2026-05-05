@@ -65,7 +65,10 @@ async function pollJobStatus(modulePrefix, jobId, onUpdate, interval=1500) {
                 if (!r.ok) throw new Error('Job not found');
                 const js = await r.json();
                 if (onUpdate) onUpdate(js);
-                if (js.state === 'done' || js.state === 'failed') {
+                // Check both 'state' (legacy) and 'status' (current)
+                const isDone = js.state === 'done' || js.status === 'completed';
+                const isFailed = js.state === 'failed' || js.status === 'failed';
+                if (isDone || isFailed) {
                     clearInterval(id);
                     resolve(js);
                 }

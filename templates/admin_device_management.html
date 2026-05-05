@@ -1,0 +1,1338 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+  
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+<title>Device Management — Injaaz Admin</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}">
+  <style>
+    :root {
+      --green: #125435;
+      --green-mid: #1a7a4e;
+      --green-light: #22a063;
+      --green-pale: #e8f5ee;
+      --green-glass: rgba(18,84,53,0.07);
+      --green-border: rgba(18,84,53,0.15);
+      --gray-50: #f4f6f5;
+      --gray-100: #e8edeb;
+      --gray-200: #d1ddd8;
+      --gray-400: #8fa99e;
+      --gray-600: #4a6359;
+      --gray-900: #0d2218;
+      --danger: #c0392b;
+      --warning: #d4850a;
+      --info: #1565a8;
+      --radius: 14px;
+      --radius-sm: 8px;
+      --shadow-sm: 0 1px 3px rgba(18,84,53,0.08), 0 1px 2px rgba(18,84,53,0.06);
+      --shadow: 0 4px 16px rgba(18,84,53,0.10), 0 1px 4px rgba(18,84,53,0.08);
+      --shadow-lg: 0 12px 40px rgba(18,84,53,0.14), 0 4px 12px rgba(18,84,53,0.08);
+      --sb-bg: #125435;
+      --sidebar-w: 288px;
+      --accent: #125435;
+      --accent-2: #1a7a4d;
+      --dh-fs-sidebar: 16px;
+      --dh-fs-sidebar-label: 12px;
+      --dm-nav-top: 5.5rem;
+    }
+    @media (max-width: 1280px) {
+      :root { --sidebar-w: 252px; }
+    }
+    @media (max-width: 1100px) {
+      :root { --sidebar-w: 232px; }
+    }
+    body.has-main-nav { padding-top: 5.5rem; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; }
+
+    .dm-root {
+      background: #f7fbf9;
+      min-height: calc(100vh - var(--dm-nav-top));
+      padding: 0;
+      display: flex;
+    }
+    .dm-layout { display: flex; flex: 1; min-height: calc(100vh - var(--dm-nav-top)); }
+
+    /* DocHub / BizFlow sidebar shell */
+    .dm-layout > .dh-sidebar {
+      --radius: 10px;
+      position: sticky;
+      top: var(--dm-nav-top);
+      align-self: flex-start;
+      height: calc(100vh - var(--dm-nav-top));
+      z-index: 40;
+      flex-shrink: 0;
+    }
+    @media (max-width: 900px) {
+      .dm-layout > .dh-sidebar { display: none !important; }
+    }
+
+    .dm-inner { max-width: 1400px; margin: 0 auto; flex: 1; }
+
+    .dm-topbar {
+      background: white;
+      border-bottom: 1px solid var(--gray-100);
+      padding: 0 32px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      position: sticky;
+      top: var(--dm-nav-top);
+      z-index: 50;
+      box-shadow: 0 1px 0 var(--gray-100);
+    }
+    .dm-page-title { font-size: 17px; font-weight: 600; color: var(--gray-900); }
+    .dm-page-title span { color: var(--gray-400); font-weight: 400; margin-right: 4px; font-size: 15px; }
+    .dm-topbar-spacer { flex: 1; }
+    .dm-search-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .dm-search-wrap input {
+      padding: 8px 14px 8px 36px;
+      border: 1.5px solid var(--gray-100);
+      border-radius: 8px;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+      font-size: 13px;
+      color: var(--gray-900);
+      background: var(--gray-50);
+      width: 220px;
+      transition: all 0.18s;
+      outline: none;
+    }
+    .dm-search-wrap input:focus {
+      border-color: var(--green);
+      background: white;
+      width: 260px;
+      box-shadow: 0 0 0 3px rgba(18,84,53,0.08);
+    }
+    .dm-search-icon { position: absolute; left: 10px; color: var(--gray-400); font-size: 14px; }
+    .dm-add-btn {
+      display: flex; align-items: center; gap: 8px;
+      padding: 9px 18px;
+      background: var(--green);
+      color: white;
+      border: none;
+      border-radius: 9px;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.18s;
+      box-shadow: 0 2px 8px rgba(18,84,53,0.25);
+    }
+    .dm-add-btn:hover { background: var(--green-mid); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(18,84,53,0.3); }
+
+    .dm-content { padding: 28px 32px; }
+
+    .dm-stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    @media (max-width: 1000px) { .dm-stats-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 500px) { .dm-stats-grid { grid-template-columns: 1fr; } }
+    .dm-stat-card {
+      background: white;
+      border-radius: var(--radius);
+      padding: 20px 22px;
+      border: 1.5px solid var(--gray-100);
+      box-shadow: var(--shadow-sm);
+      position: relative;
+      overflow: hidden;
+      transition: all 0.22s;
+      animation: dm-fadeUp 0.4s ease both;
+    }
+    .dm-stat-card:nth-child(1){animation-delay:0.05s;}
+    .dm-stat-card:nth-child(2){animation-delay:0.10s;}
+    .dm-stat-card:nth-child(3){animation-delay:0.15s;}
+    .dm-stat-card:nth-child(4){animation-delay:0.20s;}
+    .dm-stat-card:hover { border-color: var(--green-border); transform: translateY(-2px); box-shadow: var(--shadow); }
+    .dm-stat-card::after {
+      content: '';
+      position: absolute;
+      top: 0; right: 0;
+      width: 90px; height: 90px;
+      border-radius: 0 0 0 100%;
+      opacity: 0.04;
+    }
+    .dm-stat-card.green::after { background: var(--green); }
+    .dm-stat-card.blue::after { background: var(--info); }
+    .dm-stat-card.amber::after { background: var(--warning); }
+    .dm-stat-card.red::after { background: var(--danger); }
+    .dm-stat-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 12px; }
+    .dm-stat-icon {
+      width: 40px; height: 40px;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+    .dm-stat-icon.green { background: var(--green-pale); }
+    .dm-stat-icon.blue { background: #e8f0fb; }
+    .dm-stat-icon.amber { background: #fef3e2; }
+    .dm-stat-icon.red { background: #fdecea; }
+    .dm-stat-value { font-size: 30px; font-weight: 700; color: var(--gray-900); letter-spacing: -1px; line-height: 1; margin-bottom: 4px; }
+    .dm-stat-label { font-size: 12.5px; color: var(--gray-400); font-weight: 500; }
+
+    .dm-main-grid {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+    @media (max-width: 1100px) { .dm-main-grid { grid-template-columns: 1fr; } }
+
+    .dm-card {
+      background: white;
+      border-radius: var(--radius);
+      border: 1.5px solid var(--gray-100);
+      box-shadow: var(--shadow-sm);
+      overflow: hidden;
+      animation: dm-fadeUp 0.4s ease both;
+      animation-delay: 0.25s;
+    }
+    .dm-card-header {
+      padding: 18px 22px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1.5px solid var(--gray-100);
+    }
+    .dm-card-title { font-size: 14.5px; font-weight: 700; color: var(--gray-900); }
+    .dm-card-sub { font-size: 12px; color: var(--gray-400); margin-top: 1px; }
+    .dm-card-header-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+
+    .dm-filter-tabs {
+      display: flex;
+      gap: 2px;
+      background: var(--gray-50);
+      border-radius: 8px;
+      padding: 3px;
+    }
+    .dm-filter-tab {
+      padding: 5px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      color: var(--gray-400);
+      user-select: none;
+      border: none;
+      background: none;
+      font-family: inherit;
+    }
+    .dm-filter-tab.active { background: white; color: var(--green); box-shadow: var(--shadow-sm); }
+    .dm-filter-tab:hover:not(.active) { color: var(--gray-600); }
+
+    .dm-device-table { width: 100%; min-width: 600px; border-collapse: collapse; }
+    .dm-device-table th {
+      padding: 10px 18px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--gray-400);
+      text-align: left;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      background: var(--gray-50);
+      border-bottom: 1.5px solid var(--gray-100);
+    }
+    .dm-device-table td {
+      padding: 14px 18px;
+      font-size: 13px;
+      border-bottom: 1px solid var(--gray-50);
+      vertical-align: middle;
+    }
+    .dm-device-table tr:last-child td { border-bottom: none; }
+    .dm-device-table tbody tr { cursor: pointer; transition: background 0.12s; }
+    .dm-device-table tbody tr:hover { background: var(--green-glass); }
+    .dm-device-table tbody tr.selected { background: var(--green-pale); }
+
+    .dm-device-check {
+      width: 16px; height: 16px;
+      border: 1.5px solid var(--gray-200);
+      border-radius: 4px;
+      cursor: pointer;
+      appearance: none;
+      -webkit-appearance: none;
+      transition: all 0.15s;
+      position: relative;
+      background: white;
+    }
+    .dm-device-check:checked { background: var(--green); border-color: var(--green); }
+    .dm-device-check:checked::after {
+      content: '✓';
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      color: white;
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    .dm-device-name-cell { display: flex; align-items: center; gap: 10px; }
+    .dm-device-icon-badge {
+      width: 34px; height: 34px;
+      border-radius: 9px;
+      background: var(--green-pale);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+    .dm-device-name { font-weight: 600; font-size: 13.5px; color: var(--gray-900); }
+    .dm-device-id { font-size: 11px; color: var(--gray-400); font-family: 'DM Mono', monospace; }
+
+    .dm-status-pill {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 11.5px;
+      font-weight: 600;
+    }
+    .dm-status-pill::before {
+      content: '';
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .dm-status-pill.online { background: #e8f5ee; color: var(--green); }
+    .dm-status-pill.online::before { background: var(--green); box-shadow: 0 0 0 2px rgba(18,84,53,0.2); animation: dm-pulse 2s infinite; }
+    .dm-status-pill.offline { background: var(--gray-50); color: var(--gray-400); }
+    .dm-status-pill.offline::before { background: var(--gray-400); }
+    .dm-status-pill.warning { background: #fef3e2; color: var(--warning); }
+    .dm-status-pill.warning::before { background: var(--warning); }
+    .dm-status-pill.maintenance { background: #e8f0fb; color: var(--info); }
+    .dm-status-pill.maintenance::before { background: var(--info); }
+    @keyframes dm-pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+    .dm-tag {
+      display: inline-flex; align-items: center;
+      padding: 2px 8px;
+      border-radius: 5px;
+      font-size: 11px;
+      font-weight: 600;
+      background: var(--gray-50);
+      color: var(--gray-600);
+      border: 1px solid var(--gray-100);
+    }
+
+    .dm-health-bar-wrap { width: 80px; }
+    .dm-health-label { font-size: 11px; font-weight: 600; margin-bottom: 4px; }
+    .dm-health-bar { height: 5px; background: var(--gray-100); border-radius: 3px; overflow: hidden; }
+    .dm-health-fill { height: 100%; border-radius: 3px; transition: width 1s ease; }
+    .dm-health-fill.good { background: var(--green); }
+    .dm-health-fill.ok { background: var(--warning); }
+    .dm-health-fill.bad { background: var(--danger); }
+
+    .dm-action-btn {
+      width: 28px; height: 28px;
+      border-radius: 6px;
+      display: inline-flex; align-items: center; justify-content: center;
+      border: 1.5px solid var(--gray-100);
+      background: white;
+      cursor: pointer;
+      color: var(--gray-400);
+      font-size: 14px;
+      transition: all 0.15s;
+      text-decoration: none;
+    }
+    .dm-action-btn:hover { border-color: var(--green); color: var(--green); background: var(--green-pale); }
+    .dm-action-btn.danger:hover { border-color: var(--danger); color: var(--danger); background: #fdecea; }
+
+    .dm-right-panel { display: flex; flex-direction: column; gap: 16px; }
+
+    .dm-alerts-list { padding: 8px 16px 14px; }
+    .dm-alert-item {
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      border: 1.5px solid transparent;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .dm-alert-item:last-child { margin-bottom: 0; }
+    .dm-alert-item.critical { background: #fdecea; border-color: #f5c6c3; }
+    .dm-alert-item.warn { background: #fef3e2; border-color: #f9d8a6; }
+    .dm-alert-item.info { background: #e8f0fb; border-color: #b8cef5; }
+    .dm-alert-item:hover { transform: translateX(2px); }
+    .dm-alert-icon { font-size: 16px; margin-top: 1px; }
+    .dm-alert-body { flex: 1; }
+    .dm-alert-title { font-size: 12.5px; font-weight: 600; color: var(--gray-900); }
+    .dm-alert-desc { font-size: 11.5px; color: var(--gray-600); margin-top: 2px; }
+
+    .dm-activity-list { padding: 0 8px 8px; }
+    .dm-activity-item {
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 12px 14px;
+      border-radius: var(--radius-sm);
+      transition: background 0.12s;
+    }
+    .dm-activity-item:hover { background: var(--green-glass); }
+    .dm-activity-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      margin-top: 5px;
+    }
+    .dm-activity-dot.green { background: var(--green); }
+    .dm-activity-dot.amber { background: var(--warning); }
+    .dm-activity-dot.blue { background: var(--info); }
+    .dm-activity-dot.red { background: var(--danger); }
+    .dm-activity-text { font-size: 12.5px; color: var(--gray-600); line-height: 1.5; }
+    .dm-activity-text strong { color: var(--gray-900); font-weight: 600; }
+    .dm-activity-time { font-size: 11px; color: var(--gray-400); margin-top: 2px; }
+
+    .dm-bottom-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 20px;
+      animation: dm-fadeUp 0.4s ease both;
+      animation-delay: 0.3s;
+    }
+    @media (max-width: 1000px) { .dm-bottom-grid { grid-template-columns: 1fr; } }
+
+    .dm-donut-wrap { display: flex; flex-direction: column; align-items: center; padding: 20px 16px; }
+    .dm-donut-svg { width: 130px; height: 130px; }
+    .dm-donut-legend { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; width: 100%; }
+    .dm-legend-item { display: flex; align-items: center; gap: 8px; }
+    .dm-legend-dot { width: 9px; height: 9px; border-radius: 3px; flex-shrink: 0; }
+    .dm-legend-label { font-size: 12px; color: var(--gray-600); flex: 1; }
+    .dm-legend-val { font-size: 12px; font-weight: 700; color: var(--gray-900); }
+    .dm-legend-pct { font-size: 11px; color: var(--gray-400); }
+
+    .dm-actions-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 14px 16px 18px; }
+    .dm-quick-action {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 6px;
+      padding: 14px 10px;
+      border-radius: 10px;
+      border: 1.5px solid var(--gray-100);
+      cursor: pointer;
+      transition: all 0.18s;
+      background: white;
+      text-align: center;
+    }
+    .dm-quick-action:hover { border-color: var(--green); background: var(--green-pale); transform: translateY(-2px); box-shadow: var(--shadow-sm); }
+    .dm-quick-action .qa-icon { font-size: 22px; }
+    .dm-quick-action .qa-label { font-size: 11.5px; font-weight: 600; color: var(--gray-600); line-height: 1.3; }
+    .dm-quick-action:hover .qa-label { color: var(--green); }
+
+    .dm-compliance-list { padding: 12px 18px 18px; }
+    .dm-compliance-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--gray-50);
+    }
+    .dm-compliance-item:last-child { border-bottom: none; }
+    .dm-compliance-icon { font-size: 20px; }
+    .dm-compliance-info { flex: 1; }
+    .dm-compliance-name { font-size: 12.5px; font-weight: 600; color: var(--gray-900); }
+    .dm-compliance-sub { font-size: 11px; color: var(--gray-400); margin-top: 2px; }
+    .dm-compliance-score { font-size: 13px; font-weight: 700; padding: 3px 10px; border-radius: 6px; }
+    .dm-compliance-score.pass { background: var(--green-pale); color: var(--green); }
+    .dm-compliance-score.warn { background: #fef3e2; color: var(--warning); }
+    .dm-compliance-score.fail { background: #fdecea; color: var(--danger); }
+
+    @keyframes dm-fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .dm-modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 200;
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.2s;
+      backdrop-filter: blur(4px);
+    }
+    .dm-modal-overlay.open { opacity: 1; pointer-events: all; }
+    .dm-modal {
+      background: white;
+      border-radius: 18px;
+      width: 480px;
+      max-width: 95vw;
+      box-shadow: var(--shadow-lg);
+      transform: scale(0.95) translateY(10px);
+      transition: transform 0.2s;
+      overflow: hidden;
+    }
+    .dm-modal-overlay.open .dm-modal { transform: scale(1) translateY(0); }
+    .dm-modal-header {
+      padding: 22px 24px 16px;
+      border-bottom: 1.5px solid var(--gray-100);
+      display: flex; align-items: center; gap: 12px;
+    }
+    .dm-modal-header-icon {
+      width: 40px; height: 40px;
+      background: var(--green-pale);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+    }
+    .dm-modal-title { font-size: 16px; font-weight: 700; color: var(--gray-900); }
+    .dm-modal-sub { font-size: 12px; color: var(--gray-400); margin-top: 2px; }
+    .dm-modal-close {
+      margin-left: auto;
+      width: 30px; height: 30px;
+      border-radius: 7px;
+      border: 1.5px solid var(--gray-100);
+      background: white;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      font-size: 16px; color: var(--gray-400);
+      transition: all 0.15s;
+    }
+    .dm-modal-close:hover { border-color: var(--danger); color: var(--danger); }
+    .dm-modal-body { padding: 20px 24px; }
+    .dm-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+    .dm-form-row.full { grid-template-columns: 1fr; }
+    .dm-form-field label { display: block; font-size: 12px; font-weight: 600; color: var(--gray-600); margin-bottom: 6px; letter-spacing: 0.3px; }
+    .dm-form-field input, .dm-form-field select {
+      width: 100%; padding: 9px 12px;
+      border: 1.5px solid var(--gray-100);
+      border-radius: 8px;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+      font-size: 13px;
+      color: var(--gray-900);
+      background: var(--gray-50);
+      outline: none;
+      transition: all 0.15s;
+    }
+    .dm-form-field input:focus, .dm-form-field select:focus {
+      border-color: var(--green);
+      background: white;
+      box-shadow: 0 0 0 3px rgba(18,84,53,0.08);
+    }
+    .dm-modal-footer { padding: 14px 24px 20px; display: flex; gap: 10px; justify-content: flex-end; }
+    .dm-btn-cancel {
+      padding: 9px 20px;
+      border: 1.5px solid var(--gray-100);
+      border-radius: 8px;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--gray-600);
+      background: white;
+      transition: all 0.15s;
+    }
+    .dm-btn-cancel:hover { border-color: var(--gray-200); background: var(--gray-50); }
+    .dm-btn-save {
+      padding: 9px 22px;
+      background: var(--green);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.18s;
+      box-shadow: 0 2px 8px rgba(18,84,53,0.25);
+    }
+    .dm-btn-save:hover { background: var(--green-mid); }
+
+    .dm-toast {
+      position: fixed; bottom: 28px; right: 28px;
+      background: var(--green); color: white;
+      padding: 12px 20px; border-radius: 10px;
+      font-size: 13.5px; font-weight: 600;
+      box-shadow: var(--shadow-lg);
+      transform: translateY(80px); opacity: 0;
+      transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1);
+      z-index: 300;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .dm-toast.show { transform: translateY(0); opacity: 1; }
+    .dm-toast.err { background: var(--danger); }
+
+    .dm-table-scroll { overflow-x: auto; }
+    .dm-table-scroll::-webkit-scrollbar { height: 6px; }
+    .dm-table-scroll::-webkit-scrollbar-thumb { background: var(--gray-200); border-radius: 10px; }
+
+    @media (max-width: 768px) {
+      .dm-topbar {
+        padding: 0 1rem;
+        height: auto;
+        min-height: 52px;
+        flex-wrap: wrap;
+        gap: 8px;
+        top: 4rem;
+        padding-top: 8px;
+        padding-bottom: 8px;
+      }
+      .dm-page-title { font-size: 13px; flex: 1 1 100%; }
+      .dm-topbar-spacer { display: none; }
+      .dm-search-wrap { flex: 1 1 auto; }
+      .dm-search-wrap input { width: 100%; }
+      .dm-search-wrap input:focus { width: 100%; }
+      .dm-add-btn { flex-shrink: 0; padding: 7px 11px; font-size: 12px; }
+      .dm-content { padding: 0.875rem; }
+      .dm-device-table th, .dm-device-table td { padding: 0.5rem 0.625rem; font-size: 0.75rem; }
+      .dm-stat-card { padding: 12px 14px; }
+      /* Modal form fields — prevent collapsed look */
+      .dm-form-row { grid-template-columns: 1fr; gap: 10px; margin-bottom: 10px; }
+      .dm-form-field input, .dm-form-field select {
+        font-size: 16px; padding: 0.65rem 0.875rem;
+        min-height: 44px; border-radius: 10px;
+      }
+      .dm-modal-body { padding: 14px 16px; }
+      .dm-modal-footer { padding: 10px 16px 16px; flex-direction: column; }
+      .dm-modal-footer button { width: 100%; padding: 12px; }
+    }
+  </style>
+</head>
+<body class="has-main-nav">
+  {% include 'partials/main_navbar.html' with context %}
+
+  <div class="dm-root">
+    <aside class="dh-sidebar" id="dmSidebar" aria-label="Device management menu">
+      <div class="sb-brand">
+        <div class="sb-brand-text">
+          <span class="name">DeviceCore</span>
+          <span class="tagline">Enterprise</span>
+        </div>
+      </div>
+      <nav class="sb-nav">
+        <div class="dh-sb-section">
+          <div class="sb-section-label">Overview</div>
+          <a href="#" class="sb-nav-item active" data-dm-nav="dashboard">Dashboard</a>
+          <a href="#deviceTable" class="sb-nav-item" data-dm-nav="devices">All Devices <span class="sb-badge" id="sidebarDeviceCount">0</span></a>
+          <a href="#" class="sb-nav-item" data-dm-nav="map" onclick="showToast('Device Map coming soon');return false;">Device Map</a>
+        </div>
+        <div class="dh-sb-section">
+          <div class="sb-section-label">Reports</div>
+          <a href="#" class="sb-nav-item" data-dm-nav="analytics" onclick="showToast('Analytics coming soon');return false;">Analytics</a>
+          <a href="#" class="sb-nav-item" data-dm-nav="compliance" onclick="document.getElementById('complianceList')?.scrollIntoView({behavior:'smooth'});return false;">Compliance <span class="sb-badge sb-badge--alert" id="sidebarComplianceBadge">0</span></a>
+          <a href="#" class="sb-nav-item" data-dm-nav="audit" onclick="showToast('Audit Logs coming soon');return false;">Audit Logs</a>
+        </div>
+        <div class="dh-sb-section">
+          <div class="sb-section-label">System</div>
+          <a href="/admin/dashboard" class="sb-nav-item">Users &amp; Groups</a>
+          <a href="/admin/dashboard" class="sb-nav-item">Settings</a>
+        </div>
+      </nav>
+      <div class="sb-footer">
+        <div class="sb-user-row" onclick="if(typeof openProfileModal==='function'){openProfileModal();}" role="button" tabindex="0">
+          <div class="sb-avatar" id="dmUserAvatar">—</div>
+          <div class="sb-user-text">
+            <div class="sb-user-name" id="dmUserName">Loading…</div>
+            <div class="sb-user-role" id="dmUserRole">Admin</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <div class="dm-main-col" style="flex:1; margin-left:0; min-width:0;">
+    <header class="dm-topbar">
+      <div>
+        <div class="dm-page-title"><span>Dashboard /</span> Device Management</div>
+      </div>
+      <div class="dm-topbar-spacer"></div>
+      <div class="dm-search-wrap">
+        <span class="dm-search-icon">🔍</span>
+        <input type="text" placeholder="Search devices, users, IDs…" id="searchInput">
+      </div>
+      <button type="button" class="dm-add-btn" id="enrollBtn">＋ Add Device</button>
+    </header>
+
+    <div class="dm-content">
+      <div class="dm-inner">
+        <div class="dm-stats-grid">
+          <div class="dm-stat-card green">
+            <div class="dm-stat-header">
+              <div class="dm-stat-icon green">🖥️</div>
+            </div>
+            <div class="dm-stat-value" id="totalVal">0</div>
+            <div class="dm-stat-label">Total Devices</div>
+          </div>
+          <div class="dm-stat-card blue">
+            <div class="dm-stat-header">
+              <div class="dm-stat-icon blue">🟢</div>
+            </div>
+            <div class="dm-stat-value" id="onlineVal">0</div>
+            <div class="dm-stat-label">Online Now</div>
+          </div>
+          <div class="dm-stat-card amber">
+            <div class="dm-stat-header">
+              <div class="dm-stat-icon amber">⚠️</div>
+            </div>
+            <div class="dm-stat-value" id="pendingVal">0</div>
+            <div class="dm-stat-label">Needs Update</div>
+          </div>
+          <div class="dm-stat-card red">
+            <div class="dm-stat-header">
+              <div class="dm-stat-icon red">🔴</div>
+            </div>
+            <div class="dm-stat-value" id="offlineVal">0</div>
+            <div class="dm-stat-label">Offline</div>
+          </div>
+        </div>
+
+        <div class="dm-main-grid">
+          <div class="dm-card">
+            <div class="dm-card-header">
+              <div>
+                <div class="dm-card-title">Device Inventory</div>
+                <div class="dm-card-sub" id="deviceCount">0 devices</div>
+              </div>
+              <div class="dm-card-header-right">
+                <div class="dm-filter-tabs">
+                  <button type="button" class="dm-filter-tab active" data-tab="all">All</button>
+                  <button type="button" class="dm-filter-tab" data-tab="online">Online</button>
+                  <button type="button" class="dm-filter-tab" data-tab="offline">Offline</button>
+                  <button type="button" class="dm-filter-tab" data-tab="update">Alerts</button>
+                </div>
+              </div>
+            </div>
+            <div class="dm-table-scroll">
+              <table class="dm-device-table" id="deviceTable">
+                <thead>
+                  <tr>
+                    <th style="width:36px"><input type="checkbox" class="dm-device-check" id="selectAll"></th>
+                    <th>Device</th>
+                    <th>Status</th>
+                    <th>Type</th>
+                    <th>User</th>
+                    <th>Health</th>
+                    <th>OS</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="deviceBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="dm-right-panel">
+            <div class="dm-card" style="animation-delay:0.28s">
+              <div class="dm-card-header">
+                <div>
+                  <div class="dm-card-title">🔔 Active Alerts</div>
+                  <div class="dm-card-sub">Requires attention</div>
+                </div>
+              </div>
+              <div class="dm-alerts-list" id="alertsList">
+                <div class="dm-alert-item info">
+                  <span class="dm-alert-icon">📋</span>
+                  <div class="dm-alert-body">
+                    <div class="dm-alert-title">Device Management</div>
+                    <div class="dm-alert-desc">Track and manage enrolled devices. Enroll new devices to get started.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="dm-card" style="animation-delay:0.32s">
+              <div class="dm-card-header">
+                <div>
+                  <div class="dm-card-title">⚡ Recent Activity</div>
+                  <div class="dm-card-sub">Last activity</div>
+                </div>
+              </div>
+              <div class="dm-activity-list" id="activityList">
+                <div class="dm-activity-item"><div class="dm-activity-dot green"></div><div><div class="dm-activity-text">Loading…</div><div class="dm-activity-time">—</div></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dm-bottom-grid">
+          <div class="dm-card">
+            <div class="dm-card-header">
+              <div>
+                <div class="dm-card-title">Device Types</div>
+                <div class="dm-card-sub">By category</div>
+              </div>
+            </div>
+            <div class="dm-donut-wrap">
+              <svg class="dm-donut-svg" viewBox="0 0 120 120" id="donutSvg">
+                <circle cx="60" cy="60" r="46" fill="none" stroke="#f0f0f0" stroke-width="14"/>
+                <text x="60" y="56" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="18" font-weight="700" fill="#0d2218" id="donutTotal">0</text>
+                <text x="60" y="70" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="9" fill="#8fa99e">Devices</text>
+              </svg>
+              <div class="dm-donut-legend" id="donutLegend"></div>
+            </div>
+          </div>
+          <div class="dm-card">
+            <div class="dm-card-header">
+              <div>
+                <div class="dm-card-title">Quick Actions</div>
+                <div class="dm-card-sub">Common tasks</div>
+              </div>
+            </div>
+            <div class="dm-actions-grid">
+              <div class="dm-quick-action" id="exportBtn">
+                <span class="qa-icon">📥</span>
+                <span class="qa-label">Export CSV</span>
+              </div>
+              <div class="dm-quick-action" id="enrollBtn2">
+                <span class="qa-icon">➕</span>
+                <span class="qa-label">Enroll Device</span>
+              </div>
+              <div class="dm-quick-action" id="importExcelBtn">
+                <span class="qa-icon">⭳</span>
+                <span class="qa-label">Import Excel</span>
+              </div>
+              <div class="dm-quick-action" id="downloadSampleBtn">
+                <span class="qa-icon">🧾</span>
+                <span class="qa-label">Sample Excel</span>
+              </div>
+            </div>
+            <input type="file" id="deviceExcelInput" accept=".xlsx,.xls" style="display:none">
+          </div>
+          <div class="dm-card">
+            <div class="dm-card-header">
+              <div>
+                <div class="dm-card-title">Compliance Status</div>
+                <div class="dm-card-sub">Device health overview</div>
+              </div>
+            </div>
+            <div class="dm-compliance-list" id="complianceList">
+              <div class="dm-compliance-item">
+                <span class="dm-compliance-icon">🖥️</span>
+                <div class="dm-compliance-info">
+                  <div class="dm-compliance-name">Healthy Devices</div>
+                  <div class="dm-compliance-sub">Health ≥ 80%</div>
+                </div>
+                <span class="dm-compliance-score pass" id="complianceHealthy">0%</span>
+              </div>
+              <div class="dm-compliance-item">
+                <span class="dm-compliance-icon">⚠️</span>
+                <div class="dm-compliance-info">
+                  <div class="dm-compliance-name">Needs Attention</div>
+                  <div class="dm-compliance-sub">Health 55–79%</div>
+                </div>
+                <span class="dm-compliance-score warn" id="complianceWarn">0%</span>
+              </div>
+              <div class="dm-compliance-item">
+                <span class="dm-compliance-icon">🔴</span>
+                <div class="dm-compliance-info">
+                  <div class="dm-compliance-name">Critical</div>
+                  <div class="dm-compliance-sub">Health &lt; 55%</div>
+                </div>
+                <span class="dm-compliance-score fail" id="complianceFail">0%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    </div><!-- dm-main-col -->
+  </div><!-- dm-root -->
+
+  <div class="dm-modal-overlay" id="enrollModal">
+    <div class="dm-modal" onclick="event.stopPropagation()">
+      <div class="dm-modal-header">
+        <div class="dm-modal-header-icon">🖥️</div>
+        <div>
+          <div class="dm-modal-title">Enroll New Device</div>
+          <div class="dm-modal-sub">Register a device into the management system</div>
+        </div>
+        <div class="dm-modal-close" id="modalClose">✕</div>
+      </div>
+      <div class="dm-modal-body">
+        <div class="dm-form-row">
+          <div class="dm-form-field">
+            <label>Device Name</label>
+            <input type="text" id="newDevName" placeholder="e.g. LAPTOP-MKT-042">
+          </div>
+          <div class="dm-form-field">
+            <label>Serial / Asset Tag</label>
+            <input type="text" id="newDevSerial" placeholder="SN-XXXXXXXXXX">
+          </div>
+        </div>
+        <div class="dm-form-row">
+          <div class="dm-form-field">
+            <label>Device Type</label>
+            <select id="newDevType">
+              <option>Laptop</option>
+              <option>Desktop</option>
+              <option>Mobile</option>
+              <option>Tablet</option>
+              <option>Server</option>
+            </select>
+          </div>
+          <div class="dm-form-field">
+            <label>Operating System</label>
+            <select id="newDevOS">
+              <option>Windows 11</option>
+              <option>Windows 10</option>
+              <option>macOS Sequoia</option>
+              <option>macOS Sonoma</option>
+              <option>iOS 18</option>
+              <option>Android 15</option>
+            </select>
+          </div>
+        </div>
+        <div class="dm-form-row full">
+          <div class="dm-form-field">
+            <label>Assigned User Email</label>
+            <input type="email" id="newDevUser" placeholder="user@company.com">
+          </div>
+        </div>
+      </div>
+      <div class="dm-modal-footer">
+        <button type="button" class="dm-btn-cancel" id="modalCancel">Cancel</button>
+        <button type="button" class="dm-btn-save" id="enrollSubmitBtn">Enroll Device</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="dm-toast" id="toast"></div>
+
+  <script src="{{ url_for('static', filename='api-client.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+  <script>
+(function() {
+  let devicesData = [];
+  let currentTab = 'all';
+  let selected = new Set();
+
+  function getToken() { return localStorage.getItem('access_token'); }
+  function apiHeaders() {
+    const t = getToken();
+    return { 'Content-Type': 'application/json', ...(t ? { 'Authorization': 'Bearer ' + t } : {}) };
+  }
+  function escapeHtml(t) { if (!t) return ''; const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+
+  function statusClass(s) {
+    if (s === 'online') return 'online';
+    if (s === 'offline') return 'offline';
+    if (s === 'update') return 'warning';
+    return 'maintenance';
+  }
+  function statusLabel(s) {
+    const m = { online:'Online', offline:'Offline', update:'Warning', idle:'Idle' };
+    return m[s] || (s ? s.charAt(0).toUpperCase()+s.slice(1) : '—');
+  }
+  function deviceIcon(type) {
+    const icons = { Laptop:'💻', Desktop:'🖥️', Mobile:'📱', Server:'🖥️', Tablet:'📟' };
+    return icons[type] || '💻';
+  }
+  function healthClass(h) {
+    if (h >= 80) return 'good';
+    if (h >= 55) return 'ok';
+    return 'bad';
+  }
+
+  function renderDevices(data) {
+    const tbody = document.getElementById('deviceBody');
+    const searchQ = (document.getElementById('searchInput').value || '').toLowerCase();
+    let filtered = data.filter(d => {
+      const matchTab = currentTab === 'all' || d.status === currentTab;
+      const matchSearch = !searchQ || 
+        (d.name||'').toLowerCase().includes(searchQ) ||
+        (d.device_id||'').toLowerCase().includes(searchQ) ||
+        (d.assigned_user||'').toLowerCase().includes(searchQ) ||
+        (d.os||'').toLowerCase().includes(searchQ);
+      return matchTab && matchSearch;
+    });
+
+    if (!filtered.length) {
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--gray-400);">No devices match your filter</td></tr>';
+      document.getElementById('deviceCount').textContent = '0 devices';
+      return;
+    }
+
+    tbody.innerHTML = filtered.map(d => {
+      const h = d.health || 0;
+      const hc = healthClass(h);
+      const sc = statusClass(d.status);
+      return `
+      <tr data-id="${d.id}" onclick="window.dmSelectRow && window.dmSelectRow(this)">
+        <td><input type="checkbox" class="dm-device-check row-cb" value="${d.id}" onclick="event.stopPropagation()"></td>
+        <td>
+          <div class="dm-device-name-cell">
+            <div class="dm-device-icon-badge">${deviceIcon(d.device_type)}</div>
+            <div>
+              <div class="dm-device-name">${escapeHtml(d.name)}</div>
+              <div class="dm-device-id">${d.device_id}</div>
+            </div>
+          </div>
+        </td>
+        <td><span class="dm-status-pill ${sc}">${statusLabel(d.status)}</span></td>
+        <td><span class="dm-tag">${escapeHtml(d.device_type)}</span></td>
+        <td>
+          <div style="font-size:13px;font-weight:500;color:var(--gray-900)">${escapeHtml(d.assigned_user || '—')}</div>
+        </td>
+        <td>
+          <div class="dm-health-bar-wrap">
+            <div class="dm-health-label" style="color:${hc==='good'?'var(--green)':hc==='ok'?'var(--warning)':'var(--danger)'}">${h}%</div>
+            <div class="dm-health-bar">
+              <div class="dm-health-fill ${hc}" style="width:${h}%"></div>
+            </div>
+          </div>
+        </td>
+        <td><span class="dm-tag">${escapeHtml(d.os)}</span></td>
+        <td>
+          <div style="display:flex;gap:4px">
+            <span class="dm-action-btn" title="Remove" onclick="event.stopPropagation();window.dmRemoveDevice && window.dmRemoveDevice(${d.id})">🗑</span>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+    document.getElementById('deviceCount').textContent = filtered.length + ' devices';
+
+    tbody.querySelectorAll('.row-cb').forEach(cb => {
+      cb.onchange = () => {
+        if (cb.checked) selected.add(parseInt(cb.value));
+        else selected.delete(parseInt(cb.value));
+      };
+    });
+  }
+
+  function updateStats() {
+    const total = devicesData.length;
+    const online = devicesData.filter(d => d.status === 'online').length;
+    const offline = devicesData.filter(d => d.status === 'offline').length;
+    const pending = devicesData.filter(d => d.status === 'update').length;
+    const complianceFail = devicesData.filter(d => (d.health||0) < 55).length;
+    document.getElementById('totalVal').textContent = total;
+    document.getElementById('onlineVal').textContent = online;
+    document.getElementById('offlineVal').textContent = offline;
+    document.getElementById('pendingVal').textContent = pending;
+    const sc = document.getElementById('sidebarDeviceCount');
+    const su = document.getElementById('sidebarUpdatesBadge');
+    const scb = document.getElementById('sidebarComplianceBadge');
+    if (sc) sc.textContent = total;
+    if (su) { su.textContent = pending; su.style.display = pending ? 'inline-flex' : 'none'; }
+    if (scb) { scb.textContent = complianceFail; scb.style.display = complianceFail ? 'inline-flex' : 'none'; }
+  }
+
+  function updateDonut() {
+    const counts = {};
+    devicesData.forEach(d => {
+      const t = (d.device_type || 'Laptop');
+      counts[t] = (counts[t] || 0) + 1;
+    });
+    const total = devicesData.length;
+    const items = Object.entries(counts).sort((a,b) => b[1]-a[1]);
+    const colors = ['#125435','#22a063','#8ecfb0','#d1ddd8'];
+    document.getElementById('donutTotal').textContent = total;
+
+    const circ = 2 * Math.PI * 46;
+    let offset = -circ * 0.25;
+    const svg = document.getElementById('donutSvg');
+    const existing = svg.querySelectorAll('circle[data-donut]');
+    existing.forEach(el => el.remove());
+
+    items.forEach(([name, count], i) => {
+      const pct = total ? count / total : 0;
+      const len = circ * pct;
+      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      circle.setAttribute('cx', 60);
+      circle.setAttribute('cy', 60);
+      circle.setAttribute('r', 46);
+      circle.setAttribute('fill', 'none');
+      circle.setAttribute('stroke', colors[i % colors.length]);
+      circle.setAttribute('stroke-width', 14);
+      circle.setAttribute('stroke-dasharray', len + ' ' + (circ - len));
+      circle.setAttribute('stroke-dashoffset', -offset);
+      circle.setAttribute('stroke-linecap', 'round');
+      circle.setAttribute('data-donut', '1');
+      svg.insertBefore(circle, svg.querySelector('text'));
+      offset += len;
+    });
+
+    const legend = document.getElementById('donutLegend');
+    legend.innerHTML = items.map(([name, count], i) => {
+      const pct = total ? Math.round(100 * count / total) : 0;
+      return `<div class="dm-legend-item">
+        <div class="dm-legend-dot" style="background:${colors[i%colors.length]}"></div>
+        <span class="dm-legend-label">${escapeHtml(name)}</span>
+        <span class="dm-legend-val">${count}</span>
+        <span class="dm-legend-pct">${pct}%</span>
+      </div>`;
+    }).join('');
+  }
+
+  function updateCompliance() {
+    const total = devicesData.length;
+    const healthy = devicesData.filter(d => (d.health||0) >= 80).length;
+    const warn = devicesData.filter(d => { const h = d.health||0; return h >= 55 && h < 80; }).length;
+    const fail = devicesData.filter(d => (d.health||0) < 55).length;
+    document.getElementById('complianceHealthy').textContent = total ? Math.round(100*healthy/total) + '%' : '0%';
+    document.getElementById('complianceWarn').textContent = total ? Math.round(100*warn/total) + '%' : '0%';
+    document.getElementById('complianceFail').textContent = total ? Math.round(100*fail/total) + '%' : '0%';
+  }
+
+  function updateActivity() {
+    const list = document.getElementById('activityList');
+    const recent = devicesData.slice(0, 5).map(d => ({
+      msg: `<strong>${escapeHtml(d.device_id)}</strong> — ${escapeHtml(d.name)}`,
+      time: d.last_active || '—',
+      ok: (d.status||'').includes('online') || (d.status||'').includes('idle')
+    }));
+    if (!recent.length) {
+      list.innerHTML = '<div class="dm-activity-item"><div class="dm-activity-dot green"></div><div><div class="dm-activity-text">No devices yet</div><div class="dm-activity-time">—</div></div></div>';
+      return;
+    }
+    list.innerHTML = recent.map(r => `
+      <div class="dm-activity-item">
+        <div class="dm-activity-dot ${r.ok?'green':'amber'}"></div>
+        <div>
+          <div class="dm-activity-text">${r.msg}</div>
+          <div class="dm-activity-time">${r.time}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function updateAlerts() {
+    const pending = devicesData.filter(d => d.status === 'update').length;
+    const offline = devicesData.filter(d => d.status === 'offline').length;
+    const list = document.getElementById('alertsList');
+    let html = '';
+    if (pending > 0) html += `<div class="dm-alert-item warn"><span class="dm-alert-icon">🔄</span><div class="dm-alert-body"><div class="dm-alert-title">Pending OS Updates</div><div class="dm-alert-desc">${pending} device(s) need attention</div></div></div>`;
+    if (offline > 0) html += `<div class="dm-alert-item critical"><span class="dm-alert-icon">🔴</span><div class="dm-alert-body"><div class="dm-alert-title">Offline Devices</div><div class="dm-alert-desc">${offline} device(s) offline</div></div></div>`;
+    if (!html) html = `<div class="dm-alert-item info"><span class="dm-alert-icon">📋</span><div class="dm-alert-body"><div class="dm-alert-title">Device Management</div><div class="dm-alert-desc">Track and manage enrolled devices. Enroll new devices to get started.</div></div></div>`;
+    list.innerHTML = html;
+  }
+
+  let toastTimer;
+  function showToast(msg, err) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.toggle('err', !!err);
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 2800);
+  }
+  window.showToast = showToast;
+
+  window.dmSelectRow = function(row) {
+    row.classList.toggle('selected');
+    const id = parseInt(row.dataset.id);
+    const cb = row.querySelector('.row-cb');
+    if (cb) {
+      cb.checked = !cb.checked;
+      if (cb.checked) selected.add(id);
+      else selected.delete(id);
+    }
+  };
+
+  window.dmRemoveDevice = async function(id) {
+    if (!confirm('Remove this device?')) return;
+    try {
+      const res = await fetch('/api/admin/devices/' + id, { method: 'DELETE', headers: apiHeaders() });
+      if (!res.ok) { showToast('Failed to remove device', true); return; }
+      devicesData = devicesData.filter(d => d.id !== id);
+      selected.delete(id);
+      renderDevices(devicesData);
+      updateStats();
+      updateDonut();
+      updateCompliance();
+      updateActivity();
+      updateAlerts();
+      showToast('Device removed');
+    } catch (e) {
+      showToast('Failed to remove device', true);
+    }
+  };
+
+  async function loadDevices() {
+    const token = getToken();
+    if (!token) { window.location.href = '/login'; return; }
+    try {
+      const res = await fetch('/api/admin/devices', { headers: apiHeaders() });
+      if (res.status === 401) { window.location.href = '/login'; return; }
+      if (!res.ok) { showToast('Failed to load devices', true); return; }
+      const json = await res.json();
+      devicesData = (json.devices || json.data?.devices || []);
+      renderDevices(devicesData);
+      updateStats();
+      updateDonut();
+      updateCompliance();
+      updateActivity();
+      updateAlerts();
+    } catch (e) {
+      showToast('Failed to load devices', true);
+    }
+  }
+
+  async function enrollDevice() {
+    const name = (document.getElementById('newDevName').value || '').trim();
+    const type = document.getElementById('newDevType').value;
+    const os = document.getElementById('newDevOS').value;
+    const user = (document.getElementById('newDevUser').value || '').trim();
+    const serial = (document.getElementById('newDevSerial').value || '').trim();
+    if (!name) { showToast('Please fill in device name', true); return; }
+    try {
+      const res = await fetch('/api/admin/devices', {
+        method: 'POST',
+        headers: apiHeaders(),
+        body: JSON.stringify({ name, device_type: type, os, assigned_user_email: user || undefined, serial_or_asset_tag: serial || undefined })
+      });
+      const json = await res.json();
+      if (!res.ok) { showToast(json.message || json.error || 'Failed to enroll device', true); return; }
+      document.getElementById('enrollModal').classList.remove('open');
+      document.getElementById('newDevName').value = '';
+      document.getElementById('newDevUser').value = '';
+      document.getElementById('newDevSerial').value = '';
+      loadDevices();
+      showToast('✅ Device enrolled successfully');
+    } catch (e) {
+      showToast('Failed to enroll device', true);
+    }
+  }
+
+  async function importDevicesExcel(file) {
+    if (!file) return;
+    try {
+      const token = getToken();
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await fetch('/api/admin/devices/import-excel', {
+        method: 'POST',
+        headers: token ? { 'Authorization': 'Bearer ' + token } : {},
+        body: formData
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        showToast(json.message || json.error || 'Failed to import devices', true);
+        return;
+      }
+
+      const data = json.data || {};
+      const imported = Number(data.imported || 0);
+      const dup = Number(data.skipped_duplicates || 0);
+      const empty = Number(data.skipped_empty || 0);
+      const errs = Array.isArray(data.errors) ? data.errors.length : 0;
+      let msg = `Imported ${imported} device(s)`;
+      if (dup || empty) msg += ` · skipped ${dup + empty}`;
+      if (errs) msg += ` · ${errs} warning(s)`;
+      showToast(msg);
+      await loadDevices();
+    } catch (e) {
+      showToast('Failed to import devices', true);
+    } finally {
+      const input = document.getElementById('deviceExcelInput');
+      if (input) input.value = '';
+    }
+  }
+
+  async function downloadSampleExcel() {
+    try {
+      const token = getToken();
+      const res = await fetch('/api/admin/devices/sample-excel', {
+        method: 'GET',
+        headers: token ? { 'Authorization': 'Bearer ' + token } : {}
+      });
+      if (!res.ok) {
+        let msg = 'Failed to download sample Excel';
+        try {
+          const json = await res.json();
+          msg = json.message || json.error || msg;
+        } catch (_) {}
+        showToast(msg, true);
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const disposition = res.headers.get('content-disposition') || '';
+      let filename = 'device_import_sample.xlsx';
+      const match = disposition.match(/filename="?([^"]+)"?/i);
+      if (match && match[1]) filename = match[1];
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      showToast('Sample Excel downloaded');
+    } catch (e) {
+      showToast('Failed to download sample Excel', true);
+    }
+  }
+
+  function exportCSV() {
+    const rows = [['ID','Name','Status','Type','OS','User','Health']];
+    devicesData.forEach(d => rows.push([d.device_id,d.name,d.status,d.device_type,d.os,d.assigned_user||'',d.health||0]));
+    const a = document.createElement('a');
+    a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(rows.map(r=>r.join(',')).join('\n'));
+    a.download = 'devices_export.csv';
+    a.click();
+    showToast('CSV exported');
+  }
+
+  document.getElementById('searchInput').oninput = () => renderDevices(devicesData);
+  document.querySelectorAll('.dm-filter-tab').forEach(t => {
+    t.onclick = () => {
+      document.querySelectorAll('.dm-filter-tab').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      currentTab = t.dataset.tab || 'all';
+      renderDevices(devicesData);
+    };
+  });
+  document.getElementById('selectAll').onchange = function() {
+    document.querySelectorAll('.row-cb').forEach(cb => {
+      cb.checked = this.checked;
+      if (this.checked) selected.add(parseInt(cb.value));
+      else selected.delete(parseInt(cb.value));
+    });
+  };
+  document.getElementById('exportBtn').onclick = exportCSV;
+  document.getElementById('enrollBtn2').onclick = () => document.getElementById('enrollModal').classList.add('open');
+  document.getElementById('importExcelBtn').onclick = () => document.getElementById('deviceExcelInput')?.click();
+  document.getElementById('downloadSampleBtn').onclick = downloadSampleExcel;
+  document.getElementById('deviceExcelInput').onchange = function() {
+    const file = this.files && this.files[0];
+    if (file) importDevicesExcel(file);
+  };
+  document.getElementById('enrollBtn').onclick = () => document.getElementById('enrollModal').classList.add('open');
+  document.getElementById('modalClose').onclick = () => document.getElementById('enrollModal').classList.remove('open');
+  document.getElementById('modalCancel').onclick = () => document.getElementById('enrollModal').classList.remove('open');
+  document.getElementById('enrollSubmitBtn').onclick = enrollDevice;
+  document.getElementById('enrollModal').onclick = function(e) { if (e.target === this) this.classList.remove('open'); };
+
+  document.querySelectorAll('.sb-nav-item[data-dm-nav]').forEach(el => {
+    el.addEventListener('click', function(e) {
+      const href = this.getAttribute('href') || '';
+      if (href.startsWith('#')) e.preventDefault();
+      document.querySelectorAll('.dh-sidebar .sb-nav-item[data-dm-nav]').forEach(n => n.classList.remove('active'));
+      this.classList.add('active');
+      if (this.dataset.dmNav === 'devices') {
+        document.getElementById('deviceTable')?.closest('.dm-card')?.scrollIntoView({ behavior: 'smooth' });
+      }
+    });
+  });
+
+  async function loadUserCard() {
+    try {
+      const res = await fetch('/api/auth/me', { headers: apiHeaders() });
+      if (!res.ok) return;
+      const json = await res.json();
+      const u = json.user;
+      if (!u) return;
+      const name = u.full_name || u.username || 'User';
+      const role = u.role === 'admin' ? 'IT Administrator' : (u.role ? u.role.charAt(0).toUpperCase() + u.role.slice(1) : 'User');
+      const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'U';
+      const av = document.getElementById('dmUserAvatar');
+      const nm = document.getElementById('dmUserName');
+      const rl = document.getElementById('dmUserRole');
+      if (av) av.textContent = initials;
+      if (nm) nm.textContent = name;
+      if (rl) rl.textContent = role;
+    } catch (_) {}
+  }
+
+  loadDevices();
+  loadUserCard();
+})();
+  </script>
+</body>
+</html>

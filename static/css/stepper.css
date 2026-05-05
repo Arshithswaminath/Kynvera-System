@@ -1,0 +1,390 @@
+/**
+ * Injaaz Design System - Form Stepper
+ * Visual progress indicator for multi-step forms
+ * Version: 1.0.0
+ */
+
+/* ============================================
+ * STEPPER CONTAINER
+ * ============================================ */
+
+.stepper {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: var(--space-4, 1rem) var(--space-6, 1.5rem);
+  background-color: var(--bg-surface, #ffffff);
+  border-radius: var(--radius-xl, 0.75rem);
+  margin-bottom: var(--space-6, 1.5rem);
+  overflow-x: auto;
+}
+
+.stepper-vertical {
+  flex-direction: column;
+  gap: 0;
+  padding: var(--space-4, 1rem);
+}
+
+/* ============================================
+ * STEPPER STEP
+ * ============================================ */
+
+.stepper-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.stepper-vertical .stepper-step {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: var(--space-3, 0.75rem);
+}
+
+/* ============================================
+ * STEP INDICATOR
+ * ============================================ */
+
+.step-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-full, 9999px);
+  background-color: var(--bg-muted, #f4f4f5);
+  color: var(--text-muted, #71717a);
+  font-size: var(--text-sm, 0.875rem);
+  font-weight: var(--font-semibold, 600);
+  border: 2px solid var(--border-default, #e4e4e7);
+  position: relative;
+  z-index: 1;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+
+.step-indicator svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Step States */
+.stepper-step.active .step-indicator {
+  background-color: var(--color-brand, #125435);
+  color: var(--color-neutral-0, #ffffff);
+  border-color: var(--color-brand, #125435);
+  box-shadow: 0 0 0 4px var(--color-primary-100, #d1fae5);
+  transform: scale(1.1);
+}
+
+.stepper-step.completed .step-indicator {
+  background-color: var(--color-success-500, #22c55e);
+  color: var(--color-neutral-0, #ffffff);
+  border-color: var(--color-success-500, #22c55e);
+}
+
+.stepper-step.error .step-indicator {
+  background-color: var(--color-error-500, #ef4444);
+  color: var(--color-neutral-0, #ffffff);
+  border-color: var(--color-error-500, #ef4444);
+}
+
+/* ============================================
+ * STEP CONTENT
+ * ============================================ */
+
+.step-content {
+  text-align: center;
+  margin-top: var(--space-2, 0.5rem);
+  max-width: 120px;
+}
+
+.stepper-vertical .step-content {
+  text-align: left;
+  margin-top: 0;
+  max-width: none;
+  padding-bottom: var(--space-6, 1.5rem);
+}
+
+.step-title {
+  font-size: var(--text-sm, 0.875rem);
+  font-weight: var(--font-medium, 500);
+  color: var(--text-muted, #71717a);
+  margin: 0;
+  line-height: 1.4;
+  transition: color 0.3s ease;
+}
+
+.stepper-step.active .step-title,
+.stepper-step.completed .step-title {
+  color: var(--text-primary, #18181b);
+}
+
+.step-description {
+  font-size: var(--text-xs, 0.75rem);
+  color: var(--text-muted, #71717a);
+  margin-top: var(--space-0-5, 0.125rem);
+  display: none;
+}
+
+.stepper-vertical .step-description {
+  display: block;
+}
+
+/* ============================================
+ * CONNECTOR LINE
+ * ============================================ */
+
+.step-connector {
+  flex: 1;
+  height: 2px;
+  background-color: var(--border-default, #e4e4e7);
+  margin: 0 var(--space-2, 0.5rem);
+  position: relative;
+  top: 20px;
+  transition: background-color 0.3s ease;
+}
+
+.stepper-step.completed + .stepper-step .step-connector,
+.stepper-step.completed .step-connector {
+  background-color: var(--color-success-500, #22c55e);
+}
+
+.stepper-step:last-child .step-connector {
+  display: none;
+}
+
+/* Vertical connector */
+.stepper-vertical .step-connector {
+  position: absolute;
+  left: 19px;
+  top: 48px;
+  width: 2px;
+  height: calc(100% - 48px);
+  margin: 0;
+}
+
+/* ============================================
+ * ANIMATED CONNECTOR
+ * ============================================ */
+
+.step-connector-animated {
+  overflow: hidden;
+}
+
+.step-connector-animated::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-color: var(--color-success-500, #22c55e);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.5s ease;
+}
+
+.stepper-step.completed + .stepper-step .step-connector-animated::after {
+  transform: scaleX(1);
+}
+
+/* ============================================
+ * COMPACT STEPPER
+ * ============================================ */
+
+.stepper-compact .step-indicator {
+  width: 32px;
+  height: 32px;
+  font-size: var(--text-xs, 0.75rem);
+}
+
+.stepper-compact .step-connector {
+  top: 16px;
+}
+
+.stepper-compact .step-content {
+  max-width: 100px;
+}
+
+.stepper-compact .step-title {
+  font-size: var(--text-xs, 0.75rem);
+}
+
+/* ============================================
+ * NUMBERED VS ICON STEPS
+ * ============================================ */
+
+.step-icon {
+  display: none;
+}
+
+.stepper-step.completed .step-number {
+  display: none;
+}
+
+.stepper-step.completed .step-icon {
+  display: block;
+}
+
+/* ============================================
+ * CLICKABLE STEPS
+ * ============================================ */
+
+.stepper-clickable .stepper-step {
+  cursor: pointer;
+}
+
+.stepper-clickable .stepper-step:hover .step-indicator {
+  border-color: var(--color-brand, #125435);
+}
+
+.stepper-clickable .stepper-step:hover .step-title {
+  color: var(--color-brand, #125435);
+}
+
+.stepper-clickable .stepper-step.disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* ============================================
+ * WITH SUBSTEPS
+ * ============================================ */
+
+.step-substeps {
+  display: flex;
+  gap: var(--space-1, 0.25rem);
+  margin-top: var(--space-2, 0.5rem);
+  justify-content: center;
+}
+
+.step-substep {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full, 9999px);
+  background-color: var(--border-default, #e4e4e7);
+  transition: background-color 0.3s ease;
+}
+
+.step-substep.completed {
+  background-color: var(--color-success-500, #22c55e);
+}
+
+.step-substep.active {
+  background-color: var(--color-brand, #125435);
+}
+
+/* ============================================
+ * PROGRESS BAR VARIANT
+ * ============================================ */
+
+.stepper-progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+  padding: var(--space-4, 1rem);
+}
+
+.stepper-progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.stepper-progress-title {
+  font-size: var(--text-sm, 0.875rem);
+  font-weight: var(--font-medium, 500);
+  color: var(--text-primary, #18181b);
+}
+
+.stepper-progress-count {
+  font-size: var(--text-sm, 0.875rem);
+  color: var(--text-muted, #71717a);
+}
+
+.stepper-progress-bar {
+  height: 8px;
+  background-color: var(--bg-muted, #f4f4f5);
+  border-radius: var(--radius-full, 9999px);
+  overflow: hidden;
+}
+
+.stepper-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-brand, #125435), var(--color-brand-light, #1a7a4d));
+  border-radius: var(--radius-full, 9999px);
+  transition: width 0.5s ease;
+}
+
+.stepper-progress-steps {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--space-1, 0.25rem);
+}
+
+.stepper-progress-step {
+  font-size: var(--text-xs, 0.75rem);
+  color: var(--text-muted, #71717a);
+}
+
+.stepper-progress-step.active {
+  color: var(--color-brand, #125435);
+  font-weight: var(--font-medium, 500);
+}
+
+.stepper-progress-step.completed {
+  color: var(--color-success-600, #16a34a);
+}
+
+/* ============================================
+ * RESPONSIVE
+ * ============================================ */
+
+@media (max-width: 640px) {
+  .stepper:not(.stepper-vertical) {
+    padding: var(--space-3, 0.75rem);
+  }
+  
+  .stepper:not(.stepper-vertical) .step-indicator {
+    width: 32px;
+    height: 32px;
+    font-size: var(--text-xs, 0.75rem);
+  }
+  
+  .stepper:not(.stepper-vertical) .step-connector {
+    top: 16px;
+  }
+  
+  .stepper:not(.stepper-vertical) .step-content {
+    max-width: 80px;
+  }
+  
+  .stepper:not(.stepper-vertical) .step-title {
+    font-size: var(--text-xs, 0.75rem);
+  }
+  
+  .stepper:not(.stepper-vertical) .step-description {
+    display: none;
+  }
+}
+
+/* ============================================
+ * DARK MODE
+ * ============================================ */
+
+[data-theme="dark"] .stepper,
+.dark .stepper {
+  background-color: var(--color-neutral-800, #27272a);
+}
+
+[data-theme="dark"] .step-indicator,
+.dark .step-indicator {
+  background-color: var(--color-neutral-700, #3f3f46);
+  border-color: var(--color-neutral-600, #52525b);
+}
+
+[data-theme="dark"] .step-connector,
+.dark .step-connector {
+  background-color: var(--color-neutral-600, #52525b);
+}

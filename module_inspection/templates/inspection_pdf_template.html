@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+<title>Inspection Form PDF</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/inspection-pdf-template.css') }}">
+</head>
+<body>
+  {% set d = data or {} %}
+  {% set checklist = d.get('checklist', []) %}
+  {% set findings = d.get('findings', []) %}
+  {% set recommendations = d.get('recommendations', []) %}
+  {% set signoff = d.get('signoff', []) %}
+  {% set overall = (d.get('overall_assessment') or '').lower() %}
+
+  <main class="inspection-pdf">
+    <div class="pdf-shell">
+      <header class="pdf-header">
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="Injaaz" class="pdf-logo">
+
+        <div class="pdf-title-wrap">
+          <p class="pdf-kicker">Confidential Inspection Document</p>
+          <h1 class="pdf-title">Inspection Form</h1>
+        </div>
+
+        <ul class="pdf-meta">
+          <li><span class="meta-label">Project</span><span class="meta-value">{{ d.get('project', '-') }}</span></li>
+          <li><span class="meta-label">Location</span><span class="meta-value">{{ d.get('location', '-') }}</span></li>
+          <li><span class="meta-label">Date</span><span class="meta-value">{{ d.get('inspection_date', '-') }}</span></li>
+          <li><span class="meta-label">Ref ID</span><span class="meta-value">{{ d.get('reference_no', '-') }}</span></li>
+        </ul>
+      </header>
+
+      <section class="pdf-section">
+        <div class="pdf-section-hd"><h2>1. Inspector Information</h2><span class="pdf-rule"></span></div>
+        <div class="grid-2">
+          <div class="field"><p class="field-label">Inspector Name <span class="required">*</span></p><div class="field-value emphasis">{{ d.get('inspector_name', '-') }}</div></div>
+          <div class="field"><p class="field-label">Department / Team</p><div class="field-value">{{ d.get('department', '-') }}</div></div>
+          <div class="field"><p class="field-label">Site / Asset</p><div class="field-value">{{ d.get('site_asset', '-') }}</div></div>
+          <div class="field"><p class="field-label">Inspection Type</p><div class="field-value">{{ d.get('inspection_type', '-') }}</div></div>
+        </div>
+      </section>
+
+      <section class="pdf-section">
+        <div class="pdf-section-hd"><h2>2. Inspection Overview / Purpose</h2><span class="pdf-rule"></span></div>
+        <div class="field">
+          <p class="field-label">Summary</p>
+          <div class="field-value textarea">{{ d.get('overview', '-') }}</div>
+        </div>
+      </section>
+
+      <section class="pdf-section">
+        <div class="pdf-section-hd"><h2>3. Checklist</h2><span class="pdf-rule"></span></div>
+        <table class="table">
+          <thead>
+            <tr>
+              <th style="width:30%">Item</th>
+              <th style="width:20%">Pass / Fail / NA</th>
+              <th style="width:30%">Comments</th>
+              <th style="width:20%">Photo</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if checklist %}
+              {% for row in checklist %}
+              <tr>
+                <td>{{ row.get('item', '-') }}</td>
+                <td>
+                  <div class="status-group">
+                    <span class="box"><span class="chk {% if row.get('status') == 'pass' %}checked{% endif %}"></span><span class="tiny">Pass</span></span>
+                    <span class="box"><span class="chk {% if row.get('status') == 'fail' %}checked{% endif %}"></span><span class="tiny">Fail</span></span>
+                    <span class="box"><span class="chk {% if row.get('status') in ['na', 'n/a'] %}checked{% endif %}"></span><span class="tiny">NA</span></span>
+                  </div>
+                </td>
+                <td>{{ row.get('comments', '-') }}</td>
+                <td class="tiny">{{ row.get('photo_note', 'Attached') }}</td>
+              </tr>
+              {% endfor %}
+            {% else %}
+              <tr><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </section>
+
+      <section class="pdf-section">
+        <div class="pdf-section-hd"><h2>4. Findings / Observations</h2><span class="pdf-rule"></span></div>
+        <ol class="findings">
+          {% if findings %}
+            {% for item in findings %}<li>{{ item }}</li>{% endfor %}
+          {% else %}
+            <li>No findings provided.</li>
+          {% endif %}
+        </ol>
+      </section>
+
+      <section class="pdf-section">
+        <div class="pdf-section-hd"><h2>5. Recommendations / Actions</h2><span class="pdf-rule"></span></div>
+        <table class="table">
+          <thead>
+            <tr>
+              <th style="width:38%">Action</th>
+              <th style="width:22%">Responsible</th>
+              <th style="width:20%">Due Date</th>
+              <th style="width:20%">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if recommendations %}
+              {% for row in recommendations %}
+              <tr>
+                <td>{{ row.get('action', '-') }}</td>
+                <td>{{ row.get('owner', '-') }}</td>
+                <td>{{ row.get('due_date', '-') }}</td>
+                <td>{{ row.get('status', '-') }}</td>
+              </tr>
+              {% endfor %}
+            {% else %}
+              <tr><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </section>
+
+      <section class="pdf-section">
+        <div class="pdf-section-hd"><h2>6. Overall Assessment</h2><span class="pdf-rule"></span></div>
+        <div class="assessment">
+          <div class="assessment-pill {% if overall == 'pass' %}active{% endif %}">Pass</div>
+          <div class="assessment-pill {% if overall in ['conditional', 'cond'] %}active{% endif %}">Conditional</div>
+          <div class="assessment-pill {% if overall == 'fail' %}active{% endif %}">Fail</div>
+        </div>
+      </section>
+
+      <section class="pdf-section">
+        <div class="pdf-section-hd"><h2>7. Sign-off</h2><span class="pdf-rule"></span></div>
+        <div class="sign-grid">
+          {% if signoff %}
+            {% for s in signoff %}
+            <div class="sign-card">
+              <p class="field-label">{{ s.get('role', 'Approver') }}</p>
+              <div class="sign-line"></div>
+              <p class="tiny">Name: {{ s.get('name', '-') }}</p>
+              <p class="tiny">Date: {{ s.get('date', '-') }}</p>
+            </div>
+            {% endfor %}
+          {% else %}
+            {% for role in ['Inspector', 'Supervisor', 'Operations Manager', 'Client Representative'] %}
+            <div class="sign-card">
+              <p class="field-label">{{ role }}</p>
+              <div class="sign-line"></div>
+              <p class="tiny">Name: __________________</p>
+              <p class="tiny">Date: __________________</p>
+            </div>
+            {% endfor %}
+          {% endif %}
+        </div>
+      </section>
+
+      <footer class="pdf-footer">
+        <span>Confidential - Injaaz Application</span>
+        <span class="page-num"></span>
+      </footer>
+    </div>
+  </main>
+</body>
+</html>

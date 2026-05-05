@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+  
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+<title>HR Module - Injaaz Application</title>
+  <meta name="theme-color" content="#125435">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <style>
+    :root { --primary: #125435; --primary-light: #1a7a4c; --secondary: #6366f1; }
+    .hr-hero::before { display: none; }
+    .hr-hero { padding: 9rem 0 5rem; }
+    .hr-modules-section::before { display: none; }
+    .hr-dashboard { background: #F8FAF8; }
+    .hr-dashboard .modules-section { background: #F8FAF8 !important; }
+    .hr-hero .hero-content { gap: 2.5rem; align-items: stretch; }
+    .hr-hero .hero-left { flex: 0 0 auto; max-width: 280px; }
+    .hr-hero .hero-right { flex: 1; min-width: 0; display: flex; justify-content: flex-end; }
+    .status-badge { padding: 0.35rem 0.75rem; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+    .status-hr_review { background: #fef3c7; color: #b45309; }
+    .status-gm_review { background: #dbeafe; color: #1d4ed8; }
+    .status-approved { background: #d1fae5; color: #047857; }
+    .status-rejected { background: #fee2e2; color: #dc2626; }
+    .status-submitted { background: #e0e7ff; color: #4338ca; }
+    .form-type-badge { padding: 0.25rem 0.5rem; border-radius: 6px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; }
+    .type-leave, .type-leave_application { background: #d1fae5; color: #047857; }
+    .type-termination { background: #fee2e2; color: #dc2626; }
+    .type-long_vacation { background: #dbeafe; color: #1d4ed8; }
+    .type-asset { background: #fef3c7; color: #b45309; }
+    .type-commencement, .type-duty_resumption, .type-passport_release, .type-visa_renewal { background: #dbeafe; color: #1d4ed8; }
+    .type-contract_renewal, .type-performance_evaluation, .type-staff_appraisal { background: #e0e7ff; color: #4338ca; }
+    .type-grievance { background: #fee2e2; color: #dc2626; }
+    .type-interview_assessment { background: #fef3c7; color: #b45309; }
+    .type-station_clearance { background: #d1fae5; color: #047857; }
+    .type-other { background: #e5e7eb; color: #374151; }
+    .request-card {
+      background: white; border-radius: 14px; padding: 1.25rem 1.5rem; margin-bottom: 0.75rem;
+      border: 1px solid #e2e8f0; cursor: pointer; transition: all 0.25s ease;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+    .request-card:hover {
+      transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.08); border-color: rgba(18,84,53,0.25);
+    }
+    .my-requests-section { margin-top: 2rem; }
+    .my-requests-list { background: transparent; }
+    .detail-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center;
+      z-index: 9999; opacity: 0; visibility: hidden; transition: all 0.3s ease;
+      padding: 1rem; backdrop-filter: blur(4px);
+    }
+    .detail-overlay.show { opacity: 1; visibility: visible; }
+    .detail-modal {
+      background: white; border-radius: 20px; max-width: 900px; width: 100%;
+      max-height: 90vh; overflow: hidden; transform: scale(0.95); transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
+      display: flex; flex-direction: column; box-shadow: 0 24px 48px rgba(0,0,0,0.18);
+    }
+    .detail-overlay.show .detail-modal { transform: scale(1); }
+    .detail-header {
+      padding: 1.25rem 1.5rem; background: #0f172a; color: white;
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;
+    }
+    .detail-header .form-type-badge { background: rgba(255,255,255,0.2); color: white; }
+    .detail-header h4 { color: white; font-weight: 700; margin: 0.35rem 0 0; font-size: 1.1rem; }
+    .detail-close {
+      background: rgba(255,255,255,0.15); border: none; width: 40px; height: 40px;
+      border-radius: 10px; font-size: 1.5rem; cursor: pointer; color: white; line-height: 1; transition: all 0.2s;
+    }
+    .detail-close:hover { background: rgba(255,255,255,0.25); }
+    .detail-body { padding: 1.5rem; overflow-y: auto; flex: 1; background: #fff; }
+    .detail-row { display: flex; padding: 0.75rem 0; border-bottom: 1px solid #f1f5f9; }
+    .detail-row:last-child { border-bottom: none; }
+    .detail-label { width: 40%; font-weight: 600; color: #64748b; font-size: 0.875rem; }
+    .detail-value { width: 60%; color: #1e293b; }
+    .detail-section { margin-bottom: 1.5rem; }
+    .detail-section-title { font-weight: 700; color: #1e293b; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid var(--primary); font-size: 1rem; }
+    .workflow-timeline { margin-top: 0.65rem; --tl-line: #e2e8f0; }
+    .timeline-item {
+      display: flex; gap: 0.85rem; align-items: flex-start;
+      position: relative; padding: 0 0 1rem 0;
+    }
+    .timeline-item:last-child { padding-bottom: 0; }
+    .timeline-item::before {
+      content: ''; position: absolute; left: 7px; top: 1.5rem; bottom: 0;
+      width: 2px; background: var(--tl-line); border-radius: 1px;
+    }
+    .timeline-item:last-child::before { display: none; }
+    .timeline-dot {
+      position: relative; flex-shrink: 0;
+      margin-top: 0.3rem;
+      width: 16px; height: 16px; border-radius: 50%; z-index: 1;
+      background: #e2e8f0;
+      border: 2px solid white;
+      box-shadow: 0 0 0 2px #e2e8f0;
+    }
+    .timeline-dot.completed { background: #10b981; box-shadow: 0 0 0 2px rgba(16,185,129,0.35); }
+    .timeline-dot.current { background: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.4); }
+    .timeline-dot.rejected { background: #ef4444; box-shadow: 0 0 0 2px rgba(239,68,68,0.35); }
+    .timeline-body { flex: 1; min-width: 0; padding-bottom: 0.15rem; }
+    .timeline-title { font-weight: 700; font-size: 0.9125rem; color: #0f172a; letter-spacing: -0.015em; }
+    .timeline-meta { font-size: 0.8rem; color: #64748b; margin-top: 0.2rem; line-height: 1.45; }
+    .timeline-card {
+      margin-top: 0.6rem;
+      padding: 0.62rem 0.82rem;
+      background: #fff;
+      border: 1px solid #eef0f4;
+      border-radius: 10px;
+      box-shadow: 0 1px 3px rgba(15,23,42,0.04);
+    }
+    .timeline-card--alert {
+      border-color: #fecaca;
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(239,68,68,0.06);
+    }
+    .timeline-dl { margin: 0; display: grid; grid-template-columns: 5.25rem 1fr; gap: 0.3rem 0.72rem; font-size: 0.8075rem; align-items: start; }
+    .timeline-dl + .timeline-dl { margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid #f1f5f9; }
+    .timeline-dl dt { margin: 0; font-weight: 600; color: #64748b; }
+    .timeline-dl dd { margin: 0; color: #1e293b; word-break: break-word; white-space: pre-wrap; line-height: 1.48; }
+    .timeline-dd-muted { color: #94a3b8 !important; }
+    .timeline-sig {
+      box-sizing: border-box;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: min(280px, 100%);
+      height: 92px;
+      flex-shrink: 0;
+      padding: 0.4rem 0.5rem;
+      margin: 0;
+      background: #fff;
+      border: 1px solid #e5e9ef;
+      border-radius: 10px;
+      overflow: hidden;
+      line-height: 0;
+    }
+    .timeline-sig img {
+      display: block;
+      margin: 0;
+      max-width: 100%;
+      max-height: 100%;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      object-position: center center;
+    }
+    .signature-preview { max-width: 220px; max-height: 88px; object-fit: contain; border: 1px solid #e5e9ef; border-radius: 8px; padding: 0.4rem; background: #fff; }
+    @media (max-width: 768px) {
+      .detail-modal { max-height: 95vh !important; margin: 0.5rem !important; border-radius: 14px !important; }
+      .detail-header { padding: 1rem !important; }
+      .detail-row { flex-direction: column !important; gap: 0.25rem !important; }
+      .detail-label { width: 100% !important; }
+      .detail-value { width: 100% !important; }
+    }
+  </style>
+</head>
+<body class="hr-dashboard">
+  {% set active_page = 'hr' %}
+  {% include 'partials/main_navbar.html' with context %}
+
+  <!-- Hero: same as hr_dashboard -->
+  <header class="hero hero-split hr-hero">
+    <div class="hero-content hero-split-inner">
+      <div class="hero-left">
+        <a href="/dashboard" class="back-btn">
+          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+          </svg>
+          Back to Dashboard
+        </a>
+        <p class="hero-tagline">HR Module</p>
+        <h1 class="hero-title">HR <span class="hero-title-accent">Forms</span></h1>
+      </div>
+      <div class="hero-right"></div>
+    </div>
+  </header>
+
+  <!-- HR Forms (same module-card style as hr_dashboard) -->
+  <section class="modules-section hr-modules-section" id="modules">
+    <div class="modules-inner">
+      <h2 class="modules-section-label">HR Forms (from HR Documents)</h2>
+      <div class="modules-grid" id="hrFormsGrid">
+        <a href="/hr/leave-application-form" class="module-card"><div class="card-body"><span class="module-number">01 &mdash; HR</span><div class="module-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div><h2 class="module-title">Leave Application</h2><p class="module-description">Submit leave application (annual, sick, emergency)</p><span class="module-arrow">Open Form <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg></span></div></a>
+        <a href="/hr/commencement-form" class="module-card"><div class="card-body"><span class="module-number">02 &mdash; HR</span><div class="module-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div><h2 class="module-title">Commencement Form</h2><p class="module-description">Complete within 5 days of joining</p><span class="module-arrow">Open Form <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg></span></div></a>
+        <a href="/hr/duty-resumption-form" class="module-card"><div class="card-body"><span class="module-number">03 &mdash; HR</span><div class="module-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064"/></svg></div><h2 class="module-title">Duty Resumption</h2><p class="module-description">Resumption of duty after leave</p><span class="module-arrow">Open Form <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg></span></div></a>
+        <a href="/hr/contract-renewal-form" class="module-card"><div class="card-body"><span class="module-number">04 &mdash; HR</span><div class="module-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div><h2 class="module-title">Contract Renewal</h2><p class="module-description">Employee contract renewal evaluation</p><span class="module-arrow">Open Form <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg></span></div></a>
+        <a href="/hr/performance-evaluation-form" class="module-card"><div class="card-body"><span class="module-number">05 &mdash; HR</span><div class="module-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg></div><h2 class="module-title">Performance Evaluation</h2><p class="module-description">Employee performance evaluation</p><span class="module-arrow">Open Form <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg></span></div></a>
+        <a href="/hr/grievance-form" class="module-card"><div class="card-body"><span class="module-number">06 &mdash; HR</span><div class="module-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg></div><h2 class="module-title">Grievance / Disciplinary</h2><p class="module-description">Employee grievance or disciplinary action</p><span class="module-arrow">Open Form <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg></span></div></a>
+        <a href="/hr/interview-assessment-form" class="module-card"><div class="card-body"><span class="module-number">07 &mdash; HR</span><div class="module-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg></div><h2 class="module-title">Interview Assessment</h2><p class="module-description">Candidate interview assessment</p><span class="module-arrow">Open Form <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg></span></div></a>
+        <a href="/hr/passport-release-form" class="module-card"><div class="card-body"><span class="module-number">08 &mdash; HR</span><div class="module-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2"/></svg></div><h2 class="module-title">Passport Release</h2><p class="module-description">Passport release or requisition</p><span class="module-arrow">Open Form <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg></span></div></a>
+        <a href="/hr/staff-appraisal-form" class="module-card"><div class="card-body"><span class="module-number">09 &mdash; HR</span><div class="module-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg></div><h2 class="module-title">Staff Appraisal</h2><p class="module-description">Staff appraisal form</p><span class="module-arrow">Open Form <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg></span></div></a>
+        <a href="/hr/station-clearance-form" class="module-card"><div class="card-body"><span class="module-number">10 &mdash; HR</span><div class="module-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg></div><h2 class="module-title">Station Clearance</h2><p class="module-description">Exit formalities</p><span class="module-arrow">Open Form <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg></span></div></a>
+        <a href="/hr/visa-renewal-form" class="module-card"><div class="card-body"><span class="module-number">11 &mdash; HR</span><div class="module-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg></div><h2 class="module-title">Visa Renewal</h2><p class="module-description">Visa renewal or cancellation</p><span class="module-arrow">Open Form <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg></span></div></a>
+      </div>
+
+      <h2 class="modules-section-label" style="margin-top: 2.5rem;">My Submitted Requests</h2>
+      <div id="requestsList" class="my-requests-list">
+        <div style="text-align: center; padding: 3rem; color: #64748b;">
+          <div style="font-size: 2rem; margin-bottom: 1rem;">⏳</div>
+          <p>Loading your requests...</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Detail Modal (same style as hr_dashboard) -->
+  <div class="detail-overlay" id="detailModal" onclick="closeDetailModal(event)">
+    <div class="detail-modal" onclick="event.stopPropagation()">
+      <div class="detail-header">
+        <div>
+          <span class="form-type-badge" id="modalFormType"></span>
+          <h4 id="modalSubmissionId"></h4>
+        </div>
+        <button class="detail-close" onclick="closeDetailModal()" aria-label="Close">&times;</button>
+      </div>
+      <div class="detail-body" id="modalBody"></div>
+    </div>
+  </div>
+
+  <script>
+    const token = localStorage.getItem('access_token');
+    let allSubmissions = [];
+
+    function getStatusLabel(status) {
+      const labels = { 'hr_review': 'Pending HR Review', 'gm_review': 'Pending GM Approval', 'approved': 'Approved', 'rejected': 'Rejected', 'submitted': 'Submitted' };
+      return labels[status] || status;
+    }
+    function getFormTypeLabel(type) { return type.replace('hr_', '').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()); }
+    function getFormTypeClass(type) { const t = type.replace('hr_', ''); return `type-${t}`; }
+    function escapeHtml(text) { if (!text) return ''; const div = document.createElement('div'); div.textContent = text; return div.innerHTML; }
+
+    async function loadRequests() {
+      try {
+        const response = await fetch('/hr/api/my-submissions', { headers: { 'Authorization': `Bearer ${token}` } });
+        const data = await response.json();
+        const container = document.getElementById('requestsList');
+
+        if (data.submissions && data.submissions.length > 0) {
+          allSubmissions = data.submissions;
+          container.innerHTML = data.submissions.map((s, idx) => `
+            <div class="request-card" onclick="showDetail(${idx})">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.75rem;">
+                <div>
+                  <span class="form-type-badge ${getFormTypeClass(s.module_type)}">${getFormTypeLabel(s.module_type)}</span>
+                  <h3 style="font-size: 1.05rem; font-weight: 600; margin: 0.5rem 0 0.25rem; color: #1e293b;">${s.submission_id}</h3>
+                  <p style="font-size: 0.875rem; color: #64748b; margin: 0;">Submitted: ${new Date(s.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                </div>
+                <span class="status-badge status-${s.workflow_status}">${getStatusLabel(s.workflow_status)}</span>
+              </div>
+              ${s.form_data?.employee_name ? `<p style="margin: 0.75rem 0 0; font-size: 0.9rem;"><strong>Employee:</strong> ${escapeHtml(s.form_data.employee_name)}</p>` : ''}
+            </div>
+          `).join('');
+        } else {
+          container.innerHTML = `
+            <div style="text-align: center; padding: 3rem; background: white; border-radius: 14px; border: 1px solid #e2e8f0;">
+              <div style="font-size: 3rem; margin-bottom: 1rem;">📋</div>
+              <h4 style="font-weight: 600; margin-bottom: 0.5rem; color: #1e293b;">No requests yet</h4>
+              <p style="color: #64748b;">Use the forms above to submit your first HR request</p>
+            </div>
+          `;
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('requestsList').innerHTML = '<div style="padding: 1.5rem; background: #fee2e2; color: #dc2626; border-radius: 12px;">Error loading requests</div>';
+      }
+    }
+
+    function showDetail(index) {
+      const s = allSubmissions[index];
+      if (!s) return;
+      const formType = s.module_type.replace('hr_', '');
+      document.getElementById('modalFormType').textContent = getFormTypeLabel(s.module_type);
+      document.getElementById('modalFormType').className = `form-type-badge ${getFormTypeClass(s.module_type)}`;
+      document.getElementById('modalSubmissionId').textContent = s.submission_id;
+
+      let html = '';
+      const fd = s.form_data || {};
+      html += `<div class="detail-section"><h5 class="detail-section-title">Form Details</h5>`;
+      if (fd.employee_name) html += detailRow('Employee Name', fd.employee_name);
+      if (fd.employee_id) html += detailRow('Employee ID', fd.employee_id);
+      if (fd.department) html += detailRow('Department', formatValue(fd.department));
+      if (fd.position) html += detailRow('Position', fd.position);
+      if (formType === 'leave' || formType === 'leave_application') {
+        if (fd.leave_type) html += detailRow('Leave Type', formatValue(fd.leave_type));
+        if (fd.start_date) html += detailRow('Start Date', formatDate(fd.start_date));
+        if (fd.end_date) html += detailRow('End Date', formatDate(fd.end_date));
+        if (fd.total_days) html += detailRow('Total Days', fd.total_days);
+        if (fd.reason) html += detailRow('Reason', fd.reason);
+      }
+      if (formType === 'termination') {
+        if (fd.termination_type) html += detailRow('Termination Type', formatValue(fd.termination_type));
+        if (fd.last_working_day) html += detailRow('Last Working Day', formatDate(fd.last_working_day));
+        if (fd.reason) html += detailRow('Reason', fd.reason);
+      }
+      if (formType === 'long_vacation') {
+        if (fd.start_date) html += detailRow('Vacation Start', formatDate(fd.start_date));
+        if (fd.end_date) html += detailRow('Return Date', formatDate(fd.end_date));
+        if (fd.destination) html += detailRow('Destination', fd.destination);
+      }
+      const handledTypes = ['leave', 'leave_application', 'termination', 'long_vacation'];
+      if (!handledTypes.includes(formType)) {
+        const skipKeys = ['submitted_by_id', 'submitted_by_name', 'submitted_at', 'form_type', 'hr_', 'gm_'];
+        for (const [key, value] of Object.entries(fd)) {
+          if (skipKeys.some(p => key.startsWith(p)) || value === '' || value == null) continue;
+          if (Array.isArray(value) || (typeof value === 'object' && value !== null)) continue;
+          const label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+          if (key.includes('signature') && typeof value === 'string' && value.startsWith('data:image')) {
+            html += detailRow(label, '<img src="' + value + '" class="signature-preview" alt="Signature">', true);
+          } else {
+            html += detailRow(label, typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value) ? formatDate(value) : value);
+          }
+        }
+      }
+      html += `</div>`;
+
+      html += `<div class="detail-section"><h5 class="detail-section-title">Approval Timeline</h5><div class="workflow-timeline">`;
+      html += timelineItem('Submitted', fd.submitted_by_name || 'You', fd.submitted_at, 'completed');
+      if (fd.hr_reviewed_at) html += timelineItem('HR Reviewed', fd.hr_reviewed_by_name, fd.hr_reviewed_at, 'completed',
+        mergeHrTimelineComment(fd.hr_comments, fd.hr_remarks), fd.hr_signature, { fillEmptyComment: true });
+      else if (fd.hr_rejected_at) html += timelineItem('HR Rejected', fd.hr_rejected_by_name, fd.hr_rejected_at, 'rejected', fd.hr_rejection_reason);
+      else if (s.workflow_status === 'hr_review') html += timelineItem('HR Review', 'Pending', null, 'current');
+      if (fd.gm_approved_at) html += timelineItem('GM Approved', fd.gm_approved_by_name, fd.gm_approved_at, 'completed',
+        fd.gm_comments, fd.gm_signature, { fillEmptyComment: true });
+      else if (fd.gm_rejected_at) html += timelineItem('GM Rejected', fd.gm_rejected_by_name, fd.gm_rejected_at, 'rejected', fd.gm_rejection_reason);
+      else if (s.workflow_status === 'gm_review') html += timelineItem('GM Approval', 'Pending', null, 'current');
+      html += `</div></div>`;
+
+      document.getElementById('modalBody').innerHTML = html;
+      document.getElementById('detailModal').classList.add('show');
+    }
+
+    function detailRow(label, value, isRaw) {
+      const val = isRaw ? value : (escapeHtml(String(value || '')) || '-');
+      return `<div class="detail-row"><div class="detail-label">${label}</div><div class="detail-value">${val || '-'}</div></div>`;
+    }
+    function formatValue(val) { if (!val) return '-'; return String(val).replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()); }
+    function formatDate(dateStr) {
+      if (!dateStr) return '-';
+      try { return new Date(dateStr).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); } catch { return dateStr; }
+    }
+    function mergeHrTimelineComment(a, b) {
+      const x = (a != null && String(a).trim()) ? String(a).trim() : '';
+      const y = (b != null && String(b).trim()) ? String(b).trim() : '';
+      if (x && y && x !== y) return x + '\n\n' + y;
+      return x || y;
+    }
+    function timelineItem(title, by, date, status, comment, signature, opts) {
+      opts = opts || {};
+      let dateStr = date ? formatDate(date) : '';
+      const hasSig = signature && typeof signature === 'string' && signature.startsWith('data:image');
+      const text = (comment != null && String(comment).trim()) ? String(comment).trim() : '';
+      let html = `<div class="timeline-item"><div class="timeline-dot ${status}" role="presentation"></div><div class="timeline-body"><div class="timeline-title">${escapeHtml(title)}</div><div class="timeline-meta">${escapeHtml(by || '—')}${dateStr ? ' · ' + escapeHtml(dateStr) : ''}</div>`;
+      if (status === 'rejected' && text) {
+        html += `<div class="timeline-card timeline-card--alert"><dl class="timeline-dl"><dt>Reason</dt><dd>${escapeHtml(text)}</dd></dl></div>`;
+      } else if (status === 'completed' && (opts.fillEmptyComment || text || hasSig)) {
+        html += `<div class="timeline-card">`;
+        if (opts.fillEmptyComment || text) {
+          html += `<dl class="timeline-dl"><dt>Comment</dt><dd class="${text ? '' : 'timeline-dd-muted'}">${text ? escapeHtml(text) : 'None'}</dd></dl>`;
+        }
+        if (hasSig) {
+          html += `<dl class="timeline-dl"><dt>Signature</dt><dd><div class="timeline-sig"><img src="${signature}" alt="Signature"></div></dd></dl>`;
+        }
+        html += `</div>`;
+      }
+      return html + '</div></div>';
+    }
+    function closeDetailModal(e) {
+      if (e && e.target !== document.getElementById('detailModal')) return;
+      document.getElementById('detailModal').classList.remove('show');
+    }
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDetailModal(); });
+    loadRequests();
+  </script>
+  <script src="{{ url_for('static', filename='api-client.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>

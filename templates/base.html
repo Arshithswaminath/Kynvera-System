@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+  {% include 'partials/base_head.html' %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  
+  <title>{% block title %}Injaaz Application{% endblock %} - All Operations. One Platform.</title>
+  <meta name="description" content="{% block description %}Professional site visit inspection and reporting platform{% endblock %}">
+  
+  {# Page-specific stylesheets #}
+  {% block styles %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+  
+  {# Navigation #}
+  {% block navbar %}
+    {% include 'partials/navbar.html' %}
+  {% endblock %}
+  
+  {# Main Content #}
+  <main class="main-content" id="main">
+    {% block content %}{% endblock %}
+  </main>
+  
+  {# Footer #}
+  {% block footer %}
+    {% include 'partials/footer.html' %}
+  {% endblock %}
+  
+  {# Modals #}
+  {% block modals %}
+    {% include 'partials/profile_modal.html' %}
+    {% include 'partials/contact_modal.html' %}
+    {% include 'partials/todo_modal.html' %}
+  {% endblock %}
+  
+  {# Core Scripts #}
+  <script src="{{ url_for('static', filename='api-client.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/todo_list.js') }}" defer></script>
+  
+  {# Page-specific scripts #}
+  {% block scripts %}{% endblock %}
+  
+  {# Common navigation/logout script #}
+  {% block nav_script %}
+  <script>
+    // Logout functionality
+    document.addEventListener('DOMContentLoaded', function() {
+      const logoutBtn = document.getElementById('logoutBtn');
+      if (logoutBtn) {
+        logoutBtn.addEventListener('click', async function() {
+          try {
+            const token = localStorage.getItem('access_token');
+            if (token) {
+              await fetch('/api/auth/logout', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`
+                }
+              });
+            }
+            localStorage.clear();
+            sessionStorage.clear();
+            window.location.href = '/login';
+          } catch (error) {
+            console.error('Logout error:', error);
+            localStorage.clear();
+            sessionStorage.clear();
+            window.location.href = '/login';
+          }
+        });
+      }
+      
+      // Mobile menu toggle
+      const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+      const navMenu = document.querySelector('.nav-menu');
+      const mobileOverlay = document.getElementById('mobileOverlay');
+      
+      function closeMobileMenu() {
+        if (mobileMenuToggle) mobileMenuToggle.classList.remove('active');
+        if (navMenu) navMenu.classList.remove('active');
+        if (mobileOverlay) mobileOverlay.classList.remove('active');
+        document.body.style.overflow = '';
+      }
+      
+      if (mobileMenuToggle) {
+        mobileMenuToggle.addEventListener('click', function() {
+          const isOpen = navMenu.classList.contains('active');
+          if (isOpen) {
+            closeMobileMenu();
+          } else {
+            mobileMenuToggle.classList.add('active');
+            navMenu.classList.add('active');
+            if (mobileOverlay) mobileOverlay.classList.add('active');
+            document.body.style.overflow = 'hidden';
+          }
+        });
+      }
+      
+      if (mobileOverlay) {
+        mobileOverlay.addEventListener('click', closeMobileMenu);
+      }
+      
+      // Close mobile menu when a nav link is clicked
+      if (navMenu) {
+        navMenu.querySelectorAll('a').forEach(function(link) {
+          link.addEventListener('click', function() {
+            closeMobileMenu();
+          });
+        });
+      }
+      
+      // Profile link
+      const profileLink = document.getElementById('profileLink');
+      if (profileLink) {
+        profileLink.addEventListener('click', function(e) {
+          e.preventDefault();
+          if (typeof openProfileModal === 'function') {
+            openProfileModal();
+          }
+        });
+      }
+      
+      // Contact link
+      const contactLink = document.getElementById('contactLink');
+      if (contactLink) {
+        contactLink.addEventListener('click', function(e) {
+          e.preventDefault();
+          if (typeof openContactModal === 'function') {
+            openContactModal();
+          }
+        });
+      }
+      
+      // Close modal with Escape key
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+          if (typeof closeContactModal === 'function') closeContactModal();
+          if (typeof closeProfileModal === 'function') closeProfileModal();
+          if (typeof closeTodoModal === 'function') closeTodoModal();
+        }
+      });
+    });
+    
+    // Modal functions
+    window.openContactModal = function() {
+      const modal = document.getElementById('contactModal');
+      if (modal) {
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+      }
+    };
+    
+    window.closeContactModal = function() {
+      const modal = document.getElementById('contactModal');
+      if (modal) {
+        modal.classList.remove('active');
+        document.body.style.overflow = '';
+      }
+    };
+    
+    window.openProfileModal = function() {
+      const modal = document.getElementById('profileModal');
+      if (modal) {
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+      }
+    };
+    
+    window.closeProfileModal = function() {
+      const modal = document.getElementById('profileModal');
+      if (modal) {
+        modal.classList.remove('active');
+        document.body.style.overflow = '';
+      }
+    };
+  </script>
+  {% endblock %}
+</body>
+</html>

@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+  
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+<title>Leave Application Form — INJAAZ</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-forms-unified.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+  <style>
+    /* Leave-type checkbox grid — specific to this form only */
+    .leave-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.5rem .75rem;margin-bottom:.5rem}
+    .leave-opt{display:flex;align-items:center;gap:.45rem;padding:.45rem .6rem;border:1.5px solid var(--bd);border-radius:var(--r-sm);background:var(--sf);cursor:pointer;transition:all var(--t)}
+    .leave-opt:hover{border-color:var(--pri-sm);background:var(--pri-xs)}
+    .leave-opt input[type="checkbox"]{position:absolute;opacity:0;pointer-events:none}
+    .leave-opt .cb-icon{width:20px;display:inline-flex;align-items:center;justify-content:center;font-size:1rem;line-height:1;flex-shrink:0}
+    .leave-opt .cb-icon::before{content:'☐';color:var(--ink3)}
+    .leave-opt .opt-text{font-size:.88rem;font-weight:500;color:var(--ink2)}
+    .leave-opt.checked{border-color:var(--pri-sm);background:var(--pri-xs)}
+    .leave-opt.checked .cb-icon::before{content:'☑';color:var(--pri)}
+    .leave-opt.checked .opt-text{color:var(--pri-d);font-weight:700}
+    .leave-opt.full{grid-column:1/-1}
+    .leave-opt .other-inp{flex:1;border:none;border-bottom:1.5px solid var(--bd);padding:.25rem .35rem;font-size:.85rem;background:transparent;outline:none;font-family:inherit;color:var(--ink)}
+    .leave-opt .other-inp:focus{border-bottom-color:var(--pri)}
+    @media(max-width:640px){.leave-grid{grid-template-columns:1fr}}
+  </style>
+  <style>.hr-form-unified .page { padding-top: 5.5rem; }</style>
+</head>
+<body class="hr-form-unified">
+  {% set active_page = 'hr' %}
+  {% include 'partials/main_navbar.html' with context %}
+
+  <div class="success-bg" id="successModal">
+    <div class="success-box">
+      <button type="button" class="success-back-btn" onclick="closeSuccessBackToForm()" title="Back to form">
+        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+      </button>
+      <div class="success-icon"><svg width="30" height="30" fill="none" stroke="#fff" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg></div>
+      <h2>Application Submitted!</h2>
+      <p>Your leave request has been sent to HR for review.</p>
+      <div class="sub-id" id="submissionId"></div>
+      <button class="btn-submit" style="width:100%;justify-content:center" onclick="window.location.href='/hr/my-requests'">View My Requests</button>
+    </div>
+  </div>
+
+  <div class="sig-modal-bg" id="sigBg">
+    <div class="sig-modal">
+      <div class="sig-modal-hd"><h3 id="sigTitle">Signature</h3><button class="sig-modal-x" onclick="closeSig()">&times;</button></div>
+      <div class="sig-modal-body">
+        <p class="sig-modal-hint">Draw your signature using your mouse or finger.</p>
+        <div class="sig-canvas-box"><canvas id="sigCanvas" height="180"></canvas><span class="sig-canvas-guide">Sign here</span></div>
+        <div class="sig-modal-ft"><button class="btn-m-clear" onclick="clearModalPad()">Clear</button><button class="btn-m-apply" onclick="applySig()">Apply Signature</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page">
+    <div class="page-inner">
+      <a href="/hr/" class="back-btn">
+        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        Back to HR
+      </a>
+
+      <div class="step-bar">
+        <div class="step-item active" id="step1Badge" onclick="goToStep1()" role="button" tabindex="0"><span class="num">1</span><span>Employee Details</span></div>
+        <div class="step-connector" id="connector1"></div>
+        <div class="step-item locked" id="step2Badge" onclick="goToStep2()" role="button" tabindex="0"><span class="num">2</span><span>Leave &amp; Signatures</span></div>
+      </div>
+
+      <div class="card">
+        <div class="hd">
+          <div class="hd-left">
+            <h1>Leave Application Form</h1>
+            <p class="hd-sub">INJAAZ FACILITY MANAGEMENT</p>
+          </div>
+          <img src="{{ url_for('static', filename='logo.png') }}" alt="INJAAZ" class="hd-logo">
+        </div>
+
+        <form id="leaveFrm">
+          <div class="form-body">
+
+            <!-- Step 1: Employee Details -->
+            <div class="step-panel active" id="step1Panel">
+              <div class="step-hint">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span><strong>Step 1 of 2</strong> — Complete your employee details below, then click <strong>Continue to Step 2</strong> to proceed with leave details and signatures.</span>
+              </div>
+              <section class="sec">
+                <h2 class="sec-hd">Employee Details</h2>
+                <div class="grid-2">
+                  <div class="fld fw"><label class="fld-lbl">Name <span class="req">*</span></label><input class="fld-inp" type="text" name="employee_name" placeholder="Full name as per contract" required></div>
+                  <div class="fld"><label class="fld-lbl">Job Title <span class="req">*</span></label><input class="fld-inp" type="text" name="job_title" required></div>
+                  <div class="fld"><label class="fld-lbl">Today's Date</label><input class="fld-inp" type="date" name="today_date" id="todayDate"></div>
+                  <div class="fld"><label class="fld-lbl">Employee ID</label><input class="fld-inp" type="text" name="employee_id" placeholder="e.g. INJ-0001"></div>
+                  <div class="fld"><label class="fld-lbl">Department <span class="req">*</span></label><input class="fld-inp" type="text" name="department" required></div>
+                  <div class="fld"><label class="fld-lbl">Date of Joining</label><input class="fld-inp" type="date" name="date_of_joining"></div>
+                  <div class="fld"><label class="fld-lbl">Mobile No.</label><input class="fld-inp" type="tel" name="mobile_no" placeholder="+971 5X XXX XXXX"></div>
+                  <div class="fld"><label class="fld-lbl">Last Leave Date</label><input class="fld-inp" type="date" name="last_leave_date"></div>
+                </div>
+              </section>
+              <div class="step-nav">
+                <span></span>
+                <button type="button" class="btn-next" onclick="goToStep2()">Continue to Step 2 <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg></button>
+              </div>
+            </div>
+
+            <!-- Step 2: Leave Details & Signatures -->
+            <div class="step-panel" id="step2Panel">
+              <div class="step-hint">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span><strong>Step 2 of 2</strong> — Fill in leave details, add your signature, then submit. You can go back to edit Step 1 if needed.</span>
+              </div>
+
+              <section class="sec">
+                <h2 class="sec-hd">Details of Leave</h2>
+                <p style="font-size:.82rem;color:var(--muted);margin-bottom:.75rem">Check the appropriate box whichever is applicable</p>
+                <div class="leave-grid">
+                  <label class="leave-opt"><input class="leave-type-check" type="checkbox" name="leave_type" value="annual"><span class="cb-icon"></span><span class="opt-text">Annual Leave</span></label>
+                  <label class="leave-opt"><input class="leave-type-check" type="checkbox" name="leave_type" value="sick"><span class="cb-icon"></span><span class="opt-text">Sick Leave</span></label>
+                  <label class="leave-opt"><input class="leave-type-check" type="checkbox" name="leave_type" value="ot_compensatory"><span class="cb-icon"></span><span class="opt-text">OT Compensatory Off</span></label>
+                  <label class="leave-opt"><input class="leave-type-check" type="checkbox" name="leave_type" value="compassionate"><span class="cb-icon"></span><span class="opt-text">Compassionate Leave</span></label>
+                  <label class="leave-opt"><input class="leave-type-check" type="checkbox" name="leave_type" value="study"><span class="cb-icon"></span><span class="opt-text">Study Leave</span></label>
+                  <label class="leave-opt"><input class="leave-type-check" type="checkbox" name="leave_type" value="unpaid"><span class="cb-icon"></span><span class="opt-text">Unpaid Leave</span></label>
+                  <label class="leave-opt"><input class="leave-type-check" type="checkbox" name="leave_type" value="examination"><span class="cb-icon"></span><span class="opt-text">Examination Leave (UAE Nationals)</span></label>
+                  <label class="leave-opt"><input class="leave-type-check" type="checkbox" name="leave_type" value="hajj"><span class="cb-icon"></span><span class="opt-text">Hajj Leave</span></label>
+                  <label class="leave-opt full"><input class="leave-type-check" type="checkbox" name="leave_type" value="other"><span class="cb-icon"></span><span class="opt-text">Other (Specify):</span><input class="other-inp" type="text" name="leave_type_other" placeholder="Specify…" disabled></label>
+                </div>
+                <div class="grid-3" style="margin-top:1.25rem">
+                  <div class="fld"><label class="fld-lbl">Total No. of Days</label><input class="fld-inp" type="number" name="total_days_requested" id="totalDays" min="1" placeholder="Auto-calculated"></div>
+                  <div class="fld"><label class="fld-lbl">First Day of Leave</label><input class="fld-inp" type="date" name="first_day_of_leave" id="firstDay"></div>
+                  <div class="fld"><label class="fld-lbl">Last Day of Leave</label><input class="fld-inp" type="date" name="last_day_of_leave" id="lastDay"></div>
+                  <div class="fld"><label class="fld-lbl">Date Returning to Work</label><input class="fld-inp" type="date" name="date_returning_to_work" id="returnDay"></div>
+                  <div class="fld"><label class="fld-lbl">Salary Advance</label><div class="yn-row"><label><input type="radio" name="salary_advance" value="yes"> YES</label><label><input type="radio" name="salary_advance" value="no"> NO</label></div></div>
+                  <div class="fld"><label class="fld-lbl">Reachable Telephone</label><input class="fld-inp" type="tel" name="telephone_reachable" placeholder="+971 5X XXX XXXX"></div>
+                </div>
+              </section>
+
+              <section class="sec">
+                <h2 class="sec-hd">Replacement &amp; Signatures</h2>
+                <div class="grid-3">
+                  <div class="fld"><label class="fld-lbl">Replacement Name</label><input class="fld-inp" type="text" name="replacement_name" placeholder="Person covering"></div>
+                  <div class="fld">
+                    <label class="fld-lbl">Replacement Signature</label>
+                    <div class="sig-wrap">
+                      <div class="sig-box" id="replSigPrev"><span class="sig-ph">No signature</span><img id="replSigImg" src="" style="display:none"></div>
+                      <div class="sig-actions">
+                        <button type="button" class="btn-plus" onclick="openSig('replacement')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 4v16m8-8H4"/></svg> Sign</button>
+                        <button type="button" class="btn-rm" id="replSigRm" onclick="rmSig('replacement')">Remove</button>
+                      </div>
+                      <input type="hidden" name="replacement_signature" id="replSigData">
+                    </div>
+                  </div>
+                  <div class="fld">
+                    <label class="fld-lbl">Employee Signature <span class="req">*</span></label>
+                    <div class="sig-wrap">
+                      <div class="sig-box" id="empSigPrev"><span class="sig-ph">No signature</span><img id="empSigImg" src="" style="display:none"></div>
+                      <div class="sig-actions">
+                        <button type="button" class="btn-plus" onclick="openSig('employee')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 4v16m8-8H4"/></svg> Sign</button>
+                        <button type="button" class="btn-rm" id="empSigRm" onclick="rmSig('employee')">Remove</button>
+                      </div>
+                      <input type="hidden" name="employee_signature" id="empSigData">
+                    </div>
+                  </div>
+                  <div class="fld">
+                    <label class="fld-lbl">Manager Signature</label>
+                    {% if is_gm %}
+                    <div class="sig-wrap">
+                      <div class="sig-box" id="gmSigPrev"><span class="sig-ph">No signature</span><img id="gmSigImg" src="" style="display:none"></div>
+                      <div class="sig-actions">
+                        <button type="button" class="btn-plus" onclick="openSig('gm')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 4v16m8-8H4"/></svg> Sign</button>
+                        <button type="button" class="btn-rm" id="gmSigRm" onclick="rmSig('gm')">Remove</button>
+                      </div>
+                      <input type="hidden" name="gm_signature" id="gmSigData">
+                    </div>
+                    {% else %}
+                    <em class="fld-indicator">For GM approval workflow</em>
+                    {% endif %}
+                  </div>
+                </div>
+              </section>
+
+              <section class="sec">
+                <h2 class="sec-hd">HR Review</h2>
+                <div class="grid-2">
+                  <div class="fld">
+                    <label class="fld-lbl">Checked by HR</label>
+                    <div class="yn-row">
+                      {% if is_hr %}
+                      <label><input type="radio" name="hr_checked" value="YES"> YES</label>
+                      <label><input type="radio" name="hr_checked" value="NO"> NO</label>
+                      {% else %}
+                      <label><input type="radio" disabled> YES</label>
+                      <label><input type="radio" disabled> NO</label>
+                      {% endif %}
+                    </div>
+                  </div>
+                  <div class="fld fw">
+                    <label class="fld-lbl">HR Comments</label>
+                    <textarea class="fld-inp" name="hr_comments" rows="2" placeholder="{% if is_hr %}Enter HR comments…{% else %}HR use only{% endif %}" {% if not is_hr %}readonly{% endif %}></textarea>
+                  </div>
+                </div>
+              </section>
+
+              <section class="sec sec-hr">
+                <h2 class="sec-hd">For Human Resources Only</h2>
+                <div class="grid-3">
+                  <div class="fld"><label class="fld-lbl">Balance C/F</label><input class="fld-inp" type="text" name="hr_balance_cf" {% if not is_hr %}readonly{% endif %}></div>
+                  <div class="fld"><label class="fld-lbl">Contract Year</label><input class="fld-inp" type="text" name="hr_contract_year" {% if not is_hr %}readonly{% endif %}></div>
+                  <div class="fld"><label class="fld-lbl">Paid</label><input class="fld-inp" type="text" name="hr_paid" {% if not is_hr %}readonly{% endif %}></div>
+                  <div class="fld"><label class="fld-lbl">Unpaid</label><input class="fld-inp" type="text" name="hr_unpaid" {% if not is_hr %}readonly{% endif %}></div>
+                  <div class="fld">
+                    <label class="fld-lbl">HR Signature</label>
+                    {% if is_hr %}
+                    <div class="sig-wrap">
+                      <div class="sig-box" id="hrSigPrev"><span class="sig-ph">No signature</span><img id="hrSigImg" src="" style="display:none"></div>
+                      <div class="sig-actions">
+                        <button type="button" class="btn-plus" onclick="openSig('hr')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 4v16m8-8H4"/></svg> Sign</button>
+                        <button type="button" class="btn-rm" id="hrSigRm" onclick="rmSig('hr')">Remove</button>
+                      </div>
+                      <input type="hidden" name="hr_signature" id="hrSigData">
+                    </div>
+                    {% else %}
+                    <em class="fld-indicator">HR use only</em>
+                    {% endif %}
+                  </div>
+                  <div class="fld"><label class="fld-lbl">Date</label><input class="fld-inp" type="date" name="hr_date" {% if not is_hr %}readonly{% endif %}></div>
+                </div>
+              </section>
+
+              <div class="step-nav">
+                <button type="button" class="btn-back" onclick="goToStep1()"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12"/></svg> Back to Step 1</button>
+                <span></span>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="doc-ft">
+            <div class="doc-ft-meta"><span>DOC NO: HR-FRM-007</span><span>DATE: <span id="docDate"></span></span><span>ISSUE: 00</span><span>REVISION: 00</span></div>
+            P.O Box: 3456 Ajman, UAE · Tel 067116815 · www.injaaz.ae<br>Registered under trade license name INJAAZ LLC
+          </div>
+
+          <div class="submit-bar" id="submitBar" style="display:none">
+            <button type="button" class="btn-reset" onclick="if(confirm('Reset the form?')){document.getElementById('leaveFrm').reset();clearAllSigs();goToStep1()}">Reset</button>
+            <button type="submit" class="btn-submit"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> Submit Application</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+<script>
+const today=new Date().toISOString().split('T')[0];
+document.getElementById('todayDate').value=today;
+document.getElementById('docDate').textContent=new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'});
+
+function syncLeaveTypeUI(){
+  const checks=[...document.querySelectorAll('.leave-type-check')];
+  checks.forEach(ch=>{
+    const opt=ch.closest('.leave-opt');
+    if(opt) opt.classList.toggle('checked', ch.checked);
+  });
+  const otherChk=document.querySelector('.leave-type-check[value="other"]');
+  const otherInp=document.querySelector('.other-inp');
+  if(otherInp){
+    const enabled=!!(otherChk&&otherChk.checked);
+    otherInp.disabled=!enabled;
+    if(!enabled) otherInp.value='';
+  }
+}
+
+function setupLeaveTypeChecks(){
+  const checks=[...document.querySelectorAll('.leave-type-check')];
+  checks.forEach(ch=>{
+    ch.addEventListener('change',()=>{
+      if(ch.checked){checks.forEach(other=>{if(other!==ch)other.checked=false;})}
+      syncLeaveTypeUI();
+    });
+  });
+  syncLeaveTypeUI();
+}
+setupLeaveTypeChecks();
+
+function goToStep2(){
+  document.getElementById('step1Panel').classList.remove('active');
+  document.getElementById('step2Panel').classList.add('active');
+  document.getElementById('submitBar').style.display='flex';
+  document.getElementById('step1Badge').className='step-item done';
+  document.getElementById('step1Badge').querySelector('.num').innerHTML='✓';
+  document.getElementById('step2Badge').className='step-item active';
+  document.getElementById('step2Badge').classList.remove('locked');
+  document.getElementById('connector1').classList.add('done');
+  document.getElementById('step2Panel').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function goToStep1(){
+  document.getElementById('step2Panel').classList.remove('active');
+  document.getElementById('step1Panel').classList.add('active');
+  document.getElementById('submitBar').style.display='none';
+  document.getElementById('step1Badge').className='step-item active';
+  document.getElementById('step1Badge').querySelector('.num').textContent='1';
+  document.getElementById('step2Badge').className='step-item locked';
+  document.getElementById('connector1').classList.remove('done');
+  document.getElementById('step1Panel').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function closeSuccessBackToForm(){
+  document.getElementById('successModal').classList.remove('show');
+  goToStep1();
+  const btn=document.querySelector('#leaveFrm .btn-submit');
+  if(btn){btn.disabled=false;btn.innerHTML='<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> Submit Application'}
+}
+
+function calc(){
+  const f=document.getElementById('firstDay').value,l=document.getElementById('lastDay').value;
+  if(f&&l){const d=Math.ceil((new Date(l)-new Date(f))/864e5)+1;if(d>0){document.getElementById('totalDays').value=d;const r=new Date(l);r.setDate(r.getDate()+1);document.getElementById('returnDay').value=r.toISOString().split('T')[0]}}
+}
+document.getElementById('firstDay').addEventListener('change',calc);
+document.getElementById('lastDay').addEventListener('change',calc);
+
+let pad=null,target=null;
+const bg=document.getElementById('sigBg'),cv=document.getElementById('sigCanvas');
+const sigCfg={
+  employee:{prev:'empSigPrev',img:'empSigImg',data:'empSigData',rm:'empSigRm',title:'Employee Signature'},
+  gm:{prev:'gmSigPrev',img:'gmSigImg',data:'gmSigData',rm:'gmSigRm',title:'Manager Signature'},
+  hr:{prev:'hrSigPrev',img:'hrSigImg',data:'hrSigData',rm:'hrSigRm',title:'HR Signature'},
+  replacement:{prev:'replSigPrev',img:'replSigImg',data:'replSigData',rm:'replSigRm',title:'Replacement Signature'}
+};
+
+function openSig(t){target=t;const c=sigCfg[t];if(!c)return;document.getElementById('sigTitle').textContent=c.title;bg.classList.add('open');document.body.style.overflow='hidden';requestAnimationFrame(()=>{const r=window.devicePixelRatio||1,w=cv.offsetWidth;cv.width=w*r;cv.height=180*r;cv.getContext('2d').scale(r,r);cv.style.height='180px';if(pad)pad.off();pad=new SignaturePad(cv,{backgroundColor:'rgb(250,250,250)',penColor:'#0d1f14',minWidth:1.2,maxWidth:2.8})})}
+function closeSig(){bg.classList.remove('open');document.body.style.overflow='';target=null}
+function clearModalPad(){if(pad)pad.clear()}
+function applySig(){if(!pad||pad.isEmpty()){alert('Please draw your signature first.');return}const url=pad.toDataURL('image/png'),c=sigCfg[target];if(!c)return;const img=document.getElementById(c.img),ph=document.querySelector('#'+c.prev+' .sig-ph'),inp=document.getElementById(c.data),rm=document.getElementById(c.rm);if(img){img.src=url;img.style.display='block'}if(ph)ph.style.display='none';if(inp)inp.value=url;if(rm)rm.style.display='inline-flex';closeSig()}
+function rmSig(t){const c=sigCfg[t];if(!c)return;const img=document.getElementById(c.img),ph=document.querySelector('#'+c.prev+' .sig-ph'),inp=document.getElementById(c.data),rm=document.getElementById(c.rm);if(img){img.src='';img.style.display='none'}if(ph)ph.style.display='block';if(inp)inp.value='';if(rm)rm.style.display='none'}
+function clearAllSigs(){['employee','gm','hr','replacement'].forEach(rmSig)}
+bg.addEventListener('click',e=>{if(e.target===bg)closeSig()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&bg.classList.contains('open'))closeSig()});
+
+document.getElementById('leaveFrm').addEventListener('submit',async e=>{
+  e.preventDefault();
+  const fd=new FormData(e.target),data=Object.fromEntries(fd.entries());
+  data.form_type='leave_application';
+  if(data.leave_type!=='other')delete data.leave_type_other;
+  const btn=e.target.querySelector('.btn-submit');
+  btn.disabled=true;btn.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="spin"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Submitting…';
+  try{
+    const res=await fetch('/hr/api/submit',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.getItem('access_token')},body:JSON.stringify(data)});
+    const r=await res.json();
+    if(r.success){document.getElementById('submissionId').textContent=r.submission_id;document.getElementById('successModal').classList.add('show')}
+    else{alert('Error: '+(r.error||'Unknown'));btn.disabled=false;btn.innerHTML='<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> Submit Application'}
+  }catch(err){alert('Network error: '+err.message);btn.disabled=false;btn.innerHTML='<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> Submit Application'}
+});
+</script>
+  <script src="{{ url_for('static', filename='api-client.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>

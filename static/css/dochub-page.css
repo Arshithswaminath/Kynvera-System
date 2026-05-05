@@ -1,0 +1,3484 @@
+/**
+ * DocHub page — layout from product mock, themed with Injaaz tokens (green brand, Inter).
+ * Nav offset matches BizFlow / BD (`admin_bd_module.html`): fixed bar ≈ 5.5rem — do not use a larger
+ * value or a white strip appears between the global nav and DocHub.
+ */
+body.dochub-page-v2.has-main-nav {
+  --nav-offset: 5.5rem;
+  padding-top: var(--nav-offset) !important;
+  /* Lock to viewport so the DocHub shell can fill the area below the fixed nav */
+  min-height: 100dvh;
+  min-height: 100svh;
+  height: 100dvh;
+  height: 100svh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+body.dochub-page-v2 {
+  --ink: var(--color-neutral-900, #18181b);
+  --ink-2: var(--color-neutral-700, #3f3f46);
+  --ink-3: var(--color-neutral-500, #71717a);
+  --ink-4: var(--color-neutral-400, #a1a1aa);
+  --surface: #ffffff;
+  --surface-2: var(--color-neutral-50, #fafafa);
+  --surface-3: var(--color-neutral-100, #f4f4f5);
+  --border: rgba(18, 84, 53, 0.1);
+  --border-2: rgba(18, 84, 53, 0.18);
+  --accent: var(--color-brand, #125435);
+  --accent-2: var(--color-brand-light, #1a7a4d);
+  --accent-light: rgba(18, 84, 53, 0.08);
+  --accent-glow: rgba(18, 84, 53, 0.15);
+  --green: var(--color-success-600, #16a34a);
+  --amber: var(--color-warning-600, #d97706);
+  --red: var(--color-error-600, #dc2626);
+  --blue: var(--color-info-600, #2563eb);
+  --sidebar-w: 288px;
+  --topbar-h: 68px;
+  /* Right rail: “On this page” TOC + viewer info panel — aligned to the document edge */
+  --dh-toc-w: minmax(220px, 260px);
+  --dh-side-rail-w: minmax(220px, 260px);
+  /* Readable type scale (aligned with BD; one step up for list/sidebar comfort) */
+  --dh-fs-base: 17px;
+  --dh-fs-sidebar: 16px;
+  --dh-fs-sidebar-label: 12px;
+  --dh-fs-ui: 16px;
+  --dh-fs-small: 14px;
+  --dh-fs-meta: 13px;
+  --radius: 10px;
+  --radius-lg: 16px;
+  /* System UI (SF on iOS) */
+  --font-body: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", sans-serif;
+  --font-serif: ui-serif, "New York", "Iowan Old Style", Georgia, serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08), 0 1px 4px rgba(0, 0, 0, 0.04);
+  /* Solid bar like BizFlow sidebar (--g800) */
+  --sb-bg: #125435;
+}
+
+/* Same mint canvas as BizFlow (admin_bd_module.html body --bg) so DocHub matches BD modules */
+body.dochub-page-v2 {
+  background: #f5faf7;
+}
+
+body.dochub-page-v2 * {
+  box-sizing: border-box;
+}
+
+/* Shell: flex child of body fills remaining height; row + stretch keeps sidebar as tall as main */
+.dh-page-root {
+  flex: 1 1 0%;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  align-content: stretch;
+  overflow: hidden;
+  font-family: var(--font-body);
+  background: var(--surface-2);
+  color: var(--ink);
+  font-size: var(--dh-fs-base);
+  line-height: 1.55;
+}
+
+/* Slightly narrower sidebar on mid screens (still full height) */
+@media (max-width: 1280px) {
+  body.dochub-page-v2 {
+    --sidebar-w: 252px;
+  }
+}
+
+@media (max-width: 1100px) {
+  body.dochub-page-v2 {
+    --sidebar-w: 232px;
+  }
+}
+
+/* ─── Overlay + mobile toggle ─── */
+.dh-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  z-index: 140;
+  backdrop-filter: blur(2px);
+}
+
+.dh-overlay.active {
+  display: block;
+}
+
+.dh-sidebar-toggle {
+  display: none;
+  position: fixed;
+  left: max(16px, env(safe-area-inset-left, 0px));
+  bottom: max(20px, env(safe-area-inset-bottom, 0px));
+  z-index: 198;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  box-shadow: 0 2px 10px rgba(18, 84, 53, 0.28);
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  line-height: 1;
+  padding: 0;
+}
+
+/* ─── SIDEBAR ─── */
+.dh-sidebar {
+  flex: 0 0 var(--sidebar-w);
+  width: var(--sidebar-w);
+  min-width: var(--sidebar-w);
+  background: var(--sb-bg);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  align-self: stretch;
+  height: auto;
+  overflow: hidden;
+  z-index: 100;
+  position: relative;
+}
+
+.dh-sidebar::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 180px 200px at 30px 40px, rgba(18, 84, 53, 0.35) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* BizFlow-style large watermark circles */
+.dh-sidebar::after {
+  content: '';
+  position: absolute;
+  bottom: -60px;
+  left: -60px;
+  width: 200px;
+  height: 200px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.dh-sb-section {
+  padding: 4px 0 6px;
+  position: relative;
+  z-index: 1;
+}
+
+.dh-sb-section + .dh-sb-section {
+  margin-top: 2px;
+}
+
+.sb-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 22px 20px 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  position: relative;
+  flex-shrink: 0;
+}
+
+/* Optional logo tile (Admin shell, emoji brand tile in Device module) */
+.sb-brand-logo {
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.sb-brand-logo img {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+  filter: brightness(0) invert(1);
+}
+
+.sb-brand-logo:not(:has(img)) {
+  font-size: 18px;
+  line-height: 1;
+}
+
+/* Horizontal rule between nav groups (Admin, etc.) */
+.sb-nav-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.07);
+  margin: 6px 12px;
+  border: 0;
+  flex-shrink: 0;
+}
+
+.sb-nav-item:has(.sb-nav-icon) {
+  gap: 10px;
+}
+
+.sb-brand-text .name {
+  display: block;
+  font-size: 17px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.02em;
+}
+
+.sb-brand-text .tagline {
+  display: block;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.35);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  margin-top: 1px;
+}
+
+.sb-nav {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 10px 8px 12px;
+  position: relative;
+  /* Firefox: hide until hover */
+  scrollbar-width: none;
+  scrollbar-color: transparent transparent;
+}
+
+.sb-nav:hover {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.32) transparent;
+}
+
+/* WebKit: thin scrollbar, visible only while hovering the nav */
+.sb-nav::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.sb-nav:hover::-webkit-scrollbar {
+  width: 1px;
+}
+
+.sb-nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sb-nav::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 1px;
+}
+
+.sb-nav:hover::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.sb-nav::-webkit-scrollbar-button {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+.sb-section-label {
+  font-size: var(--dh-fs-sidebar-label);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.4);
+  padding: 10px 12px 8px;
+}
+
+.sb-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  font-size: var(--dh-fs-sidebar);
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.65);
+  cursor: pointer;
+  text-decoration: none;
+  transition: color 0.15s, background 0.15s;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+}
+
+.sb-nav-item:hover {
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.sb-nav-item.active {
+  color: rgba(255, 255, 255, 0.95);
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.sb-nav-item.active:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.sb-nav-icon {
+  min-width: 22px;
+  font-size: 16px;
+  line-height: 1;
+  opacity: 0.95;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sb-nav-icon svg {
+  width: 17px;
+  height: 17px;
+  opacity: 0.85;
+}
+
+.sb-nav-item.active .sb-nav-icon {
+  opacity: 1;
+}
+
+.sb-badge {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 600;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.45);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sb-nav-item.active .sb-badge {
+  background: rgba(18, 84, 53, 0.55);
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.sb-badge.sb-badge--alert {
+  background: rgba(231, 76, 60, 0.35);
+  color: #fecaca;
+}
+
+.sb-group-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  font-size: var(--dh-fs-sidebar);
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.65);
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.15s, background 0.15s;
+}
+
+.sb-group-toggle:hover {
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.sb-chevron {
+  font-size: 12px;
+  opacity: 0.75;
+  transition: transform 0.2s;
+}
+
+.sb-chevron.open {
+  transform: rotate(0deg);
+}
+
+.sb-chevron:not(.open) {
+  transform: rotate(-90deg);
+}
+
+.sb-collapse {
+  overflow: hidden;
+}
+
+#group-categories {
+  padding-top: 2px;
+}
+
+#group-categories .dh-sb-bucket--nested {
+  margin-bottom: 1px;
+}
+
+#group-categories .dh-sb-bucket--nested .dh-sb-bucket-head {
+  padding-left: 6px;
+  padding-right: 8px;
+}
+
+#group-categories .dh-sb-bucket--nested .dh-sb-bucket-body {
+  padding-left: 2px;
+  padding-right: 2px;
+}
+
+.sb-sub-item {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 10px 12px 10px 28px;
+  border-radius: var(--radius);
+  font-size: var(--dh-fs-sidebar);
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.65);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+
+.sb-sub-item:hover {
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.sb-footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 12px 12px 14px;
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+}
+
+.sb-user-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  transition: background 0.18s;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.sb-user-row:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.sb-user-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.sb-user-gear {
+  font-size: 15px;
+  margin-left: auto;
+  opacity: 0.45;
+  flex-shrink: 0;
+}
+
+.sb-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.sb-user-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.75);
+  line-height: 1.2;
+}
+
+.sb-user-role {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.3);
+  margin-top: 1px;
+}
+
+/* Expandable doc buckets under Overview / Workspace / Reports */
+.dh-sb-bucket {
+  margin-bottom: 2px;
+}
+
+.dh-sb-bucket-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 9px 10px;
+  border-radius: var(--radius);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font-size: var(--dh-fs-sidebar);
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.68);
+  transition: color 0.15s, background 0.15s;
+}
+
+.dh-sb-bucket-head:hover {
+  color: rgba(255, 255, 255, 0.88);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.dh-sb-bucket-head.active {
+  color: rgba(255, 255, 255, 0.68);
+  font-weight: 600;
+  background: transparent;
+}
+
+.dh-sb-bucket-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dh-sb-bucket-head .sb-chevron {
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.dh-sb-bucket--open .dh-sb-bucket-head .sb-chevron {
+  transform: rotate(0deg);
+}
+
+.dh-sb-bucket:not(.dh-sb-bucket--open) .dh-sb-bucket-head .sb-chevron {
+  transform: rotate(-90deg);
+}
+
+.dh-sb-bucket-body {
+  padding: 0 10px 8px 10px;
+}
+
+.dh-sb-bucket:not(.dh-sb-bucket--open) .dh-sb-bucket-body {
+  display: none;
+}
+
+/* Doc lists grow with content; the sidebar scrolls as one unit via .sb-nav (no nested bucket scrollbars). */
+.dh-sb-docs {
+  overflow-x: hidden;
+}
+
+.sb-doc-item {
+  display: block;
+  padding: 9px 10px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+  font-size: var(--dh-fs-sidebar);
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.68);
+}
+
+.sb-doc-item:hover {
+  color: rgba(255, 255, 255, 0.88);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.sb-doc-item.selected {
+  color: rgba(255, 255, 255, 0.68);
+  font-weight: 600;
+  background: transparent;
+}
+
+.sb-doc-title {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sb-doc-empty {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.35);
+  font-style: italic;
+  padding: 8px 10px;
+}
+
+.dh-sb-other-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px 8px;
+}
+
+.dh-sb-other-title {
+  padding: 0;
+  display: inline;
+}
+
+/* ─── MAIN ─── */
+.dh-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Global .nav and .dh-topbar are both white; drop the nav hairline so we don’t get a double line
+   between the site header and DocHub’s tab row. Keep .dh-topbar border-bottom vs the canvas below. */
+body.dochub-page-v2.has-main-nav .nav {
+  border-bottom: none;
+}
+
+body.dochub-page-v2.has-main-nav .nav.scrolled {
+  box-shadow: none;
+}
+
+.dh-topbar {
+  height: var(--topbar-h);
+  background: var(--surface);
+  /* Same hairline as global .nav / BizFlow .bf-* toolbars */
+  border-bottom: 1px solid var(--nav-hairline, #e2ede8);
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.topbar-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+  margin-left: 0;
+  padding: 0 12px;
+}
+
+.dh-search {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-2);
+  border-radius: 8px;
+  padding: 0 12px;
+  min-height: 38px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  flex: 1 1 200px;
+  min-width: 0;
+  max-width: 560px;
+}
+
+.dh-search:focus-within {
+  border-color: var(--accent-2);
+  box-shadow: 0 0 0 3px var(--accent-light);
+}
+
+.dh-search svg {
+  opacity: 0.4;
+  flex-shrink: 0;
+}
+
+.dh-search input {
+  border: none;
+  background: none;
+  outline: none;
+  font-family: var(--font-body);
+  font-size: var(--dh-fs-ui);
+  color: var(--ink);
+  width: 100%;
+  min-width: 0;
+}
+
+.dh-search input::placeholder {
+  color: var(--ink-4);
+}
+
+.btn {
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-family: var(--font-body);
+  font-size: var(--dh-fs-ui);
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s;
+  white-space: nowrap;
+  border: none;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--ink-2);
+  border: 1px solid var(--border-2);
+}
+
+.btn-ghost:hover {
+  background: var(--surface-2);
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  border: 1px solid transparent;
+  box-shadow: 0 1px 4px rgba(18, 84, 53, 0.25);
+}
+
+.btn-primary:hover {
+  background: var(--accent-2);
+  transform: translateY(-0.5px);
+}
+
+.dh-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dh-body {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+  min-height: 0;
+  flex: 1;
+}
+
+.doc-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  max-height: calc(100vh - var(--topbar-h) - var(--nav-offset, 5.5rem) - 48px);
+}
+
+.doc-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 18px 0;
+}
+
+.doc-panel-title {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.doc-panel-count {
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--surface-3);
+  color: var(--ink-3);
+  padding: 2px 7px;
+  border-radius: 20px;
+}
+
+.doc-panel-add {
+  margin-left: auto;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.doc-panel-add:hover {
+  background: var(--accent-2);
+}
+
+.doc-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.filter-chip {
+  font-size: 12.5px;
+  font-weight: 500;
+  padding: 5px 11px;
+  border-radius: 20px;
+  cursor: pointer;
+  color: var(--ink-3);
+  background: transparent;
+  border: 1px solid transparent;
+  transition: all 0.15s;
+  user-select: none;
+}
+
+.filter-chip:hover {
+  color: var(--ink-2);
+  background: var(--surface-2);
+}
+
+.filter-chip.active {
+  background: var(--accent-light);
+  color: var(--accent);
+  border-color: rgba(18, 84, 53, 0.2);
+}
+
+.doc-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.doc-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.1s;
+  position: relative;
+}
+
+.doc-item:last-child {
+  border-bottom: none;
+}
+
+.doc-item:hover {
+  background: var(--surface-2);
+}
+
+.doc-item.selected {
+  background: var(--accent-light);
+}
+
+.doc-item.selected::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 4px;
+  bottom: 4px;
+  width: 3px;
+  background: var(--accent);
+  border-radius: 0 2px 2px 0;
+}
+
+.doc-item-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.di-onboarding {
+  background: rgba(37, 99, 235, 0.1);
+}
+
+.di-contracts {
+  background: rgba(22, 163, 74, 0.1);
+}
+
+.di-policies {
+  background: rgba(245, 158, 11, 0.12);
+}
+
+.di-manuals {
+  background: rgba(8, 145, 178, 0.1);
+}
+
+.di-reports {
+  background: rgba(236, 72, 153, 0.1);
+}
+
+.di-internal,
+.di-other,
+.di-api,
+.di-guide,
+.di-legal,
+.di-spec {
+  background: var(--surface-3);
+}
+
+.doc-item-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.doc-item-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.doc-item-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.doc-item-date {
+  font-size: 11.5px;
+  color: var(--ink-4);
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.sd-published {
+  background: var(--green);
+}
+
+.sd-draft {
+  background: var(--ink-4);
+}
+
+.sd-review {
+  background: var(--amber);
+}
+
+.sd-archived {
+  background: var(--ink-4);
+  opacity: 0.85;
+}
+
+.status-label {
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.sl-published {
+  color: var(--green);
+}
+
+.sl-draft {
+  color: var(--ink-3);
+}
+
+.sl-review {
+  color: var(--amber);
+}
+
+.sl-archived {
+  color: var(--ink-4);
+}
+
+.doc-star {
+  margin-left: auto;
+  color: var(--ink-4);
+  font-size: 13px;
+  opacity: 0;
+  transition: opacity 0.15s;
+  flex-shrink: 0;
+}
+
+.doc-item:hover .doc-star {
+  opacity: 1;
+}
+
+.doc-star.starred {
+  opacity: 1;
+  color: #f59e0b;
+}
+
+.editor-area {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  max-height: calc(100vh - var(--topbar-h) - var(--nav-offset, 5.5rem) - 48px);
+}
+
+.editor-topbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px 16px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  background: var(--surface);
+}
+
+/* Viewer: row 1 = title (left) + View/Edit; row 2 = actions full-width (aligned, not staggered). */
+#dhViewerState .editor-topbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  gap: 6px 14px;
+  align-items: center;
+  flex-wrap: unset;
+}
+
+#dhViewerState .editor-topbar .dh-viewer-title-line {
+  grid-column: 1;
+  grid-row: 1;
+  margin-left: 0;
+  min-width: 0;
+}
+
+#dhViewerState .editor-topbar .mode-tabs {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: end;
+}
+
+#dhViewerState .editor-topbar .editor-actions {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  margin-left: 0;
+  width: 100%;
+  min-width: 0;
+  justify-content: center;
+  flex-wrap: nowrap;
+  gap: 5px 6px;
+  padding-top: 12px;
+  margin-top: 8px;
+  border-top: 1px solid var(--border);
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+#dhViewerState .editor-topbar .editor-actions > * {
+  flex-shrink: 0;
+}
+
+#dhViewerState .editor-topbar .dh-viewer-actions .btn {
+  white-space: nowrap;
+}
+
+/* Editor: row 1 = title (left) + tabs + status; row 2 = save actions. */
+#dhEditorState .editor-topbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-rows: auto auto;
+  gap: 6px 12px;
+  align-items: center;
+  flex-wrap: unset;
+}
+
+#dhEditorState .editor-topbar .doc-title-input {
+  grid-column: 1;
+  grid-row: 1;
+  min-width: 0;
+}
+
+#dhEditorState .editor-topbar .mode-tabs {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: end;
+}
+
+#dhEditorState .editor-topbar .status-badge {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+#dhEditorState .editor-topbar .editor-actions {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  margin-left: 0;
+  width: 100%;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  padding-top: 12px;
+  margin-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.dh-viewer-title-line {
+  font-family: var(--font-body);
+  font-size: clamp(1.15rem, 3.6vw, 1.5rem);
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  margin-left: 0;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.3;
+}
+
+/* End-of-page reference files (viewer + editor) */
+.dh-ref-docs-footer {
+  margin-top: 36px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-2);
+  flex-shrink: 0;
+}
+
+.dh-ref-docs-footer-title {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin: 0 0 8px;
+}
+
+.dh-ref-docs-footer-desc {
+  font-size: 12px;
+  color: var(--ink-4);
+  line-height: 1.45;
+  margin: 0 0 14px;
+  max-width: 720px;
+}
+
+.dh-ref-docs-footer-row {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.dh-add-doc-slot {
+  width: 100%;
+  min-width: 0;
+}
+
+.dh-ref-docs-chips {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+  max-height: 72px;
+  overflow-x: auto;
+  overflow-y: auto;
+}
+
+.dh-ref-docs-chips--footer {
+  flex: 1 1 220px;
+  max-height: none;
+}
+
+.dh-ref-docs-empty {
+  font-size: 12px;
+  color: var(--ink-4);
+  font-style: italic;
+}
+
+/* Additional documents (supporting files), list + empty state */
+.dh-add-doc-empty {
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  border: 1px dashed var(--border);
+}
+
+.dh-add-doc-empty-title {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-3);
+}
+
+.dh-add-doc-empty-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--ink-4);
+  line-height: 1.45;
+}
+
+.dh-add-doc-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+.dh-add-doc-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+
+.dh-add-doc-icon {
+  font-size: 20px;
+  line-height: 1.2;
+  flex-shrink: 0;
+}
+
+.dh-add-doc-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+a.dh-add-doc-link {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent-2);
+  text-decoration: none;
+  word-break: break-word;
+}
+
+a.dh-add-doc-link:hover {
+  text-decoration: underline;
+}
+
+.dh-add-doc-meta {
+  font-size: 11px;
+  color: var(--ink-4);
+}
+
+.dh-add-doc-remove {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink-4);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  align-self: flex-start;
+}
+
+.dh-add-doc-remove:hover {
+  background: rgba(220, 38, 38, 0.1);
+  color: var(--red);
+}
+
+.dh-ref-chip-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  max-width: 100%;
+}
+
+a.dh-ref-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 200px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--accent-2);
+  text-decoration: none;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+a.dh-ref-chip:hover {
+  background: var(--accent-light);
+  border-color: var(--accent);
+}
+
+.dh-ref-chip-remove {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink-4);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.dh-ref-chip-remove:hover {
+  background: rgba(220, 38, 38, 0.1);
+  color: var(--red);
+}
+
+.btn.dh-ref-docs-add {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* <label> used as "+ Add file" — behave like a button for pointer and layout */
+label.btn.dh-ref-docs-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  margin: 0;
+}
+
+.mode-tabs {
+  display: flex;
+  gap: 3px;
+  background: var(--surface-2);
+  border-radius: 10px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.mode-tab {
+  padding: 8px 18px;
+  min-height: 42px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink-3);
+  cursor: pointer;
+  border: none;
+  background: none;
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+  font-family: var(--font-body);
+}
+
+.mode-tab.active {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow-sm);
+}
+
+.mode-tab--disabled,
+.mode-tab:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* DocHub topbar: compact View / Edit next to the title */
+.editor-topbar .mode-tabs {
+  padding: 3px;
+  gap: 2px;
+  border-radius: 8px;
+}
+
+.editor-topbar .mode-tab {
+  padding: 5px 12px;
+  min-height: 32px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 6px;
+}
+
+.doc-title-input {
+  flex: 1;
+  min-width: 120px;
+  font-family: var(--font-body);
+  font-size: 21px;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  border: none;
+  outline: none;
+  color: var(--ink);
+  background: none;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+}
+
+.status-badge:hover {
+  opacity: 0.9;
+}
+
+.sb-published {
+  background: rgba(22, 163, 74, 0.1);
+  color: var(--green);
+}
+
+.sb-draft {
+  background: var(--surface-3);
+  color: var(--ink-3);
+}
+
+.sb-review {
+  background: rgba(217, 119, 6, 0.12);
+  color: var(--amber);
+}
+
+.sb-archived {
+  background: var(--surface-3);
+  color: var(--ink-4);
+}
+
+.editor-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-left: auto;
+  min-width: 0;
+}
+
+.editor-topbar .editor-actions .btn {
+  min-height: 34px;
+  padding: 0 11px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.editor-topbar .btn-ghost {
+  border-color: var(--border-2);
+}
+
+.editor-topbar .save-status {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+.dh-doc-info-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.dh-doc-info-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  min-width: 260px;
+  max-width: min(320px, 92vw);
+  padding: 14px 16px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  z-index: 120;
+  text-align: left;
+}
+
+.dh-doc-info-dropdown .info-section-label {
+  margin-bottom: 10px;
+}
+
+.dh-doc-info-dropdown .info-row {
+  margin-bottom: 8px;
+}
+
+.dh-doc-info-dropdown .info-val {
+  color: var(--ink-2);
+}
+
+.editor-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px 12px;
+  background: linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+  row-gap: 8px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.tb-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px 4px;
+  background: var(--surface);
+  border: 1px solid var(--border-2);
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.tb-group--block .tb-select {
+  min-width: 132px;
+}
+
+.tb-select {
+  height: 32px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 8px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+  background: transparent;
+  cursor: pointer;
+  outline: none;
+}
+
+.tb-select:hover {
+  background: var(--surface-2);
+}
+
+.tb-select:focus {
+  box-shadow: 0 0 0 2px var(--accent-light);
+}
+
+.tb-btn {
+  height: 32px;
+  min-width: 32px;
+  padding: 0 7px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--ink-2);
+  cursor: pointer;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s, color 0.12s, box-shadow 0.12s;
+  font-family: var(--font-body);
+}
+
+.tb-btn:hover {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+
+.tb-btn:active {
+  background: var(--surface-3);
+}
+
+.tb-btn:focus-visible {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 1px;
+}
+
+.tb-svg {
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.tb-key {
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.tb-key--italic {
+  font-style: italic;
+  font-family: Georgia, 'Times New Roman', serif;
+}
+
+.tb-key--underline {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.tb-key--strike {
+  text-decoration: line-through;
+  font-weight: 600;
+}
+
+.tb-btn--sub {
+  font-size: 12px;
+  font-weight: 600;
+  min-width: 34px;
+}
+
+.tb-btn--glyph {
+  font-size: 15px;
+}
+
+.tb-numlist {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.tb-glyph-clear {
+  font-size: 16px;
+  line-height: 1;
+  opacity: 0.85;
+}
+
+.tb-save-label {
+  font-size: 12px;
+  color: var(--ink-4);
+  white-space: nowrap;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.editor-canvas {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--dh-toc-w);
+  align-items: stretch;
+  padding: 0;
+}
+
+.editor-content-wrap {
+  min-width: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 28px 28px 48px 40px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.editor-content {
+  outline: none;
+  font-size: var(--dh-fs-base);
+  line-height: 1.75;
+  color: var(--ink-2);
+  min-height: 200px;
+}
+
+.editor-content h1 {
+  font-family: var(--font-body);
+  font-size: 28px;
+  font-style: normal;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 16px;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+}
+
+.editor-content h2 {
+  font-family: var(--font-body);
+  font-size: 21px;
+  font-style: normal;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 24px 0 12px;
+  letter-spacing: -0.02em;
+}
+
+.editor-content h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 20px 0 8px;
+}
+
+.editor-content p {
+  margin-bottom: 12px;
+}
+
+.editor-content ul,
+.editor-content ol {
+  margin: 10px 0 12px 20px;
+}
+
+.editor-content code {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  background: var(--surface-3);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.editor-content blockquote {
+  border-left: 3px solid var(--accent);
+  padding: 8px 16px;
+  background: var(--accent-light);
+  border-radius: 0 8px 8px 0;
+  margin: 12px 0;
+}
+
+.editor-content table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  margin: 12px 0;
+}
+
+.editor-content th,
+.editor-content td {
+  border: 1px solid var(--border);
+  padding: 8px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.editor-content table.dh-editor-table thead th {
+  background: var(--surface-3);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.editor-content img.dh-inline-img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin: 8px 0;
+  display: block;
+}
+
+/* Reference file links (toolbar → insert at caret, often inside table cells) */
+.editor-content a.dh-ref-doc {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--accent-2);
+  text-decoration: none;
+  border: 1px solid var(--border-2);
+  border-radius: 8px;
+  padding: 4px 10px;
+  background: var(--surface);
+  max-width: 100%;
+  word-break: break-word;
+}
+
+.editor-content a.dh-ref-doc:hover {
+  background: var(--accent-light);
+  border-color: var(--accent);
+}
+
+.editor-content .dh-ref-doc-icon {
+  display: none;
+}
+
+.editor-content td.dh-ref-cell {
+  min-width: 140px;
+}
+
+.editor-content .dh-ref-hint {
+  font-size: 12px;
+  color: var(--ink-4);
+  font-style: italic;
+}
+
+label.dh-table-header-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--ink-2);
+  margin-bottom: 4px;
+  margin-top: 4px;
+  cursor: pointer;
+}
+
+label.dh-table-header-check input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+label.dh-table-ref-col-check {
+  margin-top: 8px;
+}
+
+.dh-modal-head {
+  margin-bottom: 20px;
+}
+
+.dh-modal-head h2 {
+  margin-bottom: 6px;
+}
+
+.dh-modal-lead {
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ink-3);
+  margin: 0;
+}
+
+.dh-modal-upload,
+.dh-modal-table {
+  max-width: 560px;
+  width: 100%;
+  padding: 0;
+  overflow: hidden;
+}
+
+.dh-modal-table .dh-modal-row label {
+  text-transform: none;
+  letter-spacing: 0.01em;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-3);
+}
+
+.dh-modal-upload .dh-modal-head,
+.dh-modal-table .dh-modal-head {
+  padding: 26px 28px 18px;
+  background: linear-gradient(180deg, var(--surface-2) 0%, transparent 100%);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 18px;
+}
+
+.dh-modal-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 16px;
+  margin-bottom: 6px;
+}
+
+.dh-modal-field label {
+  display: block;
+}
+
+.dh-modal-row--table {
+  margin-bottom: 8px;
+}
+
+.dh-modal-upload .dh-modal-row {
+  margin-left: 28px;
+  margin-right: 28px;
+  box-sizing: border-box;
+}
+
+.dh-upload-block {
+  margin: 0 28px 18px;
+  box-sizing: border-box;
+}
+
+.dh-upload-block .dh-upload-label {
+  padding: 0;
+}
+
+.dh-upload-field-hint {
+  font-size: 12px;
+  color: var(--ink-4);
+  margin: 0 0 10px;
+  line-height: 1.45;
+}
+
+.dh-modal-upload input[type='text'],
+.dh-modal-table input[type='number'] {
+  margin-bottom: 0;
+}
+
+.dh-modal-table .dh-modal-head ~ .dh-modal-row,
+.dh-modal-table label.dh-table-header-check {
+  margin-left: 28px;
+  margin-right: 28px;
+}
+
+.dh-modal-table label.dh-table-header-check {
+  margin-bottom: 18px;
+}
+
+.dh-upload-label {
+  display: block;
+  padding: 0 28px;
+  margin-bottom: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-3);
+  text-transform: none;
+  letter-spacing: 0.01em;
+}
+
+.dh-modal-upload .dh-upload-drop {
+  margin: 0 0 12px;
+}
+
+.dh-upload-drop {
+  margin: 0 28px 8px;
+  padding: 22px 18px;
+  border: 2px dashed var(--border-2);
+  border-radius: 12px;
+  background: var(--surface-2);
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+
+.dh-upload-drop:hover,
+.dh-upload-drop:focus {
+  outline: none;
+  border-color: var(--accent-2);
+  background: var(--accent-light);
+  box-shadow: 0 0 0 3px var(--accent-light);
+}
+
+.dh-upload-drop.dh-upload-drop--active {
+  border-color: var(--accent);
+  background: var(--accent-light);
+}
+
+.dh-upload-drop-icon {
+  color: var(--accent);
+  opacity: 0.9;
+  margin-bottom: 8px;
+}
+
+.dh-upload-drop-icon svg {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.dh-upload-drop-title {
+  font-size: 14px;
+  color: var(--ink-2);
+  margin: 0 0 6px;
+}
+
+.dh-upload-browse {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.dh-upload-browse:hover {
+  color: var(--accent-2);
+}
+
+.dh-upload-drop-hint {
+  font-size: 12px;
+  color: var(--ink-4);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.dh-upload-file-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 12px 0 0;
+  min-height: 1.2em;
+  word-break: break-all;
+}
+
+.dh-upload-file-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: min(52vh, 420px);
+  overflow-y: auto;
+  padding: 2px 0 4px;
+}
+
+.dh-upload-file-row {
+  display: block;
+  padding: 12px 12px;
+  border-radius: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.dh-upload-file-row__main {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+}
+
+.dh-upload-file-row__top {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 10px 12px;
+  margin-bottom: 10px;
+}
+
+.dh-upload-file-row__title-label {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+}
+
+.dh-modal-upload .dh-upload-file-title {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 11px;
+  margin: 0;
+  border: 1px solid var(--border-2);
+  border-radius: 8px;
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  color: var(--ink);
+  background: var(--surface);
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.dh-modal-upload .dh-upload-file-title:focus {
+  border-color: var(--accent-2);
+  box-shadow: 0 0 0 3px var(--accent-light);
+}
+
+.dh-upload-file-row__name {
+  font-weight: 600;
+  color: var(--ink);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dh-upload-file-row__meta {
+  font-size: 12px;
+  color: var(--ink-4);
+  white-space: nowrap;
+}
+
+.dh-upload-file-remove {
+  border: none;
+  background: transparent;
+  padding: 4px 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-4);
+  cursor: pointer;
+  border-radius: 6px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.dh-upload-file-remove:hover {
+  color: var(--accent);
+  background: var(--accent-light);
+}
+
+.dh-modal-footer.modal-footer {
+  margin-top: 0;
+  padding: 16px 28px 24px;
+  border-top: 1px solid var(--border);
+  background: var(--surface-2);
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.dh-modal-table .dh-modal-footer {
+  margin-top: 8px;
+}
+
+.modal input[type='number'] {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border-2);
+  border-radius: 8px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--surface);
+  outline: none;
+  margin-bottom: 0;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.modal input[type='number']:focus {
+  border-color: var(--accent-2);
+  box-shadow: 0 0 0 3px var(--accent-light);
+}
+
+.editor-toc {
+  width: auto;
+  min-width: 0;
+  margin: 0;
+  padding: 24px 16px 28px 22px;
+  border-left: 1px solid var(--border);
+  background: linear-gradient(180deg, var(--surface-2) 0%, var(--surface) 100%);
+  box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.75);
+  overflow-y: auto;
+  overflow-x: hidden;
+  align-self: stretch;
+  -webkit-overflow-scrolling: touch;
+}
+
+.editor-toc .toc-title {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--ink-3);
+  margin: 0 0 14px;
+  padding: 0 4px 10px 12px;
+  border-bottom: 1px solid var(--border-2);
+}
+
+.toc-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.toc-list li {
+  margin: 0;
+  padding: 0;
+}
+
+.toc-item,
+.editor-toc a.toc-item {
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--ink-2);
+  padding: 8px 12px 8px 14px;
+  margin-bottom: 2px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: color 0.12s, background 0.12s, border-color 0.12s;
+  border-left: 3px solid transparent;
+  text-decoration: none;
+  display: block;
+}
+
+.toc-item:hover,
+.editor-toc a.toc-item:hover {
+  color: var(--ink);
+  background: rgba(18, 84, 53, 0.06);
+}
+
+.toc-item:focus-visible,
+.editor-toc a.toc-item:focus-visible {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 1px;
+}
+
+.toc-item.active,
+.editor-toc a.toc-item.active {
+  color: var(--accent);
+  background: var(--accent-light);
+  border-left-color: var(--accent);
+  font-weight: 600;
+}
+
+.dh-viewer-split {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.dh-viewer-scroll {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 28px 28px 48px 40px;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Uploaded file preview: give PDF/spreads more horizontal room and align with the left edge feel */
+.dh-viewer-scroll:has(#dhViewerContent.dh-upload-preview-active) {
+  padding-left: 16px;
+  padding-right: 20px;
+}
+
+@media (max-width: 720px) {
+  .dh-viewer-scroll {
+    padding: 10px 0 28px;
+  }
+
+  .dh-viewer-scroll:has(#dhViewerContent.dh-upload-preview-active) {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .dh-viewer-prose {
+    font-size: 18px;
+    line-height: 1.65;
+  }
+
+  #dhViewerContent.dh-upload-preview-active .dh-img-preview-wrap {
+    padding: 4px 0;
+  }
+
+  /* Native HTML docs in viewer (not file preview) — full width, larger type */
+  #dhViewerContent:not(.dh-upload-preview-active) {
+    max-width: none !important;
+    width: 100% !important;
+    box-sizing: border-box;
+    font-size: 18px;
+    line-height: 1.65;
+  }
+
+  #dhViewerContent:not(.dh-upload-preview-active) .editor-content {
+    max-width: none !important;
+    width: 100% !important;
+    font-size: 18px;
+  }
+
+  #dhViewerContent:not(.dh-upload-preview-active) .editor-content h1,
+  #dhViewerContent:not(.dh-upload-preview-active) h1 {
+    font-size: clamp(1.35rem, 5.5vw, 1.75rem);
+  }
+
+  #dhViewerContent:not(.dh-upload-preview-active) .editor-content h2,
+  #dhViewerContent:not(.dh-upload-preview-active) h2 {
+    font-size: clamp(1.15rem, 4.5vw, 1.45rem);
+  }
+
+  #dhViewerContent:not(.dh-upload-preview-active) .editor-content table,
+  #dhViewerContent:not(.dh-upload-preview-active) table {
+    font-size: 15px;
+  }
+
+  .dh-md-preview,
+  .dh-md-preview.dh-md-rendered {
+    max-width: none !important;
+    width: 100%;
+    margin: 0 !important;
+    font-size: 18px;
+  }
+
+  .dh-docx-preview {
+    max-width: none !important;
+    width: 100%;
+    margin: 0 !important;
+    font-size: 18px;
+    padding: 6px 2px 20px;
+  }
+
+  .dh-pptx-preview {
+    max-width: none !important;
+    width: 100%;
+    margin: 0 !important;
+    padding: 6px 2px 18px;
+  }
+
+  .dh-pptx-slide-body {
+    font-size: 17px;
+    line-height: 1.6;
+  }
+
+  .dh-zip-preview {
+    max-width: none !important;
+    width: 100%;
+    margin: 0 !important;
+  }
+}
+
+.dh-viewer-prose {
+  font-size: var(--dh-fs-base);
+  line-height: 1.75;
+  color: var(--ink-2);
+}
+
+.dh-viewer-prose h1 {
+  font-family: var(--font-body);
+  font-size: 28px;
+  font-style: normal;
+  font-weight: 700;
+  margin-bottom: 16px;
+  letter-spacing: -0.02em;
+}
+
+.dh-viewer-prose h2 {
+  font-family: var(--font-body);
+  font-size: 21px;
+  font-style: normal;
+  font-weight: 700;
+  margin: 24px 0 12px;
+  letter-spacing: -0.02em;
+}
+
+.empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--ink-3);
+  padding: 40px;
+  text-align: center;
+}
+
+.empty-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-lg);
+  background: var(--surface-3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+}
+
+.empty-state h3 {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.empty-state p {
+  font-size: 14px;
+  max-width: 280px;
+  line-height: 1.5;
+}
+
+.dh-empty-hint-mobile {
+  display: none;
+}
+
+.dh-empty-hint-desktop {
+  display: inline;
+}
+
+@media (max-width: 900px) {
+  .dh-empty-hint-mobile {
+    display: inline;
+  }
+
+  .dh-empty-hint-desktop {
+    display: none;
+  }
+}
+
+/* Main-pane search results (sidebar is off-canvas on mobile) */
+.dh-search-results {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding: 16px 18px 24px;
+  text-align: left;
+}
+
+.dh-search-results[hidden] {
+  display: none !important;
+}
+
+.dh-search-results-inner {
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.dh-search-results-head {
+  margin-bottom: 14px;
+}
+
+.dh-search-results-title {
+  margin: 0 0 4px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.dh-search-results-meta {
+  margin: 0;
+  font-size: var(--dh-fs-small);
+  color: var(--ink-3);
+}
+
+.dh-search-results-hint {
+  font-size: var(--dh-fs-small);
+  color: var(--ink-3);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.dh-search-results-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dh-search-result-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.dh-search-result-row:hover {
+  border-color: var(--border-2);
+  background: var(--surface-2);
+}
+
+.dh-sr-icon {
+  font-size: 1.25rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.dh-sr-main {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dh-sr-name {
+  font-weight: 600;
+  color: var(--ink);
+  font-size: var(--dh-fs-ui);
+}
+
+.dh-sr-meta {
+  font-size: var(--dh-fs-meta);
+  color: var(--ink-3);
+}
+
+.info-panel {
+  width: auto;
+  min-width: 0;
+  flex-shrink: 0;
+  border-left: 1px solid var(--border);
+  padding: 24px 18px 28px 22px;
+  display: none;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: linear-gradient(180deg, var(--surface-2) 0%, var(--surface) 100%);
+  box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.75);
+  align-self: stretch;
+  -webkit-overflow-scrolling: touch;
+}
+
+.info-panel.visible {
+  display: flex;
+}
+
+.info-panel.info-panel--sidebar {
+  display: flex;
+  flex-direction: column;
+  border-left: none;
+  padding: 14px 16px 16px;
+  background: transparent;
+  box-shadow: none;
+  gap: 10px;
+}
+
+.info-panel.info-panel--sidebar .info-section-label {
+  margin-bottom: 4px;
+}
+
+.info-panel.info-panel--sidebar .info-row {
+  margin-bottom: 8px;
+}
+
+.info-panel.info-panel--sidebar .info-val {
+  font-size: 13px;
+}
+
+.info-section-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+  margin-bottom: 8px;
+}
+
+.info-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 10px;
+}
+
+.info-key {
+  font-size: 11.5px;
+  color: var(--ink-4);
+}
+
+.info-val {
+  font-size: 13.5px;
+  color: var(--ink-2);
+  font-weight: 500;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 8, 20, 0.45);
+  backdrop-filter: blur(4px);
+  z-index: 400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+
+.modal-overlay.open {
+  opacity: 1;
+  pointer-events: all;
+}
+
+/*
+ * DocHub modals use .modal-overlay.open (not .modal.active). Global components.css
+ * hides .modal until .active, which left only the dimmed backdrop visible.
+ */
+.modal-overlay.open > .modal {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  position: relative;
+  top: auto;
+  left: auto;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-2);
+  padding: 28px;
+  width: 480px;
+  max-width: 94vw;
+  max-height: 92vh;
+  overflow-y: auto;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.15);
+}
+
+.modal h2 {
+  font-family: var(--font-body);
+  font-size: 23px;
+  font-style: normal;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 20px;
+  letter-spacing: -0.02em;
+}
+
+.modal label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-3);
+  margin-bottom: 6px;
+}
+
+.modal input[type='text'],
+.modal textarea,
+.modal select {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--border-2);
+  border-radius: 8px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--surface);
+  outline: none;
+  margin-bottom: 16px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.modal input:focus,
+.modal textarea:focus,
+.modal select:focus {
+  border-color: var(--accent-2);
+  box-shadow: 0 0 0 3px var(--accent-light);
+}
+
+.modal textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.template-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.template-item {
+  border: 1.5px solid var(--border-2);
+  border-radius: var(--radius);
+  padding: 12px 8px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.template-item:hover {
+  border-color: var(--accent-2);
+  background: var(--accent-light);
+}
+
+.template-item.selected {
+  border-color: var(--accent);
+  background: var(--accent-light);
+  box-shadow: 0 0 0 3px var(--accent-light);
+}
+
+.template-icon {
+  font-size: 20px;
+  margin-bottom: 5px;
+}
+
+.template-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.dh-toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 10px 18px;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  z-index: 500;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.2s, transform 0.2s;
+  pointer-events: none;
+  max-width: min(320px, 92vw);
+}
+
+.dh-toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.dh-toast.dh-toast--err {
+  background: var(--red);
+}
+
+.save-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--ink-4);
+}
+
+.save-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ink-4);
+}
+
+.save-dot.saved {
+  background: var(--green);
+}
+
+.save-dot.unsaved {
+  background: var(--amber);
+}
+
+.dh-upload-card {
+  padding: 8px 0 24px;
+  text-align: center;
+}
+
+.dh-upload-card .dh-upload-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+
+.dh-upload-card h2 {
+  font-family: var(--font-body);
+  font-size: 23px;
+  font-style: normal;
+  font-weight: 700;
+  margin-bottom: 8px;
+  letter-spacing: -0.02em;
+}
+
+.dh-preview-fallback-msg {
+  font-size: 14px;
+  color: var(--ink-3);
+  max-width: 420px;
+  margin: 12px auto 0;
+  line-height: 1.5;
+}
+
+.dh-preview-loading,
+.dh-preview-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 220px;
+  color: var(--ink-3);
+  font-size: 14px;
+}
+
+.dh-preview-error {
+  color: var(--red);
+}
+
+.dh-file-preview-wrap {
+  width: 100%;
+  min-height: min(72vh, 920px);
+  display: flex;
+  flex-direction: column;
+}
+
+.dh-file-preview-frame {
+  width: 100%;
+  flex: 1;
+  min-height: min(72vh, 920px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+
+.dh-md-preview {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.dh-md-pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ink-2);
+  margin: 0;
+  padding: 0;
+}
+
+.dh-md-preview.dh-md-rendered {
+  max-width: 720px;
+  margin: 0 auto;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--ink-2);
+}
+
+.dh-md-preview.dh-md-rendered h1,
+.dh-md-preview.dh-md-rendered h2,
+.dh-md-preview.dh-md-rendered h3 {
+  color: var(--ink-1);
+  margin-top: 1.25em;
+  margin-bottom: 0.5em;
+  font-weight: 700;
+}
+
+.dh-md-preview.dh-md-rendered pre {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  overflow: auto;
+  font-size: 13px;
+}
+
+.dh-docx-preview {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 8px 4px 24px;
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--ink-2);
+}
+
+.dh-docx-preview h1,
+.dh-docx-preview h2,
+.dh-docx-preview h3 {
+  color: var(--ink-1);
+  margin-top: 1.1em;
+  margin-bottom: 0.45em;
+}
+
+.dh-docx-preview table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 12px 0;
+  font-size: 14px;
+}
+
+.dh-docx-preview td,
+.dh-docx-preview th {
+  border: 1px solid var(--border);
+  padding: 6px 10px;
+  vertical-align: top;
+}
+
+.dh-docx-preview img {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius);
+}
+
+.dh-xlsx-preview {
+  width: 100%;
+  max-height: min(78vh, 960px);
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-3);
+  padding: 12px 16px 20px;
+}
+
+.dh-xlsx-sheet {
+  margin-bottom: 28px;
+}
+
+.dh-xlsx-sheet:last-child {
+  margin-bottom: 0;
+}
+
+.dh-xlsx-sheet-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink-1);
+  margin: 0 0 10px;
+  letter-spacing: 0.02em;
+}
+
+.dh-xlsx-table-wrap {
+  overflow: auto;
+  max-width: 100%;
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+
+.dh-xlsx-table-wrap table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 13px;
+}
+
+.dh-xlsx-table-wrap td,
+.dh-xlsx-table-wrap th {
+  border: 1px solid var(--border);
+  padding: 6px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.dh-xlsx-table-wrap tr:nth-child(even) {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.dh-pptx-preview {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 8px 4px 20px;
+}
+
+.dh-pptx-note {
+  font-size: 13px;
+  color: var(--ink-3);
+  margin: 0 0 16px;
+  line-height: 1.5;
+}
+
+.dh-pptx-slide {
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.dh-pptx-slide:last-child {
+  border-bottom: none;
+}
+
+.dh-pptx-slide-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--brand, #125435);
+  margin: 0 0 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.dh-pptx-slide-body {
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--ink-2);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.dh-zip-preview {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 8px 4px;
+}
+
+.dh-zip-intro {
+  font-size: 14px;
+  color: var(--ink-2);
+  margin: 0 0 12px;
+}
+
+.dh-zip-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: min(60vh, 640px);
+  overflow: auto;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ink-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+
+.dh-zip-list li {
+  padding: 5px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.dh-zip-list li:last-child {
+  border-bottom: none;
+}
+
+.dh-zip-more {
+  font-size: 13px;
+  color: var(--ink-3);
+  margin: 10px 0 0;
+}
+
+.dh-pdfjs-scroll {
+  width: 100%;
+  overflow: auto;
+  max-height: min(78vh, 960px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-3);
+  padding: 16px;
+}
+
+.dh-pdfjs-pages {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.dh-pdfjs-page-wrap {
+  position: relative;
+  flex-shrink: 0;
+  background: var(--surface);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  border-radius: 4px;
+  line-height: 0;
+}
+
+/* PDF.js text layer — invisible but selectable (copy/paste) over the canvas */
+.dh-pdfjs-page-wrap .textLayer {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+  opacity: 1;
+  line-height: 1;
+  z-index: 2;
+  pointer-events: auto;
+  text-size-adjust: none;
+}
+
+.dh-pdfjs-page-wrap .textLayer span {
+  color: transparent;
+  position: absolute;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0 0;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.dh-pdfjs-page-wrap canvas {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  position: relative;
+  z-index: 1;
+  user-select: none;
+  pointer-events: none;
+}
+
+.dh-img-preview-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  width: 100%;
+  min-height: 120px;
+  max-height: min(78vh, 960px);
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-3);
+  padding: 16px;
+}
+
+.dh-preview-img {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+
+/*
+ * Uploaded files — match native DocHub HTML documents: flow in the same white panel,
+ * no “floating page” outline; content aligned to the left (not centered).
+ */
+#dhViewerContent.dh-upload-preview-active .dh-pdfjs-scroll {
+  background: transparent;
+  border: none;
+  max-height: none;
+  padding: 0;
+  overflow-x: auto;
+  overflow-y: auto;
+}
+
+#dhViewerContent.dh-upload-preview-active .dh-pdfjs-pages {
+  align-items: flex-start;
+  gap: 24px;
+}
+
+/*
+ * Multi-page PDFs: two pages per row — flex + intrinsic page widths so facing pages sit
+ * next to each other (centered group). A 50/50 grid left a huge empty “gutter” between
+ * narrow PDF canvases; this removes that effect.
+ */
+/* Two columns of intrinsic page width; left-aligned and scaled in JS to fill width. */
+#dhViewerContent.dh-upload-preview-active .dh-pdfjs-pages.dh-pdfjs-pages--spread {
+  display: grid;
+  grid-template-columns: repeat(2, auto);
+  column-gap: 6px;
+  row-gap: 28px;
+  justify-content: start;
+  justify-items: start;
+  width: max-content;
+  max-width: none;
+  margin: 0;
+}
+
+@media (max-width: 720px) {
+  #dhViewerContent.dh-upload-preview-active .dh-pdfjs-pages.dh-pdfjs-pages--spread {
+    grid-template-columns: 1fr;
+    width: 100%;
+    justify-items: stretch;
+  }
+}
+
+/* Single-page PDF: capped width in JS — left-aligned */
+#dhViewerContent.dh-upload-preview-active .dh-pdfjs-pages.dh-pdfjs-pages--single {
+  margin: 0;
+  width: max-content;
+}
+
+#dhViewerContent.dh-upload-preview-active .dh-pdfjs-page-wrap {
+  background: transparent;
+  box-shadow: none;
+  border: none;
+  border-radius: 0;
+}
+
+#dhViewerContent.dh-upload-preview-active .dh-pdfjs-page-wrap canvas {
+  max-width: none;
+}
+
+/* Crease between facing pages (must follow rule above so it is not overridden). */
+#dhViewerContent.dh-upload-preview-active .dh-pdfjs-pages.dh-pdfjs-pages--spread .dh-pdfjs-page-wrap:nth-child(odd) {
+  box-shadow: inset -1px 0 0 rgba(18, 84, 53, 0.12);
+}
+
+@media (max-width: 1100px) {
+  #dhViewerContent.dh-upload-preview-active .dh-pdfjs-pages.dh-pdfjs-pages--spread .dh-pdfjs-page-wrap:nth-child(odd) {
+    box-shadow: none;
+  }
+}
+
+#dhViewerContent.dh-upload-preview-active .dh-img-preview-wrap {
+  background: transparent;
+  border: none;
+  padding: 0;
+  max-height: none;
+  justify-content: flex-start;
+}
+
+#dhViewerContent.dh-upload-preview-active .dh-preview-img {
+  box-shadow: none;
+  border: none;
+  border-radius: 0;
+}
+
+#dhViewerContent.dh-upload-preview-active .dh-file-preview-wrap {
+  align-items: flex-start;
+}
+
+#dhViewerContent.dh-upload-preview-active .dh-file-preview-frame {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+#dhViewerContent.dh-upload-preview-active .dh-xlsx-preview {
+  background: transparent;
+  border: none;
+  padding: 0;
+  max-height: none;
+}
+
+#dhViewerContent.dh-upload-preview-active .dh-xlsx-table-wrap {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+}
+
+#dhViewerContent.dh-upload-preview-active .dh-docx-preview {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
+#dhViewerContent.dh-upload-preview-active .dh-md-preview.dh-md-rendered {
+  max-width: none;
+  margin: 0;
+}
+
+#dhViewerContent.dh-upload-preview-active .dh-pptx-preview {
+  max-width: none;
+  padding: 0;
+  margin: 0;
+}
+
+#dhViewerContent.dh-upload-preview-active .dh-zip-preview {
+  max-width: none;
+  margin: 0;
+}
+
+#dhViewerContent.dh-upload-preview-active .dh-zip-list {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+}
+
+#dhViewerContent.dh-upload-preview-active .dh-upload-card {
+  text-align: left;
+  padding: 0;
+}
+
+#dhViewerContent.dh-upload-preview-active .dh-preview-loading {
+  background: transparent;
+  border-radius: 0;
+  border: none;
+  min-height: 120px;
+}
+
+/* Callouts in editor / viewer (templates) */
+.editor-content .callout,
+.dh-viewer-prose .callout {
+  display: flex;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  margin: 12px 0;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.editor-content .callout-blue,
+.dh-viewer-prose .callout-blue {
+  background: rgba(37, 99, 235, 0.06);
+  border-color: rgba(37, 99, 235, 0.2);
+}
+
+.editor-content .callout-green,
+.dh-viewer-prose .callout-green {
+  background: rgba(22, 163, 74, 0.08);
+  border-color: rgba(22, 163, 74, 0.2);
+}
+
+.editor-content .callout-icon,
+.dh-viewer-prose .callout-icon {
+  flex-shrink: 0;
+}
+
+.editor-content .sig-block,
+.dh-viewer-prose .sig-block {
+  margin-top: 16px;
+  padding: 16px;
+  background: var(--surface-2);
+  border-radius: var(--radius);
+}
+
+.editor-content .sig-line,
+.dh-viewer-prose .sig-line {
+  display: flex;
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.editor-content .sig-field,
+.dh-viewer-prose .sig-field {
+  flex: 1;
+  border-bottom: 1px solid var(--border-2);
+  min-height: 48px;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-2);
+  border-radius: 20px;
+}
+
+@media (max-width: 1024px) {
+  .editor-canvas {
+    grid-template-columns: 1fr;
+  }
+
+  .editor-toc {
+    display: none;
+  }
+
+}
+
+@media (max-width: 900px) {
+  .dh-sidebar-toggle {
+    display: inline-flex;
+  }
+
+  .dh-page-root .dh-sidebar {
+    position: fixed;
+    left: 0;
+    top: var(--nav-offset, 5.5rem);
+    bottom: 0;
+    height: auto;
+    z-index: 160;
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+    box-shadow: 8px 0 24px rgba(0, 0, 0, 0.12);
+  }
+
+  .dh-page-root .dh-sidebar.open {
+    transform: translateX(0);
+  }
+
+  /* Topbar: full-width search + actions (no duplicate tab row) */
+  body.dochub-page-v2 .dh-topbar {
+    flex-wrap: wrap;
+    align-items: stretch;
+    align-content: flex-start;
+    height: auto !important;
+    min-height: var(--topbar-h);
+    row-gap: 10px;
+    padding: 10px 12px 12px;
+    position: relative;
+    z-index: 4;
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+
+  body.dochub-page-v2 .topbar-tools {
+    flex: 1 1 100%;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    margin-left: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+
+  body.dochub-page-v2 .topbar-tools .dh-search {
+    flex: 1 1 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  body.dochub-page-v2 .topbar-tools .dh-search input {
+    width: 100% !important;
+    min-width: 0;
+  }
+
+  body.dochub-page-v2 .topbar-tools > .btn {
+    flex: 1 1 calc(33.333% - 8px);
+    min-width: 0;
+    justify-content: center;
+  }
+
+  body.dochub-page-v2 .dh-main {
+    min-height: 0;
+  }
+
+  body.dochub-page-v2 .dh-content {
+    position: relative;
+    z-index: 1;
+    min-height: 0;
+    padding-left: max(12px, env(safe-area-inset-left, 0px));
+    padding-right: max(12px, env(safe-area-inset-right, 0px));
+  }
+
+  body.dochub-page-v2 .editor-area {
+    max-height: none !important;
+    min-height: min(52vh, 420px);
+  }
+
+  .dh-body {
+    grid-template-columns: 1fr;
+  }
+
+  .doc-panel {
+    max-height: 320px;
+  }
+
+  .editor-area {
+    min-height: 360px;
+  }
+}
+
+/* Phones: minimal horizontal padding so the document uses the full width (overrides 900px shell). */
+@media (max-width: 720px) {
+  body.dochub-page-v2 .dh-content {
+    padding-top: 10px;
+    padding-bottom: 16px;
+    padding-left: max(4px, env(safe-area-inset-left, 0px)) !important;
+    padding-right: max(4px, env(safe-area-inset-right, 0px)) !important;
+  }
+
+  #dhViewerState .editor-topbar .dh-viewer-actions .btn {
+    min-height: 30px;
+    padding: 0 8px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 520px) {
+  .btn {
+    padding: 0 8px;
+    font-size: 12px;
+  }
+}
+
+/* Mobile fixes — touch-friendly search (900px block handles topbar layout) */
+@media (max-width: 768px) {
+  body.dochub-page-v2 .topbar-tools .dh-search input {
+    font-size: 16px !important; /* iOS: avoid zoom-on-focus */
+  }
+
+  body.dochub-page-v2 .dh-body {
+    grid-template-columns: 1fr;
+  }
+
+  body.dochub-page-v2 .doc-panel {
+    max-height: 260px;
+  }
+
+  body.dochub-page-v2 .empty-state {
+    padding: 28px 20px;
+  }
+}

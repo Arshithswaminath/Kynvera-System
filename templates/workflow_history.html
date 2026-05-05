@@ -1,0 +1,666 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+  
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+<title>Submitted Forms - Injaaz Application</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    :root {
+      --primary: #125435;
+      --primary-light: #1a7a4d;
+      --primary-dark: #0d3d24;
+      --secondary: #D9D9D9;
+      --text-dark: #1a1a1a;
+      --text-light: #6b6b6b;
+      --bg-light: #fafafa;
+      --white: #ffffff;
+      --success: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --info: #3b82f6;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+      background: var(--bg-body, #f8faf8);
+      color: var(--text-dark);
+      line-height: 1.6;
+    }
+    
+    .review-hero {
+      padding: 9rem 0 0;
+    }
+    
+    .review-hero .hero-content {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0 3rem;
+    }
+    
+    .review-hero .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+      margin-bottom: 1.25rem;
+      transition: color 0.2s;
+    }
+    
+    .review-hero .back-btn:hover { color: var(--primary-light); }
+    
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0.75rem 2rem 2rem;
+    }
+    
+    .page-header {
+      margin-bottom: 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+    
+    .page-title {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--text-dark);
+      margin-bottom: 0.5rem;
+    }
+    
+    .page-subtitle {
+      color: var(--text-light);
+      font-size: 1rem;
+    }
+    
+    .history-section {
+      background: white;
+      border-radius: 16px;
+      padding: 2rem;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+      border: 1px solid rgba(18, 84, 53, 0.05);
+    }
+    
+    .filters {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+    }
+    
+    .search-box {
+      flex: 1;
+      min-width: 300px;
+      position: relative;
+    }
+    
+    .search-input {
+      width: 100%;
+      padding: 0.75rem 1rem 0.75rem 2.5rem;
+      border: 1.5px solid #e5e7eb;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      transition: all 0.3s ease;
+    }
+    
+    .search-input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px rgba(18, 84, 53, 0.1);
+    }
+    
+    .search-icon {
+      position: absolute;
+      left: 0.875rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-light);
+    }
+    
+    .history-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    
+    .history-table th,
+    .history-table td {
+      padding: 1.25rem 1rem;
+      text-align: left;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    
+    .history-table th {
+      background: #f9fafb;
+      font-weight: 600;
+      color: var(--text-light);
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .history-table tr:hover {
+      background: #f9fafb;
+    }
+    
+    .badge {
+      display: inline-block;
+      padding: 0.375rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    
+    .badge-draft { background: #fff8e1; color: #f57f17; }
+    .badge-submitted { background: #e0f2fe; color: #0369a1; }
+    .badge-reviewing { background: #fef3c7; color: #92400e; }
+    .badge-approved { background: #d1fae5; color: #065f46; }
+    .badge-notified { background: #fef3c7; color: #92400e; }
+    .badge-rejected { background: #fee2e2; color: #991b1b; }
+    
+    .module-tag {
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      background: #f3f4f6;
+      color: #4b5563;
+    }
+    
+    .action-btn {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.9rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+    
+    .action-btn:hover {
+      text-decoration: underline;
+    }
+    
+    .no-data {
+      text-align: center;
+      padding: 4rem 2rem;
+      color: var(--text-light);
+    }
+    
+    @media (max-width: 768px) {
+      .container { padding: 0.875rem; }
+      .review-hero { padding: 5rem 0 2rem !important; }
+      .review-hero .hero-content { padding: 0 0.875rem !important; }
+      .review-hero h1 { font-size: 1.35rem !important; }
+      .review-hero .hero-subtitle { font-size: 0.82rem !important; }
+      .page-title { font-size: 1.3rem; }
+      .page-subtitle { font-size: 0.85rem; }
+      
+      .history-table thead { display: none; }
+      .history-table, .history-table tbody, .history-table tr, .history-table td {
+        display: block;
+        width: 100%;
+      }
+      .history-table tr {
+        padding: 1rem;
+        border-bottom: 1px solid #e5e7eb;
+        margin-bottom: 1rem;
+        background: #f9fafb;
+        border-radius: 12px;
+      }
+      .history-table td {
+        padding: 0.5rem 0;
+        border: none;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .history-table td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: var(--text-light);
+        font-size: 0.8rem;
+      }
+    }
+    
+    @media (max-width: 480px) {
+      .navbar-brand span { font-size: 0.9rem; }
+      .page-title { font-size: 1.35rem; }
+    }
+  </style>
+</head>
+<body class="review-dashboard">
+  {% set active_page = 'all-submissions' %}
+  {% include 'partials/main_navbar.html' with context %}
+
+  <!-- Hero: gradient at top with stats widget (matches main dashboard) -->
+  <header class="hero hero-split review-hero">
+    <div class="hero-content hero-split-inner">
+      <div class="hero-left">
+        <a href="/dashboard" class="back-btn">
+          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+          </svg>
+          Back to Dashboard
+        </a>
+        <p class="hero-tagline">Submitted Forms</p>
+        <h1 class="hero-title">{% if is_supervisor %}My Submissions{% else %}All Submissions{% endif %}</h1>
+        <p class="hero-subtitle">{% if is_supervisor %}View, edit, and track the status of your submitted forms.{% else %}View and re-review all technician submissions, including completed ones.{% endif %}</p>
+      </div>
+      <div class="hero-right">
+        <div class="dashboard-widget">
+          <div class="dashboard-widget-header">
+            <div class="dashboard-widget-dots">
+              <span></span><span></span><span></span>
+            </div>
+            <div class="dashboard-widget-bar"></div>
+          </div>
+          <div class="dashboard-widget-body">
+            <div class="dashboard-stats-grid">
+              <div class="dashboard-stat-card">
+                <div class="dashboard-stat-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div>
+                <span class="dashboard-stat-label">Forms Submitted</span>
+                <span class="dashboard-stat-value" id="stat-forms-submitted">0</span>
+              </div>
+              <div class="dashboard-stat-card">
+                <div class="dashboard-stat-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg></div>
+                <span class="dashboard-stat-label">Pending Review</span>
+                <span class="dashboard-stat-value" id="stat-pending-review">0</span>
+              </div>
+              <div class="dashboard-stat-card">
+                <div class="dashboard-stat-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg></div>
+                <span class="dashboard-stat-label">Unique Submitters</span>
+                <span class="dashboard-stat-value" id="stat-active-users">0</span>
+              </div>
+              <div class="dashboard-stat-card">
+                <div class="dashboard-stat-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg></div>
+                <span class="dashboard-stat-label">Completion Rate</span>
+                <span class="dashboard-stat-value" id="stat-completion-rate">0%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="page-header" style="margin-bottom: 1.5rem; justify-content: flex-end;">
+      <div id="statsCount" style="font-weight: 600; color: var(--primary); font-size: 1.1rem;">
+        Total: 0 Submissions
+      </div>
+    </div>
+
+    <div class="history-section">
+      <div class="filters">
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="searchInput" class="search-input" placeholder="Search by site name, technician, or ID...">
+        </div>
+        <select id="moduleFilter" class="search-input" style="width: auto; padding-left: 1rem;">
+          <option value="">All Modules</option>
+          <option value="hr">HR Forms</option>
+          <option value="hvac_mep">HVAC & MEP</option>
+          <option value="civil">Civil Works</option>
+          <option value="cleaning">Cleaning</option>
+        </select>
+        <select id="statusFilter" class="search-input" style="width: auto; padding-left: 1rem;">
+          <option value="">All Statuses</option>
+          <option value="draft">Draft</option>
+          <option value="submitted">Submitted</option>
+          <option value="reviewing">In Review</option>
+          <option value="approved">Approved</option>
+          <option value="completed">Completed</option>
+          <option value="closed">Closed</option>
+          <option value="rejected">Rejected</option>
+        </select>
+      </div>
+
+      <div id="tableContainer">
+        <div style="text-align: center; padding: 3rem; color: var(--text-light);">
+          <p>Loading your submissions…</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let allSubmissions = [];
+    
+    // Check token on page load
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      window.location.href = '/login';
+    }
+
+    // Helper function to refresh access token using refresh token
+    async function refreshAccessToken() {
+      try {
+        const refreshToken = localStorage.getItem('refresh_token');
+        if (!refreshToken) {
+          return null;
+        }
+        
+        // The refresh endpoint uses @jwt_required(refresh=True) which reads from cookies or Authorization header
+        // Since we're storing tokens in localStorage, we need to send it in the Authorization header
+        const response = await fetch('/api/auth/refresh', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${refreshToken}`
+          },
+          credentials: 'include' // Include cookies in case they're also set
+        });
+        
+        if (!response.ok) {
+          // If refresh fails (401 = expired/invalid refresh token, 422 = malformed token), clear tokens and redirect to login
+          if (response.status === 401 || response.status === 422) {
+            // Silently handle - don't log to console as this is expected when refresh token expires
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+            localStorage.removeItem('user');
+            // Redirect will happen in authenticatedFetch
+          }
+          return null;
+        }
+        
+        const data = await response.json();
+        if (data.access_token) {
+          localStorage.setItem('access_token', data.access_token);
+          return data.access_token;
+        }
+        return null;
+      } catch (error) {
+        // Silently handle network errors - don't spam console
+        // Only log if it's not a 401 (which is expected when refresh token is expired)
+        return null;
+      }
+    }
+    
+    // Helper function to make authenticated fetch with automatic token refresh
+    async function authenticatedFetch(url, options = {}) {
+      let token = localStorage.getItem('access_token');
+      if (!token) {
+        return { ok: false, status: 401 };
+      }
+      
+      // Make initial request
+      const response = await fetch(url, {
+        ...options,
+        headers: {
+          ...options.headers,
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      // If 401, try to refresh token and retry once
+      if (response.status === 401) {
+        const newToken = await refreshAccessToken();
+        if (newToken) {
+          // Retry with new token
+          return fetch(url, {
+            ...options,
+            headers: {
+              ...options.headers,
+              'Authorization': `Bearer ${newToken}`
+            }
+          });
+        } else {
+          // Refresh failed, redirect to login
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+          localStorage.removeItem('user');
+          window.location.href = '/login';
+          return { ok: false, status: 401 };
+        }
+      }
+      
+      return response;
+    }
+
+    async function loadHistory() {
+      try {
+        const response = await authenticatedFetch('/api/workflow/submissions/history');
+        
+        if (!response || !response.ok) {
+          // Silently fail - token refresh will handle redirect if needed
+          // Note: A 401 error may appear in console briefly before token refresh - this is expected
+          return;
+        }
+        
+        const data = await response.json();
+        allSubmissions = data.submissions || [];
+        renderTable(allSubmissions);
+        updateStats(allSubmissions);
+        updateReviewHistoryWidget(allSubmissions);
+      } catch (err) {
+        console.error(err);
+        document.getElementById('tableContainer').innerHTML = `<div class="no-data">⚠️ Error loading history. Please refresh the page.</div>`;
+        updateReviewHistoryWidget([]);
+      }
+    }
+
+    function updateReviewHistoryWidget(submissions) {
+      const total = submissions.length;
+      const hrCount = submissions.filter(s => (s.module_type || '').startsWith('hr')).length;
+      const inspectionCount = submissions.filter(s => ['hvac_mep', 'civil', 'cleaning'].includes(s.module_type || '')).length;
+      const pendingCount = submissions.filter(s => !['completed', 'closed_by_admin', 'rejected'].includes(s.workflow_status || '')).length;
+      const completedCount = submissions.filter(s => s.workflow_status === 'completed').length;
+      const completionRate = total ? Math.round((completedCount / total) * 100) : 0;
+      const uniqueUsers = new Set(submissions.map(s => s.user_id || s.user?.id).filter(Boolean)).size;
+
+      const formsEl = document.getElementById('stat-forms-submitted');
+      const pendingEl = document.getElementById('stat-pending-review');
+      const usersEl = document.getElementById('stat-active-users');
+      const rateEl = document.getElementById('stat-completion-rate');
+      if (formsEl) formsEl.textContent = total.toLocaleString();
+      if (pendingEl) pendingEl.textContent = pendingCount;
+      if (usersEl) usersEl.textContent = uniqueUsers;
+      if (rateEl) rateEl.textContent = completionRate + '%';
+    }
+
+    function renderTable(submissions) {
+      const container = document.getElementById('tableContainer');
+      
+      if (submissions.length === 0) {
+        container.innerHTML = `<div class="no-data">No submissions found matching your filters.</div>`;
+        return;
+      }
+
+      let html = `
+        <table class="history-table">
+          <thead>
+            <tr>
+              <th>Site Name</th>
+              <th>Module</th>
+              <th>Technician</th>
+              <th>Visit Date</th>
+              <th>Workflow Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+
+      submissions.forEach(sub => {
+        const moduleNames = {
+          'hvac_mep': 'HVAC & MEP',
+          'civil': 'Civil Works',
+          'cleaning': 'Cleaning',
+          'hr': 'HR Form'
+        };
+        const getModuleDisplay = (mt) => moduleNames[mt] || ((mt || '').startsWith('hr') ? 'HR Form' : mt);
+        
+        const statusClass = getStatusClass(sub.workflow_status);
+        const statusDisplay = (sub.workflow_status || 'Submitted').replace(/_/g, ' ');
+        const technician = sub.user?.full_name || sub.user?.username || 'Unknown';
+        // Helper function to ensure UTC date strings are properly parsed
+        const parseUTCDate = (dateString) => {
+          if (!dateString) return null;
+          let utcString = dateString;
+          if (!utcString.endsWith('Z') && !utcString.includes('+') && !utcString.includes('-', 10)) {
+            utcString = utcString + 'Z';
+          }
+          return new Date(utcString);
+        };
+        
+        // Visit date is date-only, format it properly (no timezone indicator needed for dates)
+        let visitDate = 'N/A';
+        if (sub.visit_date) {
+          // visit_date is typically just a date (YYYY-MM-DD), parse and format
+          const dateStr = sub.visit_date;
+          if (dateStr.includes('T')) {
+            // Has time component, parse as UTC and convert to Dubai (but only show date)
+            const date = parseUTCDate(dateStr);
+            visitDate = date.toLocaleDateString('en-US', {
+              year: 'numeric', month: 'short', day: 'numeric',
+              timeZone: 'Asia/Dubai'
+            });
+          } else {
+            // Date only, parse as date
+            const [year, month, day] = dateStr.split('-').map(Number);
+            const date = new Date(year, month - 1, day);
+            visitDate = date.toLocaleDateString('en-US', {
+              year: 'numeric', month: 'short', day: 'numeric',
+              timeZone: 'Asia/Dubai'
+            });
+          }
+        }
+        
+        const isHr = (sub.module_type || '').startsWith('hr');
+        const moduleUrl = sub.module_type === 'hvac_mep' ? 'hvac-mep' : (isHr ? 'hr' : sub.module_type);
+
+        // Format Operations Manager approval timestamp if present
+        let omApprovalTime = '';
+        if (sub.operations_manager_approved_at) {
+          const omDate = parseUTCDate(sub.operations_manager_approved_at);
+          omApprovalTime = `<br><small style="color: #10b981; font-size: 0.75rem;">✓ Signed: ${omDate.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Dubai' })} (GST)</small>`;
+        }
+        
+        // Format reviewer comments for admin view
+        let reviewerCommentsHtml = '';
+        if (sub.reviewers && sub.reviewers.length > 0) {
+          reviewerCommentsHtml = '<div style="margin-top: 0.5rem; font-size: 0.85rem; color: #6b7280;">';
+          sub.reviewers.forEach((reviewer, idx) => {
+            if (reviewer.comments) {
+              reviewerCommentsHtml += `<div style="margin-top: ${idx > 0 ? '0.25rem' : '0'};"><strong>${reviewer.role}:</strong> ${escapeHtml(reviewer.comments.substring(0, 50))}${reviewer.comments.length > 50 ? '...' : ''}</div>`;
+            }
+          });
+          reviewerCommentsHtml += '</div>';
+        }
+        
+        html += `
+          <tr>
+            <td data-label="Site Name">
+              <strong>${escapeHtml(sub.site_name || 'N/A')}</strong><br>
+              <small style="color:#9ca3af; font-family:monospace;">${sub.submission_id}</small>
+              ${reviewerCommentsHtml}
+            </td>
+            <td data-label="Module"><span class="module-tag">${getModuleDisplay(sub.module_type)}</span></td>
+            <td data-label="Technician">${escapeHtml(technician)}</td>
+            <td data-label="Visit Date">${visitDate}</td>
+            <td data-label="Status"><span class="badge ${statusClass}">${statusDisplay}</span>${omApprovalTime}</td>
+            <td data-label="Actions">
+              <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
+                ${isHr ? `
+                  <a href="/hr/print/${sub.submission_id}" class="action-btn" target="_blank">👁️ View</a>
+                  <a href="/hr/download-pdf/${sub.submission_id}" class="action-btn" target="_blank" style="font-size: 0.85rem;">📥 PDF</a>
+                  <a href="/hr/download-docx/${sub.submission_id}" class="action-btn" target="_blank" style="font-size: 0.85rem;">📄 DOCX</a>
+                ` : `
+                  <a href="/${moduleUrl}/form?edit=${sub.submission_id}&review=true" class="action-btn">
+                    ${sub.workflow_status === 'approved' || sub.workflow_status === 'completed' ? '👁️ View' : '✏️ Review'}
+                  </a>
+                  ${sub.latest_job_id ? `
+                    <a href="/${moduleUrl}/download/${sub.latest_job_id}/pdf" class="action-btn" target="_blank" style="font-size: 0.85rem;">📥 PDF</a>
+                    <a href="/${moduleUrl}/download/${sub.latest_job_id}/excel" class="action-btn" target="_blank" style="font-size: 0.85rem;">📊 Excel</a>
+                  ` : ''}
+                `}
+              </div>
+            </td>
+          </tr>
+        `;
+      });
+
+      html += '</tbody></table>';
+      container.innerHTML = html;
+    }
+
+    function getStatusClass(status) {
+      if (!status) return 'badge-submitted';
+      if (status === 'draft') return 'badge-draft';
+      if (status.includes('approved') || status === 'completed') return 'badge-approved';
+      if (status.includes('reviewing')) return 'badge-reviewing';
+      if (status.includes('notified')) return 'badge-notified';
+      if (status === 'rejected') return 'badge-rejected';
+      if (status.includes('closed')) return 'badge-approved';
+      return 'badge-submitted';
+    }
+
+    function updateStats(submissions) {
+      const count = submissions.length;
+      const statsEl = document.getElementById('statsCount');
+      if (statsEl) statsEl.textContent = `Total: ${count} Submissions`;
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Filters
+    const searchInput = document.getElementById('searchInput');
+    const moduleFilter = document.getElementById('moduleFilter');
+    const statusFilter = document.getElementById('statusFilter');
+
+    function applyFilters() {
+      const searchTerm = searchInput.value.toLowerCase();
+      const moduleTerm = moduleFilter.value;
+      const statusTerm = statusFilter.value;
+
+      const filtered = allSubmissions.filter(sub => {
+        const matchesSearch = 
+          (sub.site_name || '').toLowerCase().includes(searchTerm) ||
+          (sub.user?.full_name || '').toLowerCase().includes(searchTerm) ||
+          (sub.user?.username || '').toLowerCase().includes(searchTerm) ||
+          sub.submission_id.toLowerCase().includes(searchTerm);
+        
+        const matchesModule = !moduleTerm || 
+          (moduleTerm === 'hr' ? (sub.module_type || '').startsWith('hr') : sub.module_type === moduleTerm);
+        const matchesStatus = !statusTerm || (sub.workflow_status || '').includes(statusTerm);
+
+        return matchesSearch && matchesModule && matchesStatus;
+      });
+
+      renderTable(filtered);
+      updateStats(filtered);
+      updateReviewHistoryWidget(filtered);
+    }
+
+    searchInput.addEventListener('input', applyFilters);
+    moduleFilter.addEventListener('change', applyFilters);
+    statusFilter.addEventListener('change', applyFilters);
+
+    document.addEventListener('DOMContentLoaded', loadHistory);
+  </script>
+
+  <!-- Profile & Contact modals are in main_navbar partial -->
+
+  <script src="{{ url_for('static', filename='pwa-install.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='mobile_utils.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='signature_pad.umd.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='api-client.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>

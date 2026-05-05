@@ -1,0 +1,39 @@
+{#
+  Alert Component
+  
+  Usage:
+    {% with alert_type='success', alert_message='Operation completed!' %}
+      {% include 'partials/alert.html' %}
+    {% endwith %}
+  
+  Required context variables:
+    - alert_message: str - The message to display
+  
+  Optional context variables:
+    - alert_type: str - 'success', 'danger', 'warning', 'info' (default: 'info')
+    - alert_dismissible: bool - Show close button (default: false)
+    - alert_id: str - ID for the alert element
+#}
+
+{% set type = alert_type|default('info') %}
+{% set type_icons = {
+  'success': '✓',
+  'danger': '✕',
+  'warning': '⚠',
+  'info': 'ℹ'
+} %}
+
+<div 
+  class="alert alert-{{ type }}" 
+  {% if alert_id %}id="{{ alert_id }}"{% endif %}
+  role="alert"
+  style="{% if alert_dismissible %}position: relative; padding-right: 2.5rem;{% endif %}"
+>
+  <span class="alert-icon">{{ type_icons[type]|default('ℹ') }}</span>
+  <span class="alert-message">{{ alert_message }}</span>
+  {% if alert_dismissible %}
+  <button type="button" class="alert-close" onclick="this.parentElement.style.display='none'" aria-label="Close">
+    <span aria-hidden="true">×</span>
+  </button>
+  {% endif %}
+</div>

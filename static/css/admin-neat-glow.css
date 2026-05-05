@@ -1,0 +1,940 @@
+/**
+ * Admin neat-glow — center content column.
+ * Scoped to body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow
+ * to beat inline body.admin-v4 rules (higher specificity).
+ * Reference: Radiant Admin HQ / neat-admin-glow screenshot.
+ */
+
+/* ── Tokens + canvas ── */
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow {
+  --neat-fg:           hsl(222 47% 11%);
+  --neat-card:         hsl(0 0% 100%);
+  --neat-border:       hsl(215 18% 89%);
+  --neat-muted:        hsl(215 14% 46%);
+  --neat-primary:      hsl(150 65% 20%);
+  --neat-primary-soft: hsl(150 48% 93%);
+  --neat-info:         hsl(211 92% 50%);
+  --neat-warn:         hsl(38 92% 50%);
+  --neat-success:      hsl(150 50% 32%);
+  --neat-r:            0.625rem;   /* 10px card radius */
+  --neat-r-hero:       0.875rem;   /* 14px hero radius */
+  --neat-sh:           0 1px 2px hsl(222 47% 11% / 0.05), 0 2px 8px hsl(222 47% 11% / 0.05);
+  --neat-sh-hover:     0 0 0 1px hsl(150 45% 28% / 0.1), 0 4px 16px -4px hsl(150 40% 28% / 0.18);
+  --gradient-hero:     linear-gradient(135deg, hsl(150 65% 13%) 0%, hsl(150 58% 21%) 52%, hsl(152 45% 29%) 100%);
+
+  /* Centered column — very wide cap (≈2016px @ 16px root). */
+  width: 100%;
+  max-width: min(126rem, calc(100vw - 0.75rem)) !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  box-sizing: border-box;
+  padding: 1.35rem 0.875rem 2.25rem !important;
+  color: var(--neat-fg);
+  background: transparent;
+  font-size: 1rem;
+  line-height: 1.5;
+  overflow-x: hidden;
+}
+
+/* Side gutters on the scroll column when neat-glow is present */
+body.admin-v4:has(.admin-neat-glow) .admin-dh-main {
+  padding-left: 0.625rem !important;
+  padding-right: 0.625rem !important;
+}
+
+/* ─────────────────────────────────────────
+   HERO
+───────────────────────────────────────── */
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--neat-r-hero);
+  padding: 1.75rem 1.75rem 1.85rem;
+  background: var(--gradient-hero);
+  color: #fff;
+  box-shadow: 0 8px 32px -10px hsl(150 55% 12% / 0.5);
+  margin-top: 0.65rem;
+  margin-bottom: 0.65rem;
+  min-height: 212px;
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-hero::before,
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-hero::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(56px);
+  z-index: 0;
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-hero::before {
+  top: -5rem; right: -5rem;
+  width: 20rem; height: 20rem;
+  background: hsl(150 55% 38% / 0.28);
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-hero::after {
+  bottom: -4rem; left: 22%;
+  width: 14rem; height: 14rem;
+  background: hsl(150 55% 42% / 0.18);
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-hero-dots {
+  position: absolute; inset: 0; z-index: 0;
+  opacity: 0.07;
+  background-image: radial-gradient(circle at 1px 1px, white 1px, transparent 0);
+  background-size: 28px 28px;
+  pointer-events: none;
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-hero-grid {
+  position: relative; z-index: 1;
+  display: grid;
+  gap: 1rem 1.5rem;
+  align-items: center;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 880px) {
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-hero-grid {
+    grid-template-columns: minmax(0, 1.1fr) minmax(272px, 1fr);
+  }
+}
+
+/* Eyebrow pill */
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.28rem 0.65rem;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.18);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  backdrop-filter: blur(8px);
+  margin-bottom: 0.65rem;
+}
+
+/* Title — large, like reference */
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-hero-title {
+  font-size: clamp(1.5rem, 2.35vw + 0.55rem, 2.35rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1.15;
+  margin: 0 0 0.65rem;
+  max-width: 100%;
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-hero-title .neat-amp {
+  color: hsl(150 62% 65%);
+}
+
+/* Desc + clock */
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-hero-desc {
+  font-size: 0.92rem;
+  line-height: 1.52;
+  color: rgba(255,255,255,0.78);
+  margin-bottom: 0.5rem;
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-hero-time {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  color: rgba(255,255,255,0.65);
+  margin-bottom: 1rem;
+  font-variant-numeric: tabular-nums;
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-hero-time::before {
+  content: "🕐";
+  font-size: 0.82rem;
+  opacity: 0.75;
+}
+
+/* Action buttons */
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-hero-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: 40px;
+  padding: 0.42rem 1.05rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: transform 0.14s, box-shadow 0.14s;
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-hero-btn:hover {
+  transform: translateY(-1px);
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-hero-btn--solid {
+  background: #fff;
+  color: hsl(150 60% 18%);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-hero-btn--ghost {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.22);
+  color: #fff;
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-hero-btn--ghost:hover {
+  background: rgba(255,255,255,0.18);
+}
+
+/* ── KPI 2×2 grid — fixed max column width (no ultra-wide tiles) ── */
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 18.5rem));
+  gap: 0.44rem;
+  width: fit-content;
+  max-width: min(39rem, 100%);
+  box-sizing: border-box;
+}
+@media (min-width: 880px) {
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-kpi-grid {
+    justify-self: end;
+  }
+}
+@media (max-width: 879px) {
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-kpi-grid {
+    justify-self: center;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-kpi-card {
+  border-radius: 0.5625rem;
+  background: rgba(255,255,255,0.97);
+  color: var(--neat-fg);
+  padding: 0.65rem 0.75rem 0.58rem;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.04);
+  border: 1px solid rgba(255,255,255,0.5);
+  transition: transform 0.15s;
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-kpi-card:hover {
+  transform: translateY(-1px);
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-kpi-ico {
+  display: inline-grid;
+  place-items: center;
+  width: 1.82rem;
+  height: 1.82rem;
+  border-radius: 0.38rem;
+  font-size: 0.86rem;
+  margin-bottom: 0.36rem;
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-kpi-ico--pri  { background: var(--neat-primary-soft); color: var(--neat-primary); }
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-kpi-ico--info { background: hsl(211 92% 50% / 0.1);  color: var(--neat-info); }
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-kpi-ico--warn { background: hsl(38 92% 50% / 0.12);  color: var(--neat-warn); }
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-kpi-ico--ok   { background: hsl(145 60% 40% / 0.12); color: var(--neat-success); }
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-kpi-lbl {
+  font-size: 0.64rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.095em;
+  color: var(--neat-muted);
+  margin-bottom: 0.14rem;
+  line-height: 1.2;
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-kpi-val {
+  font-size: 1.68rem;
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 0.14rem;
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-kpi-sub {
+  font-size: 0.675rem;
+  color: var(--neat-muted);
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+/* ─────────────────────────────────────────
+   QUICK ACTIONS ROW (4 cards)
+───────────────────────────────────────── */
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admin-v4-quick-grid {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 0.5rem !important;
+  margin-bottom: 0.65rem !important;
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admin-v4-quick {
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 0.6rem !important;
+  position: relative;
+  border-radius: var(--neat-r) !important;
+  border: 1px solid var(--neat-border) !important;
+  background: var(--neat-card) !important;
+  box-shadow: var(--neat-sh) !important;
+  padding: 0.7rem 1.45rem 0.7rem 0.72rem !important;
+  min-height: 0 !important;
+  text-decoration: none;
+  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admin-v4-quick::after {
+  content: "↗";
+  position: absolute;
+  top: 0.45rem; right: 0.5rem;
+  font-size: 0.65rem;
+  color: var(--neat-muted);
+  opacity: 0.55;
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admin-v4-quick:hover {
+  border-color: hsl(150 40% 65%) !important;
+  box-shadow: var(--neat-sh-hover) !important;
+  transform: translateY(-1px);
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admin-v4-quick-ico {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 2.2rem !important;
+  height: 2.2rem !important;
+  border-radius: 0.45rem !important;
+  font-size: 0.98rem !important;
+  font-weight: 800 !important;
+  background: var(--neat-primary-soft) !important;
+  color: var(--neat-primary) !important;
+  flex-shrink: 0 !important;
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admin-v4-quick-title {
+  display: block !important;
+  color: var(--neat-fg) !important;
+  font-size: 0.88rem !important;
+  font-weight: 700 !important;
+  line-height: 1.25;
+  margin-bottom: 0.12rem;
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admin-v4-quick-sub {
+  display: block !important;
+  color: var(--neat-muted) !important;
+  font-size: 0.76rem !important;
+  line-height: 1.3;
+}
+
+/* ─────────────────────────────────────────
+   BENTO GRID  (left + right)
+───────────────────────────────────────── */
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-bento.admin-v4-grid {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr) !important;
+  gap: 0.65rem !important;
+  align-items: stretch !important;
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-bento-main,
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-bento-side {
+  gap: 0.58rem !important;
+}
+
+/* Hide Module Pulse from the side column — right column shows Activity only */
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-bento-side .admv2-right-panel {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  position: absolute !important;
+  width: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+}
+/* Clip operator column so progress-bar colors cannot streak into the right column */
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-bento-main {
+  overflow-x: hidden;
+}
+
+/* ── Primary cards ── */
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-card,
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-right-panel,
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow #section-notification-settings.users-section {
+  border-radius: var(--neat-r) !important;
+  border: 1px solid var(--neat-border) !important;
+  background: var(--neat-card) !important;
+  box-shadow: var(--neat-sh) !important;
+  transition: box-shadow 0.18s;
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-dark-inset {
+  border-radius: 0 0 var(--neat-r) var(--neat-r) !important;
+}
+
+/* Card / panel headers */
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-card-hd,
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv3-op-card-hd,
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv3-rp-header,
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow #section-notification-settings .section-header {
+  background: var(--neat-card) !important;
+  border-bottom: 1px solid var(--neat-border) !important;
+  padding: 0.65rem 0.9rem 0.6rem !important;
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-card-title,
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv3-op-hd-title,
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .section-title,
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv3-rp-header-left {
+  color: var(--neat-fg) !important;
+  font-size: 0.97rem !important;
+  font-weight: 700 !important;
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-card-body {
+  padding: 0.75rem 0.95rem 0.85rem !important;
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-docs-card .admv2-card-body {
+  padding: 0 !important;
+}
+
+/* ── Operator cards ── */
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv3-op-card {
+  border-radius: var(--neat-r) !important;
+  border: 1px solid var(--neat-border) !important;
+  background: var(--neat-card) !important;
+  box-shadow: var(--neat-sh) !important;
+  padding: 0.6rem 0.65rem 0.55rem !important;
+  transition: box-shadow 0.15s, transform 0.15s;
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv3-op-card:hover {
+  box-shadow: var(--neat-sh-hover) !important;
+  transform: translateY(-1px);
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv3-op-grid {
+  gap: 0.5rem !important;
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv3-op-avatar {
+  width: 38px !important;
+  height: 38px !important;
+  font-size: 0.8rem !important;
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv3-op-top {
+  margin-bottom: 0.35rem !important;
+}
+
+/* Docs controls */
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-docs-controls {
+  border-bottom-color: var(--neat-border) !important;
+  background: hsl(210 30% 98%) !important;
+  padding: 0.45rem 0.8rem !important;
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-docs-inner-scroll {
+  background: var(--neat-card) !important;
+  max-height: min(73vh, 860px) !important;
+}
+@media (min-width: 1101px) {
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-bento-main > #section-documents.admv2-docs-card {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-bento-main > #section-documents.admv2-docs-card > .admv2-card-hd {
+    flex-shrink: 0 !important;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-docs-card .admv2-card-body {
+    flex: 1 1 0% !important;
+    min-height: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-docs-controls {
+    flex-shrink: 0 !important;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-docs-inner-scroll {
+    flex: 1 1 0% !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow-x: auto !important;
+    overflow-y: auto !important;
+  }
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-rp-section {
+  padding: 0.65rem 0.85rem !important;
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv3-res-row {
+  margin-bottom: 0.5rem !important;
+}
+
+/* Filter/search — one shared height (was: pills padding-only vs search 34px → misaligned) */
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv3-op-card-hd-right {
+  align-items: center !important;
+  height: auto !important;
+  min-height: 0 !important;
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv3-pill-btn,
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv3-pill-select,
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv3-op-search-form .admv2-tb-search.admv3-op-inline-search {
+  font-size: 0.7rem !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  max-height: 32px !important;
+  box-sizing: border-box !important;
+  line-height: 1.2 !important;
+  border-radius: 6px !important;
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv3-pill-btn {
+  padding: 0 0.7rem !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv3-pill-select {
+  padding: 0 1.45rem 0 0.5rem !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv3-op-search-form .admv2-tb-search.admv3-op-inline-search {
+  padding: 0 0.5rem !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.3rem !important;
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv3-op-search-form .admv2-tb-search.admv3-op-inline-search .admv2-tb-search-input {
+  font-size: 0.7rem !important;
+  line-height: 1.2 !important;
+  height: 100% !important;
+  padding: 0 !important;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv3-op-search-form,
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv3-pill-btn,
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv3-pill-select {
+  align-self: center !important;
+}
+
+/* ─────────────────────────────────────────
+   RECENT ACTIVITY PANEL
+───────────────────────────────────────── */
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-activity {
+  border-radius: var(--neat-r) !important;
+  background: var(--neat-card);
+  border: 1px solid var(--neat-border);
+  box-shadow: var(--neat-sh);
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+  min-height: 300px;
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-activity-hd {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 0.7rem 0.9rem 0.6rem;
+  border-bottom: 1px solid var(--neat-border);
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-activity-hd h3 {
+  margin: 0;
+  font-size: 0.97rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--neat-fg);
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-activity-hd p {
+  margin: 0.12rem 0 0;
+  font-size: 0.76rem;
+  color: var(--neat-muted);
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-activity-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--neat-success);
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-activity-list {
+  list-style: none;
+  margin: 0;
+  padding: 0.35rem 0.5rem;
+  overflow-y: auto;
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-activity-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  padding: 0.5rem 0.4rem;
+  border-radius: 0.4rem;
+  transition: background 0.12s;
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-activity-row:hover {
+  background: hsl(210 35% 97%);
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-activity-ico {
+  width: 1.95rem;
+  height: 1.95rem;
+  border-radius: 0.4rem;
+  display: grid;
+  place-items: center;
+  font-size: 0.86rem;
+  flex-shrink: 0;
+  background: hsl(210 40% 94%);
+  color: hsl(222 30% 35%);
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-act-ico-a { background: hsl(150 50% 92%) !important; color: hsl(150 55% 26%) !important; }
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-act-ico-b { background: hsl(211 88% 94%) !important; color: hsl(211 75% 38%) !important; }
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-act-ico-c { background: hsl(145 55% 92%) !important; color: hsl(145 55% 28%) !important; }
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-act-ico-d { background: hsl(38 90% 93%) !important;  color: hsl(38  78% 32%) !important; }
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-activity-t {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--neat-fg);
+  line-height: 1.3;
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-activity-m {
+  font-size: 0.72rem;
+  color: var(--neat-muted);
+  margin-top: 0.05rem;
+}
+
+/* Notification section */
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow #section-notification-settings .notif-grid {
+  gap: 0.75rem !important;
+  margin-top: 0.75rem !important;
+}
+
+/* Mobile rail */
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admin-mobile-rail {
+  margin-bottom: 0.6rem !important;
+}
+
+/* Document + users tables, badges, operator cards */
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .documents-table {
+  font-size: 0.92rem;
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .documents-table th {
+  font-size: 0.7rem;
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .documents-table code {
+  font-size: 0.82rem !important;
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .users-table {
+  font-size: 0.94rem;
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .users-table th {
+  font-size: 0.74rem;
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .module-badge,
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .status-badge,
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .workflow-badge {
+  font-size: 0.74rem;
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv3-op-name {
+  font-size: 0.92rem;
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv3-op-sub {
+  font-size: 0.74rem;
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv3-op-badge {
+  font-size: 0.65rem;
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv3-op-bar-label {
+  font-size: 0.7rem;
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .documents-table .doc-actions .btn-sm {
+  font-size: 0.8rem !important;
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow #section-notification-settings input,
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow #section-notification-settings textarea,
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow #section-notification-settings label,
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow #section-notification-settings .form-text {
+  font-size: 0.92rem !important;
+}
+
+/* ─────────────────────────────────────────
+   ANIMATION
+───────────────────────────────────────── */
+@keyframes neatFadeUp {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-anim {
+  animation: neatFadeUp 0.4s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+/* Opacity-only entrance (no translateY) avoids GPU “smear” with pink/red UI under load */
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv3-anim {
+  animation: neatFadeUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ─────────────────────────────────────────
+   RESPONSIVE
+───────────────────────────────────────── */
+@media (max-width: 1100px) {
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-bento.admin-v4-grid {
+    grid-template-columns: 1fr !important;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admin-v4-quick-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+@media (max-width: 900px) {
+  /* Align main column gutters with safe area */
+  body.admin-v4:has(.admin-neat-glow) .admin-dh-main {
+    padding-left: max(0px, env(safe-area-inset-left)) !important;
+    padding-right: max(0px, env(safe-area-inset-right)) !important;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow {
+    padding: 0.65rem max(0.5rem, env(safe-area-inset-left)) calc(68px + max(1rem, env(safe-area-inset-bottom))) max(0.5rem, env(safe-area-inset-right)) !important;
+    max-width: 100% !important;
+  }
+  /* Section anchor offset — just the fixed top nav (no pill rail anymore) */
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow #section-overview,
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow #section-users,
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow #section-documents,
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow #section-notification-settings {
+    scroll-margin-top: calc(env(safe-area-inset-top, 0px) + var(--main-nav-h) + 0.75rem);
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admin-v4-quick-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0.45rem !important;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-hero {
+    padding: 0.8rem 0.9rem 0.9rem;
+    margin-top: 0.85rem;
+    margin-bottom: 0.55rem;
+    min-height: 0;
+    border-radius: 0.75rem;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-hero-grid {
+    gap: 0.7rem;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-hero-eyebrow {
+    font-size: 0.64rem;
+    margin-bottom: 0.4rem;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-hero-title {
+    font-size: clamp(1.1rem, 3.5vw + 0.6rem, 1.45rem);
+    line-height: 1.18;
+    margin-bottom: 0.45rem;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-hero-desc {
+    display: none;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-hero-time {
+    display: none;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-hero-actions {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-hero-btn {
+    flex: 1 1 calc(50% - 0.25rem);
+    min-width: 8.5rem;
+    min-height: 44px;
+    justify-content: center;
+    font-size: 0.84rem;
+    padding: 0.5rem 0.75rem;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-kpi-grid {
+    width: 100%;
+    max-width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.38rem;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-kpi-card {
+    padding: 0.52rem 0.55rem 0.48rem;
+    min-width: 0;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-kpi-lbl {
+    font-size: 0.6rem;
+    letter-spacing: 0.085em;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-kpi-val {
+    font-size: clamp(1.35rem, 6vw, 1.55rem);
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-kpi-sub {
+    font-size: 0.6rem;
+    line-height: 1.28;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admin-v4-quick {
+    padding: 0.65rem 2.35rem 0.65rem 0.65rem !important;
+    min-height: 3.35rem;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-docs-inner-scroll {
+    max-height: min(42vh, 340px) !important;
+  }
+  /* Activity panel — no forced height on mobile */
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-activity {
+    min-height: 0 !important;
+  }
+  /* Card header controls: allow wrapping, keep one height */
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv3-op-card-hd-right {
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv3-op-card-hd-right .admv3-pill-btn,
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv3-op-card-hd-right .admv3-pill-select,
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv3-op-card-hd-right .admv2-tb-search.admv3-op-inline-search {
+    height: 32px !important;
+    min-height: 32px !important;
+    max-height: 32px !important;
+    font-size: 0.66rem !important;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv3-op-card-hd-right .admv2-tb-search.admv3-op-inline-search {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv3-op-card-hd-right .admv2-tb-search.admv3-op-inline-search .admv2-tb-search-input {
+    font-size: 0.66rem !important;
+  }
+}
+@media (max-width: 560px) {
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-hero-grid {
+    grid-template-columns: 1fr;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-kpi-lbl {
+    font-size: 0.58rem;
+  }
+}
+@media (max-width: 700px) {
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow {
+    padding: 0.5rem max(0.45rem, env(safe-area-inset-left)) calc(66px + max(0.9rem, env(safe-area-inset-bottom))) max(0.45rem, env(safe-area-inset-right)) !important;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-hero {
+    padding: 0.62rem 0.7rem 0.68rem;
+    margin-top: 0.62rem;
+    margin-bottom: 0.42rem;
+    border-radius: 0.62rem;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-hero-eyebrow {
+    display: none;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-hero-title {
+    font-size: clamp(0.96rem, 2.2vw + 0.66rem, 1.18rem);
+    line-height: 1.16;
+    margin-bottom: 0.32rem;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-hero-actions {
+    gap: 0.3rem;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-hero-btn {
+    min-height: 34px;
+    font-size: 0.72rem;
+    padding: 0.28rem 0.45rem;
+    border-radius: 0.42rem;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-kpi-grid {
+    gap: 0.28rem;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-kpi-card {
+    padding: 0.38rem 0.42rem 0.36rem;
+    border-radius: 0.48rem;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-kpi-val {
+    font-size: clamp(1.02rem, 5vw, 1.26rem);
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-kpi-sub {
+    font-size: 0.54rem;
+    line-height: 1.22;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-bento.admin-v4-grid,
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-bento-main,
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-bento-side {
+    gap: 0.75rem;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-card,
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-right-panel,
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow #section-notification-settings.users-section {
+    border-radius: 12px;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admin-v4-quick {
+    min-height: 2.95rem;
+    padding: 0.5rem 2rem 0.5rem 0.55rem !important;
+  }
+}
+@media (max-width: 480px) {
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow {
+    padding: 0.5rem max(0.5rem, env(safe-area-inset-left)) calc(68px + max(1rem, env(safe-area-inset-bottom))) max(0.5rem, env(safe-area-inset-right)) !important;
+  }
+  /* Compact hero */
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-hero {
+    padding: 0.7rem 0.75rem 0.75rem;
+    margin-bottom: 0.45rem;
+    border-radius: 0.625rem;
+    min-height: 0;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-hero-eyebrow {
+    font-size: 0.58rem;
+    margin-bottom: 0.35rem;
+    padding: 0.2rem 0.45rem;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-hero-title {
+    font-size: clamp(1rem, 5vw, 1.2rem);
+    margin-bottom: 0.4rem;
+    line-height: 1.2;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-hero-actions {
+    gap: 0.35rem;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-hero-btn {
+    min-height: 38px;
+    font-size: 0.75rem;
+    padding: 0.35rem 0.5rem;
+  }
+  /* KPI: 4-column single row — icon + number only */
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-kpi-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 0.25rem;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-kpi-card {
+    padding: 0.4rem 0.3rem 0.35rem;
+    align-items: center;
+    text-align: center;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-kpi-ico {
+    display: none;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-kpi-lbl {
+    font-size: 0.5rem;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-kpi-val {
+    font-size: clamp(1.05rem, 5vw, 1.2rem);
+    line-height: 1.1;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-kpi-sub {
+    display: none;
+  }
+  /* Quick access cards: hide subtitle, compact */
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admin-v4-quick {
+    padding: 0.55rem 0.6rem !important;
+    min-height: 0 !important;
+    border-radius: 10px;
+    gap: 0.4rem;
+    align-items: flex-start;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admin-v4-quick-ico {
+    width: 28px;
+    height: 28px;
+    font-size: 0.8rem;
+    flex-shrink: 0;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admin-v4-quick-title {
+    font-size: 0.75rem !important;
+    line-height: 1.2;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admin-v4-quick-sub {
+    display: none !important;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-docs-inner-scroll {
+    max-height: min(38vh, 280px) !important;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-bento.admin-v4-grid {
+    gap: 0.65rem !important;
+  }
+}

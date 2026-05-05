@@ -1,0 +1,17 @@
+{#
+  Reusable Footer Component
+  
+  Usage:
+    {% include 'partials/footer.html' %}
+  
+  Optional context variables:
+    - footer_class: str - Additional CSS classes
+    - show_divider: bool - Show top divider line (default: true)
+#}
+
+<footer class="footer {{ footer_class|default('') }}">
+  {% if show_divider|default(true) %}
+  <div class="footer-divider"></div>
+  {% endif %}
+  <p>© {{ now().year if now is defined else '2026' }} Injaaz Application • All Operations. One Platform.</p>
+</footer>

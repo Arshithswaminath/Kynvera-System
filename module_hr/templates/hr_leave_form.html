@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+  <title>Leave Request Form - HR Module</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/static/animations.css">
+  <link rel="stylesheet" href="/static/css/dashboard.css">
+  <link rel="stylesheet" href="/static/mobile_responsive.css">
+  <style>
+    :root { --primary: #125435; --primary-light: #1a7a4c; }
+    body { background: #f1f5f9; }
+    .form-container { max-width: 800px; margin: 0 auto; }
+    .form-card { background: white; border-radius: 16px; padding: 2rem; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+    .form-header { background: #059669; color: white; padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem; }
+    .form-label { font-weight: 600; color: #374151; margin-bottom: 0.5rem; }
+    .form-control, .form-select { border: 1px solid #d1d5db; border-radius: 8px; padding: 0.75rem; }
+    .form-control:focus, .form-select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(18,84,53,0.1); }
+    .btn-submit { background: linear-gradient(135deg, var(--primary), var(--primary-light)); color: white; border: none; padding: 0.875rem 2rem; border-radius: 8px; font-weight: 600; }
+    .btn-submit:hover { color: white; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(18,84,53,0.3); }
+    .back-link { color: var(--primary); text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; margin-bottom: 1.5rem; }
+    .back-link:hover { color: var(--primary-light); }
+    
+    /* Success Modal Styles */
+    .success-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s ease;
+    }
+    .success-overlay.show {
+      opacity: 1;
+      visibility: visible;
+    }
+    .success-modal {
+      background: white;
+      border-radius: 20px;
+      padding: 2.5rem;
+      text-align: center;
+      max-width: 400px;
+      width: 90%;
+      transform: scale(0.8);
+      transition: transform 0.3s ease;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    .success-overlay.show .success-modal {
+      transform: scale(1);
+    }
+    .success-icon {
+      width: 80px;
+      height: 80px;
+      background: linear-gradient(135deg, #10b981, #059669);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1.5rem;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+      50% { box-shadow: 0 0 0 15px rgba(16, 185, 129, 0); }
+    }
+    .success-icon svg {
+      width: 40px;
+      height: 40px;
+      color: white;
+    }
+    .success-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #1e293b;
+      margin-bottom: 0.5rem;
+    }
+    .success-message {
+      color: #64748b;
+      margin-bottom: 0.5rem;
+      font-size: 0.95rem;
+    }
+    .success-id {
+      background: #f1f5f9;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 0.9rem;
+      color: var(--primary);
+      margin-bottom: 1.5rem;
+      display: inline-block;
+    }
+    .success-btn {
+      background: linear-gradient(135deg, var(--primary), var(--primary-light));
+      color: white;
+      border: none;
+      padding: 0.75rem 2rem;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .success-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(18,84,53,0.3);
+    }
+  </style>
+</head>
+<body>
+  <!-- Success Modal -->
+  <div class="success-overlay" id="successModal">
+    <div class="success-modal">
+      <div class="success-icon">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+        </svg>
+      </div>
+      <h2 class="success-title">Form Submitted!</h2>
+      <p class="success-message">Your leave request has been sent to HR for review.</p>
+      <div class="success-id" id="submissionId"></div>
+      <br>
+      <button class="success-btn" onclick="goToMyRequests()">View My Requests</button>
+    </div>
+  </div>
+
+  <div class="container py-4">
+    <div class="form-container">
+      <a href="/hr/" class="back-link">
+        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        Back to HR Module
+      </a>
+      
+      <div class="form-card">
+        <div class="form-header">
+          <h1 style="font-size: 1.5rem; font-weight: 700; margin: 0;">Leave Request Form</h1>
+          <p style="margin: 0.5rem 0 0; opacity: 0.9;">Submit your leave application</p>
+        </div>
+        
+        <form id="leaveForm">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Employee Name *</label>
+              <input type="text" class="form-control" name="employee_name" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Employee ID *</label>
+              <input type="text" class="form-control" name="employee_id" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Department *</label>
+              <select class="form-select" name="department" required>
+                <option value="">Select Department</option>
+                <option value="operations">Operations</option>
+                <option value="hr">Human Resources</option>
+                <option value="finance">Finance</option>
+                <option value="procurement">Procurement</option>
+                <option value="business_development">Business Development</option>
+                <option value="maintenance">Maintenance</option>
+                <option value="cleaning">Cleaning</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Leave Type *</label>
+              <select class="form-select" name="leave_type" required>
+                <option value="">Select Leave Type</option>
+                <option value="annual">Annual Leave</option>
+                <option value="sick">Sick Leave</option>
+                <option value="emergency">Emergency Leave</option>
+                <option value="unpaid">Unpaid Leave</option>
+                <option value="maternity">Maternity Leave</option>
+                <option value="paternity">Paternity Leave</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Start Date *</label>
+              <input type="date" class="form-control" name="start_date" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">End Date *</label>
+              <input type="date" class="form-control" name="end_date" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Total Days</label>
+              <input type="number" class="form-control" name="total_days" id="totalDays" readonly>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Contact During Leave</label>
+              <input type="tel" class="form-control" name="contact_number" placeholder="+971 XX XXX XXXX">
+            </div>
+            <div class="col-12">
+              <label class="form-label">Reason for Leave *</label>
+              <textarea class="form-control" name="reason" rows="3" required placeholder="Please provide the reason for your leave request"></textarea>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Handover Notes</label>
+              <textarea class="form-control" name="handover_notes" rows="3" placeholder="Tasks to be handed over during your absence"></textarea>
+            </div>
+            <div class="col-12 mt-4">
+              <button type="submit" class="btn-submit w-100">Submit Leave Request</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    // Calculate total days
+    document.querySelector('[name="start_date"]').addEventListener('change', calculateDays);
+    document.querySelector('[name="end_date"]').addEventListener('change', calculateDays);
+    
+    function calculateDays() {
+      const start = new Date(document.querySelector('[name="start_date"]').value);
+      const end = new Date(document.querySelector('[name="end_date"]').value);
+      if (start && end && end >= start) {
+        const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+        document.getElementById('totalDays').value = days;
+      }
+    }
+    
+    // Form submission
+    document.getElementById('leaveForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const formData = new FormData(e.target);
+      const data = Object.fromEntries(formData.entries());
+      data.form_type = 'leave';
+      
+      try {
+        const token = localStorage.getItem('access_token');
+        const response = await fetch('/hr/api/submit', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+          showSuccessModal(result.submission_id);
+        } else {
+          showErrorMessage('Error: ' + result.error);
+        }
+      } catch (error) {
+        showErrorMessage('Error submitting form: ' + error.message);
+      }
+    });
+    
+    function showSuccessModal(submissionId) {
+      document.getElementById('submissionId').textContent = submissionId;
+      document.getElementById('successModal').classList.add('show');
+    }
+    
+    function goToMyRequests() {
+      window.location.href = '/hr/my-requests';
+    }
+    
+    function showErrorMessage(message) {
+      // Create a temporary error toast
+      const toast = document.createElement('div');
+      toast.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #fee2e2; color: #dc2626; padding: 1rem 1.5rem; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); z-index: 9999; font-weight: 500;';
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 5000);
+    }
+  </script>
+</body>
+</html>

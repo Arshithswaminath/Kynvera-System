@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+  <meta name="theme-color" content="#125435">
+  <title>Personal progress | Injaaz Admin</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <style>
+:root {
+  --pp-accent:#125435; --pp-accent2:#1a7a4d; --pp-line:#e2ede8; --pp-bg:#f5faf7; --pp-card:#fff;
+  --pp-ink:#0c1f17; --pp-muted:#587569; --pp-r:12px; --pp-sh:0 4px 24px rgba(18,84,53,.1);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;background:var(--pp-bg);color:var(--pp-ink);min-height:100vh;font-size:15px;line-height:1.45}
+body.has-main-nav{padding-top:5.5rem}
+
+.pp-wrap{max-width:1180px;margin:0 auto;padding:1.25rem 1rem 3rem}
+.pp-hero{display:flex;flex-wrap:wrap;gap:1rem;align-items:flex-start;justify-content:space-between;margin-bottom:1.5rem}
+.pp-hero h1{font-size:1.45rem;font-weight:800;letter-spacing:-.02em}
+.pp-hero p{color:var(--pp-muted);font-size:.92rem;max-width:42ch;margin-top:.35rem}
+.pp-toolbar{display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;margin-bottom:1.25rem}
+.pp-chip{border:1.5px solid var(--pp-line);background:var(--pp-card);padding:.45rem .85rem;border-radius:999px;font-size:.82rem;font-weight:600;color:var(--pp-muted);cursor:pointer;min-height:44px}
+.pp-chip.on{background:var(--pp-accent);color:#fff;border-color:var(--pp-accent)}
+.pp-btn{background:var(--pp-accent);color:#fff;border:none;padding:.65rem 1.1rem;border-radius:var(--pp-r);font-weight:700;font-size:.9rem;cursor:pointer;min-height:44px;box-shadow:0 2px 12px rgba(18,84,53,.25)}
+.pp-btn:hover{background:var(--pp-accent2)}
+.pp-btn-ghost{background:var(--pp-card);color:var(--pp-accent);border:1.5px solid var(--pp-line)}
+.pp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1rem}
+.pp-card{background:var(--pp-card);border:1.5px solid var(--pp-line);border-radius:16px;padding:1.1rem 1.15rem;cursor:pointer;transition:box-shadow .2s,border-color .2s;position:relative}
+.pp-card:hover{box-shadow:var(--pp-sh);border-color:#c0ecd4}
+.pp-card.focus{border-color:var(--pp-accent);box-shadow:0 0 0 2px rgba(18,84,53,.12)}
+.pp-card-top{display:flex;gap:.65rem;align-items:flex-start}
+.pp-icon{width:42px;height:42px;border-radius:12px;background:#e4f7ed;display:flex;align-items:center;justify-content:center;font-size:1.25rem;flex-shrink:0}
+.pp-card-title{font-weight:800;font-size:1.02rem;line-height:1.25;flex:1;min-width:0}
+.pp-badge{font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em;padding:.2rem .45rem;border-radius:6px;white-space:nowrap}
+.pp-b-planning{background:#e8f0fb;color:#1a5fa8}
+.pp-b-active{background:#e4f7ed;color:var(--pp-accent)}
+.pp-b-on_hold{background:#fef6e4;color:#b45309}
+.pp-b-done{background:#e8ece9;color:#334433}
+.pp-b-archived{background:#f1f5f9;color:#64748b}
+.pp-meta{font-size:.8rem;color:var(--pp-muted);margin-top:.5rem;display:flex;flex-wrap:wrap;gap:.5rem .85rem}
+.pp-bar{height:6px;background:#e2ede8;border-radius:99px;overflow:hidden;margin-top:.75rem}
+.pp-bar>div{height:100%;background:linear-gradient(90deg,var(--pp-accent),#22a063);border-radius:99px;transition:width .4s ease}
+.pp-tags{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.6rem}
+.pp-tag{font-size:.72rem;font-weight:600;padding:.15rem .45rem;border-radius:6px;background:var(--pp-bg);color:var(--pp-muted)}
+.pp-empty{text-align:center;padding:3rem 1.5rem;color:var(--pp-muted);border:2px dashed var(--pp-line);border-radius:16px;background:rgba(255,255,255,.6)}
+.pp-kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;margin-bottom:1.25rem}
+@media(max-width:640px){.pp-kpi{grid-template-columns:1fr}}
+.pp-kpi>div{background:var(--pp-card);border:1.5px solid var(--pp-line);border-radius:12px;padding:.75rem 1rem}
+.pp-kpi .v{font-size:1.35rem;font-weight:800}
+.pp-kpi .l{font-size:.72rem;color:var(--pp-muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+
+.pp-modal-veil{position:fixed;inset:0;background:rgba(8,24,15,.48);z-index:200;display:flex;align-items:flex-start;justify-content:center;padding:max(1rem,env(safe-area-inset-top)) 1rem 1rem;opacity:0;pointer-events:none;transition:opacity .2s;backdrop-filter:blur(4px);overflow-y:auto}
+.pp-modal-veil.open{opacity:1;pointer-events:all}
+.pp-modal{background:var(--pp-card);border-radius:18px;width:100%;max-width:720px;margin:auto;box-shadow:0 24px 64px rgba(0,0,0,.18);transform:translateY(12px);transition:transform .22s;max-height:min(95vh,900px);display:flex;flex-direction:column}
+.pp-modal-veil.open .pp-modal{transform:translateY(0)}
+.pp-m-head{padding:1.1rem 1.15rem;border-bottom:1.5px solid var(--pp-line);display:flex;align-items:center;gap:.75rem;flex-shrink:0}
+.pp-m-head h2{font-size:1.05rem;font-weight:800;flex:1}
+.pp-m-close{width:40px;height:40px;border-radius:10px;border:1.5px solid var(--pp-line);background:#fff;cursor:pointer;font-size:1.1rem;color:var(--pp-muted)}
+.pp-m-body{padding:1rem 1.15rem 1.25rem;overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch}
+.pp-section{margin-bottom:1.1rem}
+.pp-section>h3{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--pp-muted);margin-bottom:.6rem;font-weight:800}
+.pp-fields{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
+@media(max-width:560px){.pp-fields{grid-template-columns:1fr}}
+.pp-fld label{display:block;font-size:.72rem;font-weight:700;color:var(--pp-muted);margin-bottom:.35rem}
+.pp-fld input,.pp-fld select,.pp-fld textarea{width:100%;padding:.55rem .65rem;border:1.5px solid var(--pp-line);border-radius:10px;font-size:16px;font-family:inherit;background:#fafdfb}
+.pp-fld textarea{min-height:72px;resize:vertical}
+.pp-fld input:focus,.pp-fld select:focus,.pp-fld textarea:focus{outline:none;border-color:var(--pp-accent);box-shadow:0 0 0 3px rgba(18,84,53,.12)}
+.pp-check{display:flex;align-items:center;gap:.5rem;font-weight:600;font-size:.9rem;cursor:pointer;user-select:none}
+.pp-check input{width:18px;height:18px;accent-color:var(--pp-accent)}
+.pp-step{border:1.5px solid var(--pp-line);border-radius:12px;padding:.65rem .7rem;margin-bottom:.55rem;background:#fafdfb}
+.pp-step-hd{display:flex;flex-wrap:wrap;gap:.4rem;align-items:center;margin-bottom:.45rem}
+.pp-step-hd input{flex:1;min-width:140px;font-weight:700;border:none;background:transparent;padding:.2rem;font-size:.95rem}
+.pp-step-hd input:focus{outline:none}
+.pp-step-actions{display:flex;gap:.25rem}
+.pp-step-actions button{width:36px;height:36px;border-radius:8px;border:1.5px solid var(--pp-line);background:#fff;cursor:pointer;font-size:.85rem}
+.pp-step-row{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
+@media(max-width:560px){.pp-step-row{grid-template-columns:1fr}}
+@media(max-width:768px){
+  .pp-fld input,.pp-fld select,.pp-fld textarea{padding:.65rem .875rem;min-height:44px;border:1.5px solid rgba(18,84,53,0.2)}
+  .pp-fld label{font-size:.75rem}
+  .pp-m-foot{gap:.5rem}
+  .pp-m-foot .pp-btn{width:100%}
+}
+.pp-m-foot{padding:.85rem 1.15rem;border-top:1.5px solid var(--pp-line);display:flex;flex-wrap:wrap;gap:.5rem;justify-content:flex-end;flex-shrink:0;background:var(--pp-card)}
+.pp-m-foot .pp-btn-danger{background:#b91c1c;box-shadow:none}
+#ppToast{position:fixed;bottom:1.5rem;right:1.5rem;left:auto;max-width:min(360px,calc(100% - 2rem));background:var(--pp-accent);color:#fff;padding:.75rem 1rem;border-radius:12px;font-weight:600;font-size:.9rem;box-shadow:var(--pp-sh);z-index:400;transform:translateY(120%);opacity:0;transition:.3s}
+#ppToast.show{transform:translateY(0);opacity:1}
+  </style>
+</head>
+<body class="has-main-nav">
+  {% include 'partials/main_navbar.html' with context %}
+
+  <div class="pp-wrap">
+    <div class="pp-hero">
+      <div>
+        <h1>Personal progress</h1>
+        <p>Track what you are building now: projects, milestones, and step-by-step execution. Open any card to edit everything in one place.</p>
+      </div>
+      <button type="button" class="pp-btn" id="ppBtnAdd">＋ New project</button>
+    </div>
+
+    <div class="pp-kpi" id="ppKpi">
+      <div><div class="l">Projects</div><div class="v" id="ppKpiTotal">0</div></div>
+      <div><div class="l">Active</div><div class="v" id="ppKpiActive">0</div></div>
+      <div><div class="l">Current focus</div><div class="v" id="ppKpiFocus">0</div></div>
+    </div>
+
+    <div class="pp-toolbar">
+      <span style="font-size:.8rem;font-weight:700;color:var(--pp-muted)">Filter</span>
+      <button type="button" class="pp-chip on" data-f="all">All</button>
+      <button type="button" class="pp-chip" data-f="active">Active</button>
+      <button type="button" class="pp-chip" data-f="planning">Planning</button>
+      <button type="button" class="pp-chip" data-f="on_hold">On hold</button>
+      <button type="button" class="pp-chip" data-f="done">Done</button>
+      <button type="button" class="pp-chip" data-f="focus" id="ppChipFocus">★ Focus only</button>
+    </div>
+
+    <div class="pp-grid" id="ppGrid"></div>
+    <div class="pp-empty" id="ppEmpty" style="display:none">No projects match this filter. Create one to get started.</div>
+  </div>
+
+  <div class="pp-modal-veil" id="ppModal" aria-hidden="true">
+    <div class="pp-modal" role="dialog" aria-modal="true" aria-labelledby="ppModalTitle" onclick="event.stopPropagation()">
+      <div class="pp-m-head">
+        <h2 id="ppModalTitle">Project</h2>
+        <button type="button" class="pp-m-close" id="ppModalClose" aria-label="Close">✕</button>
+      </div>
+      <div class="pp-m-body">
+        <div class="pp-section">
+          <h3>Overview</h3>
+          <div class="pp-fields">
+            <div class="pp-fld" style="grid-column:1/-1">
+              <label for="ppTitle">Title</label>
+              <input id="ppTitle" maxlength="255" placeholder="e.g. Injaaz — Personal progress module" autocomplete="off">
+            </div>
+            <div class="pp-fld" style="grid-column:1/-1">
+              <label for="ppSummary">Summary / objective</label>
+              <textarea id="ppSummary" rows="2" placeholder="What outcome are you driving toward?"></textarea>
+            </div>
+            <div class="pp-fld">
+              <label for="ppStatus">Status</label>
+              <select id="ppStatus">
+                <option value="planning">Planning</option>
+                <option value="active" selected>Active</option>
+                <option value="on_hold">On hold</option>
+                <option value="done">Done</option>
+                <option value="archived">Archived</option>
+              </select>
+            </div>
+            <div class="pp-fld">
+              <label for="ppPriority">Priority</label>
+              <select id="ppPriority">
+                <option value="low">Low</option>
+                <option value="med" selected>Medium</option>
+                <option value="high">High</option>
+              </select>
+            </div>
+            <div class="pp-fld">
+              <label for="ppCategory">Category / area</label>
+              <input id="ppCategory" placeholder="e.g. Product, Ops, Learning">
+            </div>
+            <div class="pp-fld">
+              <label for="ppLink">Reference link</label>
+              <input id="ppLink" type="url" placeholder="https://…">
+            </div>
+            <div class="pp-fld">
+              <label for="ppStart">Start date</label>
+              <input id="ppStart" type="date">
+            </div>
+            <div class="pp-fld">
+              <label for="ppTarget">Target date</label>
+              <input id="ppTarget" type="date">
+            </div>
+            <div class="pp-fld" style="grid-column:1/-1">
+              <label for="ppTags">Tags (comma-separated)</label>
+              <input id="ppTags" placeholder="frontend, admin, roadmap">
+            </div>
+            <div class="pp-fld" style="grid-column:1/-1">
+              <label class="pp-check"><input type="checkbox" id="ppFocus"> Mark as <strong>current focus</strong> (shown first; only one at a time)</label>
+            </div>
+            <div class="pp-fld" style="grid-column:1/-1">
+              <label for="ppNotes">Notes &amp; context</label>
+              <textarea id="ppNotes" rows="3" placeholder="Stakeholders, risks, links to tickets…"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="pp-section">
+          <h3>Progress steps</h3>
+          <p style="font-size:.85rem;color:var(--pp-muted);margin:-.25rem 0 .6rem">Define checkpoints. Reorder with arrows; mark status per step. Progress bar uses completed steps.</p>
+          <div id="ppStepsMount"></div>
+          <button type="button" class="pp-btn pp-btn-ghost" style="width:100%;margin-top:.35rem" id="ppAddStep">＋ Add step</button>
+        </div>
+      </div>
+      <div class="pp-m-foot">
+        <button type="button" class="pp-btn pp-btn-ghost" id="ppDelete" style="display:none">Delete project</button>
+        <button type="button" class="pp-btn pp-btn-ghost" id="ppCancel">Cancel</button>
+        <button type="button" class="pp-btn" id="ppSave">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="ppToast" role="status"></div>
+
+  <script src="{{ url_for('static', filename='api-client.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+  <script>
+(function(){
+let projects = [];
+let filterStatus = 'all';
+let filterFocusOnly = false;
+let editingId = null;
+let draftSteps = [];
+
+function authHeaders(){
+  const token = localStorage.getItem('access_token');
+  return { 'Content-Type':'application/json', 'Authorization':'Bearer '+(token||'') };
+}
+
+async function apiGet(url){
+  const r = await fetch(url, { headers: authHeaders() });
+  const j = await r.json().catch(()=>({}));
+  if(!r.ok || j.success===false){ throw new Error(j.error||j.message||'Request failed'); }
+  return j.data !== undefined ? j.data : j;
+}
+
+async function apiPost(url, payload){
+  const r = await fetch(url, { method:'POST', headers: authHeaders(), body: JSON.stringify(payload||{}) });
+  const j = await r.json().catch(()=>({}));
+  if(!r.ok || j.success===false){ throw new Error(j.error||j.message||'Request failed'); }
+  return j.data !== undefined ? j.data : j;
+}
+
+async function apiPut(url, payload){
+  const r = await fetch(url, { method:'PUT', headers: authHeaders(), body: JSON.stringify(payload||{}) });
+  const j = await r.json().catch(()=>({}));
+  if(!r.ok || j.success===false){ throw new Error(j.error||j.message||'Request failed'); }
+  return j.data !== undefined ? j.data : j;
+}
+
+async function apiDelete(url){
+  const r = await fetch(url, { method:'DELETE', headers: authHeaders() });
+  const j = await r.json().catch(()=>({}));
+  if(!r.ok || j.success===false){ throw new Error(j.error||j.message||'Request failed'); }
+  return j;
+}
+
+function toast(msg){
+  const el = document.getElementById('ppToast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(()=>el.classList.remove('show'), 3200);
+}
+
+function esc(t){
+  if(t==null) return '';
+  const d=document.createElement('div');
+  d.textContent=String(t);
+  return d.innerHTML;
+}
+function escAttr(t){
+  return String(t==null?'':t).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+}
+
+function badgeClass(st){
+  const m = { planning:'pp-b-planning', active:'pp-b-active', on_hold:'pp-b-on_hold', done:'pp-b-done', archived:'pp-b-archived' };
+  return m[st]||'pp-b-active';
+}
+
+function filtered(){
+  return projects.filter(p=>{
+    if(filterFocusOnly && !p.isCurrentFocus) return false;
+    if(filterStatus==='all') return true;
+    if(filterStatus==='focus') return p.isCurrentFocus;
+    return (p.status||'')===filterStatus;
+  });
+}
+
+function render(){
+  const grid = document.getElementById('ppGrid');
+  const empty = document.getElementById('ppEmpty');
+  const rows = filtered();
+  if(rows.length===0){
+    grid.innerHTML='';
+    empty.style.display='block';
+    return;
+  }
+  empty.style.display='none';
+  grid.innerHTML = rows.map(p=>{
+    const pct = Number(p.progressPercent||0);
+    const focus = p.isCurrentFocus ? ' focus' : '';
+    const tags = (p.tags||[]).slice(0,4).map(t=>`<span class="pp-tag">${esc(t)}</span>`).join('');
+    return `<article class="pp-card${focus}" data-id="${p.id}" role="button" tabindex="0">
+      <div class="pp-card-top">
+        <div class="pp-icon">${p.isCurrentFocus?'⭐':'📋'}</div>
+        <div class="pp-card-title">${esc(p.title)}</div>
+        <span class="pp-badge ${badgeClass(p.status)}">${esc((p.status||'').replace('_',' '))}</span>
+      </div>
+      <div class="pp-meta">
+        <span>${esc(p.category||'—')}</span>
+        <span>${Number(p.stepsDone||0)}/${Number(p.stepsTotal||0)} steps</span>
+        <span>${esc((p.priority||'med').toUpperCase())} priority</span>
+      </div>
+      ${p.summary?`<div style="font-size:.85rem;color:var(--pp-muted);margin-top:.4rem;line-height:1.4">${esc(p.summary).slice(0,160)}${(p.summary||'').length>160?'…':''}</div>`:''}
+      <div class="pp-bar"><div style="width:${pct}%"></div></div>
+      ${tags?`<div class="pp-tags">${tags}</div>`:''}
+    </article>`;
+  }).join('');
+
+  grid.querySelectorAll('.pp-card').forEach(card=>{
+    const id = Number(card.getAttribute('data-id'));
+    card.addEventListener('click',()=>openModal(id));
+    card.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openModal(id);} });
+  });
+}
+
+function updateKpi(){
+  const s = projects._summary||{};
+  document.getElementById('ppKpiTotal').textContent = String(s.total!=null?s.total:projects.length);
+  document.getElementById('ppKpiActive').textContent = String(s.active!=null?s.active:projects.filter(p=>p.status==='active').length);
+  document.getElementById('ppKpiFocus').textContent = String(s.withFocus!=null?s.withFocus:projects.filter(p=>p.isCurrentFocus).length);
+}
+
+async function load(){
+  try{
+    const data = await apiGet('/api/admin/personal-progress');
+    projects = data.projects||[];
+    projects._summary = data.summary;
+    updateKpi();
+    render();
+  }catch(e){
+    toast(e.message||'Could not load');
+  }
+}
+
+function openModal(projectId){
+  editingId = projectId||null;
+  const p = projectId ? projects.find(x=>x.id===projectId) : null;
+  document.getElementById('ppModalTitle').textContent = p ? 'Edit project' : 'New project';
+  document.getElementById('ppDelete').style.display = p ? 'inline-block' : 'none';
+  document.getElementById('ppTitle').value = p ? p.title : '';
+  document.getElementById('ppSummary').value = p ? (p.summary||'') : '';
+  document.getElementById('ppStatus').value = p ? (p.status||'active') : 'active';
+  document.getElementById('ppPriority').value = p ? (p.priority||'med') : 'med';
+  document.getElementById('ppCategory').value = p ? (p.category||'') : '';
+  document.getElementById('ppLink').value = p ? (p.linkUrl||'') : '';
+  document.getElementById('ppStart').value = p ? (p.startDate||'') : '';
+  document.getElementById('ppTarget').value = p ? (p.targetDate||'') : '';
+  document.getElementById('ppTags').value = p ? (p.tags||[]).join(', ') : '';
+  document.getElementById('ppFocus').checked = !!(p&&p.isCurrentFocus);
+  document.getElementById('ppNotes').value = p ? (p.notes||'') : '';
+  draftSteps = (p&&p.steps) ? p.steps.map(s=>({
+    id:s.id, title:s.title||'', description:s.description||'', status:s.status||'pending',
+    dueDate:s.dueDate||'', notes:s.notes||''
+  })) : [];
+  renderStepsEditor();
+  const veil = document.getElementById('ppModal');
+  veil.classList.add('open');
+  veil.setAttribute('aria-hidden','false');
+  document.getElementById('ppTitle').focus();
+}
+
+function closeModal(){
+  const veil = document.getElementById('ppModal');
+  veil.classList.remove('open');
+  veil.setAttribute('aria-hidden','true');
+  editingId = null;
+}
+
+function renderStepsEditor(){
+  const mount = document.getElementById('ppStepsMount');
+  if(!draftSteps.length){
+    mount.innerHTML = '<p style="font-size:.85rem;color:var(--pp-muted)">No steps yet. Add your first checkpoint below.</p>';
+    return;
+  }
+  mount.innerHTML = draftSteps.map((s,idx)=>`
+    <div class="pp-step" data-idx="${idx}">
+      <div class="pp-step-hd">
+        <input type="text" value="${escAttr(s.title)}" placeholder="Step title" aria-label="Step title" class="pp-step-title">
+        <div class="pp-step-actions">
+          <button type="button" class="pp-step-up" title="Move up">↑</button>
+          <button type="button" class="pp-step-down" title="Move down">↓</button>
+          <button type="button" class="pp-step-del" title="Remove">✕</button>
+        </div>
+      </div>
+      <div class="pp-step-row">
+        <div class="pp-fld">
+          <label>Status</label>
+          <select class="pp-step-status">
+            <option value="pending" ${s.status==='pending'?'selected':''}>Pending</option>
+            <option value="in_progress" ${s.status==='in_progress'?'selected':''}>In progress</option>
+            <option value="done" ${s.status==='done'?'selected':''}>Done</option>
+            <option value="blocked" ${s.status==='blocked'?'selected':''}>Blocked</option>
+            <option value="skipped" ${s.status==='skipped'?'selected':''}>Skipped</option>
+          </select>
+        </div>
+        <div class="pp-fld">
+          <label>Due date</label>
+          <input type="date" class="pp-step-due" value="${escAttr(s.dueDate||'')}">
+        </div>
+      </div>
+      <div class="pp-fld" style="margin-top:.45rem">
+        <label>Description</label>
+        <textarea class="pp-step-desc" rows="2" placeholder="What does &quot;done&quot; look like?">${esc(s.description)}</textarea>
+      </div>
+      <div class="pp-fld" style="margin-top:.35rem">
+        <label>Step notes</label>
+        <input class="pp-step-notes" value="${escAttr(s.notes)}" placeholder="Blockers, links…">
+      </div>
+    </div>
+  `).join('');
+
+  mount.querySelectorAll('.pp-step').forEach(row=>{
+    const idx = Number(row.getAttribute('data-idx'));
+    row.querySelector('.pp-step-title').addEventListener('input',e=>{ draftSteps[idx].title = e.target.value; });
+    row.querySelector('.pp-step-status').addEventListener('change',e=>{ draftSteps[idx].status = e.target.value; });
+    row.querySelector('.pp-step-due').addEventListener('change',e=>{ draftSteps[idx].dueDate = e.target.value; });
+    row.querySelector('.pp-step-desc').addEventListener('input',e=>{ draftSteps[idx].description = e.target.value; });
+    row.querySelector('.pp-step-notes').addEventListener('input',e=>{ draftSteps[idx].notes = e.target.value; });
+    row.querySelector('.pp-step-up').addEventListener('click',()=>{ if(idx>0){ const t=draftSteps[idx-1]; draftSteps[idx-1]=draftSteps[idx]; draftSteps[idx]=t; renderStepsEditor(); }});
+    row.querySelector('.pp-step-down').addEventListener('click',()=>{ if(idx<draftSteps.length-1){ const t=draftSteps[idx+1]; draftSteps[idx+1]=draftSteps[idx]; draftSteps[idx]=t; renderStepsEditor(); }});
+    row.querySelector('.pp-step-del').addEventListener('click',()=>{ draftSteps.splice(idx,1); renderStepsEditor(); });
+  });
+}
+
+function collectPayload(){
+  const tagsRaw = document.getElementById('ppTags').value||'';
+  const tags = tagsRaw.split(',').map(t=>t.trim()).filter(Boolean);
+  const steps = draftSteps
+    .filter(s=>(s.title||'').trim())
+    .map(s=>({
+      id: s.id,
+      title: s.title.trim(),
+      description: (s.description||'').trim(),
+      status: s.status||'pending',
+      dueDate: s.dueDate||null,
+      notes: (s.notes||'').trim()
+    }));
+  return {
+    title: (document.getElementById('ppTitle').value||'').trim(),
+    summary: (document.getElementById('ppSummary').value||'').trim(),
+    status: document.getElementById('ppStatus').value,
+    priority: document.getElementById('ppPriority').value,
+    category: (document.getElementById('ppCategory').value||'').trim(),
+    linkUrl: (document.getElementById('ppLink').value||'').trim(),
+    startDate: document.getElementById('ppStart').value||null,
+    targetDate: document.getElementById('ppTarget').value||null,
+    tags,
+    isCurrentFocus: document.getElementById('ppFocus').checked,
+    notes: (document.getElementById('ppNotes').value||'').trim(),
+    steps
+  };
+}
+
+async function save(){
+  const payload = collectPayload();
+  if(!payload.title){
+    toast('Please enter a title');
+    document.getElementById('ppTitle').focus();
+    return;
+  }
+  try{
+    if(editingId){
+      await apiPut('/api/admin/personal-progress/projects/'+editingId, payload);
+      toast('Saved');
+    }else{
+      await apiPost('/api/admin/personal-progress/projects', payload);
+      toast('Project created');
+    }
+    closeModal();
+    filterStatus='all';
+    filterFocusOnly=false;
+    syncFilterChips();
+    await load();
+  }catch(e){ toast(e.message||'Save failed'); }
+}
+
+async function del(){
+  if(!editingId) return;
+  if(!confirm('Delete this project and all its steps?')) return;
+  try{
+    await apiDelete('/api/admin/personal-progress/projects/'+editingId);
+    toast('Deleted');
+    closeModal();
+    await load();
+  }catch(e){ toast(e.message||'Delete failed'); }
+}
+
+function syncFilterChips(){
+  document.querySelectorAll('.pp-toolbar .pp-chip[data-f]').forEach(c=>{
+    const f = c.getAttribute('data-f');
+    if(f==='focus'){
+      c.classList.toggle('on', filterFocusOnly);
+    }else{
+      c.classList.toggle('on', !filterFocusOnly && filterStatus===f);
+    }
+  });
+}
+
+document.getElementById('ppBtnAdd').addEventListener('click',()=>openModal(null));
+document.getElementById('ppModalClose').addEventListener('click',closeModal);
+document.getElementById('ppCancel').addEventListener('click',closeModal);
+document.getElementById('ppSave').addEventListener('click',save);
+document.getElementById('ppDelete').addEventListener('click',del);
+document.getElementById('ppAddStep').addEventListener('click',()=>{
+  draftSteps.push({ title:'', description:'', status:'pending', dueDate:'', notes:'' });
+  renderStepsEditor();
+});
+document.getElementById('ppModal').addEventListener('click',function(e){ if(e.target===this) closeModal(); });
+
+document.querySelectorAll('.pp-toolbar .pp-chip[data-f]').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const f = btn.getAttribute('data-f');
+    if(f==='focus'){
+      filterFocusOnly = !filterFocusOnly;
+      if(filterFocusOnly) filterStatus = 'all';
+    }else{
+      filterFocusOnly = false;
+      filterStatus = f;
+    }
+    syncFilterChips();
+    render();
+  });
+});
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape' && document.getElementById('ppModal').classList.contains('open')) closeModal();
+});
+
+load();
+})();
+  </script>
+</body>
+</html>

@@ -1,0 +1,1813 @@
+<!doctype html>
+<html lang="en" class="{% if request.args.get('embed') == '1' %}rs-embed-root{% endif %}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+  <title>Report setting — Injaaz Admin</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <style>
+    html { box-sizing: border-box; }
+    *, *::before, *::after { box-sizing: inherit; }
+    body {
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+      background: #f1f5f9;
+      color: #0f172a;
+      min-height: 100vh;
+      margin: 0;
+    }
+    /* Match other admin pages: fixed nav would cover content without this */
+    body.has-main-nav {
+      padding-top: 5.5rem;
+    }
+    .rs-page {
+      width: 100%;
+      max-width: none;
+      margin: 0;
+      padding: 1rem clamp(1rem, 2vw, 2rem) 2rem;
+      min-height: calc(100vh - 5.5rem);
+      box-sizing: border-box;
+    }
+    /* Sidebar = rules + default; main = compact toolbar (upload + actions) + large preview */
+    .rs-shell {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.25rem;
+      align-items: start;
+    }
+    @media (min-width: 960px) {
+      /* Rules sidebar + location register (main takes remaining width) */
+      .rs-shell {
+        grid-template-columns: minmax(260px, 360px) minmax(0, 1fr);
+        align-items: stretch;
+      }
+    }
+    .rs-sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      min-width: 0;
+    }
+    .rs-main-col {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      min-width: 0;
+      min-height: 0;
+    }
+    .rs-toolbar-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      justify-content: flex-start;
+      gap: 0.75rem 1rem;
+    }
+    /* Only as wide as the content needs — no stretch across the row */
+    .rs-toolbar-row .rs-card--locreg-upload {
+      flex: 0 1 auto;
+      width: fit-content;
+      max-width: min(100%, 22rem);
+      min-width: 0;
+    }
+    .rs-toolbar-row .rs-card--actions {
+      flex: 0 0 auto;
+      min-width: 140px;
+    }
+    .rs-card--compact {
+      padding: 0.75rem 1rem 0.9rem;
+    }
+    .rs-card--compact h2 {
+      font-size: 0.9rem;
+      margin: 0 0 0.45rem;
+      padding-bottom: 0.4rem;
+    }
+    .rs-card--compact .rs-hint {
+      font-size: 0.75rem;
+      line-height: 1.4;
+      margin-bottom: 0.45rem;
+    }
+    .rs-card--compact .rs-reg-toolbar {
+      margin: 0.25rem 0 0;
+      gap: 0.5rem;
+    }
+    .rs-card--compact .btn-mmr {
+      min-height: 38px;
+      padding: 0.35rem 0.85rem;
+      font-size: 0.875rem;
+    }
+    .rs-card--actions {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1rem;
+    }
+    .rs-card--actions .btn-mmr,
+    .rs-card--actions a.btn-mmr-outline {
+      width: 100%;
+      min-height: 38px;
+      padding: 0.35rem 0.85rem;
+      font-size: 0.875rem;
+      text-align: center;
+      text-decoration: none;
+      box-sizing: border-box;
+    }
+    .rs-card--builtin .rs-builtin-row {
+      padding: 0.45rem 0;
+    }
+    .rs-card--builtin .rs-hint:first-of-type { margin-top: 0; }
+    .rs-header {
+      text-align: center;
+      margin-bottom: 2rem;
+      padding-bottom: 1.25rem;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .rs-title {
+      font-size: 1.75rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: #0f172a;
+      margin: 0 0 0.5rem;
+      line-height: 1.2;
+    }
+    .rs-sub {
+      color: #64748b;
+      font-size: 0.9375rem;
+      line-height: 1.55;
+      margin: 0 auto;
+      max-width: min(48rem, 100%);
+    }
+    .rs-card {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      padding: 1.35rem 1.5rem 1.5rem;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.06);
+      margin-bottom: 1.25rem;
+    }
+    .rs-shell .rs-card { margin-bottom: 0; }
+    .rs-card h2 {
+      font-size: 1rem;
+      font-weight: 700;
+      margin: 0 0 1rem;
+      color: #125435;
+      padding-bottom: 0.65rem;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .rs-toggle-grid {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 1rem 1.25rem;
+      align-items: start;
+    }
+    @media (max-width: 520px) {
+      .rs-toggle-grid { grid-template-columns: 1fr; justify-items: stretch; }
+      .rs-toggle-grid .switch-wrap { justify-self: start; }
+    }
+    .rs-toggle-grid .switch-wrap {
+      padding-top: 0.15rem;
+    }
+    .rs-label {
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: #0f172a;
+      display: block;
+      margin-bottom: 0.35rem;
+    }
+    .rs-hint {
+      font-size: 0.8125rem;
+      color: #64748b;
+      line-height: 1.5;
+      margin: 0;
+    }
+    .switch {
+      position: relative;
+      width: 52px;
+      height: 28px;
+      flex-shrink: 0;
+      display: inline-block;
+      vertical-align: middle;
+    }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .switch span {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background: #cbd5e1;
+      border-radius: 28px;
+      transition: 0.2s;
+    }
+    .switch span:before {
+      position: absolute;
+      content: '';
+      height: 22px;
+      width: 22px;
+      left: 3px;
+      bottom: 3px;
+      background: white;
+      border-radius: 50%;
+      transition: 0.2s;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+    .switch input:checked + span { background: #125435; }
+    .switch input:checked + span:before { transform: translateX(24px); }
+    .rs-table-wrap { overflow-x: auto; margin: 0 -0.25rem; padding: 0 0.25rem; }
+    .rs-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+      table-layout: fixed;
+    }
+    .rs-table th,
+    .rs-table td {
+      padding: 0.65rem 0.75rem;
+      vertical-align: middle;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .rs-table th {
+      color: #64748b;
+      font-weight: 600;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      text-align: left;
+    }
+    .rs-table th:nth-child(2) { text-align: center; width: 120px; }
+    .rs-table th:nth-child(3) { width: 88px; text-align: right; }
+    .rs-table td:nth-child(2) { text-align: center; }
+    .rs-table td:nth-child(3) { text-align: right; }
+    .rs-table input[type="text"] {
+      width: 100%;
+      min-height: 44px;
+      padding: 0.45rem 0.65rem;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 16px;
+      box-sizing: border-box;
+    }
+    .rs-table .btn-remove {
+      min-height: 40px;
+      padding: 0.35rem 0.65rem;
+      font-size: 0.8125rem;
+    }
+    .btn-mmr {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      padding: 0.5rem 1.15rem;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      background: #125435;
+      color: #fff;
+      font-size: 0.9375rem;
+    }
+    .btn-mmr:hover { background: #0d3d24; }
+    .btn-mmr-outline {
+      background: #fff;
+      color: #125435;
+      border: 1px solid rgba(18,84,53,0.35);
+    }
+    .btn-mmr-outline:hover { background: rgba(18,84,53,0.06); }
+    .rs-add-row { margin-top: 0.75rem; }
+    .rs-footer {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 0.75rem;
+      margin-top: 0;
+      padding-top: 0;
+      border-top: none;
+    }
+    .rs-save-toast {
+      display: none;
+      align-items: flex-start;
+      gap: 0.65rem;
+      width: 100%;
+      margin: 0 0 0.85rem;
+      padding: 0.75rem 1rem;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      font-size: 0.875rem;
+      line-height: 1.45;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+      animation: rs-toast-in 0.28s ease;
+    }
+    @keyframes rs-toast-in {
+      from { opacity: 0; transform: translateY(-6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .rs-save-toast.rs-save-toast--ok {
+      background: #ecfdf5;
+      border-color: #6ee7b7;
+      color: #065f46;
+    }
+    .rs-save-toast.rs-save-toast--err {
+      background: #fef2f2;
+      border-color: #fecaca;
+      color: #991b1b;
+    }
+    .rs-save-toast-icon {
+      flex-shrink: 0;
+      width: 1.5rem;
+      height: 1.5rem;
+      border-radius: 999px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85rem;
+      font-weight: 800;
+    }
+    .rs-save-toast--ok .rs-save-toast-icon { background: #d1fae5; color: #047857; }
+    .rs-save-toast--err .rs-save-toast-icon { background: #fee2e2; color: #b91c1c; }
+    .rs-save-toast-body { flex: 1; min-width: 0; }
+    .rs-save-toast-title { font-weight: 700; margin: 0 0 0.2rem; font-size: 0.9rem; }
+    .rs-save-toast-sub { margin: 0; opacity: 0.92; font-size: 0.8125rem; }
+    .rs-save-toast-dismiss {
+      flex-shrink: 0;
+      margin: -0.2rem -0.2rem 0 0;
+      padding: 0.2rem 0.45rem;
+      border: none;
+      background: transparent;
+      color: inherit;
+      opacity: 0.65;
+      cursor: pointer;
+      font-size: 1.15rem;
+      line-height: 1;
+      border-radius: 6px;
+    }
+    .rs-save-toast-dismiss:hover { opacity: 1; background: rgba(0, 0, 0, 0.06); }
+    .pill {
+      display: inline-block;
+      padding: 0.15rem 0.5rem;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      vertical-align: middle;
+    }
+    .pill-nc { background: #fef3c7; color: #92400e; }
+    .pill-c { background: #d1fae5; color: #065f46; }
+    .rs-file-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.75rem;
+      margin-top: 0.25rem;
+    }
+    .rs-sample-link { text-decoration: none; }
+    .rs-file-status { margin-top: 0.75rem !important; margin-bottom: 0 !important; }
+    .rs-upload-label { position: relative; display: inline-block; }
+    .rs-builtin-list { display: flex; flex-direction: column; gap: 0.85rem; }
+    .rs-builtin-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 0.75rem 1rem;
+      align-items: start;
+      padding: 0.65rem 0;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .rs-builtin-row:last-child { border-bottom: none; }
+    @media (max-width: 520px) {
+      .rs-builtin-row { grid-template-columns: 1fr; }
+    }
+    .rs-reg-toolbar { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; margin: 0.5rem 0 0.75rem; }
+    .rs-reg-summary {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 0.75rem 1rem;
+      font-size: 0.875rem;
+      margin-bottom: 0.75rem;
+    }
+    .rs-card--register-results {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      min-height: min(68vh, calc(100vh - 14rem));
+    }
+    .rs-card--register-results > .rs-hint { flex-shrink: 0; }
+    .rs-reg-table {
+      flex: 1 1 auto;
+      max-height: none;
+      min-height: 280px;
+      overflow-y: auto;
+    }
+    .rs-prop-block {
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      margin-bottom: 1rem;
+      overflow: hidden;
+      background: #fafafa;
+    }
+    .rs-prop-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      background: #f1f5f9;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .rs-prop-head h3 {
+      margin: 0;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #0f172a;
+      flex: 1;
+      min-width: 0;
+    }
+    .rs-bulk-btns { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+    .rs-bulk-btns button {
+      min-height: 36px;
+      padding: 0.35rem 0.75rem;
+      font-size: 0.8125rem;
+      border-radius: 8px;
+      border: 1px solid #cbd5e1;
+      background: #fff;
+      cursor: pointer;
+      color: #334155;
+    }
+    .rs-bulk-btns button:hover { border-color: #125435; color: #125435; }
+    .rs-zone-label {
+      padding: 0.5rem 1rem 0.25rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #64748b;
+    }
+    .rs-zone-block {
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .rs-zone-block:last-of-type {
+      border-bottom: none;
+    }
+    .rs-zone-details {
+      margin: 0;
+      border: none;
+      background: transparent;
+    }
+    .rs-zone-details > .rs-zone-summary {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+      list-style: none;
+      padding: 0.65rem 1rem;
+      cursor: pointer;
+      font-size: 0.875rem;
+      line-height: 1.4;
+      color: #0f172a;
+      user-select: none;
+      background: #fff;
+    }
+    .rs-zone-details > .rs-zone-summary::-webkit-details-marker,
+    .rs-zone-details > .rs-zone-summary::marker {
+      display: none;
+    }
+    .rs-zone-details > .rs-zone-summary::before {
+      content: '';
+      flex-shrink: 0;
+      width: 0.5rem;
+      height: 0.5rem;
+      margin-top: 0.35rem;
+      border-right: 2px solid #125435;
+      border-bottom: 2px solid #125435;
+      transform: rotate(-45deg);
+      transition: transform 0.15s ease;
+    }
+    .rs-zone-details[open] > .rs-zone-summary::before {
+      transform: rotate(45deg);
+      margin-top: 0.25rem;
+    }
+    .rs-zone-summary-text { flex: 1; min-width: 0; }
+    .rs-zone-summary-text strong { font-weight: 700; font-size: 0.9375rem; }
+    .rs-zone-count { font-weight: 600; color: #334155; }
+    .rs-zone-hint {
+      font-weight: 400;
+      font-size: 0.8125rem;
+      color: #64748b;
+    }
+    .rs-zone-panel {
+      padding: 0 0.75rem 0.75rem 1.75rem;
+      background: #fafafa;
+    }
+    .rs-zone-panel .rs-subzone-label {
+      padding-left: 0;
+    }
+    .rs-table.rs-table--loc th:nth-child(1) { width: 26%; }
+    .rs-table.rs-table--loc th:nth-child(2) { width: 18%; }
+    .rs-table.rs-table--loc th:nth-child(3) { width: 22%; text-align: center; }
+    .rs-table.rs-table--loc th:nth-child(4) { width: 34%; text-align: center; }
+    .rs-table.rs-table--loc td:nth-child(3),
+    .rs-table.rs-table--loc td:nth-child(4) { text-align: center; }
+    .rs-cell-resolved { white-space: nowrap; font-size: 0.8rem; }
+    .rs-table.rs-table--loc .rs-apt-note {
+      font-size: 0.75rem;
+      color: #64748b;
+    }
+    .rs-apt-rollup {
+      margin: 0.5rem 1rem 1rem;
+      padding: 0.85rem 1rem;
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 10px;
+    }
+    .rs-apt-rollup .rs-zone-label {
+      padding: 0 0 0.5rem;
+      color: #166534;
+    }
+    .rs-apt-summary {
+      font-size: 0.875rem;
+      line-height: 1.5;
+      color: #14532d;
+      margin: 0;
+    }
+    .rs-apt-summary strong { color: #0f172a; }
+    .rs-apt-details {
+      margin-top: 0.65rem;
+      font-size: 0.8125rem;
+      color: #334155;
+    }
+    .rs-apt-details summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: #166534;
+      user-select: none;
+    }
+    .rs-apt-list {
+      margin: 0.5rem 0 0;
+      padding-left: 1.1rem;
+      max-height: 12rem;
+      overflow-y: auto;
+    }
+    .rs-apt-list li { margin: 0.2rem 0; }
+    .rs-apt-rules-inline {
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+      margin: 0 0 0.85rem;
+      padding: 0.75rem 0.85rem;
+      background: #fff;
+      border: 1px solid #bbf7d0;
+      border-radius: 10px;
+    }
+    .rs-apt-br-label {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+      font-size: 0.8125rem;
+      line-height: 1.45;
+      color: #14532d;
+      cursor: pointer;
+      margin: 0;
+    }
+    .rs-apt-br-label input { margin-top: 0.2rem; flex-shrink: 0; }
+    .rs-apt-br-label .rs-hint { display: block; font-weight: 400; color: #64748b; margin-top: 0.15rem; }
+    .rs-loc-loading {
+      display: none;
+      margin: 0 0 1rem;
+      padding: 1.25rem 1.5rem;
+      background: linear-gradient(135deg, #f0fdf4 0%, #f8fafc 100%);
+      border: 1px dashed #86efac;
+      border-radius: 12px;
+      color: #14532d;
+    }
+    .rs-loc-loading-inner {
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+    .rs-spinner {
+      flex-shrink: 0;
+      width: 2rem;
+      height: 2rem;
+      border: 3px solid rgba(18, 84, 53, 0.2);
+      border-top-color: #125435;
+      border-radius: 50%;
+      animation: rs-spin 0.75s linear infinite;
+    }
+    @keyframes rs-spin {
+      to { transform: rotate(360deg); }
+    }
+    .rs-loc-loading-title {
+      margin: 0 0 0.35rem;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .rs-loc-loading-sub {
+      margin: 0;
+      font-size: 0.8125rem;
+      line-height: 1.45;
+      color: #475569;
+    }
+    .btn-mmr:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+    .rs-loc-toolbar {
+      display: none;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.75rem 1.25rem;
+      margin: 0 0 1rem;
+      padding: 0.65rem 0.85rem;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+    }
+    .rs-loc-toolbar input[type="search"] {
+      min-width: 200px;
+      flex: 1;
+      max-width: min(100%, 28rem);
+      padding: 0.45rem 0.65rem;
+      border-radius: 8px;
+      border: 1px solid #cbd5e1;
+      font-size: 0.875rem;
+    }
+    .rs-loc-toolbar label {
+      font-size: 0.8125rem;
+      color: #475569;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      cursor: pointer;
+      user-select: none;
+    }
+    .rs-subzone-block {
+      margin: 0.5rem 0 1rem;
+      padding-left: 0.35rem;
+      border-left: 3px solid #e2e8f0;
+    }
+    .rs-subzone-label {
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: #475569;
+      margin: 0 0 0.5rem 0.25rem;
+    }
+    .rs-paged-wrap {
+      margin-bottom: 0.75rem;
+    }
+    .rs-paged-wrap .rs-load-more {
+      margin-top: 0.5rem;
+      font-size: 0.8125rem;
+    }
+    .rs-table.rs-table--loc .rs-loc-col-extra {
+      display: none;
+      font-size: 0.8125rem;
+    }
+    #locRegTableWrap.rs-loc-extras-on .rs-table.rs-table--loc .rs-loc-col-extra {
+      display: table-cell;
+    }
+    .rs-table.rs-table--loc .rs-loc-col-keyid {
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+      max-width: 7.5rem;
+      color: #475569;
+      font-size: 0.8125rem;
+    }
+    /* Embedded in MMR dialog: solid white shell so cards are not separated by dimmed dashboard */
+    html.rs-embed-root {
+      height: 100%;
+      background: #ffffff !important;
+    }
+    body.rs-embed {
+      min-height: 100%;
+      background: #ffffff !important;
+      padding-top: 0 !important;
+    }
+    body.rs-embed .rs-page {
+      padding: 0.75rem clamp(0.75rem, 2vw, 1.35rem) 1.1rem;
+      min-height: 100%;
+      max-width: none;
+      background: #ffffff;
+    }
+    body.rs-embed .rs-header {
+      margin: -0.75rem calc(-1 * clamp(0.75rem, 2vw, 1.35rem)) 1.15rem calc(-1 * clamp(0.75rem, 2vw, 1.35rem));
+      padding: 1rem clamp(0.75rem, 2vw, 1.35rem) 1.1rem;
+      border-bottom: none;
+      border-radius: 12px 12px 0 0;
+      background: #125435;
+      text-align: center;
+    }
+    body.rs-embed .rs-title {
+      color: #ffffff !important;
+    }
+    body.rs-embed .rs-sub {
+      color: rgba(255, 255, 255, 0.92) !important;
+    }
+    body.rs-embed .rs-sub strong {
+      color: #ffffff;
+    }
+    @media (min-width: 960px) {
+      /* MMR dialog: slightly wider rules column; register still flexes */
+      body.rs-embed .rs-shell {
+        grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+        gap: 1rem 1.1rem;
+      }
+    }
+  </style>
+</head>
+<body class="{% if request.args.get('embed') == '1' %}rs-embed{% else %}has-main-nav{% endif %}">
+  {% if request.args.get('embed') != '1' %}
+  {% include 'partials/main_navbar.html' with context %}
+  {% endif %}
+
+  <main class="rs-page">
+    <header class="rs-header">
+      <h1 class="rs-title">Report setting</h1>
+      <p class="rs-sub">
+        Configure how <strong>BaseUnit</strong> (unit / area from CAFM) maps to Chargeable vs Non-Chargeable in
+        <strong>MMR dashboards, Excel reports, and scheduled email</strong>. Changes apply as soon as you save.
+      </p>
+    </header>
+
+    <div class="rs-shell">
+    <aside class="rs-sidebar">
+      <section class="rs-card rs-card--builtin" aria-labelledby="sec-builtin">
+        <h2 id="sec-builtin">Built-in rules (automatic)</h2>
+        <p class="rs-hint" style="margin: 0 0 1rem;">
+          These are the same logic paths defined in code. Turn a rule <strong>off</strong> to stop applying it (the row will fall through to the next rule or your location-register toggles).
+        </p>
+        <div class="rs-builtin-list" id="builtinRulesContainer"></div>
+      </section>
+
+      <section class="rs-card rs-card--default" aria-labelledby="sec-default">
+        <h2 id="sec-default">Default for non-apartment locations</h2>
+        <div class="rs-toggle-grid">
+          <div>
+            <span class="rs-label">Only apartments bill as Chargeable</span>
+            <p class="rs-hint">
+              When on, BaseUnit values such as CCTV room, parking, or lobby resolve to <span class="pill pill-nc">Non-Chargeable</span>
+              unless you add an override. When off, legacy behaviour treats those common areas as
+              <span class="pill pill-c">Chargeable</span> (except reception / floor / exit rules).
+            </p>
+          </div>
+          <div class="switch-wrap">
+            <label class="switch" title="Only apartments → Chargeable">
+              <input type="checkbox" id="toggleNonAptNonChg" checked>
+              <span></span>
+            </label>
+          </div>
+        </div>
+      </section>
+    </aside>
+
+    <div class="rs-main-col">
+      <div class="rs-toolbar-row">
+        <section class="rs-card rs-card--locreg-upload rs-card--compact" aria-labelledby="sec-locreg">
+          <h2 id="sec-locreg">Location register (Excel)</h2>
+          <p class="rs-hint">
+            <code>.xlsx</code> / <code>.xls</code> — grouped by <strong>property</strong> and <strong>zone</strong> below. Toggle chargeable per row; use <strong>Save location register</strong> to store the list, or <strong>Save settings</strong> for rules and list together.
+          </p>
+          <div class="rs-reg-toolbar">
+            <label class="rs-upload-label">
+              <span class="btn-mmr btn-mmr-outline" style="cursor:pointer;display:inline-flex;">Choose file</span>
+              <input type="file" id="locRegInput" accept=".xlsx,.xls,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="position:absolute;width:0;height:0;opacity:0;">
+            </label>
+            <button type="button" class="btn-mmr" id="btnParseLocReg">Parse &amp; load list</button>
+          </div>
+          <p class="rs-hint" id="locRegMsg" style="display:none;"></p>
+        </section>
+
+        <div class="rs-card rs-card--actions rs-card--compact" aria-label="actions">
+          <button type="button" class="btn-mmr" id="btnSave">Save settings</button>
+          {% if request.args.get('embed') == '1' %}
+          <button type="button" class="btn-mmr btn-mmr-outline" id="btnCloseReportSettingsEmbed">Close</button>
+          {% else %}
+          <a href="/admin/dashboard" class="btn-mmr btn-mmr-outline">Back to admin</a>
+          {% endif %}
+          <button type="button" class="btn-mmr btn-mmr-outline" id="btnSaveLocationRegister">Save location register</button>
+        </div>
+      </div>
+
+      <div id="saveToast" class="rs-save-toast" style="display: none;" role="status" aria-live="polite" aria-atomic="true"></div>
+
+      <section class="rs-card rs-card--register-results" id="locRegResultsCard" style="display:none;" aria-labelledby="sec-loc-preview">
+        <h2 id="sec-loc-preview">Location register — preview</h2>
+        <p class="rs-hint" style="margin: 0 0 0.75rem;">
+          By <strong>property</strong> and <strong>zone</strong>. <strong>Resolved (MMR)</strong> uses sidebar rules and your toggles (saved to the server). Apartments rolled up per property.
+        </p>
+        <div id="locRegLoading" class="rs-loc-loading" style="display:none;" role="status" aria-live="polite" aria-busy="false">
+          <div class="rs-loc-loading-inner">
+            <div class="rs-spinner" aria-hidden="true"></div>
+            <div>
+              <p class="rs-loc-loading-title" id="locRegLoadingTitle">Uploading and reading your Excel…</p>
+              <p class="rs-loc-loading-sub" id="locRegLoadingSub">Sent to the server for parsing. Large files may take several seconds.</p>
+            </div>
+          </div>
+        </div>
+        <div id="locRegSummary" class="rs-reg-summary" style="display:none;"></div>
+        <div id="locRegToolbar" class="rs-loc-toolbar" style="display:none;" aria-label="Register view options">
+          <input type="search" id="locRegSearch" placeholder="Filter by key ID, property, property name, zone, base unit…" autocomplete="off">
+          <label title="Show CAFM columns next to each row">
+            <input type="checkbox" id="locRegShowExtras">
+            Show location columns (city, area, codes, sub-type)
+          </label>
+        </div>
+        <div class="rs-table-wrap rs-reg-table" id="locRegTableWrap" style="display:none;">
+          <div id="locRegGrouped"></div>
+        </div>
+      </section>
+
+    </div>
+    </div>
+  </main>
+
+  <script>
+    const token = localStorage.getItem('access_token');
+    if (!token) window.location.href = '/login';
+
+    var BUILTIN_RULES_META = [
+      { key: 'facade_cleaning_non_chargeable', label: 'Facade cleaning', hint: 'Service Group contains facade cleaning → Non-Chargeable.' },
+      { key: 'elevator_non_chargeable', label: 'Elevator / Elevater', hint: 'Service Group is elevator system (CAFM typo elevater) → Non-Chargeable.' },
+      { key: 'roof_top_non_chargeable', label: 'Roof top / rooftop', hint: 'BaseUnit, Work Description, or Specific Area matches roof top / rooftop wording → Non-Chargeable.' },
+      { key: 'garden_city_ac_non_chargeable', label: 'Garden City + AC/HVAC', hint: 'Property/Site/Client/Contract indicates Garden City (garden + city) and Service Group or complaint text is AC/HVAC-type → Non-Chargeable.' },
+      { key: 'apt_number_chargeable', label: 'Apartment numbers → Chargeable', hint: 'BaseUnit matches Apt No + digits → Chargeable when this is on (all properties). On live work orders, the Garden City HVAC rule below only affects Garden City.' },
+      { key: 'residential_hvac_non_chargeable', label: 'Garden City — apartment HVAC / AC → Non-Chargeable', hint: 'Garden City estate only: apartment-style Base Unit plus HVAC/AC-type Service Group or complaint → Non-Chargeable; other service groups stay Chargeable when the apartment rule is on. Other properties are unchanged.' },
+      { key: 'cafm_reception_outside_exit_non_chargeable', label: 'Reception / outside / exit labels', hint: 'BaseUnit contains reception, outside, exit/entry style CAFM labels → Non-Chargeable.' },
+      { key: 'floor_word_non_chargeable', label: 'Word floor in BaseUnit', hint: 'BaseUnit contains floor (e.g. 10th Floor) → Non-Chargeable.' }
+    ];
+
+    function escapeHtml(s) {
+      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+    }
+
+    function renderBuiltinRules(br) {
+      br = br || {};
+      var c = document.getElementById('builtinRulesContainer');
+      c.innerHTML = BUILTIN_RULES_META.map(function (m) {
+        var on = br[m.key] !== false;
+        var id = 'br_' + m.key;
+        return '<div class="rs-builtin-row"><div><span class="rs-label">' + escapeHtml(m.label) + '</span><p class="rs-hint">' + escapeHtml(m.hint) + '</p></div>' +
+          '<div class="switch-wrap"><label class="switch" title="On = rule applies"><input type="checkbox" id="' + id + '"' + (on ? ' checked' : '') + '><span></span></label></div></div>';
+      }).join('');
+    }
+
+    function collectBuiltinRules() {
+      var o = {};
+      BUILTIN_RULES_META.forEach(function (m) {
+        var el = document.getElementById('br_' + m.key);
+        o[m.key] = el ? !!el.checked : true;
+      });
+      return o;
+    }
+
+    async function authenticatedFetch(url, options = {}) {
+      let accessToken = localStorage.getItem('access_token');
+      if (!accessToken) return new Response(null, { status: 401 });
+      const hdr = { ...options.headers, 'Authorization': 'Bearer ' + accessToken };
+      if (options.body && !(options.body instanceof FormData)) {
+        hdr['Content-Type'] = 'application/json';
+      }
+      let response = await fetch(url, { ...options, headers: hdr });
+      if (response.status !== 401) return response;
+      const refreshToken = localStorage.getItem('refresh_token');
+      if (!refreshToken) return response;
+      const r2 = await fetch('/api/auth/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + refreshToken }
+      });
+      const d2 = await r2.json();
+      if (!d2.access_token) return response;
+      localStorage.setItem('access_token', d2.access_token);
+      const hdr2 = { ...options.headers, 'Authorization': 'Bearer ' + d2.access_token };
+      if (options.body && !(options.body instanceof FormData)) {
+        hdr2['Content-Type'] = 'application/json';
+      }
+      return fetch(url, { ...options, headers: hdr2 });
+    }
+
+    var _locMeta = { source_filename: '', columns_detected: {} };
+    /** Full row list from parse/load (includes apartment rows that are not rendered in the DOM). */
+    var _locFullRows = [];
+
+    function setLocRegLoading(on, phase) {
+      var box = document.getElementById('locRegLoading');
+      var title = document.getElementById('locRegLoadingTitle');
+      var sub = document.getElementById('locRegLoadingSub');
+      var btn = document.getElementById('btnParseLocReg');
+      if (!box) return;
+      if (on) {
+        box.style.display = 'block';
+        box.setAttribute('aria-busy', 'true');
+        if (phase === 'render') {
+          if (title) title.textContent = 'Building preview…';
+          if (sub) sub.textContent = 'Grouping by property and zone in your browser.';
+        } else {
+          if (title) title.textContent = 'Uploading and reading your Excel…';
+          if (sub) sub.textContent = 'Sent to the server for parsing. Large files may take several seconds.';
+        }
+        if (btn) {
+          btn.disabled = true;
+          btn.textContent = 'Working…';
+        }
+      } else {
+        box.style.display = 'none';
+        box.setAttribute('aria-busy', 'false');
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = 'Parse & load list';
+        }
+      }
+    }
+
+    function normPropName(val) {
+      var s = (val == null ? '' : String(val)).trim();
+      return s || '(No property)';
+    }
+
+    /** PY0002 = Garden City (HVAC rules). PY0003 stays as its own property — match module_mmr _GARDEN_CITY_PROPERTY_CODES. */
+    var GARDEN_CITY_PROPERTY_CODES_ALNUM = ['py0002'];
+
+    /**
+     * Headline / grouping key for property blocks. Prefer human property name from register when present.
+     * @param {string} codeVal - Property column (often a code)
+     * @param {string} [displayVal] - Optional Property name / estate name column
+     */
+    function rollupPropertyForDisplay(codeVal, displayVal) {
+      var raw = (displayVal != null && String(displayVal).trim()) ? String(displayVal).trim() : normPropName(codeVal);
+      var s = raw || normPropName(codeVal);
+      var low = s.toLowerCase();
+      if (low.indexOf('orient') !== -1 && low.indexOf('tower') !== -1) return 'Orient Tower';
+      if (low.indexOf('garden') !== -1 && low.indexOf('city') !== -1) return 'Garden City';
+      var compact = low.replace(/[^a-z0-9]/g, '');
+      for (var i = 0; i < GARDEN_CITY_PROPERTY_CODES_ALNUM.length; i++) {
+        if (compact.indexOf(GARDEN_CITY_PROPERTY_CODES_ALNUM[i]) !== -1) return 'Garden City';
+      }
+      return s;
+    }
+
+    /** Match server _zone_category_sort_key — Common Area, Residential, … then A–Z */
+    function zoneCategorySortTuple(z) {
+      var s = (z || '').trim().toLowerCase();
+      if (!s || s === '(no zone)') return [2, 0, ''];
+      var rules = [
+        ['common area', 0], ['common parts', 1], ['common', 2], ['residential', 3],
+        ['commercial', 4], ['retail', 5], ['office', 6], ['parking', 7],
+        ['amenity', 8], ['amenities', 8], ['service', 9], ['utility', 10],
+        ['utilities', 10], ['mechanical', 11], ['electrical', 12], ['landscape', 13],
+        ['external', 14]
+      ];
+      for (var ri = 0; ri < rules.length; ri++) {
+        if (s.indexOf(rules[ri][0]) !== -1) return [0, rules[ri][1], s];
+      }
+      return [1, 0, s];
+    }
+
+    function compareZoneKeys(a, b) {
+      var ka = zoneCategorySortTuple(a);
+      var kb = zoneCategorySortTuple(b);
+      for (var i = 0; i < 3; i++) {
+        if (ka[i] === kb[i]) continue;
+        if (typeof ka[i] === 'string') return ka[i].localeCompare(kb[i]);
+        return ka[i] - kb[i];
+      }
+      return 0;
+    }
+
+    function countNonAptInZoneBlock(zoneBlock) {
+      if (zoneBlock.sub_zones && zoneBlock.sub_zones.length) {
+        var n = 0;
+        zoneBlock.sub_zones.forEach(function (sz) {
+          (sz.units || []).forEach(function (u) { if (!u.is_apt) n++; });
+        });
+        return n;
+      }
+      return (zoneBlock.units || []).filter(function (u) { return !u.is_apt; }).length;
+    }
+
+    function syncAptRollupBuiltinToggles() {
+      ['apt_number_chargeable', 'residential_hvac_non_chargeable'].forEach(function (key) {
+        var src = document.getElementById('br_' + key);
+        if (!src) return;
+        document.querySelectorAll('.rs-apt-br-inline[data-br-key="' + key + '"]').forEach(function (cb) {
+          cb.checked = src.checked;
+        });
+      });
+      updateAptRollupSummaryText();
+    }
+
+    function updateAptRollupSummaryText() {
+      var aptEl = document.getElementById('br_apt_number_chargeable');
+      var hvacEl = document.getElementById('br_residential_hvac_non_chargeable');
+      var aptOn = aptEl && aptEl.checked;
+      var hvacOn = hvacEl && hvacEl.checked;
+      document.querySelectorAll('.rs-apt-summary-dynamic').forEach(function (p) {
+        var n = p.getAttribute('data-apt-count') || '0';
+        var isGarden = p.getAttribute('data-is-garden-city') === '1';
+        var body;
+        if (!isGarden) {
+          if (aptOn) {
+            body = 'Apartment-pattern Base Units resolve as <span class="pill pill-c">Chargeable</span> on live MMR when this rule is on. <span class="rs-hint">Garden City has an extra HVAC carve-out in its block below.</span>';
+          } else {
+            body = 'Apartment Chargeable rule is off — these units follow the same non-apartment Base Unit rules as common areas.';
+          }
+        } else if (hvacOn && aptOn) {
+          body = '<strong>Garden City:</strong> HVAC/AC-type service or complaint resolves as <span class="pill pill-nc">Non-Chargeable</span> for apartments; other apartment work orders resolve as <span class="pill pill-c">Chargeable</span>.';
+        } else if (hvacOn && !aptOn) {
+          body = '<strong>Garden City:</strong> HVAC/AC apartments resolve as <span class="pill pill-nc">Non-Chargeable</span> when detected. The apartment Chargeable rule is off, so other patterns use the non-apartment rules.';
+        } else if (!hvacOn && aptOn) {
+          body = '<strong>Garden City:</strong> Apartment-pattern Base Units resolve as <span class="pill pill-c">Chargeable</span> (HVAC carve-out is off).';
+        } else {
+          body = '<strong>Garden City:</strong> Apartment Chargeable and HVAC carve-out are both off — apartments follow the same non-apartment Base Unit rules as common areas.';
+        }
+        p.innerHTML = '<strong>' + escapeHtml(n) + '</strong> location' + (n === '1' ? '' : 's') + ' match the apartment pattern (not listed as rows above). ' + body +
+          ' <span class="rs-hint">Register preview is Base Unit only; live MMR uses Service Group and descriptions.</span>';
+      });
+    }
+
+    var LOC_PAGE_SIZE = 100;
+    var _locPagedTables = {};
+
+    function locRegisterRowSort(a, b) {
+      var ka = (a.key_id != null && String(a.key_id).trim()) ? String(a.key_id).trim() : '';
+      var kb = (b.key_id != null && String(b.key_id).trim()) ? String(b.key_id).trim() : '';
+      if (ka && kb && ka !== kb) {
+        return ka.localeCompare(kb, undefined, { numeric: true });
+      }
+      if (ka && !kb) return -1;
+      if (!ka && kb) return 1;
+      return (a.base_unit || '').toLowerCase().localeCompare((b.base_unit || '').toLowerCase());
+    }
+
+    function groupRowsByProperty(rows) {
+      rows = rows || [];
+      var hasSub = rows.some(function (r) { return (r.sub_zone || '').trim(); });
+      var tree = {};
+      rows.forEach(function (r) {
+        var p = rollupPropertyForDisplay(r.property, r.property_display);
+        var z = (r.zone || '').trim() || '(No zone)';
+        var sz = hasSub ? ((r.sub_zone || '').trim() || '(No sub-zone)') : '';
+        if (!tree[p]) tree[p] = {};
+        if (!tree[p][z]) tree[p][z] = {};
+        if (hasSub) {
+          if (!tree[p][z][sz]) tree[p][z][sz] = [];
+          tree[p][z][sz].push(r);
+        } else {
+          if (!tree[p][z]['_']) tree[p][z]['_'] = [];
+          tree[p][z]['_'].push(r);
+        }
+      });
+      var out = [];
+      Object.keys(tree).sort(function (a, b) { return a.toLowerCase().localeCompare(b.toLowerCase()); }).forEach(function (p) {
+        var zones = [];
+        Object.keys(tree[p]).sort(compareZoneKeys).forEach(function (z) {
+          var szd = tree[p][z];
+          if (hasSub) {
+            var sub_zones = [];
+            Object.keys(szd).sort(function (a, b) { return a.toLowerCase().localeCompare(b.toLowerCase()); }).forEach(function (sz) {
+              var units = szd[sz].slice().sort(locRegisterRowSort);
+              sub_zones.push({ sub_zone: sz, units: units });
+            });
+            zones.push({ zone: z, sub_zones: sub_zones });
+          } else {
+            var units = (szd['_'] || []).slice().sort(locRegisterRowSort);
+            zones.push({ zone: z, units: units });
+          }
+        });
+        out.push({ property: p, zones: zones });
+      });
+      return out;
+    }
+
+    function defaultChargeableForRow() {
+      return !document.getElementById('toggleNonAptNonChg').checked;
+    }
+
+    function normalizeRowChargeable(r) {
+      if (r.is_apt) return true;
+      if (r.chargeable === undefined || r.chargeable === null) return defaultChargeableForRow();
+      return !!r.chargeable;
+    }
+
+    var _resolvedTimer = null;
+    function debounceResolved(fn, ms) {
+      return function () {
+        clearTimeout(_resolvedTimer);
+        _resolvedTimer = setTimeout(fn, ms || 320);
+      };
+    }
+
+    function getMergedOverridesForPreview() {
+      return collectLocRegisterOverrides();
+    }
+
+    function getPreviewRulesPayload() {
+      return {
+        non_apartment_baseunit_non_chargeable: document.getElementById('toggleNonAptNonChg').checked,
+        builtin_rules: collectBuiltinRules(),
+        baseunit_overrides: getMergedOverridesForPreview()
+      };
+    }
+
+    var PREVIEW_CHUNK = 200;
+
+    function applyResolvedMapToDom(map) {
+      document.querySelectorAll('#locRegGrouped tr[data-loc]').forEach(function (tr) {
+        var enc = tr.getAttribute('data-pat');
+        var cell = tr.querySelector('.rs-cell-resolved');
+        if (!enc || !cell) return;
+        try {
+          var p = decodeURIComponent(enc);
+          var res = map[p];
+          if (res == null) res = map[(p || '').trim()];
+          if (res == null) return;
+          var isCh = res === 'Chargeable';
+          cell.innerHTML = '<span class="pill ' + (isCh ? 'pill-c' : 'pill-nc') + '">' + escapeHtml(res) + '</span>';
+        } catch (e) {}
+      });
+    }
+
+    var refreshResolvedPreview = debounceResolved(function () {
+      var units = [];
+      document.querySelectorAll('#locRegGrouped tr[data-loc]').forEach(function (tr) {
+        var enc = tr.getAttribute('data-pat');
+        if (!enc) return;
+        try { units.push(decodeURIComponent(enc)); } catch (e) {}
+      });
+      if (!units.length) return;
+      document.querySelectorAll('#locRegGrouped .rs-cell-resolved').forEach(function (td) {
+        td.innerHTML = '<span class="rs-hint">…</span>';
+      });
+      var basePayload = getPreviewRulesPayload();
+      var map = {};
+      var offset = 0;
+
+      function fetchNext() {
+        var slice = units.slice(offset, offset + PREVIEW_CHUNK);
+        if (!slice.length) return;
+        offset += PREVIEW_CHUNK;
+        authenticatedFetch('/api/admin/mmr/chargeable-preview', {
+          method: 'POST',
+          body: JSON.stringify(Object.assign({ base_units: slice }, basePayload))
+        }).then(function (resp) {
+          if (!resp.ok) return null;
+          return resp.json();
+        }).then(function (j) {
+          if (j && j.results && Array.isArray(j.results)) {
+            j.results.forEach(function (r) {
+              if (r && r.base_unit != null) map[r.base_unit] = r.resolved;
+            });
+            applyResolvedMapToDom(map);
+          }
+          fetchNext();
+        }).catch(function () { fetchNext(); });
+      }
+      fetchNext();
+    }, 280);
+
+    function scheduleResolvedRefresh() {
+      refreshResolvedPreview();
+    }
+
+    function scheduleRegisterRender(byProp, onDone) {
+      var run = function () {
+        renderLocRegisterGrouped(byProp, onDone);
+      };
+      if (window.requestIdleCallback) {
+        window.requestIdleCallback(function () { run(); }, { timeout: 350 });
+      } else {
+        setTimeout(run, 24);
+      }
+    }
+
+    function locRowKey(r) {
+      if (r && r.key_id != null && String(r.key_id).trim()) return String(r.key_id).trim();
+      return (r && r.base_unit) ? String(r.base_unit) : '';
+    }
+
+    function hasKeyIdColumn() {
+      return (_locFullRows || []).some(function (r) {
+        return r && r.key_id != null && String(r.key_id).trim();
+      });
+    }
+
+    function htmlRowForUnit(u, bi) {
+      var ch = normalizeRowChargeable(u);
+      var pat = u.base_unit || '';
+      var buEnc = encodeURIComponent(pat);
+      var rk = locRowKey(u);
+      var rowKeyEnc = encodeURIComponent(rk);
+      var id = 'lr_' + Math.random().toString(36).slice(2);
+      var search = [u.key_id, u.base_unit, u.funct_type, u.property, u.property_display, u.zone, u.sub_zone, u.city, u.area, u.base_unit_code, u.sub_zone_code, u.funct_sub_type]
+        .filter(function (x) { return x != null && String(x).trim(); }).join(' ').toLowerCase();
+      var html = '<tr data-loc data-loc-search="' + escapeHtml(search) + '" data-pat="' + buEnc + '" data-row-key="' + rowKeyEnc + '" data-is-apt="false" data-row-bulk="' + bi + '">';
+      if (hasKeyIdColumn()) {
+        html += '<td class="rs-loc-col-keyid">' + escapeHtml(u.key_id != null ? String(u.key_id) : '') + '</td>';
+      }
+      html += '<td>' + escapeHtml(pat) + '</td>';
+      html += '<td>' + escapeHtml(u.funct_type || '') + '</td>';
+      html += '<td class="rs-loc-col-extra">' + escapeHtml(u.funct_sub_type || '') + '</td>';
+      html += '<td class="rs-loc-col-extra">' + escapeHtml(u.base_unit_code || '') + '</td>';
+      html += '<td class="rs-loc-col-extra">' + escapeHtml(u.city || '') + '</td>';
+      html += '<td class="rs-loc-col-extra">' + escapeHtml(u.area || '') + '</td>';
+      html += '<td class="rs-loc-col-extra">' + escapeHtml(u.sub_zone_code || '') + '</td>';
+      html += '<td class="rs-cell-resolved"><span class="rs-hint">…</span></td><td>';
+      html += '<label class="switch" style="margin:0 auto;display:inline-block"><input type="checkbox" class="sw-loc-chg" id="' + id + '"' + (ch ? ' checked' : '') + '><span></span></label>';
+      html += '</td></tr>';
+      return html;
+    }
+
+    function buildSubZoneTableHtml(subZoneName, units, bi, zi, szi, pkey, skipSubLabel) {
+      var html = '';
+      var safeId = String(pkey).replace(/[^a-zA-Z0-9_]/g, '_');
+      html += '<div class="rs-subzone-block" data-sub-zone="' + escapeHtml(subZoneName || '') + '">';
+      if (subZoneName && !skipSubLabel) {
+        html += '<div class="rs-subzone-label">Sub-zone · ' + escapeHtml(subZoneName) + ' · ' + units.length + ' rows (non-apartment)</div>';
+      }
+      html += '<div class="rs-paged-wrap" data-pkey="' + escapeHtml(pkey) + '">';
+      html += '<table class="rs-table rs-table--loc"><thead><tr>';
+      if (hasKeyIdColumn()) {
+        html += '<th class="rs-loc-col-keyid">Key ID</th>';
+      }
+      html += '<th>Base unit</th><th>BU funct type</th>';
+      html += '<th class="rs-loc-col-extra">BU funct sub-type</th><th class="rs-loc-col-extra">Base unit code</th>';
+      html += '<th class="rs-loc-col-extra">City</th><th class="rs-loc-col-extra">Area</th><th class="rs-loc-col-extra">Sub zone code</th>';
+      html += '<th>Resolved (MMR)</th><th>Your setting</th>';
+      html += '</tr></thead><tbody id="tbody_' + safeId + '">';
+      var chunk = units.slice(0, LOC_PAGE_SIZE);
+      chunk.forEach(function (u) { html += htmlRowForUnit(u, bi); });
+      html += '</tbody></table>';
+      if (units.length > LOC_PAGE_SIZE) {
+        html += '<button type="button" class="btn-mmr btn-mmr-outline rs-load-more" data-pkey="' + escapeHtml(pkey) + '">Show more (' + (units.length - LOC_PAGE_SIZE) + ' remaining)</button>';
+      }
+      html += '</div></div>';
+      _locPagedTables[pkey] = { units: units, rendered: chunk.length };
+      return html;
+    }
+
+    function buildPropertyBlockHtml(block, bi) {
+      var p = block.property;
+      var escP = escapeHtml(p);
+      var html = '';
+      html += '<div class="rs-prop-block" data-prop-index="' + bi + '">';
+      html += '<div class="rs-prop-head"><h3>' + escP + '</h3>';
+      html += '<div class="rs-bulk-btns">';
+      html += '<button type="button" class="btn-bulk-nc" data-bulk-prop="' + bi + '">All non-chargeable</button>';
+      html += '<button type="button" class="btn-bulk-ch" data-bulk-prop="' + bi + '">All chargeable</button>';
+      html += '</div></div>';
+      (block.zones || []).forEach(function (zoneBlock, zi) {
+        var zn = countNonAptInZoneBlock(zoneBlock);
+        if (!zn) return;
+        html += '<div class="rs-zone-block">';
+        html += '<details class="rs-zone-details">';
+        html += '<summary class="rs-zone-summary" title="Show or hide base units in this zone">';
+        html += '<span class="rs-zone-summary-text"><strong>' + escapeHtml(zoneBlock.zone) + '</strong>';
+        html += '<span class="rs-zone-count"> · ' + zn + ' location' + (zn === 1 ? '' : 's') + '</span>';
+        html += '<span class="rs-zone-hint"> — expand to see base units</span></span>';
+        html += '</summary>';
+        html += '<div class="rs-zone-panel">';
+        if (zoneBlock.sub_zones && zoneBlock.sub_zones.length) {
+          zoneBlock.sub_zones.forEach(function (szBlock, szi) {
+            var nonApt = (szBlock.units || []).filter(function (u) { return !u.is_apt; });
+            if (!nonApt.length) return;
+            var pkey = 'p' + bi + '_z' + zi + '_s' + szi;
+            html += buildSubZoneTableHtml(szBlock.sub_zone, nonApt, bi, zi, szi, pkey, false);
+          });
+        } else {
+          var nonApt = (zoneBlock.units || []).filter(function (u) { return !u.is_apt; });
+          if (!nonApt.length) {
+            html += '</div></details></div>';
+            return;
+          }
+          var pkey = 'p' + bi + '_z' + zi + '_s0';
+          html += buildSubZoneTableHtml('', nonApt, bi, zi, 0, pkey, true);
+        }
+        html += '</div></details></div>';
+      });
+      var aptInProp = (_locFullRows || []).filter(function (r) {
+        return r.is_apt && rollupPropertyForDisplay(r.property, r.property_display) === p;
+      });
+      if (aptInProp.length) {
+        var isGardenCityProp = (p === 'Garden City');
+        var sortedNames = aptInProp.map(function (r) { return r.base_unit || ''; }).filter(Boolean).sort(function (a, b) {
+          return a.toLowerCase().localeCompare(b.toLowerCase());
+        });
+        var showNames = sortedNames.slice(0, 80);
+        var more = sortedNames.length - showNames.length;
+        html += '<div class="rs-apt-rollup" aria-label="Apartment numbers in this property">';
+        html += '<details class="rs-zone-details rs-apt-zone-details">';
+        html += '<summary class="rs-zone-summary" title="Apartment locations for this property">';
+        html += '<span class="rs-zone-summary-text"><strong>Residential — apartment numbers</strong>';
+        html += '<span class="rs-zone-count"> · ' + aptInProp.length + ' location' + (aptInProp.length === 1 ? '' : 's') + '</span>';
+        html += '<span class="rs-zone-hint"> — expand for summary and unit names</span></span>';
+        html += '</summary>';
+        html += '<div class="rs-zone-panel">';
+        html += '<div class="rs-apt-rules-inline" aria-label="Residential apartment rules">';
+        html += '<label class="rs-apt-br-label"><input type="checkbox" class="rs-apt-br-inline" data-br-key="apt_number_chargeable"> <span><strong>Apartment numbers → Chargeable</strong><span class="rs-hint">Matches Apt No + digits; applies to every property.</span></span></label>';
+        if (isGardenCityProp) {
+          html += '<label class="rs-apt-br-label"><input type="checkbox" class="rs-apt-br-inline" data-br-key="residential_hvac_non_chargeable"> <span><strong>Garden City — HVAC / AC → Non-Chargeable</strong><span class="rs-hint">Only Garden City: apartment + HVAC/AC service or complaint is Non-Chargeable when on; other groups stay Chargeable when the rule above is on.</span></span></label>';
+        }
+        html += '</div>';
+        html += '<p class="rs-apt-summary rs-apt-summary-dynamic" data-apt-count="' + aptInProp.length + '" data-is-garden-city="' + (isGardenCityProp ? '1' : '0') + '"></p>';
+        html += '<details class="rs-apt-details"><summary>View unit names (' + sortedNames.length + ')</summary>';
+        html += '<ul class="rs-apt-list">';
+        showNames.forEach(function (name) {
+          html += '<li>' + escapeHtml(name) + '</li>';
+        });
+        html += '</ul>';
+        if (more > 0) {
+          html += '<p class="rs-hint" style="margin:0.5rem 0 0;">… and ' + more + ' more.</p>';
+        }
+        html += '</details></div></details></div>';
+      }
+      html += '</div>';
+      return html;
+    }
+
+    function bindLocRegBulkHandlers(container) {
+      container.querySelectorAll('.btn-bulk-nc').forEach(function (btn) {
+        btn.onclick = function () {
+          var ix = parseInt(btn.getAttribute('data-bulk-prop'), 10);
+          container.querySelectorAll('tr[data-row-bulk="' + ix + '"]').forEach(function (tr) {
+            var sw = tr.querySelector('.sw-loc-chg');
+            if (sw) sw.checked = false;
+          });
+          scheduleResolvedRefresh();
+        };
+      });
+      container.querySelectorAll('.btn-bulk-ch').forEach(function (btn) {
+        btn.onclick = function () {
+          var ix = parseInt(btn.getAttribute('data-bulk-prop'), 10);
+          container.querySelectorAll('tr[data-row-bulk="' + ix + '"]').forEach(function (tr) {
+            var sw = tr.querySelector('.sw-loc-chg');
+            if (sw) sw.checked = true;
+          });
+          scheduleResolvedRefresh();
+        };
+      });
+    }
+
+    function renderLocRegisterGrouped(byProperty, onDone) {
+      var container = document.getElementById('locRegGrouped');
+      _locPagedTables = {};
+      if (!byProperty || !byProperty.length) {
+        container.innerHTML = '';
+        setLocRegLoading(false);
+        if (onDone) onDone();
+        return;
+      }
+      container.innerHTML = '';
+      var idx = 0;
+      var n = byProperty.length;
+
+      function appendNext() {
+        if (idx >= n) {
+          bindLocRegBulkHandlers(container);
+          bindLocRegLoadMore(container);
+          syncAptRollupBuiltinToggles();
+          setLocRegLoading(false);
+          if (onDone) onDone();
+          else scheduleResolvedRefresh();
+          return;
+        }
+        var wrap = document.createElement('div');
+        wrap.innerHTML = buildPropertyBlockHtml(byProperty[idx], idx);
+        while (wrap.firstChild) container.appendChild(wrap.firstChild);
+        idx += 1;
+        requestAnimationFrame(appendNext);
+      }
+      requestAnimationFrame(appendNext);
+    }
+
+    function bindLocRegLoadMore(container) {
+      container.querySelectorAll('.rs-load-more').forEach(function (btn) {
+        btn.onclick = function () {
+          var pk = btn.getAttribute('data-pkey');
+          var meta = _locPagedTables[pk];
+          if (!meta || !meta.units) return;
+          var wrap = btn.closest('.rs-paged-wrap');
+          if (!wrap) return;
+          var tbody = wrap.querySelector('tbody');
+          if (!tbody) return;
+          var propBlock = btn.closest('.rs-prop-block');
+          var bi = propBlock ? parseInt(propBlock.getAttribute('data-prop-index'), 10) : 0;
+          var start = meta.rendered;
+          var end = Math.min(start + LOC_PAGE_SIZE, meta.units.length);
+          var slice = meta.units.slice(start, end);
+          var html = '';
+          slice.forEach(function (u) { html += htmlRowForUnit(u, bi); });
+          tbody.insertAdjacentHTML('beforeend', html);
+          meta.rendered = end;
+          var left = meta.units.length - end;
+          if (left <= 0) {
+            btn.style.display = 'none';
+          } else {
+            btn.textContent = 'Show more (' + left + ' remaining)';
+          }
+          scheduleResolvedRefresh();
+        };
+      });
+    }
+
+    function applyLocRegSearch() {
+      var q = (document.getElementById('locRegSearch') && document.getElementById('locRegSearch').value || '').trim().toLowerCase();
+      document.querySelectorAll('#locRegGrouped tr[data-loc]').forEach(function (tr) {
+        var txt = (tr.getAttribute('data-loc-search') || '').toLowerCase();
+        tr.style.display = (!q || txt.indexOf(q) !== -1) ? '' : 'none';
+      });
+      document.querySelectorAll('#locRegGrouped details.rs-zone-details').forEach(function (det) {
+        var hit = false;
+        det.querySelectorAll('tr[data-loc]').forEach(function (tr) {
+          if (tr.style.display !== 'none') hit = true;
+        });
+        if (q && hit) det.setAttribute('open', '');
+        else if (!q) det.removeAttribute('open');
+      });
+    }
+
+    function collectLocationRegisterStateRows() {
+      var chargeMap = {};
+      document.querySelectorAll('#locRegGrouped tr[data-loc]').forEach(function (tr) {
+        var enc = tr.getAttribute('data-row-key') || tr.getAttribute('data-pat');
+        if (!enc) return;
+        try {
+          var pat = decodeURIComponent(enc);
+          var sw = tr.querySelector('.sw-loc-chg');
+          chargeMap[pat] = !!(sw && sw.checked);
+        } catch (e) {}
+      });
+      var out = [];
+      (_locFullRows || []).forEach(function (r) {
+          if (r.is_apt) {
+          var ar = {
+            base_unit: r.base_unit,
+            funct_type: r.funct_type || '',
+            property: r.property || '',
+            zone: r.zone || '',
+            is_apt: true,
+            chargeable: true
+          };
+          if (r.property_display != null && String(r.property_display).trim()) ar.property_display = String(r.property_display).trim();
+          if (r.key_id != null && String(r.key_id).trim()) ar.key_id = String(r.key_id).trim();
+          if (r.sub_zone) ar.sub_zone = r.sub_zone;
+          if (r.funct_sub_type) ar.funct_sub_type = r.funct_sub_type;
+          if (r.base_unit_code) ar.base_unit_code = r.base_unit_code;
+          if (r.city) ar.city = r.city;
+          if (r.area) ar.area = r.area;
+          if (r.area_group) ar.area_group = r.area_group;
+          if (r.sub_zone_code) ar.sub_zone_code = r.sub_zone_code;
+          if (r.permit_required !== undefined && r.permit_required !== null) ar.permit_required = r.permit_required;
+          if (r.tenantable !== undefined && r.tenantable !== null) ar.tenantable = r.tenantable;
+          out.push(ar);
+          return;
+        }
+        var ch = chargeMap[locRowKey(r)];
+        if (ch === undefined) ch = normalizeRowChargeable(r);
+        var row = {
+          base_unit: r.base_unit,
+          funct_type: r.funct_type || '',
+          property: r.property || '',
+          zone: r.zone || '',
+          is_apt: false,
+          chargeable: !!ch
+        };
+        if (r.property_display != null && String(r.property_display).trim()) row.property_display = String(r.property_display).trim();
+        if (r.sub_zone) row.sub_zone = r.sub_zone;
+        if (r.funct_sub_type) row.funct_sub_type = r.funct_sub_type;
+        if (r.base_unit_code) row.base_unit_code = r.base_unit_code;
+        if (r.city) row.city = r.city;
+        if (r.area) row.area = r.area;
+        if (r.area_group) row.area_group = r.area_group;
+        if (r.sub_zone_code) row.sub_zone_code = r.sub_zone_code;
+        if (r.permit_required !== undefined && r.permit_required !== null) row.permit_required = r.permit_required;
+        if (r.tenantable !== undefined && r.tenantable !== null) row.tenantable = r.tenantable;
+        if (r.key_id != null && String(r.key_id).trim()) row.key_id = String(r.key_id).trim();
+        out.push(row);
+      });
+      return out;
+    }
+
+    function wireChargeablePreviewListeners() {
+      var deb = debounceResolved(function () { refreshResolvedPreview(); }, 180);
+      document.getElementById('toggleNonAptNonChg').addEventListener('change', deb);
+      document.getElementById('builtinRulesContainer').addEventListener('change', function (e) {
+        syncAptRollupBuiltinToggles();
+        deb();
+      });
+      document.addEventListener('change', function (e) {
+        if (!(e.target && e.target.closest && e.target.closest('#locRegGrouped'))) return;
+        if (e.target.classList && e.target.classList.contains('rs-apt-br-inline')) {
+          var key = e.target.getAttribute('data-br-key');
+          var main = key ? document.getElementById('br_' + key) : null;
+          if (main) main.checked = e.target.checked;
+          syncAptRollupBuiltinToggles();
+        }
+        deb();
+      });
+      var searchEl = document.getElementById('locRegSearch');
+      if (searchEl) {
+        searchEl.addEventListener('input', debounceResolved(function () { applyLocRegSearch(); }, 120));
+      }
+      var ex = document.getElementById('locRegShowExtras');
+      if (ex) {
+        ex.addEventListener('change', function () {
+          var w = document.getElementById('locRegTableWrap');
+          if (w) w.classList.toggle('rs-loc-extras-on', ex.checked);
+        });
+      }
+    }
+
+    async function loadConfig() {
+      const resp = await authenticatedFetch('/api/admin/mmr/chargeable-config');
+      if (resp.status === 401 || resp.status === 403) {
+        window.location.href = '/login';
+        return;
+      }
+      const data = await resp.json();
+      const cfg = data.config || {};
+      document.getElementById('toggleNonAptNonChg').checked = cfg.non_apartment_baseunit_non_chargeable !== false;
+      renderBuiltinRules(cfg.builtin_rules || {});
+      setTimeout(function () { syncAptRollupBuiltinToggles(); }, 0);
+      var lrs = cfg.location_register_state;
+      var sum = document.getElementById('locRegSummary');
+      var wrap = document.getElementById('locRegTableWrap');
+      var msgEl = document.getElementById('locRegMsg');
+      msgEl.style.display = 'none';
+      var resultsCard = document.getElementById('locRegResultsCard');
+        if (lrs && lrs.rows && lrs.rows.length) {
+        _locMeta.source_filename = lrs.source_filename || '';
+        _locMeta.columns_detected = lrs.columns_detected || {};
+        _locFullRows = lrs.rows.slice();
+        var byProp = groupRowsByProperty(lrs.rows);
+        if (resultsCard) resultsCard.style.display = 'block';
+        sum.style.display = 'block';
+        var cd = lrs.columns_detected || {};
+        var cdStr = Object.keys(cd).map(function (k) { return escapeHtml(k) + ' → ' + escapeHtml(cd[k] || ''); }).join(' · ');
+        var aptN = 0;
+        var nonA = 0;
+        lrs.rows.forEach(function (r) { if (r.is_apt) aptN++; else nonA++; });
+        sum.innerHTML = '<strong>Saved register:</strong> ' + escapeHtml(_locMeta.source_filename || '(from settings)') +
+          (cdStr ? '<br><span style="font-weight:600">Columns:</span> ' + cdStr : '') +
+          '<br><strong>Rows:</strong> ' + lrs.rows.length + ' · <strong>Non-apartment:</strong> ' + nonA + ' · <strong>Apt-style:</strong> ' + aptN;
+        var tbar = document.getElementById('locRegToolbar');
+        if (tbar) tbar.style.display = 'flex';
+        wrap.style.display = 'block';
+        scheduleRegisterRender(byProp, function () { scheduleResolvedRefresh(); });
+      } else {
+        document.getElementById('locRegGrouped').innerHTML = '';
+        sum.style.display = 'none';
+        wrap.style.display = 'none';
+        var tbar0 = document.getElementById('locRegToolbar');
+        if (tbar0) tbar0.style.display = 'none';
+        if (resultsCard) resultsCard.style.display = 'none';
+        _locMeta = { source_filename: '', columns_detected: {} };
+        _locFullRows = [];
+      }
+    }
+
+    function collectLocRegisterOverrides() {
+      var out = [];
+      document.querySelectorAll('#locRegGrouped tr[data-loc]').forEach(function (tr) {
+        if (tr.getAttribute('data-is-apt') === 'true') return;
+        var enc = tr.getAttribute('data-pat');
+        if (!enc) return;
+        try {
+          var pat = decodeURIComponent(enc);
+          var sw = tr.querySelector('.sw-loc-chg');
+          if (pat && sw) out.push({ pattern: pat, chargeable: !!sw.checked });
+        } catch (e) {}
+      });
+      return out;
+    }
+
+    document.getElementById('btnParseLocReg').onclick = async function () {
+      var inp = document.getElementById('locRegInput');
+      var msgEl = document.getElementById('locRegMsg');
+      var sum = document.getElementById('locRegSummary');
+      var wrap = document.getElementById('locRegTableWrap');
+      var resultsCard = document.getElementById('locRegResultsCard');
+      msgEl.style.display = 'none';
+      if (!inp.files || !inp.files[0]) {
+        alert('Choose a .xls or .xlsx file first.');
+        return;
+      }
+      var hadSavedPreview = (_locFullRows && _locFullRows.length > 0);
+      if (resultsCard) resultsCard.style.display = 'block';
+      if (sum) sum.style.display = 'none';
+      if (wrap) wrap.style.display = 'none';
+      setLocRegLoading(true);
+      try {
+        var fd = new FormData();
+        fd.append('file', inp.files[0]);
+        var resp = await authenticatedFetch('/api/admin/mmr/location-register/parse', { method: 'POST', body: fd });
+        var j = await resp.json().catch(function () { return {}; });
+        if (resp.status === 401 || resp.status === 403) {
+          setLocRegLoading(false);
+          window.location.href = '/login';
+          return;
+        }
+        if (!resp.ok || j.success === false) {
+          setLocRegLoading(false);
+          alert(j.error || j.message || 'Parse failed');
+          if (hadSavedPreview) {
+            if (sum) sum.style.display = 'block';
+            if (wrap) wrap.style.display = 'block';
+          } else if (resultsCard) {
+            resultsCard.style.display = 'none';
+          }
+          return;
+        }
+        var rowList = j.rows || [];
+        var rows = j.total_rows != null ? j.total_rows : rowList.length;
+        if (!rowList.length) {
+          setLocRegLoading(false);
+          if (hadSavedPreview) {
+            if (sum) sum.style.display = 'block';
+            if (wrap) wrap.style.display = 'block';
+          } else if (resultsCard) {
+            resultsCard.style.display = 'none';
+          }
+          msgEl.className = 'rs-hint';
+          msgEl.style.display = 'block';
+          msgEl.style.color = '#b45309';
+          msgEl.textContent = 'No data rows found in this file.';
+          return;
+        }
+        _locFullRows = rowList.slice();
+        _locMeta.source_filename = (j.source_filename || inp.files[0].name || '').slice(0, 255);
+        _locMeta.columns_detected = j.columns_detected || {};
+        var apt = j.apt_like_count != null ? j.apt_like_count : 0;
+        var byProp = j.by_property || groupRowsByProperty(rowList);
+        setLocRegLoading(true, 'render');
+        sum.style.display = 'block';
+        var cd = j.columns_detected || {};
+        var cdStr = Object.keys(cd).map(function (k) { return escapeHtml(k) + ' → ' + escapeHtml(cd[k] || ''); }).join(' · ');
+        var fmt = j.source_format ? escapeHtml(j.source_format) : '';
+        var st = j.stats || {};
+        var overview = '';
+        if (st.row_count != null) {
+          overview = '<br><span style="font-weight:600">Overview:</span> ' + st.property_count + ' propert' + (st.property_count === 1 ? 'y' : 'ies') +
+            ', ' + st.zone_count + ' zones' + (st.sub_zone_count ? ', ' + st.sub_zone_count + ' sub-zones' : '') +
+            ' · <strong>' + st.non_apartment_rows + '</strong> non-apartment rows in tables · <strong>' + st.apartment_rows + '</strong> apartment-style (rolled up)';
+        }
+        sum.innerHTML = '<strong>File:</strong> ' + escapeHtml(_locMeta.source_filename) +
+          (fmt ? ' · <strong>Detected as:</strong> ' + fmt : '') +
+          (cdStr ? '<br><span style="font-weight:600">Columns:</span> ' + cdStr : '') +
+          '<br><strong>Rows:</strong> ' + rows + ' · <strong>Apt-style (Apt No + number):</strong> ' + apt +
+          ' <span class="pill pill-c">built-in rule</span>' + overview;
+        var tbar = document.getElementById('locRegToolbar');
+        if (tbar) tbar.style.display = 'flex';
+        if (resultsCard) resultsCard.style.display = 'block';
+        document.getElementById('locRegTableWrap').style.display = 'block';
+        scheduleRegisterRender(byProp, function () { scheduleResolvedRefresh(); });
+        msgEl.className = 'rs-hint';
+        msgEl.style.display = 'block';
+        msgEl.style.color = '#125435';
+        msgEl.textContent = 'Loaded ' + rowList.length + ' locations. Adjust toggles if needed, then use Save location register or Save settings.';
+      } catch (e) {
+        setLocRegLoading(false);
+        if (hadSavedPreview) {
+          if (sum) sum.style.display = 'block';
+          if (wrap) wrap.style.display = 'block';
+        } else if (resultsCard) {
+          resultsCard.style.display = 'none';
+        }
+        alert('Parse failed. Check your connection and try again.');
+      }
+    };
+
+    var _saveToastTimer = null;
+
+    function hideSaveToast() {
+      var el = document.getElementById('saveToast');
+      if (!el) return;
+      el.style.display = 'none';
+      el.innerHTML = '';
+      el.className = 'rs-save-toast';
+      if (_saveToastTimer) {
+        clearTimeout(_saveToastTimer);
+        _saveToastTimer = null;
+      }
+    }
+
+    function showSaveToast(title, subtitle, isError) {
+      var el = document.getElementById('saveToast');
+      if (!el) return;
+      hideSaveToast();
+      el.className = 'rs-save-toast ' + (isError ? 'rs-save-toast--err' : 'rs-save-toast--ok');
+      var icon = isError ? '!' : '✓';
+      el.innerHTML =
+        '<span class="rs-save-toast-icon" aria-hidden="true">' + icon + '</span>' +
+        '<div class="rs-save-toast-body">' +
+        '<p class="rs-save-toast-title">' + escapeHtml(title) + '</p>' +
+        (subtitle ? '<p class="rs-save-toast-sub">' + escapeHtml(subtitle) + '</p>' : '') +
+        '</div>' +
+        '<button type="button" class="rs-save-toast-dismiss" aria-label="Dismiss notification">×</button>';
+      el.style.display = 'flex';
+      el.querySelector('.rs-save-toast-dismiss').onclick = hideSaveToast;
+      try {
+        el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      } catch (e) {
+        el.scrollIntoView(true);
+      }
+      if (!isError) {
+        _saveToastTimer = setTimeout(hideSaveToast, 10000);
+      }
+    }
+
+    async function saveChargeableConfig(opts) {
+      opts = opts || {};
+      var registerOnly = !!opts.registerOnly;
+      hideSaveToast();
+      var regRows = collectLocationRegisterStateRows();
+      if (registerOnly && (!regRows || !regRows.length)) {
+        showSaveToast(
+          'Nothing to save yet',
+          'Choose a file, click Parse & load list, then try Save location register again.',
+          true
+        );
+        return;
+      }
+      var btnSave = document.getElementById('btnSave');
+      var btnReg = document.getElementById('btnSaveLocationRegister');
+      var busy = [btnSave, btnReg].filter(Boolean);
+      busy.forEach(function (b) { b.disabled = true; });
+      var overrides = collectLocRegisterOverrides();
+      var payload = {
+        non_apartment_baseunit_non_chargeable: document.getElementById('toggleNonAptNonChg').checked,
+        baseunit_overrides: overrides,
+        builtin_rules: collectBuiltinRules()
+      };
+      payload.location_register_state = regRows.length
+        ? {
+            source_filename: _locMeta.source_filename || '',
+            columns_detected: _locMeta.columns_detected || {},
+            rows: regRows
+          }
+        : null;
+      var resp;
+      try {
+        resp = await authenticatedFetch('/api/admin/mmr/chargeable-config', {
+          method: 'PUT',
+          body: JSON.stringify(payload)
+        });
+      } finally {
+        busy.forEach(function (b) { b.disabled = false; });
+      }
+      var j = await resp.json().catch(function () { return {}; });
+      if (resp.ok && (j.success !== false)) {
+        if (registerOnly) {
+          var fn = (_locMeta.source_filename || '').trim();
+          showSaveToast(
+            'Location register saved',
+            (fn ? 'Stored on the server: ' + fn + '. ' : '') + 'Per-row chargeable toggles are kept for MMR.',
+            false
+          );
+        } else {
+          showSaveToast(
+            'Settings saved',
+            'Chargeable rules and location register (if any) are stored. MMR uses them immediately.',
+            false
+          );
+        }
+        if (j.config) {
+          renderBuiltinRules((j.config.builtin_rules) || {});
+          setTimeout(function () { syncAptRollupBuiltinToggles(); }, 0);
+          var savedLrs = j.config.location_register_state;
+          if (savedLrs && savedLrs.rows && savedLrs.rows.length) {
+            _locMeta.source_filename = savedLrs.source_filename || _locMeta.source_filename;
+            _locMeta.columns_detected = savedLrs.columns_detected || _locMeta.columns_detected;
+            _locFullRows = savedLrs.rows.slice();
+          } else if (savedLrs === null) {
+            _locFullRows = [];
+          }
+        }
+        if (document.getElementById('locRegGrouped').querySelector('tr[data-loc]')) {
+          scheduleResolvedRefresh();
+        }
+      } else {
+        showSaveToast('Save failed', j.message || j.error || 'Could not reach the server. Try again.', true);
+      }
+    }
+
+    document.getElementById('btnSave').onclick = function () { saveChargeableConfig({ registerOnly: false }); };
+
+    document.getElementById('btnSaveLocationRegister').onclick = function () { saveChargeableConfig({ registerOnly: true }); };
+
+    (function () {
+      var btn = document.getElementById('btnCloseReportSettingsEmbed');
+      if (!btn) return;
+      btn.onclick = function () {
+        try {
+          if (window.parent && typeof window.parent.closeReportSettingsModal === 'function') {
+            window.parent.closeReportSettingsModal();
+            return;
+          }
+        } catch (e) {}
+        window.location.href = '/admin/mmr/';
+      };
+    })();
+
+    loadConfig();
+    wireChargeablePreviewListeners();
+  </script>
+</body>
+</html>

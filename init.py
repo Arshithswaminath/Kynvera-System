@@ -1,3 +1,10 @@
+# DEPRECATED: This file is not used. The main application factory is in Injaaz.py
+# This file is kept for reference only and should not be imported.
+# 
+# The active application factories are:
+# - Injaaz.py (used by wsgi.py for production)
+# - app/__init__.py (used by manage.py for local development)
+
 # app/__init__.py
 import os
 from flask import Flask
