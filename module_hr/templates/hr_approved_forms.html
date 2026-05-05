@@ -32,12 +32,75 @@
     .detail-tab:hover { color: var(--primary); }
     .detail-tab.active { color: var(--primary); border-bottom-color: var(--primary); background: white; }
     .detail-section-title { font-weight: 700; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid var(--primary); }
-    .workflow-timeline { margin-top: 1rem; }
-    .timeline-item { display: flex; padding: 0.75rem 0; position: relative; padding-left: 2rem; }
-    .timeline-item::before { content: ''; position: absolute; left: 6px; top: 0; bottom: 0; width: 2px; background: #e2e8f0; }
+    .workflow-timeline { margin-top: 0.65rem; --tl-line: #e2e8f0; }
+    .timeline-item {
+      display: flex; gap: 0.85rem; align-items: flex-start;
+      position: relative; padding: 0 0 1rem 0;
+    }
+    .timeline-item:last-child { padding-bottom: 0; }
+    .timeline-item::before {
+      content: ''; position: absolute; left: 7px; top: 1.5rem; bottom: 0;
+      width: 2px; background: var(--tl-line); border-radius: 1px;
+    }
     .timeline-item:last-child::before { display: none; }
-    .timeline-dot { position: absolute; left: 0; top: 0.875rem; width: 14px; height: 14px; border-radius: 50%; background: #e2e8f0; border: 2px solid white; box-shadow: 0 0 0 2px #e2e8f0; }
-    .timeline-dot.completed { background: #10b981; box-shadow: 0 0 0 2px #10b981; }
+    .timeline-dot {
+      position: relative; flex-shrink: 0;
+      margin-top: 0.3rem;
+      width: 16px; height: 16px; border-radius: 50%; z-index: 1;
+      background: #e2e8f0;
+      border: 2px solid white;
+      box-shadow: 0 0 0 2px #e2e8f0;
+    }
+    .timeline-dot.completed { background: #10b981; box-shadow: 0 0 0 2px rgba(16,185,129,0.35); }
+    .timeline-dot.current { background: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.4); }
+    .timeline-dot.rejected { background: #ef4444; box-shadow: 0 0 0 2px rgba(239,68,68,0.35); }
+    .timeline-body { flex: 1; min-width: 0; padding-bottom: 0.15rem; }
+    .timeline-title { font-weight: 700; font-size: 0.9125rem; color: #0f172a; letter-spacing: -0.015em; }
+    .timeline-meta { font-size: 0.8rem; color: #64748b; margin-top: 0.2rem; line-height: 1.45; }
+    .timeline-card {
+      margin-top: 0.6rem;
+      padding: 0.62rem 0.82rem;
+      background: #fff;
+      border: 1px solid #eef0f4;
+      border-radius: 10px;
+      box-shadow: 0 1px 3px rgba(15,23,42,0.04);
+    }
+    .timeline-card--alert {
+      border-color: #fecaca;
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(239,68,68,0.06);
+    }
+    .timeline-dl { margin: 0; display: grid; grid-template-columns: 5.25rem 1fr; gap: 0.3rem 0.72rem; font-size: 0.8075rem; align-items: start; }
+    .timeline-dl + .timeline-dl { margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid #f1f5f9; }
+    .timeline-dl dt { margin: 0; font-weight: 600; color: #64748b; }
+    .timeline-dl dd { margin: 0; color: #1e293b; word-break: break-word; white-space: pre-wrap; line-height: 1.48; }
+    .timeline-dd-muted { color: #94a3b8 !important; }
+    .timeline-sig {
+      box-sizing: border-box;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: min(280px, 100%);
+      height: 92px;
+      flex-shrink: 0;
+      padding: 0.4rem 0.5rem;
+      margin: 0;
+      background: #fff;
+      border: 1px solid #e5e9ef;
+      border-radius: 10px;
+      overflow: hidden;
+      line-height: 0;
+    }
+    .timeline-sig img {
+      display: block;
+      margin: 0;
+      max-width: 100%;
+      max-height: 100%;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      object-position: center center;
+    }
   </style>
   <style>body.has-main-nav { padding-top: 5.5rem; }</style>
 </head>
@@ -210,11 +273,31 @@
         </div>`;
     }
     
-    function buildTimelineItem(title, by, date, status, comment, signature) {
-      let d = date ? fmtDate(date) : '';
-      let h = '<div class="timeline-item"><div class="timeline-dot ' + status + '"></div><div style="flex:1;"><div style="font-weight:600;color:#1e293b;">' + title + '</div><div style="font-size:0.85rem;color:#64748b;">' + escapeHtml(by || '-') + (d ? ' • ' + d : '') + '</div>';
-      if (comment) h += '<div style="margin-top:0.5rem;padding:0.5rem;background:#f8fafc;border-radius:6px;font-size:0.85rem;"><strong>Comment:</strong> ' + escapeHtml(comment) + '</div>';
-      if (signature && signature.startsWith('data:image')) h += '<div style="margin-top:0.5rem;"><strong style="font-size:0.85rem;">Signature:</strong><br><img src="' + signature + '" style="max-width:180px;border:1px solid #e2e8f0;border-radius:6px;padding:4px;" alt="Signature"></div>';
+    function mergeHrTimelineComment(a, b) {
+      const x = (a != null && String(a).trim()) ? String(a).trim() : '';
+      const y = (b != null && String(b).trim()) ? String(b).trim() : '';
+      if (x && y && x !== y) return x + '\n\n' + y;
+      return x || y;
+    }
+
+    function buildTimelineItem(title, by, date, status, comment, signature, opts) {
+      opts = opts || {};
+      const d = date ? fmtDate(date) : '';
+      const hasSig = signature && typeof signature === 'string' && signature.startsWith('data:image');
+      const text = (comment != null && String(comment).trim()) ? String(comment).trim() : '';
+      let h = '<div class="timeline-item"><div class="timeline-dot ' + status + '" role="presentation"></div><div class="timeline-body"><div class="timeline-title">' + escapeHtml(title) + '</div><div class="timeline-meta">' + escapeHtml(by || '—') + (d ? ' · ' + escapeHtml(d) : '') + '</div>';
+      if (status === 'rejected' && text) {
+        h += '<div class="timeline-card timeline-card--alert"><dl class="timeline-dl"><dt>Reason</dt><dd>' + escapeHtml(text) + '</dd></dl></div>';
+      } else if (status === 'completed' && (opts.fillEmptyComment || text || hasSig)) {
+        h += '<div class="timeline-card">';
+        if (opts.fillEmptyComment || text) {
+          h += '<dl class="timeline-dl"><dt>Comment</dt><dd' + (text ? '' : ' class="timeline-dd-muted"') + '>' + (text ? escapeHtml(text) : 'None') + '</dd></dl>';
+        }
+        if (hasSig) {
+          h += '<dl class="timeline-dl"><dt>Signature</dt><dd><div class="timeline-sig"><img src="' + signature.replace(/"/g, '&quot;') + '" alt="Signature"></div></dd></dl>';
+        }
+        h += '</div>';
+      }
       return h + '</div></div>';
     }
     
@@ -263,8 +346,10 @@
       const formHtml = renderFormAsFilled(formType, fd, s.submission_id);
       let workflowHtml = '<div class="detail-section"><h5 class="detail-section-title" style="font-size: 1rem; color: var(--primary);">Approval Timeline</h5><div class="workflow-timeline">';
       workflowHtml += buildTimelineItem('Submitted', fd.submitted_by_name || s.submitter_name, fd.submitted_at || s.created_at, 'completed');
-      if (fd.hr_reviewed_at) workflowHtml += buildTimelineItem('HR Reviewed', fd.hr_reviewed_by_name, fd.hr_reviewed_at, 'completed', fd.hr_comments, fd.hr_signature);
-      if (fd.gm_approved_at) workflowHtml += buildTimelineItem('GM Approved', fd.gm_approved_by_name, fd.gm_approved_at, 'completed', fd.gm_comments, fd.gm_signature);
+      if (fd.hr_reviewed_at) workflowHtml += buildTimelineItem('HR Reviewed', fd.hr_reviewed_by_name, fd.hr_reviewed_at, 'completed',
+        mergeHrTimelineComment(fd.hr_comments, fd.hr_remarks), fd.hr_signature, { fillEmptyComment: true });
+      if (fd.gm_approved_at) workflowHtml += buildTimelineItem('GM Approved', fd.gm_approved_by_name, fd.gm_approved_at, 'completed',
+        fd.gm_comments, fd.gm_signature, { fillEmptyComment: true });
       workflowHtml += '</div></div>';
       
       const div = document.createElement('div');
@@ -282,12 +367,12 @@
         ((HR_SUPPORTED_PDF_FORMS || []).includes((s.module_type || '').replace('hr_', '')) ? '<a href="#" class="btn btn-sm btn-outline-light hr-download-pdf" data-sid="' + escapeHtml(s.submission_id) + '">📕 PDF</a>' : '') +
         '<button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>' +
         '</div></div>' +
-        '<div class="modal-body p-0"><div class="detail-tabs" style="display:flex; gap:0; border-bottom:2px solid #e2e8f0; background:#f8fafc;">' +
+        '<div class="modal-body p-0" style="background:#fff;"><div class="detail-tabs" style="display:flex; gap:0; border-bottom:2px solid #e2e8f0; background:#fff;">' +
         '<div class="detail-tab" data-tab="form" onclick="window._switchTab(this,\'form\')">Form</div>' +
         '<div class="detail-tab active" data-tab="workflow" onclick="window._switchTab(this,\'workflow\')">Workflow</div></div>' +
-        '<div id="apFormPane" class="detail-tab-pane" style="display:none; padding:1.5rem; overflow-y:auto; max-height:60vh; background:linear-gradient(180deg,#fafbfc 0%,#fff 100%);">' +
-        '<div style="background:white; border-radius:12px; padding:1.5rem; border:1px solid #e2e8f0;">' + formHtml + '</div></div>' +
-        '<div id="apWorkflowPane" class="detail-tab-pane active" style="display:block; padding:1.5rem; overflow-y:auto; max-height:60vh;">' + workflowHtml + '</div></div></div></div>';
+        '<div id="apFormPane" class="detail-tab-pane" style="display:none; padding:1.5rem; overflow-y:auto; max-height:60vh; background:#fff;">' +
+        '<div style="background:#fff; border-radius:12px; padding:1.5rem; border:1px solid #eef0f4;">' + formHtml + '</div></div>' +
+        '<div id="apWorkflowPane" class="detail-tab-pane active" style="display:block; padding:1.5rem; overflow-y:auto; max-height:60vh; background:#fff;">' + workflowHtml + '</div></div></div></div>';
       document.body.appendChild(div);
       div.querySelectorAll('.hr-download-pdf').forEach(function(a) {
         a.addEventListener('click', function(e) { e.preventDefault(); downloadHrPdf(this.getAttribute('data-sid')); });
