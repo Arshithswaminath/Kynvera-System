@@ -1,0 +1,196 @@
+{% extends 'base.html' %}
+{% block styles %}
+<style>
+  :root {
+    --tk-brand: #125435;
+    --tk-brand-mid: #1a7a4c;
+    --tk-brand-light: #10b981;
+    --tk-pale: #ecfdf3;
+    --tk-surface: #ffffff;
+    --tk-bg: #f6f8f7;
+    --tk-text: #0f172a;
+    --tk-muted: #64748b;
+    --tk-border: #e2e8f0;
+    --tk-shadow: 0 1px 2px rgba(15,23,42,.04), 0 4px 14px rgba(15,23,42,.06);
+  }
+  body { background: var(--tk-bg); color: var(--tk-text); }
+  .tk-wrap { max-width: 1280px; margin: 0 auto; padding: 24px; }
+  .tk-page-head {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 16px; margin-bottom: 18px; flex-wrap: wrap;
+  }
+  .tk-page-head h1 { font-size: 24px; margin: 0; letter-spacing: -.02em; }
+  .tk-page-head p { margin: 4px 0 0; color: var(--tk-muted); font-size: 14px; }
+  .tk-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 9px 14px; border-radius: 10px; border: 1px solid var(--tk-border);
+    background: var(--tk-surface); color: var(--tk-text);
+    font-weight: 500; font-size: 14px; cursor: pointer;
+    transition: all .15s; text-decoration: none;
+  }
+  .tk-btn:hover { border-color: var(--tk-brand); color: var(--tk-brand); }
+  .tk-btn-primary {
+    background: var(--tk-brand); color: #fff; border-color: var(--tk-brand);
+  }
+  .tk-btn-primary:hover { background: var(--tk-brand-mid); color: #fff; }
+  .tk-btn-danger {
+    background: #fff; color: #dc2626; border-color: #fecaca;
+  }
+  .tk-btn-danger:hover { background: #fef2f2; }
+  .tk-btn-sm { padding: 6px 10px; font-size: 13px; }
+  .tk-card {
+    background: var(--tk-surface); border: 1px solid var(--tk-border);
+    border-radius: 14px; padding: 18px; box-shadow: var(--tk-shadow);
+  }
+  .tk-card + .tk-card { margin-top: 14px; }
+  .tk-card h3 {
+    margin: 0 0 12px; font-size: 14px; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--tk-muted);
+  }
+  .tk-grid { display: grid; gap: 14px; }
+  .tk-grid-2 { grid-template-columns: 1fr 1fr; }
+  .tk-grid-3 { grid-template-columns: repeat(3, 1fr); }
+  .tk-grid-4 { grid-template-columns: repeat(4, 1fr); }
+  @media (max-width: 900px) {
+    .tk-grid-2, .tk-grid-3, .tk-grid-4 { grid-template-columns: 1fr; }
+  }
+  .tk-field label {
+    display: block; font-size: 12px; font-weight: 600;
+    color: var(--tk-muted); margin-bottom: 6px;
+    text-transform: uppercase; letter-spacing: .04em;
+  }
+  .tk-field input, .tk-field select, .tk-field textarea {
+    width: 100%; padding: 10px 12px;
+    border: 1px solid var(--tk-border); border-radius: 10px;
+    background: #fff; color: var(--tk-text); font-size: 14px;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .tk-field input:focus, .tk-field select:focus, .tk-field textarea:focus {
+    outline: none; border-color: var(--tk-brand);
+    box-shadow: 0 0 0 3px rgba(18,84,53,.12);
+  }
+  .tk-field textarea { resize: vertical; min-height: 90px; }
+  .tk-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .tk-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border-radius: 999px;
+    font-size: 12px; font-weight: 600;
+    background: var(--tk-pale); color: var(--tk-brand);
+  }
+  .tk-pill .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .tk-pill-priority-low { background: #ecfdf5; color: #059669; }
+  .tk-pill-priority-medium { background: #fffbeb; color: #d97706; }
+  .tk-pill-priority-high { background: #fef2f2; color: #dc2626; }
+  .tk-pill-priority-critical { background: #f5f3ff; color: #7c3aed; }
+  .tk-pill-status-open { background: #eff6ff; color: #2563eb; }
+  .tk-pill-status-in_progress { background: #fffbeb; color: #d97706; }
+  .tk-pill-status-on_hold { background: #f1f5f9; color: #475569; }
+  .tk-pill-status-closed { background: #ecfdf5; color: #059669; }
+  .tk-pill-status-cancelled { background: #f1f5f9; color: #94a3b8; }
+
+  .tk-table { width: 100%; border-collapse: collapse; }
+  .tk-table th, .tk-table td {
+    padding: 12px 14px; text-align: left; font-size: 14px;
+    border-bottom: 1px solid var(--tk-border);
+  }
+  .tk-table th {
+    font-size: 11px; text-transform: uppercase; letter-spacing: .05em;
+    color: var(--tk-muted); background: #fafbfa;
+  }
+  .tk-table tr:last-child td { border-bottom: 0; }
+  .tk-table tr.clickable { cursor: pointer; transition: background .15s; }
+  .tk-table tr.clickable:hover { background: #fafdfb; }
+  .tk-empty {
+    text-align: center; padding: 40px 20px; color: var(--tk-muted);
+  }
+  .tk-empty svg { width: 48px; height: 48px; opacity: .35; margin-bottom: 8px; }
+
+  .tk-kpi {
+    background: var(--tk-surface); border: 1px solid var(--tk-border);
+    border-radius: 14px; padding: 18px; box-shadow: var(--tk-shadow);
+  }
+  .tk-kpi .label { font-size: 12px; color: var(--tk-muted); text-transform: uppercase; letter-spacing: .05em; }
+  .tk-kpi .value { font-size: 32px; font-weight: 700; color: var(--tk-text); margin-top: 6px; letter-spacing: -.02em; }
+  .tk-kpi .sub { font-size: 12px; color: var(--tk-muted); margin-top: 4px; }
+
+  .tk-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px; border-radius: 999px;
+    background: #fff; border: 1px solid var(--tk-border);
+    font-size: 13px; cursor: pointer; transition: all .15s;
+  }
+  .tk-chip:hover { border-color: var(--tk-brand); }
+  .tk-chip.active { background: var(--tk-brand); color: #fff; border-color: var(--tk-brand); }
+
+  .tk-toggle {
+    position: relative; width: 44px; height: 24px;
+    background: #e2e8f0; border-radius: 999px; cursor: pointer;
+    transition: background .15s;
+  }
+  .tk-toggle::after {
+    content: ''; position: absolute; top: 2px; left: 2px;
+    width: 20px; height: 20px; border-radius: 50%;
+    background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.2);
+    transition: transform .15s;
+  }
+  .tk-toggle.on { background: var(--tk-brand); }
+  .tk-toggle.on::after { transform: translateX(20px); }
+
+  .tk-sig-pad {
+    background: #fff; border: 2px dashed var(--tk-border);
+    border-radius: 12px; touch-action: none; cursor: crosshair;
+    width: 100%; height: 160px;
+  }
+  .tk-back-link {
+    display: inline-flex; align-items: center; gap: 6px;
+    color: var(--tk-muted); font-size: 13px; text-decoration: none;
+    margin-bottom: 10px;
+  }
+  .tk-back-link:hover { color: var(--tk-brand); }
+
+  .tk-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--tk-border); margin-bottom: 14px; }
+  .tk-tab {
+    padding: 10px 16px; border: 0; background: transparent; cursor: pointer;
+    font-size: 14px; color: var(--tk-muted); font-weight: 500;
+    border-bottom: 2px solid transparent; margin-bottom: -1px;
+  }
+  .tk-tab.active { color: var(--tk-brand); border-bottom-color: var(--tk-brand); }
+
+  .tk-note { background: #fafbfa; border-left: 3px solid var(--tk-brand); padding: 10px 12px; border-radius: 0 8px 8px 0; }
+  .tk-note .meta { font-size: 12px; color: var(--tk-muted); margin-bottom: 4px; }
+
+  .tk-toast {
+    position: fixed; bottom: 24px; right: 24px;
+    background: var(--tk-text); color: #fff; padding: 10px 16px;
+    border-radius: 10px; font-size: 14px; z-index: 1000;
+    box-shadow: 0 10px 30px rgba(0,0,0,.18);
+    opacity: 0; transition: opacity .2s;
+  }
+  .tk-toast.show { opacity: 1; }
+  .tk-toast.error { background: #dc2626; }
+</style>
+{% endblock %}
+{% block scripts %}
+<script>
+  // Lightweight fetch wrapper - relies on JWT cookie for auth
+  window.tkFetch = async function(url, opts = {}) {
+    opts.headers = Object.assign({'Content-Type': 'application/json'}, opts.headers || {});
+    opts.credentials = 'include';
+    const r = await fetch(url, opts);
+    if (!r.ok) {
+      let msg = r.statusText;
+      try { msg = (await r.json()).error || msg; } catch (e) {}
+      throw new Error(msg);
+    }
+    if (r.status === 204) return null;
+    return r.json();
+  };
+  window.tkToast = function(msg, kind = '') {
+    let t = document.querySelector('.tk-toast');
+    if (!t) { t = document.createElement('div'); t.className = 'tk-toast'; document.body.appendChild(t); }
+    t.className = 'tk-toast ' + (kind === 'error' ? 'error' : '') + ' show';
+    t.textContent = msg;
+    setTimeout(() => t.classList.remove('show'), 2400);
+  };
+</script>
+{% endblock %}

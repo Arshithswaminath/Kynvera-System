@@ -1,0 +1,151 @@
+{% extends '_ticketing_base.html' %}
+{% block title %}New Ticket{% endblock %}
+{% block content %}
+<div class="tk-wrap">
+  <a href="/ticketing/" class="tk-back-link">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+    Back to tickets
+  </a>
+  <div class="tk-page-head">
+    <div>
+      <h1>New Ticket</h1>
+      <p>Log a complaint or work order. Fields can be edited later.</p>
+    </div>
+  </div>
+
+  <form id="tkForm" class="tk-grid" style="gap:14px;">
+    <div class="tk-card">
+      <h3>Basics</h3>
+      <div class="tk-grid tk-grid-2">
+        <div class="tk-field">
+          <label>Title *</label>
+          <input name="title" required placeholder="e.g. AC unit not cooling in Block A">
+        </div>
+        <div class="tk-field">
+          <label>Project</label>
+          <select name="project_id" id="projSel"><option value="">— Select project —</option></select>
+        </div>
+        <div class="tk-field">
+          <label>Reporter (Team member)</label>
+          <select name="reporter_id" id="repSel"><option value="">— Select person —</option></select>
+        </div>
+        <div class="tk-field">
+          <label>Reporter contact</label>
+          <input name="reporter_contact" placeholder="Phone / email">
+        </div>
+      </div>
+    </div>
+
+    <div class="tk-card">
+      <h3>Classification</h3>
+      <div class="tk-grid tk-grid-4">
+        <div class="tk-field">
+          <label>Service group</label>
+          <select name="service_group" id="sgSel"></select>
+        </div>
+        <div class="tk-field">
+          <label>Category</label>
+          <input name="category" placeholder="e.g. Cooling, Plumbing">
+        </div>
+        <div class="tk-field">
+          <label>Fault type</label>
+          <input name="fault_type" placeholder="e.g. Leaking pipe">
+        </div>
+        <div class="tk-field">
+          <label>Priority</label>
+          <select name="priority" id="prSel"></select>
+        </div>
+      </div>
+    </div>
+
+    <div class="tk-card">
+      <h3>Work description</h3>
+      <div class="tk-field">
+        <textarea name="description" rows="4" placeholder="Describe the issue, what was reported, observations..."></textarea>
+      </div>
+    </div>
+
+    <div class="tk-card">
+      <h3>Location</h3>
+      <div class="tk-grid tk-grid-4">
+        <div class="tk-field"><label>Property</label><input name="loc_property" placeholder="Building / Site"></div>
+        <div class="tk-field"><label>Zone</label><input name="loc_zone" placeholder="Floor / Wing"></div>
+        <div class="tk-field"><label>Sub-zone</label><input name="loc_sub_zone" placeholder="Section / Area"></div>
+        <div class="tk-field"><label>Base unit</label><input name="loc_base_unit" placeholder="Room / Unit #"></div>
+      </div>
+    </div>
+
+    <div class="tk-card">
+      <h3>Assignment & billing</h3>
+      <div class="tk-grid tk-grid-3">
+        <div class="tk-field">
+          <label>Assign to</label>
+          <select name="assigned_to_id" id="asSel"><option value="">— Unassigned —</option></select>
+        </div>
+        <div class="tk-field">
+          <label>Projected price</label>
+          <input name="projected_price" type="number" step="0.01" min="0" placeholder="0.00">
+        </div>
+        <div class="tk-field">
+          <label>Chargeable</label>
+          <div class="tk-row" style="margin-top:6px;">
+            <div class="tk-toggle" id="chToggle"></div>
+            <span style="font-size:14px; color:var(--tk-muted);" id="chLabel">Non-chargeable</span>
+          </div>
+          <input type="hidden" name="chargeable" id="chHidden" value="0">
+        </div>
+      </div>
+    </div>
+
+    <div class="tk-row" style="justify-content:flex-end;">
+      <a href="/ticketing/" class="tk-btn">Cancel</a>
+      <button type="submit" class="tk-btn tk-btn-primary">Create Ticket</button>
+    </div>
+  </form>
+</div>
+
+<script>
+function fillSelect(sel, items, valKey, labelFn, includeBlank) {
+  sel.innerHTML = (includeBlank ? '<option value="">— Select —</option>' : '') +
+    items.map(i => `<option value="${i[valKey]}">${labelFn(i)}</option>`).join('');
+}
+
+(async function init() {
+  try {
+    const r = await tkFetch('/ticketing/api/reference');
+    fillSelect(document.getElementById('projSel'), r.projects, 'id',
+      i => `${i.name}${i.company ? ' - ' + i.company : ''}`, true);
+    fillSelect(document.getElementById('repSel'), r.team, 'id', i => i.full_name || i.username, true);
+    fillSelect(document.getElementById('asSel'), r.team, 'id', i => i.full_name || i.username, true);
+    document.getElementById('sgSel').innerHTML = r.service_groups.map(s => `<option value="${s}">${s}</option>`).join('');
+    const prSel = document.getElementById('prSel');
+    prSel.innerHTML = r.priorities.map(p => `<option value="${p}"${p==='medium'?' selected':''}>${p[0].toUpperCase()+p.slice(1)}</option>`).join('');
+  } catch (e) { tkToast('Failed to load form data', 'error'); }
+})();
+
+const ch = document.getElementById('chToggle');
+ch.onclick = () => {
+  ch.classList.toggle('on');
+  const on = ch.classList.contains('on');
+  document.getElementById('chHidden').value = on ? '1' : '0';
+  document.getElementById('chLabel').textContent = on ? 'Chargeable' : 'Non-chargeable';
+};
+
+document.getElementById('tkForm').onsubmit = async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const obj = {};
+  fd.forEach((v, k) => { obj[k] = v; });
+  obj.chargeable = obj.chargeable === '1';
+  if (!obj.project_id) delete obj.project_id;
+  if (!obj.reporter_id) delete obj.reporter_id;
+  if (!obj.assigned_to_id) delete obj.assigned_to_id;
+  if (obj.projected_price === '') delete obj.projected_price;
+  try {
+    const r = await tkFetch('/ticketing/api/tickets', {method:'POST', body: JSON.stringify(obj)});
+    tkToast('Ticket created');
+    setTimeout(() => location.href = '/ticketing/' + r.ticket.id, 400);
+  } catch (err) { tkToast('Failed: ' + err.message, 'error'); }
+};
+</script>
+{% endblock %}

@@ -1,0 +1,494 @@
+{% extends '_ticketing_base.html' %}
+{% block title %}Ticket {{ ticket.ticket_no }}{% endblock %}
+{% block content %}
+<div class="tk-wrap">
+  <a href="/ticketing/" class="tk-back-link">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+    Back to tickets
+  </a>
+
+  <div class="tk-page-head">
+    <div>
+      <h1 id="tkTitle">{{ ticket.title }}</h1>
+      <p>
+        <b id="tkNo">{{ ticket.ticket_no }}</b> &nbsp;·&nbsp;
+        <span id="tkStatusPill"></span>
+        <span id="tkPriorityPill"></span>
+        <span id="tkChargePill"></span>
+      </p>
+    </div>
+    <div class="tk-row">
+      <a id="tkPdfLink" class="tk-btn" href="/ticketing/api/tickets/{{ ticket.id }}/pdf" target="_blank">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+        Download PDF
+      </a>
+      <button id="tkCloseBtn" class="tk-btn tk-btn-primary">
+        Submit as Closed
+      </button>
+    </div>
+  </div>
+
+  <div class="tk-tabs">
+    <button class="tk-tab active" data-tab="overview">Overview</button>
+    <button class="tk-tab" data-tab="cost">Cost & Materials</button>
+    <button class="tk-tab" data-tab="notes">Notes & Photos</button>
+    <button class="tk-tab" data-tab="close">Close & Sign-off</button>
+  </div>
+
+  <!-- ============== OVERVIEW ============== -->
+  <section data-pane="overview">
+    <div class="tk-grid tk-grid-2">
+      <div class="tk-card">
+        <h3>Details</h3>
+        <div class="tk-grid tk-grid-2">
+          <div class="tk-field"><label>Title</label><input id="fTitle"></div>
+          <div class="tk-field"><label>Project</label><select id="fProject"></select></div>
+          <div class="tk-field"><label>Service group</label><select id="fSg"></select></div>
+          <div class="tk-field"><label>Category</label><input id="fCat"></div>
+          <div class="tk-field"><label>Fault type</label><input id="fFault"></div>
+          <div class="tk-field"><label>Priority</label><select id="fPri"></select></div>
+          <div class="tk-field"><label>Status</label><select id="fStatus"></select></div>
+          <div class="tk-field"><label>Assigned to</label><select id="fAssign"></select></div>
+          <div class="tk-field"><label>Reporter</label><input id="fReporter"></div>
+          <div class="tk-field"><label>Reporter contact</label><input id="fContact"></div>
+        </div>
+        <div class="tk-field" style="margin-top:10px;">
+          <label>Description</label><textarea id="fDesc" rows="4"></textarea>
+        </div>
+      </div>
+
+      <div>
+        <div class="tk-card">
+          <h3>Location</h3>
+          <div class="tk-grid tk-grid-2">
+            <div class="tk-field"><label>Property</label><input id="fProp"></div>
+            <div class="tk-field"><label>Zone</label><input id="fZone"></div>
+            <div class="tk-field"><label>Sub-zone</label><input id="fSub"></div>
+            <div class="tk-field"><label>Base unit</label><input id="fUnit"></div>
+          </div>
+        </div>
+        <div class="tk-card">
+          <h3>Billing</h3>
+          <div class="tk-row">
+            <div class="tk-toggle" id="fCharge"></div>
+            <span id="fChargeLbl" style="font-size:14px; color:var(--tk-muted);">Non-chargeable</span>
+          </div>
+          <div class="tk-field" style="margin-top:12px;">
+            <label>Projected price</label>
+            <input id="fProjected" type="number" step="0.01" min="0">
+          </div>
+        </div>
+        <div class="tk-card">
+          <button id="tkSaveBtn" class="tk-btn tk-btn-primary" style="width:100%;">Save changes</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============== COST ============== -->
+  <section data-pane="cost" hidden>
+    <div class="tk-grid tk-grid-3">
+      <div class="tk-kpi"><div class="label">Manpower</div><div class="value" id="kpiLabor">0.00</div><div class="sub"><span id="kpiLaborMin">0</span> min</div></div>
+      <div class="tk-kpi"><div class="label">Materials</div><div class="value" id="kpiMat">0.00</div><div class="sub">Parts &amp; supplies</div></div>
+      <div class="tk-kpi"><div class="label">Total</div><div class="value" id="kpiTotal" style="color:var(--tk-brand)">0.00</div><div class="sub">Manpower + materials</div></div>
+    </div>
+
+    <div class="tk-card">
+      <h3>Manpower</h3>
+      <div class="tk-grid tk-grid-4" style="align-items:end;">
+        <div class="tk-field"><label>Worker</label><input id="lbWorker" placeholder="Name"></div>
+        <div class="tk-field">
+          <label>Duration</label>
+          <select id="lbDuration">
+            <option value="15">15 min</option><option value="30">30 min</option>
+            <option value="45">45 min</option><option value="60">1 h</option>
+            <option value="120">2 h</option><option value="180">3 h+</option>
+          </select>
+        </div>
+        <div class="tk-field"><label>Hourly rate</label><input id="lbRate" type="number" step="0.01" min="0" placeholder="0.00"></div>
+        <button class="tk-btn tk-btn-primary" id="lbAdd">Add</button>
+      </div>
+      <div id="lbList" style="margin-top:14px;"></div>
+    </div>
+
+    <div class="tk-card">
+      <h3>Materials</h3>
+      <div class="tk-grid tk-grid-4" style="align-items:end;">
+        <div class="tk-field">
+          <label>From procurement</label>
+          <select id="mtPick"><option value="">— Pick a material —</option></select>
+        </div>
+        <div class="tk-field"><label>Or new name</label><input id="mtName" placeholder="New material name"></div>
+        <div class="tk-field"><label>Qty</label><input id="mtQty" type="number" step="0.01" min="0" value="1"></div>
+        <div class="tk-field"><label>Unit price</label><input id="mtPrice" type="number" step="0.01" min="0"></div>
+      </div>
+      <div class="tk-row" style="margin-top: 8px;">
+        <input id="mtUnit" placeholder="Unit (pcs, kg, m...)" style="max-width:200px; padding:10px 12px; border:1px solid var(--tk-border); border-radius:10px;">
+        <button class="tk-btn tk-btn-primary" id="mtAdd">Add material</button>
+      </div>
+      <div id="mtList" style="margin-top:14px;"></div>
+    </div>
+  </section>
+
+  <!-- ============== NOTES & PHOTOS ============== -->
+  <section data-pane="notes" hidden>
+    <div class="tk-grid tk-grid-2">
+      <div class="tk-card">
+        <h3>Live notes</h3>
+        <div class="tk-field">
+          <textarea id="ntBody" rows="3" placeholder="Type a note (visible to the team)..."></textarea>
+        </div>
+        <div class="tk-row" style="justify-content:flex-end;">
+          <button class="tk-btn tk-btn-primary" id="ntAdd">Post note</button>
+        </div>
+        <div id="ntList" style="margin-top: 14px; display:flex; flex-direction:column; gap:8px;"></div>
+      </div>
+
+      <div class="tk-card">
+        <h3>Photos</h3>
+        <input type="file" id="imFiles" accept="image/*" multiple style="display:none;">
+        <button class="tk-btn" id="imPick">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+          Upload images
+        </button>
+        <div id="imList" style="margin-top: 14px; display:grid; grid-template-columns: repeat(3, 1fr); gap: 8px;"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============== CLOSE ============== -->
+  <section data-pane="close" hidden>
+    <div class="tk-card">
+      <h3>Closure summary</h3>
+      <div class="tk-field">
+        <textarea id="clSummary" rows="4" placeholder="Describe how the issue was resolved..."></textarea>
+      </div>
+    </div>
+    <div class="tk-grid tk-grid-2">
+      <div class="tk-card">
+        <h3>Requester signature</h3>
+        <canvas class="tk-sig-pad" id="sigReq" width="600" height="160"></canvas>
+        <div class="tk-row" style="justify-content:space-between; margin-top:8px;">
+          <span style="color:var(--tk-muted); font-size:12px;">Sign with finger / mouse</span>
+          <button class="tk-btn tk-btn-sm" id="sigReqClear">Clear</button>
+        </div>
+      </div>
+      <div class="tk-card">
+        <h3>Technician signature</h3>
+        <canvas class="tk-sig-pad" id="sigTech" width="600" height="160"></canvas>
+        <div class="tk-row" style="justify-content:space-between; margin-top:8px;">
+          <span style="color:var(--tk-muted); font-size:12px;">Sign with finger / mouse</span>
+          <button class="tk-btn tk-btn-sm" id="sigTechClear">Clear</button>
+        </div>
+      </div>
+    </div>
+    <div class="tk-card" style="display:flex; justify-content:flex-end;">
+      <button class="tk-btn tk-btn-primary" id="clSubmit">
+        Submit as Closed
+      </button>
+    </div>
+  </section>
+</div>
+
+<script>
+const TICKET_ID = {{ ticket.id }};
+const PRIORITY_LABELS = {low:'Low', medium:'Medium', high:'High', critical:'Critical'};
+const STATUS_LABELS = {open:'Open', in_progress:'In Progress', on_hold:'On Hold', closed:'Closed', cancelled:'Cancelled'};
+let ticket = null;
+let ref = null;
+
+function escapeHtml(s) {
+  return (s || '').toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+document.querySelectorAll('.tk-tab').forEach(tab => {
+  tab.onclick = () => {
+    document.querySelectorAll('.tk-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    document.querySelectorAll('section[data-pane]').forEach(s => s.hidden = s.dataset.pane !== tab.dataset.tab);
+  };
+});
+
+function fillSelect(sel, items, valKey, labelFn, blank) {
+  sel.innerHTML = (blank ? `<option value="">${blank}</option>` : '') +
+    items.map(i => `<option value="${i[valKey]}">${labelFn(i)}</option>`).join('');
+}
+
+function applyTicket(t) {
+  ticket = t;
+  document.getElementById('tkTitle').textContent = t.title;
+  document.getElementById('tkStatusPill').outerHTML =
+    `<span id="tkStatusPill" class="tk-pill tk-pill-status-${t.status}"><span class="dot"></span>${STATUS_LABELS[t.status] || t.status}</span>`;
+  document.getElementById('tkPriorityPill').outerHTML =
+    `<span id="tkPriorityPill" class="tk-pill tk-pill-priority-${t.priority}"><span class="dot"></span>${PRIORITY_LABELS[t.priority] || t.priority}</span>`;
+  document.getElementById('tkChargePill').outerHTML =
+    `<span id="tkChargePill" class="tk-pill" style="background:${t.chargeable?'#fef3c7':'#f1f5f9'}; color:${t.chargeable?'#b45309':'#475569'}">${t.chargeable?'Chargeable':'Non-chargeable'}</span>`;
+
+  document.getElementById('fTitle').value = t.title || '';
+  document.getElementById('fCat').value = t.category || '';
+  document.getElementById('fFault').value = t.fault_type || '';
+  document.getElementById('fReporter').value = t.reporter_name || '';
+  document.getElementById('fContact').value = t.reporter_contact || '';
+  document.getElementById('fDesc').value = t.description || '';
+  document.getElementById('fProp').value = t.loc_property || '';
+  document.getElementById('fZone').value = t.loc_zone || '';
+  document.getElementById('fSub').value = t.loc_sub_zone || '';
+  document.getElementById('fUnit').value = t.loc_base_unit || '';
+  document.getElementById('fProjected').value = t.projected_price || 0;
+
+  const ch = document.getElementById('fCharge');
+  ch.classList.toggle('on', !!t.chargeable);
+  document.getElementById('fChargeLbl').textContent = t.chargeable ? 'Chargeable' : 'Non-chargeable';
+
+  document.getElementById('fSg').value = t.service_group || '';
+  document.getElementById('fPri').value = t.priority || 'medium';
+  document.getElementById('fStatus').value = t.status || 'open';
+  document.getElementById('fProject').value = t.project_id || '';
+  document.getElementById('fAssign').value = t.assigned_to_id || '';
+
+  document.getElementById('kpiLabor').textContent = (t.labor_cost_total || 0).toFixed(2);
+  document.getElementById('kpiLaborMin').textContent = t.labor_minutes_total || 0;
+  document.getElementById('kpiMat').textContent = (t.material_cost_total || 0).toFixed(2);
+  document.getElementById('kpiTotal').textContent = (t.total_cost || 0).toFixed(2);
+
+  renderLabor(t.labor_entries || []);
+  renderMaterials(t.material_entries || []);
+  renderNotes(t.notes || []);
+  renderImages(t.images || []);
+}
+
+function renderLabor(rows) {
+  const wrap = document.getElementById('lbList');
+  if (!rows.length) { wrap.innerHTML = '<div class="tk-empty">No manpower entries yet.</div>'; return; }
+  wrap.innerHTML = `<table class="tk-table"><thead><tr><th>Worker</th><th>Duration</th><th>Rate</th><th>Cost</th><th></th></tr></thead><tbody>${
+    rows.map(r => `<tr>
+      <td>${escapeHtml(r.worker_name || '-')}</td>
+      <td>${r.duration_label}</td>
+      <td>${r.hourly_rate ? r.hourly_rate.toFixed(2) : '-'}</td>
+      <td><b>${(r.cost || 0).toFixed(2)}</b></td>
+      <td style="text-align:right;"><button class="tk-btn tk-btn-sm tk-btn-danger" data-rm="${r.id}">Remove</button></td>
+    </tr>`).join('')}</tbody></table>`;
+  wrap.querySelectorAll('[data-rm]').forEach(b => b.onclick = async () => {
+    try {
+      const r = await tkFetch(`/ticketing/api/tickets/${TICKET_ID}/labor/${b.dataset.rm}`, {method:'DELETE'});
+      const full = await tkFetch(`/ticketing/api/tickets/${TICKET_ID}`);
+      applyTicket(full.ticket); tkToast('Removed');
+    } catch (e) { tkToast(e.message, 'error'); }
+  });
+}
+
+function renderMaterials(rows) {
+  const wrap = document.getElementById('mtList');
+  if (!rows.length) { wrap.innerHTML = '<div class="tk-empty">No materials yet.</div>'; return; }
+  wrap.innerHTML = `<table class="tk-table"><thead><tr><th>Material</th><th>Source</th><th>Qty</th><th>Unit</th><th>Price</th><th>Cost</th><th></th></tr></thead><tbody>${
+    rows.map(r => `<tr>
+      <td>${escapeHtml(r.name)}</td>
+      <td>${r.is_new ? '<span class="tk-pill" style="background:#fef3c7;color:#b45309">New</span>' : (r.procurement_ref ? '<span class="tk-pill">Procurement</span>' : '-')}</td>
+      <td>${r.quantity}</td>
+      <td>${escapeHtml(r.unit || '-')}</td>
+      <td>${r.unit_price ? r.unit_price.toFixed(2) : '-'}</td>
+      <td><b>${(r.cost || 0).toFixed(2)}</b></td>
+      <td style="text-align:right;"><button class="tk-btn tk-btn-sm tk-btn-danger" data-rm="${r.id}">Remove</button></td>
+    </tr>`).join('')}</tbody></table>`;
+  wrap.querySelectorAll('[data-rm]').forEach(b => b.onclick = async () => {
+    try {
+      await tkFetch(`/ticketing/api/tickets/${TICKET_ID}/materials/${b.dataset.rm}`, {method:'DELETE'});
+      const full = await tkFetch(`/ticketing/api/tickets/${TICKET_ID}`);
+      applyTicket(full.ticket); tkToast('Removed');
+    } catch (e) { tkToast(e.message, 'error'); }
+  });
+}
+
+function renderNotes(rows) {
+  const wrap = document.getElementById('ntList');
+  if (!rows.length) { wrap.innerHTML = '<div class="tk-empty">No notes yet.</div>'; return; }
+  wrap.innerHTML = rows.map(n => `
+    <div class="tk-note">
+      <div class="meta"><b>${escapeHtml(n.author_name || 'Unknown')}</b> · ${new Date(n.created_at).toLocaleString()}</div>
+      <div>${escapeHtml(n.body)}</div>
+    </div>`).join('');
+}
+
+function renderImages(rows) {
+  const wrap = document.getElementById('imList');
+  if (!rows.length) { wrap.innerHTML = '<div class="tk-empty" style="grid-column:1/-1;">No photos yet.</div>'; return; }
+  wrap.innerHTML = rows.map(i =>
+    `<a href="/ticketing/uploads/${i.file_path}" target="_blank" style="display:block;">
+       <img src="/ticketing/uploads/${i.file_path}" style="width:100%; height:120px; object-fit:cover; border-radius:8px; border:1px solid var(--tk-border);">
+     </a>`).join('');
+}
+
+document.getElementById('fCharge').onclick = function() {
+  this.classList.toggle('on');
+  document.getElementById('fChargeLbl').textContent = this.classList.contains('on') ? 'Chargeable' : 'Non-chargeable';
+};
+
+document.getElementById('tkSaveBtn').onclick = async () => {
+  const ch = document.getElementById('fCharge').classList.contains('on');
+  const payload = {
+    title: document.getElementById('fTitle').value,
+    description: document.getElementById('fDesc').value,
+    category: document.getElementById('fCat').value,
+    fault_type: document.getElementById('fFault').value,
+    reporter_name: document.getElementById('fReporter').value,
+    reporter_contact: document.getElementById('fContact').value,
+    loc_property: document.getElementById('fProp').value,
+    loc_zone: document.getElementById('fZone').value,
+    loc_sub_zone: document.getElementById('fSub').value,
+    loc_base_unit: document.getElementById('fUnit').value,
+    service_group: document.getElementById('fSg').value,
+    priority: document.getElementById('fPri').value,
+    status: document.getElementById('fStatus').value,
+    project_id: document.getElementById('fProject').value || null,
+    assigned_to_id: document.getElementById('fAssign').value || null,
+    chargeable: ch,
+    projected_price: document.getElementById('fProjected').value || 0,
+  };
+  try {
+    const r = await tkFetch(`/ticketing/api/tickets/${TICKET_ID}`, {method:'PATCH', body: JSON.stringify(payload)});
+    applyTicket(r.ticket); tkToast('Saved');
+  } catch (e) { tkToast(e.message, 'error'); }
+};
+
+document.getElementById('lbAdd').onclick = async () => {
+  const payload = {
+    worker_name: document.getElementById('lbWorker').value,
+    duration_minutes: parseInt(document.getElementById('lbDuration').value, 10),
+    hourly_rate: parseFloat(document.getElementById('lbRate').value || 0),
+  };
+  try {
+    await tkFetch(`/ticketing/api/tickets/${TICKET_ID}/labor`, {method:'POST', body: JSON.stringify(payload)});
+    document.getElementById('lbWorker').value = '';
+    const full = await tkFetch(`/ticketing/api/tickets/${TICKET_ID}`);
+    applyTicket(full.ticket); tkToast('Manpower added');
+  } catch (e) { tkToast(e.message, 'error'); }
+};
+
+document.getElementById('mtPick').onchange = function() {
+  const m = ref.materials.find(x => x.ref === this.value);
+  if (!m) return;
+  document.getElementById('mtName').value = m.name;
+  document.getElementById('mtUnit').value = m.unit || '';
+  document.getElementById('mtPrice').value = m.unit_price || '';
+};
+
+document.getElementById('mtAdd').onclick = async () => {
+  const procRef = document.getElementById('mtPick').value;
+  const payload = {
+    procurement_ref: procRef || null,
+    name: document.getElementById('mtName').value,
+    unit: document.getElementById('mtUnit').value,
+    quantity: parseFloat(document.getElementById('mtQty').value || 1),
+    unit_price: parseFloat(document.getElementById('mtPrice').value || 0),
+    is_new: !procRef,
+  };
+  if (!payload.name) { tkToast('Material name required', 'error'); return; }
+  try {
+    await tkFetch(`/ticketing/api/tickets/${TICKET_ID}/materials`, {method:'POST', body: JSON.stringify(payload)});
+    document.getElementById('mtName').value = '';
+    document.getElementById('mtPick').value = '';
+    document.getElementById('mtQty').value = 1;
+    document.getElementById('mtUnit').value = '';
+    document.getElementById('mtPrice').value = '';
+    const full = await tkFetch(`/ticketing/api/tickets/${TICKET_ID}`);
+    applyTicket(full.ticket); tkToast('Material added');
+  } catch (e) { tkToast(e.message, 'error'); }
+};
+
+document.getElementById('ntAdd').onclick = async () => {
+  const body = document.getElementById('ntBody').value.trim();
+  if (!body) return;
+  try {
+    await tkFetch(`/ticketing/api/tickets/${TICKET_ID}/notes`, {method:'POST', body: JSON.stringify({body})});
+    document.getElementById('ntBody').value = '';
+    const full = await tkFetch(`/ticketing/api/tickets/${TICKET_ID}`);
+    applyTicket(full.ticket); tkToast('Note posted');
+  } catch (e) { tkToast(e.message, 'error'); }
+};
+
+document.getElementById('imPick').onclick = () => document.getElementById('imFiles').click();
+document.getElementById('imFiles').onchange = async (e) => {
+  if (!e.target.files.length) return;
+  const fd = new FormData();
+  for (const f of e.target.files) fd.append('files', f);
+  try {
+    const r = await fetch(`/ticketing/api/tickets/${TICKET_ID}/images`, {method:'POST', body: fd, credentials:'include'});
+    if (!r.ok) throw new Error('upload failed');
+    const full = await tkFetch(`/ticketing/api/tickets/${TICKET_ID}`);
+    applyTicket(full.ticket); tkToast('Photo uploaded');
+    e.target.value = '';
+  } catch (err) { tkToast(err.message, 'error'); }
+};
+
+// --- Signature pads ---
+function makeSigPad(canvas) {
+  const ctx = canvas.getContext('2d');
+  let drawing = false, has = false;
+  function resize() {
+    const r = canvas.getBoundingClientRect();
+    canvas.width = r.width * devicePixelRatio;
+    canvas.height = r.height * devicePixelRatio;
+    ctx.scale(devicePixelRatio, devicePixelRatio);
+    ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.strokeStyle = '#0f172a';
+  }
+  resize();
+  function pos(e) {
+    const r = canvas.getBoundingClientRect();
+    const t = e.touches ? e.touches[0] : e;
+    return {x: t.clientX - r.left, y: t.clientY - r.top};
+  }
+  function start(e) { e.preventDefault(); drawing = true; has = true; const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); }
+  function move(e)  { if (!drawing) return; e.preventDefault(); const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); }
+  function end()    { drawing = false; }
+  canvas.addEventListener('mousedown', start); canvas.addEventListener('mousemove', move);
+  window.addEventListener('mouseup', end);
+  canvas.addEventListener('touchstart', start, {passive:false});
+  canvas.addEventListener('touchmove', move, {passive:false});
+  canvas.addEventListener('touchend', end);
+  return {
+    clear() { ctx.clearRect(0, 0, canvas.width, canvas.height); has = false; },
+    isEmpty() { return !has; },
+    toDataURL() { return canvas.toDataURL('image/png'); },
+  };
+}
+const sigReq = makeSigPad(document.getElementById('sigReq'));
+const sigTech = makeSigPad(document.getElementById('sigTech'));
+document.getElementById('sigReqClear').onclick = () => sigReq.clear();
+document.getElementById('sigTechClear').onclick = () => sigTech.clear();
+
+async function submitClose() {
+  if (sigReq.isEmpty() || sigTech.isEmpty()) {
+    tkToast('Both signatures are required to close', 'error');
+    document.querySelector('.tk-tab[data-tab="close"]').click();
+    return;
+  }
+  const payload = {
+    summary: document.getElementById('clSummary').value,
+    requester_signature: sigReq.toDataURL(),
+    technician_signature: sigTech.toDataURL(),
+  };
+  try {
+    const r = await tkFetch(`/ticketing/api/tickets/${TICKET_ID}/close`, {method:'POST', body: JSON.stringify(payload)});
+    applyTicket(r.ticket); tkToast('Ticket closed - report generated & emailed');
+  } catch (e) { tkToast(e.message, 'error'); }
+}
+document.getElementById('clSubmit').onclick = submitClose;
+document.getElementById('tkCloseBtn').onclick = () => document.querySelector('.tk-tab[data-tab="close"]').click();
+
+(async function init() {
+  try {
+    ref = await tkFetch('/ticketing/api/reference');
+    fillSelect(document.getElementById('fProject'), ref.projects, 'id',
+      i => `${i.name}${i.company ? ' - ' + i.company : ''}`, '— No project —');
+    fillSelect(document.getElementById('fAssign'), ref.team, 'id', i => i.full_name || i.username, '— Unassigned —');
+    document.getElementById('fSg').innerHTML = '<option value="">—</option>' + ref.service_groups.map(s => `<option value="${s}">${s}</option>`).join('');
+    document.getElementById('fPri').innerHTML = ref.priorities.map(p => `<option value="${p}">${p[0].toUpperCase()+p.slice(1)}</option>`).join('');
+    document.getElementById('fStatus').innerHTML = ref.statuses.map(s => `<option value="${s}">${STATUS_LABELS[s]||s}</option>`).join('');
+    document.getElementById('mtPick').innerHTML = '<option value="">— Pick a material —</option>' +
+      ref.materials.map(m => `<option value="${m.ref}">${escapeHtml(m.name)}${m.unit?' ('+m.unit+')':''}</option>`).join('');
+    const r = await tkFetch(`/ticketing/api/tickets/${TICKET_ID}`);
+    applyTicket(r.ticket);
+  } catch (e) { tkToast('Failed to load: ' + e.message, 'error'); }
+})();
+</script>
+{% endblock %}
