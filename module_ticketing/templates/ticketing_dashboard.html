@@ -1,0 +1,125 @@
+{% extends '_ticketing_base.html' %}
+{% block title %}Ticketing{% endblock %}
+{% block content %}
+<div class="tk-wrap">
+  <div class="tk-page-head">
+    <div>
+      <h1>Ticketing</h1>
+      <p>Service complaints, work orders, and resolution reports.</p>
+    </div>
+    <a href="/ticketing/new" class="tk-btn tk-btn-primary">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+      New Ticket
+    </a>
+  </div>
+
+  <div class="tk-grid tk-grid-4" id="tkKpis"></div>
+
+  <div class="tk-card" style="margin-top:14px;">
+    <div class="tk-row" style="margin-bottom: 14px;">
+      <input id="tkSearch" placeholder="Search ticket #, title, fault..." class="tk-search"
+             style="flex:1; min-width: 220px; padding: 10px 12px; border: 1px solid var(--tk-border); border-radius: 10px; font-size: 14px;">
+      <div class="tk-row" id="tkStatusFilter"></div>
+      <div class="tk-row" id="tkPriorityFilter"></div>
+    </div>
+    <div id="tkTableWrap"></div>
+  </div>
+</div>
+
+<script>
+const STATUS_LABELS = {open:'Open', in_progress:'In Progress', on_hold:'On Hold', closed:'Closed', cancelled:'Cancelled'};
+const PRIORITY_LABELS = {low:'Low', medium:'Medium', high:'High', critical:'Critical'};
+
+const state = {tickets: [], summary: {}, status: '', priority: '', q: ''};
+
+function renderKpis() {
+  const s = state.summary || {};
+  document.getElementById('tkKpis').innerHTML = `
+    <div class="tk-kpi"><div class="label">Total Tickets</div><div class="value">${s.total || 0}</div><div class="sub">All time</div></div>
+    <div class="tk-kpi"><div class="label">Open</div><div class="value" style="color:#2563eb">${s.open || 0}</div><div class="sub">Awaiting action</div></div>
+    <div class="tk-kpi"><div class="label">In Progress</div><div class="value" style="color:#d97706">${s.in_progress || 0}</div><div class="sub">Being worked on</div></div>
+    <div class="tk-kpi"><div class="label">Critical</div><div class="value" style="color:#dc2626">${s.critical || 0}</div><div class="sub">High urgency</div></div>
+  `;
+}
+
+function renderFilters() {
+  const sf = document.getElementById('tkStatusFilter');
+  sf.innerHTML = '<span class="tk-chip ' + (state.status==='' ? 'active': '') + '" data-s="">All</span>' +
+    Object.keys(STATUS_LABELS).map(k => `<span class="tk-chip ${state.status===k?'active':''}" data-s="${k}">${STATUS_LABELS[k]}</span>`).join('');
+  sf.querySelectorAll('.tk-chip').forEach(c => c.onclick = () => { state.status = c.dataset.s; load(); });
+
+  const pf = document.getElementById('tkPriorityFilter');
+  pf.innerHTML = '<span class="tk-chip ' + (state.priority==='' ? 'active': '') + '" data-p="">All Pri</span>' +
+    Object.keys(PRIORITY_LABELS).map(k => `<span class="tk-chip ${state.priority===k?'active':''}" data-p="${k}">${PRIORITY_LABELS[k]}</span>`).join('');
+  pf.querySelectorAll('.tk-chip').forEach(c => c.onclick = () => { state.priority = c.dataset.p; load(); });
+}
+
+function fmtDate(iso) {
+  if (!iso) return '-';
+  const d = new Date(iso);
+  return d.toLocaleDateString(undefined, {day:'2-digit', month:'short', year:'numeric'});
+}
+
+function renderTable() {
+  const wrap = document.getElementById('tkTableWrap');
+  if (!state.tickets.length) {
+    wrap.innerHTML = `
+      <div class="tk-empty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12h6m-3-3v6m9 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg>
+        <div>No tickets yet. Create your first one.</div>
+      </div>`;
+    return;
+  }
+  wrap.innerHTML = `
+    <div style="overflow-x:auto;">
+    <table class="tk-table">
+      <thead><tr>
+        <th>Ticket</th><th>Title</th><th>Project</th><th>Reporter</th>
+        <th>Assignee</th><th>Priority</th><th>Status</th><th>Cost</th><th>Created</th>
+      </tr></thead>
+      <tbody>
+        ${state.tickets.map(t => `
+          <tr class="clickable" data-id="${t.id}">
+            <td><b>${t.ticket_no}</b></td>
+            <td>${escapeHtml(t.title)}${t.fault_type ? `<div style="font-size:12px;color:var(--tk-muted)">${escapeHtml(t.fault_type)}</div>` : ''}</td>
+            <td>${escapeHtml(t.project_name || '-')}</td>
+            <td>${escapeHtml(t.reporter_name || '-')}</td>
+            <td>${escapeHtml(t.assigned_to_name || '-')}</td>
+            <td><span class="tk-pill tk-pill-priority-${t.priority}"><span class="dot"></span>${PRIORITY_LABELS[t.priority] || t.priority}</span></td>
+            <td><span class="tk-pill tk-pill-status-${t.status}"><span class="dot"></span>${STATUS_LABELS[t.status] || t.status}</span></td>
+            <td>${(t.total_cost || 0).toFixed(2)}</td>
+            <td style="color:var(--tk-muted)">${fmtDate(t.created_at)}</td>
+          </tr>`).join('')}
+      </tbody>
+    </table></div>`;
+  wrap.querySelectorAll('tr.clickable').forEach(r => {
+    r.onclick = () => location.href = '/ticketing/' + r.dataset.id;
+  });
+}
+
+function escapeHtml(s) {
+  return (s || '').toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+async function load() {
+  const params = new URLSearchParams();
+  if (state.status) params.set('status', state.status);
+  if (state.priority) params.set('priority', state.priority);
+  if (state.q) params.set('q', state.q);
+  try {
+    const r = await tkFetch('/ticketing/api/tickets?' + params.toString());
+    state.tickets = r.tickets;
+    state.summary = r.summary;
+    renderKpis(); renderFilters(); renderTable();
+  } catch (e) { tkToast('Failed to load tickets: ' + e.message, 'error'); }
+}
+
+document.getElementById('tkSearch').addEventListener('input', (e) => {
+  state.q = e.target.value;
+  clearTimeout(window._tkSearch);
+  window._tkSearch = setTimeout(load, 250);
+});
+
+load();
+</script>
+{% endblock %}

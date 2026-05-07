@@ -114,6 +114,15 @@ except Exception as e:
     logger.exception("Could not import module_inspection.routes.inspection_bp: %s", e)
     inspection_bp = None
 
+# Ticketing Module
+ticketing_bp = None
+try:
+    from module_ticketing.routes import ticketing_bp  # noqa: F401
+    logger.info("Imported module_ticketing.routes.ticketing_bp")
+except Exception as e:
+    logger.exception("Could not import module_ticketing.routes.ticketing_bp: %s", e)
+    ticketing_bp = None
+
 # MMR (Report Generation) Module
 mmr_bp = None
 try:
@@ -794,6 +803,18 @@ def create_app():
         logger.info("✅ Registered Inspection blueprint at /inspection")
     else:
         logger.warning("⚠️  Inspection blueprint not available - check imports")
+
+    # Register Ticketing blueprint
+    if ticketing_bp:
+        if hasattr(app, 'csrf') and app.csrf:
+            app.csrf.exempt(ticketing_bp)
+        app.register_blueprint(ticketing_bp)
+        @app.route('/ticketing')
+        def redirect_ticketing_to_slash():
+            return redirect('/ticketing/', code=302)
+        logger.info("✅ Registered Ticketing blueprint at /ticketing")
+    else:
+        logger.warning("⚠️  Ticketing blueprint not available - check imports")
 
     # Register MMR blueprint
     if mmr_bp:

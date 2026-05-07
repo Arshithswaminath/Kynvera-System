@@ -798,3 +798,239 @@ class Notification(db.Model):
     
     def __repr__(self):
         return f'<Notification {self.id} - User {self.user_id}>'
+
+
+# ============================================================
+# Ticketing Module Models
+# ============================================================
+
+class Ticket(db.Model):
+    """Service / complaint ticket (work order)."""
+    __tablename__ = 'tickets'
+
+    id = db.Column(db.Integer, primary_key=True)
+    ticket_no = db.Column(db.String(20), unique=True, nullable=False, index=True)  # e.g. TC-000123
+
+    # Project / classification
+    project_id = db.Column(db.Integer, db.ForeignKey('bd_projects.id'), nullable=True, index=True)
+    project_name = db.Column(db.String(255), nullable=True)  # snapshot for display
+
+    # Reporter (from team management list)
+    reporter_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    reporter_name = db.Column(db.String(120), nullable=True)
+    reporter_contact = db.Column(db.String(120), nullable=True)
+
+    # Categorisation
+    service_group = db.Column(db.String(60), nullable=True, index=True)   # HVAC / Civil / Cleaning / MEP / IT / Other
+    category = db.Column(db.String(80), nullable=True)
+    fault_type = db.Column(db.String(120), nullable=True)
+    priority = db.Column(db.String(10), default='medium', index=True)     # low / medium / high / critical
+
+    # Description
+    title = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+
+    # Location (hierarchy)
+    loc_property = db.Column(db.String(120), nullable=True)
+    loc_zone = db.Column(db.String(120), nullable=True)
+    loc_sub_zone = db.Column(db.String(120), nullable=True)
+    loc_base_unit = db.Column(db.String(120), nullable=True)
+
+    # Billing
+    chargeable = db.Column(db.Boolean, default=False)
+
+    # Assignment & workflow
+    assigned_to_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True, index=True)
+    status = db.Column(db.String(20), default='open', index=True)  # open / in_progress / on_hold / closed / cancelled
+
+    # Costing
+    labor_minutes_total = db.Column(db.Integer, default=0)         # rolled up from entries
+    labor_cost_total = db.Column(db.Float, default=0.0)
+    material_cost_total = db.Column(db.Float, default=0.0)
+    projected_price = db.Column(db.Float, default=0.0)             # quoted/projected for the WO
+
+    # Closure
+    closed_at = db.Column(db.DateTime, nullable=True)
+    closed_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    closure_summary = db.Column(db.Text, nullable=True)
+    requester_signature = db.Column(db.Text, nullable=True)        # base64 data URL
+    technician_signature = db.Column(db.Text, nullable=True)
+    pdf_path = db.Column(db.String(255), nullable=True)
+
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=_utcnow, index=True)
+    updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
+    created_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+
+    # Relationships
+    reporter = db.relationship('User', foreign_keys=[reporter_id])
+    assignee = db.relationship('User', foreign_keys=[assigned_to_id])
+    closed_by = db.relationship('User', foreign_keys=[closed_by_id])
+    created_by = db.relationship('User', foreign_keys=[created_by_id])
+    project = db.relationship('BDProject')
+    notes = db.relationship('TicketNote', backref='ticket', lazy='dynamic',
+                            cascade='all, delete-orphan', order_by='TicketNote.created_at')
+    images = db.relationship('TicketImage', backref='ticket', lazy='dynamic',
+                             cascade='all, delete-orphan')
+    labor_entries = db.relationship('TicketLabor', backref='ticket', lazy='dynamic',
+                                    cascade='all, delete-orphan')
+    material_entries = db.relationship('TicketMaterial', backref='ticket', lazy='dynamic',
+                                       cascade='all, delete-orphan')
+
+    PRIORITY_BADGE = {
+        'low': '#10b981', 'medium': '#f59e0b', 'high': '#ef4444', 'critical': '#7c3aed'
+    }
+    STATUS_BADGE = {
+        'open': '#3b82f6', 'in_progress': '#f59e0b', 'on_hold': '#64748b',
+        'closed': '#10b981', 'cancelled': '#94a3b8',
+    }
+
+    def to_dict(self, include_children=False):
+        data = {
+            'id': self.id,
+            'ticket_no': self.ticket_no,
+            'project_id': self.project_id,
+            'project_name': self.project_name,
+            'reporter_id': self.reporter_id,
+            'reporter_name': self.reporter_name,
+            'reporter_contact': self.reporter_contact,
+            'service_group': self.service_group,
+            'category': self.category,
+            'fault_type': self.fault_type,
+            'priority': self.priority,
+            'title': self.title,
+            'description': self.description,
+            'loc_property': self.loc_property,
+            'loc_zone': self.loc_zone,
+            'loc_sub_zone': self.loc_sub_zone,
+            'loc_base_unit': self.loc_base_unit,
+            'chargeable': bool(self.chargeable),
+            'assigned_to_id': self.assigned_to_id,
+            'assigned_to_name': self.assignee.full_name if self.assignee else None,
+            'status': self.status,
+            'labor_minutes_total': self.labor_minutes_total or 0,
+            'labor_cost_total': float(self.labor_cost_total or 0),
+            'material_cost_total': float(self.material_cost_total or 0),
+            'projected_price': float(self.projected_price or 0),
+            'total_cost': float((self.labor_cost_total or 0) + (self.material_cost_total or 0)),
+            'closed_at': self.closed_at.isoformat() if self.closed_at else None,
+            'closed_by_name': self.closed_by.full_name if self.closed_by else None,
+            'closure_summary': self.closure_summary,
+            'has_requester_signature': bool(self.requester_signature),
+            'has_technician_signature': bool(self.technician_signature),
+            'pdf_path': self.pdf_path,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'priority_color': self.PRIORITY_BADGE.get(self.priority or 'medium', '#64748b'),
+            'status_color': self.STATUS_BADGE.get(self.status or 'open', '#64748b'),
+        }
+        if include_children:
+            data['notes'] = [n.to_dict() for n in self.notes]
+            data['images'] = [i.to_dict() for i in self.images]
+            data['labor_entries'] = [l.to_dict() for l in self.labor_entries]
+            data['material_entries'] = [m.to_dict() for m in self.material_entries]
+        return data
+
+
+class TicketNote(db.Model):
+    __tablename__ = 'ticket_notes'
+    id = db.Column(db.Integer, primary_key=True)
+    ticket_id = db.Column(db.Integer, db.ForeignKey('tickets.id', ondelete='CASCADE'),
+                          nullable=False, index=True)
+    author_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    author_name = db.Column(db.String(120), nullable=True)
+    body = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=_utcnow, index=True)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'author_id': self.author_id,
+            'author_name': self.author_name,
+            'body': self.body,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class TicketImage(db.Model):
+    __tablename__ = 'ticket_images'
+    id = db.Column(db.Integer, primary_key=True)
+    ticket_id = db.Column(db.Integer, db.ForeignKey('tickets.id', ondelete='CASCADE'),
+                          nullable=False, index=True)
+    file_path = db.Column(db.String(500), nullable=False)
+    caption = db.Column(db.String(255), nullable=True)
+    uploaded_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=_utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'file_path': self.file_path,
+            'caption': self.caption,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class TicketLabor(db.Model):
+    """Manpower used on a ticket. Duration is one of 15, 30, 45, 60, 120, 180+ minutes."""
+    __tablename__ = 'ticket_labor'
+    id = db.Column(db.Integer, primary_key=True)
+    ticket_id = db.Column(db.Integer, db.ForeignKey('tickets.id', ondelete='CASCADE'),
+                          nullable=False, index=True)
+    worker_name = db.Column(db.String(120), nullable=True)
+    duration_minutes = db.Column(db.Integer, nullable=False)   # 15/30/45/60/120/180
+    hourly_rate = db.Column(db.Float, default=0.0)
+    cost = db.Column(db.Float, default=0.0)
+    notes = db.Column(db.String(255), nullable=True)
+    created_at = db.Column(db.DateTime, default=_utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'worker_name': self.worker_name,
+            'duration_minutes': self.duration_minutes,
+            'duration_label': _format_duration(self.duration_minutes),
+            'hourly_rate': float(self.hourly_rate or 0),
+            'cost': float(self.cost or 0),
+            'notes': self.notes,
+        }
+
+
+class TicketMaterial(db.Model):
+    """Material consumed on a ticket. Optionally linked to a procurement material submission."""
+    __tablename__ = 'ticket_materials'
+    id = db.Column(db.Integer, primary_key=True)
+    ticket_id = db.Column(db.Integer, db.ForeignKey('tickets.id', ondelete='CASCADE'),
+                          nullable=False, index=True)
+    procurement_ref = db.Column(db.String(50), nullable=True)  # Submission.submission_id of the material (if from list)
+    name = db.Column(db.String(255), nullable=False)
+    unit = db.Column(db.String(40), nullable=True)
+    quantity = db.Column(db.Float, default=1.0)
+    unit_price = db.Column(db.Float, default=0.0)
+    cost = db.Column(db.Float, default=0.0)
+    is_new = db.Column(db.Boolean, default=False)              # added on the fly (not in procurement list)
+    created_at = db.Column(db.DateTime, default=_utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'procurement_ref': self.procurement_ref,
+            'name': self.name,
+            'unit': self.unit,
+            'quantity': float(self.quantity or 0),
+            'unit_price': float(self.unit_price or 0),
+            'cost': float(self.cost or 0),
+            'is_new': bool(self.is_new),
+        }
+
+
+def _format_duration(mins):
+    if not mins:
+        return '0m'
+    if mins < 60:
+        return f'{mins}m'
+    h = mins // 60
+    m = mins % 60
+    if mins >= 180:
+        return f'{h}h+'
+    return f'{h}h' if m == 0 else f'{h}h {m}m'
