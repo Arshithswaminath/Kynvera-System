@@ -15,18 +15,18 @@
 </head>
 <body class="hr-form-unified">
   {% set active_page = 'hr' %}
-  {% include 'partials/main_navbar.html' with context %}
+  {% include 'partials/hr_embed_optional_navbar.html' %}
 
   <div class="success-bg" id="successModal">
     <div class="success-box">
-      <button type="button" class="success-back-btn" onclick="closeSuccessBackToForm()" title="Back to form">
+      <button type="button" class="success-back-btn" onclick="hrGoToSubmittedRequest()" title="View submitted request">
         <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
       </button>
       <div class="success-icon"><svg width="30" height="30" fill="none" stroke="#fff" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg></div>
       <h2>Form Submitted!</h2>
       <p>Visa renewal form sent to HR.</p>
       <div class="sub-id" id="submissionId"></div>
-      <button class="btn-submit" style="width:100%;justify-content:center" onclick="window.location.href='/hr/my-requests'">View My Requests</button>
+      <button class="btn-submit" style="width:100%;justify-content:center" onclick="hrGoToSubmittedRequest()">View My Requests</button>
     </div>
   </div>
 
@@ -47,6 +47,8 @@
         <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
         Back to HR
       </a>
+
+      {% include 'partials/hr_submitted_edit_banners.html' %}
 
       <div class="step-bar">
         <div class="step-item active" id="step1Badge" onclick="goToStep1()" role="button" tabindex="0"><span class="num">1</span><span>Details</span></div>
@@ -125,6 +127,8 @@
 
           </div>
 
+          {% include 'partials/hr_mgmt_chain_submit_block.html' %}
+
           <div class="doc-ft">
             <div class="doc-ft-meta"><span>Visa Renewal Form</span><span>DATE: <span id="docDate"></span></span></div>
             INJAAZ LLC · P.O Box: 3456 Ajman, UAE · www.injaaz.ae
@@ -132,7 +136,7 @@
 
           <div class="submit-bar" id="submitBar" style="display:none">
             <button type="button" class="btn-reset" onclick="if(confirm('Reset the form?')){document.getElementById('hrForm').reset();clearAllSigs();goToStep1()}">Reset</button>
-            <button type="submit" class="btn-submit"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> Submit Form</button>
+            <button type="submit" class="btn-submit">Submit Form</button>
           </div>
         </form>
       </div>
@@ -164,12 +168,6 @@ function goToStep1(){
   document.getElementById('connector1').classList.remove('done');
   document.getElementById('step1Panel').scrollIntoView({behavior:'smooth',block:'start'});
 }
-function closeSuccessBackToForm(){
-  document.getElementById('successModal').classList.remove('show');
-  goToStep1();
-  const btn=document.querySelector('#hrForm .btn-submit');
-  if(btn){btn.disabled=false;btn.innerHTML='<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> Submit Form'}
-}
 
 let pad=null,target=null;
 const bg=document.getElementById('sigBg'),cv=document.getElementById('sigCanvas');
@@ -184,6 +182,8 @@ function clearAllSigs(){rmSig('employee')}
 bg.addEventListener('click',e=>{if(e.target===bg)closeSig()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&bg.classList.contains('open'))closeSig()});
 
+(function(){var fid='hrForm';if(!window.HrGenericFormEdit)return;var o=openSig,r=rmSig;openSig=function(t){if(!HrGenericFormEdit.canModifySig(fid,t))return;return o(t);};rmSig=function(t){if(!HrGenericFormEdit.canModifySig(fid,t))return;return r(t);};})();
+
 document.getElementById('hrForm').addEventListener('submit',async e=>{
   e.preventDefault();
   const fd=new FormData(e.target),data=Object.fromEntries(fd.entries());
@@ -191,11 +191,20 @@ document.getElementById('hrForm').addEventListener('submit',async e=>{
   const btn=e.target.querySelector('.btn-submit');
   btn.disabled=true;btn.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="spin"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Submitting…';
   try{const res=await fetch('/hr/api/submit',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.getItem('access_token')},body:JSON.stringify(data)});const r=await res.json();
-  if(r.success){document.getElementById('submissionId').textContent=r.submission_id;document.getElementById('successModal').classList.add('show')}
-  else{alert('Error: '+(r.error||'Unknown'));btn.disabled=false;btn.innerHTML='<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> Submit Form'}
-  }catch(err){alert('Network error: '+err.message);btn.disabled=false;btn.innerHTML='<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> Submit Form'}
+  if(r.success){window.__hrLastHrSubmissionId=r.submission_id;document.getElementById('submissionId').textContent=r.submission_id;document.getElementById('successModal').classList.add('show')}
+  else{alert('Error: '+(r.error||'Unknown'));btn.disabled=false;btn.innerHTML='Submit Form'}
+  }catch(err){alert('Network error: '+err.message);btn.disabled=false;btn.innerHTML='Submit Form'}
 });
 </script>
+  <script src="{{ url_for('static', filename='js/hr_generic_form_edit.js') }}"></script>
+  <script>
+    HrGenericFormEdit.attach({
+      formId: 'hrForm',
+      moduleTypes: ['hr_visa_renewal'],
+      submitBarSelector: '#submitBar',
+      onEnterEditUi: function () { goToStep2(); },
+    });
+  </script>
   <script src="{{ url_for('static', filename='api-client.js') }}"></script>
   <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 </body>

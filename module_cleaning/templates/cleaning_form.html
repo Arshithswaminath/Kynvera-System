@@ -1268,7 +1268,7 @@
                             <h4 class="section-heading-no-border">Supervisor Sign-off</h4>
                             {% elif user_designation == 'operations_manager' %}
                             <h4 class="section-heading-no-border">Operations Manager Review</h4>
-                            {% elif user_designation == 'business_development' %}
+                            {% elif bd_inspection_reviewer %}
                             <h4 class="section-heading-no-border">Business Development Review</h4>
                             {% elif user_designation == 'procurement' %}
                             <h4 class="section-heading-no-border">Procurement Review</h4>
@@ -1523,7 +1523,7 @@
                             </div>
                             {% endif %}
 
-                            {% if user_designation == 'business_development' and is_edit_mode %}
+                            {% if bd_inspection_reviewer and is_edit_mode %}
                             <!-- Previous Reviewers: Supervisor + Operations Manager + Procurement (Read-only for BD) -->
                             <div class="col-12 mb-4" id="previousForBDSection" style="display: none;">
                               <div class="alert alert-info mb-3" style="background: #f0f9ff; border-color: #0ea5e9;">
@@ -3407,7 +3407,7 @@
                 {% endif %}
                 
                 // Load Supervisor comments and signature for BD (read-only)
-                {% if user_designation == 'business_development' %}
+                {% if bd_inspection_reviewer %}
                 let supervisorCommentsBD = null;
                 let supervisorSigBD = null;
                 
@@ -5741,7 +5741,7 @@
                     throw new Error(approveJson.error || 'Approval failed');
                 }
                 
-                {% elif user_designation == 'business_development' %}
+                {% elif bd_inspection_reviewer %}
                 // Business Development approval
                 const submissionId = window.editSubmissionId;
                 const token = localStorage.getItem('access_token');

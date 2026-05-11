@@ -206,7 +206,7 @@ def index():
                     can_view = True
             # Business Development - can edit while form is at bd_procurement_review stage
             # Can re-sign even after signing, and also at general_manager_review if GM hasn't started yet
-            elif user_designation == 'business_development':
+            elif user_designation == 'business_development' or user.is_bd_inspection_reviewer():
                 if workflow_status == 'bd_procurement_review':
                     # BD can edit while form is at this stage (even after they've signed)
                     can_edit = True
@@ -438,7 +438,12 @@ def index():
         # This allows reviewers to see the same editable view and add their comments/signatures
         review_param = request.args.get('review') == 'true'
         reviewer_designations = ['supervisor', 'manager', 'operations_manager', 'business_development', 'procurement', 'general_manager']
-        is_supervisor_edit = is_edit_mode and (user_designation in reviewer_designations or user.role == 'admin' or review_param)
+        is_supervisor_edit = is_edit_mode and (
+            user_designation in reviewer_designations
+            or user.is_bd_inspection_reviewer()
+            or user.role == 'admin'
+            or review_param
+        )
         
         # Log for debugging
         if is_edit_mode:
@@ -472,10 +477,12 @@ def index():
             # New form - supervisor can always create
             can_edit_form = True
         
+        bd_inspection_reviewer = user.is_bd_inspection_reviewer() or (user_designation == 'business_development')
         return render_template("hvac_mep_form.html", 
                              submission_data=submission_data, 
                              is_edit_mode=is_edit_mode,
                              user_designation=user_designation,
+                             bd_inspection_reviewer=bd_inspection_reviewer,
                              is_supervisor_edit=is_supervisor_edit,
                              can_edit=can_edit_form,
                              current_user_id=user_id,

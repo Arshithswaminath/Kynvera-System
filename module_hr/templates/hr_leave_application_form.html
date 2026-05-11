@@ -27,23 +27,38 @@
     .leave-opt .other-inp{flex:1;border:none;border-bottom:1.5px solid var(--bd);padding:.25rem .35rem;font-size:.85rem;background:transparent;outline:none;font-family:inherit;color:var(--ink)}
     .leave-opt .other-inp:focus{border-bottom-color:var(--pri)}
     @media(max-width:640px){.leave-grid{grid-template-columns:1fr}}
+    .rep-pick-row{display:flex;gap:.55rem;align-items:center;flex-wrap:wrap;margin-bottom:.55rem}
+    .rep-pick-row #repColleagueSelect{flex:1;min-width:200px}
+    .rep-chip-list{display:flex;flex-wrap:wrap;gap:.42rem;margin:.45rem 0 .15rem}
+    .rep-chip{display:inline-flex;align-items:center;gap:.35rem;padding:.3rem .62rem;border-radius:99px;background:var(--pri-xs);border:1.5px solid var(--pri-sm);font-size:.82rem;font-weight:600;color:var(--pri-d)}
+    .rep-chip button{border:none;background:transparent;cursor:pointer;line-height:1;padding:0 0 0 .25rem;color:#64748b;font-size:1rem}
+    .btn-inline{border-radius:10px;padding:.48rem .92rem;border:1.5px solid var(--bd);background:var(--sf);font-weight:600;cursor:pointer;font-size:.85rem;font-family:inherit;color:var(--ink2)}
+    .btn-inline:hover{border-color:var(--pri-sm)}
+    .sig-row-aligned .fld-lbl{font-size:.8125rem;font-weight:600;letter-spacing:.02em;text-transform:none;color:rgba(60,60,67,.92)}
+    .sig-row-aligned .sig-box{min-height:72px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+    /* Colleague column: stack the same dashed .sig-box as employee/manager — no alternate frame */
+    #replSigArea{width:100%}
+    .repl-sig-stack-wrap{width:100%;display:none;flex-direction:column;gap:.55rem}
+    .repl-sig-stack-wrap .sig-box{min-height:72px;margin:0}
+    .repl-sig-stack-wrap .sig-box img{display:block;margin:0 auto;max-width:100%;max-height:96px;object-fit:contain}
+    .repl-sig-stack-wrap .sig-box .repl-sig-who{font-size:.72rem;color:var(--ink3,#636366);font-weight:600;text-align:center;margin-top:.35rem;line-height:1.2;width:100%}
   </style>
   <style>.hr-form-unified .page { padding-top: 5.5rem; }</style>
 </head>
 <body class="hr-form-unified">
   {% set active_page = 'hr' %}
-  {% include 'partials/main_navbar.html' with context %}
+  {% include 'partials/hr_embed_optional_navbar.html' %}
 
   <div class="success-bg" id="successModal">
     <div class="success-box">
-      <button type="button" class="success-back-btn" onclick="closeSuccessBackToForm()" title="Back to form">
+      <button type="button" class="success-back-btn" onclick="hrGoToSubmittedRequest()" title="View submitted request">
         <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
       </button>
       <div class="success-icon"><svg width="30" height="30" fill="none" stroke="#fff" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg></div>
       <h2>Application Submitted!</h2>
-      <p>Your leave request has been sent to HR for review.</p>
+      <p id="successMsgLead">Your leave request has been sent to HR for review.</p>
       <div class="sub-id" id="submissionId"></div>
-      <button class="btn-submit" style="width:100%;justify-content:center" onclick="window.location.href='/hr/my-requests'">View My Requests</button>
+      <button class="btn-submit" style="width:100%;justify-content:center" onclick="hrGoToSubmittedRequest()">View My Requests</button>
     </div>
   </div>
 
@@ -64,6 +79,33 @@
         <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
         Back to HR
       </a>
+
+      <div id="submissionViewBanner" style="display:none;margin-bottom:1rem;line-height:1.5;color:#0d3d24;background:#e8f5ed;border:1.5px solid var(--pri-sm,#c2dece);border-radius:12px;padding:.9rem 1.05rem;">
+        <div style="font-size:1.08rem;font-weight:700;line-height:1.45;">
+          <strong>Submitted request.</strong>
+          <span id="submissionViewBannerText"></span>
+        </div>
+        <div id="submissionEditGraceRow" style="display:none;margin-top:.62rem;padding-top:.62rem;border-top:1px solid rgba(13,61,36,.22);font-size:.98rem;font-weight:600;line-height:1.45;color:#063a27;">
+          <strong>30-minute submitter edit (live):</strong>
+          <span id="submissionEditGraceCountdownTick" aria-live="polite"></span>
+        </div>
+        <div id="submissionApprovedRow" style="display:none;margin-top:.62rem;padding:.65rem .95rem;background:#ecfdf5;border:1.5px solid #34d399;border-radius:10px;font-size:.98rem;font-weight:700;line-height:1.45;color:#065f46;">
+          <strong>Approved</strong> — <span id="submissionApprovedDetail">This request is finalized. Editing is closed; use <strong>Download PDF</strong> below for the official signed record.</span>
+        </div>
+        <div id="submissionGraceExpiredWrap" role="status" aria-live="polite" style="display:none;margin-top:.55rem;">
+          <div id="submissionGraceExpiredHintTime" style="padding:.62rem .9rem;background:#fef3c7;border:1px solid #f59e0b;border-radius:10px;font-size:.96rem;font-weight:700;line-height:1.45;color:#92400e;">
+            <strong>30-minute employee edit window has ended.</strong> You can't change employee fields on this page anymore; your submission stays on record. Reporting manager / HR / GM / admin can still edit as needed — use PDF for reference or contact HR for corrections.
+          </div>
+          <div id="submissionGraceExpiredHintMgmt" style="display:none;padding:.62rem .9rem;background:#fef3c7;border:1px solid #f59e0b;border-radius:10px;font-size:.96rem;font-weight:700;line-height:1.45;color:#92400e;">
+            <strong>Reporting manager / management has signed this request.</strong> The employee edit window closed early — you can't change employee fields on this page anymore. Your submission stays on record; reporting manager / HR / GM / admin can still edit if needed — use PDF for reference or contact HR for corrections.
+          </div>
+        </div>
+        <div style="margin-top:.65rem;display:flex;flex-wrap:wrap;gap:.5rem;">
+          <a id="submissionViewPdf" href="#" class="submission-view-pdf-btn" download>Download PDF</a>
+        </div>
+      </div>
+
+      <div id="submissionRevisionBanner" style="display:none;margin-bottom:.85rem;font-size:1rem;font-weight:700;line-height:1.5;color:#7c3aed;background:#ede9fe;border:1px solid #c4b5fd;border-radius:12px;padding:.75rem 1rem;"></div>
 
       <div class="step-bar">
         <div class="step-item active" id="step1Badge" onclick="goToStep1()" role="button" tabindex="0"><span class="num">1</span><span>Employee Details</span></div>
@@ -140,49 +182,70 @@
               </section>
 
               <section class="sec">
-                <h2 class="sec-hd">Replacement &amp; Signatures</h2>
-                <div class="grid-3">
-                  <div class="fld"><label class="fld-lbl">Replacement Name</label><input class="fld-inp" type="text" name="replacement_name" placeholder="Person covering"></div>
-                  <div class="fld">
-                    <label class="fld-lbl">Replacement Signature</label>
+                <h2 class="sec-hd">Replacement signatories (coverage)</h2>
+                <p style="font-size:.8rem;color:var(--muted);margin:0 0 .85rem;line-height:1.45">
+                  Select teammates with <strong>Injaaz</strong> accounts. Each person listed will be asked to sign digitally on their own device before HR sees this leave request. You cannot capture their signature here.
+                </p>
+                <div class="rep-pick-row">
+                  <select id="repColleagueSelect" class="fld-inp" aria-label="Pick colleague">
+                    <option value="">— Choose colleague to add —</option>
+                  </select>
+                  <button type="button" class="btn-inline" id="repAddColleague">Add</button>
+                </div>
+                <div id="repChipList" class="rep-chip-list" aria-live="polite"></div>
+                <div class="fld" style="margin-top:.85rem">
+                  <label class="fld-lbl">Coverage name (reference only, optional)</label>
+                  <input class="fld-inp" type="text" name="replacement_name" id="replacementNameInp" placeholder="If you need a free-text note for who is covering">
+                </div>
+                <div class="grid-3 sig-row-aligned" style="margin-top:.75rem;align-items:start">
+                  <div class="fld sig-col">
+                    <label class="fld-lbl">Employee signature <span class="req">*</span></label>
                     <div class="sig-wrap">
-                      <div class="sig-box" id="replSigPrev"><span class="sig-ph">No signature</span><img id="replSigImg" src="" style="display:none"></div>
-                      <div class="sig-actions">
-                        <button type="button" class="btn-plus" onclick="openSig('replacement')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 4v16m8-8H4"/></svg> Sign</button>
-                        <button type="button" class="btn-rm" id="replSigRm" onclick="rmSig('replacement')">Remove</button>
-                      </div>
-                      <input type="hidden" name="replacement_signature" id="replSigData">
-                    </div>
-                  </div>
-                  <div class="fld">
-                    <label class="fld-lbl">Employee Signature <span class="req">*</span></label>
-                    <div class="sig-wrap">
-                      <div class="sig-box" id="empSigPrev"><span class="sig-ph">No signature</span><img id="empSigImg" src="" style="display:none"></div>
+                      <div class="sig-box" id="empSigPrev"><span class="sig-ph">No signature yet</span><img id="empSigImg" src="" alt="" style="display:none;max-width:100%;max-height:96px"></div>
                       <div class="sig-actions">
                         <button type="button" class="btn-plus" onclick="openSig('employee')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 4v16m8-8H4"/></svg> Sign</button>
                         <button type="button" class="btn-rm" id="empSigRm" onclick="rmSig('employee')">Remove</button>
                       </div>
                       <input type="hidden" name="employee_signature" id="empSigData">
                     </div>
+                    <em id="empSigHint" class="fld-indicator">Your signature confirming this leave request. Required before submit.</em>
                   </div>
-                  <div class="fld">
-                    <label class="fld-lbl">Manager Signature</label>
-                    {% if is_gm %}
+                  <div class="fld sig-col">
+                    <label class="fld-lbl">Colleague / replacement signature</label>
                     <div class="sig-wrap">
-                      <div class="sig-box" id="gmSigPrev"><span class="sig-ph">No signature</span><img id="gmSigImg" src="" style="display:none"></div>
+                      <div id="replSigArea" aria-live="polite" style="width:100%">
+                        <div class="repl-sig-stack-wrap" id="replSigStacks"></div>
+                        <div class="sig-box" id="replSigEmpty"><span class="sig-ph">No colleague sign-off yet</span></div>
+                      </div>
+                    </div>
+                    <em id="replSigHint" class="fld-indicator"
+                      data-repl-hint-pending="Each person you add above signs on their own device after you submit. Their signatures appear here."
+                      data-repl-hint-partial="Some colleagues have signed — waiting for remaining coverage sign-offs."
+                      data-repl-hint-done="All requested colleague coverage sign-offs are recorded.">Each person you add above signs on their own device after you submit. Their signatures appear here.</em>
+                  </div>
+                  <div class="fld sig-col">
+                    <label class="fld-lbl">Manager signature</label>
+                    <div class="sig-wrap">
+                      <div class="sig-box" id="gmSigPrev"><span class="sig-ph">No signature yet</span><img id="gmSigImg" src="" alt="" style="display:none;max-width:100%;max-height:96px"></div>
+                      {% if is_gm %}
                       <div class="sig-actions">
                         <button type="button" class="btn-plus" onclick="openSig('gm')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 4v16m8-8H4"/></svg> Sign</button>
                         <button type="button" class="btn-rm" id="gmSigRm" onclick="rmSig('gm')">Remove</button>
                       </div>
+                      {% endif %}
                       <input type="hidden" name="gm_signature" id="gmSigData">
                     </div>
-                    {% else %}
-                    <em class="fld-indicator">For GM approval workflow</em>
-                    {% endif %}
+                    <em id="gmSigHint" class="fld-indicator"
+                      data-gm-hint-pending="Reporting manager / GM approval appears here once completed in workflow."
+                      data-gm-hint-done="Reporting manager / GM approval recorded — shown above.">Reporting manager / GM approval appears here once completed in workflow.</em>
                   </div>
                 </div>
               </section>
 
+              <div class="hr-staff-zone{% if not is_hr %} hr-staff-zone--locked{% endif %}">
+              {% if not is_hr %}
+              <p class="hr-preview-banner" role="note">The sections below mirror the official paper form. They stay <strong>read-only</strong> for you — only HR staff complete them after intake.</p>
+              {% endif %}
               <section class="sec">
                 <h2 class="sec-hd">HR Review</h2>
                 <div class="grid-2">
@@ -193,14 +256,14 @@
                       <label><input type="radio" name="hr_checked" value="YES"> YES</label>
                       <label><input type="radio" name="hr_checked" value="NO"> NO</label>
                       {% else %}
-                      <label><input type="radio" disabled> YES</label>
-                      <label><input type="radio" disabled> NO</label>
+                      <label><input type="radio" name="hr_checked_ro" value="YES" tabindex="-1" disabled> YES</label>
+                      <label><input type="radio" name="hr_checked_ro" value="NO" tabindex="-1" disabled> NO</label>
                       {% endif %}
                     </div>
                   </div>
                   <div class="fld fw">
                     <label class="fld-lbl">HR Comments</label>
-                    <textarea class="fld-inp" name="hr_comments" rows="2" placeholder="{% if is_hr %}Enter HR comments…{% else %}HR use only{% endif %}" {% if not is_hr %}readonly{% endif %}></textarea>
+                    <textarea class="fld-inp" name="hr_comments" rows="2" placeholder="{% if is_hr %}Enter HR comments…{% else %}Entered by HR after review{% endif %}" {% if not is_hr %}readonly tabindex="-1"{% endif %}></textarea>
                   </div>
                 </div>
               </section>
@@ -208,28 +271,29 @@
               <section class="sec sec-hr">
                 <h2 class="sec-hd">For Human Resources Only</h2>
                 <div class="grid-3">
-                  <div class="fld"><label class="fld-lbl">Balance C/F</label><input class="fld-inp" type="text" name="hr_balance_cf" {% if not is_hr %}readonly{% endif %}></div>
-                  <div class="fld"><label class="fld-lbl">Contract Year</label><input class="fld-inp" type="text" name="hr_contract_year" {% if not is_hr %}readonly{% endif %}></div>
-                  <div class="fld"><label class="fld-lbl">Paid</label><input class="fld-inp" type="text" name="hr_paid" {% if not is_hr %}readonly{% endif %}></div>
-                  <div class="fld"><label class="fld-lbl">Unpaid</label><input class="fld-inp" type="text" name="hr_unpaid" {% if not is_hr %}readonly{% endif %}></div>
+                  <div class="fld"><label class="fld-lbl">Balance C/F</label><input class="fld-inp" type="text" name="hr_balance_cf" {% if not is_hr %}readonly tabindex="-1"{% endif %}></div>
+                  <div class="fld"><label class="fld-lbl">Contract Year</label><input class="fld-inp" type="text" name="hr_contract_year" {% if not is_hr %}readonly tabindex="-1"{% endif %}></div>
+                  <div class="fld"><label class="fld-lbl">Paid</label><input class="fld-inp" type="text" name="hr_paid" {% if not is_hr %}readonly tabindex="-1"{% endif %}></div>
+                  <div class="fld"><label class="fld-lbl">Unpaid</label><input class="fld-inp" type="text" name="hr_unpaid" {% if not is_hr %}readonly tabindex="-1"{% endif %}></div>
                   <div class="fld">
                     <label class="fld-lbl">HR Signature</label>
-                    {% if is_hr %}
                     <div class="sig-wrap">
                       <div class="sig-box" id="hrSigPrev"><span class="sig-ph">No signature</span><img id="hrSigImg" src="" style="display:none"></div>
+                      {% if is_hr %}
                       <div class="sig-actions">
                         <button type="button" class="btn-plus" onclick="openSig('hr')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 4v16m8-8H4"/></svg> Sign</button>
                         <button type="button" class="btn-rm" id="hrSigRm" onclick="rmSig('hr')">Remove</button>
                       </div>
+                      {% else %}
+                      <p class="doc-intro" style="font-size:.78rem;color:var(--muted);margin:.35rem 0 0">Captured by HR in workflow</p>
+                      {% endif %}
                       <input type="hidden" name="hr_signature" id="hrSigData">
                     </div>
-                    {% else %}
-                    <em class="fld-indicator">HR use only</em>
-                    {% endif %}
                   </div>
-                  <div class="fld"><label class="fld-lbl">Date</label><input class="fld-inp" type="date" name="hr_date" {% if not is_hr %}readonly{% endif %}></div>
+                  <div class="fld"><label class="fld-lbl">Date</label><input class="fld-inp" type="date" name="hr_date" {% if not is_hr %}readonly tabindex="-1"{% endif %}></div>
                 </div>
               </section>
+              </div>
 
               <div class="step-nav">
                 <button type="button" class="btn-back" onclick="goToStep1()"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12"/></svg> Back to Step 1</button>
@@ -239,14 +303,16 @@
 
           </div>
 
+          {% include 'partials/hr_mgmt_chain_submit_block.html' %}
+
           <div class="doc-ft">
             <div class="doc-ft-meta"><span>DOC NO: HR-FRM-007</span><span>DATE: <span id="docDate"></span></span><span>ISSUE: 00</span><span>REVISION: 00</span></div>
             P.O Box: 3456 Ajman, UAE · Tel 067116815 · www.injaaz.ae<br>Registered under trade license name INJAAZ LLC
           </div>
 
           <div class="submit-bar" id="submitBar" style="display:none">
-            <button type="button" class="btn-reset" onclick="if(confirm('Reset the form?')){document.getElementById('leaveFrm').reset();clearAllSigs();goToStep1()}">Reset</button>
-            <button type="submit" class="btn-submit"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> Submit Application</button>
+            <button type="button" class="btn-reset" onclick="if(confirm('Reset the form?')){document.getElementById('leaveFrm').reset();replacementSignerIds=[];renderRepChips();clearAllSigs();window.HrMgmtChainReset&&HrMgmtChainReset();goToStep1()}">Reset</button>
+            <button type="submit" class="btn-submit">Submit Application</button>
           </div>
         </form>
       </div>
@@ -254,9 +320,413 @@
   </div>
 
 <script>
-const today=new Date().toISOString().split('T')[0];
-document.getElementById('todayDate').value=today;
-document.getElementById('docDate').textContent=new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'});
+const today = new Date().toISOString().split('T')[0];
+let submissionViewLocked = false;
+let submissionHydrateId = null;
+/** @type{'hr'|'employee'|'full'|null} */
+let submissionSaveKind = null;
+let submissionAllowSave = false;
+let submissionCanEditEmployee = false;
+let submissionCanEditHr = false;
+let employeeEditUntilIso = null;
+let submissionGraceIntervalId = null;
+let submissionGraceRefreshing = false;
+
+function toDateInputOnly(v) {
+  if (v == null || v === '') return '';
+  const s = String(v).trim();
+  return s.length >= 10 ? s.slice(0, 10) : s;
+}
+
+function fmtLocalMaybeIso(iso) {
+  if (iso == null || iso === '') return '';
+  let s = String(iso).trim().replace(' ', 'T');
+  const hasTz = /[zZ]$/.test(s) || /[+-]\d{2}:?\d{2}$/.test(s);
+  if (!hasTz) {
+    const head = s.slice(0, 10);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(head) && !/T\d/.test(s)) s = head + 'T12:00:00Z';
+    else s += 'Z';
+  }
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return String(iso);
+  return d.toLocaleString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+    timeZone: 'Asia/Dubai',
+  });
+}
+
+function effectiveEmployeeEditUntilIso(payload) {
+  if (!payload || (payload.status || '') === 'draft') return null;
+  const u = payload.employee_edit_until;
+  if (u != null && String(u).trim() !== '') return String(u).trim();
+  return null;
+}
+
+function padLeaveGraceSec(n) {
+  const s = String(Math.floor(Number(n)));
+  return s.length >= 2 ? s : '0' + s;
+}
+
+function formatRemainMsLeave(ms) {
+  ms = Math.max(0, Math.floor(ms / 1000));
+  const m = Math.floor(ms / 60);
+  const rs = ms % 60;
+  return m + ':' + padLeaveGraceSec(rs);
+}
+
+/** Whenever API returns submitter grace deadline (same row as HR/GM submitting own leave). */
+function shouldShowLeaveGraceCountdown() {
+  return !!employeeEditUntilIso;
+}
+
+function syncLeaveFormBackNavToSubmittedForms() {
+  var back = document.querySelector('.page-inner > a.back-btn');
+  if (!back) return;
+  back.setAttribute('href', '/workflow/submitted-forms');
+  var svg = back.querySelector('svg');
+  var label = ' Back to submitted forms';
+  if (svg) {
+    var clone = svg.cloneNode(true);
+    back.textContent = '';
+    back.appendChild(clone);
+    back.appendChild(document.createTextNode(label));
+  } else {
+    back.textContent = label.replace(/^\s+/, '');
+  }
+}
+
+function stopSubmissionGraceTimer() {
+  if (submissionGraceIntervalId !== null) {
+    clearInterval(submissionGraceIntervalId);
+    submissionGraceIntervalId = null;
+  }
+  const row = document.getElementById('submissionEditGraceRow');
+  const tickEl = document.getElementById('submissionEditGraceCountdownTick');
+  if (row) row.style.display = 'none';
+  if (tickEl) tickEl.textContent = '';
+}
+
+function syncSubmissionGraceExpiredHint(show, payload) {
+  const wrap = document.getElementById('submissionGraceExpiredWrap');
+  const timeEl = document.getElementById('submissionGraceExpiredHintTime');
+  const mgmtEl = document.getElementById('submissionGraceExpiredHintMgmt');
+  if (!wrap) return;
+  wrap.style.display = show ? 'block' : 'none';
+  if (timeEl) timeEl.style.display = 'block';
+  if (mgmtEl) mgmtEl.style.display = 'none';
+  if (
+    show &&
+    timeEl &&
+    mgmtEl &&
+    payload &&
+    payload.submitter_grace_revoked_by_management_signature
+  ) {
+    timeEl.style.display = 'none';
+    mgmtEl.style.display = 'block';
+  }
+}
+
+function syncSubmissionApprovedDetail(allowSaveWhileFinalized) {
+  const el = document.getElementById('submissionApprovedDetail');
+  if (!el) return;
+  if (allowSaveWhileFinalized) {
+    el.innerHTML =
+      'Finalized and approved. As <strong>administrator</strong> you may still amend stored fields when needed; for other roles this page is read-only. Use <strong>Download PDF</strong> below for the official signed record.';
+  } else {
+    el.innerHTML =
+      'This request is finalized. Editing is closed; use <strong>Download PDF</strong> below for the official signed record.';
+  }
+}
+
+function applyLeaveHydrationLocksAndBanner(payload, urlSid) {
+  submissionCanEditEmployee = !!payload.can_edit_employee_sections;
+  submissionCanEditHr = !!payload.can_edit_hr_sections;
+  employeeEditUntilIso = effectiveEmployeeEditUntilIso(payload);
+  submissionSaveKind = null;
+  submissionAllowSave = false;
+
+  const isDraft = (payload.status || '') === 'draft';
+  const banner = document.getElementById('submissionViewBanner');
+  const btxt = document.getElementById('submissionViewBannerText');
+  const pdfA = document.getElementById('submissionViewPdf');
+  if (!isDraft && banner && btxt) {
+    banner.style.display = 'block';
+    syncLeaveFormBackNavToSubmittedForms();
+    submissionHydrateId = payload.submission_id || urlSid;
+    const finalized = !!payload.hr_request_approved_completed;
+    const withdrawn = !!payload.hr_request_withdrawn;
+    const apr = document.getElementById('submissionApprovedRow');
+    if (apr) apr.style.display = finalized && !withdrawn ? 'block' : 'none';
+    const parts = [' Showing saved answers for ' + submissionHydrateId + '.'];
+    if (!finalized) {
+      if (submissionCanEditEmployee && submissionCanEditHr) {
+        parts.push(
+          ' You have ongoing edit access as reporting manager / HR / GM / admin (employee and HR portions).'
+        );
+      } else if (submissionCanEditEmployee && employeeEditUntilIso) {
+        parts.push(
+          ' You may edit employee fields until ' + fmtLocalMaybeIso(employeeEditUntilIso) + '.'
+        );
+      } else if (submissionCanEditEmployee) {
+        parts.push(' You can edit employee portions of this request.');
+      } else if (submissionCanEditHr) {
+        parts.push(' Employee sections are locked; HR Review / HR-only sections remain editable.');
+      } else {
+        parts.push(' This page is read-only; download the PDF for the official record.');
+      }
+      btxt.textContent = parts.join('');
+    }
+    if (withdrawn && btxt) {
+      btxt.textContent =
+        ' You withdrew this request (' +
+        submissionHydrateId +
+        '). It is no longer in the approval workflow. This page is for reference; use Download PDF if needed.';
+    }
+    syncSubmissionGraceExpiredHint(
+      !!payload.submitter_employee_edit_window_closed && !finalized && !withdrawn,
+      finalized || withdrawn ? {} : payload
+    );
+    if (pdfA) {
+      pdfA.href = '/hr/download-pdf/' + encodeURIComponent(submissionHydrateId);
+      pdfA.removeAttribute('target');
+    }
+    lockLeaveFormForReadOnlyView();
+    if (submissionCanEditHr) unlockHrStaffZoneForEditing();
+    if (submissionCanEditEmployee) unlockEmployeeSectionsForEditing();
+
+    if (submissionCanEditHr && submissionCanEditEmployee) submissionSaveKind = 'full';
+    else if (submissionCanEditHr) submissionSaveKind = 'hr';
+    else if (submissionCanEditEmployee) submissionSaveKind = 'employee';
+
+    submissionAllowSave = !!submissionSaveKind;
+
+    if (finalized && btxt) {
+      if (submissionAllowSave) {
+        btxt.textContent =
+          ' Showing saved submission ' + submissionHydrateId + '. You may save changes while signed in as administrator.';
+      } else {
+        btxt.textContent = ' Showing saved submission ' + submissionHydrateId + '.';
+      }
+    }
+    syncSubmissionApprovedDetail(finalized && submissionAllowSave);
+
+    const saveBar = document.getElementById('submitBar');
+    const submitBtn = saveBar?.querySelector('.btn-submit');
+    const resetB = saveBar?.querySelector('.btn-reset');
+    if (submissionAllowSave && saveBar && submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.style.display = 'inline-flex';
+      submitBtn.textContent = submissionSaveKind === 'hr' ? 'Save HR updates' : 'Save changes';
+      if (resetB) resetB.style.display = 'none';
+      saveBar.style.display = 'flex';
+    } else {
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.style.display = 'none';
+      }
+      if (resetB) resetB.style.display = 'none';
+      if (saveBar) saveBar.style.display = 'none';
+    }
+  } else {
+    const aprx = document.getElementById('submissionApprovedRow');
+    if (aprx) aprx.style.display = 'none';
+    syncSubmissionGraceExpiredHint(false);
+  }
+  return employeeEditUntilIso;
+}
+
+function startSubmissionGraceTimer() {
+  stopSubmissionGraceTimer();
+  if (!shouldShowLeaveGraceCountdown()) return;
+  const endMs = new Date(employeeEditUntilIso).getTime();
+  if (Number.isNaN(endMs)) return;
+  const row = document.getElementById('submissionEditGraceRow');
+  const tickEl = document.getElementById('submissionEditGraceCountdownTick');
+  if (!row || !tickEl) return;
+
+  const untilIsoLocal = employeeEditUntilIso;
+
+  function expireAndRefetch() {
+    if (submissionGraceIntervalId !== null) {
+      clearInterval(submissionGraceIntervalId);
+      submissionGraceIntervalId = null;
+    }
+    if (submissionGraceRefreshing) return;
+    submissionGraceRefreshing = true;
+    row.style.display = 'block';
+    tickEl.textContent = ' Updating edit access…';
+    const token = localStorage.getItem('access_token');
+    const hid = submissionHydrateId || new URLSearchParams(location.search).get('edit');
+    if (!token || !hid) {
+      submissionGraceRefreshing = false;
+      stopSubmissionGraceTimer();
+      return;
+    }
+    fetch('/api/workflow/submissions/' + encodeURIComponent(hid), {
+      headers: { Authorization: 'Bearer ' + token },
+    })
+      .then(async (res) => {
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok || payload.success === false) return;
+        const mod = payload.module_type || payload.module;
+        if (mod !== 'hr_leave_application' && mod !== 'hr_leave') return;
+        const urlSid = new URLSearchParams(location.search).get('edit') || hid;
+        applyLeaveHydrationLocksAndBanner(payload, urlSid);
+        startSubmissionGraceTimer();
+      })
+      .catch(() => stopSubmissionGraceTimer())
+      .finally(() => {
+        submissionGraceRefreshing = false;
+      });
+  }
+
+  function tickRunner() {
+    const rem = endMs - Date.now();
+    if (rem <= 0) {
+      expireAndRefetch();
+      return;
+    }
+    row.style.display = 'block';
+    tickEl.textContent =
+      ' ' +
+      formatRemainMsLeave(rem) +
+      ' left (ends ' +
+      fmtLocalMaybeIso(untilIsoLocal) +
+      '). The original submitter can no longer edit employee fields after this; reporting manager / HR / GM / admin keep access.';
+  }
+
+  submissionGraceIntervalId = setInterval(tickRunner, 1000);
+  tickRunner();
+}
+
+function showSubmissionRevisionBanner(fd) {
+  const el = document.getElementById('submissionRevisionBanner');
+  if (!el) return;
+  const hist = fd && fd.submission_form_revision_history;
+  const hasHist = Array.isArray(hist) && hist.length;
+  if (!fd || (!fd.submission_form_revision_at && !hasHist)) {
+    el.style.display = 'none';
+    return;
+  }
+  el.style.display = 'block';
+  el.style.whiteSpace = 'pre-line';
+  if (hasHist) {
+    const sorted = hist.slice().sort((a, b) => (Number(a.save_index) || 0) - (Number(b.save_index) || 0));
+    const lines = sorted.map((e) => {
+      const who = e.by_name || '—';
+      const when = fmtLocalMaybeIso(e.at || '');
+      return `Save #${e.save_index != null ? e.save_index : '—'}: ${who} · ${when}`;
+    });
+    el.textContent =
+      `Post-submit edits (${hist.length} save${hist.length === 1 ? '' : 's'}) — full trail is stored and appears on PDFs/emailed copies:\n` +
+      lines.join('\n');
+    return;
+  }
+  el.style.whiteSpace = '';
+  const n = fd.submission_form_revision_count;
+  const by = fd.submission_form_revision_by_name || '';
+  const nNum = Number(n);
+  el.textContent =
+    'This form was updated after submission' +
+    (Number.isFinite(nNum) && nNum >= 1 ? ' (save #' + nNum + ')' : '') +
+    (by ? ' by ' + by : '') +
+    ' — ' +
+    fmtLocalMaybeIso(fd.submission_form_revision_at) +
+    '.';
+}
+
+function submissionFieldIsMgmtOrHr(el) {
+  if (!el || !(el.closest && typeof el.closest === 'function')) return false;
+  const chain = document.getElementById('hrMgmtChainSec');
+  return Boolean((chain && chain.contains(el)) || el.closest('.hr-staff-zone'));
+}
+
+function unlockEmployeeSectionsForEditing() {
+  const form = document.getElementById('leaveFrm');
+  if (!form) return;
+  form.querySelectorAll('input:not([type="hidden"]), textarea, select').forEach((el) => {
+    if (submissionFieldIsMgmtOrHr(el)) return;
+    if (el.type === 'radio' || el.type === 'checkbox') el.disabled = false;
+    else {
+      el.readOnly = false;
+      el.removeAttribute('readonly');
+      if (el.getAttribute('tabindex') === '-1') el.removeAttribute('tabindex');
+    }
+  });
+  document.querySelectorAll('.leave-type-check').forEach((c) => {
+    c.disabled = false;
+  });
+  syncLeaveTypeUI();
+  const repAdd = document.getElementById('repAddColleague');
+  if (repAdd) repAdd.disabled = false;
+  document.querySelectorAll('#repChipList .rep-chip button').forEach((b) => {
+    b.style.display = '';
+  });
+  form.querySelectorAll('.sig-wrap').forEach((wrap) => {
+    if (submissionFieldIsMgmtOrHr(wrap)) return;
+    const act = wrap.querySelector('.sig-actions');
+    if (act) act.style.display = '';
+  });
+}
+
+function collectLeaveEmployeeFormUpdates() {
+  const form = document.getElementById('leaveFrm');
+  if (!form) return {};
+  const raw = Object.fromEntries(new FormData(form).entries());
+  const out = {};
+  for (const [k, v] of Object.entries(raw)) {
+    if (k.startsWith('hr_')) continue;
+    if (k === 'gm_signature' && !viewerMayEditGmSignatureOnForm) continue;
+    const elList = form.elements[k];
+    if (!elList) {
+      out[k] = v;
+      continue;
+    }
+    const probe = elList.nodeName ? elList : elList[0];
+    if (probe && submissionFieldIsMgmtOrHr(probe)) continue;
+    out[k] = v;
+  }
+  const sa = form.querySelector('input[name="salary_advance"]:checked');
+  if (sa) out.salary_advance = sa.value;
+  const lt = form.querySelector('.leave-type-check:checked');
+  if (lt) out.leave_type = lt.value;
+  if (replacementSignerIds.length) {
+    out.replacement_signer_ids = [...replacementSignerIds];
+  }
+  const empSig = document.getElementById('empSigData')?.value;
+  if (empSig) out.employee_signature = empSig;
+  const gmSig = document.getElementById('gmSigData')?.value;
+  if (viewerMayEditGmSignatureOnForm && gmSig) out.gm_signature = gmSig;
+  return out;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const docDateEl = document.getElementById('docDate');
+  if (docDateEl)
+    docDateEl.textContent = new Date().toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      timeZone: 'Asia/Dubai',
+    });
+
+  const td = document.getElementById('todayDate');
+  if (td && !td.value) td.value = today;
+
+  setupLeaveTypeChecks();
+  void (async () => {
+    await loadColleaguePicker();
+    await hydrateFromSubmissionIfNeeded();
+    syncGmSigHint();
+    renderReplacementSignaturesPreview(leaveHydrationFd || {});
+    syncReplSigHint();
+  })();
+});
 
 function syncLeaveTypeUI(){
   const checks=[...document.querySelectorAll('.leave-type-check')];
@@ -283,12 +753,88 @@ function setupLeaveTypeChecks(){
   });
   syncLeaveTypeUI();
 }
-setupLeaveTypeChecks();
+
+let replacementSignerIds = [];
+let colleaguePicker = [];
+
+function syncReplacementUi(){
+  const on = replacementSignerIds.length > 0;
+  const nm = document.getElementById('repLegacyNameFld');
+  const sg = document.getElementById('repLegacySigFld');
+  const hm = document.getElementById('repLegacyHint');
+  if(nm) nm.style.display = on ? 'none' : '';
+  if(sg) sg.style.display = on ? 'none' : '';
+  if(hm) hm.style.display = on ? 'none' : '';
+  if(on){
+    rmSig('replacement');
+    const ri = document.getElementById('replacementNameInp');
+    if(ri) ri.value = '';
+  }
+}
+
+function renderRepChips(){
+  const box = document.getElementById('repChipList');
+  if(!box) return;
+  if(!replacementSignerIds.length){ box.innerHTML=''; syncReplacementUi(); syncReplSigHint(); return; }
+  const byId = new Map(colleaguePicker.map(u=>[u.id,u]));
+  box.innerHTML = replacementSignerIds.map(id=>{
+    const u = byId.get(id);
+    const label = u ? (u.full_name || u.username) : ('User #'+id);
+    return '<span class="rep-chip" data-id="'+id+'">'+escapeRep(label)+' <button type="button" aria-label="Remove">&times;</button></span>';
+  }).join('');
+  box.querySelectorAll('.rep-chip button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const chip = btn.closest('.rep-chip');
+      const id = parseInt(chip && chip.getAttribute('data-id'),10);
+      replacementSignerIds = replacementSignerIds.filter(x=>x!==id);
+      renderRepChips();
+    });
+  });
+  syncReplacementUi();
+  syncReplSigHint();
+}
+
+function escapeRep(t){
+  const d=document.createElement('div'); d.textContent=t||''; return d.innerHTML;
+}
+
+async function loadColleaguePicker(){
+  const sel = document.getElementById('repColleagueSelect');
+  if(!sel) return;
+  try{
+    const res = await fetch('/hr/api/active-users-for-picker', { headers:{ 'Authorization':'Bearer '+localStorage.getItem('access_token') } });
+    const j = await res.json();
+    colleaguePicker = (j.users)||[];
+    while(sel.children.length > 1) sel.removeChild(sel.lastChild);
+    colleaguePicker.sort((a,b)=>(a.full_name||a.username||'').localeCompare(b.full_name||b.username||'', undefined, {sensitivity:'base'}));
+    colleaguePicker.forEach(u=>{
+          const opt = document.createElement('option');
+          opt.value = String(u.id);
+          opt.textContent = (u.full_name || u.username) + ' ('+u.username+')';
+          sel.appendChild(opt);
+    });
+  }catch(_){ colleaguePicker=[]; }
+}
+
+document.getElementById('repAddColleague')?.addEventListener('click', ()=>{
+  if (submissionViewLocked && !submissionCanEditEmployee) return;
+  const sel = document.getElementById('repColleagueSelect');
+  if(!sel||!sel.value) return;
+  const id = parseInt(sel.value,10);
+  if(!Number.isFinite(id)) return;
+  if(!replacementSignerIds.includes(id)) replacementSignerIds.push(id);
+  sel.value='';
+  renderRepChips();
+});
 
 function goToStep2(){
   document.getElementById('step1Panel').classList.remove('active');
   document.getElementById('step2Panel').classList.add('active');
-  document.getElementById('submitBar').style.display='flex';
+  const sb = document.getElementById('submitBar');
+  if (sb) {
+    if (!submissionViewLocked || submissionAllowSave)
+      sb.style.display = 'flex';
+  }
   document.getElementById('step1Badge').className='step-item done';
   document.getElementById('step1Badge').querySelector('.num').innerHTML='✓';
   document.getElementById('step2Badge').className='step-item active';
@@ -306,12 +852,6 @@ function goToStep1(){
   document.getElementById('connector1').classList.remove('done');
   document.getElementById('step1Panel').scrollIntoView({behavior:'smooth',block:'start'});
 }
-function closeSuccessBackToForm(){
-  document.getElementById('successModal').classList.remove('show');
-  goToStep1();
-  const btn=document.querySelector('#leaveFrm .btn-submit');
-  if(btn){btn.disabled=false;btn.innerHTML='<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> Submit Application'}
-}
 
 function calc(){
   const f=document.getElementById('firstDay').value,l=document.getElementById('lastDay').value;
@@ -322,35 +862,439 @@ document.getElementById('lastDay').addEventListener('change',calc);
 
 let pad=null,target=null;
 const bg=document.getElementById('sigBg'),cv=document.getElementById('sigCanvas');
+const viewerMayEditGmSignatureOnForm = {{ is_gm | tojson }};
 const sigCfg={
-  employee:{prev:'empSigPrev',img:'empSigImg',data:'empSigData',rm:'empSigRm',title:'Employee Signature'},
-  gm:{prev:'gmSigPrev',img:'gmSigImg',data:'gmSigData',rm:'gmSigRm',title:'Manager Signature'},
-  hr:{prev:'hrSigPrev',img:'hrSigImg',data:'hrSigData',rm:'hrSigRm',title:'HR Signature'},
-  replacement:{prev:'replSigPrev',img:'replSigImg',data:'replSigData',rm:'replSigRm',title:'Replacement Signature'}
+  employee:{prev:'empSigPrev',img:'empSigImg',data:'empSigData',rm:'empSigRm',title:'Employee Signature'}
 };
+{% if is_gm %}
+sigCfg.gm={prev:'gmSigPrev',img:'gmSigImg',data:'gmSigData',rm:'gmSigRm',title:'Manager Signature'};
+{% endif %}
+{% if is_hr %}
+sigCfg.hr={prev:'hrSigPrev',img:'hrSigImg',data:'hrSigData',rm:'hrSigRm',title:'HR Signature'};
+{% endif %}
+if (document.getElementById('gmSigImg')) {
+  sigCfg.gm = sigCfg.gm || { prev: 'gmSigPrev', img: 'gmSigImg', data: 'gmSigData', rm: 'gmSigRm', title: 'Manager Signature' };
+}
+if (!sigCfg.hr && document.getElementById('hrSigImg')) {
+  sigCfg.hr = { prev: 'hrSigPrev', img: 'hrSigImg', data: 'hrSigData', rm: 'hrSigRm', title: 'HR Signature' };
+}
 
-function openSig(t){target=t;const c=sigCfg[t];if(!c)return;document.getElementById('sigTitle').textContent=c.title;bg.classList.add('open');document.body.style.overflow='hidden';requestAnimationFrame(()=>{const r=window.devicePixelRatio||1,w=cv.offsetWidth;cv.width=w*r;cv.height=180*r;cv.getContext('2d').scale(r,r);cv.style.height='180px';if(pad)pad.off();pad=new SignaturePad(cv,{backgroundColor:'rgb(250,250,250)',penColor:'#0d1f14',minWidth:1.2,maxWidth:2.8})})}
+function resolveSignaturePreviewUrl(raw) {
+  if (raw == null || raw === '') return '';
+  if (typeof raw === 'string') {
+    const s = raw.trim();
+    if (s.startsWith('data:image')) return s;
+    if (s.startsWith('http://') || s.startsWith('https://') || s.startsWith('/')) return s;
+    return '';
+  }
+  if (typeof raw === 'object' && raw !== null && typeof raw.url === 'string' && raw.url.trim()) {
+    const u = raw.url.trim();
+    if (u.startsWith('http://') || u.startsWith('https://') || u.startsWith('/') || u.startsWith('data:image')) return u;
+  }
+  return '';
+}
+
+let leaveHydrationFd = null;
+
+function collectReplacementSignersForPreview(fd) {
+  fd = fd || {};
+  let list = [];
+  var routed = fd._routed_signoffs;
+  if (routed && routed.slots && Array.isArray(routed.slots)) {
+    routed.slots.forEach(function (grp) {
+      if (!grp || grp.key !== 'replacement' || !Array.isArray(grp.signers)) return;
+      list = grp.signers.slice();
+    });
+  }
+  if (!list.length && Array.isArray(fd.replacement_signers)) list = fd.replacement_signers.slice();
+  return list.filter(Boolean);
+}
+
+function renderReplacementSignaturesPreview(fd) {
+  fd = fd || {};
+  const stack = document.getElementById('replSigStacks');
+  const emptyBox = document.getElementById('replSigEmpty');
+  if (!stack || !emptyBox) return;
+  stack.innerHTML = '';
+  stack.style.display = 'none';
+  emptyBox.style.display = 'flex';
+
+  const signers = collectReplacementSignersForPreview(fd);
+  const items = [];
+  signers.forEach(function (s) {
+    if (!s) return;
+    const u = resolveSignaturePreviewUrl(s.signature);
+    if (!u) return;
+    items.push({ name: (s.display_name || s.username || 'Colleague').trim(), url: u });
+  });
+
+  if (!items.length && fd.replacement_signature) {
+    const u = resolveSignaturePreviewUrl(fd.replacement_signature);
+    if (u) items.push({ name: 'Replacement coverage', url: u });
+  }
+
+  if (!items.length) {
+    syncReplSigHint();
+    return;
+  }
+
+  emptyBox.style.display = 'none';
+  stack.style.display = 'flex';
+
+  const multi = items.length > 1;
+  items.forEach(function (row) {
+    const box = document.createElement('div');
+    box.className = 'sig-box';
+    const img = document.createElement('img');
+    img.src = row.url;
+    img.alt = multi ? ('Signature — ' + row.name) : 'Colleague signature';
+    img.setAttribute(
+      'style',
+      'display:block;margin:0 auto;max-width:100%;max-height:96px;object-fit:contain',
+    );
+    box.appendChild(img);
+    if (multi) {
+      const who = document.createElement('div');
+      who.className = 'repl-sig-who';
+      who.textContent = row.name;
+      box.appendChild(who);
+    }
+    stack.appendChild(box);
+  });
+  syncReplSigHint();
+}
+
+function syncReplSigHint() {
+  const el = document.getElementById('replSigHint');
+  if (!el) return;
+  const pend = el.getAttribute('data-repl-hint-pending') || '';
+  const part = el.getAttribute('data-repl-hint-partial') || '';
+  const done = el.getAttribute('data-repl-hint-done') || '';
+  const fd = leaveHydrationFd || {};
+  const fromServer = collectReplacementSignersForPreview(fd);
+  const signed = document.querySelectorAll('#replSigStacks .sig-box img').length;
+  let need = replacementSignerIds.length || fromServer.length;
+  const hasRendered = signed > 0;
+  const legacyUrl = fd.replacement_signature && resolveSignaturePreviewUrl(fd.replacement_signature);
+  if (!need && legacyUrl) {
+    el.textContent = done;
+    return;
+  }
+  if (need > 0 && hasRendered && signed >= need) {
+    el.textContent = done;
+    return;
+  }
+  if (need > 0 && hasRendered && signed > 0 && signed < need) {
+    el.textContent = part;
+    return;
+  }
+  el.textContent = pend;
+}
+
+function syncGmSigHint() {
+  const el = document.getElementById('gmSigHint');
+  if (!el) return;
+  const pending = el.getAttribute('data-gm-hint-pending') || '';
+  const done = el.getAttribute('data-gm-hint-done') || '';
+  const raw = document.getElementById('gmSigData')?.value;
+  el.textContent = resolveSignaturePreviewUrl(raw) ? done : pending;
+}
+
+function applySigPreviewSlot(key, raw) {
+  const c = sigCfg[key];
+  const src = resolveSignaturePreviewUrl(raw);
+  if (!c || !src) {
+    if (key === 'gm') syncGmSigHint();
+    return;
+  }
+  const img = document.getElementById(c.img);
+  const ph = document.querySelector('#' + c.prev + ' .sig-ph');
+  const inp = document.getElementById(c.data);
+  const rm = document.getElementById(c.rm);
+  const storeVal = typeof raw === 'string' ? raw : (typeof raw === 'object' && raw !== null && typeof raw.url === 'string' ? raw.url : src);
+  if (inp) inp.value = storeVal;
+  if (img) { img.src = src; img.style.display = 'block'; }
+  if (ph) ph.style.display = 'none';
+  if (rm) rm.style.display = 'inline-flex';
+  if (key === 'gm') syncGmSigHint();
+}
+
+function setRadioGroupValue(name, raw) {
+  if (raw == null || raw === '') return;
+  const want = String(raw).trim().toLowerCase();
+  const esc = String(name).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  document.querySelectorAll('input[type="radio"][name="' + esc + '"]').forEach((r) => {
+    r.checked = String(r.value || '').trim().toLowerCase() === want;
+  });
+}
+
+function lockLeaveFormForReadOnlyView() {
+  submissionViewLocked = true;
+  const bar = document.getElementById('submitBar');
+  if (bar) bar.style.display = 'none';
+  document.querySelectorAll('#leaveFrm button[type="submit"], #leaveFrm .btn-reset').forEach((b) => {
+    b.disabled = true;
+    b.style.display = 'none';
+  });
+  document.querySelectorAll('#leaveFrm .sig-actions').forEach((el) => { el.style.display = 'none'; });
+  document.querySelectorAll('.leave-type-check').forEach((c) => { c.disabled = true; });
+  document.querySelectorAll('#leaveFrm input:not([type="hidden"]), #leaveFrm textarea').forEach((el) => {
+    if (el.type === 'radio' || el.type === 'checkbox') el.disabled = true;
+    else el.readOnly = true;
+  });
+  document.querySelectorAll('#leaveFrm select').forEach((sel) => { sel.disabled = true; });
+  const repAdd = document.getElementById('repAddColleague');
+  if (repAdd) repAdd.disabled = true;
+  document.querySelectorAll('#repChipList .rep-chip button').forEach((b) => { b.style.display = 'none'; });
+  const mgmt = document.getElementById('hrMgmtChainSec');
+  if (mgmt) {
+    mgmt.querySelectorAll('button, select').forEach((el) => { el.disabled = true; });
+    mgmt.style.opacity = '0.92';
+  }
+}
+
+function unlockHrStaffZoneForEditing() {
+  document.querySelectorAll('.hr-staff-zone').forEach((zone) => {
+    zone.classList.remove('hr-staff-zone--locked');
+    zone.querySelectorAll('input, textarea, select').forEach((el) => {
+      if (el.type === 'hidden') return;
+      if (el.type === 'radio' || el.type === 'checkbox') el.disabled = false;
+      else {
+        el.readOnly = false;
+        el.removeAttribute('readonly');
+        if (el.getAttribute('tabindex') === '-1') el.removeAttribute('tabindex');
+      }
+    });
+    zone.querySelectorAll('.sig-actions').forEach((el) => {
+      el.style.display = '';
+    });
+  });
+}
+
+function collectLeaveHrStaffFormUpdates() {
+  const form = document.getElementById('leaveFrm');
+  if (!form) return {};
+  const chk = form.querySelector('input[name="hr_checked"]:checked');
+  const updates = {
+    hr_checked: chk ? String(chk.value) : '',
+    hr_comments: form.elements['hr_comments']?.value || '',
+    hr_balance_cf: form.elements['hr_balance_cf']?.value || '',
+    hr_contract_year: form.elements['hr_contract_year']?.value || '',
+    hr_paid: form.elements['hr_paid']?.value || '',
+    hr_unpaid: form.elements['hr_unpaid']?.value || '',
+    hr_date: form.elements['hr_date']?.value || '',
+    hr_signature: document.getElementById('hrSigData')?.value || '',
+  };
+  return updates;
+}
+
+async function hydrateFromSubmissionIfNeeded() {
+  const sid = new URLSearchParams(location.search).get('edit');
+  if (!sid) return;
+  const token = localStorage.getItem('access_token');
+  if (!token) return;
+  let res;
+  try {
+    res = await fetch('/api/workflow/submissions/' + encodeURIComponent(sid), {
+      headers: { Authorization: 'Bearer ' + token },
+    });
+  } catch (_) {
+    return;
+  }
+  let payload = {};
+  try { payload = await res.json(); } catch (_) { return; }
+  if (!res.ok || payload.success === false) {
+    return;
+  }
+  const mod = payload.module_type || payload.module;
+  if (mod !== 'hr_leave_application' && mod !== 'hr_leave') {
+    return;
+  }
+  const fd = payload.form_data || {};
+  leaveHydrationFd = fd;
+  const form = document.getElementById('leaveFrm');
+  if (!form) return;
+
+  const setVal = (name, val) => {
+    const el = form.elements[name];
+    if (!el || val == null || val === '') return;
+    const tag = el.tagName;
+    if (tag === 'SELECT' || (tag === 'INPUT' && el.type !== 'radio' && el.type !== 'checkbox')) {
+      el.value = val;
+    }
+  };
+
+  setVal('employee_name', fd.employee_name);
+  setVal('job_title', fd.job_title);
+  const tdate = fd.today_date != null ? fd.today_date : fd.submitted_at;
+  if (tdate) setVal('today_date', toDateInputOnly(tdate));
+  setVal('employee_id', fd.employee_id);
+  setVal('department', fd.department);
+  if (fd.date_of_joining) setVal('date_of_joining', toDateInputOnly(fd.date_of_joining));
+  if (fd.last_leave_date) setVal('last_leave_date', toDateInputOnly(fd.last_leave_date));
+
+  setVal('mobile_no', fd.mobile_no);
+
+  const lt = (fd.leave_type || '').toString().trim().toLowerCase();
+  if (lt && /^[a-z0-9_]+$/.test(lt)) {
+    const ch = form.querySelector('.leave-type-check[value="' + lt + '"]');
+    if (ch) {
+      form.querySelectorAll('.leave-type-check').forEach((x) => { x.checked = false; });
+      ch.checked = true;
+    }
+    syncLeaveTypeUI();
+  }
+  if (fd.leave_type_other != null && fd.leave_type_other !== '') {
+    const oi = form.querySelector('.other-inp');
+    if (oi) {
+      oi.disabled = false;
+      oi.value = fd.leave_type_other;
+    }
+  }
+
+  if (fd.total_days_requested != null && fd.total_days_requested !== '') setVal('total_days_requested', String(fd.total_days_requested));
+  if (fd.first_day_of_leave) setVal('first_day_of_leave', toDateInputOnly(fd.first_day_of_leave));
+  if (fd.last_day_of_leave) setVal('last_day_of_leave', toDateInputOnly(fd.last_day_of_leave));
+  if (fd.date_returning_to_work) setVal('date_returning_to_work', toDateInputOnly(fd.date_returning_to_work));
+  setRadioGroupValue('salary_advance', fd.salary_advance);
+  setVal('telephone_reachable', fd.telephone_reachable);
+  setVal('replacement_name', fd.replacement_name);
+
+  if (Array.isArray(fd.replacement_signer_ids) && fd.replacement_signer_ids.length) {
+    replacementSignerIds = fd.replacement_signer_ids.map((x) => parseInt(x, 10)).filter(Number.isFinite);
+    renderRepChips();
+  }
+
+  applySigPreviewSlot('employee', fd.employee_signature);
+  if (sigCfg.gm) applySigPreviewSlot('gm', fd.gm_signature);
+  if (sigCfg.hr) applySigPreviewSlot('hr', fd.hr_signature);
+  renderReplacementSignaturesPreview(fd);
+
+  if (form.elements['hr_checked']) {
+    setRadioGroupValue('hr_checked', fd.hr_checked);
+  } else {
+    document.querySelectorAll('input[name="hr_checked_ro"]').forEach((r) => r.removeAttribute('disabled'));
+    setRadioGroupValue('hr_checked_ro', fd.hr_checked);
+  }
+
+  const hrTa = form.querySelector('textarea[name="hr_comments"]');
+  if (hrTa && fd.hr_comments) hrTa.value = fd.hr_comments;
+
+  setVal('hr_balance_cf', fd.hr_balance_cf);
+  setVal('hr_contract_year', fd.hr_contract_year);
+  setVal('hr_paid', fd.hr_paid);
+  setVal('hr_unpaid', fd.hr_unpaid);
+  if (fd.hr_date) setVal('hr_date', toDateInputOnly(fd.hr_date));
+
+  showSubmissionRevisionBanner(fd);
+
+  applyLeaveHydrationLocksAndBanner(payload, sid);
+  startSubmissionGraceTimer();
+
+  goToStep2();
+  calc();
+}
+
+function openSig(t){
+  target=t;
+  const c=sigCfg[t];
+  if(!c)return;
+  if(submissionViewLocked){
+    if(t==='hr'&&!submissionCanEditHr)return;
+    if((t==='employee'||t==='gm')&&!submissionCanEditEmployee)return;
+  }
+  document.getElementById('sigTitle').textContent=c.title;
+  bg.classList.add('open');
+  document.body.style.overflow='hidden';
+  requestAnimationFrame(()=>{
+    const r=window.devicePixelRatio||1,w=cv.offsetWidth;
+    cv.width=w*r;cv.height=180*r;cv.getContext('2d').scale(r,r);cv.style.height='180px';
+    if(pad)pad.off();
+    pad=new SignaturePad(cv,{backgroundColor:'rgb(250,250,250)',penColor:'#0d1f14',minWidth:1.2,maxWidth:2.8});
+  });
+}
 function closeSig(){bg.classList.remove('open');document.body.style.overflow='';target=null}
 function clearModalPad(){if(pad)pad.clear()}
-function applySig(){if(!pad||pad.isEmpty()){alert('Please draw your signature first.');return}const url=pad.toDataURL('image/png'),c=sigCfg[target];if(!c)return;const img=document.getElementById(c.img),ph=document.querySelector('#'+c.prev+' .sig-ph'),inp=document.getElementById(c.data),rm=document.getElementById(c.rm);if(img){img.src=url;img.style.display='block'}if(ph)ph.style.display='none';if(inp)inp.value=url;if(rm)rm.style.display='inline-flex';closeSig()}
-function rmSig(t){const c=sigCfg[t];if(!c)return;const img=document.getElementById(c.img),ph=document.querySelector('#'+c.prev+' .sig-ph'),inp=document.getElementById(c.data),rm=document.getElementById(c.rm);if(img){img.src='';img.style.display='none'}if(ph)ph.style.display='block';if(inp)inp.value='';if(rm)rm.style.display='none'}
-function clearAllSigs(){['employee','gm','hr','replacement'].forEach(rmSig)}
+function applySig(){if(!pad||pad.isEmpty()){alert('Please draw your signature first.');return}const url=pad.toDataURL('image/png'),c=sigCfg[target];if(!c)return;const img=document.getElementById(c.img),ph=document.querySelector('#'+c.prev+' .sig-ph'),inp=document.getElementById(c.data),rm=document.getElementById(c.rm);if(img){img.src=url;img.style.display='block'}if(ph)ph.style.display='none';if(inp)inp.value=url;if(rm)rm.style.display='inline-flex';if(target==='gm')syncGmSigHint();closeSig()}
+function rmSig(t){
+  const c=sigCfg[t];
+  if(!c)return;
+  if(submissionViewLocked){
+    if(t==='hr'&&!submissionCanEditHr)return;
+    if((t==='employee'||t==='gm')&&!submissionCanEditEmployee)return;
+  }
+  const img=document.getElementById(c.img),ph=document.querySelector('#'+c.prev+' .sig-ph'),inp=document.getElementById(c.data),rm=document.getElementById(c.rm);
+  if(img){img.src='';img.style.display='none'}
+  if(ph)ph.style.display='block';
+  if(inp)inp.value='';
+  if(rm)rm.style.display='none';
+  if(t==='gm')syncGmSigHint();
+}
+function clearAllSigs(){Object.keys(sigCfg).forEach(rmSig)}
 bg.addEventListener('click',e=>{if(e.target===bg)closeSig()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&bg.classList.contains('open'))closeSig()});
 
 document.getElementById('leaveFrm').addEventListener('submit',async e=>{
   e.preventDefault();
+  if (submissionViewLocked && !submissionAllowSave) return;
+  const btn=e.target.querySelector('.btn-submit');
+
+  if (submissionAllowSave && submissionHydrateId) {
+    const token = localStorage.getItem('access_token');
+    if (!token){ alert('Please sign in again.'); return; }
+    let updates = {};
+    if (submissionSaveKind === 'hr') updates = collectLeaveHrStaffFormUpdates();
+    else if (submissionSaveKind === 'employee') updates = collectLeaveEmployeeFormUpdates();
+    else updates = Object.assign({}, collectLeaveEmployeeFormUpdates(), collectLeaveHrStaffFormUpdates());
+    if(btn){ btn.disabled=true; btn.textContent='Saving…'; }
+    try{
+      const res = await fetch('/api/workflow/submissions/' + encodeURIComponent(submissionHydrateId) + '/update', {
+        method:'PUT',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+        body:JSON.stringify({ form_data_updates: updates }),
+      });
+      const r = await res.json().catch(()=>({}));
+      if(res.ok && r.success !== false){
+        const frm = r.submission && r.submission.form_data;
+        if (frm) showSubmissionRevisionBanner(frm);
+        alert(r.message || 'Saved.');
+      }else{
+        alert('Error: ' + (r.error || r.message || 'Save failed'));
+      }
+    }catch(err){ alert('Unable to save: ' + (err && err.message ? err.message : String(err))); }
+    finally{
+      if(btn){
+        btn.disabled=false;
+        btn.textContent = submissionSaveKind === 'hr' ? 'Save HR updates' : 'Save changes';
+      }
+    }
+    return;
+  }
+
   const fd=new FormData(e.target),data=Object.fromEntries(fd.entries());
   data.form_type='leave_application';
   if(data.leave_type!=='other')delete data.leave_type_other;
-  const btn=e.target.querySelector('.btn-submit');
+  if(replacementSignerIds.length){
+    data.replacement_signer_ids = [...replacementSignerIds];
+    delete data.replacement_signature;
+  }
   btn.disabled=true;btn.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="spin"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Submitting…';
   try{
     const res=await fetch('/hr/api/submit',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.getItem('access_token')},body:JSON.stringify(data)});
     const r=await res.json();
-    if(r.success){document.getElementById('submissionId').textContent=r.submission_id;document.getElementById('successModal').classList.add('show')}
-    else{alert('Error: '+(r.error||'Unknown'));btn.disabled=false;btn.innerHTML='<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> Submit Application'}
-  }catch(err){alert('Network error: '+err.message);btn.disabled=false;btn.innerHTML='<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> Submit Application'}
+    if(r.success){
+      window.__hrLastHrSubmissionId=r.submission_id;
+      document.getElementById('submissionId').textContent=r.submission_id;
+      const lead = document.getElementById('successMsgLead');
+      if(lead){
+        lead.textContent = r.workflow_status === 'replacement_signoff'
+          ? 'Designated colleague(s) have been notified. The management PDF chain starts after everyone signs.'
+          : 'Your leave request is in the management approval chain (reporting line from your profile, then GM if needed, then HR). Check My Requests for status.';
+      }
+      document.getElementById('successModal').classList.add('show');
+    }
+    else{alert('Error: '+(r.error||'Unknown'));btn.disabled=false;btn.innerHTML='Submit Application'}
+  }catch(err){alert('Unable to submit: '+(err && err.message ? err.message : String(err)));btn.disabled=false;btn.innerHTML='Submit Application'}
 });
 </script>
   <script src="{{ url_for('static', filename='api-client.js') }}"></script>

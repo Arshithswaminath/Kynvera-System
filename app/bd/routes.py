@@ -11,7 +11,11 @@ bd_bp = Blueprint('bd_bp', __name__, url_prefix='/bd')
 
 
 def _is_bd_user(user):
-    return user and (user.designation == 'business_development')
+    if not user or not getattr(user, 'is_active', True):
+        return False
+    if user.role == 'admin':
+        return True
+    return user.is_bd_inspection_reviewer()
 
 
 def _parse_emails(value):

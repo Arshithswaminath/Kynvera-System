@@ -1,0 +1,2164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New Work Order — Injaaz</title>
+  {% include 'partials/caveat_font.html' ignore missing %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/ticketing.css') }}">
+  <style>
+    /* Page shell — a bit wider so side-by-side form columns use the viewport */
+    .new-tkt-page-wrap {
+      max-width: min(1260px, calc(100vw - 3rem));
+      margin-left: auto;
+      margin-right: auto;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .new-tkt-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) min(314px, 28vw);
+      gap: 24px;
+      align-items: start;
+    }
+
+    /* Stacked sections with optional two-column splits (wizard-style breadth) */
+    .new-tkt-form-rows {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .new-tkt-form-split {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 20px;
+      align-items: stretch;
+    }
+    .new-tkt-form-split > .tkt-card {
+      margin-bottom: 0 !important;
+      min-width: 0;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+    .new-tkt-form-split > .tkt-card > .tkt-card-body {
+      flex: 1;
+    }
+
+    /* Complaint panel: SG + Category on one row; fault full-width (narrow column-friendly) */
+    .new-tkt-complaint-topgrid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin-bottom: 2px;
+    }
+    .new-tkt-complaint-fault {
+      margin-top: 2px;
+    }
+    @media (max-width: 640px) {
+      .new-tkt-complaint-topgrid { grid-template-columns: 1fr; }
+    }
+
+    /* Project search and location search: one full-width row each */
+    .new-tkt-location-search-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 18px;
+      margin-bottom: 6px;
+    }
+
+    @media (max-width: 1100px) {
+      .new-tkt-form-split { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 980px) { .new-tkt-layout { grid-template-columns: minmax(0, 1fr) 260px; } }
+    @media (max-width: 760px) {
+      .new-tkt-layout { grid-template-columns: 1fr; gap: 20px; }
+      .summary-card { position: relative; top: 0 !important; }
+    }
+
+    .loc-step-label {
+      display: flex; align-items: center; gap: 10px;
+      font-size: .78rem; font-weight: 700;
+      color: #0f766e; letter-spacing: .04em; text-transform: uppercase;
+      margin: 16px 0 12px;
+    }
+    .loc-step-label::after { content: ''; flex: 1; height: 1px; background: #ccfbf1; }
+
+    /* Property / Zone | Sub-zone / Unit — two dropdowns per row */
+    .new-tkt-location-step-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px 18px;
+    }
+    @media (max-width: 520px) {
+      .new-tkt-location-step-grid { grid-template-columns: 1fr; }
+    }
+
+    /* Hidden project select: submitted & synced from Find project search / picks */
+    .tkt-visually-hidden {
+      position: absolute !important;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    /* ── Title autocomplete ── */
+    .tkt-ac-wrap { position: relative; }
+    .tkt-ac-dropdown {
+      position: absolute; top: 100%; left: 0; right: 0;
+      background: #fff; border: 1.5px solid #bfdbfe;
+      border-top: none; border-radius: 0 0 10px 10px;
+      box-shadow: 0 8px 24px rgba(30,58,95,.12);
+      z-index: 400; max-height: 240px; overflow-y: auto;
+      display: none;
+    }
+    .tkt-ac-dropdown.open { display: block; }
+    .tkt-ac-item {
+      padding: 10px 14px; cursor: pointer; display: flex;
+      align-items: center; gap: 10px; font-size: .875rem;
+      border-bottom: 1px solid #f1f5f9; transition: background .1s;
+    }
+    .tkt-ac-item:hover, .tkt-ac-item.focused { background: #eff6ff; }
+    .tkt-ac-item:last-child { border-bottom: none; }
+    .tkt-ac-icon { flex-shrink: 0; opacity: .5; }
+    .tkt-ac-source { font-size: .7rem; color: #94a3b8; margin-left: auto; white-space: nowrap; }
+    .tkt-ac-template-tag {
+      display: inline-block; padding: 1px 6px; border-radius: 4px;
+      font-size: .7rem; font-weight: 600; background: #dbeafe; color: #1d4ed8;
+    }
+    .tkt-ac-item-meta {
+      flex-shrink: 0;
+      font-size: .65rem;
+      font-weight: 700;
+      color: #94a3b8;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+    .tkt-ac-item-sub {
+      display: block;
+      font-size: .72rem;
+      color: #94a3b8;
+      font-weight: 500;
+      margin-top: 2px;
+      line-height: 1.35;
+    }
+
+    /* ── Auto-desc indicator ── */
+    .tkt-auto-desc-bar {
+      display: flex; align-items: center; gap: 8px; font-size: .78rem;
+      color: #2563eb; margin-bottom: 6px; padding: 6px 10px;
+      background: #eff6ff; border-radius: 6px;
+      border: 1px solid #bfdbfe;
+      opacity: 0; pointer-events: none; transition: opacity .2s;
+    }
+    .tkt-auto-desc-bar.show { opacity: 1; pointer-events: all; }
+
+    /* ── Summary card (right panel) ── */
+    .summary-card { position: sticky; top: 88px; }
+    .summary-item {
+      display: flex; flex-direction: column; gap: 2px;
+      padding: 10px 0; border-bottom: 1px solid #f1f5f9;
+    }
+    .summary-item:last-child { border-bottom: none; }
+    .summary-label { font-size: .72rem; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: .04em; }
+    .summary-val { font-size: .9rem; color: #1e293b; font-weight: 500; }
+    .summary-val.empty { color: #cbd5e1; font-style: italic; font-weight: 400; font-size: .82rem; }
+
+    /* ── Step indicator ── */
+    .tkt-steps {
+      display: flex; align-items: center; gap: 0; margin-bottom: 28px;
+      overflow-x: auto; padding-bottom: 2px;
+    }
+    .tkt-step {
+      display: flex; align-items: center; gap: 8px;
+      font-size: .8rem; font-weight: 600; color: #94a3b8;
+      white-space: nowrap;
+    }
+    .tkt-step.active { color: #1e3a5f; }
+    .tkt-step.done { color: #16a34a; }
+    .tkt-step-num {
+      width: 26px; height: 26px; border-radius: 50%;
+      border: 2px solid #e2e8f0; background: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .8rem; font-weight: 700; flex-shrink: 0;
+    }
+    .tkt-step.active .tkt-step-num { background: #1e3a5f; border-color: #1e3a5f; color: #fff; }
+    .tkt-step.done .tkt-step-num { background: #16a34a; border-color: #16a34a; color: #fff; }
+    .tkt-step-connector { flex: 1; min-width: 20px; height: 2px; background: #e2e8f0; }
+    .tkt-step-connector.done { background: #16a34a; }
+
+    .new-tkt-pending-img-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .new-tkt-pending-thumb {
+      position: relative;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid #e2e8f0;
+      aspect-ratio: 4/3;
+      background: #f8fafc;
+    }
+    .new-tkt-pending-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .new-tkt-pending-remove {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      width: 26px;
+      height: 26px;
+      border: none;
+      border-radius: 6px;
+      background: rgba(15, 23, 42, 0.72);
+      color: #fff;
+      font-size: 1rem;
+      line-height: 1;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+    }
+    .new-tkt-pending-remove:hover { background: rgba(220, 38, 38, 0.9); }
+
+    /* Photos & attachments — dedicated sidebar card */
+    .tkt-summary-photos-card {
+      margin-top: 14px;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      border-radius: 14px;
+      border: 0.8889px solid rgba(60, 60, 67, 0.12);
+      box-shadow:
+        0 1px 2px rgba(0, 0, 0, 0.04),
+        0 4px 16px rgba(15, 23, 42, 0.05);
+      background: #fff;
+    }
+    .tkt-summary-photos-card > .tkt-card-header {
+      background: #fff !important;
+      border-bottom: 1px solid rgba(60, 60, 67, 0.1);
+    }
+    .tkt-summary-photos-card__head {
+      display: flex !important;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .tkt-summary-photos-card__head h3 {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 600;
+      letter-spacing: -0.025em;
+      color: var(--tkt-ios-label, #1c1c1e);
+      line-height: 1.2;
+      text-transform: none;
+    }
+    .tkt-summary-photos-card .sum-photo-optional {
+      font-size: 13px;
+      font-weight: 500;
+      color: rgba(60, 60, 67, 0.45);
+      letter-spacing: -0.015em;
+      white-space: nowrap;
+    }
+    .tkt-summary-photos-card__body {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .tkt-summary-photos-card #sum-images {
+      display: block;
+      font-size: 15px !important;
+    }
+    .tkt-summary-photos-card #sum-images.empty {
+      color: rgba(60, 60, 67, 0.4) !important;
+      font-style: italic !important;
+    }
+    .tkt-summary-photos-card .summary-photo-hint {
+      font-size: 13px;
+      letter-spacing: -0.015em;
+      color: rgba(60, 60, 67, 0.55);
+      line-height: 1.38;
+      margin: 0 0 2px;
+    }
+    .tkt-summary-photos-card .new-tkt-pending-img-grid--sidebar {
+      grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+      gap: 8px;
+      margin: 0;
+      margin-bottom: 2px;
+      width: 100%;
+    }
+    .tkt-summary-photos-card .summary-new-tkt-upload {
+      margin-top: 4px;
+      padding: 20px 14px !important;
+      background: rgba(242, 242, 247, 0.65);
+      border: 2px dashed rgba(60, 60, 67, 0.22) !important;
+      border-radius: 12px;
+      outline: none;
+      cursor: pointer;
+      transition:
+        border-color .16s ease,
+        background-color .16s ease,
+        box-shadow .16s ease;
+    }
+    .tkt-summary-photos-card .summary-new-tkt-upload:focus-within,
+    .tkt-summary-photos-card .summary-new-tkt-upload:hover {
+      border-color: rgba(0, 122, 255, 0.42) !important;
+      background: rgba(0, 122, 255, 0.06);
+      box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.15);
+    }
+    .tkt-summary-photos-card .summary-new-tkt-upload.drag-over {
+      border-color: rgba(0, 122, 255, 0.55) !important;
+      background: rgba(0, 122, 255, 0.1);
+      box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.2);
+    }
+    .tkt-summary-photos-card .summary-new-tkt-upload svg {
+      display: block;
+      width: 28px;
+      height: 28px;
+      margin: 0 auto 8px auto;
+      color: rgba(60, 60, 67, 0.45);
+    }
+    .tkt-summary-photos-card .summary-new-tkt-upload p { margin: 0 !important; }
+    .tkt-summary-photos-card .summary-new-tkt-upload p:first-of-type {
+      font-size: 15px !important;
+      font-weight: 500;
+      letter-spacing: -0.02em !important;
+      color: rgba(60, 60, 67, 0.88) !important;
+      text-align: center;
+      margin-top: 2px !important;
+    }
+    .tkt-summary-photos-card .summary-new-tkt-upload p.summary-upload-formats {
+      font-size: 12px !important;
+      letter-spacing: -0.01em !important;
+      color: rgba(60, 60, 67, 0.45) !important;
+      margin-top: 8px !important;
+      line-height: 1.35;
+      text-align: center;
+    }
+
+    .new-tkt-complaint-recap {
+      margin-top: 14px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid #e2e8f0;
+      background: linear-gradient(165deg, #f8fafc 0%, #f1f5f9 100%);
+      min-height: 72px;
+    }
+    .new-tkt-recap-empty {
+      font-size: .78rem;
+      color: #64748b;
+      line-height: 1.5;
+      margin: 0;
+    }
+    .new-tkt-recap-empty strong { color: #475569; }
+    .new-tkt-recap-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+    .new-tkt-recap-chip {
+      display: inline-block;
+      padding: 3px 9px;
+      border-radius: 6px;
+      font-size: .72rem;
+      font-weight: 600;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      color: #334155;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: normal;
+      line-height: 1.35;
+    }
+    .new-tkt-recap-chip.sg { border-color: #bfdbfe; background: #eff6ff; color: #1e40af; }
+    .new-tkt-recap-chip.cat { border-color: #ddd6fe; background: #f5f3ff; color: #6d28d9; }
+    .new-tkt-recap-chip.fault { border-color: #a7f3d0; background: #ecfdf5; color: #047857; }
+    .new-tkt-recap-pri-hint {
+      font-size: .72rem;
+      color: #64748b;
+      margin: 0 0 8px;
+      line-height: 1.4;
+    }
+    .new-tkt-recap-pri-hint span.pri-cap { font-weight: 700; color: #1e293b; text-transform: capitalize; }
+    .new-tkt-recap-preview {
+      font-size: .75rem;
+      color: #475569;
+      line-height: 1.45;
+      margin: 0;
+      border-top: 1px dashed #cbd5e1;
+      padding-top: 10px;
+    }
+    .new-tkt-recap-preview-label {
+      font-size: .65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: #94a3b8;
+      display: block;
+      margin-bottom: 4px;
+    }
+    .new-tkt-recap-preview-muted {
+      margin: 6px 0 0;
+      font-size: .72rem;
+      color: #94a3b8;
+      font-style: italic;
+    }
+
+    /* ── Priority pills ── */
+    .priority-pill-group { display: flex; gap: 8px; flex-wrap: wrap; }
+    .priority-pill {
+      padding: 7px 16px; border-radius: 999px; font-size: .82rem;
+      font-weight: 700; cursor: pointer; border: 2px solid transparent;
+      transition: all .15s; display: flex; align-items: center; gap: 6px;
+    }
+    .priority-pill input { display: none; }
+    .priority-pill-low    { background: #f0fdf4; color: #16a34a; border-color: #dcfce7; }
+    .priority-pill-medium { background: #fefce8; color: #ca8a04; border-color: #fef9c3; }
+    .priority-pill-high   { background: #fff7ed; color: #ea580c; border-color: #ffedd5; }
+    .priority-pill-critical { background: #fef2f2; color: #dc2626; border-color: #fee2e2; }
+    .priority-pill.selected { border-color: currentColor; box-shadow: 0 0 0 3px rgba(0,0,0,.06); }
+
+    .tkt-section-header {
+      display: flex; align-items: center; gap: 10px;
+      font-size: .82rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .07em; color: #64748b; margin: 28px 0 16px;
+    }
+    .tkt-section-header::after { content: ''; flex: 1; height: 1px; background: #e2e8f0; }
+  </style>
+</head>
+<body class="tkt-dh-page has-main-nav">
+<div class="tkt-dh-app-root">
+{% set active_page = 'ticketing' %}
+{% include 'partials/main_navbar.html' with context %}
+<div class="dh-page-root tkt-dh-page-root">
+{% include 'partials/tkt_sidebar.html' with context %}
+<div class="tkt-dh-main"><div class="tkt-content">
+
+<div class="new-tkt-page-wrap">
+  <div class="tkt-page-header" style="margin-bottom:20px;">
+    <h1 class="tkt-page-title">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="26" height="26"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+        New Work Order
+      </h1>
+      <div style="display:flex;gap:8px;">
+        <a href="{{ url_for('ticketing.settings_page') }}" class="tkt-btn tkt-btn-outline tkt-btn-sm">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg>
+          Settings
+        </a>
+        <a href="{{ url_for('ticketing.dashboard') }}" class="tkt-btn tkt-btn-outline tkt-btn-sm">← Back</a>
+      </div>
+    </div>
+
+    <div class="new-tkt-layout">
+
+      <!-- ────────── Left: form ────────── -->
+      <div>
+        <form id="tktNewForm" novalidate>
+
+        <div class="new-tkt-form-rows">
+
+          <div class="new-tkt-form-split">
+          <!-- ── Location: property search + refine; project field hidden for API ── -->
+          <div class="tkt-card">
+            <div class="tkt-card-header">
+              <h3>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z"/></svg>
+                Location
+              </h3>
+            </div>
+            <div class="tkt-card-body">
+              <span style="font-size:.72rem;color:#94a3b8;margin:0 0 12px;display:block;">
+                Choose <strong>project</strong> first, then <strong>Find location</strong> (full paths: Property / Zone / Sub-zone / Unit) <em>or</em> pick the four fields below in order — each step narrows the next.
+              </span>
+              <div class="new-tkt-location-search-grid">
+                <div class="tkt-field" style="margin-bottom:0;">
+                  <label for="projectSearch">Find project</label>
+                  <div class="tkt-ac-wrap">
+                    <input class="tkt-input" id="projectSearch" type="search" autocomplete="off"
+                           placeholder="Project name or client…" aria-autocomplete="list" aria-controls="projectSearchDropdown">
+                    <div class="tkt-ac-dropdown" id="projectSearchDropdown" role="listbox"></div>
+                  </div>
+                  <span style="font-size:.72rem;color:#94a3b8;margin-top:2px;display:block;">Sets the contract / project.</span>
+                </div>
+                <div class="tkt-field" style="margin-bottom:0;">
+                  <label for="propertySearch">Find location <span class="req">*</span></label>
+                  <div class="tkt-ac-wrap">
+                    <input class="tkt-input" id="propertySearch" type="search" autocomplete="off"
+                           placeholder="Property / zone / sub-zone / unit (min. 3 characters)…" aria-autocomplete="list" aria-controls="propertySearchDropdown">
+                    <div class="tkt-ac-dropdown" id="propertySearchDropdown" role="listbox"></div>
+                  </div>
+                  <span style="font-size:.72rem;color:#94a3b8;margin-top:2px;display:block;">Search anywhere in the path. Selecting a suggestion fills Property → Zone → Sub-zone → Unit when stored below.</span>
+                </div>
+              </div>
+
+              <div class="tkt-visually-hidden" aria-hidden="true">
+                <label for="project">Project</label>
+                <select class="tkt-select" id="project" name="project" tabindex="-1">
+                  <option value="">Select project…</option>
+                </select>
+                <span id="projLoadHint" style="font-size:.72rem;color:#94a3b8;">Loading projects…</span>
+              </div>
+
+              <span class="loc-step-label">Pick step by step</span>
+
+              <div class="new-tkt-location-step-grid">
+                <div class="tkt-field">
+                  <label for="propertySelect">Property <span class="req">*</span></label>
+                  <select class="tkt-select" id="propertySelect" name="property_name">
+                    <option value="">Select property…</option>
+                  </select>
+                </div>
+                <div class="tkt-field">
+                  <label for="zoneSelect">Zone <span class="req">*</span></label>
+                  <select class="tkt-select" id="zoneSelect" name="zone" disabled>
+                    <option value="">Select zone…</option>
+                  </select>
+                </div>
+                <div class="tkt-field">
+                  <label for="subZoneSelect">Sub zone <span class="req">*</span></label>
+                  <select class="tkt-select" id="subZoneSelect" name="sub_zone" disabled>
+                    <option value="">Select sub-zone…</option>
+                  </select>
+                </div>
+                <div class="tkt-field">
+                  <label for="baseUnitSelect">Base unit <span class="req">*</span></label>
+                  <select class="tkt-select" id="baseUnitSelect" name="base_unit" disabled>
+                    <option value="">Select unit…</option>
+                  </select>
+                </div>
+              </div>
+              <span style="font-size:.72rem;color:#64748b;margin-top:8px;display:block;line-height:1.45;">
+                Zones, sub-zones and units are <strong>required only when choices exist</strong> for your property (matching your settings tree). Leave project blank for standalone locations.
+              </span>
+            </div>
+          </div>
+
+          <!-- ── Complaint classification ── -->
+          <div class="tkt-card new-tkt-complaint-panel">
+            <div class="tkt-card-header">
+              <h3>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25Z"/></svg>
+                Complaint classification
+              </h3>
+            </div>
+            <div class="tkt-card-body">
+              <div class="tkt-field" style="margin-bottom:16px;">
+                <label for="complaintSearch">Find complaint type</label>
+                <div class="tkt-ac-wrap">
+                  <input class="tkt-input" id="complaintSearch" type="search" autocomplete="off"
+                         placeholder="Fault code, symptom, category…" aria-autocomplete="list" aria-controls="complaintSearchDropdown">
+                  <div class="tkt-ac-dropdown" id="complaintSearchDropdown" role="listbox"></div>
+                </div>
+                <span style="font-size:.72rem;color:#94a3b8;margin-top:2px;">Search official fault codes (symptom, category, service group). Fills title and technician checklist in the work description.</span>
+              </div>
+              <div class="new-tkt-complaint-topgrid">
+                <div class="tkt-field">
+                  <label>Service Group <span class="req">*</span></label>
+                  <select class="tkt-select" id="serviceGroup" name="service_group" required>
+                    <option value="">Select service group…</option>
+                  </select>
+                </div>
+                <div class="tkt-field">
+                  <label>Category <span class="req">*</span></label>
+                  <select class="tkt-select" id="category" name="category" required>
+                    <option value="">Select category…</option>
+                  </select>
+                </div>
+              </div>
+              <div class="tkt-field new-tkt-complaint-fault">
+                <label>Fault code <span class="req">*</span></label>
+                <select class="tkt-select" id="faultType" name="fault_type" required>
+                  <option value="">Select fault type…</option>
+                </select>
+              </div>
+
+              <div class="tkt-section-header" style="margin-top:20px;">Priority</div>
+              <div class="priority-pill-group" id="priorityGroup">
+                <label class="priority-pill priority-pill-low" data-val="low">
+                  <input type="radio" name="priority" value="low">
+                  <span class="tkt-dot low"></span> Low
+                </label>
+                <label class="priority-pill priority-pill-medium selected" data-val="medium">
+                  <input type="radio" name="priority" value="medium" checked>
+                  <span class="tkt-dot medium"></span> Medium
+                </label>
+                <label class="priority-pill priority-pill-high" data-val="high">
+                  <input type="radio" name="priority" value="high">
+                  <span class="tkt-dot high"></span> High
+                </label>
+                <label class="priority-pill priority-pill-critical" data-val="critical">
+                  <input type="radio" name="priority" value="critical">
+                  <span class="tkt-dot critical"></span> Critical
+                </label>
+              </div>
+              <div class="new-tkt-complaint-recap" id="complaintClassRecap" aria-live="polite"></div>
+            </div>
+          </div>
+          </div><!-- /.new-tkt-form-split -->
+
+          <!-- ── Section: Work Order Details ── -->
+          <div class="tkt-card" style="margin-bottom:0;">
+            <div class="tkt-card-header">
+              <h3>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"/></svg>
+                Work Order Details
+              </h3>
+            </div>
+            <div class="tkt-card-body">
+
+              <!-- Smart title -->
+              <div class="tkt-field" style="margin-bottom:16px;">
+                <label>Title / Summary <span class="req">*</span></label>
+                <div class="tkt-ac-wrap">
+                  <input class="tkt-input" id="title" name="title" type="text"
+                         placeholder="Start typing or select service/category to see suggestions…"
+                         autocomplete="off" required>
+                  <div class="tkt-ac-dropdown" id="titleDropdown"></div>
+                </div>
+                <span style="font-size:.72rem;color:#94a3b8;margin-top:2px;">Suggestions from templates and recent tickets</span>
+              </div>
+
+              <!-- Auto-description bar -->
+              <div class="tkt-auto-desc-bar" id="autoDescBar">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z"/></svg>
+                <span>Description auto-generated from work order info.</span>
+                <button type="button" id="regenerateDescBtn" style="margin-left:auto;background:none;border:none;color:#2563eb;font-size:.78rem;font-weight:600;cursor:pointer;text-decoration:underline;">Regenerate</button>
+              </div>
+
+              <!-- Work Description -->
+              <div class="tkt-field">
+                <label>Work Description <span class="req">*</span></label>
+                <textarea class="tkt-textarea" id="workDescription" name="work_description"
+                          placeholder="Select service group, category and fault type above to auto-generate…"
+                          rows="6" required></textarea>
+              </div>
+            </div>
+          </div>
+
+          <div class="new-tkt-form-split">
+
+          <!-- ── Section: Reporter ── -->
+          <div class="tkt-card">
+            <div class="tkt-card-header">
+              <h3>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"/></svg>
+                Reporter
+              </h3>
+            </div>
+            <div class="tkt-card-body">
+              <p style="font-size:.78rem;color:#64748b;margin:0 0 14px;line-height:1.5;">Each work order goes to the <strong>supervisor queue</strong> first. A supervisor assigns someone from their team.</p>
+              <div class="tkt-form-grid">
+                <div class="tkt-field">
+                  <label>Reported By <span class="req">*</span></label>
+                  <select class="tkt-select" id="reporterId" name="reporter_id" required>
+                    <option value="">Select reporter…</option>
+                    {% for u in all_users %}
+                    <option value="{{ u.id }}" {% if u.id == user.id %}selected{% endif %}>
+                      {{ u.full_name }}{% if u.job_designation %} — {{ u.job_designation }}{% endif %}
+                    </option>
+                    {% endfor %}
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── Section: Financial ── -->
+          <div class="tkt-card">
+            <div class="tkt-card-header">
+              <h3>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+                Financial
+              </h3>
+            </div>
+            <div class="tkt-card-body">
+              <div class="tkt-toggle-row" style="margin-bottom:16px;">
+                <div class="tkt-toggle-row__text">
+                  <div class="tkt-toggle-row__title">Chargeable Work Order</div>
+                  <p class="tkt-desc">Will this work be billed to the client?</p>
+                </div>
+                <label class="tkt-switch" for="isChargeable" aria-label="Chargeable work order">
+                  <input type="checkbox" id="isChargeable" name="is_chargeable">
+                  <span class="tkt-slider" aria-hidden="true"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          </div><!-- /.new-tkt-form-split reporter + financial -->
+
+        </div><!-- /.new-tkt-form-rows -->
+
+          <!-- ── Submit ── -->
+          <div style="display:flex;justify-content:flex-end;gap:12px;margin-top:4px;">
+            <a href="{{ url_for('ticketing.dashboard') }}" class="tkt-btn tkt-btn-outline">Cancel</a>
+            <button type="submit" class="tkt-btn tkt-btn-primary" id="submitBtn" style="min-width:180px;">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+              Create Work Order
+            </button>
+          </div>
+        </form>
+      </div><!-- /left -->
+
+      <!-- ────────── Right: live summary ────────── -->
+      <div class="summary-card">
+        <div class="tkt-card">
+          <div class="tkt-card-header">
+            <h3>Live Summary</h3>
+            <span style="font-size:.72rem;color:#94a3b8;">Updates as you fill</span>
+          </div>
+          <div class="tkt-card-body">
+            <div class="summary-item">
+              <span class="summary-label">Location · site</span>
+              <span class="summary-val empty" id="sum-location">Not specified</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">Project</span>
+              <span class="summary-val empty" id="sum-project">Not selected</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">Service Group</span>
+              <span class="summary-val empty" id="sum-sg">Not selected</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">Category / Fault</span>
+              <span class="summary-val empty" id="sum-cat">Not selected</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">Priority</span>
+              <span class="summary-val" id="sum-priority"><span class="tkt-badge badge-priority-medium">Medium</span></span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">Title</span>
+              <span class="summary-val empty" id="sum-title">Not entered</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">Reporter</span>
+              <span class="summary-val" id="sum-reporter">{{ user.full_name }}</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">Chargeable</span>
+              <span class="summary-val" id="sum-charge">No</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Photos / attachments — own card (sidebar) -->
+        <div class="tkt-card tkt-summary-photos-card">
+          <div class="tkt-card-header tkt-summary-photos-card__head">
+            <h3>Photos &amp; attachments</h3>
+            <span class="sum-photo-optional">Optional</span>
+          </div>
+          <div class="tkt-card-body tkt-summary-photos-card__body">
+            <span class="summary-val empty" id="sum-images">None selected</span>
+            <p class="summary-photo-hint">Uploaded automatically right after the work order is created.</p>
+            <div class="new-tkt-pending-img-grid new-tkt-pending-img-grid--sidebar" id="newTicketImagePreview" hidden></div>
+            <div class="tkt-upload-zone summary-new-tkt-upload" id="newTicketUploadZone">
+              <input type="file" id="newTicketImageInput" accept="image/png,image/jpeg,image/gif,image/webp,image/heic,image/heif,.heic,.heif" multiple>
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"/></svg>
+              <p>Click or drag &amp; drop images</p>
+              <p class="summary-upload-formats">PNG, JPG, GIF, WebP, HEIC — up to 20 files</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick actions -->
+        <div class="tkt-card" style="margin-top:14px;">
+          <div class="tkt-card-body" style="padding:14px 16px;">
+            <a href="{{ url_for('ticketing.settings_page') }}"
+               style="display:flex;align-items:center;gap:8px;font-size:.82rem;color:#64748b;text-decoration:none;padding:6px 0;transition:color .15s;">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg>
+              Manage Projects &amp; Locations
+            </a>
+            <a href="{{ url_for('ticketing.settings_page') }}"
+               style="display:flex;align-items:center;gap:8px;font-size:.82rem;color:#64748b;text-decoration:none;padding:6px 0;transition:color .15s;">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z"/></svg>
+              Manage Title Templates
+            </a>
+          </div>
+        </div>
+      </div><!-- /right -->
+
+    </div><!-- /layout -->
+</div><!-- /new-tkt-page-wrap -->
+
+</div></div>{# tkt-content / tkt-dh-main #}
+</div></div>{# tkt-dh-page-root / tkt-dh-app-root #}
+
+<button type="button" class="dh-sidebar-toggle" id="tktDhSidebarToggle"
+        onclick="tktToggleMobileSidebar()" aria-label="Open menu" title="Menu">&#9776;</button>
+
+<script src="{{ url_for('static', filename='js/ticketing.js') }}"></script>
+<script>
+let _options = {};
+let _locationTree = [];
+let _allProperties = [];  // flat list
+let _descAutoFilled = false;
+let _titleSuggestions = [];
+let _acFocusIdx = -1;
+
+let _standaloneProps = [];
+let _projSearchHits = [];
+let _propSearchHits = [];
+let _complaintHits = [];
+let _projSearchStaging = [];
+let _propSearchStaging = [];
+let _complSearchStaging = [];
+let _projSearchDebounce = null;
+let _propSearchDebounce = null;
+let _complSearchDebounce = null;
+/** Populated when options.use_fault_catalog — official fault-code rows */
+let _faultCatalog = [];
+let _suppressNextDescFetch = false;
+/** Pending files shown on New Work Order; uploaded after POST /api/tickets succeeds */
+let _pendingTicketImages = []; // { id, file, url }
+const NEW_TKT_MAX_IMAGES = 20;
+
+function newTicketImgAllowed(file) {
+  const allowedMime = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/heic', 'image/heif'];
+  if (allowedMime.includes(file.type)) return true;
+  return !!(file.name && file.name.match(/\.(png|jpe?g|gif|webp|heic|heif)$/i));
+}
+
+function renderNewTicketPendingGallery() {
+  const wrap = document.getElementById('newTicketImagePreview');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  _pendingTicketImages.forEach((row) => {
+    const div = document.createElement('div');
+    div.className = 'new-tkt-pending-thumb';
+    div.dataset.pid = row.id;
+    div.innerHTML = `
+      <img src="${row.url}" alt="">
+      <button type="button" class="new-tkt-pending-remove" data-pid="${row.id}" title="Remove">×</button>`;
+    wrap.appendChild(div);
+  });
+  wrap.hidden = _pendingTicketImages.length === 0;
+  wrap.querySelectorAll('.new-tkt-pending-remove').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const pid = btn.dataset.pid;
+      const ix = _pendingTicketImages.findIndex((r) => r.id === pid);
+      if (ix >= 0) {
+        URL.revokeObjectURL(_pendingTicketImages[ix].url);
+        _pendingTicketImages.splice(ix, 1);
+        renderNewTicketPendingGallery();
+        updateSummary();
+      }
+    });
+  });
+}
+
+function newTicketEnqueueImageFiles(fileArr) {
+  const input = document.getElementById('newTicketImageInput');
+  for (const file of fileArr) {
+    if (_pendingTicketImages.length >= NEW_TKT_MAX_IMAGES) {
+      tktToast(`Maximum ${NEW_TKT_MAX_IMAGES} images.`, 'error');
+      break;
+    }
+    if (!newTicketImgAllowed(file)) {
+      tktToast(`Skipped (not an image): ${file.name}`, 'error');
+      continue;
+    }
+    const id = `pimg-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    const url = URL.createObjectURL(file);
+    _pendingTicketImages.push({ id, file, url });
+  }
+  if (input) input.value = '';
+  renderNewTicketPendingGallery();
+  updateSummary();
+}
+
+function initNewTicketImageUI() {
+  const zone = document.getElementById('newTicketUploadZone');
+  const input = document.getElementById('newTicketImageInput');
+  if (!zone || !input) return;
+
+  zone.addEventListener('click', () => input.click());
+
+  zone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    zone.classList.add('drag-over');
+  });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    zone.classList.remove('drag-over');
+    if (e.dataTransfer?.files?.length) {
+      newTicketEnqueueImageFiles([...e.dataTransfer.files]);
+    }
+  });
+
+  input.addEventListener('change', () => {
+    if (input.files?.length) {
+      newTicketEnqueueImageFiles([...input.files]);
+    }
+  });
+}
+
+async function uploadPendingImagesForNewTicket(ticketId) {
+  const rows = _pendingTicketImages.slice();
+  if (!rows.length) return { ok: true, failed: 0 };
+
+  let failed = 0;
+  for (const row of rows) {
+    try {
+      const fd = new FormData();
+      fd.append('image', row.file);
+      const ur = await tktFetch(`/tickets/api/tickets/${encodeURIComponent(ticketId)}/images`, {
+        method: 'POST',
+        body: fd,
+      });
+      if (!ur.ok || !ur.data?.success) failed += 1;
+    } catch {
+      failed += 1;
+    }
+    try {
+      URL.revokeObjectURL(row.url);
+    } catch (_) { /* noop */ }
+  }
+  _pendingTicketImages = [];
+  renderNewTicketPendingGallery();
+  return { ok: failed === 0, failed };
+}
+
+function ticketNewUsesFaultCatalog() {
+  return _faultCatalog.length > 0;
+}
+
+function findCatalogFaultRow(sg, cat, ftVal) {
+  if (!ticketNewUsesFaultCatalog() || !ftVal) return null;
+  return _faultCatalog.find(
+    (r) =>
+      r.service_group === sg && r.fault_category === cat && r.fault_pick_value === ftVal,
+  );
+}
+
+function ticketNewRefillFaultSelect() {
+  const sgEl = document.getElementById('serviceGroup');
+  const catEl = document.getElementById('category');
+  const ftEl = document.getElementById('faultType');
+  if (!ftEl || !sgEl || !catEl || !ticketNewUsesFaultCatalog()) return;
+  const sg = sgEl.value;
+  const cat = catEl.value;
+  const preserve = ftEl.value;
+  ftEl.innerHTML = '<option value="">Select fault code…</option>';
+  if (!sg || !cat) return;
+  const rows = _faultCatalog
+    .filter((r) => r.service_group === sg && r.fault_category === cat)
+    .sort((a, b) =>
+      String(a.fault_code).localeCompare(String(b.fault_code), undefined, { numeric: true }),
+    );
+  rows.forEach((r) => {
+    const lab = r.fault_code_name || String(r.fault_pick_value || '');
+    const opt = document.createElement('option');
+    opt.value = r.fault_pick_value;
+    opt.textContent = lab;
+    ftEl.appendChild(opt);
+  });
+  if (preserve && [...ftEl.options].some((o) => o.value === preserve)) ftEl.value = preserve;
+}
+
+function escHtmlTicketNew(text) {
+  if (text == null || text === '') return '';
+  const div = document.createElement('div');
+  div.textContent = String(text);
+  return div.innerHTML;
+}
+
+function tktNormQTicketNew(s) {
+  return String(s || '').toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+function tktHaystackTicketNew(parts) {
+  return tktNormQTicketNew(parts.filter(Boolean).join(' '));
+}
+
+function rebuildProjectSearchIndex() {
+  _projSearchHits = [];
+  (_locationTree || []).forEach((proj) => {
+    const pName = proj.name || '';
+    const client = proj.client_name || '';
+    const primary = `${pName}${client ? ' — ' + client : ''}`;
+    _projSearchHits.push({
+      hay: tktHaystackTicketNew([pName, client]),
+      primary,
+      sub: 'Project',
+      projectName: pName,
+    });
+  });
+}
+
+function rebuildPropertySearchIndex() {
+  _propSearchHits = [];
+
+  function pushHit({ projectName, client, standalone, property, zone, subZone, unit }) {
+    const pn = property || '';
+    const zn = zone || '';
+    const szn = subZone || '';
+    const un = unit || '';
+
+    const pathParts = [pn, zn, szn, un].filter(Boolean);
+    const pathSlash = pathParts.join(' / ');
+    const pName = projectName || '';
+
+    let primary = pathSlash;
+    if (!standalone && pName) primary = `${pName} · ${pathSlash}`;
+
+    let subLabel = 'Property';
+    if (un) subLabel = 'Base unit';
+    else if (szn) subLabel = 'Sub-zone';
+    else if (zn) subLabel = 'Zone';
+
+    _propSearchHits.push({
+      hay: tktHaystackTicketNew([
+        pName,
+        client,
+        pn,
+        zn,
+        szn,
+        un,
+        pathSlash,
+        primary,
+        primary.replace(/\s*[·\/]\s*/g, ' '),
+      ]),
+      primary,
+      sub: subLabel,
+      standalone: !!standalone,
+      projectName: pName,
+      property: pn,
+      zone: zn,
+      subZone: szn,
+      unit: un,
+    });
+  }
+
+  (_locationTree || []).forEach((proj) => {
+    const pName = proj.name || '';
+    const client = proj.client_name || '';
+    (proj.properties || []).forEach((prop) => {
+      const pn = prop.name || '';
+      pushHit({
+        projectName: pName,
+        client,
+        standalone: false,
+        property: pn,
+        zone: '',
+        subZone: '',
+        unit: '',
+      });
+      (prop.zones || []).forEach((z) => {
+        const zn = z.name || '';
+        pushHit({
+          projectName: pName,
+          client,
+          standalone: false,
+          property: pn,
+          zone: zn,
+          subZone: '',
+          unit: '',
+        });
+        (z.sub_zones || []).forEach((sz) => {
+          const szn = sz.name || '';
+          pushHit({
+            projectName: pName,
+            client,
+            standalone: false,
+            property: pn,
+            zone: zn,
+            subZone: szn,
+            unit: '',
+          });
+          (sz.base_units || []).forEach((u) => {
+            const un = u.name || '';
+            pushHit({
+              projectName: pName,
+              client,
+              standalone: false,
+              property: pn,
+              zone: zn,
+              subZone: szn,
+              unit: un,
+            });
+          });
+        });
+      });
+    });
+  });
+
+  (_standaloneProps || []).forEach((prop) => {
+    const pn = prop.name || '';
+    pushHit({
+      projectName: '',
+      client: '',
+      standalone: true,
+      property: pn,
+      zone: '',
+      subZone: '',
+      unit: '',
+    });
+    (prop.zones || []).forEach((z) => {
+      const zn = z.name || '';
+      pushHit({
+        projectName: '',
+        client: '',
+        standalone: true,
+        property: pn,
+        zone: zn,
+        subZone: '',
+        unit: '',
+      });
+      (z.sub_zones || []).forEach((sz) => {
+        const szn = sz.name || '';
+        pushHit({
+          projectName: '',
+          client: '',
+          standalone: true,
+          property: pn,
+          zone: zn,
+          subZone: szn,
+          unit: '',
+        });
+        (sz.base_units || []).forEach((u) => {
+          const un = u.name || '';
+          pushHit({
+            projectName: '',
+            client: '',
+            standalone: true,
+            property: pn,
+            zone: zn,
+            subZone: szn,
+            unit: un,
+          });
+        });
+      });
+    });
+  });
+}
+
+function filterProjectSearchHits(qRaw) {
+  const q = tktNormQTicketNew(qRaw);
+  if (!q.length) return [];
+  const hits = _projSearchHits.filter((h) => h.hay.includes(q));
+  hits.sort((a, b) => {
+    const aStart = a.hay.startsWith(q) ? 0 : 1;
+    const bStart = b.hay.startsWith(q) ? 0 : 1;
+    if (aStart !== bStart) return aStart - bStart;
+    return String(a.primary).length - String(b.primary).length;
+  });
+  return hits.slice(0, 42);
+}
+
+function filterPropertySearchHits(qRaw) {
+  const q = tktNormQTicketNew(qRaw);
+  if (!q.length || q.length < 3) return [];
+  const projGate = (document.getElementById('project')?.value || '').trim();
+  let hits = _propSearchHits.filter((h) => h.hay.includes(q));
+  if (projGate) {
+    hits = hits.filter((h) => !h.standalone && h.projectName === projGate);
+  }
+  hits.sort((a, b) => {
+    const aStart = a.hay.startsWith(q) ? 0 : 1;
+    const bStart = b.hay.startsWith(q) ? 0 : 1;
+    if (aStart !== bStart) return aStart - bStart;
+    return String(a.primary).length - String(b.primary).length;
+  });
+  return hits.slice(0, 42);
+}
+
+function rebuildComplaintSearchIndex() {
+  _complaintHits = [];
+  if (ticketNewUsesFaultCatalog()) {
+    _faultCatalog.forEach((r) => {
+      const hay = tktHaystackTicketNew([
+        r.fault_code,
+        r.fault_code_name,
+        r.fault_category,
+        r.service_group,
+        r.search_label,
+      ]);
+      _complaintHits.push({
+        hay,
+        primary: r.search_label,
+        sub: 'Fault',
+        sg: r.service_group,
+        cat: r.fault_category,
+        ft: r.fault_pick_value,
+        suggested_title: r.suggested_title,
+        suggested_work_description: r.suggested_work_description,
+      });
+    });
+    return;
+  }
+  const sgs = _options.service_groups || [];
+  const catsMap = _options.categories || {};
+  const fts = _options.fault_types || [];
+  sgs.forEach((sg) => {
+    (catsMap[sg] || []).forEach((cat) => {
+      fts.forEach((ft) => {
+        _complaintHits.push({
+          hay: `${sg} ${cat} ${ft}`.toLowerCase(),
+          primary: `${sg} · ${cat} · ${ft}`,
+          sub: 'Complaint',
+          sg,
+          cat,
+          ft,
+        });
+      });
+    });
+  });
+}
+
+function filterComplaintSearchHits(qRaw) {
+  const q = tktNormQTicketNew(qRaw);
+  if (!q.length) return [];
+  const hits = _complaintHits.filter((h) => h.hay.includes(q));
+  hits.sort((a, b) => {
+    const aStart = a.hay.startsWith(q) ? 0 : 1;
+    const bStart = b.hay.startsWith(q) ? 0 : 1;
+    if (aStart !== bStart) return aStart - bStart;
+    return String(a.primary).length - String(b.primary).length;
+  });
+  return hits.slice(0, 64);
+}
+
+function closeProjSearchDd() {
+  const d = document.getElementById('projectSearchDropdown');
+  if (d) d.classList.remove('open');
+}
+function closePropSearchDd() {
+  const d = document.getElementById('propertySearchDropdown');
+  if (d) d.classList.remove('open');
+}
+function closeComplSearchDd() {
+  const d = document.getElementById('complaintSearchDropdown');
+  if (d) d.classList.remove('open');
+}
+
+function ticketNewSelCascade(id, val) {
+  const el = document.getElementById(id);
+  if (!el || !val) return;
+  const exists = [...el.options].some((o) => o.value === val);
+  if (!exists) return;
+  el.removeAttribute('disabled');
+  el.value = val;
+  el.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
+function syncProjectSearchFromSelect() {
+  const projSel = document.getElementById('project');
+  const inp = document.getElementById('projectSearch');
+  if (!projSel || !inp) return;
+  if (!projSel.value) {
+    inp.value = '';
+    return;
+  }
+  const opt = projSel.options[projSel.selectedIndex];
+  inp.value = opt ? String(opt.textContent || '').trim() : projSel.value;
+}
+
+function locationBreadcrumbFromSelects() {
+  const parts = [
+    document.getElementById('propertySelect')?.value,
+    document.getElementById('zoneSelect')?.value,
+    document.getElementById('subZoneSelect')?.value,
+    document.getElementById('baseUnitSelect')?.value,
+  ].filter(Boolean);
+  return parts.join(' / ');
+}
+
+function syncPropertySearchFromSelect() {
+  const propSel = document.getElementById('propertySelect');
+  const inp = document.getElementById('propertySearch');
+  if (!propSel || !inp) return;
+  if (!propSel.value) {
+    inp.value = '';
+    return;
+  }
+  const proj = (document.getElementById('project')?.value || '').trim();
+  const trail = locationBreadcrumbFromSelects();
+  inp.value = proj ? `${proj} · ${trail}` : trail;
+}
+
+function cascadedSelectNeedsValue(sel) {
+  return !!(sel && !sel.disabled && sel.options && sel.options.length > 1);
+}
+
+function validateLocationCascade() {
+  const propSel = document.getElementById('propertySelect');
+  const zoneSel = document.getElementById('zoneSelect');
+  const szSel = document.getElementById('subZoneSelect');
+  const unitSel = document.getElementById('baseUnitSelect');
+
+  if (!propSel || !propSel.value.trim()) {
+    return {
+      ok: false,
+      msg: 'Choose a location — search above or pick Property.',
+    };
+  }
+
+  if (cascadedSelectNeedsValue(zoneSel) && !(zoneSel.value || '').trim()) {
+    return { ok: false, msg: 'Select a zone — required for this property.' };
+  }
+  if (cascadedSelectNeedsValue(szSel) && !(szSel.value || '').trim()) {
+    return { ok: false, msg: 'Select a sub-zone — required for this zone.' };
+  }
+  if (cascadedSelectNeedsValue(unitSel) && !(unitSel.value || '').trim()) {
+    return { ok: false, msg: 'Select a base unit — required for this sub-zone.' };
+  }
+  return { ok: true, msg: '' };
+}
+
+function applyProjectPick(hit) {
+  const inp = document.getElementById('projectSearch');
+  closeProjSearchDd();
+  if (inp && hit.primary) inp.value = hit.primary;
+  const projSel = document.getElementById('project');
+  projSel.value = hit.projectName || '';
+  document.getElementById('propertySearch').value = '';
+  updateLocationFromProject();
+  const propSel = document.getElementById('propertySelect');
+  if (propSel) {
+    propSel.value = '';
+    propSel.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+  updateSummary();
+}
+
+function applyPropertyPick(hit) {
+  const inp = document.getElementById('propertySearch');
+  closePropSearchDd();
+  if (inp && hit.primary) inp.value = hit.primary;
+
+  const projSel = document.getElementById('project');
+  if (hit.standalone) {
+    projSel.value = '';
+  } else {
+    projSel.value = hit.projectName || '';
+  }
+  syncProjectSearchFromSelect();
+
+  updateLocationFromProject();
+
+  ticketNewSelCascade('propertySelect', hit.property);
+  ticketNewSelCascade('zoneSelect', hit.zone);
+  ticketNewSelCascade('subZoneSelect', hit.subZone);
+  ticketNewSelCascade('baseUnitSelect', hit.unit);
+  updateSummary();
+}
+
+function applyComplaintPick(hit) {
+  const inp = document.getElementById('complaintSearch');
+  closeComplSearchDd();
+  if (inp && hit.primary) inp.value = hit.primary;
+
+  const sgEl = document.getElementById('serviceGroup');
+  const catEl = document.getElementById('category');
+  const ftEl = document.getElementById('faultType');
+
+  sgEl.value = hit.sg || '';
+  sgEl.dispatchEvent(new Event('change', { bubbles: true }));
+  catEl.value = hit.cat || '';
+  catEl.dispatchEvent(new Event('change', { bubbles: true }));
+  if (ticketNewUsesFaultCatalog()) ticketNewRefillFaultSelect();
+  ftEl.value = hit.ft || '';
+  ftEl.dispatchEvent(new Event('change', { bubbles: true }));
+
+  const titleEl = document.getElementById('title');
+  const descEl = document.getElementById('workDescription');
+  if (hit.suggested_title && titleEl) titleEl.value = hit.suggested_title;
+  if (hit.suggested_work_description && descEl) {
+    descEl.value = hit.suggested_work_description;
+    _descAutoFilled = true;
+    document.getElementById('autoDescBar')?.classList.add('show');
+  }
+  _suppressNextDescFetch = Boolean(hit.suggested_work_description);
+
+  updateSummary();
+  onClassificationChange();
+}
+
+function renderProjSearchDropdown() {
+  const inp = document.getElementById('projectSearch');
+  const d = document.getElementById('projectSearchDropdown');
+  if (!inp || !d) return;
+
+  _projSearchStaging = filterProjectSearchHits(inp.value);
+  if (!_projSearchStaging.length) {
+    closeProjSearchDd();
+    return;
+  }
+
+  d.innerHTML = _projSearchStaging
+    .map(
+      (hit, idx) => `
+      <div class="tkt-ac-item" data-phit="${idx}" role="option">
+        <span style="flex:1;line-height:1.35">${escHtmlTicketNew(hit.primary)}</span>
+        <span class="tkt-ac-item-meta">${escHtmlTicketNew(hit.sub)}</span>
+      </div>`,
+    )
+    .join('');
+  d.querySelectorAll('[data-phit]').forEach((row) => {
+    row.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      const ix = parseInt(row.dataset.phit, 10);
+      if (!Number.isFinite(ix)) return;
+      applyProjectPick(_projSearchStaging[ix]);
+    });
+  });
+  d.classList.add('open');
+}
+
+function renderPropSearchDropdown() {
+  const inp = document.getElementById('propertySearch');
+  const d = document.getElementById('propertySearchDropdown');
+  if (!inp || !d) return;
+
+  _propSearchStaging = filterPropertySearchHits(inp.value);
+  if (!_propSearchStaging.length) {
+    closePropSearchDd();
+    return;
+  }
+
+  d.innerHTML = _propSearchStaging
+    .map(
+      (hit, idx) => `
+      <div class="tkt-ac-item" data-yhit="${idx}" role="option">
+        <span style="flex:1;line-height:1.35">${escHtmlTicketNew(hit.primary)}</span>
+        <span class="tkt-ac-item-meta">${escHtmlTicketNew(hit.sub)}</span>
+      </div>`,
+    )
+    .join('');
+  d.querySelectorAll('[data-yhit]').forEach((row) => {
+    row.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      const ix = parseInt(row.dataset.yhit, 10);
+      if (!Number.isFinite(ix)) return;
+      applyPropertyPick(_propSearchStaging[ix]);
+    });
+  });
+  d.classList.add('open');
+}
+
+function renderComplSearchDropdown() {
+  const inp = document.getElementById('complaintSearch');
+  const d = document.getElementById('complaintSearchDropdown');
+  if (!inp || !d) return;
+
+  _complSearchStaging = filterComplaintSearchHits(inp.value);
+  if (!_complSearchStaging.length) {
+    closeComplSearchDd();
+    return;
+  }
+
+  d.innerHTML = _complSearchStaging
+    .map(
+      (hit, idx) => `
+      <div class="tkt-ac-item" data-chit="${idx}" role="option">
+        <span style="flex:1;line-height:1.35">${escHtmlTicketNew(hit.primary)}</span>
+        <span class="tkt-ac-item-meta">${escHtmlTicketNew(hit.sub || 'Fault')}</span>
+      </div>`,
+    )
+    .join('');
+  d.querySelectorAll('[data-chit]').forEach((row) => {
+    row.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      const ix = parseInt(row.dataset.chit, 10);
+      if (!Number.isFinite(ix)) return;
+      applyComplaintPick(_complSearchStaging[ix]);
+    });
+  });
+  d.classList.add('open');
+}
+
+function initLocationComplaintSearchUI() {
+  const pjInp = document.getElementById('projectSearch');
+  const propInp = document.getElementById('propertySearch');
+  const csInp = document.getElementById('complaintSearch');
+
+  if (pjInp) {
+    pjInp.addEventListener('input', () => {
+      clearTimeout(_projSearchDebounce);
+      _projSearchDebounce = setTimeout(renderProjSearchDropdown, 220);
+    });
+    pjInp.addEventListener('focus', () => {
+      clearTimeout(_projSearchDebounce);
+      _projSearchDebounce = setTimeout(renderProjSearchDropdown, 120);
+    });
+    pjInp.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeProjSearchDd();
+    });
+  }
+  if (propInp) {
+    propInp.addEventListener('input', () => {
+      clearTimeout(_propSearchDebounce);
+      _propSearchDebounce = setTimeout(renderPropSearchDropdown, 220);
+    });
+    propInp.addEventListener('focus', () => {
+      clearTimeout(_propSearchDebounce);
+      _propSearchDebounce = setTimeout(renderPropSearchDropdown, 120);
+    });
+    propInp.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closePropSearchDd();
+    });
+  }
+  if (csInp) {
+    csInp.addEventListener('input', () => {
+      clearTimeout(_complSearchDebounce);
+      _complSearchDebounce = setTimeout(renderComplSearchDropdown, 220);
+    });
+    csInp.addEventListener('focus', () => {
+      clearTimeout(_complSearchDebounce);
+      _complSearchDebounce = setTimeout(renderComplSearchDropdown, 120);
+    });
+    csInp.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeComplSearchDd();
+    });
+  }
+
+  document.addEventListener('mousedown', (e) => {
+    function outside(inpId, closeFn) {
+      const inp = document.getElementById(inpId);
+      if (!inp || !inp.closest('.tkt-ac-wrap')) return;
+      if (!inp.closest('.tkt-ac-wrap').contains(e.target)) closeFn();
+    }
+    outside('projectSearch', closeProjSearchDd);
+    outside('propertySearch', closePropSearchDd);
+    outside('complaintSearch', closeComplSearchDd);
+  });
+}
+
+// ── Boot ─────────────────────────────────────────────────
+(async () => {
+  const [optRes, projRes, locRes] = await Promise.all([
+    tktFetch('/tickets/api/options'),
+    tktFetch('/tickets/api/settings/projects'),
+    tktFetch('/tickets/api/settings/location-tree'),
+  ]);
+  _options = optRes.data.options || {};
+  _faultCatalog = Array.isArray(_options.fault_catalog) ? _options.fault_catalog : [];
+  _locationTree = locRes.data.tree || [];
+
+  _standaloneProps = locRes.data.standalone_properties || [];
+
+  // Build flat property list
+  _locationTree.forEach(proj => {
+    (proj.properties || []).forEach(p => _allProperties.push({ ...p, _projectId: proj.id, _projectName: proj.name }));
+  });
+  _standaloneProps.forEach(p => _allProperties.push({ ...p, _projectId: null, _projectName: null }));
+
+  rebuildProjectSearchIndex();
+  rebuildPropertySearchIndex();
+  rebuildComplaintSearchIndex();
+
+  // Populate project dropdown
+  const projSel = document.getElementById('project');
+  projSel.innerHTML = '<option value="">Select project…</option>';
+  const projects = projRes.data.projects || [];
+  if (!projects.length) {
+    projSel.innerHTML += '<option value="" disabled>No projects yet — add in Settings</option>';
+    document.getElementById('projLoadHint').textContent = 'No projects found — add them in Settings first.';
+  } else {
+    document.getElementById('projLoadHint').style.display = 'none';
+    projects.forEach(p => {
+      projSel.insertAdjacentHTML('beforeend', `<option value="${p.name}">${p.name}${p.client_name ? ' — ' + p.client_name : ''}</option>`);
+    });
+  }
+
+  // Service groups
+  const sgEl = document.getElementById('serviceGroup');
+  (_options.service_groups || []).forEach(sg => sgEl.insertAdjacentHTML('beforeend', `<option value="${sg}">${sg}</option>`));
+
+  // Fault codes / classification
+  const ftEl = document.getElementById('faultType');
+  if (!ticketNewUsesFaultCatalog()) {
+    ftEl.innerHTML = '<option value="">Select fault type…</option>';
+    (_options.fault_types || []).forEach((ft) =>
+      ftEl.insertAdjacentHTML('beforeend', `<option value="${ft}">${ft}</option>`),
+    );
+  } else {
+    ftEl.innerHTML = '<option value="">Select fault code…</option>';
+  }
+
+  const catEl = document.getElementById('category');
+  // Category chain
+  tktSetupCategoryChain(sgEl, catEl, _options);
+
+  if (ticketNewUsesFaultCatalog()) {
+    sgEl.addEventListener('change', ticketNewRefillFaultSelect);
+    catEl.addEventListener('change', ticketNewRefillFaultSelect);
+    ticketNewRefillFaultSelect();
+  }
+
+  // Events
+  sgEl.addEventListener('change', onClassificationChange);
+  catEl.addEventListener('change', onClassificationChange);
+  ftEl.addEventListener('change', onClassificationChange);
+
+  // Location cascade from project selection (hidden sync field)
+  projSel.addEventListener('change', () => {
+    closePropSearchDd();
+    updateLocationFromProject();
+  });
+  updateLocationFromProject();
+
+  initPriorityPills();
+  initTitleAutocomplete();
+  initLocationComplaintSearchUI();
+  initNewTicketImageUI();
+  updateSummary();
+})();
+
+// ── Classification change → auto-desc + title suggestions ──
+let _descDebounce = null;
+async function onClassificationChange() {
+  updateComplaintClassRecap();
+
+  clearTimeout(_descDebounce);
+  _descDebounce = setTimeout(async () => {
+    const sg = document.getElementById('serviceGroup').value;
+    const cat = document.getElementById('category').value;
+    const ft = document.getElementById('faultType').value;
+
+    updateSummary();
+
+    const skipApiDesc = _suppressNextDescFetch;
+    _suppressNextDescFetch = false;
+
+    const useCatalog = ticketNewUsesFaultCatalog();
+    const row = useCatalog ? findCatalogFaultRow(sg, cat, ft) : null;
+    const descEl = document.getElementById('workDescription');
+    const autoBar = document.getElementById('autoDescBar');
+    const titleEl = document.getElementById('title');
+
+    if (useCatalog && row && ft) {
+      if (!titleEl?.value.trim() && row.suggested_title) {
+        titleEl.value = row.suggested_title;
+      }
+      const descEmpty = !descEl.value.trim() || _descAutoFilled;
+      if ((descEmpty || skipApiDesc) && row.suggested_work_description) {
+        descEl.value = row.suggested_work_description;
+        _descAutoFilled = true;
+        autoBar?.classList.add('show');
+      }
+      loadTitleSuggestions();
+      return;
+    }
+
+    if (!skipApiDesc && (sg || cat || ft)) {
+      const isEmpty = !descEl.value.trim() || _descAutoFilled;
+      if (isEmpty) {
+        const res = await tktFetch(`/tickets/api/description-template?service_group=${encodeURIComponent(sg)}&category=${encodeURIComponent(cat)}&fault_type=${encodeURIComponent(ft)}`);
+        if (res.ok && res.data.description) {
+          descEl.value = res.data.description;
+          _descAutoFilled = true;
+          autoBar?.classList.add('show');
+        }
+      }
+    }
+
+    loadTitleSuggestions();
+  }, 400);
+}
+
+// User manually edited description → mark as manual
+document.getElementById('workDescription').addEventListener('input', () => {
+  _descAutoFilled = false;
+  document.getElementById('autoDescBar').classList.remove('show');
+});
+
+document.getElementById('regenerateDescBtn')?.addEventListener('click', async () => {
+  const sg = document.getElementById('serviceGroup').value;
+  const cat = document.getElementById('category').value;
+  const ft = document.getElementById('faultType').value;
+  if (ticketNewUsesFaultCatalog()) {
+    const row = findCatalogFaultRow(sg, cat, ft);
+    if (row?.suggested_work_description) {
+      document.getElementById('workDescription').value = row.suggested_work_description;
+      _descAutoFilled = true;
+      return;
+    }
+  }
+  const res = await tktFetch(`/tickets/api/description-template?service_group=${encodeURIComponent(sg)}&category=${encodeURIComponent(cat)}&fault_type=${encodeURIComponent(ft)}`);
+  if (res.ok && res.data.description) {
+    document.getElementById('workDescription').value = res.data.description;
+    _descAutoFilled = true;
+  }
+});
+
+// ── Title autocomplete ────────────────────────────────────
+function initTitleAutocomplete() {
+  const inp = document.getElementById('title');
+  const dropdown = document.getElementById('titleDropdown');
+
+  inp.addEventListener('input', () => {
+    loadTitleSuggestions();
+    updateSummary();
+  });
+  inp.addEventListener('focus', loadTitleSuggestions);
+  inp.addEventListener('keydown', (e) => {
+    const items = dropdown.querySelectorAll('.tkt-ac-item');
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      _acFocusIdx = Math.min(_acFocusIdx + 1, items.length - 1);
+      items.forEach((it, i) => it.classList.toggle('focused', i === _acFocusIdx));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      _acFocusIdx = Math.max(_acFocusIdx - 1, -1);
+      items.forEach((it, i) => it.classList.toggle('focused', i === _acFocusIdx));
+    } else if (e.key === 'Enter' && _acFocusIdx >= 0) {
+      e.preventDefault();
+      items[_acFocusIdx]?.click();
+    } else if (e.key === 'Escape') {
+      closeDropdown();
+    }
+  });
+  document.addEventListener('click', (e) => {
+    if (!inp.closest('.tkt-ac-wrap').contains(e.target)) closeDropdown();
+  });
+}
+
+let _suggestDebounce = null;
+async function loadTitleSuggestions() {
+  clearTimeout(_suggestDebounce);
+  _suggestDebounce = setTimeout(async () => {
+    const q = document.getElementById('title').value.trim();
+    const sg = document.getElementById('serviceGroup').value;
+    const cat = document.getElementById('category').value;
+    const ft = document.getElementById('faultType').value;
+
+    const params = new URLSearchParams({ q, service_group: sg, category: cat, fault_type: ft });
+    const res = await tktFetch(`/tickets/api/title-suggestions?${params}`);
+    _titleSuggestions = res.data.suggestions || [];
+    renderTitleDropdown(_titleSuggestions);
+  }, 250);
+}
+
+function renderTitleDropdown(suggestions) {
+  const dropdown = document.getElementById('titleDropdown');
+  _acFocusIdx = -1;
+  if (!suggestions.length) { closeDropdown(); return; }
+
+  dropdown.innerHTML = suggestions.map((s, i) => `
+    <div class="tkt-ac-item" data-idx="${i}" data-title="${s.title.replace(/"/g,'&quot;')}" data-desc="${(s.description_template||'').replace(/"/g,'&quot;')}">
+      <svg class="tkt-ac-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="15" height="15">
+        ${s.source === 'template'
+          ? '<path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z"/>'
+          : '<path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>'}
+      </svg>
+      <span style="flex:1;">${s.title}</span>
+      ${s.description_template ? '<span class="tkt-ac-template-tag">+desc</span>' : ''}
+      <span class="tkt-ac-source">${s.source}</span>
+    </div>`).join('');
+
+  dropdown.querySelectorAll('.tkt-ac-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const titleInp = document.getElementById('title');
+      titleInp.value = item.dataset.title;
+      const desc = item.dataset.desc;
+      if (desc) {
+        document.getElementById('workDescription').value = desc;
+        _descAutoFilled = true;
+        document.getElementById('autoDescBar').classList.add('show');
+      }
+      closeDropdown();
+      updateSummary();
+    });
+  });
+
+  dropdown.classList.add('open');
+}
+
+function closeDropdown() {
+  document.getElementById('titleDropdown').classList.remove('open');
+}
+
+// ── Location cascade ──────────────────────────────────────
+function updateLocationFromProject() {
+  const projName = document.getElementById('project').value;
+  const propSel = document.getElementById('propertySelect');
+  const zoneSel = document.getElementById('zoneSelect');
+  const szSel = document.getElementById('subZoneSelect');
+  const unitSel = document.getElementById('baseUnitSelect');
+
+  // Find matching project's properties
+  const proj = _locationTree.find(p => p.name === projName);
+  const props = proj ? (proj.properties || []) : _allProperties.filter(p => !p._projectId);
+
+  propSel.innerHTML = '<option value="">Select property…</option>';
+  if (props.length) {
+    props.forEach((p) => propSel.insertAdjacentHTML('beforeend', `<option value="${p.name}" data-id="${p.id}">${p.name}</option>`));
+  }
+  resetSelect(zoneSel, 'Select zone…', true);
+  resetSelect(szSel, 'Select sub-zone…', true);
+  resetSelect(unitSel, 'Select unit…', true);
+  syncProjectSearchFromSelect();
+  syncPropertySearchFromSelect();
+  updateSummary();
+}
+
+document.getElementById('propertySelect').addEventListener('change', function() {
+  const zoneSel = document.getElementById('zoneSelect');
+  const szSel = document.getElementById('subZoneSelect');
+  const unitSel = document.getElementById('baseUnitSelect');
+
+  const propName = this.value;
+  // Find zones for this property across all projects
+  let zones = [];
+  for (const proj of _locationTree) {
+    const prop = (proj.properties || []).find(p => p.name === propName);
+    if (prop) { zones = prop.zones || []; break; }
+  }
+  const standalone = _allProperties.filter(p => !p._projectId && p.name === propName);
+  if (!zones.length && standalone.length) zones = standalone[0].zones || [];
+
+  resetSelect(zoneSel, 'Select zone…', !zones.length);
+  zones.forEach(z => zoneSel.insertAdjacentHTML('beforeend', `<option value="${z.name}" data-id="${z.id}">${z.name}</option>`));
+  if (zones.length) zoneSel.disabled = false;
+
+  resetSelect(szSel, 'Select sub-zone…', true);
+  resetSelect(unitSel, 'Select unit…', true);
+  syncPropertySearchFromSelect();
+  updateSummary();
+});
+
+document.getElementById('zoneSelect').addEventListener('change', function() {
+  const szSel = document.getElementById('subZoneSelect');
+  const unitSel = document.getElementById('baseUnitSelect');
+  const propName = document.getElementById('propertySelect').value;
+  const zoneName = this.value;
+
+  let subZones = [];
+  for (const proj of _locationTree) {
+    const prop = (proj.properties || []).find(p => p.name === propName);
+    if (prop) {
+      const zone = (prop.zones || []).find(z => z.name === zoneName);
+      if (zone) { subZones = zone.sub_zones || []; break; }
+    }
+  }
+  if (!subZones.length) {
+    const standalone = _allProperties.filter((p) => !p._projectId && p.name === propName);
+    if (standalone.length) {
+      const zMatch = (standalone[0].zones || []).find((zo) => zo.name === zoneName);
+      if (zMatch) subZones = zMatch.sub_zones || [];
+    }
+  }
+
+  resetSelect(szSel, 'Select sub-zone…', !subZones.length);
+  subZones.forEach(sz => szSel.insertAdjacentHTML('beforeend', `<option value="${sz.name}" data-id="${sz.id}">${sz.name}</option>`));
+  if (subZones.length) szSel.disabled = false;
+  resetSelect(unitSel, 'Select unit…', true);
+  syncPropertySearchFromSelect();
+  updateSummary();
+});
+
+document.getElementById('subZoneSelect').addEventListener('change', function() {
+  const unitSel = document.getElementById('baseUnitSelect');
+  const propName = document.getElementById('propertySelect').value;
+  const zoneName = document.getElementById('zoneSelect').value;
+  const szName = this.value;
+
+  let units = [];
+  for (const proj of _locationTree) {
+    const prop = (proj.properties || []).find(p => p.name === propName);
+    if (prop) {
+      const zone = (prop.zones || []).find(z => z.name === zoneName);
+      if (zone) {
+        const sz = (zone.sub_zones || []).find(s => s.name === szName);
+        if (sz) { units = sz.base_units || []; break; }
+      }
+    }
+  }
+  if (!units.length) {
+    const standalone = _allProperties.filter((p) => !p._projectId && p.name === propName);
+    if (standalone.length) {
+      const z = (standalone[0].zones || []).find((zo) => zo.name === zoneName);
+      const szMatch = z && (z.sub_zones || []).find((s) => s.name === szName);
+      if (szMatch) units = szMatch.base_units || [];
+    }
+  }
+
+  resetSelect(unitSel, 'Select unit…', !units.length);
+  units.forEach(u => unitSel.insertAdjacentHTML('beforeend', `<option value="${u.name}">${u.name}</option>`));
+  if (units.length) unitSel.disabled = false;
+  syncPropertySearchFromSelect();
+  updateSummary();
+});
+
+document.getElementById('baseUnitSelect').addEventListener('change', () => {
+  syncPropertySearchFromSelect();
+  updateSummary();
+});
+
+function resetSelect(sel, placeholder, disabled) {
+  sel.innerHTML = `<option value="">${placeholder}</option>`;
+  sel.disabled = disabled;
+}
+
+// ── Priority pills ────────────────────────────────────────
+function initPriorityPills() {
+  document.querySelectorAll('.priority-pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      document.querySelectorAll('.priority-pill').forEach(p => p.classList.remove('selected'));
+      pill.classList.add('selected');
+      pill.querySelector('input').checked = true;
+      updateSummary();
+    });
+  });
+}
+
+// ── Live summary ──────────────────────────────────────────
+
+const _TICKET_NEW_PRI_HINTS = {
+  low: 'Scheduled in normal order — good for preventative or low-impact jobs.',
+  medium: 'Typical urgency — supervisors route in standard queue sequence.',
+  high: 'Supervisors should prioritise assignment and milestone follow-up.',
+  critical: 'Urgent safety or severe service impact — treat as immediate attention.',
+};
+
+function ticketNewTruncateText(s, maxLen) {
+  const t = String(s || '').replace(/\s+/g, ' ').trim();
+  if (!t) return '';
+  return t.length <= maxLen ? t : `${t.slice(0, maxLen - 1).trim()}…`;
+}
+
+function updateComplaintClassRecap() {
+  const host = document.getElementById('complaintClassRecap');
+  if (!host) return;
+
+  const sgEl = document.getElementById('serviceGroup');
+  const catEl = document.getElementById('category');
+  const ftEl = document.getElementById('faultType');
+  const sg = (sgEl?.value || '').trim();
+  const cat = (catEl?.value || '').trim();
+  const ftVal = (ftEl?.value || '').trim();
+  let ftDisp = '';
+  if (ftEl && ftEl.selectedIndex >= 0) {
+    const opt = ftEl.options[ftEl.selectedIndex];
+    ftDisp = (opt?.text || '').trim() || ftVal;
+  }
+
+  const pri = document.querySelector('input[name="priority"]:checked')?.value || 'medium';
+  const priHint = _TICKET_NEW_PRI_HINTS[pri] || _TICKET_NEW_PRI_HINTS.medium;
+
+  if (!sg && !cat && !ftVal) {
+    host.innerHTML = `
+      <p class="new-tkt-recap-empty">
+        <strong>Tip:</strong> use <strong>Find complaint type</strong> to jump straight into the right fault code, or choose service group and category manually.
+        The snapshot below fills in as you go — including what will feed the work description when using the official catalog.
+      </p>`;
+    return;
+  }
+
+  const chips = [];
+  if (sg) chips.push(`<span class="new-tkt-recap-chip sg" title="${escHtmlTicketNew(sg)}">SG: ${escHtmlTicketNew(sg)}</span>`);
+  if (cat) chips.push(`<span class="new-tkt-recap-chip cat" title="${escHtmlTicketNew(cat)}">${escHtmlTicketNew(cat)}</span>`);
+  if (ftVal) {
+    const fl = ftDisp || ftVal;
+    chips.push(`<span class="new-tkt-recap-chip fault" title="${escHtmlTicketNew(ftVal)}">${escHtmlTicketNew(fl)}</span>`);
+  }
+
+  let previewBlock = '';
+
+  const useCatalog = ticketNewUsesFaultCatalog();
+  const row = useCatalog ? findCatalogFaultRow(sg, cat, ftVal) : null;
+
+  if (useCatalog && row && ftVal) {
+    const st = ticketNewTruncateText(row.suggested_title, 220);
+    const dsc = ticketNewTruncateText(row.suggested_work_description, 360);
+    previewBlock =
+      `<div class="new-tkt-recap-preview">` +
+      (st
+        ? `<span class="new-tkt-recap-preview-label">Suggested title wording</span><p style="margin:0 0 10px;color:#1e293b;font-weight:500;">${escHtmlTicketNew(st)}</p>`
+        : '') +
+      (dsc
+        ? `<span class="new-tkt-recap-preview-label">Checklist preview (work description)</span><p style="margin:0;font-family:system-ui;line-height:1.5;">${escHtmlTicketNew(dsc)}</p>`
+        : '') +
+      `</div>`;
+  } else if (sg || cat || ftVal) {
+    previewBlock =
+      `<p class="new-tkt-recap-preview-muted" style="border-top:none;padding-top:4px;margin-top:0;">` +
+      `Fine-tune title and work description in the next section.` +
+      `</p>`;
+  }
+
+  host.innerHTML =
+    `<div class="new-tkt-recap-chips">${chips.join('')}</div>` +
+    `<p class="new-tkt-recap-pri-hint"><span class="pri-cap">${escHtmlTicketNew(pri)}</span> priority — ${escHtmlTicketNew(priHint)}</p>` +
+    previewBlock;
+}
+
+function updateSummary() {
+  const v = (id) => {
+    const el = document.getElementById(id);
+    return el ? (el.options ? el.options[el.selectedIndex]?.text || '' : el.value) : '';
+  };
+  const set = (id, val) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (val) { el.textContent = val; el.classList.remove('empty'); }
+    else { el.classList.add('empty'); }
+  };
+
+  const projVal = document.getElementById('project').value;
+  const propVal = document.getElementById('propertySelect').value;
+  let sumProj = projVal || null;
+  if (!sumProj && propVal) sumProj = 'Standalone location';
+  set('sum-project', sumProj);
+
+  const sg = document.getElementById('serviceGroup').value;
+  set('sum-sg', sg || null);
+
+  const cat = document.getElementById('category').value;
+  const ft = document.getElementById('faultType').value;
+  set('sum-cat', [cat, ft].filter(Boolean).join(' / ') || null);
+
+  // Priority badge
+  const pri = document.querySelector('input[name="priority"]:checked')?.value || 'medium';
+  const priEl = document.getElementById('sum-priority');
+  if (priEl) priEl.innerHTML = `<span class="tkt-badge badge-priority-${pri}">${pri.charAt(0).toUpperCase()+pri.slice(1)}</span>`;
+
+  const title = document.getElementById('title').value.trim();
+  set('sum-title', title || null);
+
+  const nImg = typeof _pendingTicketImages !== 'undefined' ? _pendingTicketImages.length : 0;
+  const sumImg = document.getElementById('sum-images');
+  if (sumImg) {
+    if (nImg) {
+      sumImg.textContent = `${nImg} selected`;
+      sumImg.classList.remove('empty');
+    } else {
+      sumImg.textContent = 'None selected';
+      sumImg.classList.add('empty');
+    }
+  }
+
+  // Location
+  const loc = [
+    document.getElementById('propertySelect').value,
+    document.getElementById('zoneSelect').value,
+    document.getElementById('subZoneSelect').value,
+    document.getElementById('baseUnitSelect').value,
+  ].filter(Boolean).join(' / ');
+  set('sum-location', loc || null);
+
+  // Reporter
+  const repEl = document.getElementById('reporterId');
+  const repName = repEl?.options[repEl.selectedIndex]?.text?.split(' — ')[0] || '—';
+  set('sum-reporter', repName);
+
+  // Chargeable
+  const ch = document.getElementById('isChargeable')?.checked;
+  const chEl = document.getElementById('sum-charge');
+  if (chEl) {
+    chEl.innerHTML = ch
+      ? '<span style="color:#16a34a;font-weight:700;">Yes — Chargeable</span>'
+      : '<span style="color:#64748b;">No</span>';
+    chEl.classList.remove('empty');
+  }
+
+  updateComplaintClassRecap();
+}
+
+document.getElementById('isChargeable')?.addEventListener('change', updateSummary);
+document.getElementById('reporterId')?.addEventListener('change', updateSummary);
+document.getElementById('project')?.addEventListener('change', updateSummary);
+
+// ── Submit ────────────────────────────────────────────────
+document.getElementById('tktNewForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="tkt-spinner"></span> Creating…';
+
+  const getVal = (id) => (document.getElementById(id)?.value || '').trim();
+  const payload = {
+    title: getVal('title'),
+    project: getVal('project'),
+    service_group: getVal('serviceGroup'),
+    category: getVal('category'),
+    fault_type: getVal('faultType'),
+    priority: document.querySelector('input[name="priority"]:checked')?.value || 'medium',
+    work_description: getVal('workDescription'),
+    property_name: document.getElementById('propertySelect').value.trim(),
+    zone: document.getElementById('zoneSelect').value.trim(),
+    sub_zone: document.getElementById('subZoneSelect').value.trim(),
+    base_unit: document.getElementById('baseUnitSelect').value.trim(),
+    is_chargeable: document.getElementById('isChargeable').checked,
+  };
+
+  const locCascade = validateLocationCascade();
+  if (!locCascade.ok) {
+    tktToast(locCascade.msg, 'error');
+    btn.disabled = false;
+    btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg> Create Work Order';
+    return;
+  }
+
+  if (!payload.project && payload.property_name) {
+    payload.project = 'Standalone location';
+  }
+
+  const required = ['title', 'project', 'service_group', 'category', 'fault_type', 'work_description'];
+  for (const f of required) {
+    if (!payload[f]) {
+      tktToast(`"${f.replace(/_/g,' ')}" is required.`, 'error');
+      btn.disabled = false;
+      btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg> Create Work Order';
+      return;
+    }
+  }
+
+  const res = await tktFetch('/tickets/api/tickets', { method: 'POST', body: JSON.stringify(payload) });
+  if (res.ok && res.data.success) {
+    const tid = res.data.ticket_id;
+    const pendingN = _pendingTicketImages.length;
+    if (pendingN) {
+      btn.innerHTML = '<span class="tkt-spinner"></span> Uploading images…';
+      const up = await uploadPendingImagesForNewTicket(tid);
+      if (up.failed > 0) {
+        tktToast(
+          `Work order created. ${up.failed} of ${pendingN} image(s) failed to upload — add them from the ticket page.`,
+          'error',
+          5200,
+        );
+      } else {
+        tktToast('Work order created with photos.', 'success');
+      }
+    } else {
+      tktToast('Work order created!', 'success');
+    }
+    setTimeout(() => { window.location.href = '/tickets/' + encodeURIComponent(tid); }, pendingN ? 900 : 600);
+  } else {
+    tktToast('Error: ' + (res.data.error || 'Unknown'), 'error');
+    btn.disabled = false;
+    btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg> Create Work Order';
+  }
+});
+</script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}" defer></script>
+<script>
+  function tktOpenMobileSidebar(){const s=document.getElementById('tktDhSidebar');if(s)s.classList.add('open');}
+  function tktCloseMobileSidebar(){const s=document.getElementById('tktDhSidebar');if(s)s.classList.remove('open');}
+  function tktToggleMobileSidebar(){const s=document.getElementById('tktDhSidebar');if(!s)return;s.classList.contains('open')?tktCloseMobileSidebar():tktOpenMobileSidebar();}
+  document.addEventListener('click',function(e){const s=document.getElementById('tktDhSidebar'),btn=document.getElementById('tktDhSidebarToggle');if(s&&s.classList.contains('open')&&!s.contains(e.target)&&btn&&!btn.contains(e.target))tktCloseMobileSidebar();});
+</script>
+</body>
+</html>

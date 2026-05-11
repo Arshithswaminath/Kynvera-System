@@ -46,12 +46,20 @@
     .page-header p { opacity: 0.82; margin: 0; font-size: 0.875rem; position: relative; }
 
     /* ── Pending List Container ───────────────────────────── */
-    /* Fill viewport below main nav; list scrolls inside the card */
-    .hr-list-page-shell {
+    /* Cap shell to viewport so #pendingList gets a bounded height and scrolls (flex:1 alone expands with content otherwise). */
+    body.hr-queue-list-page {
       display: flex;
       flex-direction: column;
-      min-height: calc(100vh - 5.5rem);
-      min-height: calc(100dvh - 5.5rem);
+      min-height: 100vh;
+      min-height: 100dvh;
+    }
+    body.hr-queue-list-page > .hr-list-page-shell {
+      flex: 1 1 auto;
+      min-height: 0;
+      max-height: calc(100vh - 5.5rem);
+      max-height: calc(100dvh - 5.5rem);
+      display: flex;
+      flex-direction: column;
     }
     .hr-list-page-shell > .page-header { flex-shrink: 0; }
 
@@ -65,8 +73,8 @@
       box-shadow: 0 4px 24px rgba(0,0,0,0.06);
     }
     #pendingList {
-      flex: 1;
-      min-height: 12rem;
+      flex: 1 1 auto;
+      min-height: 0;
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
       overscroll-behavior: contain;
@@ -124,28 +132,15 @@
       min-width: 22px; text-align: center; display: none;
     }
 
-    /* ── Review Cards ─────────────────────────────────────── */
+    /* ── Review Cards (no coloured left stripe; type is shown in the badge only) ── */
     .review-card {
       padding: 1rem 1.5rem; margin: 0;
       border-bottom: 1px solid #f1f5f9;
-      border-left: 3px solid transparent;
-      cursor: pointer; transition: all 0.18s ease;
+      cursor: pointer; transition: background 0.18s ease;
       background: white;
     }
     .review-card:last-child { border-bottom: none; }
-    .review-card:hover { background: #fffbeb; border-left-color: #d97706; }
-    .review-card.al-leave_application { border-left-color: #86efac; }
-    .review-card.al-termination       { border-left-color: #fca5a5; }
-    .review-card.al-long_vacation     { border-left-color: #93c5fd; }
-    .review-card.al-grievance         { border-left-color: #fcd34d; }
-    .review-card.al-passport_release  { border-left-color: #c4b5fd; }
-    .review-card.al-duty_resumption   { border-left-color: #7dd3fc; }
-    .review-card:hover.al-leave_application,
-    .review-card:hover.al-termination,
-    .review-card:hover.al-long_vacation,
-    .review-card:hover.al-grievance,
-    .review-card:hover.al-passport_release,
-    .review-card:hover.al-duty_resumption { border-left-color: #d97706; }
+    .review-card:hover { background: #fffbeb; }
 
     .form-type-badge {
       padding: 0.28rem 0.62rem; border-radius: 6px;
@@ -153,11 +148,18 @@
     }
     .type-leave_application, .type-leave { background: #d1fae5; color: #047857; }
     .type-termination      { background: #fee2e2; color: #dc2626; }
-    .type-long_vacation    { background: #dbeafe; color: #1d4ed8; }
-    .type-asset            { background: #fef3c7; color: #b45309; }
-    .type-grievance        { background: #fef3c7; color: #92400e; }
+    .type-long_vacation    { background: #dbeafe; color: #2563eb; }
+    .type-asset            { background: #fef3c7; color: #d97706; }
+    .type-grievance        { background: #fecaca; color: #b91c1c; }
     .type-passport_release { background: #ede9fe; color: #6d28d9; }
     .type-duty_resumption  { background: #e0f2fe; color: #0369a1; }
+    .type-commencement { background: #ccfbf1; color: #0f766e; }
+    .type-visa_renewal { background: #fbcfe8; color: #9d174d; }
+    .type-performance_evaluation { background: #bfdbfe; color: #1d4ed8; }
+    .type-staff_appraisal { background: #e0e7ff; color: #4338ca; }
+    .type-contract_renewal { background: #fed7aa; color: #c2410c; }
+    .type-station_clearance { background: #a5f3fc; color: #0e7490; }
+    .type-interview_assessment { background: #fef9c3; color: #ca8a04; }
 
     .age-pill {
       font-size: 0.7rem; font-weight: 600;
@@ -339,9 +341,9 @@
   </style>
   <style>body.has-main-nav { padding-top: 5.5rem; }</style>
 </head>
-<body class="has-main-nav">
+<body class="has-main-nav hr-queue-list-page">
   {% set active_page = 'pending-review' %}
-  {% include 'partials/main_navbar.html' with context %}
+  {% include 'partials/hr_embed_optional_navbar.html' %}
 
   <div class="container py-4 hr-list-page-shell">
     <!-- Page Header -->
@@ -476,6 +478,8 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="{{ url_for('static', filename='js/injaaz-uae-datetime.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/hr_submission_full_form_url.js') }}"></script>
   <script>
     const HR_SUPPORTED_DOCX_FORMS = {{ (supported_docx_forms or [])|tojson }};
     const HR_SUPPORTED_PDF_FORMS  = {{ (supported_pdf_forms or [])|tojson }};
@@ -483,6 +487,7 @@
     let pendingListCache = [];
     let currentSubmissionId = null;
     let currentFormType = null;
+    let currentWorkflowStatus = '';
     let signaturePad = null;
 
     /* ── PDF / DOCX downloads ─────────────────────────────── */
@@ -552,11 +557,14 @@
     }
     function fmtDate(v) {
       if (!v) return '-';
-      try { return new Date(v).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }); } catch { return v; }
+      const x = InjaazDateTimeUAE.formatDateDMY(v);
+      return x || String(v);
     }
     function daysAgo(dateStr) {
       if (!dateStr) return null;
-      return Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
+      const d = InjaazDateTimeUAE.parseInstant(dateStr);
+      if (!d || Number.isNaN(d.getTime())) return null;
+      return Math.floor((Date.now() - d.getTime()) / 86400000);
     }
     function agePill(dateStr) {
       const d = daysAgo(dateStr);
@@ -577,8 +585,6 @@
       const key = type.replace('hr_', '');
       return labels[key] || key.replace(/_/g, ' ').toUpperCase();
     }
-    function accentClass(type) { return 'al-' + type.replace('hr_', ''); }
-
     /* ── Form renderers ───────────────────────────────────── */
     function renderFormAsFilled(formType, formData, submissionId) {
       if (formType === 'leave_application') return renderLeaveFormAsFilled(formData, submissionId);
@@ -640,7 +646,27 @@
                 ${row('Leave Salary Advance', salaryStr)}
                 ${row('Telephone (reachable)', fd.telephone_reachable)}
                 ${row('Replacement Name', fd.replacement_name)}
-                <tr><td class="label">Employee Signature</td><td>${sigHtml(fd.employee_signature, 'Employee')}</td></tr>
+                <tr><td class="label">Employee signature</td><td>${sigHtml(fd.employee_signature, 'Employee')}</td></tr>
+                ${(() => {
+                  const reps = [];
+                  if (Array.isArray(fd.replacement_signers)) reps.push(...fd.replacement_signers);
+                  if (!reps.length && fd._routed_signoffs && Array.isArray(fd._routed_signoffs.slots)) {
+                    fd._routed_signoffs.slots.forEach((g) => {
+                      if (g && g.key === 'replacement' && Array.isArray(g.signers)) reps.push(...g.signers);
+                    });
+                  }
+                  const parts = [];
+                  reps.forEach((s) => {
+                    const who = escapeHtml(String(s.display_name || s.username || 'Colleague'));
+                    const sg = sigHtml(s.signature, 'Colleague');
+                    const body = sg === '-' ? '<div style="margin-top:.25rem;font-size:.8rem;color:#94a3b8;font-style:italic">Pending</div>' : '<div style="margin-top:.25rem">' + sg + '</div>';
+                    parts.push(`<div style="margin-bottom:.55rem"><strong style="font-size:.78rem;color:#64748b">${who}</strong>${body}</div>`);
+                  });
+                  let cell = parts.length ? `<div class="doc-sig-stack">${parts.join('')}</div>` : '-';
+                  if (cell === '-' && fd.replacement_signature) cell = sigHtml(fd.replacement_signature, 'Replacement colleague');
+                  return `<tr><td class="label">Colleague / replacement signature</td><td>${cell}</td></tr>`;
+                })()}
+                <tr><td class="label">Manager signature</td><td>${sigHtml(fd.gm_signature, 'Manager')}</td></tr>
               </table>
             </div>
           </div>
@@ -654,7 +680,6 @@
               ${row('Paid', fd.hr_paid)}
               ${row('Unpaid', fd.hr_unpaid)}
               <tr><td class="label">HR Signature</td><td>${sigHtml(fd.hr_signature, 'HR')}</td></tr>
-              <tr><td class="label">GM Signature</td><td>${sigHtml(fd.gm_signature, 'GM')}</td></tr>
             </table>
           </div>
         </div>`;
@@ -673,8 +698,13 @@
     }
     function renderDutyResumptionFormAsFilled(fd, submissionId) {
       const row = (label, val) => `<tr><td class="label">${label}</td><td>${val != null && val !== '' ? escapeHtml(String(val)) : '-'}</td></tr>`;
-      const sig = fd.employee_signature && fd.employee_signature.startsWith('data:image') ? `<img src="${fd.employee_signature}" style="max-width:200px;max-height:80px;border:1px solid #e2e8f0;border-radius:6px;" alt="Signature">` : '-';
-      return `<div class="doc-form" style="padding:1rem;box-shadow:none;max-width:100%;"><div class="doc-section-title" style="margin-bottom:0.5rem;">${submissionId}</div><div class="doc-form-grid form-single"><div class="doc-form-col"><div class="doc-section-title">Employee Details</div><table class="doc-table">${row('Requester', fd.requester)}${row('Employee Name', fd.employee_name)}${row('Employee ID', fd.employee_id)}${row('Job Title', fd.job_title)}${row('Company', fd.company)}</table><div class="doc-section-title">Leave Information</div><table class="doc-table">${row('Leave Started', fmtDate(fd.leave_started))}${row('Leave Ended', fmtDate(fd.leave_ended))}${row('Planned Resumption Date', fmtDate(fd.planned_resumption_date))}${row('Actual Resumption Date', fmtDate(fd.actual_resumption_date))}${row('Note', fd.note)}${row('Line Manager Remarks', fd.line_manager_remarks)}<tr><td class="label">Employee Signature</td><td>${sig}</td></tr></table></div></div></div>`;
+      const sigHtml = (url, alt) => (url && typeof url === 'string' && url.startsWith('data:image'))
+        ? `<img src="${url}" style="max-width:200px;max-height:80px;border:1px solid #e2e8f0;border-radius:6px;" alt="${alt || 'Signature'}">` : '-';
+      const sig = sigHtml(fd.employee_signature, 'Employee');
+      const sigRm = sigHtml(fd.reporting_manager_signature, 'Reporting Manager');
+      const sigGm = sigHtml(fd.gm_signature, 'GM');
+      const sigHr = sigHtml(fd.hr_signature, 'HR');
+      return `<div class="doc-form" style="padding:1rem;box-shadow:none;max-width:100%;"><div class="doc-section-title" style="margin-bottom:0.5rem;">${submissionId}</div><div class="doc-form-grid form-single"><div class="doc-form-col"><div class="doc-section-title">Employee Details</div><table class="doc-table">${row('Requester', fd.requester)}${row('Employee Name', fd.employee_name)}${row('Employee ID', fd.employee_id)}${row('Job Title', fd.job_title)}${row('Company', fd.company)}</table><div class="doc-section-title">Leave Information</div><table class="doc-table">${row('Leave Started', fmtDate(fd.leave_started))}${row('Leave Ended', fmtDate(fd.leave_ended))}${row('Planned Resumption Date', fmtDate(fd.planned_resumption_date))}${row('Actual Resumption Date', fmtDate(fd.actual_resumption_date))}${row('Note', fd.note)}${row('Line Manager Remarks', fd.line_manager_remarks)}<tr><td class="label">Employee Signature</td><td>${sig}</td></tr><tr><td class="label">Reporting Manager Signature</td><td>${sigRm}</td></tr><tr><td class="label">GM Signature</td><td>${sigGm}</td></tr><tr><td class="label">HR Signature</td><td>${sigHr}</td></tr></table></div></div></div>`;
     }
 
     function sortPendingByDate(items, order) {
@@ -729,7 +759,7 @@
           chips.push(`<span class="card-chip"><strong>Days:</strong> ${escapeHtml(String(fd.total_days_requested))}</span>`);
 
         return `
-              <div class="review-card ${accentClass(s.module_type)}"
+              <div class="review-card"
                    onclick="openReview('${s.submission_id}', ${JSON.stringify(s).replace(/"/g, '&quot;')})">
                 <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
                   <div style="min-width:0;flex:1;">
@@ -741,7 +771,7 @@
                     <div style="font-size:0.8rem;color:#64748b;">
                       From <strong style="color:#374151;">${escapeHtml(s.submitter_name || 'Unknown')}</strong>
                       &nbsp;·&nbsp;
-                      ${new Date(s.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      ${InjaazDateTimeUAE.formatDateMed(s.created_at)}
                     </div>
                     ${chips.length ? `<div class="card-chips">${chips.join('')}</div>` : ''}
                   </div>
@@ -773,6 +803,7 @@
     function openReview(submissionId, submission) {
       currentSubmissionId = submissionId;
       currentFormType = submission.module_type || submission.form_type;
+      currentWorkflowStatus = submission.workflow_status || '';
 
       // Modal subtitle
       const sub = document.getElementById('reviewModalSubtitle');
@@ -797,6 +828,14 @@
 
       const formData = submission.form_data || {};
 
+      const modType = submission.module_type || submission.form_type || '';
+      const fullFormUrl = (typeof getHrSubmissionFullFormViewUrl === 'function')
+        ? (getHrSubmissionFullFormViewUrl(modType, submission.submission_id) || ('/hr/print/' + encodeURIComponent(submission.submission_id || '')))
+        : ('/hr/print/' + encodeURIComponent(submission.submission_id || ''));
+      const fullFormBanner = fullFormUrl
+        ? '<div style="margin-bottom:1rem;padding:0.75rem 1rem;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:10px;font-size:0.88rem;color:#065f46"><strong>Open employee view:</strong> <a href="' + fullFormUrl.replace(/"/g, '&quot;') + '" target="_blank" rel="noopener">Full submitted form</a> <span style="color:#64748b">(read-only layout)</span></div>'
+        : '';
+
       // HR form fields
       const hrFormFields = document.getElementById('hrFormFields');
       if (hrFormFields) {
@@ -814,7 +853,7 @@
       if (cmts) cmts.value = '';
 
       // Form preview
-      document.getElementById('requestDetails').innerHTML =
+      document.getElementById('requestDetails').innerHTML = fullFormBanner +
         renderFormAsFilled(formTypeClean, formData, submission.submission_id);
 
       bootstrap.Modal.getOrCreateInstance(document.getElementById('reviewModal')).show();
@@ -906,7 +945,11 @@
         }
       }
       try {
-        const response = await fetch(`/hr/api/hr-approve/${encodeURIComponent(currentSubmissionId)}`, {
+        const isMgmtHrFinal = currentWorkflowStatus === 'hr_mgmt_hr_head_office';
+        const url = isMgmtHrFinal
+          ? `/hr/api/mgmt-signoff/${encodeURIComponent(currentSubmissionId)}/sign`
+          : `/hr/api/hr-approve/${encodeURIComponent(currentSubmissionId)}`;
+        const response = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify(payload)
@@ -914,10 +957,17 @@
         const result = await parseJsonResponse(response);
         if (response.ok && result.success) {
           currentSubmissionId = null;
-          const serverMsg = result.message || 'The request has been approved and forwarded to the General Manager for final approval.';
+          const serverMsg = result.message || (
+            isMgmtHrFinal
+              ? 'Saved. This request is approved if you were the final signatory.'
+              : 'The request has been approved and forwarded to the General Manager for final approval.');
           forceCloseBootstrapReviewModal();
           loadPending();
-          requestAnimationFrame(() => setTimeout(() => showHrPendingReviewResult('Approved — forwarded to GM', serverMsg + '\n\nNext: General Manager completes sign-off in GM Final Approval.', 'approve'), 50));
+          const follow = isMgmtHrFinal
+            ? (serverMsg + '\n\nPDF trail: management chain is complete when all steps are signed.')
+            : (serverMsg + '\n\nNext: General Manager completes sign-off in GM Final Approval.');
+          const title = isMgmtHrFinal ? 'HR sign-off saved' : 'Approved — forwarded to GM';
+          requestAnimationFrame(() => setTimeout(() => showHrPendingReviewResult(title, follow, 'approve'), 50));
         } else { showErrorToast('Error: ' + (result.error || result.message || 'Approval failed')); }
       } catch (error) { showErrorToast('Error: ' + (error.message || 'Network error')); }
     }
@@ -927,7 +977,11 @@
       const reason = prompt('Please provide a reason for rejection:');
       if (!reason) return;
       try {
-        const response = await fetch(`/hr/api/hr-reject/${encodeURIComponent(currentSubmissionId)}`, {
+        const isMgmtHrFinal = currentWorkflowStatus === 'hr_mgmt_hr_head_office';
+        const url = isMgmtHrFinal
+          ? `/hr/api/mgmt-signoff/${encodeURIComponent(currentSubmissionId)}/reject`
+          : `/hr/api/hr-reject/${encodeURIComponent(currentSubmissionId)}`;
+        const response = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify({ reason })

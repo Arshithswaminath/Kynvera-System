@@ -124,7 +124,7 @@ def register():
         
         return jsonify({
             'message': 'User registered successfully',
-            'user': user.to_dict()
+            'user': user.to_client_dict()
         }), 201
         
     except IntegrityError:
@@ -208,7 +208,7 @@ def login():
             'message': 'Login successful',
             'access_token': access_token,
             'refresh_token': refresh_token,
-            'user': user.to_dict(),
+            'user': user.to_client_dict(),
             'requires_password_change': requires_password_change
         })
         
@@ -311,12 +311,44 @@ def get_current_user():
             return error_response('User not found', 404, 'USER_NOT_FOUND')
         
         return jsonify({
-            'user': user.to_dict()
+            'user': user.to_client_dict()
         }), 200
         
     except Exception as e:
         current_app.logger.error(f"Get user error: {str(e)}")
         return error_response('Failed to fetch user', 500, 'INTERNAL_ERROR')
+
+
+@auth_bp.route('/profile', methods=['PUT'])
+@jwt_required()
+def update_own_profile():
+    """Update fields the user manages: full name, employment start date (for dashboard tenure)."""
+    try:
+        from common.datetime_utils import parse_employment_start_date
+
+        user_id = get_jwt_identity()
+        user = db.session.get(User, int(user_id))
+        if not user:
+            return error_response('User not found', 404, 'USER_NOT_FOUND')
+
+        data = request.get_json(force=True, silent=True) or {}
+
+        if 'full_name' in data:
+            fn = data.get('full_name')
+            user.full_name = (fn or '').strip() or None
+
+        if 'employment_start_date' in data:
+            try:
+                user.employment_start_date = parse_employment_start_date(data.get('employment_start_date'))
+            except ValueError as ve:
+                return error_response(str(ve), 400, 'VALIDATION_ERROR')
+
+        db.session.commit()
+        return jsonify({'success': True, 'user': user.to_client_dict()}), 200
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Update profile error: {str(e)}")
+        return error_response('Failed to update profile', 500, 'INTERNAL_ERROR')
 
 
 @auth_bp.route('/signature-default', methods=['POST'])

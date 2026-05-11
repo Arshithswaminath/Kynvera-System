@@ -5,9 +5,27 @@ through multi-stage approval with signatures.
 Uses in-memory SQLite. Admin performs HR + workflow approvals (routes allow role=admin).
 
 PDF/Excel regeneration runs in background jobs for inspection modules — tests assert API + DB only.
+
+Management chain (reporting-manager sign-off) is disabled here via a monkeypatch so these tests
+keep validating the legacy path: submit → hr_review → hr-approve → gm-approve.
 """
 import pytest
 from datetime import datetime, timezone
+
+# Integration tests were written for submit → hr_review → hr-approve → gm_review.
+# Production attaches a management chain when the user has a reporting manager;
+# skip chain init here so workflow_status stays on the legacy path.
+
+
+@pytest.fixture(autouse=True)
+def _hr_integration_without_mgmt_chain(monkeypatch):
+    import module_hr.routes as hr_routes
+
+    def _no_mgmt_chain(data, user):
+        return None
+
+    monkeypatch.setattr(hr_routes, "init_management_chain_on_submit", _no_mgmt_chain)
+
 
 # 1x1 transparent PNG (same as scripts/auto_test_hvac_gm_workflow.py)
 SIG_DATA_URL = (

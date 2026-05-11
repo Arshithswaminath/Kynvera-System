@@ -10,7 +10,6 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-forms-unified.css') }}">
-  <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
   <style>
     .eval-param-list{display:flex;flex-direction:column;gap:1.25rem}
     .eval-param{background:rgba(248,252,249,.6);border:1px solid rgba(194,222,206,.5);border-radius:var(--r);padding:1rem 1.25rem}
@@ -23,29 +22,18 @@
 </head>
 <body class="hr-form-unified">
   {% set active_page = 'hr' %}
-  {% include 'partials/main_navbar.html' with context %}
+  {% include 'partials/hr_embed_optional_navbar.html' %}
 
   <div class="success-bg" id="successModal">
     <div class="success-box">
-      <button type="button" class="success-back-btn" onclick="closeSuccessBackToForm()" title="Back to form">
+      <button type="button" class="success-back-btn" onclick="hrGoToSubmittedRequest()" title="View submitted request">
         <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
       </button>
       <div class="success-icon"><svg width="30" height="30" fill="none" stroke="#fff" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg></div>
       <h2>Form Submitted!</h2>
-      <p>Contract renewal assessment sent to HR.</p>
+      <p id="successMsgLead">Contract renewal assessment sent to HR.</p>
       <div class="sub-id" id="submissionId"></div>
-      <button class="btn-submit" style="width:100%;justify-content:center" onclick="window.location.href='/hr/my-requests'">View My Requests</button>
-    </div>
-  </div>
-
-  <div class="sig-modal-bg" id="sigBg">
-    <div class="sig-modal">
-      <div class="sig-modal-hd"><h3 id="sigTitle">Signature</h3><button class="sig-modal-x" onclick="closeSig()">&times;</button></div>
-      <div class="sig-modal-body">
-        <p class="sig-modal-hint">Draw your signature using your mouse or finger.</p>
-        <div class="sig-canvas-box"><canvas id="sigCanvas" height="180"></canvas><span class="sig-canvas-guide">Sign here</span></div>
-        <div class="sig-modal-ft"><button class="btn-m-clear" onclick="clearModalPad()">Clear</button><button class="btn-m-apply" onclick="applySig()">Apply Signature</button></div>
-      </div>
+      <button class="btn-submit" style="width:100%;justify-content:center" onclick="hrGoToSubmittedRequest()">View My Requests</button>
     </div>
   </div>
 
@@ -55,6 +43,8 @@
         <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
         Back to HR
       </a>
+
+      {% include 'partials/hr_submitted_edit_banners.html' %}
 
       <div class="step-bar">
         <div class="step-item active" id="step1Badge" onclick="goToStep1()" role="button" tabindex="0"><span class="num">1</span><span>Evaluation</span></div>
@@ -152,21 +142,17 @@
             <div class="step-panel" id="step2Panel">
               <div class="step-hint">
                 <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                <span><strong>Step 2 of 2</strong> — Add evaluator signature and submit.</span>
+                <span><strong>Step 2 of 2</strong> — Designate the contract evaluator (they sign on their device).</span>
               </div>
               <section class="sec">
-                <h2 class="sec-hd">Evaluator's Signature</h2>
-                <div class="fld">
-                  <label class="fld-lbl">Evaluator's Signature <span class="req">*</span></label>
-                  <div class="sig-wrap">
-                    <div class="sig-box" id="evalSigPrev"><span class="sig-ph">No signature</span><img id="evalSigImg" src="" style="display:none"></div>
-                    <div class="sig-actions">
-                      <button type="button" class="btn-plus" onclick="openSig('evaluator')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 4v16m8-8H4"/></svg> Sign</button>
-                      <button type="button" class="btn-rm" id="evalSigRm" onclick="rmSig('evaluator')">Remove</button>
-                    </div>
-                    <input type="hidden" name="evaluator_signature" id="evalSigData">
+                <h2 class="sec-hd">Evaluator (routed sign-off)</h2>
+                <div class="fld fw" style="margin-top:1rem;padding-top:1rem;border-top:1px solid rgba(226,232,240,.85)">
+                  <label class="fld-lbl">Contract evaluator <span class="req">*</span> — teammate signs separately</label>
+                  <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:flex-end;margin-top:.35rem">
+                    <select class="fld-inp" id="renewEvalSel" style="flex:1;min-width:11rem"><option value="">Loading…</option></select>
+                    <button type="button" class="btn-ghost" id="renewEvalAdd">Add</button>
                   </div>
-                  <div class="fld" style="margin-top:.75rem"><label class="fld-lbl">Date</label><input class="fld-inp" type="date" name="evaluator_date" id="evalSignDate"></div>
+                  <div id="renewEvalChips" style="margin-top:.35rem;display:flex;flex-wrap:wrap;gap:.2rem"></div>
                 </div>
               </section>
               <div class="step-nav">
@@ -177,23 +163,31 @@
 
           </div>
 
+          {% include 'partials/hr_mgmt_chain_submit_block.html' %}
+
           <div class="doc-ft">
             <div class="doc-ft-meta"><span>Contract Renewal Assessment</span><span>DATE: <span id="docDate"></span></span></div>
             P.O Box: 3456 Ajman, UAE · Tel 067116815 · www.injaaz.ae
           </div>
 
           <div class="submit-bar" id="submitBar" style="display:none">
-            <button type="button" class="btn-reset" onclick="if(confirm('Reset the form?')){document.getElementById('hrForm').reset();clearAllSigs();goToStep1()}">Reset</button>
-            <button type="submit" class="btn-submit"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> Submit Form</button>
+            <button type="button" class="btn-reset" onclick="if(confirm('Reset the form?')){document.getElementById('hrForm').reset();contract_evaluator_signer_ids.length=0;document.getElementById('renewEvalChips')&&(document.getElementById('renewEvalChips').innerHTML='');goToStep1()}">Reset</button>
+            <button type="submit" class="btn-submit">Submit Form</button>
           </div>
         </form>
       </div>
     </div>
   </div>
 
+<script src="{{ url_for('static', filename='js/hr_colleague_slot_picker.js') }}"></script>
 <script>
+const contract_evaluator_signer_ids=[];
+document.addEventListener('DOMContentLoaded',()=>{
+  if(window.HrColleagueSlotPicker){
+    HrColleagueSlotPicker.bind({selectId:'renewEvalSel',addBtnId:'renewEvalAdd',chipsId:'renewEvalChips',ids:contract_evaluator_signer_ids,multi:false});
+  }
+});
 document.querySelector('[name="date_of_evaluation"]').value = new Date().toISOString().split('T')[0];
-document.getElementById('evalSignDate').value = new Date().toISOString().split('T')[0];
 document.getElementById('docDate').textContent = new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'});
 
 document.querySelectorAll('[name^="rating_"]').forEach(inp=>inp.addEventListener('input',calcOverall));
@@ -226,30 +220,11 @@ function goToStep1(){
   document.getElementById('connector1').classList.remove('done');
   document.getElementById('step1Panel').scrollIntoView({behavior:'smooth',block:'start'});
 }
-function closeSuccessBackToForm(){
-  document.getElementById('successModal').classList.remove('show');
-  goToStep1();
-  const btn=document.querySelector('#hrForm .btn-submit');
-  if(btn){btn.disabled=false;btn.innerHTML='<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> Submit Form'}
-}
-
-let pad=null,target=null;
-const bg=document.getElementById('sigBg'),cv=document.getElementById('sigCanvas');
-const sigCfg={evaluator:{prev:'evalSigPrev',img:'evalSigImg',data:'evalSigData',rm:'evalSigRm',title:'Evaluator Signature'}};
-
-function openSig(t){target=t;const c=sigCfg[t];if(!c)return;document.getElementById('sigTitle').textContent=c.title;bg.classList.add('open');document.body.style.overflow='hidden';requestAnimationFrame(()=>{const r=window.devicePixelRatio||1,w=cv.offsetWidth;cv.width=w*r;cv.height=180*r;cv.getContext('2d').scale(r,r);cv.style.height='180px';if(pad)pad.off();pad=new SignaturePad(cv,{backgroundColor:'rgb(250,250,250)',penColor:'#0d1f14',minWidth:1.2,maxWidth:2.8})})}
-function closeSig(){bg.classList.remove('open');document.body.style.overflow='';target=null}
-function clearModalPad(){if(pad)pad.clear()}
-function applySig(){if(!pad||pad.isEmpty()){alert('Please draw your signature first.');return}const url=pad.toDataURL('image/png'),c=sigCfg[target];if(!c)return;const img=document.getElementById(c.img),ph=document.querySelector('#'+c.prev+' .sig-ph'),inp=document.getElementById(c.data),rm=document.getElementById(c.rm);if(img){img.src=url;img.style.display='block'}if(ph)ph.style.display='none';if(inp)inp.value=url;if(rm)rm.style.display='inline-flex';closeSig()}
-function rmSig(t){const c=sigCfg[t];if(!c)return;const img=document.getElementById(c.img),ph=document.querySelector('#'+c.prev+' .sig-ph'),inp=document.getElementById(c.data),rm=document.getElementById(c.rm);if(img){img.src='';img.style.display='none'}if(ph)ph.style.display='block';if(inp)inp.value='';if(rm)rm.style.display='none'}
-function clearAllSigs(){rmSig('evaluator')}
-bg.addEventListener('click',e=>{if(e.target===bg)closeSig()});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&bg.classList.contains('open'))closeSig()});
 
 document.getElementById('hrForm').addEventListener('submit',async e=>{
   e.preventDefault();
   const form=e.target;
-  const required=['employee_name','date_of_evaluation','employee_id','date_of_joining','department','contract_end_date','evaluation_by','designation','recommendation','evaluator_signature'];
+  const required=['employee_name','date_of_evaluation','employee_id','date_of_joining','department','contract_end_date','evaluation_by','designation','recommendation'];
   let firstInvalid=null;
   for(const name of required){
     const el=form.querySelector('[name="'+name+'"]');
@@ -265,14 +240,53 @@ document.getElementById('hrForm').addEventListener('submit',async e=>{
   }
   const fd=new FormData(form),data=Object.fromEntries(fd.entries());
   data.form_type='contract_renewal';
+  if(contract_evaluator_signer_ids.length!==1){goToStep2();alert('Select exactly one evaluator with an Injaaz account — they sign digitally on their device (you cannot sign for them).');return}
+  data.evaluator_signer_ids=[...contract_evaluator_signer_ids];
   const btn=form.querySelector('.btn-submit');
   btn.disabled=true;btn.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="spin"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Submitting…';
   try{const res=await fetch('/hr/api/submit',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.getItem('access_token')},body:JSON.stringify(data)});const r=await res.json();
-  if(r.success){document.getElementById('submissionId').textContent=r.submission_id;document.getElementById('successModal').classList.add('show')}
-  else{alert('Error: '+(r.error||'Unknown'));btn.disabled=false;btn.innerHTML='<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> Submit Form'}
-  }catch(err){alert('Network error: '+err.message);btn.disabled=false;btn.innerHTML='<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> Submit Form'}
+  if(r.success){
+    const lead=document.getElementById('successMsgLead');
+    if(lead) lead.textContent = r.workflow_status==='replacement_signoff'
+      ? 'Your evaluator must sign digitally before HR receives this renewal assessment.'
+      : 'Contract renewal assessment sent to HR.';
+    window.__hrLastHrSubmissionId=r.submission_id;document.getElementById('submissionId').textContent=r.submission_id;document.getElementById('successModal').classList.add('show')}
+  else{alert('Error: '+(r.error||'Unknown'));btn.disabled=false;btn.innerHTML='Submit Form'}
+  }catch(err){alert('Network error: '+err.message);btn.disabled=false;btn.innerHTML='Submit Form'}
 });
 </script>
+  <script src="{{ url_for('static', filename='js/hr_generic_form_edit.js') }}"></script>
+  <script>
+    HrGenericFormEdit.attach({
+      formId: 'hrForm',
+      moduleTypes: ['hr_contract_renewal'],
+      submitBarSelector: '#submitBar',
+      onEnterEditUi: function () {
+        goToStep2();
+        calcOverall();
+      },
+      appendToPayload: function () {
+        return { evaluator_signer_ids: contract_evaluator_signer_ids.slice() };
+      },
+      afterPopulate: function (_payload, fd) {
+        contract_evaluator_signer_ids.length = 0;
+        var src = fd.evaluator_signer_ids || fd.contract_evaluator_signer_ids;
+        if (Array.isArray(src)) {
+          src.forEach(function (x) {
+            var n = parseInt(x, 10);
+            if (Number.isFinite(n)) contract_evaluator_signer_ids.push(n);
+          });
+        }
+        if (window.HrColleagueSlotPicker)
+          void HrColleagueSlotPicker.redrawChips({
+            chipsId: 'renewEvalChips',
+            ids: contract_evaluator_signer_ids,
+            multi: false,
+          });
+        calcOverall();
+      },
+    });
+  </script>
   <script src="{{ url_for('static', filename='api-client.js') }}"></script>
   <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 </body>

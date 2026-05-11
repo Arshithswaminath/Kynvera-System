@@ -51,6 +51,12 @@
     .btn-primary:hover { opacity: .9; }
     .btn-outline { background: transparent; color: var(--primary); border: 1px solid var(--border); }
     .btn-outline:hover { background: #f9fafb; }
+    .btn.btn-mmr-email-saved {
+      border-color: rgba(16, 185, 129, 0.55);
+      color: #047857;
+      background: rgba(16, 185, 129, 0.08);
+    }
+    .btn.btn-mmr-email-saved:hover { background: rgba(16, 185, 129, 0.12); }
     .btn-success { background: var(--success); color: #fff; }
     .btn-danger { background: var(--danger); color: #fff; }
     .btn:disabled { opacity: .5; cursor: not-allowed; }
@@ -1571,8 +1577,8 @@
         <div class="upload-zone-inner">
           <div class="upload-icon-box">📊</div>
           <div class="upload-zone-text">
-            <h3>Upload MMR Excel File</h3>
-            <p>Reactive Work Order Excel · drag &amp; drop or click to browse</p>
+            <h3>Upload Excel File</h3>
+            <p>Daily or monthly reactive work order reports · drag &amp; drop or click to browse · <strong>Add a file</strong> to load charts and KPIs</p>
           </div>
           <span class="upload-zone-cta">Browse files</span>
         </div>
@@ -1748,7 +1754,7 @@
               <button type="button" class="seg-btn active" id="fmtDailyBtn" onclick="setReportFormat('daily', true)">Daily</button>
               <button type="button" class="seg-btn" id="fmtMonthlyBtn" onclick="setReportFormat('monthly', true)">Monthly</button>
             </div>
-            <p class="report-format-hint">Chooses the wording for the email subject/body and for Excel filenames and attachments (<strong>Daily Report …</strong> vs <strong>Monthly Report …</strong>). The timed schedule below still runs once per day; upload data that matches the period you need. After switching Daily/Monthly, subject and body update to the matching template—click <strong>Save Config</strong> to keep them. Use <strong>Download Excel</strong> / <strong>Monthly Excel (ZIP)</strong> in the row below for exports.</p>
+            <p class="report-format-hint">Chooses the wording for the email subject/body and for Excel filenames and attachments (<strong>Daily Report …</strong> vs <strong>Monthly Report …</strong>). The timed schedule below still runs once per day; upload data that matches the period you need. After switching Daily/Monthly, subject and body update to the matching template—use <strong>Save email details</strong> or <strong>Save Config</strong> to keep them. Use <strong>Download Excel</strong> / <strong>Monthly Excel (ZIP)</strong> in the row below for exports.</p>
           </div>
           <div class="form-group">
             <label class="form-label">Subject</label>
@@ -1770,6 +1776,10 @@
             </button>
             <button class="btn btn-outline" onclick="saveEmailConfig()">
               💾 Save Config
+            </button>
+            <button type="button" class="btn btn-outline" id="btnSaveEmailDetails" onclick="saveEmailDetailsOnly()"
+              title="Save To, CC, subject, body and Daily/Monthly wording to the server (scheduled sends use the last saved values).">
+              💾 Save email details
             </button>
             <button type="button" class="btn btn-outline" id="btnEmailDownloadExcel" onclick="handleDownloadClick()" disabled title="Download Excel (same as top KPI; filename follows Daily/Monthly after Save Config)">
               📥 Download Excel
@@ -2757,6 +2767,82 @@ const MMR_EMAIL_PRESETS_FALLBACK = {
 };
 let mmrEmailPresets = MMR_EMAIL_PRESETS_FALLBACK;
 
+/** Last compose snapshot persisted on server (load/save). Used for Save email details UX. */
+let mmrPersistedEmailComposeFingerprint = null;
+
+function mmrGetComposeSnapshot() {
+  return {
+    to: (document.getElementById('emailTo')?.value || '').trim(),
+    cc: (document.getElementById('emailCc')?.value || '').trim(),
+    subject: (document.getElementById('emailSubject')?.value || '').trim(),
+    body: (document.getElementById('emailBody')?.value || '').trim(),
+    report_format: getReportFormat(),
+  };
+}
+
+function mmrComposeFingerprintFromSnapshot(s) {
+  return JSON.stringify([s.to, s.cc, s.subject, s.body, s.report_format]);
+}
+
+function refreshMmrEmailDetailsSavedState() {
+  const btn = document.getElementById('btnSaveEmailDetails');
+  if (!btn) return;
+  if (mmrPersistedEmailComposeFingerprint === null) {
+    btn.textContent = '💾 Save email details';
+    btn.classList.remove('btn-mmr-email-saved');
+    btn.title = 'Save To, CC, subject, body and Daily/Monthly wording to the server.';
+    return;
+  }
+  const cur = mmrComposeFingerprintFromSnapshot(mmrGetComposeSnapshot());
+  const dirty = cur !== mmrPersistedEmailComposeFingerprint;
+  if (dirty) {
+    btn.textContent = '💾 Save email details';
+    btn.classList.remove('btn-mmr-email-saved');
+    btn.title = 'Unsaved changes — save so future visits and scheduled emails use these addresses and wording.';
+  } else {
+    btn.textContent = '✓ Email details saved';
+    btn.classList.add('btn-mmr-email-saved');
+    btn.title = 'Matches what is saved on the server.';
+  }
+}
+
+function mmrSyncPersistedEmailFingerprintFromDom() {
+  mmrPersistedEmailComposeFingerprint = mmrComposeFingerprintFromSnapshot(mmrGetComposeSnapshot());
+  refreshMmrEmailDetailsSavedState();
+}
+
+async function saveEmailDetailsOnly() {
+  if (!validateAllEmailFields()) {
+    toast('Fix the email address errors before saving', 'error');
+    return;
+  }
+  const btn = document.getElementById('btnSaveEmailDetails');
+  const snap = mmrGetComposeSnapshot();
+  const payload = {
+    to: document.getElementById('emailTo').value,
+    cc: document.getElementById('emailCc').value,
+    subject: snap.subject,
+    body: snap.body,
+    report_format: snap.report_format,
+  };
+  if (btn) btn.disabled = true;
+  try {
+    const resp = await authFetch('/admin/mmr/api/email-config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(data.error || 'Could not save email details');
+    mmrSyncPersistedEmailFingerprintFromDom();
+    toast('Email details saved', 'success');
+  } catch (e) {
+    toast(e.message || 'Failed to save', 'error');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
 function getReportFormat() {
   const m = document.getElementById('fmtMonthlyBtn');
   return (m && m.classList.contains('active')) ? 'monthly' : 'daily';
@@ -2776,6 +2862,7 @@ function setReportFormat(mode, applyPresets) {
     if (p && p.body) document.getElementById('emailBody').value = p.body;
   }
   updateEmailSectionDownloadButtons();
+  refreshMmrEmailDetailsSavedState();
 }
 
 async function loadEmailConfig() {
@@ -2802,6 +2889,7 @@ async function loadEmailConfig() {
     document.getElementById('scheduleMinute').value = cfg.schedule_minute ?? 0;
     updateScheduleStatus(cfg);
     updateEmailSectionDownloadButtons();
+    mmrSyncPersistedEmailFingerprintFromDom();
   } catch(e) { console.warn('Could not load email config', e); }
 }
 
@@ -2833,8 +2921,13 @@ async function saveEmailConfig() {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
-  if (resp.ok) toast('Email config saved', 'success');
-  else toast('Failed to save config', 'error');
+  const data = await resp.json().catch(() => ({}));
+  if (resp.ok) {
+    mmrSyncPersistedEmailFingerprintFromDom();
+    toast('Email config saved', 'success');
+  } else {
+    toast(data.error || 'Failed to save config', 'error');
+  }
 }
 
 const ALLOWED_DOMAIN = 'injaaz.ae';
@@ -2864,6 +2957,7 @@ function fillSavedAddresses() {
   }
   validateEmailField(toEl);
   validateEmailField(ccEl);
+  refreshMmrEmailDetailsSavedState();
 }
 
 function validateEmailField(input) {
@@ -2912,6 +3006,7 @@ async function sendEmailNow() {
     const data = await resp.json();
     if (resp.ok) {
       toast('✅ ' + (data.message || 'Email sent successfully'), 'success');
+      refreshMmrEmailDetailsSavedState();
       await loadAutomationStatus();
       await loadCycleData();
     } else toast('❌ ' + (data.error || 'Email failed'), 'error');
@@ -2942,6 +3037,7 @@ async function saveSchedule() {
   if (resp.ok) {
     toast('Schedule saved', 'success');
     updateScheduleStatus(payload);
+    mmrSyncPersistedEmailFingerprintFromDom();
     loadAutomationStatus();
   } else {
     toast('Failed: ' + (data.error || 'unknown'), 'error');
@@ -3392,7 +3488,7 @@ function applyStoredFiltersIfAny() {
   }
 }
 
-/** After refresh: reload dashboard when mmr_latest.xlsx exists on the server (same data as last upload). */
+/** Fallback when opening a saved report fails: restore dashboard from mmr_latest.xlsx if present. Normal page loads use resetMmrToNewReportView() instead. */
 async function restoreDashboardFromServerIfNeeded() {
   try {
     const resp = await authFetch('/admin/mmr/api/current-upload');
@@ -4147,7 +4243,12 @@ async function startAutomationFromRoadmap() {
 
 // ════════════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', async () => {
-  loadEmailConfig();
+  await loadEmailConfig();
+
+  ['emailTo', 'emailCc', 'emailSubject', 'emailBody'].forEach((id) => {
+    document.getElementById(id)?.addEventListener('input', () => refreshMmrEmailDetailsSavedState());
+  });
+
   await loadAutomationStatus();
   await loadCycleData();
 
@@ -4201,7 +4302,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       await restoreDashboardFromServerIfNeeded();
     }
   } else {
-    await restoreDashboardFromServerIfNeeded();
+    resetMmrToNewReportView();
   }
 });
 </script>

@@ -147,6 +147,9 @@ body.review-dashboard {
   justify-content: flex-end;
   align-items: center;
   min-width: 0;
+  max-width: 100%;
+  /* Allow mega-menu / dropdown panels to paint below the bar (overflow:hidden clips them on hover). */
+  overflow: visible;
 }
 
 .logo:hover {
@@ -196,6 +199,9 @@ body.review-dashboard {
   line-height: 1.2;
   white-space: nowrap;
   text-align: left;
+  max-width: min(34vw, 360px);
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Mobile menu toggle (hidden by default) */
@@ -229,13 +235,17 @@ body.review-dashboard {
   align-items: center;
   margin: 0;
   padding: 0;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   justify-content: flex-end;
+  max-width: 100%;
+  overflow: visible;
+  scrollbar-width: thin;
 }
 
 .nav-menu li {
   display: flex;
   align-items: center;
+  position: relative;
 }
 
 .nav-menu a {
@@ -258,6 +268,89 @@ body.review-dashboard {
   color: var(--primary);
   background: rgba(18, 84, 53, 0.05);
 }
+
+/* Current route — beats Bootstrap link colour and drawer `!important` text colour */
+.nav-menu a.nav-current {
+  color: var(--primary) !important;
+  font-weight: 600;
+}
+
+.nav-submenu {
+  list-style: none;
+  margin: 0;
+  padding: 0.4rem;
+  position: absolute;
+  /* Flush to parent <li> bottom so :hover isn’t lost crossing a gap. */
+  top: 100%;
+  right: 0;
+  min-width: 220px;
+  border: 1px solid rgba(18, 84, 53, 0.16);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.14);
+  opacity: 0;
+  transform: translateY(-6px);
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
+  z-index: 1205;
+}
+
+/* Bridge pointer gap between trigger row and submenu (keeps hover path continuous). */
+.nav-menu li.has-submenu.has-submitted-dropdown .nav-submenu::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  height: 0.45rem;
+}
+
+.nav-submenu li {
+  display: block;
+}
+
+.nav-submenu a {
+  display: block;
+  width: 100%;
+  padding: 0.6rem 0.7rem;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-dark);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.nav-menu li.has-submenu.has-submitted-dropdown:hover .nav-submenu,
+.nav-menu li.has-submenu.has-submitted-dropdown:focus-within .nav-submenu,
+.nav-menu li.has-submenu.has-submitted-dropdown.open .nav-submenu {
+  opacity: 1;
+  transform: translateY(0);
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.nav-menu li.has-submenu.has-submitted-dropdown > a::after {
+  content: '▾';
+  display: inline-flex;
+  margin-left: 0.42rem;
+  font-size: 0.72rem;
+  color: var(--text-light);
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.nav-menu li.has-submenu.has-submitted-dropdown > a.nav-current::after {
+  color: var(--primary);
+}
+
+.nav-menu li.has-submenu.has-submitted-dropdown:hover > a::after,
+.nav-menu li.has-submenu.has-submitted-dropdown:focus-within > a::after,
+.nav-menu li.has-submenu.has-submitted-dropdown.open > a::after {
+  transform: rotate(180deg);
+  color: var(--primary);
+}
+
 
 /* ===========================================
    Save Draft (inspection form - in main nav)
@@ -731,6 +824,7 @@ body.review-dashboard {
   font-weight: 700;
   color: var(--text-dark);
   line-height: 1.2;
+  white-space: nowrap;
 }
 
 .dashboard-activity {
@@ -853,8 +947,15 @@ body.review-dashboard {
    Module Cards — Simple + Modern
    =========================================== */
 
-@keyframes cardReveal {
-  to { opacity: 1; transform: translateY(0); }
+@keyframes dashboardModuleIn {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 @keyframes heroReveal {
@@ -930,9 +1031,27 @@ body.review-dashboard {
   box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 4px 12px rgba(0,0,0,0.04);
   width: 100%;
   box-sizing: border-box;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.page-dashboard #modulesGrid.modules-grid--boot > .module-card:not([style*="display: none"]) {
   opacity: 0;
-  transform: translateY(12px);
-  animation: cardReveal 0.55s var(--ease-out) forwards;
+  transform: translateY(16px) scale(0.985);
+}
+
+.page-dashboard #modulesGrid.modules-grid--entrance-active > .module-card:not([style*="display: none"]) {
+  animation: dashboardModuleIn 0.52s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--dd-stagger, 0ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-dashboard #modulesGrid.modules-grid--boot > .module-card:not([style*="display: none"]),
+  .page-dashboard #modulesGrid.modules-grid--entrance-active > .module-card:not([style*="display: none"]) {
+    opacity: 1 !important;
+    transform: none !important;
+    animation: none !important;
+  }
 }
 
 /* Left color accent stripe — visible on hover */
@@ -950,21 +1069,10 @@ body.review-dashboard {
   transition: transform 0.3s var(--ease-out);
 }
 
-.module-card:nth-child(1) { animation-delay: 0.4s; }
-.module-card:nth-child(2) { animation-delay: 0.5s; }
-.module-card:nth-child(3) { animation-delay: 0.6s; }
-.module-card:nth-child(4) { animation-delay: 0.7s; }
-.module-card:nth-child(5) { animation-delay: 0.8s; }
-.module-card:nth-child(6) { animation-delay: 0.9s; }
-.module-card:nth-child(7) { animation-delay: 1.0s; }
-.module-card:nth-child(8) { animation-delay: 1.1s; }
-.module-card:nth-child(9) { animation-delay: 1.2s; }
-
 .module-card[style*="display: none"] { display: none !important; }
 .module-card:not([style*="display: none"]) { display: block !important; }
 
-/* Review History is revealed after load (visibility JS). Entrance animation can leave
-   opacity/transform short of the end state so the tile looks like the section gray (#f8faf8). */
+/* Review History is revealed after load (visibility JS). */
 .page-dashboard .modules-grid #module-review-history.module-card {
   background: var(--white);
   opacity: 1;
@@ -1239,13 +1347,23 @@ body.review-dashboard {
   animation: modalSlideUp 0.3s var(--ease-out) forwards;
 }
 
-/* Profile & Contact Modals - positioned near top */
-#profileModal.contact-modal,
+/* Contact modal — starts below top bar */
 #contactModal.contact-modal {
   align-items: flex-start !important;
   justify-content: center !important;
   padding: 5rem 2rem 2rem !important;
 }
+
+/* Profile sheet — anchored under fixed nav (not vertically centered) so the card sits higher */
+#profileModal.contact-modal {
+  align-items: flex-start !important;
+  justify-content: center !important;
+  padding-top: max(0.35rem, calc(env(safe-area-inset-top, 0px) + 4.25rem + 6px)) !important;
+  padding-right: 1.25rem !important;
+  padding-bottom: max(1rem, calc(env(safe-area-inset-bottom, 0px) + 0.75rem)) !important;
+  padding-left: 1.25rem !important;
+}
+
 #profileModal .contact-modal-content {
   max-width: 500px;
   width: auto;
@@ -1510,6 +1628,7 @@ body.review-dashboard {
     pointer-events: none !important;
   }
 
+
   /* Show hamburger as soon as resolution shrinks - nav goes to menu */
   .mobile-menu-toggle {
     display: flex !important;
@@ -1596,6 +1715,41 @@ body.review-dashboard {
     margin: 0.1rem 0 !important;
   }
 
+  .mobile-menu-drawer-list .nav-submenu {
+    position: static !important;
+    min-width: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 10px !important;
+    background: rgba(18, 84, 53, 0.04) !important;
+    margin: 0.2rem 0 0.35rem 0 !important;
+    padding: 0.25rem !important;
+    opacity: 1 !important;
+    transform: none !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    display: none !important;
+  }
+
+  .mobile-menu-drawer-list li.has-submenu.has-submitted-dropdown.open .nav-submenu {
+    display: block !important;
+  }
+
+  .mobile-menu-drawer-list .nav-submenu li {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .mobile-menu-drawer-list .nav-submenu a {
+    min-height: 42px !important;
+    padding: 0.62rem 0.75rem !important;
+    font-size: 0.86rem !important;
+    border-radius: 8px !important;
+    border-bottom: none !important;
+    color: #0f5132 !important;
+    background: #fff !important;
+  }
+
   .mobile-menu-drawer-list li a,
   .mobile-menu-drawer-list a {
     display: flex !important;
@@ -1625,6 +1779,11 @@ body.review-dashboard {
     color: var(--primary) !important;
   }
 
+  .mobile-menu-drawer-list a.nav-current {
+    color: var(--primary) !important;
+    font-weight: 600 !important;
+  }
+
   .mobile-menu-drawer-list li:first-child a {
     border-top: none !important;
   }
@@ -1648,9 +1807,9 @@ body.review-dashboard {
   #welcome-text {
     font-size: 1.08rem !important;
     font-weight: 600 !important;
-    max-width: none !important;
-    overflow: visible !important;
-    text-overflow: unset !important;
+    max-width: min(28vw, 300px) !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
     white-space: nowrap !important;
   }
 
@@ -1789,8 +1948,14 @@ body.review-dashboard {
     padding: 6rem 1.25rem 1.5rem !important;
   }
   /* Profile fullscreen rules override this at ≤479px via later block */
+  /* Profile: keep sheet shifted up on tablet/small laptop (≤768px) */
   #profileModal.contact-modal {
-    padding: 3rem 1rem 1.5rem !important;
+    align-items: flex-start !important;
+    padding-top: max(0.35rem, calc(env(safe-area-inset-top, 0px) + 4.25rem + 6px)) !important;
+    padding-right: 1rem !important;
+    padding-bottom: max(1rem, calc(env(safe-area-inset-bottom, 0px) + 0.75rem)) !important;
+    padding-left: 1rem !important;
+    justify-content: center !important;
   }
   /* Clear fixed nav + notch (matches profile sheet inset) */
   #contactModal.contact-modal {
@@ -1878,9 +2043,9 @@ body.review-dashboard {
     font-weight: 600 !important;
     color: var(--text-dark) !important;
     white-space: nowrap !important;
-    max-width: none !important;
-    overflow: visible !important;
-    text-overflow: unset !important;
+    max-width: min(38vw, 260px) !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
   }
   
   .nav-right {
@@ -1974,7 +2139,13 @@ body.review-dashboard {
     box-sizing: border-box !important;
     transition: background 0.15s ease, color 0.15s ease !important;
   }
-  
+
+  /* Keep current-route green when responsive rules force default link colours */
+  .nav-menu a.nav-current {
+    color: var(--primary) !important;
+    font-weight: 600 !important;
+  }
+
   .nav-menu li a:active,
   .nav-menu a:active {
     background: rgba(18, 84, 53, 0.08) !important;
@@ -2244,6 +2415,7 @@ body.review-dashboard {
     padding: 0 1rem !important;
   }
 
+
   .logo img {
     height: 48px !important;
     width: auto !important;
@@ -2474,17 +2646,22 @@ body.review-dashboard {
 
 #profileModal .contact-modal-content {
   padding: 0 !important;
-  max-width: 480px;
+  max-width: min(720px, calc(100vw - 1.5rem));
   border-radius: var(--radius-xl);
+  /* Scroll lives in .pro-tab-panels; shell clips to radius */
   overflow: hidden;
   background: white;
+  min-height: 0;
+  align-self: flex-start;
+  display: flex;
+  flex-direction: column;
 }
 
 #profileModal .contact-modal-close {
   position: absolute;
   top: 1rem;
   right: 1rem;
-  z-index: 10;
+  z-index: 20;
   background: rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.3);
@@ -2507,27 +2684,30 @@ body.review-dashboard {
 
 #profileModal #profileContent {
   padding: 0;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Profile Modal Container - shared across all modules */
 .contact-modal-content.profile-modal-container {
-  max-width: 420px !important;
-  width: 92% !important;
-  min-width: 300px;
+  max-width: min(720px, calc(100vw - 1.5rem)) !important;
+  width: min(720px, calc(100vw - 1.5rem)) !important;
+  min-width: min(300px, 100%);
   padding: 0 !important;
   border-radius: 20px !important;
   overflow: hidden;
   box-shadow: 0 25px 60px rgba(0,0,0,0.3);
-  max-height: 90vh;
-  overflow-y: auto;
-}
-
-@media (min-width: 480px) {
-  .contact-modal-content.profile-modal-container {
-    max-width: 420px !important;
-    width: 420px !important;
-    max-height: 85vh;
-  }
+  /* Fill space below fixed nav + overlay padding; tab body scrolls inside */
+  max-height: min(92vh, calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 6rem));
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  -webkit-overflow-scrolling: touch;
+  margin-top: 0;
 }
 
 @media (max-width: 479px) {
@@ -2548,11 +2728,22 @@ body.review-dashboard {
     left: 0 !important;
     right: 0 !important;
     bottom: 0 !important;
-    top: calc(env(safe-area-inset-top, 0px) + 4.5rem + 10px) !important;
+    top: calc(env(safe-area-inset-top, 0px) + 4.25rem + 4px) !important;
     height: auto !important;
     min-height: 0 !important;
     max-height: none !important;
     box-sizing: border-box !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  #profileModal #profileContent {
+    flex: 1 !important;
+    min-height: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
   }
   #profileModal .contact-modal-close {
     top: 0.5rem !important;
@@ -2561,10 +2752,6 @@ body.review-dashboard {
     height: 36px !important;
     font-size: 1.25rem !important;
   }
-}
-
-#profileContent {
-  -webkit-overflow-scrolling: touch;
 }
 
 /* Profile Modal Responsive (non-fullscreen card widths only; fullscreen profile uses .profile-modal-container rules above) */
@@ -3147,4 +3334,26 @@ body.review-dashboard {
     left: 10px;
     width: auto;
   }
+}
+
+/* HR submitted-request banner (?edit=) — Download PDF */
+.submission-view-pdf-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.52rem 1.1rem;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #fff !important;
+  text-decoration: none !important;
+  border: none;
+  background: var(--primary, #125435);
+  box-shadow: 0 2px 8px rgba(18, 84, 53, 0.22);
+  transition: background 0.18s ease, box-shadow 0.18s ease;
+}
+.submission-view-pdf-btn:hover {
+  background: var(--primary-dark, #0d3d24);
+  box-shadow: 0 3px 12px rgba(18, 84, 53, 0.28);
+  color: #fff !important;
 }

@@ -6,7 +6,12 @@ import os
 import base64
 import io
 import tempfile
-from datetime import datetime
+from datetime import datetime, timezone
+
+try:
+    from zoneinfo import ZoneInfo
+except ImportError:  # Python < 3.9 (unexpected for this project)
+    ZoneInfo = None
 
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import inch, cm, mm
@@ -19,17 +24,28 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 from reportlab.pdfgen import canvas
 
+from .signature_preprocess import rgba_make_signature_background_transparent
+
 # ── Modern minimal: black & white only ─────────────────────────────────────
 C_BLACK = colors.black
 C_GRAY = colors.HexColor("#666666")
 C_MUTED = colors.HexColor("#6b7280")
 C_LIGHT = colors.HexColor("#cccccc")
 C_WHITE = colors.white
+# Increment when footer/branding/signature-box layout changes (visible in PDF footer).
+HR_PDF_LAYOUT_VERSION = "2026.10"
 
 _W, _H = A4
 _LM = 1.2 * cm
 _RM = 1.2 * cm
 CONTENT_W = _W - _LM - _RM
+
+# Management chain PDF block: force a page break before the sign-off trail (main body on prior page(s)).
+_MGMT_CHAIN_START_NEXT_PAGE = frozenset({
+    "leave_application",
+    "interview_assessment",
+    "station_clearance",
+})
 
 LOGO_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
@@ -37,12 +53,45 @@ LOGO_PATH = os.path.join(
 )
 
 
+def _dubai_tz():
+    if ZoneInfo is None:
+        return None
+    try:
+        return ZoneInfo("Asia/Dubai")
+    except Exception:
+        return None
+
+
 def _fmt(v):
     if not v:
         return "-"
     try:
-        d = datetime.fromisoformat(str(v).replace("Z", "+00:00"))
+        raw = str(v).replace("Z", "+00:00")
+        d = datetime.fromisoformat(raw)
+        if d.tzinfo is None:
+            d = d.replace(tzinfo=timezone.utc)
+        dubai = _dubai_tz()
+        if dubai is not None:
+            d = d.astimezone(dubai)
         return d.strftime("%d/%m/%Y")
+    except (ValueError, TypeError):
+        s = str(v)
+        return s if s not in ("", "-") else "-"
+
+
+def _fmt_dt_dubai(v):
+    """Date + time in Asia/Dubai for audit rows."""
+    if not v:
+        return "-"
+    try:
+        raw = str(v).replace("Z", "+00:00")
+        d = datetime.fromisoformat(raw)
+        if d.tzinfo is None:
+            d = d.replace(tzinfo=timezone.utc)
+        dubai = _dubai_tz()
+        if dubai is not None:
+            d = d.astimezone(dubai)
+        return d.strftime("%d/%m/%Y %H:%M")
     except (ValueError, TypeError):
         s = str(v)
         return s if s not in ("", "-") else "-"
@@ -53,6 +102,50 @@ def _fd(fd, key, default="-"):
     if v in (None, "", "-"):
         return default
     return str(v)
+
+
+def _mgmt_chain_steps(fd):
+    block = (fd or {}).get("hr_mgmt_chain") if isinstance(fd, dict) else None
+    if not isinstance(block, dict) or block.get("v") != 1:
+        return []
+    steps = block.get("steps")
+    return steps if isinstance(steps, list) else []
+
+
+def _mgmt_chain_step_by_key(fd, key):
+    for st in _mgmt_chain_steps(fd):
+        if isinstance(st, dict) and st.get("key") == key:
+            return st
+    return None
+
+
+def _mgmt_chain_first_step(fd, *keys):
+    for k in keys:
+        st = _mgmt_chain_step_by_key(fd, k)
+        if st:
+            return st
+    return None
+
+
+def _coalesce_signature_blob(flat_val, step_val):
+    """Prefer flat form_data; fallback to mgmt chain step signature (string or {url})."""
+    for v in (flat_val, step_val):
+        if v is None:
+            continue
+        if isinstance(v, str) and v.strip():
+            return v.strip()
+        if isinstance(v, dict) and str(v.get("url") or "").strip():
+            return str(v.get("url")).strip()
+    return None
+
+
+def _fmt_signature_date(flat_ts, step):
+    """Date shown next to a signature: explicit flat audit field, else chain step signed_at."""
+    if flat_ts not in (None, "", "-"):
+        return _fmt(flat_ts)
+    if isinstance(step, dict) and step.get("signed_at"):
+        return _fmt(step.get("signed_at"))
+    return "-"
 
 
 def _section_avg(fd, sn, suffixes):
@@ -74,7 +167,7 @@ def _section_avg(fd, sn, suffixes):
 
 
 def _sig_to_image(data_url, w_mm=36, h_mm=12):
-    """Load signature image and make white background transparent."""
+    """Load signature image; remove paper/preview tint so ink sits on plain white when placed in PDF."""
     if not data_url or not isinstance(data_url, str) or not data_url.startswith("data:image"):
         return None
     try:
@@ -83,13 +176,7 @@ def _sig_to_image(data_url, w_mm=36, h_mm=12):
         try:
             from PIL import Image as PILImage
             pil = PILImage.open(raw).convert("RGBA")
-            data = pil.load()
-            w, h = pil.size
-            for y in range(h):
-                for x in range(w):
-                    r, g, b, a = data[x, y]
-                    if r >= 250 and g >= 250 and b >= 250:
-                        data[x, y] = (r, g, b, 0)
+            rgba_make_signature_background_transparent(pil)
             out = io.BytesIO()
             pil.save(out, "PNG")
             out.seek(0)
@@ -441,34 +528,40 @@ def _checklist_table(items, styles=None, with_date=False):
 
 
 def _signature_block(signatures, styles=None, large=False, center=False):
-    """Compact: transparent signature only, no box or background. large=True for bigger labels/sigs. center=True for horizontal centering."""
+    """Label row + signature images + date row (plain ink on white, no tinted boxes)."""
     n = len(signatures)
-    sig_w = min(52 * mm if large else 40 * mm, CONTENT_W / max(n, 1))
+    sig_w = min(52 * mm if large else 42 * mm, CONTENT_W / max(n, 1))
     cw = [sig_w] * n
     fs, sp = (10, 8) if large else (7, 4)
+    w_im, h_im = (44, 16) if large else (34, 13)
+    ph_st = ParagraphStyle(
+        "SBPh",
+        fontSize=fs - 1,
+        textColor=C_MUTED,
+        fontName="Helvetica-Oblique",
+        alignment=TA_CENTER if center else TA_LEFT,
+    )
     lbl_row, sig_row, dt_row = [], [], []
     for label, img_data, date_val in signatures:
         lbl_row.append(Paragraph(
             f"<b>{label}</b>",
             ParagraphStyle("SL", fontSize=fs, textColor=C_BLACK, fontName="Helvetica-Bold", alignment=TA_CENTER if center else TA_LEFT),
         ))
-        img = _sig_to_image(img_data, w_mm=52 if large else 36, h_mm=20 if large else 12)
-        if img:
-            sig_cell = img
-        else:
-            sig_cell = Paragraph(
-                '<font color="#999999">Sign</font>',
-                ParagraphStyle("SH", fontSize=fs, textColor=C_BLACK, fontName="Helvetica", alignment=TA_LEFT),
-            )
-        sig_row.append(sig_cell)
+        img = _sig_to_image(img_data, w_mm=w_im, h_mm=h_im)
+        sig_row.append(img if img else Paragraph("<i>—</i>", ph_st))
         dt_row.append(Paragraph(
             _fmt(date_val) if date_val else "Date",
             ParagraphStyle("SD", fontSize=fs - 2, textColor=C_BLACK, fontName="Helvetica", alignment=TA_CENTER if center else TA_LEFT),
         ))
-    row_ht = [14, 44, 12] if large else [10, 28, 8]
+    sig_h_mm = max(h_im * mm, 24 * mm if large else 16 * mm)
+    row_ht = [
+        (14 + (8 if large else 4)) if large else 11,
+        sig_h_mm,
+        11 if large else 9,
+    ]
     t = Table([lbl_row, sig_row, dt_row], colWidths=cw, rowHeights=row_ht)
     t.hAlign = "CENTER" if center else "LEFT"
-    top_pad = sp + (25 if large else 0)  # Extra space above labels when large
+    top_pad = sp + (18 if large else 8)
     t.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
         ("ALIGN", (0, 0), (-1, -1), "CENTER" if center else "LEFT"),
@@ -480,15 +573,253 @@ def _signature_block(signatures, styles=None, large=False, center=False):
     return t
 
 
+def _mgmt_chain_signature_cell_plain(img_data, w_mm=32, h_mm=12):
+    """
+    Signature column for the management approvals table: same visual theme as the main form —
+    ink on white, no tinted background or bordered box.
+    """
+    img = _sig_to_image(img_data, w_mm=w_mm, h_mm=h_mm)
+    if img:
+        return img
+    ph = ParagraphStyle(
+        "MgSigPh",
+        fontSize=8,
+        textColor=C_MUTED,
+        fontName="Helvetica-Oblique",
+        alignment=TA_LEFT,
+        leading=10,
+    )
+    return Paragraph("<i>Pending</i>", ph)
+
+
 def _footer_block(styles=None):
+    dubai = _dubai_tz()
+    if dubai is not None:
+        gen = datetime.now(dubai).strftime("%d/%m/%Y %H:%M")
+    else:
+        gen = datetime.now().strftime("%d/%m/%Y %H:%M")
     return Paragraph(
-        f'<font color="#000000" size="6">Generated {datetime.now().strftime("%d/%m/%Y %H:%M")}</font>',
+        f'<font color="#000000" size="6">Generated {gen} (Dubai) · PDF layout {HR_PDF_LAYOUT_VERSION}</font>',
         ParagraphStyle("Ftr", fontSize=6, textColor=C_BLACK, alignment=TA_CENTER, fontName="Helvetica", spaceBefore=4),
     )
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# Form builders
+def _append_management_chain_pdf(story, fd, styles, form_type=None):
+    """
+    Printed management trail: comments + signatures in one bordered block below the form body.
+    """
+    from xml.sax.saxutils import escape as _esc
+
+    block = (fd or {}).get("hr_mgmt_chain") if isinstance(fd, dict) else None
+    if not isinstance(block, dict) or block.get("v") != 1:
+        return
+    steps = block.get("steps")
+    if not isinstance(steps, list) or not steps:
+        return
+
+    if form_type in _MGMT_CHAIN_START_NEXT_PAGE:
+        story.append(PageBreak())
+
+    ps_h = ParagraphStyle(
+        "MCH",
+        fontSize=9,
+        leading=11,
+        textColor=C_BLACK,
+        fontName="Helvetica-Bold",
+        alignment=TA_LEFT,
+        spaceBefore=10,
+        spaceAfter=6,
+    )
+    ps_body = ParagraphStyle(
+        "MCB",
+        fontSize=8,
+        leading=10,
+        textColor=C_BLACK,
+        fontName="Helvetica",
+        alignment=TA_LEFT,
+    )
+    story.append(Spacer(1, 0.08 * inch))
+    story.append(Paragraph(_esc("Management approvals — official sign-off trail"), ps_h))
+    story.append(
+        Paragraph(
+            _esc("Signatures captured in approval order for the official PDF. Pending steps show without a signature."),
+            ParagraphStyle(
+                "MCBp",
+                parent=ps_body,
+                fontSize=7,
+                leading=9,
+                textColor=C_MUTED,
+            ),
+        )
+    )
+    hints = block.get("pdf_hints")
+    if isinstance(hints, list) and hints:
+        for ln in hints:
+            if ln and isinstance(ln, str):
+                story.append(
+                    Paragraph(
+                        _esc(str(ln)),
+                        ParagraphStyle("MCHnote", parent=ps_body, fontSize=7, leading=10, textColor=C_MUTED),
+                    )
+                )
+
+    hdr = [
+        Paragraph("<b>Role</b>", ps_body),
+        Paragraph("<b>Signer</b>", ps_body),
+        Paragraph("<b>Comments</b>", ps_body),
+        Paragraph("<b>Signature</b>", ps_body),
+        Paragraph("<b>Date</b>", ps_body),
+    ]
+    rows = [hdr]
+    cw = [CONTENT_W * 0.18, CONTENT_W * 0.22, CONTENT_W * 0.26, CONTENT_W * 0.26, CONTENT_W * 0.08]
+
+    for i, step in enumerate(steps):
+        if not isinstance(step, dict):
+            continue
+        lbl_txt = str(step.get("pdf_label") or step.get("key") or f"Step {i+1}")
+        lbl = Paragraph(f"<b>{_esc(lbl_txt)}</b>", ps_body)
+        signer_name = "—"
+        if step.get("signed_by_name"):
+            signer_name = str(step["signed_by_name"])
+        elif step.get("signer_mode") == "fixed_user" and step.get("signer_id"):
+            signer_name = f"(Assigned #{step['signer_id']})"
+        elif step.get("designation_gate") == "general_manager":
+            signer_name = "(GM pool)"
+        elif step.get("designation_gate") == "hr_head_office":
+            signer_name = "(HR pool)"
+        sign_nm = Paragraph(_esc(signer_name), ps_body)
+
+        comments_txt = str(step.get("comments") or "").strip() or "—"
+        comments_cell = Paragraph(_esc(comments_txt[:400]), ps_body)
+
+        sig_img = _mgmt_chain_signature_cell_plain(step.get("signature"))
+
+        dt = Paragraph(_fmt(step.get("signed_at")), ps_body)
+        rows.append([lbl, sign_nm, comments_cell, sig_img, dt])
+
+    nrows = len(rows)
+    t = Table(rows, colWidths=cw, repeatRows=1)
+    style_cmds = [
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, -1), 8),
+        ("LINEBELOW", (0, 0), (-1, 0), 0.5, C_BLACK),
+        ("BOX", (0, 0), (-1, -1), 0.5, C_BLACK),
+        ("INNERGRID", (0, 0), (-1, -1), 0.3, C_LIGHT),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 5),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+        ("TOPPADDING", (0, 0), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+    ]
+    t.setStyle(TableStyle(style_cmds))
+    story.append(Spacer(1, 0.06 * inch))
+    story.append(t)
+
+
+def _append_submission_revision_audit_pdf(story, fd, styles):
+    """Full list of post-submit saves (grace window + reviewer saves) for official PDFs."""
+    from xml.sax.saxutils import escape as _xml_esc
+
+    if not isinstance(fd, dict):
+        return
+    hist = fd.get("submission_form_revision_history")
+    rows_plain = []
+    if isinstance(hist, list) and hist:
+        try:
+            hist_sorted = sorted(hist, key=lambda e: int(e.get("save_index") or 0))
+        except (TypeError, ValueError):
+            hist_sorted = hist
+        for e in hist_sorted:
+            rows_plain.append(
+                (
+                    str(e.get("save_index") or "—"),
+                    str(e.get("by_name") or "—"),
+                    _fmt_dt_dubai(e.get("at")),
+                )
+            )
+    else:
+        cnt = fd.get("submission_form_revision_count")
+        if cnt and fd.get("submission_form_revision_at"):
+            rows_plain.append(
+                (
+                    str(cnt),
+                    str(fd.get("submission_form_revision_by_name") or "—"),
+                    _fmt_dt_dubai(fd.get("submission_form_revision_at")),
+                )
+            )
+    if not rows_plain:
+        return
+
+    ps_title = ParagraphStyle(
+        "RevAudTitle",
+        fontSize=9,
+        leading=11,
+        textColor=C_BLACK,
+        fontName="Helvetica-Bold",
+        alignment=TA_LEFT,
+        spaceBefore=10,
+        spaceAfter=6,
+    )
+    ps_cell = ParagraphStyle(
+        "RevAudCell",
+        fontSize=8,
+        leading=10,
+        fontName="Helvetica",
+        textColor=C_BLACK,
+        alignment=TA_LEFT,
+    )
+    story.append(Spacer(1, 0.06 * inch))
+    story.append(
+        Paragraph(_xml_esc("Post-submit edit log — all saves (Dubai time)"), ps_title)
+    )
+    story.append(
+        Paragraph(
+            _xml_esc("Each save updates the live form; approvers and PDF recipients see this trail."),
+            ParagraphStyle(
+                "RevAudNote",
+                parent=ps_cell,
+                fontSize=7,
+                leading=9,
+                textColor=C_MUTED,
+                spaceAfter=6,
+            ),
+        )
+    )
+    hdr = [
+        Paragraph("<b>#</b>", ps_cell),
+        Paragraph("<b>Saved by</b>", ps_cell),
+        Paragraph("<b>Time (Dubai)</b>", ps_cell),
+    ]
+    tbl_rows = [hdr]
+    for si, who, wh in rows_plain:
+        tbl_rows.append(
+            [
+                Paragraph(_xml_esc(si), ps_cell),
+                Paragraph(_xml_esc(who), ps_cell),
+                Paragraph(_xml_esc(wh), ps_cell),
+            ]
+        )
+    cw = [CONTENT_W * 0.12, CONTENT_W * 0.43, CONTENT_W * 0.45]
+    t = Table(tbl_rows, colWidths=cw, repeatRows=1)
+    t.setStyle(
+        TableStyle(
+            [
+                ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
+                ("FONTSIZE", (0, 0), (-1, -1), 8),
+                ("BOX", (0, 0), (-1, -1), 0.5, C_BLACK),
+                ("INNERGRID", (0, 0), (-1, -1), 0.3, C_LIGHT),
+                ("LINEBELOW", (0, 0), (-1, 0), 0.5, C_BLACK),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 5),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+                ("TOPPADDING", (0, 0), (-1, -1), 5),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+            ]
+        )
+    )
+    story.append(t)
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def _leave_tick(fd, key, label):
@@ -512,7 +843,7 @@ def _build_leave(story, fd, styles):
     """
     PDF Leave Application Form — structure mirrors the MAIN Word document row-for-row.
 
-    Word table structure (29 rows, 2 effective columns ~48% / ~48%):
+    Word table structure (~28 body rows, 2 outer columns; signature row uses a nested 3-column table):
       r0  : Name:                              (full-width)
       r1  : Job Title:          | Today's Date:
       r2  : Employee ID:        | Department:
@@ -524,16 +855,15 @@ def _build_leave(story, fd, styles):
       r16 : Total No. of Days Requested:       (full-width)
       r17 : First Day of leave: | Last Day of Leave:
       r18 : Date returning to work:            (full-width)
-      r19 : Leave Salary Advance Requested: [ ] YES  [ ] NO
-      r20 : Telephone Number where you can be reached:
-      r21 : Replacement Name:  | Signature:
-      r22 : Employee Signature: | Manager Signature:
-      r23 : Checked by HR: YES / NO            (full-width)
-      r24 : HR Comments:                       (full-width)
-      r25 : For Human Resources Only           (full-width, centred bold)
-      r26 : Balance C/F:       | Contract Year:
-      r27 : Paid:              | Unpaid:
-      r28 : HR Signature:      | Date:
+      r19 : Salary advance YES/NO                          (full-width)
+      r20 : Telephone reachable                              (full-width)
+      r21 : Employee | Colleague/replacement | Manager sigs (nested 3-col, full-width SPAN)
+      r22 : Checked by HR                                   (full-width)
+      r23 : HR Comments                                     (full-width)
+      r24 : For Human Resources Only                        (full-width header)
+      r25 : Balance C/F       | Contract Year:
+      r26 : Paid              | Unpaid:
+      r27 : HR Signature      | Date:
     """
     # ── styles ────────────────────────────────────────────────────────────────
     LBL = ParagraphStyle("LvLbl", fontSize=9,  fontName="Helvetica-Bold",
@@ -580,26 +910,22 @@ def _build_leave(story, fd, styles):
     # Signature helpers
     def _sig_cell(label, img_data, date_val):
         """
-        Compact signature cell: label and signature on one line.
-        Signature keeps its aspect ratio and has a small gap from the label.
+        Compact signature cell: label inline with signature image (no bordered / padded box).
+        Matches the earlier leave PDF layout before tinted signature areas were added.
         """
-        # Slightly bigger image while preserving a clear, compact inline layout
         img = _sig_to_image(img_data, w_mm=36, h_mm=13)
-
         lbl = Paragraph(f"<b>{label}:</b>", SIG_LBL)
-
         if img:
-            # Inner 1×2 table: [Label | Signature]
             inner = Table(
                 [[lbl, img]],
                 colWidths=[38 * mm, 34 * mm],
-                rowHeights=[10],
+                rowHeights=[13 * mm],
             )
             inner.setStyle(TableStyle([
+                ("BACKGROUND",    (0, 0), (-1, -1), C_WHITE),
                 ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
                 ("ALIGN",         (0, 0), (0, 0),   "LEFT"),
                 ("ALIGN",         (1, 0), (1, 0),   "RIGHT"),
-                # Small horizontal gap between label and signature
                 ("LEFTPADDING",   (0, 0), (0, 0),   0),
                 ("RIGHTPADDING",  (0, 0), (0, 0),   3),
                 ("LEFTPADDING",   (1, 0), (1, 0),   3),
@@ -608,9 +934,42 @@ def _build_leave(story, fd, styles):
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
             ]))
             return inner
-
-        # Fallback without image: just label
         return lbl
+
+    def replacement_mid_flowable():
+        """Middle column: stacked colleague / replacement coverage signatures (matches web form)."""
+        from xml.sax.saxutils import escape as _xml_esc
+
+        sp = fd.get("replacement_signers") if isinstance(fd.get("replacement_signers"), list) else []
+        w_inner = (CONTENT_W / 3.0) - 14
+        if sp:
+            cells = []
+            multi = len(sp) > 1
+            for s in sp:
+                nm = _xml_esc(str(s.get("display_name") or s.get("username") or "Colleague"))
+                label = ("Colleague — " + nm) if multi else "Colleague signature"
+                cells.append([_sig_cell(label, s.get("signature"), s.get("signed_at"))])
+            inner = Table(cells, colWidths=[w_inner])
+            inner.setStyle(
+                TableStyle(
+                    [
+                        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                        ("TOPPADDING", (0, 0), (-1, -1), 1),
+                        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+                    ]
+                )
+            )
+            return inner
+        if fd.get("replacement_signature"):
+            return _sig_cell("Colleague signature", fd.get("replacement_signature"), None)
+        return Paragraph(
+            "<b>Colleague / replacement signature</b><br/>"
+            '<font size="8" color="#64748b"><i>Coverage colleague sign-offs appear here after '
+            "they sign digitally.</i></font>",
+            VAL,
+        )
 
     # ── build rows ────────────────────────────────────────────────────────────
     LEAVE_OPTIONS = [
@@ -673,13 +1032,40 @@ def _build_leave(story, fd, styles):
         [Paragraph(f"<b>Leave Salary Advance Requested:</b>  {sa_yes}   {sa_no}", VAL), ""],
         # r20 : Telephone (full-width)
         [Paragraph(f"<b>Telephone Number where you can be reached:</b>  {_fd(fd,'telephone_reachable')}", VAL), ""],
-        # r21 : Replacement Name | Replacement Signature
-        [_lv2("Replacement Name", _fd(fd, "replacement_name")),
-         _sig_cell("Signature", fd.get("replacement_signature"), None)],
-        # r22 : Employee Signature | Manager Signature
-        [_sig_cell("Employee Signature", fd.get("employee_signature"), fd.get("today_date")),
-         _sig_cell("Manager Signature",  fd.get("gm_signature"), None)],
-        # r23 : Checked by HR YES/NO (full-width)
+    ]
+    triple_row_ix = len(rows)
+    w3 = CONTENT_W / 3.0
+    triple_sig = Table(
+        [
+            [
+                _sig_cell("Employee Signature", fd.get("employee_signature"), fd.get("today_date")),
+                replacement_mid_flowable(),
+                _sig_cell("Manager Signature", fd.get("gm_signature"), None),
+            ]
+        ],
+        colWidths=[w3, w3, w3],
+    )
+    triple_sig.setStyle(
+        TableStyle(
+            [
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 4),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+            ]
+        )
+    )
+    rows.append([triple_sig, ""])
+
+    row_checked_hr = triple_row_ix + 1
+    row_comments_hr = triple_row_ix + 2
+    row_hr_banner = triple_row_ix + 3
+    row_hr_sig_date = triple_row_ix + 6
+
+    rows += [
+        # Checked by HR YES/NO (full-width)
         [Paragraph(f"<b>Checked by HR:</b>  {chk_yes}   {chk_no}", VAL), ""],
         # r24 : HR Comments (full-width)
         [Paragraph(f"<b>HR Comments:</b>  {_fd(fd,'hr_comments')}", VAL), ""],
@@ -701,15 +1087,12 @@ def _build_leave(story, fd, styles):
     #  0=Name  1=JobTitle/Date  2=EmpID/Dept  3=DOJ/Mobile  4=LastLeave
     #  5=DETAILS header  6=Leave type hdr
     #  7-15=9 leave options  16=TotalDays  17=FirstDay/LastDay  18=DateReturn
-    #  19=SalaryAdvance  20=Telephone  21=ReplacementName/Sig  22=EmpSig/MgrSig
-    #  23=CheckedByHR  24=HRComments  25=For HR Only  26=Balance/Contract
-    #  27=Paid/Unpaid  28=HRSig/Date
+    #  19=SalaryAdvance  20=Telephone  21=Triple signatures (Emp / Replacement / Manager)
+    #  22=CheckedByHR  23=HRComments  24=For HR Only  25=Balance/Contract  26=Paid/Unpaid  27=HRSig/Date
     # Slightly increase row heights so form fills page better.
     row_heights = [None] * len(rows)
     for ri in range(7, 16):   # leave option rows
         row_heights[ri] = 22
-    for ri in [21, 22, 28]:   # signature rows
-        row_heights[ri] = 32
 
     t = Table(rows, colWidths=[L, R], rowHeights=row_heights)
 
@@ -732,16 +1115,16 @@ def _build_leave(story, fd, styles):
         ("LINEABOVE",     (0, 5), (-1, 5),  0.5, C_BLACK),
         # Type of Leave header row (6) — bold border below
         ("LINEBELOW",     (0, 6), (-1, 6),  0.5, C_BLACK),
-        # For Human Resources Only section divider (row 25)
-        ("LINEABOVE",     (0, 25), (-1, 25), 0.5, C_BLACK),
+        # For Human Resources Only — section divider above banner row
+        ("LINEABOVE",     (0, row_hr_banner), (-1, row_hr_banner), 0.5, C_BLACK),
         # Centre-align the section-header rows
         ("ALIGN",         (0, 5),  (-1, 5),  "CENTER"),
         ("ALIGN",         (0, 6),  (-1, 6),  "CENTER"),
-        ("ALIGN",         (0, 25), (-1, 25), "CENTER"),
+        ("ALIGN",         (0, row_hr_banner), (-1, row_hr_banner), "CENTER"),
     ]
 
     # Full-width spans: rows that occupy both columns
-    for ri in [0, 4, 5, 16, 18, 19, 20, 23, 24, 25]:
+    for ri in [0, 4, 5, 16, 18, 19, 20, triple_row_ix, row_checked_hr, row_comments_hr, row_hr_banner]:
         style.append(("SPAN", (0, ri), (1, ri)))
 
     # Leave checkbox rows (7-15): NOT spanned — show divider + days in right col
@@ -750,10 +1133,10 @@ def _build_leave(story, fd, styles):
         style.append(("ALIGN",  (1, ri), (1, ri), "CENTER"))
         style.append(("VALIGN", (1, ri), (1, ri), "MIDDLE"))
 
-    # Signature rows: compact, but with enough breathing room for readability
-    for ri in [21, 22, 28]:
-        style.append(("TOPPADDING",    (0, ri), (-1, ri), 6))
-        style.append(("BOTTOMPADDING", (0, ri), (-1, ri), 6))
+    # Signature bands: triple row + HR signature/date row — light padding
+    for ri in [triple_row_ix, row_hr_sig_date]:
+        style.append(("TOPPADDING",    (0, ri), (-1, ri), 4))
+        style.append(("BOTTOMPADDING", (0, ri), (-1, ri), 4))
 
     t.setStyle(TableStyle(style))
 
@@ -808,21 +1191,33 @@ def _fchk(val, label, compare=None):
 
 
 def _fsig(label, img_data):
-    """Compact inline signature cell (label left, image right)."""
+    """
+    Inline signature cell for form tables: bold label + image on white (same theme as leave PDF).
+    No tinted signature box — table grid provides structure.
+    """
     LBL, _, _, _, _ = _fstyles()
-    img = _sig_to_image(img_data, w_mm=36, h_mm=13)
     lbl = Paragraph(f"<b>{label}:</b>", LBL)
-    if img:
-        inner = Table([[lbl, img]], colWidths=[40 * mm, 34 * mm], rowHeights=[10])
-        inner.setStyle(TableStyle([
-            ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
-            ("LEFTPADDING",   (0, 0), (-1, -1), 0),
-            ("RIGHTPADDING",  (0, 0), (-1, -1), 0),
-            ("TOPPADDING",    (0, 0), (-1, -1), 0),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
-        ]))
-        return inner
-    return lbl
+    img = _sig_to_image(img_data, w_mm=36, h_mm=13)
+    if not img:
+        return lbl
+    inner = Table(
+        [[lbl, img]],
+        colWidths=[38 * mm, 34 * mm],
+        rowHeights=[13 * mm],
+    )
+    inner.setStyle(TableStyle([
+        ("BACKGROUND",    (0, 0), (-1, -1), C_WHITE),
+        ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
+        ("ALIGN",         (0, 0), (0, 0),   "LEFT"),
+        ("ALIGN",         (1, 0), (1, 0),   "RIGHT"),
+        ("LEFTPADDING",   (0, 0), (0, 0),   0),
+        ("RIGHTPADDING",  (0, 0), (0, 0),   3),
+        ("LEFTPADDING",   (1, 0), (1, 0),   3),
+        ("RIGHTPADDING",  (1, 0), (1, 0),   0),
+        ("TOPPADDING",    (0, 0), (-1, -1), 0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+    ]))
+    return inner
 
 
 def _ftable(rows, cws, spans=(), secs=(), sigs=(), extra=()):
@@ -855,8 +1250,8 @@ def _ftable(rows, cws, spans=(), secs=(), sigs=(), extra=()):
         style.append(("LINEBELOW",  (0, ri), (-1, ri), 0.5, C_BLACK))
         style.append(("ALIGN",      (0, ri), (-1, ri), "CENTER"))
     for ri in sigs:
-        style.append(("TOPPADDING",    (0, ri), (-1, ri), 8))
-        style.append(("BOTTOMPADDING", (0, ri), (-1, ri), 8))
+        style.append(("TOPPADDING",    (0, ri), (-1, ri), 5))
+        style.append(("BOTTOMPADDING", (0, ri), (-1, ri), 5))
     style.extend(extra)
     t.setStyle(TableStyle(style))
     return t
@@ -927,11 +1322,56 @@ def _build_commencement(story, fd, styles):
     story.append(nt)
 
 
+def _duty_resumption_body_slots(fd):
+    """
+    Merge ``hr_mgmt_chain`` into the duty PDF body when flat ``reporting_manager_signature`` /
+    ``line_manager_remarks`` / approval timestamps were not mirrored into ``form_data``.
+    """
+    fd = fd or {}
+    rm = _mgmt_chain_first_step(fd, "reporting_manager", "supervisor")
+    gm = _mgmt_chain_step_by_key(fd, "general_manager")
+    hr = _mgmt_chain_step_by_key(fd, "hr_head_office")
+
+    rm_sig = _coalesce_signature_blob(fd.get("reporting_manager_signature"), rm.get("signature") if rm else None)
+
+    lmr_flat = (fd.get("line_manager_remarks") or "").strip()
+    rm_comments = (rm.get("comments") or "").strip() if rm else ""
+    if lmr_flat and rm_comments and rm_comments not in lmr_flat:
+        line_manager_display = f"{lmr_flat}\n{rm_comments}"
+    elif lmr_flat:
+        line_manager_display = lmr_flat
+    else:
+        line_manager_display = rm_comments or "-"
+
+    gm_sig = _coalesce_signature_blob(fd.get("gm_signature"), gm.get("signature") if gm else None)
+    if not gm_sig and rm and rm.get("also_mirrors_gm_fields"):
+        gm_sig = _coalesce_signature_blob(fd.get("gm_signature"), rm.get("signature"))
+
+    hr_sig = _coalesce_signature_blob(fd.get("hr_signature"), hr.get("signature") if hr else None)
+
+    rm_date = _fmt_signature_date(None, rm)
+    gm_date = _fmt_signature_date(fd.get("gm_approved_at"), gm)
+    if gm_date == "-" and rm and rm.get("also_mirrors_gm_fields"):
+        gm_date = _fmt_signature_date(fd.get("gm_approved_at"), rm)
+    hr_date = _fmt_signature_date(fd.get("hr_reviewed_at"), hr)
+
+    return {
+        "rm_sig": rm_sig,
+        "line_manager_display": line_manager_display,
+        "gm_sig": gm_sig,
+        "hr_sig": hr_sig,
+        "rm_date": rm_date,
+        "gm_date": gm_date,
+        "hr_date": hr_date,
+    }
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 #  DUTY RESUMPTION FORM
 # ─────────────────────────────────────────────────────────────────────────────
 def _build_duty_resumption(story, fd, styles):
     """Resumption of Duty Form — mirrors Word document."""
+    slots = _duty_resumption_body_slots(fd)
     CW = CONTENT_W
     L, R = CW * 0.50, CW * 0.50
     _, VAL, _, _, _ = _fstyles()
@@ -952,17 +1392,19 @@ def _build_duty_resumption(story, fd, styles):
         [_flv("Note",          _fd(fd, "note")), ""],                        # r7
         [_fsig("Employee Signature", fd.get("employee_signature")),
          _flv("Date", _fmt(fd.get("sign_date")))],                           # r8 sig
-        [_flv("Line Manager Remarks", _fd(fd, "line_manager_remarks")), ""],   # r9
-        [_fsig("Approved by Line Manager", fd.get("gm_signature")),
-         _flv("Date", "")],                                                  # r11 sig
-        [_fsig("HR Signature", fd.get("hr_signature")),
-         _flv("Date", "")],                                                  # r12 sig
+        [_flv("Line Manager Remarks", slots["line_manager_display"]), ""],   # r9
+        [_fsig("Reporting Manager Signature", slots["rm_sig"]),
+         _flv("Date", slots["rm_date"])],                                   # r10 sig
+        [_fsig("GM Signature", slots["gm_sig"]),
+         _flv("Date", slots["gm_date"])],                                   # r11 sig
+        [_fsig("HR Signature", slots["hr_sig"]),
+         _flv("Date", slots["hr_date"])],                                   # r12 sig
     ]
 
     t = _ftable(rows, [L, R],
                 spans=(0, 3, 5, 6, 7, 9),
                 secs=(0, 3),
-                sigs=(8, 10, 11),
+                sigs=(8, 10, 11, 12),
                 extra=[("MINROWHEIGHT", (0, 9), (-1, 9), 28)])
 
     story.append(_header_table("Resumption of Duty Form", styles, show_bottom_line=False))
@@ -978,6 +1420,18 @@ def _build_passport_release(story, fd, styles):
     CW = CONTENT_W
     L, R = CW * 0.50, CW * 0.50
     _, VAL, _, _, ITL = _fstyles()
+
+    gm = _mgmt_chain_step_by_key(fd, "general_manager")
+    hr = _mgmt_chain_step_by_key(fd, "hr_head_office")
+    rm = _mgmt_chain_first_step(fd, "reporting_manager", "supervisor")
+    gm_sig = _coalesce_signature_blob(fd.get("gm_signature"), gm.get("signature") if gm else None)
+    if not gm_sig and rm and rm.get("also_mirrors_gm_fields"):
+        gm_sig = _coalesce_signature_blob(fd.get("gm_signature"), rm.get("signature"))
+    hr_sig = _coalesce_signature_blob(fd.get("hr_signature"), hr.get("signature") if hr else None)
+    gm_date = _fmt_signature_date(fd.get("gm_approved_at"), gm)
+    if gm_date == "-" and rm and rm.get("also_mirrors_gm_fields"):
+        gm_date = _fmt_signature_date(fd.get("gm_approved_at"), rm)
+    hr_date = _fmt_signature_date(fd.get("hr_reviewed_at"), hr)
 
     ft = _fd(fd, "passport_form_type", "Release").replace("_", " ").title()
     purpose = _fd(fd, "purpose_of_release")
@@ -1004,10 +1458,10 @@ def _build_passport_release(story, fd, styles):
             "All passports will be released two days before the requested date, and "
             "immediately in emergency cases.",
             ITL), ""],                                                       # r9
-        [_fsig("Approved by Line Manager", fd.get("gm_signature")),
-         _flv("Date", "")],                                                  # r10 sig
-        [_fsig("HR Signature", fd.get("hr_signature")),
-         _flv("Date", "")],                                                  # r11 sig
+        [_fsig("Approved by Line Manager", gm_sig),
+         _flv("Date", gm_date)],                                             # r10 sig
+        [_fsig("HR Signature", hr_sig),
+         _flv("Date", hr_date)],                                            # r11 sig
     ]
 
     t1 = _ftable(rows1, [L, R],
@@ -1027,10 +1481,10 @@ def _build_passport_release(story, fd, styles):
          _flv("Employee ID",   _fd(fd, "employee_id"))],                     # r1
         [_flv("Job Title",     _fd(fd, "job_title")),
          _flv("Date",          _fmt(fd.get("form_date")))],                  # r2
-        [_fsig("Approved by Line Manager", fd.get("gm_signature")),
-         _flv("Date", "")],                                                  # r3 sig
-        [_fsig("HR Signature", fd.get("hr_signature")),
-         _flv("Date", "")],                                                  # r4 sig
+        [_fsig("Approved by Line Manager", gm_sig),
+         _flv("Date", gm_date)],                                             # r3 sig
+        [_fsig("HR Signature", hr_sig),
+         _flv("Date", hr_date)],                                             # r4 sig
     ]
 
     t2 = _ftable(rows2, [L, R],
@@ -2135,6 +2589,8 @@ def build_hr_pdf(form_type, form_data, output_stream, submission_id=None):
     story = []
 
     builder(story, fd, styles)
+    _append_management_chain_pdf(story, fd, styles, form_type=form_type)
+    _append_submission_revision_audit_pdf(story, fd, styles)
     story.append(Spacer(1, 0.12 * inch))
     story.append(_footer_block(styles))
 

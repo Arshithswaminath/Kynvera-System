@@ -30,7 +30,7 @@
 </head>
 <body class="hr-form-page">
   {% set active_page = 'hr' %}
-  {% include 'partials/main_navbar.html' with context %}
+  {% include 'partials/hr_embed_optional_navbar.html' %}
 
   <div class="success-overlay" id="successModal">
     <div class="success-modal">
@@ -48,6 +48,8 @@
         <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
         Back to HR Module
       </a>
+
+      {% include 'partials/hr_submitted_edit_banners.html' %}
       
       <div class="form-card">
         <div class="form-header">
@@ -157,6 +159,8 @@
               <textarea class="form-control" name="settlement_notes" rows="2" placeholder="Any notes regarding final settlement"></textarea>
             </div>
             
+            <div class="col-12 mt-2">{% include 'partials/hr_mgmt_chain_submit_block.html' %}</div>
+
             <div class="col-12 mt-4">
               <button type="submit" class="btn-submit w-100">Submit Termination Form</button>
             </div>
@@ -200,10 +204,22 @@
     });
     
     function showSuccessModal(submissionId) {
+      window.__hrLastHrSubmissionId = submissionId || '';
       document.getElementById('submissionId').textContent = submissionId;
       document.getElementById('successModal').classList.add('show');
     }
-    function goToMyRequests() { window.location.href = '/hr/my-requests'; }
+    function goToMyRequests() {
+      if (typeof hrGoToSubmittedRequest === 'function') {
+        hrGoToSubmittedRequest();
+      } else {
+        var id = String(window.__hrLastHrSubmissionId || '').trim();
+        if (!id) {
+          var el = document.getElementById('submissionId');
+          id = el ? String(el.textContent || '').trim() : '';
+        }
+        window.location.href = id ? '/hr/my-requests?submission=' + encodeURIComponent(id) : '/hr/my-requests';
+      }
+    }
     function showErrorMessage(message) {
       const toast = document.createElement('div');
       toast.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #fee2e2; color: #dc2626; padding: 1rem 1.5rem; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); z-index: 9999; font-weight: 500;';
@@ -211,6 +227,14 @@
       document.body.appendChild(toast);
       setTimeout(() => toast.remove(), 5000);
     }
+  </script>
+  <script src="{{ url_for('static', filename='js/hr_generic_form_edit.js') }}"></script>
+  <script>
+    HrGenericFormEdit.attach({
+      formId: 'terminationForm',
+      moduleTypes: ['hr_termination'],
+      clearanceCheckboxNames: ['clearance_id_card','clearance_laptop','clearance_phone','clearance_keys','clearance_documents','clearance_accounts'],
+    });
   </script>
   <script src="{{ url_for('static', filename='api-client.js') }}"></script>
   <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>

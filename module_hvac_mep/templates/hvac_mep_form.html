@@ -1695,7 +1695,7 @@
           <h4 class="section-heading-no-border">Supervisor Sign-off</h4>
           {% elif user_designation == 'operations_manager' %}
           <h4 class="section-heading-no-border">Operations Manager Review</h4>
-          {% elif user_designation == 'business_development' %}
+          {% elif bd_inspection_reviewer %}
           <h4 class="section-heading-no-border">Business Development Review</h4>
           {% elif user_designation == 'procurement' %}
           <h4 class="section-heading-no-border">Procurement Review</h4>
@@ -1928,7 +1928,7 @@
         {% endif %}
 
         <!-- ==================== BUSINESS DEVELOPMENT SECTION ==================== -->
-        {% if user_designation == 'business_development' and is_edit_mode %}
+        {% if bd_inspection_reviewer and is_edit_mode %}
         <!-- Previous Reviewers: Supervisor + Operations Manager (Read-only for BD) - SHOWN FIRST/TOP -->
         <div class="col-12 mb-4" id="previousForBDSection" style="display: none;">
           <div class="alert alert-info mb-3" style="background: #f0f9ff; border-color: #0ea5e9;">
@@ -3917,7 +3917,7 @@
         // Operations Manager signature is already collected in opData above
         {% endif %}
 
-        {% if user_designation == 'business_development' %}
+        {% if bd_inspection_reviewer %}
         const businessDevCommentsField = document.getElementById('businessDevComments');
         if (businessDevCommentsField) {
           businessDevComments = businessDevCommentsField.value || '';
@@ -4003,7 +4003,7 @@
         {% endif %}
 
         // Only attach BD data when BD is submitting
-        {% if user_designation == 'business_development' %}
+        {% if bd_inspection_reviewer %}
         payload.business_dev_comments = businessDevComments || '';
         payload.business_dev_signature = businessDevSignature || '';
         {% endif %}
@@ -4321,7 +4321,7 @@
                 <li>→ Business Development & Procurement (parallel review)</li>
                 <li>→ General Manager (final approval)</li>
               `;
-              {% elif user_designation in ['business_development', 'procurement'] %}
+              {% elif user_designation == 'procurement' or bd_inspection_reviewer %}
               // BD or Procurement is approving - form goes to GM (if both approved) or stays in BD/Proc review
               const workflowList = `
                 <li>→ General Manager (final approval)</li>
@@ -4462,7 +4462,7 @@
             throw new Error(approveJson.error || 'Approval failed');
           }
           
-          {% elif user_designation == 'business_development' %}
+          {% elif bd_inspection_reviewer %}
           // Business Development: First update, then approve
           const updateUrl = `/api/workflow/submissions/${submissionId}/update`;
           const updateBody = {
@@ -6352,7 +6352,7 @@
             {% endif %}
             
             // Load Supervisor comments and signature for BD (read-only)
-            {% if user_designation == 'business_development' %}
+            {% if bd_inspection_reviewer %}
             let supervisorCommentsBD = null;
             let supervisorSigBD = null;
             
@@ -6411,7 +6411,7 @@
             {% endif %}
             
             // Load Operations Manager comments and signature for BD (read-only) - check ALL possible locations
-            {% if user_designation == 'business_development' %}
+            {% if bd_inspection_reviewer %}
             let opsManagerCommentsBD = null;
             let opsManagerSigBD = null;
             
@@ -6753,7 +6753,7 @@
           }
           
           // Load Business Development comments and signature
-          {% if user_designation == 'business_development' %}
+          {% if bd_inspection_reviewer %}
           let businessDevComments = formData.business_dev_comments || 
                                    (submissionData?.form_data?.business_dev_comments);
           let businessDevSig = formData.business_dev_signature || 

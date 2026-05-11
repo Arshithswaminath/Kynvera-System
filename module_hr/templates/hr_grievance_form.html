@@ -15,18 +15,18 @@
 </head>
 <body class="hr-form-unified">
   {% set active_page = 'hr' %}
-  {% include 'partials/main_navbar.html' with context %}
+  {% include 'partials/hr_embed_optional_navbar.html' %}
 
   <div class="success-bg" id="successModal">
     <div class="success-box">
-      <button type="button" class="success-back-btn" onclick="closeSuccessBackToForm()" title="Back to form">
+      <button type="button" class="success-back-btn" onclick="hrGoToSubmittedRequest()" title="View submitted request">
         <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
       </button>
       <div class="success-icon"><svg width="30" height="30" fill="none" stroke="#fff" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg></div>
       <h2>Form Submitted!</h2>
-      <p>Grievance form sent. This remains confidential.</p>
+      <p id="successMsgLead">Grievance form sent. This remains confidential.</p>
       <div class="sub-id" id="submissionId"></div>
-      <button class="btn-submit" style="width:100%;justify-content:center" onclick="window.location.href='/hr/my-requests'">View My Requests</button>
+      <button class="btn-submit" style="width:100%;justify-content:center" onclick="hrGoToSubmittedRequest()">View My Requests</button>
     </div>
   </div>
 
@@ -47,6 +47,8 @@
         <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
         Back to HR
       </a>
+
+      {% include 'partials/hr_submitted_edit_banners.html' %}
 
       <div class="step-bar">
         <div class="step-item active" id="step1Badge" onclick="goToStep1()" role="button" tabindex="0"><span class="num">1</span><span>Complaint Details</span></div>
@@ -118,13 +120,13 @@
                 <p style="font-size:.9rem;margin-bottom:1rem;">The Engineer, QHSE or HOD handling the employee grievance needs to state the actions or recommendations taken to resolve the issues. Did both (disputing) parties reach a solution/agreement?</p>
                 <div class="yn-row" style="margin-bottom:1rem">
                   <label>Statement of 2nd party been taken & attached?</label>
-                  <label><input type="radio" name="statement_2nd_party" value="yes" {% if not is_hr %}disabled{% endif %}> Yes</label>
-                  <label><input type="radio" name="statement_2nd_party" value="no" {% if not is_hr %}disabled{% endif %}> No</label>
-                  <label><input type="radio" name="statement_2nd_party" value="na" {% if not is_hr %}disabled{% endif %}> Not Required</label>
+                  <label><input type="radio" name="statement_2nd_party" value="yes" {% if not is_hr_broad %}disabled{% endif %}> Yes</label>
+                  <label><input type="radio" name="statement_2nd_party" value="no" {% if not is_hr_broad %}disabled{% endif %}> No</label>
+                  <label><input type="radio" name="statement_2nd_party" value="na" {% if not is_hr_broad %}disabled{% endif %}> Not Required</label>
                 </div>
                 <div class="fld">
                   <label class="fld-lbl">HOD Actions / Recommendations</label>
-                  <textarea class="fld-inp" name="hod_actions" rows="3" {% if not is_hr %}readonly{% endif %} placeholder="State the actions or recommendations taken..."></textarea>
+                  <textarea class="fld-inp" name="hod_actions" rows="3" {% if not is_hr_broad %}readonly{% endif %} placeholder="State the actions or recommendations taken..."></textarea>
                 </div>
               </section>
               <section class="sec sec-hr">
@@ -171,32 +173,6 @@
                     </div>
                   </div>
                   <div class="fld">
-                    <label class="fld-lbl">2nd Party Signature</label>
-                    <div class="sig-wrap">
-                      <div class="sig-box" id="sp2SigPrev"><span class="sig-ph">No signature</span><img id="sp2SigImg" src="" style="display:none"></div>
-                      <div class="sig-actions">
-                        <button type="button" class="btn-plus" onclick="openSig('second_party')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 4v16m8-8H4"/></svg> Sign</button>
-                        <button type="button" class="btn-rm" id="sp2SigRm" onclick="rmSig('second_party')">Remove</button>
-                      </div>
-                      <input type="hidden" name="second_party_signature" id="sp2SigData">
-                    </div>
-                  </div>
-                  <div class="fld">
-                    <label class="fld-lbl">HOD / Engineer Signature</label>
-                    {% if is_hr %}
-                    <div class="sig-wrap">
-                      <div class="sig-box" id="hodSigPrev"><span class="sig-ph">No signature</span><img id="hodSigImg" src="" style="display:none"></div>
-                      <div class="sig-actions">
-                        <button type="button" class="btn-plus" onclick="openSig('hod')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 4v16m8-8H4"/></svg> Sign</button>
-                        <button type="button" class="btn-rm" id="hodSigRm" onclick="rmSig('hod')">Remove</button>
-                      </div>
-                      <input type="hidden" name="hod_signature" id="hodSigData">
-                    </div>
-                    {% else %}
-                    <em style="font-size:.85rem;color:var(--muted)">For HOD / Engineer</em>
-                    {% endif %}
-                  </div>
-                  <div class="fld">
                     <label class="fld-lbl">HR Signature</label>
                     {% if is_hr %}
                     <div class="sig-wrap">
@@ -227,6 +203,26 @@
                     {% endif %}
                   </div>
                 </div>
+                <div class="fld fw" style="margin-top:1rem;padding-top:1rem;border-top:1px solid rgba(226,232,240,.9)">
+                  <p class="fld-lbl" style="margin-bottom:.5rem">Teammates who sign digitally before HR receives this form</p>
+                  <div style="margin-bottom:.85rem">
+                    <span style="display:block;font-size:.86rem;font-weight:600;color:#334155">Respondent / 2nd party</span>
+                    <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:flex-end;margin-top:.3rem">
+                      <select class="fld-inp" id="griev2ndSel" style="flex:1;min-width:11rem"><option value="">Loading…</option></select>
+                      <button type="button" class="btn-ghost" id="griev2ndAdd">Add</button>
+                    </div>
+                    <div id="griev2ndChips" style="margin-top:.35rem;display:flex;flex-wrap:wrap;gap:.2rem"></div>
+                  </div>
+                  <div>
+                    <span style="display:block;font-size:.86rem;font-weight:600;color:#334155">Engineer / QHSE / HOD</span>
+                    <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:flex-end;margin-top:.3rem">
+                      <select class="fld-inp" id="grievHodSel" style="flex:1;min-width:11rem"><option value="">Loading…</option></select>
+                      <button type="button" class="btn-ghost" id="grievHodAdd">Add</button>
+                    </div>
+                    <div id="grievHodChips" style="margin-top:.35rem;display:flex;flex-wrap:wrap;gap:.2rem"></div>
+                  </div>
+                  <p class="doc-intro" style="font-size:.78rem;margin-top:.55rem;color:var(--muted)">Respondent and HOD cannot be signed here by the complainant — they sign from their own Injaaz login after you submit.</p>
+                </div>
               </section>
               <div class="step-nav">
                 <button type="button" class="btn-back" onclick="goToStep1()"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12"/></svg> Back to Step 1</button>
@@ -236,6 +232,8 @@
 
           </div>
 
+          {% include 'partials/hr_mgmt_chain_submit_block.html' %}
+
           <div class="doc-ft">
             <div class="doc-ft-meta"><span>Grievance Form</span><span>DATE: <span id="docDate"></span></span></div>
             P.O Box: 3456 Ajman, UAE · Tel 067116815 · www.injaaz.ae
@@ -243,14 +241,22 @@
 
           <div class="submit-bar" id="submitBar" style="display:none">
             <button type="button" class="btn-reset" onclick="if(confirm('Reset the form?')){document.getElementById('hrForm').reset();clearAllSigs();goToStep1()}">Reset</button>
-            <button type="submit" class="btn-submit"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> Submit Form</button>
+            <button type="submit" class="btn-submit">Submit Form</button>
           </div>
         </form>
       </div>
     </div>
   </div>
 
+<script src="{{ url_for('static', filename='js/hr_colleague_slot_picker.js') }}"></script>
 <script>
+const second_party_signer_ids=[], hod_signer_ids=[];
+document.addEventListener('DOMContentLoaded',()=>{
+  if(window.HrColleagueSlotPicker){
+    HrColleagueSlotPicker.bind({selectId:'griev2ndSel',addBtnId:'griev2ndAdd',chipsId:'griev2ndChips',ids:second_party_signer_ids,multi:true});
+    HrColleagueSlotPicker.bind({selectId:'grievHodSel',addBtnId:'grievHodAdd',chipsId:'grievHodChips',ids:hod_signer_ids,multi:true});
+  }
+});
 document.getElementById('docDate').textContent = new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'});
 
 function goToStep2(){
@@ -274,19 +280,11 @@ function goToStep1(){
   document.getElementById('connector1').classList.remove('done');
   document.getElementById('step1Panel').scrollIntoView({behavior:'smooth',block:'start'});
 }
-function closeSuccessBackToForm(){
-  document.getElementById('successModal').classList.remove('show');
-  goToStep1();
-  const btn=document.querySelector('#hrForm .btn-submit');
-  if(btn){btn.disabled=false;btn.innerHTML='<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> Submit Form'}
-}
 
 let pad=null,target=null;
 const bg=document.getElementById('sigBg'),cv=document.getElementById('sigCanvas');
 const sigCfg={
   complainant:{prev:'compSigPrev',img:'compSigImg',data:'compSigData',rm:'compSigRm',title:'Complainant Signature'},
-  second_party:{prev:'sp2SigPrev',img:'sp2SigImg',data:'sp2SigData',rm:'sp2SigRm',title:'2nd Party Signature'},
-  hod:{prev:'hodSigPrev',img:'hodSigImg',data:'hodSigData',rm:'hodSigRm',title:'HOD / Engineer Signature'},
   hr:{prev:'hrSigPrev',img:'hrSigImg',data:'hrSigData',rm:'hrSigRm',title:'HR Signature'},
   gm:{prev:'gmSigPrev',img:'gmSigImg',data:'gmSigData',rm:'gmSigRm',title:'GM Signature'}
 };
@@ -296,23 +294,69 @@ function closeSig(){bg.classList.remove('open');document.body.style.overflow='';
 function clearModalPad(){if(pad)pad.clear()}
 function applySig(){if(!pad||pad.isEmpty()){alert('Please draw your signature first.');return}const url=pad.toDataURL('image/png'),c=sigCfg[target];if(!c)return;const img=document.getElementById(c.img),ph=document.querySelector('#'+c.prev+' .sig-ph'),inp=document.getElementById(c.data),rm=document.getElementById(c.rm);if(img){img.src=url;img.style.display='block'}if(ph)ph.style.display='none';if(inp)inp.value=url;if(rm)rm.style.display='inline-flex';closeSig()}
 function rmSig(t){const c=sigCfg[t];if(!c)return;const img=document.getElementById(c.img),ph=document.querySelector('#'+c.prev+' .sig-ph'),inp=document.getElementById(c.data),rm=document.getElementById(c.rm);if(img){img.src='';img.style.display='none'}if(ph)ph.style.display='block';if(inp)inp.value='';if(rm)rm.style.display='none'}
-function clearAllSigs(){['complainant','second_party','hod','hr','gm'].forEach(t=>{const c=sigCfg[t];if(c&&document.getElementById(c.rm))rmSig(t)})}
+function clearAllSigs(){['complainant','hr','gm'].forEach(t=>{const c=sigCfg[t];if(c&&document.getElementById(c.rm))rmSig(t)})}
 bg.addEventListener('click',e=>{if(e.target===bg)closeSig()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&bg.classList.contains('open'))closeSig()});
+
+(function(){var fid='hrForm';if(!window.HrGenericFormEdit)return;var o=openSig,r=rmSig;openSig=function(t){if(!HrGenericFormEdit.canModifySig(fid,t))return;return o(t);};rmSig=function(t){if(!HrGenericFormEdit.canModifySig(fid,t))return;return r(t);};})();
 
 document.getElementById('hrForm').addEventListener('submit',async e=>{
   e.preventDefault();
   const fd=new FormData(e.target),data=Object.fromEntries(fd.entries());
   data.form_type='grievance';
   data.employee_name=data.complainant_name;
+  if(!data.complainant_signature||!String(data.complainant_signature).startsWith('data:image')){alert('Complainant (1st party) signature is required.');return}
+  if(!second_party_signer_ids.length){alert('Add at least one respondent / 2nd party colleague with an Injaaz account to sign digitally first.');return}
+  if(!hod_signer_ids.length){alert('Add at least one Engineer / QHSE / HOD colleague with an Injaaz account to sign digitally first.');return}
+  data.second_party_signer_ids=[...second_party_signer_ids];
+  data.hod_signer_ids=[...hod_signer_ids];
   const btn=e.target.querySelector('.btn-submit');
   btn.disabled=true;btn.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="spin"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Submitting…';
   try{const res=await fetch('/hr/api/submit',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.getItem('access_token')},body:JSON.stringify(data)});const r=await res.json();
-  if(r.success){document.getElementById('submissionId').textContent=r.submission_id;document.getElementById('successModal').classList.add('show')}
-  else{alert('Error: '+(r.error||'Unknown'));btn.disabled=false;btn.innerHTML='<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> Submit Form'}
-  }catch(err){alert('Network error: '+err.message);btn.disabled=false;btn.innerHTML='<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> Submit Form'}
+  if(r.success){
+    const lead=document.getElementById('successMsgLead');
+    if(lead) lead.textContent = r.workflow_status==='replacement_signoff'
+      ? 'Colleague sign-offs are queued. HR receives this once everyone has signed.'
+      : 'Grievance form sent. This remains confidential.';
+    window.__hrLastHrSubmissionId=r.submission_id;document.getElementById('submissionId').textContent=r.submission_id;document.getElementById('successModal').classList.add('show')}
+  else{alert('Error: '+(r.error||'Unknown'));btn.disabled=false;btn.innerHTML='Submit Form'}
+  }catch(err){alert('Network error: '+err.message);btn.disabled=false;btn.innerHTML='Submit Form'}
 });
 </script>
+  <script src="{{ url_for('static', filename='js/hr_generic_form_edit.js') }}"></script>
+  <script>
+    HrGenericFormEdit.attach({
+      formId: 'hrForm',
+      moduleTypes: ['hr_grievance'],
+      privilegedFieldNames: ['hr_signature', 'gm_signature'],
+      submitBarSelector: '#submitBar',
+      onEnterEditUi: function () { goToStep2(); },
+      appendToPayload: function () {
+        return {
+          second_party_signer_ids: second_party_signer_ids.slice(),
+          hod_signer_ids: hod_signer_ids.slice(),
+        };
+      },
+      afterPopulate: function (_payload, fd) {
+        second_party_signer_ids.length = 0;
+        hod_signer_ids.length = 0;
+        if (Array.isArray(fd.second_party_signer_ids))
+          fd.second_party_signer_ids.forEach(function (x) {
+            var n = parseInt(x, 10);
+            if (Number.isFinite(n)) second_party_signer_ids.push(n);
+          });
+        if (Array.isArray(fd.hod_signer_ids))
+          fd.hod_signer_ids.forEach(function (x) {
+            var n = parseInt(x, 10);
+            if (Number.isFinite(n)) hod_signer_ids.push(n);
+          });
+        if (window.HrColleagueSlotPicker) {
+          void HrColleagueSlotPicker.redrawChips({ chipsId: 'griev2ndChips', ids: second_party_signer_ids, multi: true });
+          void HrColleagueSlotPicker.redrawChips({ chipsId: 'grievHodChips', ids: hod_signer_ids, multi: true });
+        }
+      },
+    });
+  </script>
   <script src="{{ url_for('static', filename='api-client.js') }}"></script>
   <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 </body>

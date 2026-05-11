@@ -123,6 +123,15 @@ except Exception as e:
     logger.exception("Could not import module_mmr.routes.mmr_bp: %s", e)
     mmr_bp = None
 
+# Ticketing / Work Order Module
+ticketing_bp = None
+try:
+    from module_ticketing.routes import ticketing_bp  # noqa: F401
+    logger.info("Imported module_ticketing.routes.ticketing_bp")
+except Exception as e:
+    logger.exception("Could not import module_ticketing.routes.ticketing_bp: %s", e)
+    ticketing_bp = None
+
 # Ensure required directories exist at startup
 os.makedirs(GENERATED_DIR, exist_ok=True)
 os.makedirs(UPLOADS_DIR, exist_ok=True)
@@ -245,25 +254,30 @@ def create_app():
     # JWT token verification callback (check if token is revoked)
     @jwt.token_in_blocklist_loader
     def check_if_token_revoked(jwt_header, jwt_payload):
-        from app.models import Session
-        from common.jwt_session import sync_access_session_row
+        """Return True if the access token must be rejected (revoked). Must not raise — that becomes HTTP 500."""
+        try:
+            from app.models import Session
+            from common.jwt_session import sync_access_session_row
 
-        if jwt_payload.get('type') == 'refresh':
-            return False
-        jti = jwt_payload.get('jti')
-        if not jti:
+            if jwt_payload.get('type') == 'refresh':
+                return False
+            jti = jwt_payload.get('jti')
+            if not jti:
+                return True
+            session = Session.query.filter_by(token_jti=jti).first()
+            if session is None:
+                session = sync_access_session_row(jti, jwt_payload)
+            if session is None:
+                logger.warning(
+                    "JWT blocklist: missing session for jti=%s sub=%s — token treated as revoked",
+                    jti,
+                    jwt_payload.get('sub'),
+                )
+                return True
+            return session.is_revoked
+        except Exception as exc:
+            logger.exception("JWT blocklist check failed; treating token as revoked: %s", exc)
             return True
-        session = Session.query.filter_by(token_jti=jti).first()
-        if session is None:
-            session = sync_access_session_row(jti, jwt_payload)
-        if session is None:
-            logger.warning(
-                "JWT blocklist: missing session for jti=%s sub=%s — token treated as revoked",
-                jti,
-                jwt_payload.get('sub'),
-            )
-            return True
-        return session.is_revoked
     
     logger.info("✅ Database and JWT initialized")
     
@@ -810,6 +824,15 @@ def create_app():
     else:
         logger.warning("⚠️  MMR blueprint not available")
 
+    # Register Ticketing blueprint
+    if ticketing_bp:
+        if hasattr(app, 'csrf') and app.csrf:
+            app.csrf.exempt(ticketing_bp)
+        app.register_blueprint(ticketing_bp, url_prefix='/tickets')
+        logger.info("✅ Registered Ticketing blueprint at /tickets")
+    else:
+        logger.warning("⚠️  Ticketing blueprint not available - check imports")
+
     # Register reports API blueprint for on-demand regeneration
     try:
         from app.reports_api import reports_bp
@@ -911,6 +934,11 @@ def create_app():
     def admin_personal_progress():
         """Personal work-in-progress tracker — admin only"""
         return render_template('admin_personal_progress.html', active_page='personal-progress')
+
+    @app.route('/admin/team-management')
+    def admin_team_management():
+        """Team & technician management — admin only"""
+        return render_template('admin_team_management.html', active_page='team-management')
 
     @app.route('/dochub')
     def dochub():

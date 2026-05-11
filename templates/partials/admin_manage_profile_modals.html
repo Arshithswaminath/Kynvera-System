@@ -1,0 +1,228 @@
+{# Shared: Manage profile + password-reset flow + inspection activity — themed with technician modals (.injz-mgmt). #}
+<div id="accessModal" class="modal admin-portal-modal admin-profile-shell injz-mgmt" role="dialog" aria-modal="true" aria-labelledby="userProfileModalTitle"
+     onclick="if(event.target===this)closeUserProfileModal()">
+  <div class="modal-content" onclick="event.stopPropagation()">
+    <div class="modal-header admin-profile-header">
+      <div>
+        <h2 class="modal-title" id="userProfileModalTitle">Manage profile</h2>
+        <p id="userProfileSubtitle">Edit account, access, and defaults</p>
+      </div>
+      <div class="admin-profile-header-actions">
+        <button type="button" class="admin-profile-layout-toggle" id="adminProfileLayoutToggle"
+          title="Switch layout: Cards (rich tiles) or Line (compact sections)" aria-pressed="false">Line</button>
+        <span id="userProfileStatusPill" class="admin-profile-status-pill" role="status">—</span>
+      </div>
+    </div>
+    <form id="userProfileForm" class="admin-profile-form">
+      <input type="hidden" id="profileUserId" value="">
+      <div class="injz-mgmt-form-scroll">
+      <div class="admin-profile-section">
+        <h3>Identity</h3>
+        <div class="admin-profile-grid">
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label" for="profileFullName">Full name</label>
+            <input type="text" id="profileFullName" class="form-control" autocomplete="name">
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label" for="profileUsername">Username</label>
+            <input type="text" id="profileUsername" class="form-control" autocomplete="username" spellcheck="false">
+          </div>
+          <div class="form-group" style="margin-bottom:0;grid-column:1/-1;">
+            <label class="form-label" for="profileEmail">Email</label>
+            <input type="email" id="profileEmail" class="form-control" autocomplete="email">
+          </div>
+          <div class="form-group" style="margin-bottom:0;grid-column:1/-1;">
+            <label class="form-label" for="profileEmploymentStartDate">Joined company (dashboard tenure)</label>
+            <input type="date" id="profileEmploymentStartDate" class="form-control" autocomplete="off">
+            <p class="admin-profile-hint" style="margin-top: 0.25rem;">Optional. Shown as “Days with Injaaz” on the employee home dashboard.</p>
+          </div>
+        </div>
+      </div>
+      <div class="admin-profile-section">
+        <h3>HR profile</h3>
+        <div class="admin-profile-grid">
+          <div class="form-group" style="margin-bottom:0;grid-column:1/-1;">
+            <label class="form-label" for="profileJobDesignation">Job title (HR)</label>
+            <input type="text" id="profileJobDesignation" class="form-control" maxlength="160" placeholder="e.g. Senior Engineer" autocomplete="organization-title">
+            <p class="admin-profile-hint" style="margin-top: 0.25rem;">Job title on record. This is separate from workflow designation below.</p>
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label" for="profileAnnualLeaveDays">Annual leave (days)</label>
+            <input type="number" id="profileAnnualLeaveDays" class="form-control" min="0" max="366" step="1" placeholder="—">
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label" for="profileOtherLeaveDays">Other leave (days)</label>
+            <input type="number" id="profileOtherLeaveDays" class="form-control" min="0" max="366" step="1" placeholder="—">
+          </div>
+          <div class="form-group" style="margin-bottom:0;grid-column:1/-1;">
+            <label class="form-label" for="profileReportingManager">Reporting manager</label>
+            <select id="profileReportingManager" class="form-control">
+              <option value="">— None —</option>
+            </select>
+            <p class="admin-profile-hint" style="margin-top: 0.25rem;">Drives HR PDF routing for this person: technicians should have their <strong>reporting supervisor</strong> here (Supervisor account); other roles have their reporting manager here. If this person is also the GM, the PDF trail merges one GM signature.</p>
+          </div>
+        </div>
+      </div>
+      <div class="admin-profile-section">
+        <h3>Role &amp; workflow</h3>
+        <div class="admin-profile-grid">
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label" for="profileRole">System role</label>
+            <select id="profileRole" class="form-control">
+              <option value="user">User</option>
+              <option value="admin">Administrator</option>
+            </select>
+            <p class="admin-profile-hint" id="profileRoleHint"></p>
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label" for="profileDesignation">Designation / workflow</label>
+            <select id="profileDesignation" class="form-control">
+              <option value="">None</option>
+              <option value="supervisor">Supervisor</option>
+              <option value="operations_manager">Operations manager</option>
+              <option value="business_development">Business development</option>
+              <option value="procurement">Procurement</option>
+              <option value="general_manager">General manager</option>
+              <option value="hr_manager">HR manager</option>
+              <option value="employee">Employee</option>
+              <option value="technician">Technician</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="admin-profile-section" id="profileModuleSection">
+        <h3>Module access</h3>
+        <p class="admin-profile-module-note" id="profileModuleNote" hidden></p>
+        <div class="checkbox-group admin-profile-module-grid" id="profileModuleAccess">
+          <div class="checkbox-item">
+            <input type="checkbox" id="accessHvac" name="access_hvac">
+            <label for="accessHvac">HVAC &amp; MEP inspections</label>
+          </div>
+          <div class="checkbox-item">
+            <input type="checkbox" id="accessCivil" name="access_civil">
+            <label for="accessCivil">Civil works</label>
+          </div>
+          <div class="checkbox-item">
+            <input type="checkbox" id="accessCleaning" name="access_cleaning">
+            <label for="accessCleaning">Cleaning</label>
+          </div>
+          <div class="checkbox-item">
+            <input type="checkbox" id="accessHr" name="access_hr">
+            <label for="accessHr">HR module</label>
+          </div>
+          <div class="checkbox-item">
+            <input type="checkbox" id="accessProcurement" name="access_procurement_module">
+            <label for="accessProcurement">Procurement module</label>
+          </div>
+          <div class="checkbox-item">
+            <input type="checkbox" id="accessBusinessDev" name="access_business_development">
+            <label for="accessBusinessDev">Business development</label>
+          </div>
+          <div class="checkbox-item">
+            <input type="checkbox" id="accessDocHub" name="can_access_dochub">
+            <label for="accessDocHub">Document hub</label>
+          </div>
+          <div class="checkbox-item">
+            <input type="checkbox" id="accessReportGen" name="access_report_generation">
+            <label for="accessReportGen">Report generation (MMR)</label>
+          </div>
+          <div class="checkbox-item">
+            <input type="checkbox" id="accessSubmittedForms" name="access_submitted_forms">
+            <label for="accessSubmittedForms">Submitted forms module (HR + inspection)</label>
+          </div>
+          <div class="checkbox-item">
+            <input type="checkbox" id="accessTicketing" name="access_ticketing">
+            <label for="accessTicketing">Service tickets</label>
+          </div>
+        </div>
+      </div>
+      <div class="admin-profile-section">
+        <h3>Defaults</h3>
+        <div class="admin-profile-defaults-split">
+          <div class="form-group">
+            <label class="form-label" for="profileDefaultComment">Default approval comment</label>
+            <textarea id="profileDefaultComment" class="form-control" rows="3" placeholder="Optional short text for approvals"></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="profileSignatureFile">Signature image</label>
+            <input type="file" id="profileSignatureFile" class="form-control" accept="image/*" style="padding:0.45rem;font-size:0.85rem;">
+            <p class="admin-profile-hint">PNG or JPG, max ~400KB. Used as default where signatures apply.</p>
+            <img id="profileSignaturePreview" class="admin-profile-sig-preview" alt="Signature preview" hidden>
+            <div class="admin-profile-quick admin-profile-sig-toolbar">
+              <button type="button" class="btn btn-outline-secondary" id="profileSignatureClear" onclick="clearProfileSignaturePreview()">Clear signature</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="admin-profile-section admin-profile-section--quick">
+        <h3>Quick actions</h3>
+        <div class="admin-profile-quick">
+          <button type="button" class="btn btn-reset" onclick="profileModalResetPassword()">Reset password</button>
+          <button type="button" class="btn btn-activity" onclick="profileModalViewActivity()">View activity</button>
+          <button type="button" class="btn btn-toggle" id="profileQuickToggleBtn" onclick="profileModalToggleActive()">Toggle active</button>
+        </div>
+      </div>
+      </div><!-- /.injz-mgmt-form-scroll -->
+      <div class="modal-actions admin-profile-modal-actions">
+        <button type="button" class="btn btn-cancel" onclick="closeUserProfileModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary injz-mgmt-btn-submit">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+          Save changes
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="passwordResetConfirmModal" class="modal admin-portal-modal injz-mgmt" role="dialog" aria-modal="true" aria-labelledby="passwordResetConfirmTitle"
+     onclick="if(event.target===this)closePasswordResetConfirmModal()">
+  <div class="modal-content" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h2 class="modal-title" id="passwordResetConfirmTitle">Reset password?</h2>
+    </div>
+    <p id="passwordResetConfirmIntro" style="margin:0 0 1rem;font-size:0.92rem;color:var(--text);line-height:1.45;"></p>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-cancel" onclick="closePasswordResetConfirmModal()">Cancel</button>
+      <button type="button" class="btn btn-reset" onclick="submitPasswordResetConfirm()">Reset password</button>
+    </div>
+  </div>
+</div>
+
+<div id="passwordResetResultModal" class="modal admin-portal-modal injz-mgmt" role="dialog" aria-modal="true"
+     onclick="if(event.target===this)closePasswordResetResultModal()">
+  <div class="modal-content" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h2 class="modal-title">Password reset</h2>
+    </div>
+    <p id="passwordResetResultIntro" style="margin:0 0 1rem;font-size:0.92rem;color:var(--text);line-height:1.45;"></p>
+    <div class="form-group">
+      <label class="form-label" for="passwordResetResultValue">Temporary password</label>
+      <input type="text" id="passwordResetResultValue" class="form-control" readonly autocomplete="off" spellcheck="false">
+    </div>
+    <p style="font-size:0.8rem;color:var(--text-muted);margin:0 0 1rem;line-height:1.4;">Users may be asked to change this after sign-in. You can override this value for all resets with the <code>ADMIN_RESET_PASSWORD</code> environment variable.</p>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-secondary" onclick="copyPasswordResetResult()">Copy</button>
+      <button type="button" class="btn btn-primary injz-mgmt-btn-submit" onclick="closePasswordResetResultModal()">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- User Activity (opened from Manage profile → View activity) -->
+<div id="userActivityModal" class="modal injz-mgmt" role="dialog" aria-modal="true" aria-labelledby="userActivityTitle"
+     onclick="if(event.target===this)closeUserActivityModal()">
+  <div class="modal-content" style="max-width:900px;width:min(900px,calc(100vw - 2rem));max-height:90vh;">
+    <div class="injz-mgmt-activity-top">
+      <h2 class="injz-mgmt-activity-title" id="userActivityTitle">User Activity</h2>
+      <button type="button" class="injz-mgmt-xclose" onclick="closeUserActivityModal()" aria-label="Close">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div id="userActivityContent">
+      <div style="text-align: center; padding: 2rem;">
+        <div class="spinner" style="border: 3px solid #f3f3f3; border-top: 3px solid var(--injz-pm-green,#125435); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto;"></div>
+        <p style="margin-top: 1rem; color: #666;">Loading user activity...</p>
+      </div>
+    </div>
+  </div>
+</div>

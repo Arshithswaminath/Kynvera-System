@@ -53,7 +53,7 @@
     
     .page-header {
       margin-bottom: 2rem;
-      text-align: center;
+      text-align: left;
     }
     
     .page-header h1 {
@@ -66,6 +66,116 @@
     .page-header p {
       font-size: 1.1rem;
       color: var(--text-light);
+    }
+    
+    .sf-modal-veil {
+      display: none;
+      /* Viewport-locked overlay (not centered in document / flex column flow) */
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      bottom: 0 !important;
+      width: 100% !important;
+      max-width: none !important;
+      min-height: 100vh !important;
+      min-height: 100dvh !important;
+      margin: 0 !important;
+      z-index: 10050;
+      align-items: center;
+      justify-content: center;
+      padding: max(1rem, env(safe-area-inset-top)) 1rem max(1rem, env(safe-area-inset-bottom));
+      background: rgba(15, 23, 42, 0.48);
+      backdrop-filter: blur(5px);
+      -webkit-backdrop-filter: blur(5px);
+      box-sizing: border-box;
+      overflow-x: hidden;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+    }
+    .sf-modal-veil.is-open {
+      display: flex;
+    }
+    .sf-modal {
+      background: var(--background);
+      border-radius: 16px;
+      box-shadow: 0 24px 56px rgba(0, 0, 0, 0.2);
+      width: 100%;
+      max-width: 440px;
+      flex: 0 0 auto;
+      padding: 1.5rem 1.5rem 1.25rem;
+      text-align: left;
+      border: 1px solid var(--border);
+      animation: sf-modal-in 0.22s ease-out;
+    }
+    @keyframes sf-modal-in {
+      from { opacity: 0; transform: translateY(10px) scale(0.98); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .sf-modal-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin: 0 0 0.85rem;
+      line-height: 1.3;
+    }
+    .sf-modal-body {
+      font-size: 0.95rem;
+      color: var(--text-dark);
+      line-height: 1.55;
+      margin: 0 0 1.35rem;
+    }
+    .sf-modal-body p {
+      margin: 0 0 0.65rem;
+    }
+    .sf-modal-body p:last-child {
+      margin-bottom: 0;
+    }
+    .sf-modal-body .sf-muted {
+      color: var(--text-light);
+      font-size: 0.9rem;
+    }
+    .sf-modal-actions {
+      display: flex;
+      gap: 0.75rem;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+    }
+    .sf-btn {
+      font-size: 0.95rem;
+      font-weight: 600;
+      padding: 0.55rem 1.15rem;
+      border-radius: 10px;
+      cursor: pointer;
+      border: none;
+      min-height: 44px;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    .sf-btn:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+    .sf-btn-secondary {
+      background: var(--surface);
+      color: var(--text-dark);
+      border: 1px solid var(--border);
+    }
+    .sf-btn-secondary:hover:not(:disabled) {
+      background: var(--border);
+    }
+    .sf-btn-primary {
+      background: var(--primary);
+      color: #fff;
+    }
+    .sf-btn-primary:hover:not(:disabled) {
+      filter: brightness(1.06);
+    }
+    .sf-btn-danger {
+      background: #b91c1c;
+      color: #fff;
+    }
+    .sf-btn-danger:hover:not(:disabled) {
+      filter: brightness(1.08);
     }
     
     .submissions-container {
@@ -374,7 +484,7 @@
   <div class="container-custom">
     <div class="page-header">
       <h1>My Submitted Forms</h1>
-      <p>View, edit, and resubmit your inspection forms</p>
+      <p>View, edit, and resubmit your HR and inspection forms</p>
     </div>
     
     <!-- Filter Section -->
@@ -398,13 +508,25 @@
       <div id="emptyState" class="empty-state" style="display: none;">
         <div class="empty-state-icon">📋</div>
         <h3>No Submitted Forms</h3>
-        <p>You haven't submitted any forms yet. Create a new inspection to get started.</p>
+        <p>You don't have submissions in this module yet.</p>
+      </div>
+    </div>
+  </div>
+  
+  <div id="sfConfirmModal" class="sf-modal-veil" role="presentation" aria-hidden="true">
+    <div class="sf-modal" role="dialog" aria-modal="true" aria-labelledby="sfConfirmTitle" onclick="event.stopPropagation()">
+      <h2 id="sfConfirmTitle" class="sf-modal-title"></h2>
+      <div id="sfConfirmBody" class="sf-modal-body"></div>
+      <div class="sf-modal-actions">
+        <button type="button" class="sf-btn sf-btn-secondary" id="sfConfirmCancel">Cancel</button>
+        <button type="button" class="sf-btn sf-btn-primary" id="sfConfirmOk"></button>
       </div>
     </div>
   </div>
   
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  
+  <script src="{{ url_for('static', filename='js/hr_submission_full_form_url.js') }}"></script>
+
   <script>
     // Get status display text and class
     function getStatusDisplay(status) {
@@ -416,14 +538,37 @@
         'bd_procurement_review': { text: 'BD & Procurement Reviewing', class: 'status-reviewing', message: 'Business Development and Procurement are reviewing your form.' },
         'general_manager_review': { text: 'General Manager Reviewing', class: 'status-reviewing', message: 'General Manager is reviewing your form for final approval.' },
         'completed': { text: 'Fully Approved ✓', class: 'status-completed', message: 'Your form has been fully approved by all reviewers.' },
-        'rejected': { text: 'Returned for Revision', class: 'status-rejected', message: 'Your form has been returned and requires changes.' }
+        'rejected': { text: 'Returned for Revision', class: 'status-rejected', message: 'Your form has been returned and requires changes.' },
+        'hr_review': { text: 'HR review', class: 'status-reviewing', message: 'With HR for intake / review.' },
+        'replacement_signoff': { text: 'Colleague sign-offs', class: 'status-pending', message: 'Waiting for designated colleagues to sign digitally.' },
+        'hr_mgmt_supervisor': { text: 'Mgmt: Supervisor', class: 'status-reviewing', message: 'Management PDF chain — supervisor step.' },
+        'hr_mgmt_operations_manager': { text: 'Mgmt: Operations', class: 'status-reviewing', message: 'Management PDF chain — operations manager step.' },
+        'hr_mgmt_reporting_manager': { text: 'Mgmt: Reporting mgr', class: 'status-reviewing', message: 'Management PDF chain — reporting manager step.' },
+        'hr_mgmt_gm': { text: 'Mgmt: General Manager', class: 'status-reviewing', message: 'Management PDF chain — GM sign-off.' },
+        'hr_mgmt_hr_head_office': { text: 'Mgmt: HR (HO)', class: 'status-reviewing', message: 'Management PDF chain — HR head office step.' },
+        'gm_review': { text: 'GM review (HR)', class: 'status-reviewing', message: 'Awaiting General Manager approval on this HR request.' },
+        'approved': { text: 'Approved', class: 'status-approved', message: 'Approved through the workflow (awaiting completion / archive).' },
+        'withdrawn': { text: 'Withdrawn', class: 'status-rejected', message: 'You withdrew this request. It will not continue through approval.' },
+        'closed_by_admin': { text: 'Closed', class: 'status-draft', message: 'This submission was closed by an administrator.' }
       };
-      
-      return statusMap[status] || { text: status, class: 'status-pending', message: '' };
+
+      if (statusMap[status]) return statusMap[status];
+      const label = (status || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      return { text: label || 'In progress', class: 'status-pending', message: '' };
     }
     
     // Current filter value
     let currentFilter = 'all';
+    let currentScope = 'all';
+    (function initSubmittedScopeFromUrl() {
+      try {
+        const p = new URLSearchParams(window.location.search || '');
+        const raw = (p.get('scope') || 'all').toLowerCase();
+        currentScope = ['all', 'hr', 'inspection'].includes(raw) ? raw : 'all';
+      } catch (_) {
+        currentScope = 'all';
+      }
+    })();
     
     // Format date and time - Convert from UTC to Dubai time (GST)
     function formatDateTime(dateString) {
@@ -449,15 +594,28 @@
       }
     }
     
-    // Get module URL
-    function getModuleUrl(module) {
+    function inspectionModuleSlug(moduleType) {
+      const m = (moduleType || '').trim();
       const moduleMap = {
         'hvac': 'hvac-mep',
         'hvac_mep': 'hvac-mep',
         'civil': 'civil',
         'cleaning': 'cleaning'
       };
-      return moduleMap[module] || module;
+      return moduleMap[m] || m;
+    }
+
+    // Base path for "edit/view this submission" links (HR uses /hr/... routes, not /{slug}/form)
+    function submissionFormEditHref(moduleType, submissionId) {
+      const m = (moduleType || '').trim();
+      if (m.startsWith('hr_')) {
+        if (typeof getHrSubmissionFullFormViewUrl === 'function') {
+          return getHrSubmissionFullFormViewUrl(m, submissionId);
+        }
+        return '/hr/print/' + encodeURIComponent(submissionId || '');
+      }
+      const slug = inspectionModuleSlug(m);
+      return '/' + slug + '/form?edit=' + encodeURIComponent(submissionId || '');
     }
     
     // Escape HTML to prevent XSS
@@ -530,8 +688,8 @@
       if (response.status === 401) {
         const newToken = await refreshAccessToken();
         if (newToken) {
-          // Retry with new token
-          return fetch(url, {
+          // Retry with new token (must await so callers always get a Response)
+          return await fetch(url, {
             ...options,
             headers: {
               ...options.headers,
@@ -551,6 +709,126 @@
       return response;
     }
     
+    let _sfPendingConfirm = null;
+    function closeSfConfirm() {
+      const veil = document.getElementById('sfConfirmModal');
+      if (!veil) return;
+      veil.classList.remove('is-open');
+      veil.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
+      _sfPendingConfirm = null;
+    }
+    function openSfConfirm(opts) {
+      const veil = document.getElementById('sfConfirmModal');
+      const titleEl = document.getElementById('sfConfirmTitle');
+      const bodyEl = document.getElementById('sfConfirmBody');
+      const btnOk = document.getElementById('sfConfirmOk');
+      const btnCancel = document.getElementById('sfConfirmCancel');
+      if (!veil || !titleEl || !bodyEl || !btnOk || !btnCancel) return;
+      const title = opts.title || 'Confirm';
+      const messages = Array.isArray(opts.messages) ? opts.messages : [opts.message || ''];
+      const confirmLabel = opts.confirmLabel || 'OK';
+      const variant = opts.confirmVariant === 'danger' ? 'danger' : 'primary';
+      document.body.appendChild(veil);
+      titleEl.textContent = title;
+      bodyEl.innerHTML = '';
+      messages.forEach((text, i) => {
+        const p = document.createElement('p');
+        p.textContent = text;
+        if (i > 0) p.classList.add('sf-muted');
+        bodyEl.appendChild(p);
+      });
+      btnOk.textContent = confirmLabel;
+      btnOk.className = 'sf-btn ' + (variant === 'danger' ? 'sf-btn-danger' : 'sf-btn-primary');
+      _sfPendingConfirm = opts.onConfirm || null;
+      veil.classList.add('is-open');
+      veil.setAttribute('aria-hidden', 'false');
+      document.body.style.overflow = 'hidden';
+      btnCancel.focus();
+    }
+    function showSfToast(message, kind) {
+      const isErr = kind === 'error';
+      const el = document.createElement('div');
+      el.setAttribute('role', 'status');
+      el.textContent = message;
+      el.style.cssText =
+        'position:fixed;top:max(20px,env(safe-area-inset-top));right:20px;max-width:min(380px,calc(100vw - 2rem));' +
+        'padding:12px 18px;border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.18);z-index:10060;font-size:.92rem;' +
+        'font-weight:500;line-height:1.45;' +
+        (isErr
+          ? 'background:#fef2f2;color:#991b1b;border:1px solid #fecaca;'
+          : 'background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0;');
+      document.body.appendChild(el);
+      setTimeout(() => {
+        el.style.transition = 'opacity 0.3s';
+        el.style.opacity = '0';
+        setTimeout(() => el.remove(), 300);
+      }, 4200);
+    }
+    (function initSfConfirmModal() {
+      const veil = document.getElementById('sfConfirmModal');
+      const btnOk = document.getElementById('sfConfirmOk');
+      const btnCancel = document.getElementById('sfConfirmCancel');
+      if (!veil || !btnOk || !btnCancel) return;
+      veil.addEventListener('click', (e) => {
+        if (e.target === veil) closeSfConfirm();
+      });
+      btnCancel.addEventListener('click', () => closeSfConfirm());
+      btnOk.addEventListener('click', async () => {
+        const fn = _sfPendingConfirm;
+        if (typeof fn !== 'function') {
+          closeSfConfirm();
+          return;
+        }
+        btnOk.disabled = true;
+        btnCancel.disabled = true;
+        try {
+          await Promise.resolve(fn());
+        } finally {
+          btnOk.disabled = false;
+          btnCancel.disabled = false;
+          closeSfConfirm();
+        }
+      });
+      document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape') return;
+        if (!veil.classList.contains('is-open')) return;
+        e.preventDefault();
+        closeSfConfirm();
+      });
+    })();
+    
+    async function withdrawHrSubmission(submissionIdRaw) {
+      const sid = (submissionIdRaw != null ? String(submissionIdRaw) : '').trim();
+      if (!sid) return;
+      openSfConfirm({
+        title: 'Withdraw this HR request?',
+        messages: [
+          'Your reporting manager will be notified.',
+          'This cannot be undone from this page.',
+        ],
+        confirmLabel: 'Withdraw',
+        confirmVariant: 'danger',
+        onConfirm: async () => {
+          try {
+            const res = await authenticatedFetch(
+              `/api/workflow/submissions/${encodeURIComponent(sid)}/withdraw`,
+              { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }
+            );
+            const payload = await res.json().catch(() => ({}));
+            if (!res.ok) {
+              showSfToast(payload.error || payload.message || 'Could not withdraw this form.', 'error');
+              return;
+            }
+            showSfToast(payload.message || 'Request withdrawn.', 'success');
+            await loadSubmissions();
+          } catch (e) {
+            showSfToast('Network error — could not withdraw. Try again.', 'error');
+          }
+        },
+      });
+    }
+
     // Load submissions
     async function loadSubmissions() {
       const loadingSpinner = document.getElementById('loadingSpinner');
@@ -559,20 +837,49 @@
       const filterCount = document.getElementById('filterCount');
       
       try {
-        const response = await authenticatedFetch(`/api/workflow/submissions/my-submissions?status=${currentFilter}`);
+        const response = await authenticatedFetch(`/api/workflow/submissions/my-submissions?status=${encodeURIComponent(currentFilter)}&scope=${encodeURIComponent(currentScope)}`);
         
         if (!response || !response.ok) {
           // If response is null or not ok, token refresh will handle redirect if needed
           if (response && response.status === 401) {
+            loadingSpinner.style.display = 'none';
             // Already handled by authenticatedFetch - will redirect to login
             return;
           }
-          throw new Error('Failed to load submissions');
+          let detail = 'Failed to load submissions';
+          try {
+            if (response && response.clone) {
+              const errBody = await response.clone().json();
+              if (errBody && errBody.error) {
+                detail = errBody.error;
+              }
+            }
+          } catch (e) { /* ignore */ }
+          throw new Error(detail);
         }
         
         const data = await response.json();
         const submissions = data.submissions || [];
-        
+        const listScopeAll = data.list_scope === 'all';
+        const moduleFlags = (data && data.visible_modules) || {};
+        const hasHrModule = moduleFlags.hr === true;
+        const hasInspectionModule = moduleFlags.inspection === true;
+        const moduleLabel = hasHrModule && hasInspectionModule
+          ? 'HR and inspection'
+          : (hasHrModule ? 'HR' : (hasInspectionModule ? 'inspection' : 'workflow'));
+
+        const ph1 = document.querySelector('.page-header h1');
+        const ph2 = document.querySelector('.page-header p');
+        if (ph1 && ph2) {
+          if (listScopeAll) {
+            ph1.textContent = 'All submitted forms';
+            ph2.textContent = `Organization-wide ${moduleLabel} submissions and drafts. Use the filter to refine the list.`;
+          } else {
+            ph1.textContent = 'My submitted forms';
+            ph2.textContent = `${moduleLabel.charAt(0).toUpperCase() + moduleLabel.slice(1)} forms available for your access. Open a card to view status, PDFs, and details.`;
+          }
+        }
+
         // Update last update time for polling
         const currentUpdateTime = submissions.length > 0 ? submissions[0].updated_at : null;
         const hasUpdates = lastUpdateTime && currentUpdateTime && currentUpdateTime !== lastUpdateTime;
@@ -587,10 +894,17 @@
         if (submissions.length === 0) {
           emptyState.style.display = 'block';
           submissionsList.style.display = 'none';
-          emptyState.querySelector('h3').textContent = currentFilter === 'draft' ? 'No Drafts' : 'No Submitted Forms';
-          emptyState.querySelector('p').textContent = currentFilter === 'draft' 
-            ? 'You don\'t have any draft forms. Start a new inspection to create one.'
-            : 'You haven\'t submitted any forms yet. Create a new inspection to get started.';
+          if (listScopeAll) {
+            emptyState.querySelector('h3').textContent = currentFilter === 'draft' ? 'No drafts match filter' : 'No submissions match filter';
+            emptyState.querySelector('p').textContent = currentFilter === 'draft'
+              ? 'Try “All forms” or “Submitted only”, or add users and submissions from Admin / modules.'
+              : 'There are no submissions for this filter yet—or none exist in the database.';
+          } else {
+            emptyState.querySelector('h3').textContent = currentFilter === 'draft' ? 'No Drafts' : 'No Submitted Forms';
+            emptyState.querySelector('p').textContent = currentFilter === 'draft'
+              ? `You don\'t have any ${moduleLabel} draft forms yet.`
+              : `You don\'t have any ${moduleLabel} submissions for this filter yet.`;
+          }
           return;
         }
         
@@ -627,9 +941,30 @@
         submissionsList.innerHTML = submissions.map(submission => {
           const isDraft = submission.status === 'draft' || submission.workflow_status === 'draft';
           const statusInfo = getStatusDisplay(isDraft ? 'draft' : (submission.workflow_status || submission.status));
-          const moduleUrl = getModuleUrl(submission.module);
+          const formHref = submissionFormEditHref(submission.module, submission.submission_id);
+          const mod = submission.module || '';
+          const isHrSubmission = mod.startsWith('hr_');
           const canEdit = submission.workflow_status === 'rejected' || submission.status === 'rejected' || isDraft;
-          
+          const encodedSid = encodeURIComponent(submission.submission_id || '');
+          const downloadsBlock = isHrSubmission ? `
+                  <a href="/hr/download-pdf/${encodedSid}" class="btn-custom btn-outline-custom" target="_blank">
+                    PDF
+                  </a>
+                  <a href="/hr/download-docx/${encodedSid}" class="btn-custom btn-outline-custom" target="_blank">
+                    Word
+                  </a>
+                ` : (submission.latest_job_id ? `
+                    <a href="/${inspectionModuleSlug(mod)}/download/${submission.latest_job_id}/pdf" class="btn-custom btn-outline-custom" target="_blank">
+                      PDF
+                    </a>
+                    <a href="/${inspectionModuleSlug(mod)}/download/${submission.latest_job_id}/excel" class="btn-custom btn-outline-custom" target="_blank">
+                      Excel
+                    </a>
+                  ` : '');
+          const hrWithdrawBtn = (!isDraft && isHrSubmission && submission.can_withdraw_hr)
+            ? `<button type="button" class="btn-custom btn-outline-custom" style="border-color:#b91c1c;color:#b91c1c" onclick='withdrawHrSubmission(${JSON.stringify(submission.submission_id || '')})'>Withdraw</button>`
+            : '';
+
           return `
             <div class="submission-card ${isDraft ? 'draft-card' : ''}">
               <div class="submission-header">
@@ -659,6 +994,12 @@
                   <span>📝</span>
                   <span><strong>Form ID:</strong> ${submission.submission_id}</span>
                 </div>
+                ${listScopeAll && submission.submitted_by_display ? `
+                <div class="submission-detail-item">
+                  <span>👤</span>
+                  <span><strong>Submitted by:</strong> ${escapeHtml(submission.submitted_by_display)}${submission.submitted_by_username ? ` <span style="color:#64748b;font-weight:500;">(@${escapeHtml(submission.submitted_by_username)})</span>` : ''}</span>
+                </div>
+                ` : ''}
               </div>
               
               ${submission.rejection_reason ? `
@@ -695,29 +1036,23 @@
               
               <div class="submission-actions">
                 ${isDraft ? `
-                  <a href="/${moduleUrl}/form?edit=${submission.submission_id}" class="btn-custom btn-primary-custom">
+                  <a href="${formHref}" class="btn-custom btn-primary-custom">
                     Continue Editing
                   </a>
                   <button onclick="deleteDraft('${submission.submission_id}')" class="btn-custom btn-danger-custom">
                     Delete Draft
                   </button>
                 ` : `
-                  <a href="/${moduleUrl}/form?edit=${submission.submission_id}" class="btn-custom btn-primary-custom">
+                  <a href="${formHref}" class="btn-custom btn-primary-custom">
                     View Form
                   </a>
                   ${canEdit ? `
-                    <a href="/${moduleUrl}/form?edit=${submission.submission_id}" class="btn-custom btn-outline-custom">
+                    <a href="${formHref}" class="btn-custom btn-outline-custom">
                       Edit & Resubmit
                     </a>
                   ` : ''}
-                  ${submission.latest_job_id ? `
-                    <a href="/${moduleUrl}/download/${submission.latest_job_id}/pdf" class="btn-custom btn-outline-custom" target="_blank">
-                      PDF
-                    </a>
-                    <a href="/${moduleUrl}/download/${submission.latest_job_id}/excel" class="btn-custom btn-outline-custom" target="_blank">
-                      Excel
-                    </a>
-                  ` : ''}
+                  ${downloadsBlock}
+                  ${hrWithdrawBtn}
                 `}
               </div>
             </div>
@@ -790,38 +1125,33 @@
     });
     
     // Delete draft function
-    async function deleteDraft(submissionId) {
-      if (!confirm('Are you sure you want to delete this draft? This action cannot be undone.')) {
-        return;
-      }
-      
-      try {
-        const response = await authenticatedFetch(`/api/workflow/submissions/draft/${submissionId}`, {
-          method: 'DELETE'
-        });
-        
-        if (response.ok) {
-          // Show success message
-          const notification = document.createElement('div');
-          notification.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #10b981; color: white; padding: 12px 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 10000; font-size: 0.9rem;';
-          notification.innerHTML = '✓ Draft deleted successfully';
-          document.body.appendChild(notification);
-          setTimeout(() => {
-            notification.style.transition = 'opacity 0.3s';
-            notification.style.opacity = '0';
-            setTimeout(() => notification.remove(), 300);
-          }, 3000);
-          
-          // Reload submissions
-          loadSubmissions();
-        } else {
-          const data = await response.json();
-          alert(data.error || 'Failed to delete draft');
-        }
-      } catch (error) {
-        console.error('Error deleting draft:', error);
-        alert('Failed to delete draft. Please try again.');
-      }
+    function deleteDraft(submissionId) {
+      openSfConfirm({
+        title: 'Delete this draft?',
+        messages: [
+          'This permanently removes the draft.',
+          'This action cannot be undone.',
+        ],
+        confirmLabel: 'Delete draft',
+        confirmVariant: 'danger',
+        onConfirm: async () => {
+          try {
+            const response = await authenticatedFetch(`/api/workflow/submissions/draft/${submissionId}`, {
+              method: 'DELETE',
+            });
+            if (response.ok) {
+              showSfToast('Draft deleted successfully.', 'success');
+              await loadSubmissions();
+              return;
+            }
+            const data = await response.json().catch(() => ({}));
+            showSfToast(data.error || 'Failed to delete draft.', 'error');
+          } catch (error) {
+            console.error('Error deleting draft:', error);
+            showSfToast('Failed to delete draft. Please try again.', 'error');
+          }
+        },
+      });
     }
   </script>
   <script src="{{ url_for('static', filename='api-client.js') }}"></script>

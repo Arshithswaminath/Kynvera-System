@@ -319,6 +319,25 @@ def _normalize_form_data_for_docx(form_data, form_type):
         else:
             fd['decision_display'] = fd.get('decision') or '-'
 
+    # Post-submit saves (append-only on server) — optional {% submission_form_revision_audit_text %} in templates
+    hist = fd.get("submission_form_revision_history")
+    audit_lines = []
+    if isinstance(hist, list) and hist:
+        try:
+            hist_sorted = sorted(hist, key=lambda e: int(e.get("save_index") or 0))
+        except (TypeError, ValueError):
+            hist_sorted = hist
+        for e in hist_sorted:
+            audit_lines.append(
+                f"Save #{e.get('save_index', '—')}: {e.get('by_name') or '—'} @ {e.get('at') or '—'}"
+            )
+    elif fd.get("submission_form_revision_at"):
+        audit_lines.append(
+            f"Save #{fd.get('submission_form_revision_count') or '—'}: "
+            f"{fd.get('submission_form_revision_by_name') or '—'} @ {fd.get('submission_form_revision_at')}"
+        )
+    fd["submission_form_revision_audit_text"] = "\n".join(audit_lines) if audit_lines else ""
+
     return fd
 
 
@@ -330,7 +349,7 @@ def _build_generic_context(form_data, date_keys=None):
         for k, v in fd.items():
             if v and ('date' in k.lower() or 'day' in k.lower() or 'start' in k.lower() or 'end' in k.lower() or 'joining' in k.lower() or 'returning' in k.lower() or 'release' in k.lower() or 'incident' in k.lower() or 'employment' in k.lower() or 'last_working' in k.lower() or 'form_date' in k.lower() or ('evaluation' in k.lower() and 'date' in k)):
                 date_keys.add(k)
-    skip = {'form_type', 'employee_signature', 'evaluator_signature', 'gm_signature', 'hr_signature', 'complainant_signature', 'interviewer_signature', 'replacement_signature', 'reporting_to_signature'}
+    skip = {'form_type', 'employee_signature', 'evaluator_signature', 'gm_signature', 'hr_signature', 'complainant_signature', 'interviewer_signature', 'replacement_signature', 'reporting_to_signature', 'reporting_manager_signature', 'submission_form_revision_history'}
     ctx = {}
     for k, v in fd.items():
         if k in skip:
@@ -894,6 +913,7 @@ _SIGNATURE_PAIRS = {
     ],
     'duty_resumption': [
         ('employee_signature', 'employee_signature'),
+        ('reporting_manager_signature', 'reporting_manager_signature'),
         ('gm_signature', 'gm_signature'),
         ('hr_signature', 'hr_signature'),
     ],

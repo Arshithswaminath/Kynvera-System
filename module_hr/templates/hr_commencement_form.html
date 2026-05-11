@@ -15,18 +15,18 @@
 </head>
 <body class="hr-form-unified">
   {% set active_page = 'hr' %}
-  {% include 'partials/main_navbar.html' with context %}
+  {% include 'partials/hr_embed_optional_navbar.html' %}
 
   <div class="success-bg" id="successModal">
     <div class="success-box">
-      <button type="button" class="success-back-btn" onclick="closeSuccessBackToForm()" title="Back to form">
+      <button type="button" class="success-back-btn" onclick="hrGoToSubmittedRequest()" title="View submitted request">
         <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
       </button>
       <div class="success-icon"><svg width="30" height="30" fill="none" stroke="#fff" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg></div>
       <h2>Form Submitted!</h2>
-      <p>Commencement form sent to HR for review.</p>
+      <p id="successMsgLead">Commencement form sent to HR for review.</p>
       <div class="sub-id" id="submissionId"></div>
-      <button class="btn-submit" style="width:100%;justify-content:center" onclick="window.location.href='/hr/my-requests'">View My Requests</button>
+      <button class="btn-submit" style="width:100%;justify-content:center" onclick="hrGoToSubmittedRequest()">View My Requests</button>
     </div>
   </div>
 
@@ -47,6 +47,8 @@
         <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
         Back to HR
       </a>
+
+      {% include 'partials/hr_submitted_edit_banners.html' %}
 
       <div class="step-bar">
         <div class="step-item active" id="step1Badge" onclick="goToStep1()" role="button" tabindex="0"><span class="num">1</span><span>Details</span></div>
@@ -100,7 +102,7 @@
               </section>
               <p class="doc-intro" style="font-size:.85rem;margin-top:1rem;">If you need assistance with Salary letter required to open new bank account, please forward an email to HR Department at joana@ajmanholding.ae</p>
               <div class="step-nav">
-                <span></span>
+                <button type="button" class="btn-ghost hr-comm-save-draft-btn" style="font-weight:600;border:1px solid var(--bd,#dde8e2)">Save progress</button>
                 <button type="button" class="btn-next" onclick="goToStep2()">Continue to Step 2 <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg></button>
               </div>
             </div>
@@ -125,27 +127,26 @@
                     </div>
                     <div class="fld" style="margin-top:.75rem"><label class="fld-lbl">Date</label><input class="fld-inp" type="date" name="employee_sign_date" id="empSignDate"></div>
                   </div>
-                  <div class="fld">
-                    <label class="fld-lbl">Reporting To Signature <span class="req">*</span></label>
-                    <div class="sig-wrap">
-                      <div class="sig-box" id="reportingSigPrev"><span class="sig-ph">No signature</span><img id="reportingSigImg" src="" style="display:none"></div>
-                      <div class="sig-actions">
-                        <button type="button" class="btn-plus" onclick="openSig('reporting')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 4v16m8-8H4"/></svg> Sign</button>
-                        <button type="button" class="btn-rm" id="reportingSigRm" onclick="rmSig('reporting')">Remove</button>
-                      </div>
-                      <input type="hidden" name="reporting_to_signature" id="reportingSigData">
-                    </div>
-                    <div class="fld" style="margin-top:.75rem"><label class="fld-lbl">Date</label><input class="fld-inp" type="date" name="reporting_sign_date" id="reportingSignDate"></div>
+                </div>
+                <div class="fld fw" style="margin-top:.75rem;padding-top:1rem;border-top:1px solid rgba(226,232,240,.85)">
+                  <label class="fld-lbl">Reporting officer <span class="req">*</span> — teammate signs on their own device</label>
+                  <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:flex-end">
+                    <select class="fld-inp" id="repOffSignerSel" style="flex:1;min-width:12rem"><option value="">Loading…</option></select>
+                    <button type="button" class="btn-ghost" id="repOffSignerAdd">Add</button>
                   </div>
+                  <div id="repOffSignerChips" style="margin-top:.4rem;display:flex;flex-wrap:wrap;gap:.2rem"></div>
+                  <p class="doc-intro" style="font-size:.8rem;margin-top:.35rem;color:var(--muted,#64748b)">Select exactly one colleague with an Injaaz account — you cannot sign on their behalf here.</p>
                 </div>
               </section>
               <div class="step-nav">
                 <button type="button" class="btn-back" onclick="goToStep1()"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12"/></svg> Back to Step 1</button>
-                <span></span>
+                <button type="button" class="btn-ghost hr-comm-save-draft-btn" style="font-weight:600">Save progress</button>
               </div>
             </div>
 
           </div>
+
+          {% include 'partials/hr_mgmt_chain_submit_block.html' %}
 
           <div class="doc-ft">
             <div class="doc-ft-meta"><span>Commencement Form</span><span>DATE: <span id="docDate"></span></span></div>
@@ -154,16 +155,30 @@
 
           <div class="submit-bar" id="submitBar" style="display:none">
             <button type="button" class="btn-reset" onclick="if(confirm('Reset the form?')){document.getElementById('hrForm').reset();clearAllSigs();goToStep1()}">Reset</button>
-            <button type="submit" class="btn-submit"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> Submit Form</button>
+            <button type="button" class="btn-ghost hr-comm-save-draft-btn" style="font-weight:600">Save progress</button>
+            <button type="submit" class="btn-submit">Submit Form</button>
           </div>
         </form>
       </div>
     </div>
   </div>
 
+<script src="{{ url_for('static', filename='js/hr_colleague_slot_picker.js') }}"></script>
+<script src="{{ url_for('static', filename='js/hr_form_draft.js') }}"></script>
 <script>
+const reporting_officer_signer_ids=[];
+document.addEventListener('DOMContentLoaded', ()=>{
+  if(window.HrColleagueSlotPicker){
+    HrColleagueSlotPicker.bind({
+      selectId:'repOffSignerSel',
+      addBtnId:'repOffSignerAdd',
+      chipsId:'repOffSignerChips',
+      ids:reporting_officer_signer_ids,
+      multi:false,
+    });
+  }
+});
 document.getElementById('empSignDate').value = new Date().toISOString().split('T')[0];
-document.getElementById('reportingSignDate').value = new Date().toISOString().split('T')[0];
 document.getElementById('docDate').textContent = new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'});
 
 function goToStep2(){
@@ -187,40 +202,133 @@ function goToStep1(){
   document.getElementById('connector1').classList.remove('done');
   document.getElementById('step1Panel').scrollIntoView({behavior:'smooth',block:'start'});
 }
-function closeSuccessBackToForm(){
-  document.getElementById('successModal').classList.remove('show');
-  goToStep1();
-  const btn=document.querySelector('#hrForm .btn-submit');
-  if(btn){btn.disabled=false;btn.innerHTML='<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> Submit Form'}
-}
 
 let pad=null,target=null;
 const bg=document.getElementById('sigBg'),cv=document.getElementById('sigCanvas');
-const sigCfg={employee:{prev:'empSigPrev',img:'empSigImg',data:'empSigData',rm:'empSigRm',title:'Employee Signature'},reporting:{prev:'reportingSigPrev',img:'reportingSigImg',data:'reportingSigData',rm:'reportingSigRm',title:'Reporting To Signature'}};
+const sigCfg={employee:{prev:'empSigPrev',img:'empSigImg',data:'empSigData',rm:'empSigRm',title:'Employee Signature'}};
 
 function openSig(t){target=t;const c=sigCfg[t];if(!c)return;document.getElementById('sigTitle').textContent=c.title;bg.classList.add('open');document.body.style.overflow='hidden';requestAnimationFrame(()=>{const r=window.devicePixelRatio||1,w=cv.offsetWidth;cv.width=w*r;cv.height=180*r;cv.getContext('2d').scale(r,r);cv.style.height='180px';if(pad)pad.off();pad=new SignaturePad(cv,{backgroundColor:'rgb(250,250,250)',penColor:'#0d1f14',minWidth:1.2,maxWidth:2.8})})}
 function closeSig(){bg.classList.remove('open');document.body.style.overflow='';target=null}
 function clearModalPad(){if(pad)pad.clear()}
 function applySig(){if(!pad||pad.isEmpty()){alert('Please draw your signature first.');return}const url=pad.toDataURL('image/png'),c=sigCfg[target];if(!c)return;const img=document.getElementById(c.img),ph=document.querySelector('#'+c.prev+' .sig-ph'),inp=document.getElementById(c.data),rm=document.getElementById(c.rm);if(img){img.src=url;img.style.display='block'}if(ph)ph.style.display='none';if(inp)inp.value=url;if(rm)rm.style.display='inline-flex';closeSig()}
 function rmSig(t){const c=sigCfg[t];if(!c)return;const img=document.getElementById(c.img),ph=document.querySelector('#'+c.prev+' .sig-ph'),inp=document.getElementById(c.data),rm=document.getElementById(c.rm);if(img){img.src='';img.style.display='none'}if(ph)ph.style.display='block';if(inp)inp.value='';if(rm)rm.style.display='none'}
-function clearAllSigs(){['employee','reporting'].forEach(rmSig)}
+function clearAllSigs(){rmSig('employee')}
 bg.addEventListener('click',e=>{if(e.target===bg)closeSig()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&bg.classList.contains('open'))closeSig()});
+
+(function(){var fid='hrForm';if(!window.HrGenericFormEdit)return;var o=openSig,r=rmSig;openSig=function(t){if(!HrGenericFormEdit.canModifySig(fid,t))return;return o(t);};rmSig=function(t){if(!HrGenericFormEdit.canModifySig(fid,t))return;return r(t);};})();
 
 document.getElementById('hrForm').addEventListener('submit',async e=>{
   e.preventDefault();
   const fd=new FormData(e.target),data=Object.fromEntries(fd.entries());
   if(!data.employee_signature||!String(data.employee_signature).startsWith('data:image')){alert('Please add your Employee signature before submitting.');return}
-  if(!data.reporting_to_signature||!String(data.reporting_to_signature).startsWith('data:image')){alert('Please add the Reporting Officer signature before submitting.');return}
+  if(reporting_officer_signer_ids.length!==1){
+    alert('Select exactly one reporting officer with an Injaaz account — they must sign on their own device (you cannot sign for them).');
+    return;
+  }
+  data.reporting_officer_signer_ids=[...reporting_officer_signer_ids];
   data.form_type='commencement';
+  if(window.HrFormDraft){
+    var _rid = HrFormDraft.resumeDraftSubmissionId();
+    if(_rid) data.resume_draft_id = _rid;
+  }
   const btn=e.target.querySelector('.btn-submit');
   btn.disabled=true;btn.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="spin"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Submitting…';
   try{const res=await fetch('/hr/api/submit',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.getItem('access_token')},body:JSON.stringify(data)});const r=await res.json();
-  if(r.success){document.getElementById('submissionId').textContent=r.submission_id;document.getElementById('successModal').classList.add('show')}
-  else{alert('Error: '+(r.error||'Unknown'));btn.disabled=false;btn.innerHTML='<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> Submit Form'}
-  }catch(err){alert('Network error: '+err.message);btn.disabled=false;btn.innerHTML='<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> Submit Form'}
+  if(r.success){
+    const lead=document.getElementById('successMsgLead');
+    if(lead) lead.textContent = r.workflow_status==='replacement_signoff'
+      ? 'Your colleague must sign digitally before HR receives this commencement form.'
+      : 'Commencement form sent to HR for review.';
+    window.__hrLastHrSubmissionId=r.submission_id;document.getElementById('submissionId').textContent=r.submission_id;document.getElementById('successModal').classList.add('show');
+    if(window.HrFormDraft) HrFormDraft.clearStoredId('hr_commencement');
+    try{history.replaceState(null,'', location.pathname)}catch(_e){}
+  }
+  else{alert('Error: '+(r.error||'Unknown'));btn.disabled=false;btn.innerHTML='Submit Form'}
+  }catch(err){alert('Network error: '+err.message);btn.disabled=false;btn.innerHTML='Submit Form'}
 });
 </script>
+  <script src="{{ url_for('static', filename='js/hr_generic_form_edit.js') }}"></script>
+  <script>
+    HrGenericFormEdit.attach({
+      formId: 'hrForm',
+      moduleTypes: ['hr_commencement'],
+      submitBarSelector: '#submitBar',
+      onEnterEditUi: function () { goToStep2(); },
+      appendToPayload: function () {
+        return { reporting_officer_signer_ids: reporting_officer_signer_ids.slice() };
+      },
+      afterPopulate: function (_payload, fd) {
+        reporting_officer_signer_ids.length = 0;
+        if (Array.isArray(fd.reporting_officer_signer_ids)) {
+          fd.reporting_officer_signer_ids.forEach(function (x) {
+            var n = parseInt(x, 10);
+            if (Number.isFinite(n)) reporting_officer_signer_ids.push(n);
+          });
+        }
+        if (window.HrColleagueSlotPicker)
+          void HrColleagueSlotPicker.redrawChips({
+            chipsId: 'repOffSignerChips',
+            ids: reporting_officer_signer_ids,
+            multi: false,
+          });
+      },
+    });
+  </script>
+  <script>
+    (function () {
+      if (!window.HrFormDraft) return;
+      HrFormDraft.attach({
+        formId: 'hrForm',
+        moduleType: 'hr_commencement',
+        formTypeSlug: 'commencement',
+        saveButtonSelector: '.hr-comm-save-draft-btn',
+        extraCollect: function () {
+          return { reporting_officer_signer_ids: reporting_officer_signer_ids.slice() };
+        },
+        extraApply: function (fd) {
+          reporting_officer_signer_ids.length = 0;
+          if (Array.isArray(fd.reporting_officer_signer_ids)) {
+            fd.reporting_officer_signer_ids.forEach(function (x) {
+              var n = parseInt(x, 10);
+              if (Number.isFinite(n)) reporting_officer_signer_ids.push(n);
+            });
+          }
+          if (window.HrColleagueSlotPicker) {
+            HrColleagueSlotPicker.redrawChips({
+              chipsId: 'repOffSignerChips',
+              ids: reporting_officer_signer_ids,
+              multi: false,
+            });
+          }
+          var ed = document.getElementById('empSignDate');
+          var de = document.getElementById('docDate');
+          if (ed && fd.employee_sign_date) ed.value = String(fd.employee_sign_date).slice(0, 10);
+          if (
+            de &&
+            fd.employee_sign_date &&
+            String(fd.employee_sign_date).length >= 8
+          ) {
+            try {
+              de.textContent = new Date(
+                String(fd.employee_sign_date).slice(0, 10) + 'T12:00:00'
+              ).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            } catch (_e) {
+              de.textContent = String(fd.employee_sign_date).slice(0, 10);
+            }
+          }
+          if (
+            fd.employee_signature &&
+            String(fd.employee_signature).indexOf('data:image') === 0 &&
+            typeof requestAnimationFrame === 'function'
+          )
+            requestAnimationFrame(function () {
+              goToStep2();
+            });
+        },
+      });
+    })();
+  </script>
   <script src="{{ url_for('static', filename='api-client.js') }}"></script>
   <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 </body>

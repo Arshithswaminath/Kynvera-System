@@ -14,54 +14,54 @@
     </a>
     <div class="nav-center">
       <ul class="nav-menu">
-        <li><a href="/dashboard" {% if active_page == 'home' %}style="color: var(--primary); font-weight: 600;"{% endif %}>Home</a></li>
-        <li><a href="/about" {% if active_page == 'about' %}style="color: var(--primary); font-weight: 600;"{% endif %}>About</a></li>
+        <li><a href="/dashboard"{% if active_page == 'home' %} class="nav-current"{% endif %}>Home</a></li>
+        <li><a href="/about"{% if active_page == 'about' %} class="nav-current"{% endif %}>About</a></li>
         {% if active_page == 'about' %}
         <li class="about-details-nav-item"><a href="#details">Details</a></li>
         {% endif %}
         <li><a href="javascript:void(0)" id="profileLink" role="button" onclick="if(typeof openProfileModal==='function'){openProfileModal();}">Profile</a></li>
-        <li><a href="javascript:void(0)" id="contactLink" role="button" onclick="if(typeof openContactModal==='function'){openContactModal();}">Contact</a></li>
-        <li id="inspection-forms-menu-item">
-          <a href="/inspection/" {% if active_page == 'inspection' %}style="color: var(--primary); font-weight: 600;"{% endif %}>Inspection Form</a>
+        <li id="inspection-forms-menu-item" style="display: none;">
+          <a href="/inspection/"{% if active_page == 'inspection' %} class="nav-current"{% endif %}>Inspection Form</a>
         </li>
-        <li id="hr-forms-menu-item">
-          <a href="/hr/" {% if active_page == 'hr' %}style="color: var(--primary); font-weight: 600;"{% endif %}>HR Forms</a>
+        <li id="hr-forms-menu-item" style="display: none;">
+          <a href="/hr/"{% if active_page == 'hr' %} class="nav-current"{% endif %}>HR Forms</a>
         </li>
         <li id="procurement-menu-item" style="display: none;">
-          <a href="/procurement/" {% if active_page == 'procurement' %}style="color: var(--primary); font-weight: 600;"{% endif %}>Procurement</a>
+          <a href="/procurement/"{% if active_page == 'procurement' %} class="nav-current"{% endif %}>Procurement</a>
         </li>
-        <li id="submitted-forms-menu-item" style="display: none;">
-          <a href="/workflow/submitted-forms" {% if active_page == 'submitted-forms' %}style="color: var(--primary); font-weight: 600;"{% endif %}>
-            Submitted Forms
+        <li id="submitted-forms-menu-item" class="has-submenu has-submitted-dropdown" style="display: none;">
+          <a href="/workflow/submitted-forms"{% if active_page == 'submitted-forms' %} class="nav-current"{% endif %}>
+            Submitted forms
             <span id="navSubmittedBadge" style="display: none; background: #ef4444; color: white; font-size: 0.65rem; padding: 2px 6px; border-radius: 10px; margin-left: 4px; font-weight: 600;">0</span>
           </a>
+          <ul class="nav-submenu">
+            <li><a href="/workflow/submitted-forms?scope=hr">Submitted HR forms</a></li>
+            <li><a href="/workflow/submitted-forms?scope=inspection">Submitted inspection forms</a></li>
+          </ul>
         </li>
         <li id="pending-review-menu-item" style="display: none;">
-          <a href="/workflow/pending-reviews" {% if active_page == 'pending-review' %}style="color: var(--primary); font-weight: 600;"{% endif %}>
+          <a href="/workflow/pending-reviews"{% if active_page == 'pending-review' %} class="nav-current"{% endif %}>
             Pending Review
             <span id="navPendingBadge" style="display: none; background: #ef4444; color: white; font-size: 0.65rem; padding: 2px 6px; border-radius: 10px; margin-left: 4px; font-weight: 600;">0</span>
           </a>
         </li>
-        <li id="review-history-menu-item" style="display: none;">
-          <a href="/api/workflow/history" {% if active_page == 'all-submissions' %}style="color: var(--primary); font-weight: 600;"{% endif %}>Submitted Forms</a>
-        </li>
         <li id="report-gen-menu-item" style="display: none;">
-          <a href="/admin/mmr/" {% if active_page == 'report' or active_page == 'mmr-chargeable' %}style="color: var(--primary); font-weight: 600;"{% endif %}>Report Generation</a>
+          <a href="/admin/mmr/"{% if active_page == 'report' or active_page == 'mmr-chargeable' %} class="nav-current"{% endif %}>Report Generation</a>
         </li>
         <li id="admin-menu-item" style="display: none;">
-          <a href="/admin/dashboard" {% if active_page == 'admin' or active_page == 'personal-progress' %}style="color: var(--primary); font-weight: 600;"{% endif %}>Administrative</a>
+          <a href="/admin/dashboard"{% if active_page == 'admin' or active_page == 'personal-progress' or active_page == 'team-management' %} class="nav-current"{% endif %}>Administrative</a>
         </li>
         <li id="device-management-menu-item" style="display: none;">
-          <a href="/admin/devices" {% if active_page == 'devices' %}style="color: var(--primary); font-weight: 600;"{% endif %}>Device Management</a>
-        </li>
-        <li id="bd-email-menu-item" style="display: none;">
-          <a href="/bd/email-module" {% if active_page == 'bd-email' %}style="color: var(--primary); font-weight: 600;"{% endif %}>Email Module</a>
+          <a href="/admin/devices"{% if active_page == 'devices' %} class="nav-current"{% endif %}>Device Management</a>
         </li>
         <li id="bd-module-menu-item" style="display: none;">
-          <a href="/admin/bd" {% if active_page == 'bd-module' %}style="color: var(--primary); font-weight: 600;"{% endif %}>Business Development</a>
+          <a href="/admin/bd"{% if active_page == 'bd-module' %} class="nav-current"{% endif %}>Business Development</a>
         </li>
-        <li id="dochub-menu-item">
-          <a href="/dochub" {% if active_page == 'dochub' %}style="color: var(--primary); font-weight: 600;"{% endif %}>DocHub</a>
+        <li id="dochub-menu-item" style="display: none;">
+          <a href="/dochub"{% if active_page == 'dochub' %} class="nav-current"{% endif %}>DocHub</a>
+        </li>
+        <li id="ticketing-menu-item" style="display: none;">
+          <a href="/tickets/"{% if active_page == 'ticketing' %} class="nav-current"{% endif %}>Service tickets</a>
         </li>
       </ul>
     </div>
@@ -116,7 +116,6 @@
   <ul class="mobile-menu-drawer-list" id="mobileMenuDrawerList"></ul>
 </div>
 <div class="mobile-overlay" id="mobileOverlay"></div>
-{% include 'partials/contact_modal.html' %}
 {% include 'partials/profile_modal.html' %}
 {% include 'partials/todo_modal.html' %}
 <script src="{{ url_for('static', filename='js/todo_list.js') }}" defer></script>

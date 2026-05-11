@@ -8,6 +8,8 @@
 <title>Duty Resumption Form — INJAAZ</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/ticketing.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-signoff-activity.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
   <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
   <style>
@@ -31,7 +33,7 @@
     }
 
     .page{width:100%;min-height:100vh;padding:5.5rem 0 3rem}
-    .page-inner{max-width:1400px;margin:0 auto;padding:1.5rem 2rem 2rem}
+    .page-inner{max-width:1480px;margin:0 auto;padding:1.5rem 2rem 2rem}
     .back-btn{
       display:inline-flex;align-items:center;gap:.5rem;padding:.55rem 1.1rem;font-size:.875rem;font-weight:600;
       color:var(--pri);background:rgba(255,255,255,.95);border:1px solid rgba(221,232,226,.8);
@@ -107,6 +109,7 @@
 
     .grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:1.25rem 1.75rem}
     .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:1.25rem 1.75rem}
+    .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:1.25rem 1.75rem}
     .fld{display:flex;flex-direction:column;gap:.35rem}
     .fld-lbl{font-size:.8rem;font-weight:600;color:var(--ink2)}
     .fld-lbl .req{color:#dc2626;font-weight:700}
@@ -117,12 +120,54 @@
     textarea.fld-inp{min-height:80px;resize:vertical}
     .fld.fw{grid-column:1/-1}
 
-    .sig-wrap{margin-top:.4rem}
-    .sig-box{min-height:68px;border:2px dashed var(--bd);border-radius:var(--r-sm);background:var(--sf);display:flex;align-items:center;justify-content:center;overflow:hidden;padding:.4rem;transition:border-color var(--t)}
-    .sig-box:hover{border-color:var(--pri-sm)}
-    .sig-box img{max-height:60px;max-width:100%;object-fit:contain}
+    .sig-wrap{margin-top:.4rem;width:100%}
+    .sig-box{
+      min-height:110px;min-width:0;width:100%;
+      border:2px dashed var(--bd);border-radius:var(--r-sm);background:var(--sf);
+      display:flex;flex-direction:column;align-items:stretch;justify-content:flex-end;
+      overflow:hidden;padding:.5rem .65rem .65rem;transition:border-color var(--t),background var(--t)
+    }
+    .sig-box-interactive:hover{border-color:var(--pri-sm)}
+    .sig-box-editing{border-color:var(--pri-sm);background:#fff;box-shadow:inset 0 0 0 1px rgba(18,84,53,.08)}
+    .sig-display{
+      display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-end;width:100%;min-height:96px;flex:1;
+      background:#fff;
+    }
+    .sig-display img{
+      max-height:76px;max-width:100%;width:auto;object-fit:contain;object-position:left bottom;margin-top:auto;display:block;
+      background-color:#fff;
+      vertical-align:bottom;
+    }
+    .sig-editor{width:100%}
+    .sig-editor-hint{font-size:.72rem;color:var(--muted);margin:0 0 .35rem;line-height:1.35}
+    .sig-inline-canvas{
+      width:100%;height:140px;display:block;border-radius:var(--r-sm);background:transparent;
+      border:1px solid rgba(221,232,226,.95);touch-action:none;cursor:crosshair
+    }
+    .sig-editor-bar{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.5rem;align-items:center}
+    .btn-sig-cancel{padding:.4rem .9rem;font-size:.82rem;font-weight:600;color:var(--ink3);background:var(--sf);border:1.5px solid var(--bd);border-radius:999px;cursor:pointer;font-family:inherit;transition:all var(--t)}
+    .btn-sig-cancel:hover{border-color:var(--pri-sm);color:var(--pri)}
+    .sig-slot-muted{border-style:dashed;background:linear-gradient(180deg,#fafafa 0%,#f4f7f5 100%);cursor:default}
+    .sig-slot-muted:hover{border-color:var(--bd)}
+    .sig-slot-muted .sig-ph{font-style:normal;text-align:left;line-height:1.35;align-self:flex-end;padding-bottom:2px;color:var(--muted)}
     .sig-ph{font-size:.78rem;color:var(--muted);font-style:italic}
     .sig-actions{display:flex;gap:.4rem;margin-top:.5rem}
+    .duty-sig-signer-comment{
+      display:none;
+      margin-top:.45rem;
+      padding:0;
+      font-size:.82rem;
+      line-height:1.45;
+      font-weight:700;
+      color:var(--pri-d,#0d3d24);
+      background:none;
+      border:none;
+      border-radius:0;
+      box-shadow:none;
+      white-space:pre-wrap;
+      word-break:break-word;
+    }
+    .duty-sig-signer-comment.is-visible{display:block}
     .btn-plus{display:inline-flex;align-items:center;gap:.35rem;padding:.35rem .8rem;font-size:.8rem;font-weight:600;color:var(--pri);background:var(--pri-xs);border:1.5px solid var(--pri-sm);border-radius:999px;cursor:pointer;transition:all var(--t);font-family:inherit}
     .btn-plus:hover{background:var(--pri-sm);border-color:var(--pri);color:var(--pri-d)}
     .btn-rm{display:none;align-items:center;gap:.35rem;padding:.35rem .8rem;font-size:.8rem;font-weight:600;color:#b91c1c;background:#fef2f2;border:1.5px solid #fecaca;border-radius:999px;cursor:pointer;transition:all var(--t);font-family:inherit}
@@ -133,30 +178,118 @@
     .sec-hr .sec-hd::before{background:#d97706}
     .sec-hr .fld-inp[readonly]{background:rgba(255,255,255,.6)}
 
-    .doc-ft{padding:1.15rem 2.5rem;background:linear-gradient(180deg, #f4f8f6 0%, #eef4f0 100%);border-top:1px solid rgba(232,240,236,.9);font-size:.75rem;color:var(--muted);text-align:center;line-height:1.65}
-    .doc-ft-meta{display:flex;justify-content:center;gap:1.5rem;flex-wrap:wrap;font-weight:600;margin-bottom:.4rem;color:var(--ink3)}
+    .doc-ft{
+      padding:0.65rem 2.5rem 0;
+      margin-top:0;
+      background:transparent;
+      border-top:none;
+      text-align:center;line-height:1.65;
+    }
+    .doc-ft--after-form{padding:0;margin:0;text-align:center;line-height:1.35;width:100%}
+    .doc-ft-meta{
+      display:flex;justify-content:center;gap:1.5rem;flex-wrap:wrap;
+      font-weight:700;font-size:.84rem;margin-bottom:0;color:var(--pri);
+      letter-spacing:.02em;
+    }
+    .doc-ft--after-form .doc-ft-meta{
+      justify-content:center;
+      column-gap:clamp(2.25rem, 6vw, 4rem);
+      row-gap:0.35rem;
+      flex-wrap:nowrap;
+      align-items:baseline;
+      white-space:nowrap;
+    }
 
-    .submit-bar{padding:1.6rem 2.5rem;border-top:1px solid rgba(232,240,236,.9);display:flex;align-items:center;justify-content:flex-end;gap:1rem;background:rgba(255,255,255,.98)}
+    /* Submit + legal line live outside <form>; grid aligns with main column */
+    .duty-form-layout--after-form{
+      display:grid;
+      grid-template-columns:minmax(0,1fr) minmax(280px,360px);
+      gap:1.5rem;
+      align-items:start;
+      width:100%;
+      margin-top:.35rem;
+      padding-top:1.15rem;
+    }
+    /* Title + date centered; Save / Submit anchored right (overlays empty margin when visible) */
+    .duty-after-form-stack{
+      position:relative;
+      min-width:0;
+      display:flex;
+      flex-direction:row;
+      align-items:center;
+      justify-content:center;
+      gap:0.75rem 1.25rem;
+      flex-wrap:nowrap;
+      min-height:2.6rem;
+      padding:0;
+      box-sizing:border-box;
+    }
+    @media(min-width:721px){
+      .duty-after-form-stack{
+        padding-left:clamp(4rem,11vw,10rem);
+        padding-right:clamp(4rem,11vw,10rem);
+      }
+    }
+    .duty-tail-spacer{min-height:0;pointer-events:none}
+    /* Use 900px (not 1100): inside modals the iframe viewport is narrow — at ~1000px
+       we must keep main + sidebar columns to match full-page layout. */
+    @media(max-width:900px){
+      .duty-form-layout--after-form{
+        grid-template-columns:1fr;
+      }
+      .duty-tail-spacer{display:none!important}
+    }
+    @media(max-width:720px){
+      .duty-after-form-stack{
+        flex-wrap:wrap;
+        position:static;
+        padding-left:0;
+        padding-right:0;
+      }
+      .doc-ft--after-form{
+        flex:1 1 100%;
+        min-width:0;
+      }
+      .doc-ft--after-form .doc-ft-meta{
+        flex-wrap:wrap;
+        white-space:normal;
+      }
+      .duty-submit-outside-form{
+        position:static;
+        transform:none;
+        flex:1 1 auto;
+        justify-content:flex-end;
+        width:100%;
+      }
+    }
+
+    /* Inside .card: same surface as form — no separate white strip */
+    .submit-bar{
+      padding:0.85rem 2.5rem 1rem;
+      margin-top:0;
+      border-top:none;
+      display:flex;
+      align-items:center;
+      justify-content:flex-end;
+      gap:1rem;
+      background:transparent;
+    }
+    .duty-submit-outside-form{
+      padding:0;
+      margin:0;
+      flex:0 0 auto;
+      align-self:center;
+      position:absolute;
+      right:0;
+      top:50%;
+      transform:translateY(-50%);
+    }
     .btn-submit{display:inline-flex;align-items:center;gap:.5rem;padding:.85rem 2.1rem;font-size:.95rem;font-weight:700;color:#fff;background:linear-gradient(135deg, #0f4a2e 0%, var(--pri) 40%, var(--pri-l) 100%);border:none;border-radius:999px;cursor:pointer;box-shadow:0 4px 20px rgba(18,84,53,.35), 0 1px 3px rgba(0,0,0,.08);transition:all var(--t);font-family:inherit}
     .btn-submit:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(18,84,53,.4), 0 2px 6px rgba(0,0,0,.06)}
     .btn-submit:active{transform:translateY(0)}
     .btn-reset{padding:.8rem 1.4rem;font-size:.88rem;font-weight:600;color:var(--ink3);background:var(--sf);border:1.5px solid var(--bd);border-radius:999px;cursor:pointer;transition:all var(--t);font-family:inherit}
     .btn-reset:hover{border-color:var(--pri-sm);color:var(--pri);background:var(--pri-xs)}
 
-    .sig-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:9000;display:flex;align-items:center;justify-content:center;opacity:0;visibility:hidden;transition:opacity .25s,visibility .25s}
-    .sig-modal-bg.open{opacity:1;visibility:visible}
-    .sig-modal{background:#fff;border-radius:var(--r-lg);width:520px;max-width:94vw;box-shadow:0 32px 64px rgba(0,0,0,.2);overflow:hidden;transform:scale(.95);transition:transform .3s cubic-bezier(.34,1.56,.64,1)}
-    .sig-modal-bg.open .sig-modal{transform:scale(1)}
-    .sig-modal-hd{padding:1.25rem 1.5rem;border-bottom:1px solid var(--bd-l);display:flex;align-items:center;justify-content:space-between}
-    .sig-modal-hd h3{font-size:1rem;font-weight:700;color:var(--ink);margin:0}
-    .sig-modal-x{width:36px;height:36px;border-radius:var(--r-sm);border:1px solid var(--bd);background:var(--bg);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1.1rem;color:var(--ink3);transition:all var(--t);line-height:1}
-    .sig-modal-x:hover{background:#fee2e2;border-color:#fca5a5;color:#b91c1c}
-    .sig-modal-body{padding:1.25rem 1.5rem}
-    .sig-modal-hint{font-size:.85rem;color:var(--muted);margin-bottom:.75rem}
-    .sig-canvas-box{border:2px solid var(--bd);border-radius:var(--r-sm);background:#fafafa;overflow:hidden;position:relative}
-    .sig-canvas-box canvas{display:block;width:100%;height:180px;cursor:crosshair;touch-action:none}
-    .sig-canvas-guide{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);font-size:.75rem;color:var(--muted);pointer-events:none;user-select:none}
-    .sig-modal-ft{display:flex;justify-content:space-between;align-items:center;margin-top:1rem}
     .btn-m-clear{padding:.45rem 1rem;font-size:.85rem;font-weight:600;color:var(--ink3);background:var(--bg);border:1.5px solid var(--bd);border-radius:999px;cursor:pointer;transition:all var(--t);font-family:inherit}
     .btn-m-clear:hover{border-color:#fca5a5;color:#b91c1c;background:#fef2f2}
     .btn-m-apply{padding:.45rem 1.5rem;font-size:.9rem;font-weight:700;color:#fff;background:linear-gradient(135deg,var(--pri),var(--pri-l));border:none;border-radius:999px;cursor:pointer;box-shadow:0 4px 12px rgba(18,84,53,.3);transition:all var(--t);font-family:inherit}
@@ -175,44 +308,260 @@
 
     @keyframes spin{to{transform:rotate(360deg)}}.spin{animation:spin .7s linear infinite}
 
+    /* Main column + ticketing-style approval sidebar */
+    .duty-form-layout{
+      display:grid;
+      grid-template-columns:minmax(0,1fr) minmax(280px,360px);
+      gap:1.5rem;
+      align-items:start;
+      width:100%;
+    }
+    .duty-form-layout-main{min-width:0}
+    .duty-form-layout-aside{
+      position:sticky;
+      top:5.75rem;
+      display:flex;
+      flex-direction:column;
+      gap:14px;
+      min-width:0;
+    }
+    .duty-sidebar-card.tkt-card{border-radius:12px}
+    .duty-sidebar-card .tkt-card-header{padding:14px 18px}
+    .duty-sidebar-card .tkt-card-header h3{font-size:1rem}
+    .duty-sidebar-inner .tkt-card-body{padding:0!important}
+    .duty-sidebar-inner .hr-mgmt-chain-sec,
+    .duty-sidebar-inner .hr-signoff-activity-sec,
+    .duty-sidebar-inner .hr-recorded-sigs-sec{
+      margin:0!important;padding:1rem 18px 1.15rem!important;border:none!important;border-radius:0!important;
+      box-shadow:none!important;background:transparent!important;
+    }
+    .duty-sidebar-inner .hr-mgmt-chain-sec > .sec-hd,
+    .duty-sidebar-inner .hr-signoff-activity-sec > .sec-hd{display:none!important}
+    .duty-sidebar-inner .hr-recorded-sigs-sec > .sec-hd{font-size:.72rem;margin-bottom:.55rem!important;padding-bottom:.4rem!important}
+    .duty-sidebar-inner #hrMgmtChainWrap{background:#f8fafc!important;border:1px solid #e2e8f0!important}
+    .duty-sidebar-inner .hr-signoff-wf-badge{margin-top:0!important}
+    .duty-sidebar-inner .hr-signoff-activity-sec{padding-bottom:.85rem!important}
+    .duty-sidebar-inner .hr-signoff-activity-scroll{
+      max-height:clamp(15rem, 44vh, 30rem);
+    }
+    .duty-sidebar-inner .hr-recorded-sigs-sec{
+      margin-top:.85rem!important;padding-top:1rem!important;
+      border-top:1px solid #e2e8f0!important;
+    }
+
+    .duty-sig-summary-rows{display:flex;flex-direction:column}
+    .duty-sig-summary-row{
+      display:flex;align-items:flex-start;justify-content:space-between;gap:10px;
+      padding:12px 0;border-bottom:1px solid #f1f5f9;
+    }
+    .duty-sig-summary-row:last-child{border-bottom:none;padding-bottom:2px}
+    .duty-sig-summary-label{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#64748b;display:block;margin-bottom:4px}
+    .duty-sig-summary-value{font-size:.88rem;font-weight:600;color:#1e293b;line-height:1.35}
+    .duty-sig-summary-value.muted{font-weight:500;color:#94a3b8;font-style:italic}
+    .duty-sig-badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:999px;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+    .duty-sig-badge--signed{background:#dcfce7;color:#15803d}
+    .duty-sig-badge--pending{background:#fef9c3;color:#a16207}
+    .duty-sig-badge--optional{background:#f1f5f9;color:#64748b}
+
+    @media(max-width:900px){
+      .duty-form-layout{grid-template-columns:1fr}
+      .duty-form-layout-aside{position:static}
+      .grid-4{grid-template-columns:repeat(2,1fr)}
+    }
     @media(max-width:900px){.grid-3{grid-template-columns:repeat(2,1fr)}}
-    @media(max-width:640px){
+      @media(max-width:640px){
       .page-inner{padding:1rem}
-      .form-body,.doc-ft,.submit-bar{padding-left:1.25rem;padding-right:1.25rem}
+      .form-body,.doc-ft,.duty-submit-outside-form{padding-left:1.25rem;padding-right:1.25rem}
       .hd{padding:1.5rem 1.25rem;flex-direction:column;align-items:flex-start;gap:1rem}
       .hd-logo{height:72px}
       .sec{padding:1.25rem 1.25rem}
-      .grid-2,.grid-3{grid-template-columns:1fr}
+      .grid-2,.grid-3,.grid-4{grid-template-columns:1fr}
       .step-bar{flex-wrap:wrap;padding:1rem}
       .step-item{padding:.5rem 1rem;font-size:.82rem}
     }
+
+    /* Submitted ?edit= — one scrollable page (details + signatures), no wizard chrome */
+    .duty-single-page-review-hint{display:none;align-items:center;gap:.75rem;padding:1rem 1.5rem;margin-bottom:1.25rem;font-size:.9rem;font-weight:500;color:var(--pri-d);border-radius:var(--r);border:1px solid rgba(194,222,206,.6);background:linear-gradient(135deg, rgba(232,245,237,.9), rgba(240,249,244,.95));box-shadow:0 1px 3px rgba(18,84,53,.04);}
+    .duty-single-page-review-hint svg{flex-shrink:0;opacity:.9}
+    body.duty-submitted-single-page .duty-single-page-review-hint{display:flex}
+    body.duty-submitted-single-page .step-bar{display:none!important}
+    body.duty-submitted-single-page .step-panel{display:block!important}
+    body.duty-submitted-single-page .step-panel .step-hint{display:none!important}
+    body.duty-submitted-single-page .step-nav{display:none!important}
+    body.hr-embed-mode .page{padding-top:1rem!important;padding-bottom:1.5rem}
+    body.hr-embed-mode .duty-form-layout-aside{top:1rem}
+
+    /* Browser print (Ctrl+P): A4 landscape, ISO-style margins, proportional scale — same layout as screen (form + sidebar) */
+    @media print {
+      @page {
+        size: A4 landscape;
+        margin: 10mm 12mm;
+      }
+      * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      html {
+        /* Scales rem-based rules to sit comfortably inside printable area */
+        font-size: 54%;
+      }
+      body {
+        background: #fff !important;
+        min-height: 0 !important;
+        color: #0d1f14 !important;
+      }
+      #nav,
+      .success-bg,
+      .back-btn,
+      #submissionViewPdf,
+      .submission-view-pdf-btn,
+      .sig-actions,
+      .btn-plus,
+      .btn-rm,
+      .sig-editor,
+      .submit-bar,
+      .duty-submit-outside-form,
+      .btn-submit,
+      .btn-reset,
+      .btn-next,
+      .btn-back,
+      .step-nav,
+      .hr-mgmt-chain-sec button,
+      #hrMgmtChainWrap button {
+        display: none !important;
+      }
+      .page {
+        padding: 0 !important;
+        min-height: 0 !important;
+      }
+      .page-inner {
+        max-width: 100% !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+      #submissionViewBanner,
+      #submissionRevisionBanner {
+        margin-bottom: 0.35rem !important;
+        padding: 0.45rem 0.55rem !important;
+        line-height: 1.35 !important;
+        border-radius: 6px !important;
+      }
+      #submissionEditGraceRow,
+      #submissionGraceExpiredWrap {
+        display: none !important;
+      }
+      .duty-single-page-review-hint {
+        margin-bottom: 0.35rem !important;
+        padding: 0.4rem 0.55rem !important;
+        border-radius: 6px !important;
+      }
+      .duty-single-page-review-hint svg {
+        width: 14px !important;
+        height: 14px !important;
+      }
+      .card {
+        box-shadow: none !important;
+        border: 1px solid #b8c4bc !important;
+      }
+      .hd {
+        padding: 0.45rem 0.65rem !important;
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+      .hd-logo {
+        height: 2.75rem !important;
+      }
+      .form-body {
+        padding: 0.45rem 0.55rem 0.55rem !important;
+        max-width: none !important;
+      }
+      .sec {
+        padding: 0.45rem 0.55rem !important;
+        margin-bottom: 0.45rem !important;
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+      .grid-2,
+      .grid-3,
+      .grid-4 {
+        gap: 0.35rem 0.5rem !important;
+      }
+      .fld-inp {
+        min-height: 0 !important;
+        border-width: 1px !important;
+      }
+      textarea.fld-inp {
+        min-height: 2.25rem !important;
+        resize: none !important;
+      }
+      /* Same proportions as on screen: main + right rail within landscape printable width */
+      .duty-form-layout,
+      .duty-form-layout--after-form {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 30%) !important;
+        gap: 0.45rem !important;
+        align-items: start !important;
+      }
+      .duty-form-layout-aside {
+        position: static !important;
+        top: auto !important;
+      }
+      .duty-form-layout-aside .tkt-card,
+      .duty-sidebar-card {
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+      .duty-sidebar-inner .hr-signoff-activity-scroll {
+        max-height: none !important;
+        overflow: visible !important;
+      }
+      .duty-sidebar-inner .hr-signoff-activity-sec,
+      .duty-sidebar-inner .hr-recorded-sigs-sec,
+      .duty-sidebar-inner .hr-mgmt-chain-sec {
+        font-size: 0.92em !important;
+      }
+      .sig-box {
+        min-height: 3.25rem !important;
+        padding: 0.15rem 0.25rem !important;
+      }
+      .sig-display {
+        min-height: 2.75rem !important;
+      }
+      .sig-display img {
+        max-height: 2.4rem !important;
+      }
+      .duty-sig-signer-comment.is-visible {
+        display: block !important;
+        margin-top: 0.3rem !important;
+        padding: 0 !important;
+        font-size: 0.72em !important;
+        font-weight: 700 !important;
+        line-height: 1.35 !important;
+        border: none !important;
+        background: none !important;
+        break-inside: avoid;
+      }
+      .duty-after-form-stack {
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+      }
+    }
   </style>
 </head>
-<body>
+<body{% if hr_embed|default(false) %} class="hr-embed-mode"{% endif %}>
   {% set active_page = 'hr' %}
-  {% include 'partials/main_navbar.html' with context %}
+  {% include 'partials/hr_embed_optional_navbar.html' %}
 
   <div class="success-bg" id="successModal">
     <div class="success-box">
-      <button type="button" class="success-back-btn" onclick="closeSuccessBackToForm()" title="Back to form">
+      <button type="button" class="success-back-btn" onclick="hrGoToSubmittedRequest()" title="View submitted request">
         <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
       </button>
       <div class="success-icon"><svg width="30" height="30" fill="none" stroke="#fff" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg></div>
       <h2>Form Submitted!</h2>
       <p>Your duty resumption form has been sent to HR for review.</p>
       <div class="sub-id" id="submissionId"></div>
-      <button class="btn-submit" style="width:100%;justify-content:center" onclick="window.location.href='/hr/my-requests'">View My Requests</button>
-    </div>
-  </div>
-
-  <div class="sig-modal-bg" id="sigBg">
-    <div class="sig-modal">
-      <div class="sig-modal-hd"><h3 id="sigTitle">Signature</h3><button class="sig-modal-x" onclick="closeSig()">&times;</button></div>
-      <div class="sig-modal-body">
-        <p class="sig-modal-hint">Draw your signature using your mouse or finger.</p>
-        <div class="sig-canvas-box"><canvas id="sigCanvas" height="180"></canvas><span class="sig-canvas-guide">Sign here</span></div>
-        <div class="sig-modal-ft"><button class="btn-m-clear" onclick="clearModalPad()">Clear</button><button class="btn-m-apply" onclick="applySig()">Apply Signature</button></div>
-      </div>
+      <button class="btn-submit" style="width:100%;justify-content:center" onclick="hrGoToSubmittedRequest()">View My Requests</button>
     </div>
   </div>
 
@@ -223,23 +572,32 @@
         Back to HR
       </a>
 
+      {% include 'partials/hr_submitted_edit_banners.html' %}
+
+      <div id="dutySubmittedReviewHint" class="duty-single-page-review-hint" aria-live="polite">
+        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        <span><strong>Submitted request</strong> — Employee details, leave information, and signatures are shown below on one page. Scroll to review everything.</span>
+      </div>
+
       <div class="step-bar">
         <div class="step-item active" id="step1Badge" onclick="goToStep1()" role="button" tabindex="0"><span class="num">1</span><span>Employee & Leave Details</span></div>
         <div class="step-connector" id="connector1"></div>
         <div class="step-item locked" id="step2Badge" onclick="goToStep2()" role="button" tabindex="0"><span class="num">2</span><span>Signatures</span></div>
       </div>
 
-      <div class="card">
-        <div class="hd">
-          <div class="hd-left">
-            <h1>Duty Resumption Form</h1>
-            <p class="hd-sub">INJAAZ FACILITY MANAGEMENT</p>
-          </div>
-          <img src="{{ url_for('static', filename='logo.png') }}" alt="INJAAZ" class="hd-logo">
-        </div>
+      <form id="dutyFrm">
+        <div class="duty-form-layout">
+          <div class="duty-form-layout-main">
+            <div class="card">
+              <div class="hd">
+                <div class="hd-left">
+                  <h1>Duty Resumption Form</h1>
+                  <p class="hd-sub">INJAAZ FACILITY MANAGEMENT</p>
+                </div>
+                <img src="{{ url_for('static', filename='logo.png') }}" alt="INJAAZ" class="hd-logo">
+              </div>
 
-        <form id="dutyFrm">
-          <div class="form-body">
+              <div class="form-body">
 
             <!-- Step 1: Employee Details & Leave Information -->
             <div class="step-panel active" id="step1Panel">
@@ -277,59 +635,122 @@
             <div class="step-panel" id="step2Panel">
               <div class="step-hint">
                 <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                <span><strong>Step 2 of 2</strong> — Add signatures and submit. You can go back to edit Step 1 if needed.</span>
+                <span><strong>Step 2 of 2</strong> — Capture employee, reporting manager, GM, and HR signatures below (same page), then submit. You can go back to edit Step 1 if needed.</span>
               </div>
 
               <section class="sec">
                 <h2 class="sec-hd">Line Manager Remarks</h2>
                 <div class="fld">
-                  <textarea class="fld-inp" name="line_manager_remarks" rows="3" placeholder="Manager remarks (optional)"></textarea>
+                  <textarea class="fld-inp" name="line_manager_remarks" rows="3" {% if not is_gm %}readonly{% endif %} placeholder="{% if is_gm %}Manager remarks (optional){% else %}Entered by Line Manager — not editable on employee submission{% endif %}"></textarea>
                 </div>
               </section>
               <section class="sec">
                 <h2 class="sec-hd">Signatures</h2>
-                <div class="grid-3">
+                <div class="grid-4">
                   <div class="fld">
                     <label class="fld-lbl">Employee Signature <span class="req">*</span></label>
                     <div class="sig-wrap">
-                      <div class="sig-box" id="empSigPrev"><span class="sig-ph">No signature</span><img id="empSigImg" src="" style="display:none"></div>
+                      <div class="sig-box sig-box-interactive" id="empSigPrev">
+                        <div class="sig-display">
+                          <span class="sig-ph">No signature</span>
+                          <img id="empSigImg" src="" alt="" style="display:none">
+                        </div>
+                        <div class="sig-editor" hidden>
+                          <p class="sig-editor-hint">Draw your signature in this box (mouse or touch).</p>
+                          <canvas class="sig-inline-canvas" data-sig-role="employee" aria-label="Employee signature"></canvas>
+                          <div class="sig-editor-bar">
+                            <button type="button" class="btn-m-clear" onclick="clearInlinePad()">Clear</button>
+                            <button type="button" class="btn-m-apply" onclick="applySig()">Apply</button>
+                            <button type="button" class="btn-sig-cancel" onclick="cancelInlineSig()">Cancel</button>
+                          </div>
+                        </div>
+                      </div>
                       <div class="sig-actions">
                         <button type="button" class="btn-plus" onclick="openSig('employee')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 4v16m8-8H4"/></svg> Sign</button>
                         <button type="button" class="btn-rm" id="empSigRm" onclick="rmSig('employee')">Remove</button>
                       </div>
                       <input type="hidden" name="employee_signature" id="empSigData">
                     </div>
+                    <div class="duty-sig-signer-comment" id="dutySigCommentEmployee" hidden></div>
                     <div class="fld" style="margin-top:.75rem"><label class="fld-lbl">Date</label><input class="fld-inp" type="date" name="sign_date" id="signDate"></div>
                   </div>
                   <div class="fld">
-                    <label class="fld-lbl">GM Signature</label>
-                    {% if is_gm %}
+                    <label class="fld-lbl">Reporting Manager Signature</label>
                     <div class="sig-wrap">
-                      <div class="sig-box" id="gmSigPrev"><span class="sig-ph">No signature</span><img id="gmSigImg" src="" style="display:none"></div>
+                      <div class="sig-box sig-box-interactive" id="rmSigPrev">
+                        <div class="sig-display">
+                          <span class="sig-ph">No signature</span>
+                          <img id="rmSigImg" src="" alt="" style="display:none">
+                        </div>
+                        <div class="sig-editor" hidden>
+                          <p class="sig-editor-hint">Draw reporting manager signature in this box.</p>
+                          <canvas class="sig-inline-canvas" data-sig-role="rm" aria-label="Reporting manager signature"></canvas>
+                          <div class="sig-editor-bar">
+                            <button type="button" class="btn-m-clear" onclick="clearInlinePad()">Clear</button>
+                            <button type="button" class="btn-m-apply" onclick="applySig()">Apply</button>
+                            <button type="button" class="btn-sig-cancel" onclick="cancelInlineSig()">Cancel</button>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="sig-actions">
+                        <button type="button" class="btn-plus" onclick="openSig('rm')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 4v16m8-8H4"/></svg> Sign</button>
+                        <button type="button" class="btn-rm" id="rmSigRm" onclick="rmSig('rm')">Remove</button>
+                      </div>
+                      <input type="hidden" name="reporting_manager_signature" id="rmSigData">
+                    </div>
+                    <div class="duty-sig-signer-comment" id="dutySigCommentRm" hidden></div>
+                  </div>
+                  <div class="fld">
+                    <label class="fld-lbl">GM Signature</label>
+                    <div class="sig-wrap">
+                      <div class="sig-box sig-box-interactive" id="gmSigPrev">
+                        <div class="sig-display">
+                          <span class="sig-ph">No signature</span>
+                          <img id="gmSigImg" src="" alt="" style="display:none">
+                        </div>
+                        <div class="sig-editor" hidden>
+                          <p class="sig-editor-hint">Draw GM approval signature in this box.</p>
+                          <canvas class="sig-inline-canvas" data-sig-role="gm" aria-label="GM signature"></canvas>
+                          <div class="sig-editor-bar">
+                            <button type="button" class="btn-m-clear" onclick="clearInlinePad()">Clear</button>
+                            <button type="button" class="btn-m-apply" onclick="applySig()">Apply</button>
+                            <button type="button" class="btn-sig-cancel" onclick="cancelInlineSig()">Cancel</button>
+                          </div>
+                        </div>
+                      </div>
                       <div class="sig-actions">
                         <button type="button" class="btn-plus" onclick="openSig('gm')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 4v16m8-8H4"/></svg> Sign</button>
                         <button type="button" class="btn-rm" id="gmSigRm" onclick="rmSig('gm')">Remove</button>
                       </div>
                       <input type="hidden" name="gm_signature" id="gmSigData">
                     </div>
-                    {% else %}
-                    <em style="font-size:.85rem;color:var(--muted)">For GM approval workflow</em>
-                    {% endif %}
+                    <div class="duty-sig-signer-comment" id="dutySigCommentGm" hidden></div>
                   </div>
                   <div class="fld">
                     <label class="fld-lbl">HR Signature</label>
-                    {% if is_hr %}
                     <div class="sig-wrap">
-                      <div class="sig-box" id="hrSigPrev"><span class="sig-ph">No signature</span><img id="hrSigImg" src="" style="display:none"></div>
+                      <div class="sig-box sig-box-interactive" id="hrSigPrev">
+                        <div class="sig-display">
+                          <span class="sig-ph">No signature</span>
+                          <img id="hrSigImg" src="" alt="" style="display:none">
+                        </div>
+                        <div class="sig-editor" hidden>
+                          <p class="sig-editor-hint">Draw HR signature in this box.</p>
+                          <canvas class="sig-inline-canvas" data-sig-role="hr" aria-label="HR signature"></canvas>
+                          <div class="sig-editor-bar">
+                            <button type="button" class="btn-m-clear" onclick="clearInlinePad()">Clear</button>
+                            <button type="button" class="btn-m-apply" onclick="applySig()">Apply</button>
+                            <button type="button" class="btn-sig-cancel" onclick="cancelInlineSig()">Cancel</button>
+                          </div>
+                        </div>
+                      </div>
                       <div class="sig-actions">
                         <button type="button" class="btn-plus" onclick="openSig('hr')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 4v16m8-8H4"/></svg> Sign</button>
                         <button type="button" class="btn-rm" id="hrSigRm" onclick="rmSig('hr')">Remove</button>
                       </div>
                       <input type="hidden" name="hr_signature" id="hrSigData">
                     </div>
-                    {% else %}
-                    <em style="font-size:.85rem;color:var(--muted)">For HR approval workflow</em>
-                    {% endif %}
+                    <div class="duty-sig-signer-comment" id="dutySigCommentHr" hidden></div>
                   </div>
                 </div>
               </section>
@@ -338,20 +759,57 @@
                 <button type="button" class="btn-back" onclick="goToStep1()"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12"/></svg> Back to Step 1</button>
                 <span></span>
               </div>
+              </div>
+
+              </div>
+
             </div>
 
           </div>
 
-          <div class="doc-ft">
-            <div class="doc-ft-meta"><span>Duty Resumption Form</span><span>DATE: <span id="docDate"></span></span></div>
-            P.O Box: 3456 Ajman, UAE · Tel 067116815 · www.injaaz.ae<br>Registered under trade license name INJAAZ LLC
-          </div>
+          <aside class="duty-form-layout-aside" aria-label="Approvals and signature status">
+            <div class="tkt-card duty-sidebar-card">
+              <div class="tkt-card-header">
+                <h3>Signature status</h3>
+                <span style="font-size:.78rem;font-weight:600;color:#64748b;">Updates as you fill</span>
+              </div>
+              <div class="tkt-card-body duty-sig-summary-rows" id="dutySigSummaryBody"></div>
+            </div>
+            <div class="tkt-card duty-sidebar-card duty-sidebar-card--flush duty-sidebar-inner">
+              <div class="tkt-card-header">
+                <h3>Management approvals</h3>
+                <span style="font-size:.78rem;font-weight:600;color:#64748b;">Official PDF trail</span>
+              </div>
+              <div class="tkt-card-body">
+                {% include 'partials/hr_mgmt_chain_core.html' %}
+              </div>
+            </div>
+            <div class="tkt-card duty-sidebar-card duty-sidebar-card--flush duty-sidebar-inner">
+              <div class="tkt-card-header">
+                <h3>Approval activity</h3>
+                <span style="font-size:.78rem;font-weight:600;color:#64748b;">Live trail</span>
+              </div>
+              <div class="tkt-card-body">
+                {% include 'partials/hr_recorded_signatures_panel.html' %}
+              </div>
+            </div>
+          </aside>
+        </div>
 
-          <div class="submit-bar" id="submitBar" style="display:none">
+        <script src="{{ url_for('static', filename='js/hr_mgmt_chain_submit.js') }}"></script>
+      </form>
+
+      <div class="duty-form-layout duty-form-layout--after-form">
+        <div class="duty-form-layout-main duty-after-form-stack">
+          <footer class="doc-ft doc-ft--after-form" role="contentinfo">
+            <div class="doc-ft-meta"><span>Duty Resumption Form</span><span>DATE: <span id="docDate"></span></span></div>
+          </footer>
+          <div class="submit-bar duty-submit-outside-form" id="submitBar" style="display:none">
             <button type="button" class="btn-reset" onclick="if(confirm('Reset the form?')){document.getElementById('dutyFrm').reset();clearAllSigs();goToStep1()}">Reset</button>
-            <button type="submit" class="btn-submit"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> Submit Form</button>
+            <button type="submit" form="dutyFrm" class="btn-submit">Submit Form</button>
           </div>
-        </form>
+        </div>
+        <div class="duty-tail-spacer" aria-hidden="true"></div>
       </div>
     </div>
   </div>
@@ -359,6 +817,126 @@
 <script>
 document.getElementById('signDate').value = new Date().toISOString().split('T')[0];
 document.getElementById('docDate').textContent = new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'});
+
+/** Last hydrated submission form_data (for per-signer comments under signature boxes). */
+window.__dutyHydratedFd = null;
+
+function dutyChainStepComments(fd, stepKeys) {
+  var chain = fd && fd.hr_mgmt_chain;
+  if (!chain || !Array.isArray(chain.steps)) return '';
+  var set = Object.create(null);
+  for (var i = 0; i < stepKeys.length; i++) set[stepKeys[i]] = true;
+  for (var j = 0; j < chain.steps.length; j++) {
+    var st = chain.steps[j];
+    if (!st || !st.signature) continue;
+    var k = String(st.key || '');
+    if (!set[k]) continue;
+    var c = st.comments != null && String(st.comments).trim() ? String(st.comments).trim() : '';
+    if (c) return c;
+  }
+  return '';
+}
+
+function dutySignerCommentText(fd, role) {
+  if (!fd || typeof fd !== 'object') return '';
+  if (role === 'employee') {
+    var ec = fd.employee_comments != null && String(fd.employee_comments).trim() ? String(fd.employee_comments).trim() : '';
+    if (ec) return ec;
+    return dutyChainStepComments(fd, ['employee']);
+  }
+  if (role === 'rm') return dutyChainStepComments(fd, ['reporting_manager', 'supervisor']);
+  if (role === 'gm') {
+    var gc = fd.gm_comments != null && String(fd.gm_comments).trim() ? String(fd.gm_comments).trim() : '';
+    if (gc) return gc;
+    return dutyChainStepComments(fd, ['general_manager']);
+  }
+  if (role === 'hr') {
+    var hc = String(fd.hr_comments || fd.hr_remarks || '').trim();
+    if (hc) return hc;
+    return dutyChainStepComments(fd, ['hr_head_office']);
+  }
+  return '';
+}
+
+function dutyUpdatePerSignerComments(fd) {
+  if (fd && typeof fd === 'object') window.__dutyHydratedFd = fd;
+  fd = window.__dutyHydratedFd;
+  if (!fd) return;
+  var map = [
+    ['dutySigCommentEmployee', 'employee', 'Comment from employee'],
+    ['dutySigCommentRm', 'rm', 'Comment from reporting manager'],
+    ['dutySigCommentGm', 'gm', 'Comment from general manager'],
+    ['dutySigCommentHr', 'hr', 'Comment from HR (head office)'],
+  ];
+  for (var i = 0; i < map.length; i++) {
+    var el = document.getElementById(map[i][0]);
+    if (!el) continue;
+    var txt = dutySignerCommentText(fd, map[i][1]);
+    if (txt) {
+      el.textContent = txt;
+      el.setAttribute('aria-label', map[i][2]);
+      el.classList.add('is-visible');
+      el.removeAttribute('hidden');
+    } else {
+      el.textContent = '';
+      el.removeAttribute('aria-label');
+      el.classList.remove('is-visible');
+      el.setAttribute('hidden', '');
+    }
+  }
+}
+
+/** Prefer hidden input — hydrated previews set value before async <img> decode (strip grey pad). */
+function dutySigFieldHasCapture(hiddenName,imgId){
+  var frm=document.getElementById('dutyFrm');
+  if(!frm)return false;
+  var inp=frm.elements[hiddenName];
+  if(inp&&inp.type==='hidden'){
+    var v=(inp.value||'').trim();
+    if(v.length&&(v.indexOf('data:image')===0||v.indexOf('http://')===0||v.indexOf('https://')===0||v.indexOf('/')===0))
+      return true;
+  }
+  var img=document.getElementById(imgId);
+  if(!img)return false;
+  var u=(img.getAttribute('src')||'').trim();
+  return u.length>0&&(u.indexOf('data:image')===0||u.indexOf('http://')===0||u.indexOf('https://')===0||u.indexOf('/')===0);
+}
+function refreshDutySignatureSummary(){
+  var mount=document.getElementById('dutySigSummaryBody');
+  if(!mount)return;
+  var rows=[
+    {label:'Employee signature',required:true,hidden:'employee_signature',img:'empSigImg'},
+    {label:'Reporting manager',required:false,hidden:'reporting_manager_signature',img:'rmSigImg'},
+    {label:'General manager',required:false,hidden:'gm_signature',img:'gmSigImg'},
+    {label:'HR (head office)',required:false,hidden:'hr_signature',img:'hrSigImg'}
+  ];
+  var html='';
+  rows.forEach(function(r){
+    var signed=dutySigFieldHasCapture(r.hidden,r.img);
+    var badge=signed
+      ?'<span class="duty-sig-badge duty-sig-badge--signed">Signed</span>'
+      :(r.required
+        ?'<span class="duty-sig-badge duty-sig-badge--pending">Pending</span>'
+        :'<span class="duty-sig-badge duty-sig-badge--optional">Optional</span>');
+    var val=signed?'Captured on this form':(r.required?'Required before submit':'Not captured yet — workflow may collect');
+    html+='<div class="duty-sig-summary-row"><div><span class="duty-sig-summary-label">'+r.label+'</span><div class="duty-sig-summary-value'+(signed?'':' muted')+'">'+val+'</div></div><div>'+badge+'</div></div>';
+  });
+  mount.innerHTML=html;
+  try { dutyUpdatePerSignerComments(window.__dutyHydratedFd); } catch (e) {}
+}
+(function(){
+  var df=document.getElementById('dutyFrm');
+  if(df)df.addEventListener('hrSignaturePreviewApplied',function(){refreshDutySignatureSummary();});
+})();
+refreshDutySignatureSummary();
+
+/** When viewing a saved submission (?edit=), show steps 1+2 in one scroll instead of the wizard. */
+function dutyApplySubmittedSinglePageView(){
+  document.body.classList.add('duty-submitted-single-page');
+  var p1=document.getElementById('step1Panel'),p2=document.getElementById('step2Panel');
+  if(p1)p1.classList.add('active');
+  if(p2)p2.classList.add('active');
+}
 
 function goToStep2(){
   document.getElementById('step1Panel').classList.remove('active');
@@ -370,8 +948,10 @@ function goToStep2(){
   document.getElementById('step2Badge').classList.remove('locked');
   document.getElementById('connector1').classList.add('done');
   document.getElementById('step2Panel').scrollIntoView({behavior:'smooth',block:'start'});
+  refreshDutySignatureSummary();
 }
 function goToStep1(){
+  cancelInlineSig();
   document.getElementById('step2Panel').classList.remove('active');
   document.getElementById('step1Panel').classList.add('active');
   document.getElementById('submitBar').style.display='none';
@@ -380,39 +960,137 @@ function goToStep1(){
   document.getElementById('step2Badge').className='step-item locked';
   document.getElementById('connector1').classList.remove('done');
   document.getElementById('step1Panel').scrollIntoView({behavior:'smooth',block:'start'});
-}
-function closeSuccessBackToForm(){
-  document.getElementById('successModal').classList.remove('show');
-  goToStep1();
-  const btn=document.querySelector('#dutyFrm .btn-submit');
-  if(btn){btn.disabled=false;btn.innerHTML='<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> Submit Form'}
+  refreshDutySignatureSummary();
 }
 
 let pad=null,target=null;
-const bg=document.getElementById('sigBg'),cv=document.getElementById('sigCanvas');
-const sigCfg={employee:{prev:'empSigPrev',img:'empSigImg',data:'empSigData',rm:'empSigRm',title:'Employee Signature'},gm:{prev:'gmSigPrev',img:'gmSigImg',data:'gmSigData',rm:'gmSigRm',title:'GM Signature'},hr:{prev:'hrSigPrev',img:'hrSigImg',data:'hrSigData',rm:'hrSigRm',title:'HR Signature'}};
+const sigCfg={employee:{prev:'empSigPrev',img:'empSigImg',data:'empSigData',rm:'empSigRm'},rm:{prev:'rmSigPrev',img:'rmSigImg',data:'rmSigData',rm:'rmSigRm'},gm:{prev:'gmSigPrev',img:'gmSigImg',data:'gmSigData',rm:'gmSigRm'},hr:{prev:'hrSigPrev',img:'hrSigImg',data:'hrSigData',rm:'hrSigRm'}};
 
-function openSig(t){target=t;const c=sigCfg[t];if(!c)return;document.getElementById('sigTitle').textContent=c.title;bg.classList.add('open');document.body.style.overflow='hidden';requestAnimationFrame(()=>{const r=window.devicePixelRatio||1,w=cv.offsetWidth;cv.width=w*r;cv.height=180*r;cv.getContext('2d').scale(r,r);cv.style.height='180px';if(pad)pad.off();pad=new SignaturePad(cv,{backgroundColor:'rgb(250,250,250)',penColor:'#0d1f14',minWidth:1.2,maxWidth:2.8})})}
-function closeSig(){bg.classList.remove('open');document.body.style.overflow='';target=null}
-function clearModalPad(){if(pad)pad.clear()}
-function applySig(){if(!pad||pad.isEmpty()){alert('Please draw your signature first.');return}const url=pad.toDataURL('image/png'),c=sigCfg[target];if(!c)return;const img=document.getElementById(c.img),ph=document.querySelector('#'+c.prev+' .sig-ph'),inp=document.getElementById(c.data),rm=document.getElementById(c.rm);if(img){img.src=url;img.style.display='block'}if(ph)ph.style.display='none';if(inp)inp.value=url;if(rm)rm.style.display='inline-flex';closeSig()}
-function rmSig(t){const c=sigCfg[t];if(!c)return;const img=document.getElementById(c.img),ph=document.querySelector('#'+c.prev+' .sig-ph'),inp=document.getElementById(c.data),rm=document.getElementById(c.rm);if(img){img.src='';img.style.display='none'}if(ph)ph.style.display='block';if(inp)inp.value='';if(rm)rm.style.display='none'}
-function clearAllSigs(){['employee','gm','hr'].forEach(rmSig)}
-bg.addEventListener('click',e=>{if(e.target===bg)closeSig()});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&bg.classList.contains('open'))closeSig()});
+function teardownInlinePad(){if(pad){try{pad.off()}catch(e){}pad=null}}
+
+function showAllSigActionRows(){
+  document.querySelectorAll('#dutyFrm .sig-actions').forEach(function(row){row.style.display='flex'});
+}
+
+function cancelInlineSig(){
+  if(!target)return;
+  var c=sigCfg[target];
+  var box=c?document.getElementById(c.prev):null;
+  teardownInlinePad();
+  if(box){
+    var ed=box.querySelector('.sig-editor'),disp=box.querySelector('.sig-display');
+    if(ed)ed.hidden=true;
+    if(disp)disp.style.display='flex';
+    box.classList.remove('sig-box-editing');
+  }
+  showAllSigActionRows();
+  target=null;
+}
+
+function openSig(t){
+  cancelInlineSig();
+  var c=sigCfg[t];
+  if(!c)return;
+  var box=document.getElementById(c.prev);
+  if(!box)return;
+  var canvas=box.querySelector('.sig-inline-canvas');
+  var ed=box.querySelector('.sig-editor');
+  var disp=box.querySelector('.sig-display');
+  if(!canvas||!ed||!disp)return;
+  target=t;
+  disp.style.display='none';
+  ed.hidden=false;
+  box.classList.add('sig-box-editing');
+  document.querySelectorAll('#dutyFrm .sig-actions').forEach(function(row){row.style.display='none'});
+  requestAnimationFrame(function(){
+    var r=window.devicePixelRatio||1;
+    var w=Math.max(220,Math.floor(box.getBoundingClientRect().width-20));
+    var h=140;
+    canvas.width=Math.floor(w*r);
+    canvas.height=Math.floor(h*r);
+    canvas.style.width='100%';
+    canvas.style.height=h+'px';
+    var ctx=canvas.getContext('2d');
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.scale(r,r);
+    teardownInlinePad();
+    pad=new SignaturePad(canvas,{backgroundColor:'rgba(0,0,0,0)',penColor:'#0d1f14',minWidth:1.2,maxWidth:2.8});
+  });
+}
+
+function clearInlinePad(){if(pad)pad.clear()}
+
+function applySig(){
+  if(!pad||pad.isEmpty()){alert('Please draw your signature first.');return}
+  var url=pad.toDataURL('image/png'),c=sigCfg[target];
+  if(!c)return;
+  var box=document.getElementById(c.prev);
+  if(!box)return;
+  var img=document.getElementById(c.img),ph=box.querySelector('.sig-ph'),inp=document.getElementById(c.data),rm=document.getElementById(c.rm);
+  if(img){img.src=url;img.style.display='block'}
+  if(ph)ph.style.display='none'
+  if(inp)inp.value=url
+  if(rm)rm.style.display='inline-flex'
+  box.querySelector('.sig-editor').hidden=true;
+  box.querySelector('.sig-display').style.display='flex';
+  box.classList.remove('sig-box-editing');
+  teardownInlinePad();
+  showAllSigActionRows();
+  target=null;
+  refreshDutySignatureSummary();
+}
+
+function rmSig(t){
+  if(target===t)cancelInlineSig();
+  var c=sigCfg[t];if(!c)return;
+  var box=document.getElementById(c.prev);
+  if(!box)return;
+  var img=document.getElementById(c.img),ph=box.querySelector('.sig-ph'),inp=document.getElementById(c.data),rm=document.getElementById(c.rm);
+  if(img){img.src='';img.style.display='none'}
+  if(ph)ph.style.display='block'
+  if(inp)inp.value=''
+  if(rm)rm.style.display='none'
+  refreshDutySignatureSummary();
+}
+
+function clearAllSigs(){cancelInlineSig();['employee','rm','gm','hr'].forEach(rmSig)}
+
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'&&target)cancelInlineSig();
+});
+
+(function(){var fid='dutyFrm';if(!window.HrGenericFormEdit)return;var o=openSig,r=rmSig;openSig=function(t){if(!HrGenericFormEdit.canModifySig(fid,t))return;return o(t);};rmSig=function(t){if(!HrGenericFormEdit.canModifySig(fid,t))return;return r(t);};})();
 
 document.getElementById('dutyFrm').addEventListener('submit',async e=>{
   e.preventDefault();
-  const fd=new FormData(e.target),data=Object.fromEntries(fd.entries());
+  const frm=document.getElementById('dutyFrm');
+  const fd=new FormData(frm),data=Object.fromEntries(fd.entries());
   data.form_type='duty_resumption';
-  const btn=e.target.querySelector('.btn-submit');
-  btn.disabled=true;btn.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="spin"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Submitting…';
+  const btn=document.querySelector('#submitBar .btn-submit');
+  if(btn){btn.disabled=true;btn.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="spin"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Submitting…'}
   try{const res=await fetch('/hr/api/submit',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.getItem('access_token')},body:JSON.stringify(data)});const r=await res.json();
-  if(r.success){document.getElementById('submissionId').textContent=r.submission_id;document.getElementById('successModal').classList.add('show')}
-  else{alert('Error: '+(r.error||'Unknown'));btn.disabled=false;btn.innerHTML='<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> Submit Form'}
-  }catch(err){alert('Network error: '+err.message);btn.disabled=false;btn.innerHTML='<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> Submit Form'}
+  if(r.success){window.__hrLastHrSubmissionId=r.submission_id;document.getElementById('submissionId').textContent=r.submission_id;document.getElementById('successModal').classList.add('show')}
+  else{alert('Error: '+(r.error||'Unknown'));if(btn){btn.disabled=false;btn.innerHTML='Submit Form'}}
+  }catch(err){alert('Network error: '+err.message);if(btn){btn.disabled=false;btn.innerHTML='Submit Form'}}
 });
 </script>
+  <script src="{{ url_for('static', filename='js/hr_generic_form_edit.js') }}"></script>
+  <script>
+    HrGenericFormEdit.attach({
+      formId: 'dutyFrm',
+      moduleTypes: ['hr_duty_resumption'],
+      submitBarSelector: '#submitBar',
+      privilegedFieldNames: ['reporting_manager_signature', 'gm_signature', 'hr_signature', 'line_manager_remarks'],
+      onEnterEditUi: function () {
+        dutyApplySubmittedSinglePageView();
+        /* Submit bar visibility comes from applyHydrationLocksAndBanner (save vs read-only); do not force like goToStep2(). */
+      },
+      afterPopulate: function (_payload, fd) {
+        window.__dutyHydratedFd = fd || null;
+        refreshDutySignatureSummary();
+      },
+    });
+  </script>
   <script src="{{ url_for('static', filename='api-client.js') }}"></script>
   <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 </body>

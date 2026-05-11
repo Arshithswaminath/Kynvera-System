@@ -372,6 +372,7 @@
     /* Section anchors: clear scroll target under fixed nav + mobile rail */
     #section-overview,
     #section-users,
+    #section-tickets,
     #section-documents,
     #section-notification-settings {
       scroll-margin-top: calc(var(--main-nav-h) + 0.75rem);
@@ -541,6 +542,17 @@
       appearance: none;
     }
     .admv3-pill-btn:hover { background: #d9f0e5; border-color: #125435; }
+    a.admv3-pill-btn { text-decoration: none; }
+    .admv3-pill-btn--primary {
+      background: linear-gradient(135deg, #125435, #1a7a4d);
+      color: #fff;
+      border-color: #0f3d26;
+    }
+    .admv3-pill-btn--primary:hover {
+      background: linear-gradient(135deg, #0f3d26, #155a36);
+      border-color: #0a2918;
+      color: #fff;
+    }
     .admv3-pill-select {
       display: block;
       margin: 0;
@@ -634,14 +646,491 @@
       display: none;
     }
 
-    /* ── Operator cards grid ────────────────────────────────── */
+    /* ── Operator cards grid (auto-fit: incomplete rows stretch to fill width) ── */
     .admv3-op-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 0.75rem;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+      gap: 1rem;
+      align-items: stretch;
     }
-    @media (max-width: 1200px) { .admv3-op-grid { grid-template-columns: 1fr 1fr; } }
-    @media (max-width: 700px)  { .admv3-op-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 900px) {
+      .admv3-op-grid {
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+        gap: 0.92rem;
+      }
+    }
+    @media (max-width: 700px) {
+      .admv3-op-grid {
+        grid-template-columns: 1fr;
+        gap: 0.85rem;
+      }
+    }
+
+    /* Dashboard people overview (counts only — manage in Users module) */
+    #section-users .admv-dash-people-body { padding: 0 1rem 1.05rem !important; }
+    .admv-dash-people-lede {
+      font-size: 0.88rem;
+      color: var(--text-muted, #64748b);
+      margin: 0 0 1rem;
+      line-height: 1.45;
+      max-width: 56ch;
+    }
+    .admv-dash-people-metrics {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
+      gap: 0.85rem;
+    }
+    .admv-dash-pm-card {
+      background: linear-gradient(135deg, #f8faf8 0%, #eff7f3 100%);
+      border: 1.5px solid #e2ede8;
+      border-radius: 12px;
+      padding: 0.95rem 1rem;
+    }
+    .admv-dash-pm-val {
+      font-size: 1.72rem;
+      font-weight: 800;
+      color: var(--accent-700, #125435);
+      line-height: 1.12;
+      letter-spacing: -0.03em;
+    }
+    .admv-dash-pm-val-sm { font-size: 1.35rem; }
+    .admv-dash-pm-lbl {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #587569;
+      margin-top: 0.4rem;
+    }
+    .admv-dash-pm-sub {
+      font-size: 0.72rem;
+      color: #94a3b8;
+      margin-top: 0.28rem;
+      line-height: 1.35;
+    }
+
+    /* ── Admin: Service tickets workbench (dashboard) ─────────────────── */
+    .adm-dash-tickets {
+      border: 1.5px solid #dbe7e3;
+      background: linear-gradient(180deg, #ffffff 0%, #fafdfc 42%, #f4faf7 100%);
+      box-shadow: 0 6px 22px -8px rgba(18,84,53,0.12);
+    }
+    .adm-dash-tk-hd {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+      padding: 1rem 1.1rem 0.75rem;
+      border-bottom: 1px solid #e5efe9;
+      background: linear-gradient(135deg, #f8fffc 0%, #eef7f3 48%, #e8f3ed 100%);
+      border-radius: 12px 12px 0 0;
+    }
+    .adm-dash-tk-hd-left {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      min-width: 0;
+      flex: 1;
+    }
+    .adm-dash-tk-ico-wrap {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(145deg, #125435 0%, #1a7a52 100%);
+      color: #fff;
+      flex-shrink: 0;
+      box-shadow: 0 4px 12px rgba(18,84,53,0.22);
+    }
+    .adm-dash-tk-title {
+      margin: 0;
+      font-size: 1.02rem;
+      font-weight: 800;
+      color: var(--accent-900, #0c1f17);
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+    }
+    .adm-dash-tk-sub {
+      margin: 0.35rem 0 0;
+      font-size: 0.8rem;
+      color: var(--text-muted, #64748b);
+      line-height: 1.4;
+      max-width: 48ch;
+    }
+    .adm-dash-tk-hd-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+      align-items: center;
+      justify-content: flex-end;
+    }
+    .adm-dash-tk-body { padding: 1rem 1.1rem 1.08rem !important; }
+    .adm-dash-tk-unavail {
+      font-size: 0.84rem;
+      color: var(--text-muted);
+      padding: 0.5rem 0 0;
+    }
+    .adm-dash-tk-attention {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.55rem;
+      padding: 0.65rem 0.85rem;
+      margin-bottom: 0.95rem;
+      border-radius: 10px;
+      border: 1.5px solid #fecaca;
+      background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+      font-size: 0.82rem;
+      line-height: 1.42;
+      color: #92400e;
+    }
+    .adm-dash-tk-attention strong { color: #b45309; }
+    /* Four KPI tiles — below active pipeline in the left column (same .adm-dash-tk-stat-card style) */
+    .adm-dash-tk-metrics-row {
+      margin-bottom: 0.75rem;
+    }
+    .adm-dash-tk-split-nav .adm-dash-tk-metrics-row {
+      margin-bottom: 0;
+    }
+    .adm-dash-tk-split-nav .adm-dash-tk-metrics {
+      align-items: stretch;
+    }
+    .adm-dash-tk-split-nav .adm-dash-tk-stat-card {
+      min-height: 5.65rem;
+      box-sizing: border-box;
+    }
+    .adm-dash-tk-metrics {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+      gap: 0.65rem;
+      margin-bottom: 0;
+    }
+    .adm-dash-tk-metrics-row .adm-dash-tk-metrics {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    @media (max-width: 480px) {
+      .adm-dash-tk-metrics-row .adm-dash-tk-metrics {
+        grid-template-columns: 1fr;
+      }
+    }
+    .adm-dash-tk-lead-card {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 0.75rem 1rem;
+      align-items: center;
+      padding: 0.82rem 0.92rem;
+      border-radius: 12px;
+      border: 1.5px solid #c9e9d9;
+      background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 120%);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.85);
+      min-width: 0;
+    }
+    @media (max-width: 520px) {
+      .adm-dash-tk-lead-card { grid-template-columns: 1fr; }
+    }
+    .adm-dash-tk-lead-val-wrap { min-width: 0; }
+    .adm-dash-tk-lead-val {
+      font-size: 2rem;
+      font-weight: 800;
+      line-height: 1;
+      color: var(--accent-700, #125435);
+      letter-spacing: -0.04em;
+    }
+    .adm-dash-tk-lead-lbl {
+      font-size: 0.73rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #0f766e;
+      margin-top: 0.35rem;
+    }
+    .adm-dash-tk-lead-meta {
+      font-size: 0.78rem;
+      color: #576e68;
+      margin-top: 0.28rem;
+    }
+    .adm-dash-tk-bar-wrap {
+      height: 6px;
+      border-radius: 99px;
+      background: rgba(18,84,53,0.12);
+      overflow: hidden;
+      margin-top: 0.42rem;
+    }
+    .adm-dash-tk-bar-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: 99px;
+      background: linear-gradient(90deg, #16a34a, #059669);
+      transition: width 0.45s cubic-bezier(.4,.14,.22,.99);
+    }
+    .adm-dash-tk-stat-card {
+      display: block;
+      text-decoration: none;
+      border-radius: 10px;
+      border: 1.5px solid #e8ede9;
+      background: #fff;
+      padding: 0.58rem 0.72rem;
+      transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+    }
+    .adm-dash-tk-stat-card:hover {
+      transform: translateY(-1px);
+      border-color: rgba(18,84,53,0.28);
+      box-shadow: 0 4px 14px rgba(18,84,53,0.08);
+    }
+    .adm-dash-tk-stat-val {
+      font-size: 1.35rem;
+      font-weight: 800;
+      color: #134e42;
+      line-height: 1.1;
+    }
+    .adm-dash-tk-stat-card--pulse .adm-dash-tk-stat-val { color: #b91c1c; }
+    .adm-dash-tk-stat-lbl {
+      font-size: 0.62rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #6b8178;
+      margin-top: 0.25rem;
+    }
+    .adm-dash-tk-stat-hint {
+      font-size: 0.65rem;
+      color: #94a3b8;
+      margin-top: 0.2rem;
+      line-height: 1.35;
+    }
+    /* Left: shortcuts + active pipeline stacked. Right: recently updated. */
+    .adm-dash-tk-split-nav {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      min-width: 0;
+    }
+    .adm-dash-tk-split-nav .adm-dash-tk-lead-card {
+      margin-bottom: 0;
+    }
+    .adm-dash-tk-split-row {
+      display: grid;
+      grid-template-columns: minmax(248px, 0.48fr) minmax(0, 1fr);
+      gap: 1rem 1.35rem;
+      align-items: start;
+      margin-top: 0.82rem;
+      padding-top: 0.82rem;
+      border-top: 1px dashed #dfe8e4;
+    }
+    .adm-dash-tk-split-row .adm-dash-tk-quick {
+      margin-top: 0;
+      padding-top: 0;
+      border-top: none;
+    }
+    .adm-dash-tk-split-row .adm-dash-tk-rec {
+      margin-top: 0;
+    }
+    .adm-dash-tk-split-rec {
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .adm-dash-tk-split-rec > .adm-dash-tk-rec {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+    }
+    .adm-dash-tk-split-rec .adm-dash-tk-rec-hd {
+      flex-shrink: 0;
+    }
+    /* Scroll the ticket grid; height capped to left column via JS — scrollbar hidden */
+    .adm-dash-tk-split-rec .adm-dash-tk-rec-list {
+      flex: 1;
+      min-height: 0;
+      max-height: none;
+      overflow-y: auto;
+      overflow-x: hidden;
+      overscroll-behavior: contain;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+    .adm-dash-tk-split-rec .adm-dash-tk-rec-list::-webkit-scrollbar {
+      width: 0;
+      height: 0;
+      background: transparent;
+    }
+    .adm-dash-tk-split-rec .adm-dash-tk-rec-row {
+      min-height: 5.65rem;
+      box-sizing: border-box;
+    }
+    @media (max-width: 900px) {
+      .adm-dash-tk-split-row {
+        grid-template-columns: 1fr;
+      }
+      .adm-dash-tk-split-rec {
+        height: auto !important;
+        max-height: none !important;
+      }
+      .adm-dash-tk-split-rec > .adm-dash-tk-rec {
+        display: block;
+        flex: none;
+        overflow: visible;
+      }
+      .adm-dash-tk-split-rec .adm-dash-tk-rec-list {
+        flex: none;
+        max-height: min(420px, 55vh);
+      }
+      .adm-dash-tk-split-rec .adm-dash-tk-rec-row {
+        min-height: 0;
+      }
+    }
+    .adm-dash-tk-quick {
+      margin-top: 0.82rem;
+      padding-top: 0.82rem;
+      border-top: 1px dashed #dfe8e4;
+    }
+    .adm-dash-tk-quick-hd {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #6b8178;
+      margin-bottom: 0.52rem;
+    }
+    .adm-dash-tk-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+    }
+    .adm-dash-tk-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.28rem;
+      padding: 0.32rem 0.72rem;
+      border-radius: 99px;
+      font-size: 0.73rem;
+      font-weight: 700;
+      text-decoration: none;
+      border: 1px solid var(--accent-200, #c0ecd4);
+      background: rgba(255,255,255,0.82);
+      color: var(--accent-700, #125435);
+    }
+    .adm-dash-tk-pill:hover {
+      background: rgba(18,84,53,0.07);
+      border-color: rgba(18,84,53,0.35);
+    }
+    .adm-dash-tk-rec {
+      margin-top: 0.85rem;
+    }
+    .adm-dash-tk-rec-hd {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 0.52rem;
+    }
+    .adm-dash-tk-rec-title {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #6b8178;
+    }
+    .adm-dash-tk-rec-list {
+      list-style: none;
+      padding: 0.65rem;
+      margin: 0;
+      border-radius: 10px;
+      border: 1.5px solid #edf2ee;
+      background: rgba(248,251,249,0.65);
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.65rem;
+      max-height: min(380px, 48vh);
+      overflow-x: hidden;
+      overflow-y: auto;
+      align-items: stretch;
+    }
+    @media (min-width: 1320px) {
+      .adm-dash-tk-split-row .adm-dash-tk-rec-list {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+    }
+    @media (max-width: 640px) {
+      .adm-dash-tk-rec-list {
+        grid-template-columns: 1fr;
+        max-height: min(420px, 55vh);
+      }
+    }
+    .adm-dash-tk-rec-row {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      padding: 0.72rem 0.8rem;
+      border: 1.5px solid #e8eeea;
+      border-radius: 10px;
+      background: #fff;
+      font-size: 0.8rem;
+      align-items: stretch;
+      min-height: 0;
+      box-shadow: 0 1px 2px rgba(18,84,53,0.04);
+    }
+    .adm-dash-tk-rec-row a.adm-dash-tk-rec-main {
+      text-decoration: none;
+      color: inherit;
+      min-width: 0;
+      flex: 1;
+      display: block;
+      min-height: 0;
+    }
+    .adm-dash-tk-rec-row a.adm-dash-tk-rec-main:hover .adm-dash-tk-rec-id {
+      text-decoration: underline;
+      color: var(--accent-700, #125435);
+    }
+    .adm-dash-tk-rec-id {
+      font-family: ui-monospace, monospace;
+      font-size: 0.72rem;
+      font-weight: 800;
+      color: var(--accent-700, #125435);
+    }
+    .adm-dash-tk-rec-title2 {
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 3;
+      overflow: hidden;
+      font-weight: 600;
+      color: var(--text, #1e293b);
+      margin-top: 0.2rem;
+      line-height: 1.38;
+      word-break: break-word;
+    }
+    .adm-dash-tk-rec-meta {
+      font-size: 0.69rem;
+      color: #94a3b8;
+      margin-top: 0.18rem;
+    }
+    .adm-dash-tk-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      justify-content: flex-start;
+      margin-top: auto;
+      padding-top: 0.15rem;
+    }
+    .adm-dash-tk-badge {
+      font-size: 0.61rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 0.2rem 0.45rem;
+      border-radius: 6px;
+      white-space: nowrap;
+      background: #f1f5f9;
+      color: #64748b;
+    }
+    .adm-dash-tk-badge--prio-high { background: #fee2e2; color: #b91c1c; }
+    .adm-dash-tk-badge--prio-critical { background: #450a0a; color: #fca5a5; }
+    .adm-dash-tk-badge--prio-medium { background: #fef9c3; color: #854d0e; }
 
     /* Team Management header: compact mobile layout */
     @media (max-width: 700px) {
@@ -684,11 +1173,15 @@
       background: #fff;
       border: 1.5px solid #e8ede8;
       border-radius: 12px;
-      padding: 1rem 1rem 0.9rem;
+      padding: 1.08rem 1.05rem 1rem;
       position: relative;
       overflow: hidden;
       transition: border-color 0.18s, box-shadow 0.18s, transform 0.18s;
       cursor: default;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      height: 100%;
     }
     .admv3-op-card:hover {
       border-color: rgba(18,84,53,0.25);
@@ -752,6 +1245,15 @@
     }
     .admv3-op-bar-label { font-size: 0.63rem; color: var(--text-muted); font-weight: 600; flex-shrink: 0; }
     .admv3-op-access { display: flex; gap: 0.2rem; flex-wrap: wrap; margin-top: 0.5rem; }
+    .admv3-op-card-actions {
+      margin-top: auto;
+      padding-top: 0.65rem;
+      border-top: 1px solid #eef0ee;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+    }
+    .admv3-op-card-actions .btn { margin: 0; font-size: 0.68rem; padding: 0.28rem 0.55rem; }
 
     /* ── Right panel header ─────────────────────────────────── */
     .admv3-rp-header {
@@ -860,34 +1362,269 @@
     }
     .admv2-ov-accent { color: var(--primary); }
 
-    /* ── Bento grid ──────────────────────────────────────────── */
+    /* ── Bento grid (desktop row 2: Document Workflow ║ Notification Automation) ─ */
     .admv2-bento {
-      display: grid;
-      grid-template-columns: minmax(0, 1.8fr) minmax(300px, 1fr);
+      /*
+        Responsive paired height: tracks viewport (dvh) — shrinks on short laptops instead of a fixed px cap.
+      */
+      --admin-paired-row-h: min(
+        max(380px, 78dvh),
+        calc(100dvh - clamp(5.75rem, 11.5vh, 10rem)),
+        min(1420px, 99dvh)
+      );
+      /* Single-column / mobile cap for workflow card */
+      --admin-sync-panel-h: min(88dvh, 920px);
+      display: flex;
+      flex-direction: column;
       gap: 1.75rem;
-      align-items: start;
+      align-items: stretch;
+      width: 100%;
+      box-sizing: border-box;
     }
     @media (max-width: 1100px) {
-      .admv2-bento { grid-template-columns: 1fr; }
+      .admv2-bento {
+        flex-direction: column;
+        gap: 1.75rem;
+        --admin-sync-panel-h: min(92dvh, 960px);
+      }
+      .admv2-bento-main {
+        order: 1;
+      }
+      #section-documents.admv2-docs-card {
+        order: 2;
+      }
+      .admv2-bento-side-top {
+        order: 3;
+      }
+      #section-notification-settings {
+        order: 4;
+      }
     }
+    @media (min-width: 1101px) {
+      .admv2-bento {
+        display: grid;
+        grid-template-columns: minmax(0, 1.8fr) minmax(260px, 1fr);
+        grid-template-rows: auto minmax(420px, var(--admin-paired-row-h));
+        gap: 1.75rem;
+        align-items: stretch;
+      }
+      .admv2-bento-main {
+        grid-column: 1;
+        grid-row: 1;
+      }
+      .admv2-bento-side-top {
+        grid-column: 2;
+        grid-row: 1;
+      }
+      #section-documents.admv2-docs-card {
+        grid-column: 1;
+        grid-row: 2;
+        min-height: 0;
+        height: 100%;
+        align-self: stretch;
+        max-height: none;
+      }
+      #section-notification-settings.users-section {
+        grid-column: 2;
+        grid-row: 2;
+        min-height: 0;
+        height: 100%;
+        align-self: stretch;
+      }
+    }
+
     .admv2-bento-main,
-    .admv2-bento-side {
+    .admv2-bento-side-top {
       display: flex;
       flex-direction: column;
       gap: 1.4rem;
       min-width: 0;
+      min-height: 0;
     }
 
-    /* Documents card: internal scroll */
+    /* Fills the stretched grid cell between Recent activity and row 2 (notification card) */
+    .neat-side-fill {
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: linear-gradient(
+        165deg,
+        rgba(248, 250, 252, 0.98) 0%,
+        rgba(236, 244, 239, 0.35) 100%
+      );
+      padding: 0.85rem 0.95rem 0.9rem;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: hidden;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72),
+        0 1px 2px rgba(15, 23, 42, 0.04);
+    }
+    .neat-side-fill-title {
+      margin: 0 0 0.55rem;
+      font-size: 0.68rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.11em;
+      color: var(--primary);
+      opacity: 0.85;
+      flex-shrink: 0;
+    }
+    .neat-side-metrics-scroll {
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: thin;
+      scrollbar-color: #cbd5e1 transparent;
+      padding-right: 2px;
+    }
+    .neat-side-metrics-scroll::-webkit-scrollbar {
+      width: 6px;
+    }
+    .neat-side-metrics-scroll::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .neat-side-metrics-scroll::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 99px;
+    }
+    .neat-side-metrics-scroll::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+    .neat-side-metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.34rem 0.38rem;
+      width: 100%;
+      min-height: 0;
+      align-items: stretch;
+    }
+    .neat-side-metric {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.18rem;
+      padding: 0.68rem 0.74rem;
+      border-radius: 11px;
+      background: rgba(255, 255, 255, 0.88);
+      border: 1px solid rgba(226, 232, 240, 0.95);
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+      min-width: 0;
+      min-height: 0;
+    }
+    .neat-side-metric--wide {
+      grid-column: 1 / -1;
+    }
+    .neat-side-metric-ico {
+      width: 1.72rem;
+      height: 1.72rem;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      font-size: 0.86rem;
+      line-height: 1;
+      flex-shrink: 0;
+      margin-bottom: 0.12rem;
+    }
+    .neat-side-metric-ico--a {
+      background: rgba(18, 84, 53, 0.12);
+    }
+    .neat-side-metric-ico--b {
+      background: hsl(211 88% 94%);
+    }
+    .neat-side-metric-ico--c {
+      background: hsl(38 90% 93%);
+    }
+    .neat-side-metric-ico--d {
+      background: hsl(145 55% 92%);
+    }
+    .neat-side-metric-ico--e {
+      background: hsl(262 52% 94%);
+    }
+    .neat-side-metric-val {
+      font-size: 1.32rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.05;
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+    }
+    .neat-side-metric-lbl {
+      font-size: 0.664rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--text-secondary);
+    }
+    .neat-side-metric-sub {
+      font-size: 0.628rem;
+      line-height: 1.35;
+      color: var(--text-muted);
+      margin-top: 0.1rem;
+    }
+    .neat-side-fill-jump {
+      align-self: flex-start;
+      flex-shrink: 0;
+      margin-top: 0.42rem;
+      padding-top: 0;
+      border: none;
+      background: none;
+      font: inherit;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--primary);
+      cursor: pointer;
+      text-decoration: underline;
+      text-underline-offset: 0.14em;
+    }
+    .neat-side-fill-jump:hover {
+      color: var(--primary-hover);
+    }
+    .neat-side-fill-jump:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 3px;
+      border-radius: 4px;
+    }
+    @media (max-width: 1100px) {
+      .neat-side-fill {
+        flex: 0 1 auto;
+        min-height: 0;
+        overflow: hidden;
+      }
+      .neat-side-metrics-scroll {
+        max-height: min(52dvh, 400px);
+      }
+    }
+    @media (min-width: 1101px) {
+      .neat-side-fill .neat-side-metrics-grid {
+        flex: 1 1 auto;
+        min-height: 0;
+        grid-auto-rows: minmax(min-content, 1fr);
+      }
+      .neat-side-fill .neat-side-metric {
+        height: 100%;
+        justify-content: center;
+      }
+    }
     .admv2-docs-card .admv2-card-body {
       padding: 0;
     }
     .admv2-docs-inner-scroll {
-      max-height: min(62vh, 640px);
-      overflow: auto;
+      overflow-x: hidden;
+      overflow-y: auto;
       -webkit-overflow-scrolling: touch;
       scrollbar-width: thin;
       scrollbar-color: #cbd5e1 transparent;
+    }
+    @media (max-width: 1100px) {
+      .admv2-docs-inner-scroll {
+        max-height: min(72dvh, 640px);
+      }
     }
     .admv2-docs-inner-scroll::-webkit-scrollbar {
       width: 8px;
@@ -896,6 +1633,56 @@
     .admv2-docs-inner-scroll::-webkit-scrollbar-track { background: transparent; }
     .admv2-docs-inner-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 99px; }
     .admv2-docs-inner-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+    /* Document Workflow: desktop row height from grid; mobile cap below */
+    #section-documents.admv2-docs-card {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      overflow: hidden;
+    }
+    @media (max-width: 1100px) {
+      #section-documents.admv2-docs-card {
+        max-height: var(--admin-sync-panel-h, min(88dvh, 920px));
+      }
+    }
+    #section-documents .admv2-card-hd {
+      flex-shrink: 0;
+    }
+    #section-documents .admv2-card-body {
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    @media (min-width: 1101px) {
+      #section-documents .admv2-card-body {
+        flex: 1 1 auto;
+      }
+    }
+    @media (max-width: 1100px) {
+      #section-documents .admv2-card-body {
+        flex: 0 1 auto;
+      }
+    }
+    #section-documents .admv2-docs-controls {
+      flex-shrink: 0;
+    }
+    #section-documents .admv2-docs-inner-scroll {
+      min-height: 0;
+      max-height: none;
+      overflow-x: hidden;
+      overflow-y: auto;
+    }
+    @media (min-width: 1101px) {
+      #section-documents .admv2-docs-inner-scroll {
+        flex: 1 1 auto;
+      }
+    }
+    @media (max-width: 1100px) {
+      #section-documents .admv2-docs-inner-scroll {
+        flex: 0 1 auto;
+      }
+    }
 
     /* Documents controls bar */
     .admv2-docs-controls {
@@ -910,13 +1697,27 @@
     }
     .admv2-docs-bulk { display: flex; align-items: center; gap: 0.75rem; }
 
-    /* Single scrollport on .admv2-docs-inner-scroll — wide table scrolls sideways here */
+    /* Documents table: comfortable min width; horizontal scroll inside wrapper */
     .admv2-docs-inner-scroll .table-scroll-wrapper {
       border: none;
       border-radius: 0;
       box-shadow: none;
-      overflow-x: visible;
-      min-width: min-content;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: thin;
+      scrollbar-color: #cbd5e1 #f8fafc;
+      min-width: 0;
+    }
+    .admv2-docs-inner-scroll .table-scroll-wrapper::-webkit-scrollbar {
+      height: 8px;
+    }
+    .admv2-docs-inner-scroll .table-scroll-wrapper::-webkit-scrollbar-track {
+      background: #f8fafc;
+      border-radius: 4px;
+    }
+    .admv2-docs-inner-scroll .table-scroll-wrapper::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
     }
     .admv2-docs-inner-scroll .documents-table th {
       position: sticky;
@@ -1185,16 +1986,71 @@
     }
     .admv2-dark-btn-ghost:hover { background: rgba(255,255,255,0.09); color: #fff; }
 
-    /* Compact notification card inside bento side */
-    .admv2-bento-side .users-section { margin-bottom: 0; border-radius: 16px; }
-
     /* ── Notification section polished wrapper ─────────────── */
+    /* Mobile: page scroll. Desktop paired row: fills grid cell; scroll in .notif-settings-scroll */
     #section-notification-settings.users-section {
+      margin-bottom: 0;
       background: #fff;
       border: 1px solid #e4eae4;
       border-radius: 16px;
       box-shadow: 0 1px 3px rgba(15,23,42,0.04), 0 4px 16px -4px rgba(15,23,42,0.06);
-      padding: 1.15rem 1.2rem 1.4rem;
+      padding: 1.15rem 1.2rem 0.85rem;
+      display: flex;
+      flex-direction: column;
+    }
+    #section-notification-settings .notif-settings-scroll {
+      flex: 0 1 auto;
+      overflow: visible;
+    }
+    @media (max-width: 1100px) {
+      #section-notification-settings.users-section {
+        overflow: visible;
+      }
+      #section-notification-settings .notif-settings-scroll {
+        overflow: visible;
+      }
+    }
+    @media (min-width: 1101px) {
+      #section-notification-settings.users-section {
+        overflow: hidden;
+        padding-bottom: 0;
+      }
+      #section-notification-settings .notif-settings-scroll {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-x: hidden;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin;
+        scrollbar-color: #cbd5e1 transparent;
+        padding-bottom: 0.85rem;
+        /* Let inner column fill viewport so the foot can sit at the bottom when content is short */
+        display: flex;
+        flex-direction: column;
+      }
+      #section-notification-settings .notif-settings-scroll::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      #section-notification-settings .notif-settings-scroll::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      #section-notification-settings .notif-settings-scroll::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 99px;
+      }
+      #section-notification-settings .notif-settings-scroll::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+      }
+      #section-notification-settings .notif-settings-inner {
+        flex: 1 1 auto;
+        min-height: 100%;
+        display: flex;
+        flex-direction: column;
+      }
+      #section-notification-settings .notif-settings-foot {
+        margin-top: auto;
+      }
     }
     #section-notification-settings .section-header {
       display: flex;
@@ -1205,6 +2061,7 @@
       margin-bottom: 0.55rem;
       padding-bottom: 0.65rem;
       border-bottom: 1px solid #eef0ee;
+      flex-shrink: 0;
     }
     #section-notification-settings .section-title {
       font-size: 0.9rem;
@@ -1269,6 +2126,7 @@
       /* Section anchor offset — clear the fixed top nav only (no rail anymore) */
       #section-overview,
       #section-users,
+      #section-tickets,
       #section-documents,
       #section-notification-settings {
         scroll-margin-top: calc(var(--main-nav-h) + 0.75rem);
@@ -2260,7 +3118,422 @@
       padding: 1rem;
     }
     .modal.active { display: flex; }
-    
+    /* Full-viewport centered overlays (password reset): grid center beats body flex quirks; append to body in JS */
+    .modal.admin-portal-modal {
+      position: fixed !important;
+      inset: 0 !important;
+      left: 0 !important;
+      top: 0 !important;
+      right: 0 !important;
+      bottom: 0 !important;
+      width: 100vw !important;
+      max-width: none !important;
+      min-height: 100vh !important;
+      min-height: 100dvh !important;
+      margin: 0 !important;
+      z-index: 12000;
+      box-sizing: border-box;
+      align-items: center !important;
+      justify-content: center !important;
+      flex-direction: row !important;
+      place-items: center !important;
+    }
+    .modal.admin-portal-modal.active {
+      display: grid !important;
+      place-items: center !important;
+      justify-items: center !important;
+      align-items: center !important;
+      justify-content: center !important;
+      align-content: center !important;
+    }
+    .modal.admin-portal-modal .modal-content {
+      width: min(500px, calc(100vw - 2rem)) !important;
+      max-width: 500px !important;
+      margin: 0 !important;
+      justify-self: center !important;
+      align-self: center !important;
+    }
+    .modal.admin-portal-modal.admin-profile-shell .modal-content {
+      width: min(800px, calc(100vw - 2rem)) !important;
+      max-width: 800px !important;
+      max-height: min(92vh, 920px);
+      padding: 1.35rem 1.5rem 0 !important;
+      border-radius: 20px !important;
+      border: 1px solid rgba(148, 163, 184, 0.38);
+      background: linear-gradient(165deg, #ffffff 0%, #f8fafc 45%, #eef2f6 100%);
+      box-shadow:
+        0 28px 64px -24px rgba(15, 23, 42, 0.38),
+        0 0 0 1px rgba(255, 255, 255, 0.65) inset;
+    }
+    .admin-profile-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-bottom: 1.05rem;
+      padding-bottom: 1.05rem;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.28);
+    }
+    #userProfileSubtitle {
+      margin: 0;
+      font-size: 0.84rem;
+      color: #64748b;
+      font-weight: 500;
+      line-height: 1.4;
+    }
+    .admin-profile-status-pill {
+      flex-shrink: 0;
+      padding: 0.38rem 0.9rem !important;
+      border-radius: 999px !important;
+      font-size: 0.65rem !important;
+      font-weight: 750 !important;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      border: 1px solid transparent !important;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+    }
+    .admin-profile-status-pill--on {
+      background: linear-gradient(145deg, #d1fae5 0%, #a7f3d0 100%) !important;
+      color: #047857 !important;
+      border-color: rgba(16, 185, 129, 0.42) !important;
+    }
+    .admin-profile-status-pill--off {
+      background: linear-gradient(145deg, #f1f5f9 0%, #e2e8f0 100%) !important;
+      color: #64748b !important;
+      border-color: rgba(100, 116, 139, 0.35) !important;
+    }
+    .admin-profile-form .admin-profile-section {
+      margin-bottom: 0.85rem;
+      padding: 1rem 1.15rem 1.05rem;
+      border: 1px solid rgba(148, 163, 184, 0.28);
+      border-radius: 14px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(248, 250, 252, 0.88) 100%);
+      box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+    }
+    .admin-profile-form .admin-profile-section:last-of-type {
+      margin-bottom: 0.65rem;
+    }
+    .admin-profile-section h3 {
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.11em;
+      color: #64748b;
+      margin: 0 0 0.65rem;
+    }
+    .admin-profile-section h3::before {
+      content: '';
+      width: 4px;
+      height: 1.05rem;
+      border-radius: 99px;
+      flex-shrink: 0;
+      background: linear-gradient(180deg, var(--primary, #15803d), #0f5132);
+      box-shadow: 0 1px 4px rgba(21, 128, 61, 0.35);
+    }
+    .admin-profile-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.55rem 1.1rem;
+      align-items: start;
+    }
+    @media (max-width: 560px) {
+      .admin-profile-grid { grid-template-columns: 1fr; }
+    }
+    .admin-profile-form .form-group {
+      margin-bottom: 0;
+    }
+    .admin-profile-form .form-label {
+      font-size: 0.76rem;
+      font-weight: 600;
+      color: #475569;
+      margin-bottom: 0.35rem;
+      letter-spacing: 0.02em;
+    }
+    .admin-profile-form .form-control,
+    .admin-profile-form select.form-control {
+      border-radius: 10px;
+      border-color: #cbd5e1;
+      background: rgba(255, 255, 255, 0.95);
+      font-size: 0.9rem;
+      padding: 0.62rem 0.85rem;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .admin-profile-form .form-control:hover {
+      border-color: #94a3b8;
+    }
+    .admin-profile-module-grid {
+      display: grid !important;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.45rem 0.85rem !important;
+      align-items: stretch;
+    }
+    @media (max-width: 560px) {
+      .admin-profile-module-grid { grid-template-columns: 1fr; }
+    }
+    .admin-profile-module-grid .checkbox-item {
+      margin: 0;
+      padding: 0.55rem 0.7rem;
+      align-items: center;
+      gap: 0.55rem;
+      border-radius: 11px;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      background: linear-gradient(145deg, #fafbfc 0%, #f1f5f9 100%);
+      transition: border-color 0.18s, box-shadow 0.18s, background 0.18s;
+    }
+    .admin-profile-module-grid .checkbox-item:hover {
+      border-color: rgba(18, 84, 53, 0.28);
+      box-shadow: 0 3px 12px rgba(15, 23, 42, 0.06);
+    }
+    .admin-profile-module-grid .checkbox-item:has(input:checked) {
+      border-color: rgba(22, 163, 74, 0.45);
+      background: linear-gradient(145deg, #f0fdf4 0%, #dcfce7 100%);
+      box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset;
+    }
+    .admin-profile-module-grid .checkbox-item label {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: #334155;
+      line-height: 1.3;
+    }
+    .admin-profile-defaults-split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem 1rem;
+      align-items: start;
+    }
+    @media (max-width: 640px) {
+      .admin-profile-defaults-split { grid-template-columns: 1fr; }
+    }
+    .admin-profile-defaults-split > .form-group {
+      margin-bottom: 0 !important;
+      padding: 0.85rem 0.95rem;
+      border-radius: 12px;
+      border: 1px solid rgba(148, 163, 184, 0.28);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.95) 100%);
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+    }
+    .admin-profile-defaults-split textarea.form-control {
+      min-height: 4.5rem;
+      resize: vertical;
+    }
+    .admin-profile-sig-toolbar {
+      margin-top: 0.4rem;
+    }
+    .admin-profile-sig-toolbar .btn {
+      border-radius: 9px;
+      font-weight: 600;
+    }
+    .admin-profile-section--quick .admin-profile-quick {
+      gap: 0.55rem;
+      margin-top: 0.2rem;
+    }
+    .admin-profile-section--quick .admin-profile-quick .btn {
+      border-radius: 999px;
+      padding: 0.45rem 1rem;
+      font-size: 0.78rem;
+      font-weight: 600;
+      border-width: 1.5px;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+      transition: transform 0.12s ease, box-shadow 0.15s ease;
+    }
+    .admin-profile-section--quick .admin-profile-quick .btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.1);
+    }
+    .admin-profile-section--quick .admin-profile-quick .btn-reset {
+      background: linear-gradient(180deg, #fff7ed 0%, #ffedd5 100%);
+      border-color: rgba(234, 88, 12, 0.35);
+      color: #c2410c;
+    }
+    .admin-profile-section--quick .admin-profile-quick .btn-activity {
+      background: linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%);
+      border-color: rgba(37, 99, 235, 0.35);
+      color: #1d4ed8;
+    }
+    .admin-profile-section--quick .admin-profile-quick .btn-toggle {
+      background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+      border-color: rgba(71, 85, 105, 0.35);
+      color: #334155;
+    }
+    .admin-profile-hint {
+      font-size: 0.74rem;
+      color: var(--text-muted);
+      margin: 0.3rem 0 0;
+      line-height: 1.4;
+    }
+    .admin-profile-modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      gap: 0.65rem;
+      margin: 1rem -1.5rem 0;
+      padding: 1rem 1.5rem 1.2rem;
+      background: linear-gradient(180deg, rgba(241, 245, 249, 0.55) 0%, #e2e8f0 100%);
+      border-top: 1px solid rgba(148, 163, 184, 0.35);
+      border-radius: 0 0 18px 18px;
+    }
+    .admin-profile-modal-actions .btn-primary {
+      font-weight: 650;
+      padding: 0.55rem 1.35rem;
+      border-radius: 10px;
+      box-shadow: 0 2px 12px rgba(21, 128, 61, 0.25);
+    }
+    .admin-profile-modal-actions .btn-cancel {
+      border-radius: 10px;
+      font-weight: 600;
+    }
+    .admin-profile-sig-preview {
+      display: block;
+      max-height: 76px;
+      max-width: 100%;
+      margin-top: 0.4rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.35rem;
+      background: #f8fafc;
+    }
+    .admin-profile-sig-preview[hidden] { display: none !important; }
+    .admin-profile-quick {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+      margin-top: 0.45rem;
+    }
+    .admin-profile-quick .btn { font-size: 0.72rem; padding: 0.32rem 0.62rem; }
+    .admin-profile-module-note {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin: 0 0 0.55rem;
+      line-height: 1.35;
+    }
+    .admin-profile-module-note:not([hidden]) {
+      display: block !important;
+      margin: 0 0 0.65rem;
+      padding: 0.55rem 0.8rem;
+      border-radius: 10px;
+      font-weight: 500;
+      color: #1e40af;
+      background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+      border: 1px solid rgba(59, 130, 246, 0.35);
+      line-height: 1.4;
+    }
+
+    /* ── Manage profile: “Line” layout (second version) — toggled via header control ── */
+    .admin-profile-header-actions {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .admin-profile-layout-toggle {
+      flex-shrink: 0;
+      padding: 0.35rem 0.8rem;
+      font-size: 0.7rem;
+      font-weight: 650;
+      letter-spacing: 0.02em;
+      border-radius: 8px;
+      border: 1px solid #cbd5e1;
+      background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+      color: #475569;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+    }
+    .admin-profile-layout-toggle:hover {
+      background: #f1f5f9;
+      border-color: #94a3b8;
+    }
+    .modal.admin-portal-modal.admin-profile-shell.admin-profile-shell--v2 .modal-content {
+      width: min(760px, calc(100vw - 2rem)) !important;
+      max-width: 760px !important;
+      padding: 0 !important;
+      border-radius: 16px !important;
+      background: #eef1f5 !important;
+      border: 1px solid #cfd8e3 !important;
+      box-shadow: 0 22px 56px -20px rgba(15, 23, 42, 0.3) !important;
+      overflow: hidden;
+    }
+    .modal.admin-portal-modal.admin-profile-shell.admin-profile-shell--v2 .admin-profile-header {
+      margin: 0 0 0;
+      padding: 1.2rem 1.5rem 1.15rem;
+      border-bottom: 1px solid #d8dee6;
+      background: linear-gradient(180deg, #ffffff 0%, #f6f8fa 100%);
+    }
+    .modal.admin-portal-modal.admin-profile-shell.admin-profile-shell--v2 #userProfileSubtitle {
+      color: #64748b;
+    }
+    .modal.admin-portal-modal.admin-profile-shell.admin-profile-shell--v2 .admin-profile-form {
+      padding: 0 1.5rem 0.25rem;
+    }
+    .modal.admin-portal-modal.admin-profile-shell.admin-profile-shell--v2 .admin-profile-form .admin-profile-section {
+      margin-bottom: 1rem;
+      padding: 1.1rem 1.2rem;
+      border: 1px solid #dce3eb;
+      border-radius: 12px;
+      background: #ffffff;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.045);
+    }
+    .modal.admin-portal-modal.admin-profile-shell.admin-profile-shell--v2 .admin-profile-form .admin-profile-section:last-of-type {
+      margin-bottom: 0.85rem;
+    }
+    .modal.admin-portal-modal.admin-profile-shell.admin-profile-shell--v2 .admin-profile-section h3 {
+      display: block;
+      font-size: 0.92rem;
+      font-weight: 750;
+      text-transform: none;
+      letter-spacing: -0.015em;
+      color: #0f172a;
+      margin: 0 0 0.75rem;
+      padding-bottom: 0.45rem;
+      border-bottom: 2px solid var(--primary, #15803d);
+    }
+    .modal.admin-portal-modal.admin-profile-shell.admin-profile-shell--v2 .admin-profile-section h3::before {
+      display: none;
+    }
+    .modal.admin-portal-modal.admin-profile-shell.admin-profile-shell--v2 .admin-profile-module-grid {
+      grid-template-columns: 1fr !important;
+      gap: 0.32rem !important;
+    }
+    .modal.admin-portal-modal.admin-profile-shell.admin-profile-shell--v2 .admin-profile-module-grid .checkbox-item {
+      padding: 0.4rem 0.65rem;
+      border-radius: 8px;
+      border-color: #e2e8f0;
+      background: #f8fafc;
+    }
+    .modal.admin-portal-modal.admin-profile-shell.admin-profile-shell--v2 .admin-profile-module-grid .checkbox-item:has(input:checked) {
+      border-color: #34d399;
+      background: linear-gradient(90deg, #ecfdf5 0%, #f0fdf4 100%);
+    }
+    .modal.admin-portal-modal.admin-profile-shell.admin-profile-shell--v2 .admin-profile-defaults-split > .form-group {
+      background: #fafbfc;
+      border-color: #e2e8f0;
+      box-shadow: none;
+    }
+    .modal.admin-portal-modal.admin-profile-shell.admin-profile-shell--v2 .admin-profile-section--quick .admin-profile-quick .btn {
+      border-radius: 8px;
+      padding: 0.42rem 0.95rem;
+    }
+    .modal.admin-portal-modal.admin-profile-shell.admin-profile-shell--v2 .admin-profile-section--quick .admin-profile-quick .btn:hover {
+      transform: none;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+    }
+    .modal.admin-portal-modal.admin-profile-shell.admin-profile-shell--v2 .admin-profile-modal-actions {
+      margin: 0;
+      padding: 1rem 1.5rem 1.2rem;
+      border-radius: 0;
+      background: #ffffff;
+      border-top: 1px solid #d8dee6;
+    }
+    .admin-profile-layout-toggle[aria-pressed="true"] {
+      border-color: rgba(21, 128, 61, 0.45);
+      background: linear-gradient(180deg, #ecfdf5 0%, #d1fae5 100%);
+      color: #065f46;
+    }
+
     .modal-content {
       background: var(--bg-card);
       border-radius: var(--radius);
@@ -2281,11 +3554,21 @@
     .modal-header {
       margin-bottom: 1.5rem;
     }
+    .modal-header.admin-profile-header {
+      margin-bottom: 1.05rem;
+    }
     
     .modal-title {
       font-size: 1.5rem;
       font-weight: 600;
       color: var(--text-dark);
+    }
+    .admin-profile-header .modal-title {
+      margin-bottom: 0.2rem !important;
+      font-size: 1.38rem;
+      font-weight: 750;
+      letter-spacing: -0.025em;
+      color: #0f172a;
     }
     
     .form-group {
@@ -2429,6 +3712,137 @@
       border-collapse: collapse;
       font-size: 0.815rem;
     }
+    /* Document Workflow: natural column widths + horizontal scroll (narrow viewports) */
+    #section-documents .table-scroll-wrapper {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    #section-documents .documents-table {
+      min-width: 1220px;
+      width: max-content;
+      max-width: none;
+      table-layout: auto;
+    }
+    #section-documents .documents-table td {
+      word-break: normal;
+      overflow-wrap: normal;
+    }
+    #section-documents .documents-table .doc-actions.doc-actions--balanced {
+      display: grid;
+      grid-template-columns: repeat(4, max-content);
+      align-items: stretch;
+      gap: 0.22rem 0.38rem;
+      max-width: none;
+      width: max-content;
+      white-space: normal;
+    }
+    #section-documents .documents-table col.doc-col-cb { width: 40px; }
+    #section-documents .documents-table col.doc-col-id { width: 19%; }
+    #section-documents .documents-table col.doc-col-site { width: 17%; }
+    #section-documents .documents-table col.doc-col-visit { width: 78px; }
+    #section-documents .documents-table col.doc-col-user { width: 16%; }
+    #section-documents .documents-table col.doc-col-status { width: 110px; }
+    #section-documents .documents-table col.doc-col-at { width: 100px; }
+    #section-documents .documents-table col.doc-col-act { width: auto; }
+    #section-documents .documents-table th,
+    #section-documents .documents-table td {
+      padding: 0.32rem 0.42rem;
+      vertical-align: middle;
+    }
+    #section-documents .documents-table th:nth-child(6),
+    #section-documents .documents-table th:nth-child(7) {
+      white-space: normal;
+      line-height: 1.2;
+    }
+    #section-documents .documents-table .doc-id-btn {
+      max-width: none;
+      white-space: nowrap;
+    }
+    #section-documents .documents-table .user-info {
+      gap: 0.04rem;
+    }
+    #section-documents .documents-table .user-name {
+      font-size: 0.76rem;
+      line-height: 1.2;
+    }
+    #section-documents .documents-table .user-email {
+      font-size: 0.62rem;
+      line-height: 1.2;
+    }
+    #section-documents .documents-table .doc-actions .btn-download {
+      padding: 0.14rem 0.34rem;
+      font-size: 0.62rem;
+    }
+    #section-documents .documents-table .doc-actions.doc-actions--balanced .btn-sm,
+    #section-documents .documents-table .doc-actions.doc-actions--balanced .btn-download {
+      min-width: max-content;
+      white-space: nowrap;
+    }
+    #section-documents .documents-table .doc-actions.doc-actions--balanced .btn-sm {
+      padding: 0.14rem 0.34rem;
+      font-size: 0.65rem;
+    }
+    #section-documents .documents-table .module-badge--empty {
+      background: #f1f5f9;
+      color: #94a3b8;
+      font-weight: 500;
+      text-transform: none;
+    }
+    #section-documents .documents-table .doc-action-slot {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 1.5rem;
+      font-size: 0.58rem;
+      color: var(--text-muted);
+      opacity: 0.5;
+      border-radius: 4px;
+      border: 1px dashed #e2e8f0;
+      box-sizing: border-box;
+      user-select: none;
+    }
+    #section-documents .documents-table .doc-status-stack {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.22rem;
+    }
+    #section-documents .documents-table .doc-id-cell {
+      vertical-align: top;
+    }
+    #section-documents .documents-table .doc-module-line {
+      display: inline-block;
+      margin-top: 0.12rem;
+      max-width: none;
+      line-height: 1.2;
+    }
+    #section-documents .documents-table .doc-created-split {
+      display: flex;
+      flex-direction: column;
+      gap: 0.05rem;
+      line-height: 1.2;
+    }
+    #section-documents .documents-table .doc-created-date {
+      font-size: 0.72rem;
+    }
+    #section-documents .documents-table .doc-created-time {
+      font-size: 0.61rem;
+      color: var(--text-muted);
+    }
+    #section-documents .documents-table td:nth-child(3) strong {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      line-height: 1.3;
+      font-weight: 600;
+    }
+    #section-documents .documents-table .doc-supervisor-log {
+      font-size: 0.6rem;
+      color: var(--success, #15803d);
+      margin-top: 0.12rem;
+      line-height: 1.25;
+    }
     .documents-table th,
     .documents-table td {
       padding: 0.45rem 0.75rem;
@@ -2490,6 +3904,7 @@
     .module-badge.hvac { background: #e0f2fe; color: #0369a1; }
     .module-badge.civil { background: #fef9c3; color: #a16207; }
     .module-badge.cleaning { background: #fce7f3; color: #9d174d; }
+    .module-badge.hr { background: #ecfdf5; color: #047857; }
 
     .status-badge, .workflow-badge {
       display: inline-block;
@@ -3125,6 +4540,12 @@
         font-size: 0.8rem !important;
         min-width: 750px !important;
       }
+      #section-documents .documents-table {
+        min-width: 1100px !important;
+      }
+      #section-documents .table-scroll-wrapper {
+        overflow-x: auto !important;
+      }
       
       .documents-header {
         flex-direction: column !important;
@@ -3137,6 +4558,10 @@
       .documents-table th,
       .documents-table td {
         padding: 0.75rem 0.5rem !important;
+      }
+      #section-documents .documents-table th,
+      #section-documents .documents-table td {
+        padding: 0.38rem 0.35rem !important;
       }
       
       .action-buttons .btn-sm {
@@ -3520,15 +4945,18 @@
     }
     body.admin-v4 .admv2-bento.admin-v4-grid {
       gap: 1.75rem;
+      --admin-sync-panel-h: min(90dvh, 1120px);
+      --admin-paired-row-h: min(
+        max(380px, 74dvh),
+        calc(100dvh - clamp(6rem, 12.75vh, 11.75rem)),
+        min(1340px, 97dvh)
+      );
     }
     body.admin-v4 .admv2-bento-main {
       gap: 1.4rem;
     }
-    body.admin-v4 .admv2-bento-side {
+    body.admin-v4 .admv2-bento-side-top {
       gap: 1.4rem;
-    }
-    body.admin-v4 .admv2-docs-inner-scroll {
-      max-height: min(56vh, 600px);
     }
     /* V4 tab bar colour overrides — active uses brand green */
     body.admin-v4 .adm-tab-item.active,
@@ -3569,8 +4997,10 @@
   </style>
   <!-- Neat-glow styles for main content only (see .container.admin-content.admin-neat-glow) -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/admin-neat-glow.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/injz-profile-mgmt-theme.css') }}">
 </head>
 <body class="has-main-nav admin-dh-page admin-v2 admin-v4">
+  {% set active_page = 'admin' %}
   <!-- Floats outside every scroll/overflow container so position:fixed always works -->
   <button type="button" class="dh-sidebar-toggle" id="adminDhSidebarToggle" onclick="adminToggleMobileSidebar()" aria-label="Open admin menu" title="Menu">☰</button>
   <div class="dh-overlay" id="adminDhOverlay" onclick="adminCloseMobileSidebar()" aria-hidden="true"></div>
@@ -3589,7 +5019,7 @@
         <div class="dh-sb-section">
           <div class="sb-section-label">Command</div>
           <a href="#section-overview" class="sb-nav-item active" onclick="admv2ScrollTo('section-overview',this);return false;">Dashboard</a>
-          <a href="#section-users" class="sb-nav-item" onclick="admv2ScrollTo('section-users',this);return false;">Users <span class="sb-badge" id="admSbUserCount">0</span></a>
+          <a href="/admin/team-management" class="sb-nav-item">Users & Teams <span class="sb-badge" id="admSbUserCount">0</span></a>
           <a href="#section-documents" class="sb-nav-item" onclick="admv2ScrollTo('section-documents',this);return false;">Documents <span class="sb-badge" id="admSbDocCount">0</span></a>
           <a href="#section-notification-settings" class="sb-nav-item" onclick="admv2ScrollTo('section-notification-settings',this);return false;">Notifications</a>
         </div>
@@ -3637,20 +5067,20 @@
         <div>
           <div class="neat-hero-eyebrow">Admin Command Center</div>
           <h1 class="neat-hero-title">Operations Pulse <span class="neat-amp">&amp;</span> Workflow Control</h1>
-          <p class="neat-hero-desc">Manage users, monitor workflow load, and tune notifications from one streamlined dashboard.</p>
+          <p class="neat-hero-desc">Spot-check headcount below, tune workflow and notifications. Day-to-day people management lives under <strong>Users & Teams</strong>.</p>
           <div class="neat-hero-time" id="admLiveTime"></div>
           <div class="neat-hero-actions">
             <a href="/admin/mmr/" class="neat-hero-btn neat-hero-btn--solid">Open MMR Hub</a>
-            <a href="/admin/devices" class="neat-hero-btn neat-hero-btn--ghost">Manage Devices</a>
+            <a href="/admin/team-management" class="neat-hero-btn neat-hero-btn--ghost">People &amp; Teams</a>
           </div>
         </div>
         <div class="neat-kpi-grid" aria-label="Key metrics">
-          <div class="neat-kpi-card">
-            <div class="neat-kpi-ico neat-kpi-ico--pri" aria-hidden="true">👥</div>
-            <div class="neat-kpi-lbl">Active personnel</div>
-            <div class="neat-kpi-val"><span id="kpiUsers">—</span></div>
-            <div class="neat-kpi-sub">Team list (live filter)</div>
-          </div>
+            <div class="neat-kpi-card">
+              <div class="neat-kpi-ico neat-kpi-ico--pri" aria-hidden="true">👥</div>
+              <div class="neat-kpi-lbl">Staff (active)</div>
+              <div class="neat-kpi-val"><span id="kpiUsers">—</span></div>
+              <div class="neat-kpi-sub">Excluding technician-role logins</div>
+            </div>
           <div class="neat-kpi-card">
             <div class="neat-kpi-ico neat-kpi-ico--info" aria-hidden="true">📄</div>
             <div class="neat-kpi-lbl">Documents</div>
@@ -3709,90 +5139,69 @@
       <!-- ── Left: Users + Documents ── -->
       <div class="admv2-bento-main">
 
-        <!-- Users card (Active Operators style) -->
+        <!-- People overview → full management in Users module -->
         <div class="admv2-card" id="section-users">
           <div class="admv3-op-card-hd">
             <div class="admv3-op-card-hd-left">
               <svg class="admv3-op-hd-ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-              <span class="admv3-op-hd-title">Team Management</span>
+              <span class="admv3-op-hd-title">People overview</span>
             </div>
             <div class="admv3-op-card-hd-right">
-              <button type="button" class="admv3-pill-btn" onclick="setUsersStatusFilters()" title="Toggle Active/Inactive">
-                <input type="checkbox" id="statusActiveToggle" checked onchange="setUsersStatusFilters()" style="display:none;">
-                <span id="statusToggleLabel">Active</span>
-              </button>
-              <select id="usersDesignationFilter" class="admv3-pill-select" onchange="setUsersDesignationFilter(this.value)">
-                <option value="all" selected>All Roles</option>
-                <option value="supervisor">Supervisor</option>
-                <option value="operations_manager">Ops Manager</option>
-                <option value="business_development">Business Dev</option>
-                <option value="procurement">Procurement</option>
-                <option value="general_manager">Gen. Manager</option>
-              </select>
-              <form class="admv3-op-search-form" autocomplete="off" onsubmit="return false;" aria-label="Filter operators">
-                <input type="text" autocomplete="off" tabindex="-1" aria-hidden="true" class="admv3-autofill-decoy" readonly>
-                <div class="admv2-tb-search admv3-op-inline-search">
-                  <svg class="admv2-tb-search-ico" width="12" height="12" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                    <circle cx="8.5" cy="8.5" r="5.75" stroke="currentColor" stroke-width="1.75"/>
-                    <path d="M13 13L17 17" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
-                  </svg>
-                  <input type="search" id="admGlobalSearch" name="injaaz_admin_operator_filter" placeholder="Search…" class="admv2-tb-search-input"
-                    autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
-                    enterkeyhint="search" inputmode="search"
-                    data-lpignore="true" data-1p-ignore="true" data-form-type="other"
-                    oninput="admv2SearchFilter(this.value)">
-                </div>
-              </form>
+              <a href="/admin/team-management" class="admv3-pill-btn admv3-pill-btn--primary" title="Staff roster, technician CSV, passwords, profiles">Open Users module →</a>
             </div>
           </div>
-          <div class="admv2-card-body">
-            <!-- Operator grid -->
-            <div id="admv2UsersGrid" class="admv3-op-grid">
-              <p class="admv2-placeholder-text">Loading…</p>
-            </div>
-            <!-- Hidden table kept for JS compatibility -->
-            <div id="usersTableContainer" style="display:none;"></div>
-          </div>
-        </div>
-
-        <!-- Documents card -->
-        <div class="admv2-card admv2-docs-card" id="section-documents">
-          <div class="admv2-card-hd">
-            <div>
-              <h2 class="admv2-card-title">Document Workflow</h2>
-            </div>
-            <div class="admv2-card-controls">
-              <select id="documentsFilter" class="dashboard-filter" onchange="setDocumentsFilter(this.value)">
-                <option value="active" selected>Active</option>
-                <option value="completed">Completed</option>
-                <option value="closed">Closed</option>
-                <option value="rejected">Rejected</option>
-              </select>
-              <button class="btn btn-refresh" onclick="loadDocuments()">↻ Refresh</button>
-            </div>
-          </div>
-          <div class="admv2-card-body">
-            <!-- Controls bar (select all + bulk actions) -->
-            <div class="admv2-docs-controls">
-              <div class="admv2-docs-bulk">
-                <div class="checkbox-select-all" style="margin-right:0;">
-                  <input type="checkbox" id="selectAllDocuments" onchange="toggleSelectAllDocuments()">
-                  <label for="selectAllDocuments">Select All</label>
-                </div>
-                <button class="btn btn-outline-danger" onclick="closeSelectedDocuments()" id="closeSelectedBtn" disabled>Close Selected</button>
+          <div class="admv2-card-body admv-dash-people-body">
+            <p class="admv-dash-people-lede">
+              Detailed staff cards, technician roster, Excel imports, passwords, profiles, and <strong>Create login</strong> live in the <strong>Users</strong> module. This panel is a snapshot only.
+            </p>
+            <div class="admv-dash-people-metrics">
+              <div class="admv-dash-pm-card">
+                <div class="admv-dash-pm-val" id="dashPeopleStaffActive">—</div>
+                <div class="admv-dash-pm-lbl">Active staff</div>
+                <div class="admv-dash-pm-sub">Accounts excluding technician designation</div>
+              </div>
+              <div class="admv-dash-pm-card">
+                <div class="admv-dash-pm-val" id="dashPeopleTechRoster">—</div>
+                <div class="admv-dash-pm-lbl">Technician roster</div>
+                <div class="admv-dash-pm-sub">Active field technicians (Employees table)</div>
+              </div>
+              <div class="admv-dash-pm-card">
+                <div class="admv-dash-pm-val admv-dash-pm-val-sm" id="dashPeopleTechLogins">—</div>
+                <div class="admv-dash-pm-lbl">Technician logins</div>
+                <div class="admv-dash-pm-sub">Accounts for ticketing &amp; module access</div>
               </div>
             </div>
-            <!-- Scrollable table area -->
-            <div class="admv2-docs-inner-scroll">
-              <div id="documentsTableContainer"><p style="padding:1rem;color:var(--text-muted);">Loading documents…</p></div>
+          </div>
+          <!-- Hidden compat: legacy table renderer + manage profile tooling -->
+          <div id="usersTableContainer" style="display:none;"></div>
+        </div>
+
+        <!-- Service tickets / work orders (pipeline + quick actions) -->
+        <div class="admv2-card adm-dash-tickets" id="section-tickets">
+          <div class="adm-dash-tk-hd">
+            <div class="adm-dash-tk-hd-left">
+              <div class="adm-dash-tk-ico-wrap" aria-hidden="true">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+              </div>
+              <div>
+                <h2 class="adm-dash-tk-title">Service tickets</h2>
+                <p class="adm-dash-tk-sub">Live pipeline: routing queue, field execution, verification, and escalation — jump into the board or open a work order.</p>
+              </div>
             </div>
+            <div class="adm-dash-tk-hd-actions">
+              <a href="/tickets/" class="admv3-pill-btn admv3-pill-btn--primary">Ticketing board →</a>
+              <a href="/tickets/new" class="admv3-pill-btn">＋ New ticket</a>
+            </div>
+          </div>
+          <div class="admv2-card-body adm-dash-tk-body" id="dashTicketsBody">
+            <p class="adm-dash-tk-unavail" id="dashTicketsPlaceholder">Loading ticket summary…</p>
           </div>
         </div>
 
       </div><!-- /bento-main -->
 
-      <!-- ── Right: unified panel ── -->
-      <div class="admv2-bento-side">
+      <!-- ── Right top: activity + Module Pulse (paired row with notification below) ── -->
+      <div class="admv2-bento-side-top">
 
         <div class="neat-activity neat-anim" id="neatActivityPanel" style="animation-delay:0.1s" aria-live="polite">
           <div class="neat-activity-hd">
@@ -3806,6 +5215,45 @@
             <li class="neat-activity-row"><span class="neat-activity-t" style="color:var(--neat-muted)">Loading…</span></li>
           </ul>
         </div>
+
+        <aside class="neat-side-fill" aria-label="Organization snapshot">
+          <p class="neat-side-fill-title">Organization snapshot</p>
+          <div class="neat-side-metrics-scroll" role="region" aria-label="Metric totals">
+          <div class="neat-side-metrics-grid" role="group" aria-label="Key totals">
+            <div class="neat-side-metric">
+              <span class="neat-side-metric-ico neat-side-metric-ico--a" aria-hidden="true">👤</span>
+              <span class="neat-side-metric-val" id="sideMetricUsers">—</span>
+              <span class="neat-side-metric-lbl">Users</span>
+              <span class="neat-side-metric-sub">Total accounts</span>
+            </div>
+            <div class="neat-side-metric">
+              <span class="neat-side-metric-ico neat-side-metric-ico--b" aria-hidden="true">👥</span>
+              <span class="neat-side-metric-val" id="sideMetricEmployees">—</span>
+              <span class="neat-side-metric-lbl">Employees</span>
+              <span class="neat-side-metric-sub">Active employee designation</span>
+            </div>
+            <div class="neat-side-metric">
+              <span class="neat-side-metric-ico neat-side-metric-ico--c" aria-hidden="true">📋</span>
+              <span class="neat-side-metric-val" id="sideMetricHrForms">—</span>
+              <span class="neat-side-metric-lbl">HR forms</span>
+              <span class="neat-side-metric-sub">All HR submissions</span>
+            </div>
+            <div class="neat-side-metric">
+              <span class="neat-side-metric-ico neat-side-metric-ico--d" aria-hidden="true">🔍</span>
+              <span class="neat-side-metric-val" id="sideMetricInspections">—</span>
+              <span class="neat-side-metric-lbl">Inspection forms</span>
+              <span class="neat-side-metric-sub">HVAC · Civil · Cleaning</span>
+            </div>
+            <div class="neat-side-metric neat-side-metric--wide">
+              <span class="neat-side-metric-ico neat-side-metric-ico--e" aria-hidden="true">📱</span>
+              <span class="neat-side-metric-val" id="sideMetricDevices">—</span>
+              <span class="neat-side-metric-lbl">Devices</span>
+              <span class="neat-side-metric-sub">Registered in device management</span>
+            </div>
+          </div>
+          </div>
+          <button type="button" class="neat-side-fill-jump" onclick="admv2ScrollTo('section-notification-settings', null)">Notifications ↓</button>
+        </aside>
 
         <!-- Unified right panel -->
         <div class="admv2-right-panel">
@@ -3849,7 +5297,44 @@
 
         </div><!-- /admv2-right-panel -->
 
-        <!-- Notification Settings -->
+      </div><!-- /admv2-bento-side-top -->
+
+        <!-- Documents card (grid row 2 col 1 — same height as Notification Automation) -->
+        <div class="admv2-card admv2-docs-card" id="section-documents">
+          <div class="admv2-card-hd">
+            <div>
+              <h2 class="admv2-card-title">Document Workflow</h2>
+            </div>
+            <div class="admv2-card-controls">
+              <select id="documentsFilter" class="dashboard-filter" onchange="setDocumentsFilter(this.value)">
+                <option value="all" selected>All statuses</option>
+                <option value="active">Active</option>
+                <option value="completed">Completed</option>
+                <option value="closed">Closed</option>
+                <option value="rejected">Rejected</option>
+              </select>
+              <button class="btn btn-refresh" onclick="loadDocuments()">↻ Refresh</button>
+            </div>
+          </div>
+          <div class="admv2-card-body">
+            <!-- Controls bar (select all + bulk actions) -->
+            <div class="admv2-docs-controls">
+              <div class="admv2-docs-bulk">
+                <div class="checkbox-select-all" style="margin-right:0;">
+                  <input type="checkbox" id="selectAllDocuments" onchange="toggleSelectAllDocuments()">
+                  <label for="selectAllDocuments">Select All</label>
+                </div>
+                <button class="btn btn-outline-danger" onclick="closeSelectedDocuments()" id="closeSelectedBtn" disabled>Close Selected</button>
+              </div>
+            </div>
+            <!-- Scrollable table area -->
+            <div class="admv2-docs-inner-scroll">
+              <div id="documentsTableContainer"><p style="padding:1rem;color:var(--text-muted);">Loading documents…</p></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Notification Settings (grid row 2 col 2) -->
         <div class="users-section" id="section-notification-settings">
           <div class="section-header">
             <h2 class="section-title">Notification Automation</h2>
@@ -3858,6 +5343,8 @@
               <button class="btn btn-primary" type="button" onclick="saveNotificationConfig()">Save Settings</button>
             </div>
           </div>
+          <div class="notif-settings-scroll">
+          <div class="notif-settings-inner">
           <p class="notif-section-intro">
             Set who receives emails at each workflow stage. Type addresses in each box, or click <strong>Pick from known emails</strong> to open the list — search, tick multiple, then <strong>Add selected</strong>.
           </p>
@@ -4019,9 +5506,32 @@
           </div>
         </div>
       </div>
+
+      <aside class="notif-settings-foot" aria-label="Notification settings tips">
+        <p class="notif-settings-foot-title">Quick guide</p>
+        <div class="notif-settings-foot-grid">
+          <div class="notif-settings-foot-tip">
+            <span class="notif-settings-foot-tip-ico" aria-hidden="true">✉️</span>
+            <strong>Recipients</strong>
+            <span>Addresses in <strong>To</strong> and <strong>CC</strong> always receive workflow mail. Separate entries with commas or new lines.</span>
+          </div>
+          <div class="notif-settings-foot-tip">
+            <span class="notif-settings-foot-tip-ico" aria-hidden="true">🔀</span>
+            <strong>Submitter toggle</strong>
+            <span><strong>Enabled</strong> adds the person who submitted the form to <strong>To</strong> as well as your lists. Use <strong>Disabled</strong> when only roster addresses should receive mail.</span>
+          </div>
+          <div class="notif-settings-foot-tip">
+            <span class="notif-settings-foot-tip-ico" aria-hidden="true">💾</span>
+            <strong>Save</strong>
+            <span>One save updates both Inspection and HR. Use Refresh if settings may have changed in another session.</span>
+          </div>
+        </div>
+        <p class="notif-settings-foot-meta" id="notifSettingsStatusLine" role="status" aria-live="polite"></p>
+      </aside>
+          </div><!-- /.notif-settings-inner -->
+          </div><!-- /.notif-settings-scroll -->
     </div><!-- /users-section notification-settings -->
 
-      </div><!-- /admv2-bento-side -->
     </div><!-- /admv2-bento -->
 
     <!-- Modals (report folder + automation) -->
@@ -4058,56 +5568,90 @@
 
   <div id="alertContainer" aria-live="polite" aria-relevant="additions"></div>
 
-  <!-- Access Control Modal -->
-  <div id="accessModal" class="modal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h2 class="modal-title">Manage Module Access</h2>
-      </div>
-      <form id="accessForm">
-        <input type="hidden" id="accessUserId">
-        <div class="form-group">
-          <label class="form-label">User:</label>
-          <input type="text" id="accessUserName" class="form-control" readonly>
+  {% include 'partials/admin_manage_profile_modals.html' %}
+
+  <!-- Create user (admin) -->
+  <div id="createUserModal" class="modal admin-portal-modal injz-mgmt" role="dialog" aria-modal="true" aria-labelledby="createUserModalTitle"
+       onclick="if(event.target===this)closeCreateUserModal()">
+    <div class="modal-content" onclick="event.stopPropagation()" style="max-width: 520px;">
+      <div class="modal-header admin-profile-header">
+        <div>
+          <h2 class="modal-title" id="createUserModalTitle">Create user</h2>
+          <p>New account is active immediately.</p>
         </div>
-        <div class="form-group">
-          <label class="form-label">Module Access:</label>
-          <div class="checkbox-group">
-            <div class="checkbox-item">
-              <input type="checkbox" id="accessHvac" name="access_hvac">
-              <label for="accessHvac">Window 1: HVAC & MEP Form</label>
+        <button type="button" class="injz-mgmt-xclose" onclick="closeCreateUserModal()" aria-label="Close">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <form id="createUserForm" class="admin-profile-form">
+        <div class="admin-profile-section">
+          <h3>Account setup</h3>
+          <div class="admin-profile-grid">
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label" for="cuUsername">Username *</label>
+              <input type="text" id="cuUsername" class="form-control" required autocomplete="off" spellcheck="false">
             </div>
-            <div class="checkbox-item">
-              <input type="checkbox" id="accessCivil" name="access_civil">
-              <label for="accessCivil">Window 2: Civil Works Form</label>
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label" for="cuEmail">Email *</label>
+              <input type="email" id="cuEmail" class="form-control" required autocomplete="off">
             </div>
-            <div class="checkbox-item">
-              <input type="checkbox" id="accessCleaning" name="access_cleaning">
-              <label for="accessCleaning">Window 3: Cleaning Form</label>
+            <div class="form-group" style="margin-bottom:0;grid-column:1/-1;">
+              <label class="form-label" for="cuFullName">Full name</label>
+              <input type="text" id="cuFullName" class="form-control" autocomplete="name">
+            </div>
+            <div class="form-group" style="margin-bottom:0;grid-column:1/-1;">
+              <label class="form-label" for="cuPassword">Password (optional)</label>
+              <input type="password" id="cuPassword" class="form-control" autocomplete="new-password" placeholder="Leave blank for standard temporary password">
+              <p class="admin-profile-hint">If blank, the same default as “Reset password” is used and returned here so you can share it.</p>
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label" for="cuDesignation">Designation</label>
+              <select id="cuDesignation" class="form-control">
+                <option value="">None</option>
+                <option value="employee" selected>Employee</option>
+                <option value="supervisor">Supervisor</option>
+                <option value="operations_manager">Operations manager</option>
+                <option value="business_development">Business development</option>
+                <option value="procurement">Procurement</option>
+                <option value="general_manager">General manager</option>
+                <option value="hr_manager">HR manager</option>
+                <option value="technician">Technician</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label" for="cuJoined">Joined company</label>
+              <input type="date" id="cuJoined" class="form-control">
+            </div>
+            <div class="form-group" style="margin-bottom:0;grid-column:1/-1;">
+              <label class="form-label" for="cuJobDesignation">Job title (HR)</label>
+              <input type="text" id="cuJobDesignation" class="form-control" maxlength="160" placeholder="Optional" autocomplete="off">
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label" for="cuAnnualLeaveDays">Annual leave (days)</label>
+              <input type="number" id="cuAnnualLeaveDays" class="form-control" min="0" max="366" step="1" placeholder="—">
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label" for="cuOtherLeaveDays">Other leave (days)</label>
+              <input type="number" id="cuOtherLeaveDays" class="form-control" min="0" max="366" step="1" placeholder="—">
+            </div>
+            <div class="form-group" style="margin-bottom:0;grid-column:1/-1;">
+              <label class="form-label" for="cuReportingManager">Reporting manager</label>
+              <select id="cuReportingManager" class="form-control">
+                <option value="">— None —</option>
+              </select>
+              <p class="admin-profile-hint" style="margin-top: 0.25rem;">For <strong>technicians</strong>, set their reporting supervisor (Supervisor user). For other staff, set their reporting manager. Used automatically on HR leave and document submissions.</p>
             </div>
           </div>
         </div>
-        <div class="modal-actions">
-          <button type="button" class="btn btn-cancel" onclick="closeAccessModal()">Cancel</button>
-          <button type="submit" class="btn btn-access">Save Changes</button>
+        <div class="modal-actions admin-profile-modal-actions">
+          <button type="button" class="btn btn-cancel" onclick="closeCreateUserModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary injz-mgmt-btn-submit" id="createUserSubmitBtn">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" width="16" height="16" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+            <span class="injz-mgmt-btn-label">Create account</span>
+          </button>
         </div>
       </form>
-    </div>
-  </div>
-
-  <!-- User Activity Modal -->
-  <div id="userActivityModal" class="modal">
-    <div class="modal-content" style="max-width: 900px; max-height: 90vh; overflow-y: auto;">
-      <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center;">
-        <h2 class="modal-title" id="userActivityTitle">User Activity</h2>
-        <button type="button" class="modal-close" onclick="closeUserActivityModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #666; line-height: 1;">&times;</button>
-      </div>
-      <div id="userActivityContent" style="padding: 1rem 0;">
-        <div style="text-align: center; padding: 2rem;">
-          <div class="spinner" style="border: 3px solid #f3f3f3; border-top: 3px solid var(--primary); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto;"></div>
-          <p style="margin-top: 1rem; color: #666;">Loading user activity...</p>
-        </div>
-      </div>
     </div>
   </div>
 
@@ -4303,11 +5847,70 @@
       color: var(--notif-fg);
       font-weight: 600;
     }
-    /* ── Notification Settings ──────────────────────────────────── */
+    .notif-settings-inner {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+    .notif-settings-foot {
+      margin-top: 1.1rem;
+      padding: 0.95rem 1rem 1.05rem;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background:
+        linear-gradient(165deg, rgba(248, 250, 252, 0.98) 0%, rgba(236, 244, 239, 0.35) 100%);
+      flex-shrink: 0;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75), 0 1px 2px rgba(15, 23, 42, 0.03);
+    }
+    .notif-settings-foot-title {
+      margin: 0 0 0.65rem;
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--primary);
+      opacity: 0.85;
+    }
+    .notif-settings-foot-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+      gap: 0.75rem 1rem;
+      align-items: start;
+    }
+    .notif-settings-foot-tip {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      font-size: 0.8125rem;
+      line-height: 1.5;
+      color: var(--notif-body);
+    }
+    .notif-settings-foot-tip strong {
+      color: var(--notif-fg);
+      font-weight: 700;
+      font-size: 0.84rem;
+    }
+    .notif-settings-foot-tip-ico {
+      font-size: 1.05rem;
+      line-height: 1;
+      margin-bottom: 0.1rem;
+    }
+    .notif-settings-foot-meta {
+      margin: 0.75rem 0 0;
+      padding-top: 0.65rem;
+      border-top: 1px dashed rgba(148, 163, 184, 0.55);
+      font-size: 0.75rem;
+      color: var(--notif-subtle);
+    }
+    /* Tighter stack (intro + grid) */
+    #section-notification-settings .notif-settings-scroll .notif-grid {
+      margin-top: 0.65rem;
+    }
     .notif-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
       gap: 1.25rem;
+      align-items: stretch;
       margin-top: 1.25rem;
     }
     .notif-card {
@@ -4316,6 +5919,10 @@
       border-radius: 16px;
       overflow: hidden;
       box-shadow: var(--shadow-sm);
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
     }
     .notif-card-header {
       display: flex;
@@ -4347,6 +5954,8 @@
       display: flex;
       flex-direction: column;
       gap: 1rem;
+      flex: 1 1 auto;
+      min-height: 0;
     }
     .notif-field-group {
       display: flex;
@@ -4383,8 +5992,11 @@
       color: var(--text);
       background: var(--bg-light);
       resize: vertical;
+      min-height: 4.125rem;
+      max-height: 14rem;
       transition: border-color 0.15s, box-shadow 0.15s;
       line-height: 1.5;
+      box-sizing: border-box;
     }
     .notif-textarea:focus {
       outline: none;
@@ -4402,6 +6014,7 @@
       background: var(--bg-light);
       border: 1px solid var(--border);
       border-radius: 12px;
+      margin-top: auto;
     }
     .notif-submitter-block-title {
       font-size: 0.8125rem;
@@ -4473,6 +6086,8 @@
       justify-content: space-between;
       gap: 0.5rem;
       padding: 0.55rem 0.85rem;
+      min-height: 2.75rem;
+      box-sizing: border-box;
       font-size: 0.875rem;
       font-weight: 600;
       font-family: inherit;
@@ -4698,6 +6313,38 @@
 
   <script>
     let users = [];
+    /** Matches DEFAULT_ADMIN_RESET_PASSWORD in app/admin/routes.py when ADMIN_RESET_PASSWORD is unset */
+    const DEFAULT_RESET_DISPLAY_PASSWORD = 'Injaaz@123';
+
+    /* Team cards + table: delegated clicks so actions work even if global helpers are overwritten
+       by late-loaded scripts; avoids fragile inline onclick attributes. */
+    document.addEventListener('click', (ev) => {
+      const resetBtn = ev.target.closest('[data-action="reset-password"]');
+      if (resetBtn) {
+        ev.preventDefault();
+        const uid = parseInt(resetBtn.getAttribute('data-user-id'), 10);
+        if (!Number.isFinite(uid)) return;
+        const u = Array.isArray(users) ? users.find((x) => x.id === uid) : null;
+        openPasswordResetConfirmModal(uid, u ? u.username : '');
+        return;
+      }
+      const accBtn = ev.target.closest('[data-action="manage-profile"]');
+      if (accBtn) {
+        ev.preventDefault();
+        const uid = parseInt(accBtn.getAttribute('data-user-id'), 10);
+        if (Number.isFinite(uid)) openUserProfileModal(uid);
+        return;
+      }
+      const delBtn = ev.target.closest('[data-action="delete-user"]');
+      if (delBtn) {
+        ev.preventDefault();
+        const uid = parseInt(delBtn.getAttribute('data-user-id'), 10);
+        if (!Number.isFinite(uid)) return;
+        const u = Array.isArray(users) ? users.find((x) => x.id === uid) : null;
+        deleteUser(uid, u ? u.username : '');
+      }
+    });
+
     let usersDesignationFilter = 'all';
     let usersStatusFilters = { active: true };
     const token = localStorage.getItem('access_token');
@@ -4741,7 +6388,7 @@
       }
     }
 
-    async function authenticatedFetch(url, options = {}) {
+    async function adminAuthenticatedFetch(url, options = {}) {
       let accessToken = localStorage.getItem('access_token');
       if (!accessToken) {
         return new Response(null, { status: 401 });
@@ -4953,6 +6600,11 @@
       refreshNotificationPickerDuplicateHints();
     }
 
+    function updateNotifSettingsStatusLine(message) {
+      const el = document.getElementById('notifSettingsStatusLine');
+      if (el) el.textContent = message || '';
+    }
+
     function applyNotificationConfig(config) {
       const inspection = (config && config.inspection) || {};
       const hr = (config && config.hr) || {};
@@ -4991,13 +6643,14 @@
 
     async function loadNotificationConfig() {
       try {
-        const response = await authenticatedFetch('/api/admin/notification-config');
+        const response = await adminAuthenticatedFetch('/api/admin/notification-config');
         if (handleUnauthorized(response)) return;
         const data = await response.json();
         if (!response.ok || !data.success) {
           throw new Error(data.error || 'Failed to load notification settings');
         }
         applyNotificationConfig(data.config || {});
+        updateNotifSettingsStatusLine(`Loaded · ${new Date().toLocaleString()}`);
       } catch (error) {
         console.error('Notification config load failed:', error);
         showAlert('Failed to load notification settings', 'error');
@@ -5021,7 +6674,7 @@
           },
         };
 
-        const response = await authenticatedFetch('/api/admin/notification-config', {
+        const response = await adminAuthenticatedFetch('/api/admin/notification-config', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
@@ -5034,6 +6687,7 @@
         }
         applyNotificationConfig(data.config || payload.config);
         showAlert('Notification settings saved', 'success');
+        updateNotifSettingsStatusLine(`Saved · ${new Date().toLocaleString()}`);
       } catch (error) {
         console.error('Notification config save failed:', error);
         showAlert('Failed to save notification settings', 'error');
@@ -5044,7 +6698,7 @@
 
     async function loadAutomationStatus() {
       try {
-        const response = await authenticatedFetch('/admin/mmr/api/automation-status');
+        const response = await adminAuthenticatedFetch('/admin/mmr/api/automation-status');
         if (!response.ok) return;
         automationStatus = await response.json();
         updateAutomationButton();
@@ -5147,7 +6801,7 @@
 
     async function pauseAutomation() {
       try {
-        const resp = await authenticatedFetch('/admin/mmr/api/automation-pause', { method: 'POST' });
+        const resp = await adminAuthenticatedFetch('/admin/mmr/api/automation-pause', { method: 'POST' });
         if (resp.ok) {
           showAlert('Automation paused', 'success');
           await loadAutomationStatus();
@@ -5158,7 +6812,7 @@
 
     async function resumeAutomation() {
       try {
-        const resp = await authenticatedFetch('/admin/mmr/api/automation-resume', { method: 'POST' });
+        const resp = await adminAuthenticatedFetch('/admin/mmr/api/automation-resume', { method: 'POST' });
         const data = await resp.json();
         if (resp.ok) {
           showAlert('Automation resumed', 'success');
@@ -5174,7 +6828,7 @@
 
     async function loadReportFolder() {
       try {
-        const resp = await authenticatedFetch('/admin/mmr/api/report-folder');
+        const resp = await adminAuthenticatedFetch('/admin/mmr/api/report-folder');
         if (!resp.ok) return;
         const data = await resp.json();
         renderReportFolderList(data.files || []);
@@ -5232,21 +6886,233 @@
       return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
 
+    function _dashFormatTicketStatus(st) {
+      if (st == null || st === '') return '—';
+      return String(st).replace(/_/g, ' ');
+    }
+
+    function _dashTicketPriorityBadgeClass(p) {
+      const x = String(p || '').toLowerCase();
+      if (x === 'critical') return 'adm-dash-tk-badge adm-dash-tk-badge--prio-critical';
+      if (x === 'high') return 'adm-dash-tk-badge adm-dash-tk-badge--prio-high';
+      if (x === 'medium') return 'adm-dash-tk-badge adm-dash-tk-badge--prio-medium';
+      return 'adm-dash-tk-badge';
+    }
+
+    function detachAdmDashTicketsSplitObserver() {
+      try {
+        if (window.__admDashTkSplitRo) {
+          window.__admDashTkSplitRo.disconnect();
+          window.__admDashTkSplitRo = null;
+        }
+      } catch (e) { /* ignore */ }
+    }
+
+    function syncAdmDashTicketsSplitHeights() {
+      const body = document.getElementById('dashTicketsBody');
+      if (!body) return;
+      const nav = body.querySelector('.adm-dash-tk-split-nav');
+      const rec = body.querySelector('.adm-dash-tk-split-rec');
+      if (!nav || !rec) return;
+      if (window.innerWidth <= 900) {
+        rec.style.height = '';
+        rec.style.maxHeight = '';
+        return;
+      }
+      const h = Math.max(1, nav.offsetHeight);
+      rec.style.height = h + 'px';
+      rec.style.maxHeight = h + 'px';
+    }
+
+    function attachAdmDashTicketsSplitObserver() {
+      detachAdmDashTicketsSplitObserver();
+      const body = document.getElementById('dashTicketsBody');
+      if (!body || typeof ResizeObserver === 'undefined') return;
+      const nav = body.querySelector('.adm-dash-tk-split-nav');
+      if (!nav) return;
+      window.__admDashTkSplitRo = new ResizeObserver(function () {
+        syncAdmDashTicketsSplitHeights();
+      });
+      window.__admDashTkSplitRo.observe(nav);
+    }
+
+    if (!window.__admDashTkSplitResizeBound) {
+      window.__admDashTkSplitResizeBound = true;
+      window.addEventListener('resize', function () {
+        clearTimeout(window.__admDashTkSplitResizeT);
+        window.__admDashTkSplitResizeT = setTimeout(syncAdmDashTicketsSplitHeights, 100);
+      });
+    }
+
+    function renderTicketingOverview(ticketing) {
+      const body = document.getElementById('dashTicketsBody');
+      if (!body) return;
+
+      if (!ticketing || ticketing.available !== true) {
+        detachAdmDashTicketsSplitObserver();
+        body.innerHTML = '<p class="adm-dash-tk-unavail" id="dashTicketsPlaceholder">Service ticketing is not available on this server build, or aggregates could not load. Open <a href="/tickets/">/tickets/</a> when the module is enabled.</p>';
+        return;
+      }
+
+      const total = Math.max(0, parseInt(String(ticketing.total || 0), 10) || 0);
+      const activePipe = Math.max(0, parseInt(String(ticketing.active_pipeline || 0), 10) || 0);
+      const supQ = Math.max(0, parseInt(String(ticketing.supervisor_queue || 0), 10) || 0);
+      const field = Math.max(0, parseInt(String(ticketing.field_active || 0), 10) || 0);
+      const verify = Math.max(0, parseInt(String(ticketing.awaiting_verification || 0), 10) || 0);
+      const urgent = Math.max(0, parseInt(String(ticketing.urgent_priority || 0), 10) || 0);
+      const onHold = Math.max(0, parseInt(String(ticketing.on_hold || 0), 10) || 0);
+      const pct = total > 0 ? Math.min(100, Math.round((100 * activePipe) / total)) : 0;
+
+      const attentionParts = [];
+      if (urgent > 0) {
+        attentionParts.push('<strong>' + urgent + '</strong> non-terminal ticket' + (urgent === 1 ? '' : 's') + ' marked <strong>high / critical</strong> priority');
+      }
+      if (supQ > 0) {
+        attentionParts.push('<strong>' + supQ + '</strong> in the <strong>supervisor routing</strong> lane (open + pending supervisor)');
+      }
+      const attentionHtml = attentionParts.length
+        ? '<div class="adm-dash-tk-attention" role="status"><span aria-hidden="true">⚡</span><div>Needs attention: ' + attentionParts.join(' · ') + '. Use the shortcuts below to triage.</div></div>'
+        : '';
+
+      const stat = function (href, val, lbl, hint, pulse) {
+        return '<a class="adm-dash-tk-stat-card' + (pulse ? ' adm-dash-tk-stat-card--pulse' : '') + '" href="' + href + '">' +
+          '<div class="adm-dash-tk-stat-val">' + String(val) + '</div>' +
+          '<div class="adm-dash-tk-stat-lbl">' + lbl + '</div>' +
+          (hint ? '<div class="adm-dash-tk-stat-hint">' + hint + '</div>' : '') +
+          '</a>';
+      };
+
+      const leadCardHtml =
+        '<div class="adm-dash-tk-lead-card">' +
+          '<div class="adm-dash-tk-lead-val-wrap">' +
+            '<div class="adm-dash-tk-lead-val">' + String(activePipe) + '</div>' +
+            '<div class="adm-dash-tk-lead-lbl">Active pipeline</div>' +
+            '<div class="adm-dash-tk-lead-meta">Not closed, resolved, or cancelled · ' + String(total) + ' lifetime tickets in the system</div>' +
+            '<div class="adm-dash-tk-bar-wrap" aria-hidden="true"><div class="adm-dash-tk-bar-fill" style="width:' + pct + '%"></div></div>' +
+          '</div>' +
+          '<div class="adm-dash-tk-lead-meta" style="text-align:right;max-width:14rem;justify-self:end">' +
+            'Rough load: <strong>' + pct + '%</strong> of all tickets are still in motion.' +
+          '</div>' +
+        '</div>';
+
+      const statTilesHtml =
+        '<div class="adm-dash-tk-metrics-row">' +
+          '<div class="adm-dash-tk-metrics">' +
+            stat('/tickets/list', supQ, 'Supervisor queue', 'Open + pending supervisor', supQ > 0) +
+            stat('/tickets/list?status=assigned', field, 'Field &amp; execution', 'Assigned through pending parts', field > 0) +
+            stat('/tickets/list?status=pending_verification', verify, 'Awaiting sign-off', 'Verification &amp; work completed', verify > 0) +
+            stat('/tickets/', urgent, 'Escalated priority', 'High + critical (active only) — board view', urgent > 0) +
+          '</div>' +
+        '</div>';
+
+      const holdLine = onHold > 0
+        ? '<p class="adm-dash-tk-stat-hint" style="margin:0 0 0.75rem"><a href="/tickets/list?status=on_hold" style="color:inherit;font-weight:700">' + onHold + '</a> ticket' + (onHold === 1 ? '' : 's') + ' on hold — unblock or re-queue from the list.</p>'
+        : '';
+
+      const pills =
+        '<div class="adm-dash-tk-quick">' +
+          '<div class="adm-dash-tk-quick-hd">Shortcuts</div>' +
+          '<div class="adm-dash-tk-pills">' +
+          '<a class="adm-dash-tk-pill" href="/tickets/list">All tickets</a>' +
+          '<a class="adm-dash-tk-pill" href="/tickets/list?status=pending_supervisor">Pending supervisor</a>' +
+          '<a class="adm-dash-tk-pill" href="/tickets/list?status=in_progress">In progress</a>' +
+          '<a class="adm-dash-tk-pill" href="/tickets/list?priority=critical">Critical priority</a>' +
+          '<a class="adm-dash-tk-pill" href="/tickets/list?status=on_hold">On hold</a>' +
+          '</div></div>';
+
+      const recentRows = Array.isArray(ticketing.recent) ? ticketing.recent : [];
+      let recentBlock = '';
+      if (recentRows.length) {
+        recentBlock = '<div class="adm-dash-tk-rec">' +
+          '<div class="adm-dash-tk-rec-hd"><span class="adm-dash-tk-rec-title">Recently updated</span><a href="/tickets/list" style="font-size:0.78rem;font-weight:700;color:var(--accent-700,#125435);text-decoration:none">View all →</a></div>' +
+          '<ul class="adm-dash-tk-rec-list">';
+        recentRows.forEach(function (t) {
+          const tid = escapeHtml(t.ticket_id || '—');
+          const title = escapeHtml(t.title || '—');
+          const st = escapeHtml(_dashFormatTicketStatus(t.status));
+          const pri = (t.priority || '—');
+          const proj = (t.project || '').trim();
+          const projEsc = escapeHtml(proj || '—');
+          let tStr = '—';
+          if (t.updated_at) {
+            try { tStr = new Date(t.updated_at).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }); } catch (e) { tStr = '—'; }
+          }
+          const badgePri = _dashTicketPriorityBadgeClass(pri);
+          const priLabel = escapeHtml(String(pri).charAt(0).toUpperCase() + String(pri).slice(1));
+          const href = '/tickets/' + encodeURIComponent(String(t.ticket_id || '').trim());
+          recentBlock +=
+            '<li class="adm-dash-tk-rec-row">' +
+              '<a class="adm-dash-tk-rec-main" href="' + href + '">' +
+                '<span class="adm-dash-tk-rec-id">' + tid + '</span>' +
+                '<span class="adm-dash-tk-rec-title2">' + title + '</span>' +
+                '<div class="adm-dash-tk-rec-meta">' + (proj ? projEsc + ' · ' : '') + tStr + '</div>' +
+              '</a>' +
+              '<div class="adm-dash-tk-badges">' +
+                '<span class="adm-dash-tk-badge">' + st + '</span>' +
+                '<span class="' + badgePri + '">' + priLabel + '</span>' +
+              '</div>' +
+            '</li>';
+        });
+        recentBlock += '</ul></div>';
+      } else {
+        recentBlock = '<p class="adm-dash-tk-stat-hint" style="margin:0">No tickets in the database yet. <a href="/tickets/new" style="font-weight:700;color:inherit">Create the first work order →</a></p>';
+      }
+
+      const leftNavStack =
+        '<div class="adm-dash-tk-split-nav">' +
+          pills +
+          leadCardHtml +
+          statTilesHtml +
+        '</div>';
+
+      const bottomSplit =
+        '<div class="adm-dash-tk-split-row">' +
+          leftNavStack +
+          '<div class="adm-dash-tk-split-rec">' + recentBlock + '</div>' +
+        '</div>';
+
+      body.innerHTML = attentionHtml + holdLine + bottomSplit;
+      syncAdmDashTicketsSplitHeights();
+      attachAdmDashTicketsSplitObserver();
+      requestAnimationFrame(function () {
+        requestAnimationFrame(syncAdmDashTicketsSplitHeights);
+      });
+    }
+
+    function updateSideSummaries(summary) {
+      const s = summary || {};
+      const setTxt = function (id, v) {
+        const el = document.getElementById(id);
+        if (el) el.textContent = (v != null && v !== '') ? String(v) : '—';
+      };
+      setTxt('sideMetricUsers', s.users_total);
+      setTxt('sideMetricEmployees', s.employees_active);
+      setTxt('sideMetricHrForms', s.hr_forms_total);
+      setTxt('sideMetricInspections', s.inspection_forms_total);
+      setTxt('sideMetricDevices', s.devices_total);
+    }
+
     async function loadAdminDashboardOverview() {
       try {
-        const r = await authenticatedFetch('/api/admin/dashboard-overview');
+        const r = await adminAuthenticatedFetch('/api/admin/dashboard-overview');
         if (handleUnauthorized(r)) return;
         if (!r.ok) {
           const el = document.getElementById('neatActivityList');
           if (el) el.innerHTML = '<li class="neat-activity-row"><span class="neat-activity-t" style="color:var(--neat-muted)">Could not load activity</span></li>';
+          updateSideSummaries(null);
+          renderTicketingOverview(null);
           return;
         }
         const data = await r.json();
         if (!data.success) {
           const el = document.getElementById('neatActivityList');
           if (el) el.innerHTML = '<li class="neat-activity-row"><span class="neat-activity-t" style="color:var(--neat-muted)">Overview unavailable</span></li>';
+          updateSideSummaries(null);
+          renderTicketingOverview(null);
           return;
         }
+        updateSideSummaries(data.side_summaries);
+        renderTicketingOverview(data.ticketing);
         const s = data.submissions || {};
         const d = data.devices || {};
         const pl = document.getElementById('kpiPipeline');
@@ -5292,6 +7158,8 @@
         }
       } catch (e) {
         console.error('loadAdminDashboardOverview', e);
+        updateSideSummaries(null);
+        renderTicketingOverview(null);
       }
     }
 
@@ -5309,7 +7177,7 @@
     async function downloadReportFile(filename) {
       if (!filename) return;
       try {
-        const resp = await authenticatedFetch('/admin/mmr/api/report-folder/download/' + encodeURIComponent(String(filename)));
+        const resp = await adminAuthenticatedFetch('/admin/mmr/api/report-folder/download/' + encodeURIComponent(String(filename)));
         if (!resp.ok) throw new Error('Download failed');
         const blob = await resp.blob();
         const a = document.createElement('a');
@@ -5322,18 +7190,100 @@
       }
     }
 
+    function _designationIsTechnicianLogin(u) {
+      return ((u.designation || '').toLowerCase().trim() === 'technician');
+    }
+
+    /** Strip dashboard ?tool=&user_id= after handling (bookmark-friendly). */
+    function stripDashboardUserToolParams() {
+      try {
+        const url = new URL(window.location.href);
+        if (!url.searchParams.has('tool') && !url.searchParams.has('user_id')) return;
+        url.searchParams.delete('tool');
+        url.searchParams.delete('user_id');
+        const qs = url.searchParams.toString();
+        history.replaceState({}, '', url.pathname + (qs ? ('?' + qs) : '') + url.hash);
+      } catch (e) { /* ignore */ }
+    }
+
+    function applyAdminDashboardUserToolQuery() {
+      try {
+        const url = new URL(window.location.href);
+        const tool = (url.searchParams.get('tool') || '').trim();
+        const uidRaw = url.searchParams.get('user_id');
+        if (tool === 'create_user') {
+          stripDashboardUserToolParams();
+          openCreateUserModal();
+          return;
+        }
+        if (tool === 'profile') {
+          const uid = uidRaw != null ? parseInt(String(uidRaw).trim(), 10) : NaN;
+          if (Number.isFinite(uid)) {
+            window.location.href = `/admin/team-management?tool=profile&user_id=${uid}`;
+            return;
+          }
+          stripDashboardUserToolParams();
+        }
+      } catch (e) { /* ignore */ }
+    }
+
+    function renderDashboardPeopleOverview(technicianRows) {
+      const activeStaff =
+        typeof users !== 'undefined' && Array.isArray(users)
+          ? users.filter(u => u.is_active && !_designationIsTechnicianLogin(u)).length
+          : null;
+      const techLogins =
+        typeof users !== 'undefined' && Array.isArray(users)
+          ? users.filter(u => u.is_active && _designationIsTechnicianLogin(u)).length
+          : null;
+      let rosterActive = null;
+      if (Array.isArray(technicianRows)) {
+        rosterActive = technicianRows.filter(t =>
+          ((t.status || 'active')).toLowerCase() === 'active'
+        ).length;
+      }
+      const setTxt = (id, v) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.textContent = (v !== null && v !== undefined && v !== '') ? String(v) : '—';
+      };
+      setTxt('dashPeopleStaffActive', activeStaff);
+      setTxt('dashPeopleTechRoster', rosterActive);
+      setTxt('dashPeopleTechLogins', techLogins);
+    }
+
     async function loadUsers() {
       try {
-        const response = await authenticatedFetch('/api/admin/users');
+        const [response, techResp] = await Promise.all([
+          adminAuthenticatedFetch('/api/admin/users'),
+          adminAuthenticatedFetch('/api/admin/technicians'),
+        ]);
 
         if (handleUnauthorized(response)) return;
 
         const data = await response.json();
+
+        let technicianRows = [];
+        if (techResp && techResp.ok) {
+          try {
+            const td = await techResp.json();
+            technicianRows =
+              td.technicians
+              || (td.data && td.data.technicians)
+              || [];
+            if (!Array.isArray(technicianRows)) technicianRows = [];
+          } catch (_) {
+            technicianRows = [];
+          }
+        }
+
         if (data.success) {
           users = data.users;
           registerKnownEmails(users.map(u => (u && u.email) || '').filter(Boolean));
           renderUsersTable();
           updateAdminSidebarBadges();
+          renderDashboardPeopleOverview(technicianRows);
+          applyAdminDashboardUserToolQuery();
         } else {
           showAlert('Failed to load users', 'error');
         }
@@ -5345,6 +7295,7 @@
 
     function renderUsersTable() {
       const container = document.getElementById('usersTableContainer');
+      if (!container) return;
 
       const filteredUsers = users.filter(user => {
         if (usersStatusFilters.active && !user.is_active) return false;
@@ -5399,6 +7350,10 @@
                 <option value="business_development" ${user.designation === 'business_development' ? 'selected' : ''}>Business Development</option>
                 <option value="procurement" ${user.designation === 'procurement' ? 'selected' : ''}>Procurement</option>
                 <option value="general_manager" ${user.designation === 'general_manager' ? 'selected' : ''}>General Manager</option>
+                <option value="hr_manager" ${user.designation === 'hr_manager' ? 'selected' : ''}>HR Manager</option>
+                <option value="employee" ${user.designation === 'employee' ? 'selected' : ''}>Employee</option>
+                <option value="technician" ${user.designation === 'technician' ? 'selected' : ''}>Technician</option>
+                <option value="admin" ${user.designation === 'admin' ? 'selected' : ''}>Admin</option>
               </select>
             </td>
             <td data-label="Status"><span class="badge ${statusBadge}">${user.is_active ? 'Active' : 'Inactive'}</span></td>
@@ -5422,11 +7377,11 @@
                   </svg>
                   Activity
                 </button>
-                <button class="btn btn-sm btn-reset" onclick="resetPassword(${user.id}, '${user.username}')">Reset Password</button>
-                <button class="btn btn-sm btn-toggle" onclick="toggleActive(${user.id}, ${user.is_active})">
+                <button type="button" class="btn btn-sm btn-reset" data-action="reset-password" data-user-id="${user.id}">Reset Password</button>
+                <button type="button" class="btn btn-sm btn-toggle" onclick="toggleActive(${user.id}, ${user.is_active})">
                   ${user.is_active ? 'Deactivate' : 'Activate'}
                 </button>
-                ${user.role !== 'admin' ? `<button class="btn btn-sm btn-access" onclick="openAccessModal(${user.id})">Manage Access</button>` : ''}
+                ${user.role !== 'admin' ? `<button type="button" class="btn btn-sm btn-access" data-action="manage-profile" data-user-id="${user.id}">Manage profile</button>` : ''}
                 <button class="btn btn-sm btn-danger" onclick="deleteUser(${user.id}, '${user.username}')" id="deleteUserBtn_${user.id}">Delete</button>
               </div>
             </td>
@@ -5454,7 +7409,10 @@
     function setUsersStatusFilters() {
       const activeToggle = document.getElementById('statusActiveToggle');
       const label = document.getElementById('statusToggleLabel');
-      const isActive = !!(activeToggle && activeToggle.checked);
+      let isActive = true;
+      if (activeToggle) {
+        isActive = !!activeToggle.checked;
+      }
       usersStatusFilters = { active: isActive };
       if (label) {
         label.textContent = isActive ? 'Active' : 'Inactive';
@@ -5463,13 +7421,50 @@
       renderAdminUserCards();
     }
 
-    async function resetPassword(userId, username) {
-      if (!confirm(`Reset password for user "${username}"? A temporary password will be generated.`)) {
-        return;
-      }
+    let passwordResetConfirmContext = null;
 
+    function ensurePortalModal(modalEl) {
+      if (modalEl && modalEl.parentElement !== document.body) {
+        document.body.appendChild(modalEl);
+      }
+    }
+
+    function openPasswordResetConfirmModal(userId, username) {
+      passwordResetConfirmContext = { userId, username };
+      const modal = document.getElementById('passwordResetConfirmModal');
+      if (!modal) return;
+      const intro = document.getElementById('passwordResetConfirmIntro');
+      if (intro) {
+        intro.textContent = 'Reset the password for "' + (username || 'this user')
+          + '"? The standard temporary password will be shown next.';
+      }
+      ensurePortalModal(modal);
+      modal.classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closePasswordResetConfirmModal() {
+      const modal = document.getElementById('passwordResetConfirmModal');
+      if (modal) modal.classList.remove('active');
+      passwordResetConfirmContext = null;
+      const resOpen = document.getElementById('passwordResetResultModal');
+      if (!resOpen || !resOpen.classList.contains('active')) {
+        document.body.style.overflow = '';
+      }
+    }
+
+    async function submitPasswordResetConfirm() {
+      const ctx = passwordResetConfirmContext;
+      if (!ctx) return;
+      const userId = ctx.userId;
+      const username = ctx.username;
+      closePasswordResetConfirmModal();
+      await runAdminPasswordReset(userId, username);
+    }
+
+    async function runAdminPasswordReset(userId, username) {
       try {
-        const response = await authenticatedFetch(`/api/admin/users/${userId}/reset-password`, {
+        const response = await adminAuthenticatedFetch(`/api/admin/users/${userId}/reset-password`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -5478,9 +7473,15 @@
 
         if (handleUnauthorized(response)) return;
 
+        if (!response || typeof response.json !== 'function') {
+          showAlert('Could not complete the request. Reload the page and try again.', 'error');
+          return;
+        }
+
         const data = await response.json();
         if (data.success) {
-          showAlert(`Password reset successful for ${username}. Temporary password: ${data.temp_password}`, 'success', true);
+          const pw = data.temp_password || DEFAULT_RESET_DISPLAY_PASSWORD;
+          openPasswordResetResultModal(username, pw);
         } else {
           showAlert(data.error || 'Failed to reset password', 'error');
         }
@@ -5490,6 +7491,23 @@
       }
     }
 
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      const res = document.getElementById('passwordResetResultModal');
+      const conf = document.getElementById('passwordResetConfirmModal');
+      const prof = document.getElementById('accessModal');
+      const act = document.getElementById('userActivityModal');
+      if (res && res.classList.contains('active')) {
+        closePasswordResetResultModal();
+      } else if (conf && conf.classList.contains('active')) {
+        closePasswordResetConfirmModal();
+      } else if (prof && prof.classList.contains('active')) {
+        closeUserProfileModal();
+      } else if (act && act.classList.contains('active')) {
+        closeUserActivityModal();
+      }
+    });
+
     async function toggleActive(userId, currentStatus) {
       const action = currentStatus ? 'deactivate' : 'activate';
       if (!confirm(`Are you sure you want to ${action} this user?`)) {
@@ -5497,7 +7515,7 @@
       }
 
       try {
-        const response = await authenticatedFetch(`/api/admin/users/${userId}/toggle-active`, {
+        const response = await adminAuthenticatedFetch(`/api/admin/users/${userId}/toggle-active`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -5519,20 +7537,268 @@
       }
     }
 
-    function openAccessModal(userId) {
-      const user = users.find(u => u.id === userId);
+    let profileSignatureDataUrl = '';
+
+    function _adminSelfUserId() {
+      try {
+        const raw = localStorage.getItem('user');
+        const u = raw ? JSON.parse(raw) : null;
+        return u && u.id != null ? Number(u.id) : null;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function clearProfileSignaturePreview() {
+      profileSignatureDataUrl = '';
+      const f = document.getElementById('profileSignatureFile');
+      if (f) f.value = '';
+      const img = document.getElementById('profileSignaturePreview');
+      if (img) { img.src = ''; img.hidden = true; }
+    }
+
+    function updateProfileSignaturePreview() {
+      const img = document.getElementById('profileSignaturePreview');
+      if (!img) return;
+      if (profileSignatureDataUrl) {
+        img.src = profileSignatureDataUrl;
+        img.hidden = false;
+      } else {
+        img.src = '';
+        img.hidden = true;
+      }
+    }
+
+    function profileModalResetPassword() {
+      const uid = parseInt(document.getElementById('profileUserId').value, 10);
+      const u = Array.isArray(users) ? users.find((x) => x.id === uid) : null;
+      closeUserProfileModal();
+      if (Number.isFinite(uid)) openPasswordResetConfirmModal(uid, u ? u.username : '');
+    }
+
+    function profileModalViewActivity() {
+      const uid = parseInt(document.getElementById('profileUserId').value, 10);
+      closeUserProfileModal();
+      if (Number.isFinite(uid)) openUserActivityModal(uid);
+    }
+
+    async function profileModalToggleActive() {
+      const uid = parseInt(document.getElementById('profileUserId').value, 10);
+      const u = Array.isArray(users) ? users.find((x) => x.id === uid) : null;
+      if (!u || !Number.isFinite(uid)) return;
+      closeUserProfileModal();
+      await toggleActive(uid, u.is_active);
+    }
+
+    const ADMIN_PROFILE_LAYOUT_KEY = 'injaaz_admin_profile_layout';
+
+    function getAdminProfileLayoutMode() {
+      return localStorage.getItem(ADMIN_PROFILE_LAYOUT_KEY) || 'cards';
+    }
+
+    function applyAdminProfileLayout() {
+      const modal = document.getElementById('accessModal');
+      if (!modal) return;
+      const isLine = getAdminProfileLayoutMode() === 'line';
+      modal.classList.toggle('admin-profile-shell--v2', isLine);
+      const btn = document.getElementById('adminProfileLayoutToggle');
+      if (btn) {
+        btn.textContent = isLine ? 'Cards' : 'Line';
+        btn.setAttribute('aria-pressed', isLine ? 'true' : 'false');
+      }
+    }
+
+    function toggleAdminProfileLayout() {
+      const next = getAdminProfileLayoutMode() === 'line' ? 'cards' : 'line';
+      localStorage.setItem(ADMIN_PROFILE_LAYOUT_KEY, next);
+      applyAdminProfileLayout();
+    }
+
+    function fillReportingManagerDropdown(selectEl, excludeUserId) {
+      if (!selectEl || !users) return;
+      const ex = excludeUserId != null && excludeUserId !== ''
+        ? parseInt(excludeUserId, 10)
+        : null;
+      selectEl.innerHTML = '';
+      const o0 = document.createElement('option');
+      o0.value = '';
+      o0.textContent = '— None —';
+      selectEl.appendChild(o0);
+      users.slice().sort(function (a, b) {
+        const na = (a.full_name || a.username || '').toLowerCase();
+        const nb = (b.full_name || b.username || '').toLowerCase();
+        return na.localeCompare(nb);
+      }).forEach(function (u) {
+        const id = parseInt(u.id, 10);
+        if (ex != null && !Number.isNaN(ex) && id === ex) return;
+        const opt = document.createElement('option');
+        opt.value = String(u.id);
+        opt.textContent = (u.full_name || u.username || '') + ' — ' + (u.email || '');
+        selectEl.appendChild(opt);
+      });
+    }
+
+    function openUserProfileModal(userId) {
+      const uid = typeof userId === 'number' ? userId : parseInt(String(userId), 10);
+      if (!Number.isFinite(uid)) return;
+      const user = users.find(u => Number(u.id) === Number(uid));
       if (!user) return;
 
-      document.getElementById('accessUserId').value = userId;
-      document.getElementById('accessUserName').value = user.username;
-      document.getElementById('accessHvac').checked = user.access_hvac || false;
-      document.getElementById('accessCivil').checked = user.access_civil || false;
-      document.getElementById('accessCleaning').checked = user.access_cleaning || false;
-      document.getElementById('accessModal').classList.add('active');
+      const modal = document.getElementById('accessModal');
+      if (!modal) return;
+      ensurePortalModal(modal);
+      applyAdminProfileLayout();
+
+      document.getElementById('profileUserId').value = String(uid);
+      const sub = document.getElementById('userProfileSubtitle');
+      if (sub) sub.textContent = '@' + (user.username || '') + ' · ' + (user.email || '');
+
+      const pill = document.getElementById('userProfileStatusPill');
+      if (pill) {
+        pill.textContent = user.is_active ? 'Active' : 'Inactive';
+        pill.className = 'admin-profile-status-pill' + (user.is_active ? ' admin-profile-status-pill--on' : ' admin-profile-status-pill--off');
+      }
+
+      document.getElementById('profileFullName').value = user.full_name || '';
+      document.getElementById('profileEmail').value = user.email || '';
+      document.getElementById('profileUsername').value = user.username || '';
+      const jdEl = document.getElementById('profileJobDesignation');
+      if (jdEl) jdEl.value = user.job_designation || '';
+      const alEl = document.getElementById('profileAnnualLeaveDays');
+      if (alEl) alEl.value = user.annual_leave_days != null && user.annual_leave_days !== '' ? String(user.annual_leave_days) : '';
+      const olEl = document.getElementById('profileOtherLeaveDays');
+      if (olEl) olEl.value = user.other_leave_days != null && user.other_leave_days !== '' ? String(user.other_leave_days) : '';
+
+      document.getElementById('profileRole').value = user.role === 'admin' ? 'admin' : 'user';
+      document.getElementById('profileDesignation').value = user.designation || '';
+
+      const rmSel = document.getElementById('profileReportingManager');
+      if (rmSel) {
+        fillReportingManagerDropdown(rmSel, uid);
+        rmSel.value = user.reporting_manager_id ? String(user.reporting_manager_id) : '';
+      }
+
+      const esdEl = document.getElementById('profileEmploymentStartDate');
+      if (esdEl) {
+        esdEl.value = user.employment_start_date ? String(user.employment_start_date).slice(0, 10) : '';
+      }
+
+      const selfId = _adminSelfUserId();
+      const roleEl = document.getElementById('profileRole');
+      const roleHint = document.getElementById('profileRoleHint');
+      if (Number(uid) === Number(selfId) && user.role === 'admin') {
+        roleEl.disabled = true;
+        if (roleHint) roleHint.textContent = 'You cannot lower your own administrator role from here.';
+      } else {
+        roleEl.disabled = false;
+        if (roleHint) roleHint.textContent = '';
+      }
+
+      const isAdminTarget = user.role === 'admin';
+      const modNote = document.getElementById('profileModuleNote');
+      const modWrap = document.getElementById('profileModuleAccess');
+      if (modNote && modWrap) {
+        if (isAdminTarget) {
+          modNote.hidden = false;
+          modNote.textContent = 'Administrators have full access to all modules by policy.';
+          ['accessHvac', 'accessCivil', 'accessCleaning', 'accessHr', 'accessProcurement', 'accessBusinessDev', 'accessDocHub', 'accessReportGen', 'accessSubmittedForms', 'accessTicketing'].forEach((id) => {
+            const cb = document.getElementById(id);
+            if (cb) { cb.checked = true; cb.disabled = true; }
+          });
+        } else {
+          modNote.hidden = true;
+          modNote.textContent = '';
+          document.getElementById('accessHvac').checked = !!user.access_hvac;
+          document.getElementById('accessCivil').checked = !!user.access_civil;
+          document.getElementById('accessCleaning').checked = !!user.access_cleaning;
+          document.getElementById('accessHr').checked = !!user.access_hr;
+          document.getElementById('accessProcurement').checked = !!user.access_procurement_module;
+          const bd = document.getElementById('accessBusinessDev');
+          if (bd) bd.checked = !!user.access_business_development;
+          const dh = document.getElementById('accessDocHub');
+          if (dh) dh.checked = user.can_access_dochub !== false;
+          const rg = document.getElementById('accessReportGen');
+          if (rg) rg.checked = !!user.access_report_generation;
+          const sf = document.getElementById('accessSubmittedForms');
+          if (sf) sf.checked = !!user.access_submitted_forms;
+          const tkt = document.getElementById('accessTicketing');
+          if (tkt) tkt.checked = !!user.access_ticketing;
+          modWrap.querySelectorAll('input[type="checkbox"]').forEach((cb) => { cb.disabled = false; });
+        }
+      }
+
+      document.getElementById('profileDefaultComment').value = user.default_comment || '';
+      profileSignatureDataUrl = user.default_signature || '';
+      document.getElementById('profileSignatureFile').value = '';
+      updateProfileSignaturePreview();
+
+      const tbtn = document.getElementById('profileQuickToggleBtn');
+      if (tbtn) {
+        tbtn.textContent = user.is_active ? 'Deactivate account' : 'Activate account';
+      }
+
+      modal.classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeUserProfileModal() {
+      const modal = document.getElementById('accessModal');
+      if (modal) modal.classList.remove('active');
+      const pr = document.getElementById('passwordResetResultModal');
+      const pc = document.getElementById('passwordResetConfirmModal');
+      const pu = pr && pr.classList.contains('active');
+      const pcc = pc && pc.classList.contains('active');
+      if (!pu && !pcc) document.body.style.overflow = '';
+    }
+
+    function openAccessModal(userId) {
+      openUserProfileModal(userId);
     }
 
     function closeAccessModal() {
-      document.getElementById('accessModal').classList.remove('active');
+      closeUserProfileModal();
+    }
+
+    function openPasswordResetResultModal(username, password) {
+      const modal = document.getElementById('passwordResetResultModal');
+      if (!modal) return;
+      ensurePortalModal(modal);
+      document.getElementById('passwordResetResultIntro').textContent =
+        'The account password for "' + username + '" has been reset. Share the password below securely with the user.';
+      const inp = document.getElementById('passwordResetResultValue');
+      if (inp) inp.value = password || '';
+      modal.classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closePasswordResetResultModal() {
+      const modal = document.getElementById('passwordResetResultModal');
+      if (modal) modal.classList.remove('active');
+      document.body.style.overflow = '';
+    }
+
+    function copyPasswordResetResult() {
+      const inp = document.getElementById('passwordResetResultValue');
+      if (!inp || !inp.value) return;
+      const val = inp.value;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(val).then(function () {
+          showAlert('Password copied to clipboard', 'success');
+        }).catch(function () {
+          inp.focus();
+          inp.select();
+          showAlert('Select the field and copy manually (⌘/Ctrl+C)', 'error');
+        });
+      } else {
+        inp.focus();
+        inp.select();
+        try {
+          document.execCommand('copy');
+          showAlert('Password copied to clipboard', 'success');
+        } catch (e) {
+          showAlert('Select the field and copy manually (⌘/Ctrl+C)', 'error');
+        }
+      }
     }
 
     // User Activity Modal Functions
@@ -5551,7 +7817,7 @@
       modal.classList.add('active');
       
       try {
-        const response = await authenticatedFetch(`/api/admin/users/${userId}/activity`);
+        const response = await adminAuthenticatedFetch(`/api/admin/users/${userId}/activity`);
         if (handleUnauthorized(response)) return;
         
         const data = await response.json();
@@ -5582,7 +7848,11 @@
         'operations_manager': 'Operations Manager',
         'business_development': 'Business Development',
         'procurement': 'Procurement',
-        'general_manager': 'General Manager'
+        'general_manager': 'General Manager',
+        'hr_manager': 'HR Manager',
+        'employee': 'Employee',
+        'technician': 'Technician',
+        'admin': 'Admin'
       };
       const designation = designationMap[user.designation] || user.designation || 'Not assigned';
       
@@ -5768,38 +8038,169 @@
       }
     });
 
-    document.getElementById('accessForm').addEventListener('submit', async (e) => {
+    function openCreateUserModal() {
+      const modal = document.getElementById('createUserModal');
+      if (!modal) return;
+      ensurePortalModal(modal);
+      document.getElementById('cuUsername').value = '';
+      document.getElementById('cuEmail').value = '';
+      document.getElementById('cuFullName').value = '';
+      document.getElementById('cuPassword').value = '';
+      document.getElementById('cuDesignation').value = 'employee';
+      document.getElementById('cuJoined').value = '';
+      document.getElementById('cuJobDesignation').value = '';
+      document.getElementById('cuAnnualLeaveDays').value = '';
+      document.getElementById('cuOtherLeaveDays').value = '';
+      const cuRm = document.getElementById('cuReportingManager');
+      if (cuRm) {
+        fillReportingManagerDropdown(cuRm, null);
+        cuRm.value = '';
+      }
+      modal.classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+    function closeCreateUserModal() {
+      const modal = document.getElementById('createUserModal');
+      if (modal) modal.classList.remove('active');
+      document.body.style.overflow = '';
+    }
+
+    document.getElementById('createUserForm').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const userId = document.getElementById('accessUserId').value;
-      
-      const accessData = {
-        access_hvac: document.getElementById('accessHvac').checked,
-        access_civil: document.getElementById('accessCivil').checked,
-        access_cleaning: document.getElementById('accessCleaning').checked
+      const btn = document.getElementById('createUserSubmitBtn');
+      const btnLabel = btn && btn.querySelector('.injz-mgmt-btn-label');
+      const payload = {
+        username: document.getElementById('cuUsername').value.trim(),
+        email: document.getElementById('cuEmail').value.trim(),
+        full_name: document.getElementById('cuFullName').value.trim() || null,
+        password: document.getElementById('cuPassword').value,
+        designation: document.getElementById('cuDesignation').value || null,
+        employment_start_date: document.getElementById('cuJoined').value || '',
+        job_designation: document.getElementById('cuJobDesignation').value.trim(),
+        annual_leave_days: document.getElementById('cuAnnualLeaveDays').value.trim(),
+        other_leave_days: document.getElementById('cuOtherLeaveDays').value.trim(),
+        role: 'user'
       };
+      const cuRm = document.getElementById('cuReportingManager');
+      if (cuRm && cuRm.value) {
+        const n = parseInt(cuRm.value, 10);
+        if (!Number.isNaN(n)) payload.reporting_manager_id = n;
+      }
+      if (!payload.username || !payload.email) {
+        showAlert('Username and email are required', 'error');
+        return;
+      }
+      btn.disabled = true;
+      const prev = btnLabel ? btnLabel.textContent : btn.textContent;
+      if (btnLabel) btnLabel.textContent = 'Creating…';
+      else btn.textContent = 'Creating…';
+      try {
+        const response = await adminAuthenticatedFetch('/api/admin/users', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (handleUnauthorized(response)) return;
+        const data = await response.json().catch(() => ({}));
+        if (response.ok && data.success) {
+          let msg = data.message || 'User created successfully';
+          if (data.temp_password) {
+            msg += ' Temporary password: ' + data.temp_password;
+          }
+          showAlert(msg, 'success', !!data.temp_password);
+          closeCreateUserModal();
+          loadUsers();
+        } else {
+          showAlert(data.error || 'Failed to create user', 'error');
+        }
+      } catch (err) {
+        console.error(err);
+        showAlert('Error creating user', 'error');
+      } finally {
+        btn.disabled = false;
+        if (btnLabel) btnLabel.textContent = prev;
+        else btn.textContent = prev;
+      }
+    });
+
+    document.getElementById('userProfileForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const userId = document.getElementById('profileUserId').value;
+      if (!userId) return;
+
+      const des = document.getElementById('profileDesignation').value;
+      const payload = {
+        full_name: document.getElementById('profileFullName').value.trim(),
+        email: document.getElementById('profileEmail').value.trim(),
+        username: document.getElementById('profileUsername').value.trim(),
+        role: document.getElementById('profileRole').value,
+        designation: des || null,
+        default_comment: document.getElementById('profileDefaultComment').value.trim() || null,
+        default_signature: profileSignatureDataUrl || null,
+        employment_start_date: (document.getElementById('profileEmploymentStartDate') && document.getElementById('profileEmploymentStartDate').value.trim()) || '',
+        job_designation: document.getElementById('profileJobDesignation') ? document.getElementById('profileJobDesignation').value.trim() : '',
+        annual_leave_days: document.getElementById('profileAnnualLeaveDays') ? document.getElementById('profileAnnualLeaveDays').value.trim() : '',
+        other_leave_days: document.getElementById('profileOtherLeaveDays') ? document.getElementById('profileOtherLeaveDays').value.trim() : ''
+      };
+      const prm = document.getElementById('profileReportingManager');
+      if (prm) {
+        if (!prm.value) payload.reporting_manager_id = null;
+        else {
+          const mid = parseInt(prm.value, 10);
+          payload.reporting_manager_id = Number.isNaN(mid) ? null : mid;
+        }
+      }
+
+      const u = users.find(x => String(x.id) === String(userId));
+      if (u && u.role !== 'admin') {
+        payload.access_hvac = document.getElementById('accessHvac').checked;
+        payload.access_civil = document.getElementById('accessCivil').checked;
+        payload.access_cleaning = document.getElementById('accessCleaning').checked;
+        payload.access_hr = document.getElementById('accessHr').checked;
+        payload.access_procurement_module = document.getElementById('accessProcurement').checked;
+        payload.access_business_development = document.getElementById('accessBusinessDev').checked;
+        payload.access_report_generation = document.getElementById('accessReportGen').checked;
+        payload.access_submitted_forms = document.getElementById('accessSubmittedForms').checked;
+        payload.access_ticketing = document.getElementById('accessTicketing')?.checked || false;
+      }
 
       try {
-        const response = await authenticatedFetch(`/api/admin/users/${userId}/update-access`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(accessData)
+        const response = await adminAuthenticatedFetch(`/api/admin/users/${userId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
         });
 
         if (handleUnauthorized(response)) return;
 
         const data = await response.json();
-        if (data.success) {
-          showAlert('User access updated successfully', 'success');
-          closeAccessModal();
+        if (response.ok && data.success) {
+          const roleIsAdmin = document.getElementById('profileRole').value === 'admin';
+          if (!roleIsAdmin) {
+            const dhub = document.getElementById('accessDocHub');
+            const dhRes = await adminAuthenticatedFetch(`/api/admin/dochub/access-users/${userId}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ can_access: dhub ? dhub.checked : true })
+            });
+            if (handleUnauthorized(dhRes)) return;
+            const dhData = await dhRes.json().catch(function () { return {}; });
+            if (!dhRes.ok || !dhData.success) {
+              showAlert((dhData && dhData.message) || (dhData && dhData.error) || 'Profile saved, but Document hub access could not be updated', 'error');
+              closeUserProfileModal();
+              loadUsers();
+              return;
+            }
+          }
+          showAlert(data.message || 'Profile saved successfully', 'success');
+          closeUserProfileModal();
           loadUsers();
         } else {
-          showAlert(data.error || 'Failed to update user access', 'error');
+          showAlert(data.error || 'Failed to save profile', 'error');
         }
       } catch (error) {
-        console.error('Error updating access:', error);
-        showAlert('Error updating user access', 'error');
+        console.error('Error saving profile:', error);
+        showAlert('Error saving profile', 'error');
       }
     });
 
@@ -5830,17 +8231,17 @@
     // Close modal on outside click
     document.getElementById('accessModal').addEventListener('click', (e) => {
       if (e.target.id === 'accessModal') {
-        closeAccessModal();
+        closeUserProfileModal();
       }
     });
 
     // Documents Management
     let documents = [];
-    let documentsFilter = 'active';
+    let documentsFilter = 'all';
 
     async function loadDocuments() {
       try {
-        const response = await authenticatedFetch('/api/admin/documents');
+        const response = await adminAuthenticatedFetch('/api/admin/documents');
 
         if (handleUnauthorized(response)) return;
 
@@ -5872,7 +8273,10 @@
       const filteredDocuments = documents.filter(doc => {
         const workflowStatus = doc.workflow_status || '';
         const status = doc.status || '';
-        const isReviewing = workflowStatus.includes('reviewing') || workflowStatus.includes('notified');
+
+        if (documentsFilter === 'all') {
+          return true;
+        }
 
         if (documentsFilter === 'active') {
           return !['completed', 'closed_by_admin', 'rejected'].includes(workflowStatus)
@@ -5895,20 +8299,37 @@
         return;
       }
 
+      const parseUTCDate = (dateString) => {
+        if (!dateString) return null;
+        let utcString = dateString;
+        if (!utcString.endsWith('Z') && !utcString.includes('+') && !utcString.includes('-', 10)) {
+          utcString = utcString + 'Z';
+        }
+        return new Date(utcString);
+      };
+
       let html = `
         <div class="table-scroll-wrapper">
         <table class="documents-table">
+          <colgroup>
+            <col class="doc-col-cb">
+            <col class="doc-col-id">
+            <col class="doc-col-site">
+            <col class="doc-col-visit">
+            <col class="doc-col-user">
+            <col class="doc-col-status">
+            <col class="doc-col-at">
+            <col class="doc-col-act">
+          </colgroup>
           <thead>
             <tr>
-              <th style="width: 40px;"><input type="checkbox" id="selectAllHeader" onchange="toggleSelectAllDocuments()"></th>
-              <th>Document ID</th>
-              <th>Module</th>
-              <th>Site/Project</th>
-              <th>Visit Date</th>
-              <th>Created By</th>
-              <th>Status</th>
-              <th>Workflow Status</th>
-              <th>Created At</th>
+              <th><input type="checkbox" id="selectAllHeader" onchange="toggleSelectAllDocuments()" aria-label="Select all"></th>
+              <th title="Document ID and module">Document</th>
+              <th>Site</th>
+              <th>Visit</th>
+              <th>Created by</th>
+              <th title="Record and workflow status">Status</th>
+              <th title="Created date and time">Created</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -5916,8 +8337,10 @@
       `;
 
       filteredDocuments.forEach(doc => {
-        const moduleClass = doc.module_type === 'hvac_mep' ? 'hvac' : 
-                           doc.module_type === 'civil' ? 'civil' : 'cleaning';
+        const moduleClass = doc.module_type === 'hvac_mep' ? 'hvac' :
+                           doc.module_type === 'civil' ? 'civil' :
+                           doc.module_type === 'cleaning' ? 'cleaning' :
+                           (doc.module_type && String(doc.module_type).startsWith('hr_')) ? 'hr' : 'cleaning';
         let statusClass = doc.status === 'completed' ? 'completed' :
                            doc.status === 'processing' ? 'processing' :
                            doc.status === 'submitted' ? 'submitted' :
@@ -5941,23 +8364,13 @@
           workflowDisplay = 'Active';
         }
         
-        // Helper function to ensure UTC date strings are properly parsed
-        const parseUTCDate = (dateString) => {
-          if (!dateString) return null;
-          let utcString = dateString;
-          if (!utcString.endsWith('Z') && !utcString.includes('+') && !utcString.includes('-', 10)) {
-            utcString = utcString + 'Z';
-          }
-          return new Date(utcString);
-        };
-        
         // Add log info if supervisor has reviewed
         let supervisorLog = '';
         if (doc.supervisor_reviewed_at) {
           const reviewDate = parseUTCDate(doc.supervisor_reviewed_at).toLocaleString('en-US', {
             month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Dubai'
           });
-          supervisorLog = `<div style="font-size: 0.7rem; color: var(--success); margin-top: 0.25rem;">✓ Reviewed: ${reviewDate} (GST)</div>`;
+          supervisorLog = `<div class="doc-supervisor-log">✓ Reviewed: ${reviewDate} (GST)</div>`;
         }
         
         // Visit date formatting (date-only, no timezone indicator needed)
@@ -5968,51 +8381,85 @@
           timeZone: 'Asia/Dubai'
         }) : 'N/A';
         
-        // Format created_at properly
-        let createdDate = 'N/A';
+        let createdDateHtml = 'N/A';
         if (doc.created_at) {
           const date = parseUTCDate(doc.created_at);
           if (!isNaN(date.getTime())) {
-            createdDate = date.toLocaleString('en-US', {
+            const dStr = date.toLocaleDateString('en-US', {
               year: 'numeric',
               month: 'short',
               day: 'numeric',
+              timeZone: 'Asia/Dubai'
+            });
+            const tStr = date.toLocaleTimeString('en-US', {
               hour: '2-digit',
               minute: '2-digit',
               hour12: true,
               timeZone: 'Asia/Dubai'
-            }) + ' (GST)';
+            });
+            createdDateHtml = `<span class="doc-created-split"><span class="doc-created-date">${dStr}</span><span class="doc-created-time">${tStr} GST</span></span>`;
           }
         }
         
         const userName = doc.user ? (doc.user.full_name || doc.user.username) : 'Unknown';
         const userEmail = doc.user ? doc.user.email : 'N/A';
 
+        const hasModuleLabel = !!(doc.module_display && String(doc.module_display).trim());
+        const moduleLabel = hasModuleLabel ? doc.module_display : '—';
+        const moduleBadgeClass = hasModuleLabel ? `module-badge ${moduleClass}` : 'module-badge module-badge--empty';
+
+        const statusLabel = documentsFilter === 'active' ? 'Active' : (doc.status || '—');
+        const sameStatusWf = String(statusLabel).toLowerCase() === String(workflowDisplay).toLowerCase();
+        let statusCellInner;
+        if (sameStatusWf) {
+          statusCellInner = `<span class="status-badge ${statusClass}">${escapeHtml(statusLabel)}</span>${supervisorLog}`;
+        } else {
+          statusCellInner = `<div class="doc-status-stack"><span class="status-badge ${statusClass}">${escapeHtml(statusLabel)}</span><span class="workflow-badge ${workflowClass}">${escapeHtml(workflowDisplay)}</span></div>${supervisorLog}`;
+        }
+
+        const siteName = doc.site_name != null ? String(doc.site_name) : '';
+        const isHrModule = doc.module_type && String(doc.module_type).startsWith('hr_');
+        const excelSlot = isHrModule
+          ? `<span class="doc-action-slot" title="Not applicable">—</span>`
+          : (doc.excel_url
+          ? `<a href="${doc.excel_url}" target="_blank" rel="noopener noreferrer" class="btn-download" title="Download Excel">Excel</a>`
+          : `<span class="doc-action-slot" title="No Excel export">—</span>`);
+        const sidJs = String(doc.submission_id || '').replace(/'/g, "\\'");
+        const mtJs = String(doc.module_type || '').replace(/'/g, "\\'");
+        const pdfSlot = isHrModule
+          ? `<button type="button" class="btn btn-sm btn-outline-secondary doc-act-pdf" onclick="downloadAdminHrPdf('${sidJs}')" title="Download PDF">PDF</button>`
+          : (doc.pdf_url
+          ? `<a href="${doc.pdf_url}" target="_blank" rel="noopener noreferrer" class="btn-download" title="Download PDF">PDF</a>`
+          : `<span class="doc-action-slot" title="No PDF (report not generated yet)">—</span>`);
+        const viewSlot = `<button type="button" class="btn btn-sm btn-outline-primary doc-act-view" onclick="viewAdminDocument('${sidJs}', '${mtJs}')" title="View submission">View</button>`;
+        const closeSlot = doc.workflow_status !== 'closed_by_admin'
+          ? `<button type="button" class="btn btn-sm btn-outline-danger" onclick="closeSubmission('${sidJs}')" title="Close submission">Close</button>`
+          : `<span class="doc-action-slot" title="Already closed">—</span>`;
+
         html += `
           <tr>
             <td data-label="Select"><input type="checkbox" class="document-checkbox" value="${doc.submission_id}" onchange="updateDocumentCloseButton()"></td>
-            <td data-label="Document ID"><button type="button" class="doc-id-btn" onclick="editSubmission('${doc.submission_id}', '${doc.module_type}')" title="View form (${doc.submission_id})">${doc.submission_id}</button></td>
-            <td data-label="Module"><span class="module-badge ${moduleClass}">${doc.module_display}</span></td>
-            <td data-label="Site/Project"><strong>${doc.site_name}</strong></td>
-            <td data-label="Visit Date">${visitDate}</td>
-            <td data-label="Created By">
+            <td class="doc-id-cell" data-label="Document">
+              <button type="button" class="doc-id-btn" onclick="viewAdminDocument('${sidJs}', '${mtJs}')" title="View (${escapeHtml(String(doc.submission_id || ''))})">${escapeHtml(String(doc.submission_id || ''))}</button>
+              <span class="${moduleBadgeClass} doc-module-line">${escapeHtml(moduleLabel)}</span>
+            </td>
+            <td data-label="Site" title="${escapeHtml(siteName)}"><strong>${escapeHtml(siteName)}</strong></td>
+            <td data-label="Visit">${visitDate}</td>
+            <td data-label="Created by">
               <div class="user-info">
-                <span class="user-name">${userName}</span>
-                <span class="user-email">${userEmail}</span>
+                <span class="user-name">${escapeHtml(userName)}</span>
+                <span class="user-email">${escapeHtml(userEmail)}</span>
               </div>
             </td>
-            <td data-label="Status"><span class="status-badge ${statusClass}">${documentsFilter === 'active' ? 'Active' : doc.status}</span></td>
-            <td data-label="Workflow Status">
-              <span class="workflow-badge ${workflowClass}">${workflowDisplay}</span>
-              ${supervisorLog}
-            </td>
-            <td data-label="Created At">${createdDate}</td>
+            <td data-label="Status">${statusCellInner}</td>
+            <td data-label="Created">${createdDateHtml}</td>
             <td data-label="Actions">
-              <div class="doc-actions">
-                ${doc.excel_url ? `<a href="${doc.excel_url}" target="_blank" class="btn-download" title="Download Excel">📊 Excel</a>` : ''}
-                ${doc.pdf_url ? `<a href="${doc.pdf_url}" target="_blank" class="btn-download" title="Download PDF">📄 PDF</a>` : ''}
-                <button class="btn btn-sm btn-primary" onclick="editSubmission('${doc.submission_id}', '${doc.module_type}')" title="Edit Submission">✏️ Edit</button>
-                ${doc.workflow_status !== 'closed_by_admin' ? `<button class="btn btn-sm btn-outline-danger" onclick="closeSubmission('${doc.submission_id}')" title="Close Submission">Close</button>` : ''}
+              <div class="doc-actions doc-actions--balanced">
+                ${viewSlot}
+                ${pdfSlot}
+                ${excelSlot}
+                <button type="button" class="btn btn-sm btn-primary" onclick="editSubmission('${sidJs}', '${mtJs}')" title="Edit in module">Edit</button>
+                ${closeSlot}
               </div>
             </td>
           </tr>
@@ -6034,7 +8481,7 @@
         return;
       }
       try {
-        const response = await authenticatedFetch(`/api/admin/submissions/${submissionId}/close`, {
+        const response = await adminAuthenticatedFetch(`/api/admin/submissions/${submissionId}/close`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -6075,7 +8522,7 @@
         // Prepare the designation value (empty string becomes null)
         const designationValue = designation === '' || designation === 'None' ? null : designation;
 
-        const response = await authenticatedFetch(`/api/admin/users/${userId}`, {
+        const response = await adminAuthenticatedFetch(`/api/admin/users/${userId}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json'
@@ -6132,8 +8579,8 @@
         console.error('Error parsing user data:', e);
       }
       
-      // Prevent deleting yourself
-      if (userId === currentUserId) {
+      // Prevent deleting yourself (normalize types from JSON / callers)
+      if (Number(userId) === Number(currentUserId)) {
         showAlert('You cannot delete your own account', 'error');
         return;
       }
@@ -6143,7 +8590,7 @@
       }
 
       try {
-        const response = await authenticatedFetch(`/api/admin/users/${userId}`, {
+        const response = await adminAuthenticatedFetch(`/api/admin/users/${userId}`, {
           method: 'DELETE',
           headers: {
             'Content-Type': 'application/json'
@@ -6205,7 +8652,7 @@
         let failCount = 0;
 
         for (const submissionId of submissionIds) {
-          const response = await authenticatedFetch(`/api/admin/submissions/${submissionId}/close`, {
+          const response = await adminAuthenticatedFetch(`/api/admin/submissions/${submissionId}/close`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
@@ -6235,22 +8682,92 @@
       }
     }
 
-    // Edit Submission - Redirect to form page
-    function editSubmission(submissionId, moduleType) {
-      // Redirect to the appropriate form page with submission_id parameter
-      let formUrl = '';
+    function adminInspectionReviewUrl(submissionId, moduleType) {
       if (moduleType === 'hvac_mep') {
-        // Use review=true for HVAC & MEP to show the same view as supervisor
-        formUrl = `/hvac-mep/form?edit=${submissionId}&review=true`;
-      } else if (moduleType === 'civil') {
-        formUrl = `/civil/form?edit=${submissionId}&review=true`;
-      } else if (moduleType === 'cleaning') {
-        formUrl = `/cleaning/form?edit=${submissionId}&review=true`;
-      } else {
-        showAlert('Unknown module type', 'error');
+        return `/hvac-mep/form?edit=${encodeURIComponent(submissionId)}&review=true`;
+      }
+      if (moduleType === 'civil') {
+        return `/civil/form?edit=${encodeURIComponent(submissionId)}&review=true`;
+      }
+      if (moduleType === 'cleaning') {
+        return `/cleaning/form?edit=${encodeURIComponent(submissionId)}&review=true`;
+      }
+      return null;
+    }
+
+    function viewAdminDocument(submissionId, moduleType) {
+      if (moduleType && moduleType.startsWith('hr_')) {
+        window.open('/hr/print/' + encodeURIComponent(submissionId), '_blank', 'noopener,noreferrer');
         return;
       }
-      window.location.href = formUrl;
+      const formUrl = adminInspectionReviewUrl(submissionId, moduleType);
+      if (formUrl) {
+        window.open(formUrl, '_blank', 'noopener,noreferrer');
+        return;
+      }
+      showAlert('Unknown module type', 'error');
+    }
+
+    async function downloadAdminHrPdf(submissionId) {
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        showAlert('Please sign in again', 'error');
+        return;
+      }
+      try {
+        const res = await fetch('/hr/download-pdf/' + encodeURIComponent(submissionId), {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (res.status === 401 || res.status === 403) {
+          showAlert('Access denied or session expired', 'error');
+          return;
+        }
+        if (!res.ok) {
+          let msg = 'PDF not available for this form';
+          try {
+            const err = await res.json();
+            if (err && err.error) msg = err.error;
+          } catch (e) { /* ignore */ }
+          showAlert(msg, 'error');
+          return;
+        }
+        const blob = await res.blob();
+        const cd = res.headers.get('Content-Disposition');
+        let filename = 'HR_Form_' + submissionId + '.pdf';
+        const m = cd && cd.match(/filename\*?=(?:UTF-8'')?([^;\n]+)/i);
+        if (m && m[1]) {
+          try {
+            filename = decodeURIComponent(m[1].trim().replace(/^"+|"+$/g, ''));
+          } catch (e) {
+            filename = m[1].trim().replace(/^"+|"+$/g, '');
+          }
+        }
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      } catch (error) {
+        console.error('downloadAdminHrPdf', error);
+        showAlert('Failed to download PDF', 'error');
+      }
+    }
+
+    // Edit Submission — same window (HR: workflow queue; inspection: form review URL)
+    function editSubmission(submissionId, moduleType) {
+      if (moduleType && moduleType.startsWith('hr_')) {
+        window.location.href = '/hr/pending-review';
+        return;
+      }
+      const formUrl = adminInspectionReviewUrl(submissionId, moduleType);
+      if (formUrl) {
+        window.location.href = formUrl;
+        return;
+      }
+      showAlert('Unknown module type', 'error');
     }
 
     // OLD MODAL FUNCTIONS - KEEPING FOR REFERENCE BUT NOT USED
@@ -6277,7 +8794,7 @@
         document.getElementById('editModal').classList.add('active');
         
         // Fetch submission data
-        const response = await authenticatedFetch(`/api/admin/submissions/${submissionId}`);
+        const response = await adminAuthenticatedFetch(`/api/admin/submissions/${submissionId}`);
 
         if (handleUnauthorized(response)) return;
 
@@ -6642,7 +9159,7 @@
       const formData = collectFormData(window.currentModuleType);
       
       try {
-        const response = await authenticatedFetch(`/api/admin/submissions/${submissionId}`, {
+        const response = await adminAuthenticatedFetch(`/api/admin/submissions/${submissionId}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json'
@@ -6678,13 +9195,9 @@
     });
 
     function updateAdminSidebarBadges() {
-      const sbU = document.getElementById('admSbUserCount');
       const sbD = document.getElementById('admSbDocCount');
-      const uc = typeof users !== 'undefined' && Array.isArray(users) ? users.length : 0;
       const dc = typeof documents !== 'undefined' && Array.isArray(documents) ? documents.length : 0;
-      if (sbU) sbU.textContent = String(uc);
       if (sbD) sbD.textContent = String(dc);
-      // KPI strip
       renderKpiStrip();
     }
 
@@ -6737,16 +9250,18 @@
     /* ── Admin V2: User cards renderer ─────────────────────── */
     /* ── KPI Strip updater ──────────────────────────────── */
     function renderKpiStrip() {
-      // Users
-      const activeUsers = (typeof users !== 'undefined' && Array.isArray(users))
-        ? users.filter(u => u.is_active).length : null;
-      if (activeUsers !== null) {
+      // Staff KPI: active logins excluding technician designation
+      const activeStaff =
+        (typeof users !== 'undefined' && Array.isArray(users))
+          ? users.filter(u => u.is_active && !_designationIsTechnicianLogin(u)).length
+          : null;
+      if (activeStaff !== null) {
         const el = document.getElementById('kpiUsers');
-        if (el) el.textContent = activeUsers;
+        if (el) el.textContent = activeStaff;
         const legEl = document.getElementById('admOvTotalUsers');
-        if (legEl) legEl.textContent = activeUsers;
+        if (legEl) legEl.textContent = activeStaff;
         const sbEl = document.getElementById('admSbUserCount');
-        if (sbEl) sbEl.textContent = activeUsers;
+        if (sbEl) sbEl.textContent = activeStaff;
       }
       // Documents by module
       if (typeof documents !== 'undefined' && Array.isArray(documents)) {
@@ -6827,7 +9342,8 @@
       const desigLabel = d => ({
         supervisor: 'Supervisor', operations_manager: 'Ops Manager',
         business_development: 'Business Dev', procurement: 'Procurement',
-        general_manager: 'Gen. Manager'
+        general_manager: 'Gen. Manager', hr_manager: 'HR Manager',
+        employee: 'Employee', technician: 'Technician', admin: 'Admin'
       }[d] || (d ? d.replace(/_/g,' ') : ''));
 
       const roleShort = r => ({ admin: 'ADMIN', inspector: 'INSPECTOR', user: 'USER' }[r] || (r||'USER').toUpperCase());
@@ -6877,6 +9393,11 @@
               <div class="admv3-op-bar-fill" style="width:${pct}%;background:${barColor};"></div>
             </div>
             <span class="admv3-op-bar-label">${pct}% access</span>
+          </div>
+          <div class="admv3-op-card-actions">
+            <button type="button" class="btn btn-sm btn-reset" data-action="reset-password" data-user-id="${u.id}">Reset password</button>
+            ${!isAdmin ? `<button type="button" class="btn btn-sm btn-access" data-action="manage-profile" data-user-id="${u.id}">Manage profile</button>` : ''}
+            <button type="button" class="btn btn-sm btn-danger" data-action="delete-user" data-user-id="${u.id}">Delete</button>
           </div>
         </div>`;
       }).join('');
@@ -6947,7 +9468,7 @@
     }
 
     function initAdminScrollSpy() {
-      const ids = ['section-overview', 'section-users', 'section-documents', 'section-notification-settings'];
+      const ids = ['section-overview', 'section-users', 'section-tickets', 'section-documents', 'section-notification-settings'];
       const elements = ids.map((id) => document.getElementById(id)).filter(Boolean);
       if (!elements.length || !('IntersectionObserver' in window)) return;
       const io = new IntersectionObserver(
@@ -7045,6 +9566,39 @@
       initAdminMobileSidebar();
       initAdminScrollSpy();
       try {
+        ensurePortalModal(document.getElementById('passwordResetConfirmModal'));
+        ensurePortalModal(document.getElementById('passwordResetResultModal'));
+        ensurePortalModal(document.getElementById('accessModal'));
+      } catch (e) { /* ignore */ }
+      applyAdminProfileLayout();
+      try {
+        const lt = document.getElementById('adminProfileLayoutToggle');
+        if (lt && !lt.dataset.layoutBound) {
+          lt.dataset.layoutBound = '1';
+          lt.addEventListener('click', toggleAdminProfileLayout);
+        }
+      } catch (e2) { /* ignore */ }
+      try {
+        const sigFile = document.getElementById('profileSignatureFile');
+        if (sigFile) {
+          sigFile.addEventListener('change', () => {
+            const f = sigFile.files && sigFile.files[0];
+            if (!f) return;
+            if (f.size > 400 * 1024) {
+              showAlert('Signature image must be under 400KB.', 'error');
+              sigFile.value = '';
+              return;
+            }
+            const reader = new FileReader();
+            reader.onload = () => {
+              profileSignatureDataUrl = reader.result || '';
+              updateProfileSignaturePreview();
+            };
+            reader.readAsDataURL(f);
+          });
+        }
+      } catch (e) { /* ignore */ }
+      try {
         const focus = new URLSearchParams(window.location.search).get('focus');
         if (focus === 'email-notifications') {
           setTimeout(() => {
@@ -7073,13 +9627,13 @@
       Overview
     </a>
 
-    <!-- Users -->
+    <!-- People counts (detail in Users module) -->
     <a href="#section-users" class="adm-tab-item" id="admTabUsers"
        onclick="admTabActivate(this); admv2ScrollTo('section-users', null); return false;">
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
         <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/>
       </svg>
-      Users
+      People
     </a>
 
     <!-- Documents -->

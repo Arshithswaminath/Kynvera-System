@@ -1,12 +1,13 @@
 """
-MMR Blueprint – Report Generation (available to all authenticated users).
+MMR Blueprint – Report Generation (MMR hub).
 URL prefix: /admin/mmr
-Administrative module (user management, access control) stays admin-only.
+Requires JWT plus admin role or User.access_report_generation.
 """
 import os
 import json
 import logging
 from datetime import datetime, timedelta, timezone
+from functools import wraps
 from io import BytesIO
 
 from flask import (Blueprint, request, jsonify, render_template,
@@ -19,6 +20,37 @@ logger = logging.getLogger(__name__)
 
 mmr_bp = Blueprint('mmr_bp', __name__, url_prefix='/admin/mmr',
                    template_folder='templates')
+
+
+def mmr_jwt_and_report_access(fn):
+    """JWT + Report Generation module access (admins always allowed)."""
+    @wraps(fn)
+    @jwt_required()
+    def wrapped(*args, **kwargs):
+        uid = get_jwt_identity()
+        try:
+            user = User.query.get(int(uid)) if uid is not None else None
+        except (TypeError, ValueError):
+            user = None
+        if not user or not user.is_active:
+            if request.path.startswith('/admin/mmr/api'):
+                return jsonify({'error': 'Unauthorized'}), 401
+            return render_template(
+                'access_denied.html',
+                module='Report Generation',
+                message='You must be signed in to use Report Generation.',
+            ), 403
+        if user.role != 'admin' and not getattr(user, 'access_report_generation', False):
+            if request.path.startswith('/admin/mmr/api'):
+                return jsonify({'error': 'You do not have access to Report Generation.'}), 403
+            return render_template(
+                'access_denied.html',
+                module='Report Generation',
+                message='You do not have access to Report Generation. Please contact an administrator.',
+            ), 403
+        return fn(*args, **kwargs)
+    return wrapped
+
 
 ALLOWED_DOMAIN = 'injaaz.ae'
 
@@ -624,7 +656,7 @@ def _save_last_run(
 # ──────────────────────────────────────────────────────────────────────────────
 
 @mmr_bp.route('/', methods=['GET'])
-@jwt_required()
+@mmr_jwt_and_report_access
 def dashboard():
     is_admin = False
     try:
@@ -642,7 +674,7 @@ def dashboard():
 # ──────────────────────────────────────────────────────────────────────────────
 
 @mmr_bp.route('/api/upload', methods=['POST'])
-@jwt_required()
+@mmr_jwt_and_report_access
 def upload():
     if 'file' not in request.files:
         return jsonify({'error': 'No file provided'}), 400
@@ -699,7 +731,7 @@ def upload():
 
 
 @mmr_bp.route('/api/current-upload', methods=['GET'])
-@jwt_required()
+@mmr_jwt_and_report_access
 def current_upload():
     """Return dashboard JSON for the last uploaded Excel (mmr_latest.xlsx) so the page can restore after refresh."""
     path = _upload_path()
@@ -721,7 +753,7 @@ def current_upload():
 
 
 @mmr_bp.route('/api/clear-upload', methods=['POST'])
-@jwt_required()
+@mmr_jwt_and_report_access
 def clear_upload():
     """Remove mmr_latest.xlsx so the dashboard can start fresh (new report cycle upload)."""
     path = _upload_path()
@@ -746,7 +778,7 @@ def clear_upload():
 # ──────────────────────────────────────────────────────────────────────────────
 
 @mmr_bp.route('/api/download-report', methods=['GET'])
-@jwt_required()
+@mmr_jwt_and_report_access
 def download_report():
     path = _upload_path()
     if not os.path.exists(path):
@@ -774,7 +806,7 @@ def download_report():
 
 
 @mmr_bp.route('/api/download-report-monthly', methods=['GET'])
-@jwt_required()
+@mmr_jwt_and_report_access
 def download_report_monthly():
     """Generate one Excel per calendar month and stream them as a single ZIP."""
     path = _upload_path()
@@ -817,7 +849,7 @@ def download_report_monthly():
 # ──────────────────────────────────────────────────────────────────────────────
 
 @mmr_bp.route('/api/save-to-folder', methods=['POST'])
-@jwt_required()
+@mmr_jwt_and_report_access
 def save_to_folder():
     """Save current (optionally filtered) report to the report folder."""
     path = _upload_path()
@@ -850,7 +882,7 @@ def save_to_folder():
 
 
 @mmr_bp.route('/api/save-to-drive', methods=['POST'])
-@jwt_required()
+@mmr_jwt_and_report_access
 def save_to_drive():
     """Save current (optionally filtered) report to TrueNAS CAFM drive (see _TRUENAS_CAFM_PATH)."""
     path = _upload_path()
@@ -914,7 +946,7 @@ def save_to_drive():
 
 
 @mmr_bp.route('/api/report-folder', methods=['GET'])
-@jwt_required()
+@mmr_jwt_and_report_access
 def list_report_folder():
     """List all saved reports in the report folder. Includes filter state for restoring dashboard."""
     folder = _reports_folder()
@@ -948,7 +980,7 @@ def list_report_folder():
 
 
 @mmr_bp.route('/api/report-folder/download/<path:filename>', methods=['GET'])
-@jwt_required()
+@mmr_jwt_and_report_access
 def download_report_folder_file(filename):
     """Download a saved report from the report folder."""
     if '..' in filename or '/' in filename or '\\' in filename:
@@ -966,7 +998,7 @@ def download_report_folder_file(filename):
 
 
 @mmr_bp.route('/api/report-folder/open/<path:filename>', methods=['GET'])
-@jwt_required()
+@mmr_jwt_and_report_access
 def open_report_from_folder(filename):
     """Load a saved report's data for display in the dashboard."""
     if '..' in filename or '/' in filename or '\\' in filename:
@@ -1018,7 +1050,7 @@ def open_report_from_folder(filename):
 # ──────────────────────────────────────────────────────────────────────────────
 
 @mmr_bp.route('/api/email-config', methods=['GET'])
-@jwt_required()
+@mmr_jwt_and_report_access
 def get_email_config():
     cfg = _load_config()
     out = {**cfg, 'presets': _email_presets()}
@@ -1026,7 +1058,7 @@ def get_email_config():
 
 
 @mmr_bp.route('/api/automation-status', methods=['GET'])
-@jwt_required()
+@mmr_jwt_and_report_access
 def get_automation_status():
     """Return schedule state and last run info for the automation button."""
     config = _load_config()
@@ -1109,7 +1141,7 @@ def _activity_entry_cycle_id(entry: dict) -> int | None:
 
 
 @mmr_bp.route('/api/automation-activities', methods=['GET'])
-@jwt_required()
+@mmr_jwt_and_report_access
 def get_automation_activities():
     """Automation timeline (newest first).
     mode=live: rows for the active cycle only; if there is no current cycle, returns an empty list
@@ -1170,7 +1202,7 @@ def get_automation_activities():
 
 
 @mmr_bp.route('/api/automation-pause', methods=['POST'])
-@jwt_required()
+@mmr_jwt_and_report_access
 def pause_automation():
     """Pause the automation. Next run will not execute until resumed."""
     config = _load_config()
@@ -1192,7 +1224,7 @@ def pause_automation():
 
 
 @mmr_bp.route('/api/automation-resume', methods=['POST'])
-@jwt_required()
+@mmr_jwt_and_report_access
 def resume_automation():
     """Resume the automation. Requires Excel file to be uploaded."""
     path = _upload_path()
@@ -1239,14 +1271,14 @@ def resume_automation():
 # ──────────────────────────────────────────────────────────────────────────────
 
 @mmr_bp.route('/api/cycles', methods=['GET'])
-@jwt_required()
+@mmr_jwt_and_report_access
 def get_cycles():
     """Return full cycle log (current cycle + history)."""
     return jsonify(_load_cycle_log())
 
 
 @mmr_bp.route('/api/cycle/<int:cycle_id>/detail', methods=['GET'])
-@jwt_required()
+@mmr_jwt_and_report_access
 def get_cycle_detail(cycle_id: int):
     """Milestones + automation activity rows for one cycle (newest first, then back to start)."""
     log = _load_cycle_log()
@@ -1268,7 +1300,7 @@ def get_cycle_detail(cycle_id: int):
 
 
 @mmr_bp.route('/api/approve', methods=['POST'])
-@jwt_required()
+@mmr_jwt_and_report_access
 def approve_cycle():
     """Mark the current cycle as reviewed/approved."""
     user = _get_caller_identity()
@@ -1301,7 +1333,7 @@ def approve_cycle():
 
 
 @mmr_bp.route('/api/email-config', methods=['POST'])
-@jwt_required()
+@mmr_jwt_and_report_access
 def save_email_config():
     data = request.get_json() or {}
 
@@ -1362,7 +1394,7 @@ def save_email_config():
 # ──────────────────────────────────────────────────────────────────────────────
 
 @mmr_bp.route('/api/send-email', methods=['POST'])
-@jwt_required()
+@mmr_jwt_and_report_access
 def send_email_now():
     data = request.get_json() or {}
     path = _upload_path()

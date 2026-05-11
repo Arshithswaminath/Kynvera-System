@@ -157,6 +157,9 @@ def render_form_for_print(module_type, form_data, submission_id):
             _row('Leave Started', _fmt_date(fd.get('leave_started'))),
             _row('Actual Resumption', _fmt_date(fd.get('actual_resumption_date'))),
             _sig_row('Employee Signature', fd.get('employee_signature')),
+            _sig_row('Reporting Manager Signature', fd.get('reporting_manager_signature')),
+            _sig_row('GM Signature', fd.get('gm_signature')),
+            _sig_row('HR Signature', fd.get('hr_signature')),
         ]
         body = '<div class="doc-section-title">Duty Resumption</div><table class="doc-table">' + ''.join(rows) + '</table>'
     else:

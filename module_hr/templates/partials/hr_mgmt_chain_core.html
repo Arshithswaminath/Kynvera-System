@@ -1,0 +1,40 @@
+{# Core management routing UI (reporting manager / OM chips). Used by hr_mgmt_chain_submit_block and duty sidebar. #}
+{% set mgmt_lane = mgmt_lane|default('employee') %}
+<section class="sec hr-mgmt-chain-sec" id="hrMgmtChainSec"
+  style="margin-top:1rem;padding-top:1rem;border-top:1px dashed rgba(148,163,184,.55)"
+  aria-labelledby="hrMgmtChainHd">
+  <h3 class="sec-hd" id="hrMgmtChainHd">Management approvals (official PDF trail)</h3>
+
+  <div id="hrMgmtSetupErr" class="doc-intro" style="display:none;font-size:.82rem;color:#b91c1c;background:#fef2f2;border:1px solid #fecaca;padding:.6rem .75rem;border-radius:10px;margin:0 0 .75rem;line-height:1.45;"></div>
+
+  <div id="hrMgmtRmGmHint" style="display:none;font-size:.78rem;color:#0369a1;background:#ecfeff;border:1px solid #a5f3fc;padding:.55rem .75rem;border-radius:10px;margin:0 0 .75rem;line-height:1.45;">
+    Your reporting manager is the <strong>General Manager</strong>. One sign-off covers both reporting manager and GM on this trail (no duplicate GM step).
+  </div>
+
+  <p id="hrMgmtIntro" class="doc-intro" style="font-size:.79rem;line-height:1.45;color:var(--muted);margin:0 0 .75rem;">
+    Loading routing information…
+  </p>
+
+  <div id="hrMgmtChainWrap"
+       data-lane="{{ mgmt_lane }}"
+       style="background:rgba(248,250,252,.9);border:1px solid rgba(226,232,240,.95);border-radius:12px;padding:.85rem 1rem;">
+
+    <div id="hrMgmtAssignedRow" class="fld fw" style="margin-bottom:.75rem;">
+      <label class="fld-lbl"><span id="hrMgmtAssignedLbl">Reporting manager</span> <span class="req">*</span>
+        <span style="font-weight:500;opacity:.75">(set by Admin on your profile)</span></label>
+      <div id="hrMgmtAssignedChips" style="margin-top:.35rem;display:flex;flex-wrap:wrap;gap:.2rem;min-height:1.5rem"></div>
+      <p id="hrMgmtAssignedEmpty" class="doc-intro" style="font-size:.78rem;margin:.35rem 0 0;color:#b45309;display:none;">
+        No reporting manager on file. An administrator must assign one under <strong>Admin → Users → your profile → Reporting manager</strong> before you can submit.
+      </p>
+    </div>
+
+    <div id="hrMgmtOmRow" class="fld fw" style="display:none;margin-bottom:0;">
+      <label class="fld-lbl">Operations manager <span class="req">*</span> <span style="font-weight:500;opacity:.75">(Operations Manager designation)</span></label>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:flex-end;">
+        <select class="fld-inp" id="hrMgmtOmSel" style="flex:1;min-width:11rem"><option value="">Loading…</option></select>
+        <button type="button" class="btn-ghost" id="hrMgmtOmAdd">Add</button>
+      </div>
+      <div id="hrMgmtOmChips" style="margin-top:.35rem;display:flex;flex-wrap:wrap;gap:.2rem"></div>
+    </div>
+  </div>
+</section>

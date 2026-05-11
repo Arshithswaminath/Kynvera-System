@@ -12,6 +12,8 @@ from datetime import datetime
 from io import BytesIO
 
 from docx import Document
+
+from .signature_preprocess import rgba_make_signature_background_transparent
 from docx.shared import Pt, Cm, Mm, RGBColor, Inches
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.enum.table import WD_ALIGN_VERTICAL, WD_TABLE_ALIGNMENT
@@ -592,13 +594,7 @@ def _sig_to_transparent_png(data_url):
         try:
             from PIL import Image as PILImage
             pil = PILImage.open(BytesIO(raw)).convert("RGBA")
-            data = pil.load()
-            w, h = pil.size
-            for y in range(h):
-                for x in range(w):
-                    r, g, b, a = data[x, y]
-                    if r >= 250 and g >= 250 and b >= 250:
-                        data[x, y] = (r, g, b, 0)
+            rgba_make_signature_background_transparent(pil)
             f = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
             pil.save(f, "PNG")
             f.close()
@@ -1014,6 +1010,9 @@ def _build_commencement(fd):
 
 
 def _build_duty_resumption(fd):
+    from module_hr.hr_pdf_builder import _duty_resumption_body_slots
+
+    slots = _duty_resumption_body_slots(fd)
     doc = _new_doc()
     _add_header_pdf_style(doc, "Duty Resumption Form")
     _section_bar_numbered(doc, "01", "Employee Details")
@@ -1034,15 +1033,18 @@ def _build_duty_resumption(fd):
         ("Note",                 _fd(fd, "note")),
     ], cols=4)
 
-    if fd.get("line_manager_remarks"):
-        _long_field_pdf_style(doc, "Line Manager Remarks", fd.get("line_manager_remarks"))
+    lmr = slots.get("line_manager_display") or ""
+    if lmr and str(lmr).strip() and str(lmr).strip() != "-":
+        _long_field_pdf_style(doc, "Line Manager Remarks", lmr)
 
     _section_bar_numbered(doc, "03", "Signatures")
     sigs = [("Employee", fd.get("employee_signature"), fd.get("sign_date"))]
-    if fd.get("hr_signature"):
-        sigs.append(("HR", fd.get("hr_signature"), None))
-    if fd.get("gm_signature"):
-        sigs.append(("GM Approval", fd.get("gm_signature"), None))
+    if slots.get("rm_sig"):
+        sigs.append(("Reporting Manager", slots["rm_sig"], slots["rm_date"]))
+    if slots.get("gm_sig"):
+        sigs.append(("GM Approval", slots["gm_sig"], slots["gm_date"]))
+    if slots.get("hr_sig"):
+        sigs.append(("HR", slots["hr_sig"], slots["hr_date"]))
     _sig_block_pdf_style(doc, sigs)
     _footer_pdf_style(doc)
     return doc

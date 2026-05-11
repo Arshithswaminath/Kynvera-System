@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
   
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
-<title>Submitted Forms - Injaaz Application</title>
+<title>Submitted Inspection Form - Injaaz Application</title>
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
@@ -253,9 +253,9 @@
           </svg>
           Back to Dashboard
         </a>
-        <p class="hero-tagline">Submitted Forms</p>
-        <h1 class="hero-title">{% if is_supervisor %}My Submissions{% else %}All Submissions{% endif %}</h1>
-        <p class="hero-subtitle">{% if is_supervisor %}View, edit, and track the status of your submitted forms.{% else %}View and re-review all technician submissions, including completed ones.{% endif %}</p>
+        <p class="hero-tagline">Submitted Inspection Form</p>
+        <h1 class="hero-title">{% if is_supervisor %}My Inspection Submissions{% else %}All Inspection Submissions{% endif %}</h1>
+        <p class="hero-subtitle">{% if is_supervisor %}View, edit, and track the status of your inspection submissions.{% else %}View and re-review all inspection submissions, including completed ones.{% endif %}</p>
       </div>
       <div class="hero-right">
         <div class="dashboard-widget">
@@ -269,7 +269,7 @@
             <div class="dashboard-stats-grid">
               <div class="dashboard-stat-card">
                 <div class="dashboard-stat-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div>
-                <span class="dashboard-stat-label">Forms Submitted</span>
+                <span class="dashboard-stat-label">Inspection Forms</span>
                 <span class="dashboard-stat-value" id="stat-forms-submitted">0</span>
               </div>
               <div class="dashboard-stat-card">
@@ -297,7 +297,7 @@
   <div class="container">
     <div class="page-header" style="margin-bottom: 1.5rem; justify-content: flex-end;">
       <div id="statsCount" style="font-weight: 600; color: var(--primary); font-size: 1.1rem;">
-        Total: 0 Submissions
+        Total: 0 Inspection Submissions
       </div>
     </div>
 
@@ -308,8 +308,7 @@
           <input type="text" id="searchInput" class="search-input" placeholder="Search by site name, technician, or ID...">
         </div>
         <select id="moduleFilter" class="search-input" style="width: auto; padding-left: 1rem;">
-          <option value="">All Modules</option>
-          <option value="hr">HR Forms</option>
+          <option value="">All Inspection Modules</option>
           <option value="hvac_mep">HVAC & MEP</option>
           <option value="civil">Civil Works</option>
           <option value="cleaning">Cleaning</option>
@@ -328,7 +327,7 @@
 
       <div id="tableContainer">
         <div style="text-align: center; padding: 3rem; color: var(--text-light);">
-          <p>Loading your submissions…</p>
+          <p>Loading inspection submissions…</p>
         </div>
       </div>
     </div>
@@ -452,8 +451,6 @@
 
     function updateReviewHistoryWidget(submissions) {
       const total = submissions.length;
-      const hrCount = submissions.filter(s => (s.module_type || '').startsWith('hr')).length;
-      const inspectionCount = submissions.filter(s => ['hvac_mep', 'civil', 'cleaning'].includes(s.module_type || '')).length;
       const pendingCount = submissions.filter(s => !['completed', 'closed_by_admin', 'rejected'].includes(s.workflow_status || '')).length;
       const completedCount = submissions.filter(s => s.workflow_status === 'completed').length;
       const completionRate = total ? Math.round((completedCount / total) * 100) : 0;
@@ -473,7 +470,7 @@
       const container = document.getElementById('tableContainer');
       
       if (submissions.length === 0) {
-        container.innerHTML = `<div class="no-data">No submissions found matching your filters.</div>`;
+        container.innerHTML = `<div class="no-data">No inspection submissions found matching your filters.</div>`;
         return;
       }
 
@@ -496,10 +493,9 @@
         const moduleNames = {
           'hvac_mep': 'HVAC & MEP',
           'civil': 'Civil Works',
-          'cleaning': 'Cleaning',
-          'hr': 'HR Form'
+          'cleaning': 'Cleaning'
         };
-        const getModuleDisplay = (mt) => moduleNames[mt] || ((mt || '').startsWith('hr') ? 'HR Form' : mt);
+        const getModuleDisplay = (mt) => moduleNames[mt] || mt;
         
         const statusClass = getStatusClass(sub.workflow_status);
         const statusDisplay = (sub.workflow_status || 'Submitted').replace(/_/g, ' ');
@@ -537,8 +533,7 @@
           }
         }
         
-        const isHr = (sub.module_type || '').startsWith('hr');
-        const moduleUrl = sub.module_type === 'hvac_mep' ? 'hvac-mep' : (isHr ? 'hr' : sub.module_type);
+        const moduleUrl = sub.module_type === 'hvac_mep' ? 'hvac-mep' : sub.module_type;
 
         // Format Operations Manager approval timestamp if present
         let omApprovalTime = '';
@@ -572,19 +567,13 @@
             <td data-label="Status"><span class="badge ${statusClass}">${statusDisplay}</span>${omApprovalTime}</td>
             <td data-label="Actions">
               <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
-                ${isHr ? `
-                  <a href="/hr/print/${sub.submission_id}" class="action-btn" target="_blank">👁️ View</a>
-                  <a href="/hr/download-pdf/${sub.submission_id}" class="action-btn" target="_blank" style="font-size: 0.85rem;">📥 PDF</a>
-                  <a href="/hr/download-docx/${sub.submission_id}" class="action-btn" target="_blank" style="font-size: 0.85rem;">📄 DOCX</a>
-                ` : `
-                  <a href="/${moduleUrl}/form?edit=${sub.submission_id}&review=true" class="action-btn">
-                    ${sub.workflow_status === 'approved' || sub.workflow_status === 'completed' ? '👁️ View' : '✏️ Review'}
-                  </a>
-                  ${sub.latest_job_id ? `
-                    <a href="/${moduleUrl}/download/${sub.latest_job_id}/pdf" class="action-btn" target="_blank" style="font-size: 0.85rem;">📥 PDF</a>
-                    <a href="/${moduleUrl}/download/${sub.latest_job_id}/excel" class="action-btn" target="_blank" style="font-size: 0.85rem;">📊 Excel</a>
-                  ` : ''}
-                `}
+                <a href="/${moduleUrl}/form?edit=${sub.submission_id}&review=true" class="action-btn">
+                  ${sub.workflow_status === 'approved' || sub.workflow_status === 'completed' ? '👁️ View' : '✏️ Review'}
+                </a>
+                ${sub.latest_job_id ? `
+                  <a href="/${moduleUrl}/download/${sub.latest_job_id}/pdf" class="action-btn" target="_blank" style="font-size: 0.85rem;">📥 PDF</a>
+                  <a href="/${moduleUrl}/download/${sub.latest_job_id}/excel" class="action-btn" target="_blank" style="font-size: 0.85rem;">📊 Excel</a>
+                ` : ''}
               </div>
             </td>
           </tr>
@@ -609,7 +598,7 @@
     function updateStats(submissions) {
       const count = submissions.length;
       const statsEl = document.getElementById('statsCount');
-      if (statsEl) statsEl.textContent = `Total: ${count} Submissions`;
+      if (statsEl) statsEl.textContent = `Total: ${count} Inspection Submissions`;
     }
 
     function escapeHtml(text) {
@@ -636,8 +625,7 @@
           (sub.user?.username || '').toLowerCase().includes(searchTerm) ||
           sub.submission_id.toLowerCase().includes(searchTerm);
         
-        const matchesModule = !moduleTerm || 
-          (moduleTerm === 'hr' ? (sub.module_type || '').startsWith('hr') : sub.module_type === moduleTerm);
+        const matchesModule = !moduleTerm || sub.module_type === moduleTerm;
         const matchesStatus = !statusTerm || (sub.workflow_status || '').includes(statusTerm);
 
         return matchesSearch && matchesModule && matchesStatus;

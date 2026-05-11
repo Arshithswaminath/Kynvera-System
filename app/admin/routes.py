@@ -3,23 +3,117 @@ Admin Routes - User management and access control
 """
 from flask import Blueprint, request, jsonify, render_template, current_app, send_file
 from flask_jwt_extended import jwt_required, get_jwt_identity
+from sqlalchemy.orm import joinedload
 from app.models import (
     db, User, AuditLog, Device, BDProject, BDFollowUp, BDContact, BDActivity,
     DocHubAccess, MmrChargeableConfig, NotificationConfig, AdminPersonalProject, AdminPersonalProgressStep,
+    Technician,
 )
 from app.middleware import admin_required
 from common.error_responses import error_response, success_response
 from common.form_data_utils import shallow_copy_form_data
-from common.datetime_utils import utc_now_naive
+from common.datetime_utils import utc_now_naive, parse_employment_start_date
 from datetime import datetime, timedelta
 from io import BytesIO, StringIO
 import json
 import os
-import secrets
-import string
 import threading
 
 admin_bp = Blueprint('admin_bp', __name__, url_prefix='/api/admin')
+
+
+def _ensure_technicians_supervisor_column():
+    """SQLite / existing DBs: add technicians.supervisor_user_id if missing."""
+    try:
+        from sqlalchemy import inspect, text
+
+        inspector = inspect(db.engine)
+        if 'technicians' not in inspector.get_table_names():
+            db.create_all()
+            return
+        colnames = {c['name'] for c in inspector.get_columns('technicians')}
+        if 'supervisor_user_id' in colnames:
+            return
+        with db.engine.begin() as conn:
+            conn.execute(text('ALTER TABLE technicians ADD COLUMN supervisor_user_id INTEGER'))
+    except Exception as exc:
+        current_app.logger.warning('technicians.supervisor_user_id migration: %s', exc)
+
+
+def _valid_roster_supervisor_user(user_id):
+    """Supervisor-ish accounts that may own technician roster rows."""
+    if user_id is None:
+        return True
+    u = db.session.get(User, user_id)
+    if not u or not getattr(u, 'is_active', True):
+        return False
+    des = (getattr(u, 'designation', None) or '').strip().lower()
+    return des in frozenset({'supervisor', 'operations_manager', 'general_manager'})
+
+
+def _coerce_optional_supervisor_user_id(data):
+    """Return '__unset__' (no change), None (clear), int id; raise ValueError if invalid."""
+    if 'supervisor_user_id' not in data:
+        return '__unset__'
+    raw = data.get('supervisor_user_id')
+    if raw in (None, '', 'null'):
+        return None
+    try:
+        uid = int(raw)
+    except (TypeError, ValueError):
+        raise ValueError('supervisor_user_id must be numeric or blank') from None
+    if not _valid_roster_supervisor_user(uid):
+        raise ValueError('Supervisor account not found or not eligible')
+    return uid
+
+
+def _merge_dochub_into_user_dict(user, data_dict, access_map=None):
+    """Add can_access_dochub for admin API payloads (DocHub uses dochub_access, not User columns)."""
+    if user.role == 'admin':
+        data_dict['can_access_dochub'] = True
+    elif access_map is not None:
+        data_dict['can_access_dochub'] = access_map.get(user.id, True)
+    else:
+        row = DocHubAccess.query.filter_by(user_id=user.id).first()
+        data_dict['can_access_dochub'] = row.can_access if row else True
+
+
+def _truncate_job_designation(raw):
+    if raw is None:
+        return None
+    s = str(raw).strip()
+    return s[:160] if s else None
+
+
+def _parse_leave_days_field(raw):
+    """Parses HR leave allotment; empty clears to None. Validates 0..366."""
+    if raw is None or (isinstance(raw, str) and not str(raw).strip()):
+        return None
+    try:
+        v = int(raw)
+    except (TypeError, ValueError):
+        raise ValueError('Annual and other leave days must be whole numbers.') from None
+    if v < 0 or v > 366:
+        raise ValueError('Leave days must be between 0 and 366.')
+    return v
+
+
+def _resolve_reporting_manager_id(raw_mid, exclude_user_id):
+    if raw_mid is None:
+        return None
+    if isinstance(raw_mid, str) and not str(raw_mid).strip():
+        return None
+    try:
+        mid = int(raw_mid)
+    except (TypeError, ValueError):
+        raise ValueError('Invalid reporting manager.') from None
+    if mid <= 0:
+        return None
+    if exclude_user_id is not None and mid == exclude_user_id:
+        raise ValueError('A user cannot be their own reporting manager.')
+    if User.query.filter_by(id=mid).first() is None:
+        raise ValueError('Reporting manager not found.')
+    return mid
 
 
 @admin_bp.route('/mmr/chargeable-config', methods=['GET', 'PUT'])
@@ -299,10 +393,7 @@ def mmr_chargeable_preview():
         return error_response('Failed to resolve chargeable preview', status_code=500, error_code='DATABASE_ERROR')
 
 
-def generate_temp_password(length=12):
-    """Generate a temporary password"""
-    alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
-    return ''.join(secrets.choice(alphabet) for _ in range(length))
+DEFAULT_ADMIN_RESET_PASSWORD = 'Injaaz@123'
 
 
 @admin_bp.route('/users', methods=['GET'])
@@ -314,9 +405,14 @@ def list_users():
         # Note: User.submissions, audit_logs, and sessions are dynamic relationships
         # (lazy='dynamic'), so we can't use joinedload. The to_dict() method doesn't
         # include these relationships anyway, so we just query users directly.
-        users = User.query.order_by(User.created_at.desc()).all()
-        users_data = [user.to_dict() for user in users]
-        
+        users = User.query.options(joinedload(User.reporting_manager)).order_by(User.created_at.desc()).all()
+        access_map = {row.user_id: row.can_access for row in DocHubAccess.query.all()}
+        users_data = []
+        for user in users:
+            d = user.to_dict()
+            _merge_dochub_into_user_dict(user, d, access_map)
+            users_data.append(d)
+
         return success_response({
             'users': users_data,
             'count': len(users_data)
@@ -326,16 +422,127 @@ def list_users():
         return error_response('Failed to fetch users', status_code=500, error_code='DATABASE_ERROR')
 
 
+@admin_bp.route('/users', methods=['POST'])
+@jwt_required()
+@admin_required
+def create_user_admin():
+    """Create a new user account (admin). Omit password to use the same default as password reset."""
+    try:
+        from app.auth.routes import validate_email, validate_password
+
+        admin_id = get_jwt_identity()
+        data = request.get_json(force=True, silent=True) or {}
+        username = (data.get('username') or '').strip()
+        email = (data.get('email') or '').strip().lower()
+        full_name = (data.get('full_name') or '').strip() or None
+
+        if not username or not email:
+            return error_response('Username and email are required', status_code=400, error_code='VALIDATION_ERROR')
+        if not validate_email(email):
+            return error_response('Invalid email format', status_code=400, error_code='VALIDATION_ERROR')
+        if User.query.filter_by(username=username).first():
+            return error_response('Username already exists', status_code=409, error_code='DUPLICATE_USERNAME')
+        if User.query.filter_by(email=email).first():
+            return error_response('Email already in use', status_code=409, error_code='DUPLICATE_EMAIL')
+
+        raw_pw = (data.get('password') or '').strip()
+        temp_password = raw_pw or (os.environ.get('ADMIN_RESET_PASSWORD') or '').strip() or DEFAULT_ADMIN_RESET_PASSWORD
+        if raw_pw:
+            ok, msg = validate_password(raw_pw)
+            if not ok:
+                return error_response(msg, status_code=400, error_code='WEAK_PASSWORD')
+        else:
+            ok, msg = validate_password(temp_password)
+            if not ok:
+                temp_password = DEFAULT_ADMIN_RESET_PASSWORD
+
+        user = User(username=username, email=email, full_name=full_name, role='user')
+        if data.get('role') == 'admin':
+            user.role = 'admin'
+        user.set_password(temp_password)
+        user.password_changed = bool(raw_pw)
+
+        valid_designations = {
+            'supervisor', 'operations_manager', 'business_development',
+            'procurement', 'general_manager', 'hr_manager', 'employee',
+            'technician', 'admin',
+        }
+        des = data.get('designation')
+        if des in (None, ''):
+            user.designation = None
+        elif des in valid_designations:
+            user.designation = des
+        else:
+            return error_response('Invalid designation', status_code=400, error_code='VALIDATION_ERROR')
+
+        if 'employment_start_date' in data:
+            try:
+                user.employment_start_date = parse_employment_start_date(data.get('employment_start_date'))
+            except ValueError as ve:
+                return error_response(str(ve), status_code=400, error_code='VALIDATION_ERROR')
+
+        if 'job_designation' in data:
+            user.job_designation = _truncate_job_designation(data.get('job_designation'))
+
+        try:
+            if 'annual_leave_days' in data:
+                user.annual_leave_days = _parse_leave_days_field(data.get('annual_leave_days'))
+            if 'other_leave_days' in data:
+                user.other_leave_days = _parse_leave_days_field(data.get('other_leave_days'))
+            if 'reporting_manager_id' in data:
+                user.reporting_manager_id = _resolve_reporting_manager_id(
+                    data.get('reporting_manager_id'), exclude_user_id=None
+                )
+        except ValueError as ve:
+            return error_response(str(ve), status_code=400, error_code='VALIDATION_ERROR')
+
+        if user.role != 'admin':
+            user.access_hvac = bool(data.get('access_hvac', False))
+            user.access_civil = bool(data.get('access_civil', False))
+            user.access_cleaning = bool(data.get('access_cleaning', False))
+            user.access_hr = bool(data.get('access_hr', False))
+            user.access_procurement_module = bool(data.get('access_procurement_module', False))
+            user.access_business_development = bool(data.get('access_business_development', False))
+            user.access_report_generation = bool(data.get('access_report_generation', False))
+            user.access_submitted_forms = bool(data.get('access_submitted_forms', False))
+            user.access_ticketing = bool(data.get('access_ticketing', False))
+
+        db.session.add(user)
+        db.session.flush()
+
+        if user.role != 'admin' and data.get('can_access_dochub') is False:
+            row = DocHubAccess.query.filter_by(user_id=user.id).first()
+            if not row:
+                db.session.add(DocHubAccess(user_id=user.id, can_access=False))
+            else:
+                row.can_access = False
+
+        db.session.commit()
+
+        log_audit(admin_id, 'create_user', 'user', str(user.id), {'username': username, 'email': email})
+
+        out = {'user': user.to_dict()}
+        if not raw_pw:
+            out['temp_password'] = temp_password
+        return success_response(out, message='User created successfully')
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error creating user: {str(e)}", exc_info=True)
+        return error_response('Failed to create user', status_code=500, error_code='DATABASE_ERROR')
+
+
 @admin_bp.route('/users/<int:user_id>', methods=['GET'])
 @jwt_required()
 @admin_required
 def get_user(user_id):
     """Get specific user details"""
     try:
-        user = User.query.get_or_404(user_id)
+        user = User.query.options(joinedload(User.reporting_manager)).get_or_404(user_id)
+        user_payload = user.to_dict()
+        _merge_dochub_into_user_dict(user, user_payload)
         return jsonify({
             'success': True,
-            'user': user.to_dict()
+            'user': user_payload
         }), 200
     except Exception as e:
         current_app.logger.error(f"Error fetching user: {str(e)}")
@@ -346,13 +553,13 @@ def get_user(user_id):
 @jwt_required()
 @admin_required
 def reset_user_password(user_id):
-    """Reset user password and email temporary password"""
+    """Reset user password to the standard admin default (Injaaz@123, or ADMIN_RESET_PASSWORD) and email when configured."""
     try:
         admin_id = get_jwt_identity()
         user = User.query.get_or_404(user_id)
         
-        # Generate temporary password
-        temp_password = generate_temp_password()
+        raw_reset = (os.environ.get('ADMIN_RESET_PASSWORD') or '').strip()
+        temp_password = raw_reset or DEFAULT_ADMIN_RESET_PASSWORD
         user.set_password(temp_password)
         user.password_changed = False  # Force password change on next login
         
@@ -389,11 +596,11 @@ def reset_user_password(user_id):
                 'id': user.id,
                 'username': user.username,
                 'email': user.email
-            }
+            },
+            'temp_password': temp_password,
         }
         
         if not email_sent:
-            response_data['temp_password'] = temp_password
             response_data['warning'] = 'Email delivery failed. Password returned in response (admin only).'
         
         return success_response(response_data, message=message)
@@ -525,7 +732,12 @@ def delete_user(user_id):
                 return jsonify({'error': 'Cannot delete the last active admin user'}), 400
         
         username = user.username
-        
+
+        User.query.filter_by(reporting_manager_id=user_id).update(
+            {'reporting_manager_id': None},
+            synchronize_session=False,
+        )
+
         # Delete user (cascade will handle related records)
         db.session.delete(user)
         db.session.commit()
@@ -659,12 +871,71 @@ def update_user(user_id):
                 return jsonify({'error': 'Cannot change your own role'}), 400
             user.role = data['role']
         
-        # Update designation if provided
+        # Update designation if provided (includes hr_manager for HR module)
         if 'designation' in data:
-            valid_designations = ['supervisor', 'operations_manager', 'business_development', 'procurement', 'general_manager', None]
-            if data['designation'] not in valid_designations:
+            valid_designations = {
+                'supervisor', 'operations_manager', 'business_development',
+                'procurement', 'general_manager', 'hr_manager',
+                'employee', 'technician', 'admin',
+            }
+            d = data['designation']
+            if d in (None, ''):
+                user.designation = None
+            elif d in valid_designations:
+                user.designation = d
+            else:
                 return jsonify({'error': 'Invalid designation'}), 400
-            user.designation = data['designation']
+
+        if 'default_signature' in data:
+            sig = data['default_signature']
+            if sig in (None, ''):
+                user.default_signature = None
+            elif isinstance(sig, str):
+                if len(sig) > 2_000_000:
+                    return jsonify({'error': 'Signature data too large'}), 400
+                user.default_signature = sig
+            else:
+                return jsonify({'error': 'Invalid signature format'}), 400
+
+        if 'default_comment' in data:
+            c = data['default_comment']
+            user.default_comment = None if c in (None, '') else str(c)[:5000]
+
+        if 'employment_start_date' in data:
+            try:
+                user.employment_start_date = parse_employment_start_date(data.get('employment_start_date'))
+            except ValueError as ve:
+                return jsonify({'error': str(ve)}), 400
+
+        if 'job_designation' in data:
+            user.job_designation = _truncate_job_designation(data.get('job_designation'))
+
+        try:
+            if 'annual_leave_days' in data:
+                user.annual_leave_days = _parse_leave_days_field(data.get('annual_leave_days'))
+            if 'other_leave_days' in data:
+                user.other_leave_days = _parse_leave_days_field(data.get('other_leave_days'))
+            if 'reporting_manager_id' in data:
+                user.reporting_manager_id = _resolve_reporting_manager_id(
+                    data.get('reporting_manager_id'), exclude_user_id=user_id
+                )
+        except ValueError as ve:
+            return jsonify({'error': str(ve)}), 400
+
+        if user.role != 'admin':
+            for key, col in (
+                ('access_hvac', 'access_hvac'),
+                ('access_civil', 'access_civil'),
+                ('access_cleaning', 'access_cleaning'),
+                ('access_hr', 'access_hr'),
+                ('access_procurement_module', 'access_procurement_module'),
+                ('access_business_development', 'access_business_development'),
+                ('access_report_generation', 'access_report_generation'),
+                ('access_submitted_forms', 'access_submitted_forms'),
+                ('access_ticketing', 'access_ticketing'),
+            ):
+                if key in data:
+                    setattr(user, col, bool(data[key]))
         
         db.session.commit()
         
@@ -785,12 +1056,20 @@ def list_documents():
                     elif file.file_type == 'report_pdf' and file.cloud_url:
                         pdf_url = file.cloud_url
             
-            # Format module type for display
-            module_display = {
-                'hvac_mep': 'HVAC & MEP',
-                'civil': 'Civil Works',
-                'cleaning': 'Cleaning Services'
-            }.get(submission.module_type, submission.module_type.title())
+            # Format module type for display (HR uses same labels as HR module)
+            mt = submission.module_type or ''
+            if mt.startswith('hr_'):
+                try:
+                    from module_hr.routes import get_form_type_display
+                    module_display = get_form_type_display(mt)
+                except Exception:
+                    module_display = mt.replace('hr_', '').replace('_', ' ').title()
+            else:
+                module_display = {
+                    'hvac_mep': 'HVAC & MEP',
+                    'civil': 'Civil Works',
+                    'cleaning': 'Cleaning Services'
+                }.get(mt, (mt or 'Unknown').replace('_', ' ').title())
             
             documents.append({
                 'id': submission.id,
@@ -866,12 +1145,16 @@ def set_user_designation(user_id):
             'business_development', # Stage 3: Parallel review
             'procurement',          # Stage 3: Parallel review
             'general_manager',      # Stage 4: Final approval
+            'hr_manager',           # HR module lead
+            'employee',             # Staff (organizational label)
+            'technician',           # Field technician — HR routing: supervisor → OM → GM → HR HO
+            'admin',                # Organizational admin label (distinct from role=admin)
             None                    # No designation (regular user)
         ]
         
         if designation not in valid_designations:
             return error_response(
-                'Invalid designation. Must be one of: supervisor, operations_manager, business_development, procurement, general_manager, or null', 
+                'Invalid designation. Must be one of: supervisor, operations_manager, business_development, procurement, general_manager, hr_manager, employee, technician, admin, or null', 
                 status_code=400, 
                 error_code='VALIDATION_ERROR'
             )
@@ -1137,7 +1420,11 @@ def get_users_by_designation(designation):
             'operations_manager',
             'business_development',
             'procurement',
-            'general_manager'
+            'general_manager',
+            'hr_manager',
+            'employee',
+            'technician',
+            'admin',
         ]
         
         if designation not in valid_designations:
@@ -1195,7 +1482,11 @@ def get_workflow_stats():
             'operations_manager',
             'business_development',
             'procurement',
-            'general_manager'
+            'general_manager',
+            'hr_manager',
+            'employee',
+            'technician',
+            'admin',
         ]
         
         for designation in designations:
@@ -1280,6 +1571,17 @@ def dashboard_overview():
         dev_offline = Device.query.filter_by(status='offline').count()
         dev_pending = Device.query.filter_by(status='update').count()
 
+        employee_active = User.query.filter(
+            User.is_active.is_(True),
+            User.designation == 'employee',
+        ).count()
+
+        hr_form_count = Submission.query.filter(Submission.module_type.startswith('hr_')).count()
+        inspection_module_types = ('hvac_mep', 'civil', 'cleaning')
+        inspection_form_count = Submission.query.filter(
+            Submission.module_type.in_(inspection_module_types)
+        ).count()
+
         # --- Business development (light aggregates) ---
         bd_projects = BDProject.query.count()
         bd_pipeline_value = float(db.session.query(func.coalesce(func.sum(BDProject.value_amount), 0)).scalar() or 0)
@@ -1317,6 +1619,63 @@ def dashboard_overview():
                 'username': uname or '—'
             })
 
+        # --- Service tickets / work orders (global admin view) ---
+        ticketing_snapshot = {'available': False}
+        try:
+            from app.models import Ticket as _TkModel
+
+            TERMINAL = ('closed', 'resolved', 'cancelled')
+            total_tk_all = db.session.query(func.count(_TkModel.id)).scalar() or 0
+            active_pipeline = db.session.query(func.count(_TkModel.id)).filter(
+                ~_TkModel.status.in_(TERMINAL),
+            ).scalar() or 0
+            supervisor_queue = db.session.query(func.count(_TkModel.id)).filter(
+                _TkModel.status.in_(('open', 'pending_supervisor')),
+            ).scalar() or 0
+            field_active = db.session.query(func.count(_TkModel.id)).filter(
+                _TkModel.status.in_((
+                    'assigned', 'site_attended', 'work_started', 'in_progress',
+                    'pending_parts',
+                )),
+            ).scalar() or 0
+            verification_lane = db.session.query(func.count(_TkModel.id)).filter(
+                _TkModel.status.in_(('pending_verification', 'verification', 'work_completed')),
+            ).scalar() or 0
+            urgent_ct = db.session.query(func.count(_TkModel.id)).filter(
+                ~_TkModel.status.in_(TERMINAL),
+                _TkModel.priority.in_(('critical', 'high')),
+            ).scalar() or 0
+            on_hold_ct = db.session.query(func.count(_TkModel.id)).filter_by(status='on_hold').scalar() or 0
+
+            recent_rows = _TkModel.query.order_by(_TkModel.updated_at.desc()).limit(7).all()
+            recent_tickets_admin = []
+            for t in recent_rows:
+                title = (t.title or '').strip()
+                if len(title) > 92:
+                    title = title[:90] + '…'
+                recent_tickets_admin.append({
+                    'ticket_id': t.ticket_id,
+                    'title': title,
+                    'status': t.status,
+                    'priority': t.priority,
+                    'project': (t.project or '')[:52],
+                    'updated_at': t.updated_at.isoformat() if t.updated_at else None,
+                })
+
+            ticketing_snapshot = {
+                'available': True,
+                'total': int(total_tk_all),
+                'active_pipeline': int(active_pipeline),
+                'supervisor_queue': int(supervisor_queue),
+                'field_active': int(field_active),
+                'awaiting_verification': int(verification_lane),
+                'urgent_priority': int(urgent_ct),
+                'on_hold': int(on_hold_ct),
+                'recent': recent_tickets_admin,
+            }
+        except Exception as tick_exc:
+            current_app.logger.warning('dashboard ticketing aggregate skipped: %s', tick_exc)
+
         return success_response({
             'generated_at': utc_now_naive().isoformat() + 'Z',
             'users': {
@@ -1342,6 +1701,13 @@ def dashboard_overview():
                 'offline': dev_offline,
                 'pending_updates': dev_pending,
             },
+            'side_summaries': {
+                'users_total': user_total,
+                'employees_active': employee_active,
+                'hr_forms_total': hr_form_count,
+                'inspection_forms_total': inspection_form_count,
+                'devices_total': dev_total,
+            },
             'bd': {
                 'projects_total': bd_projects,
                 'pipeline_value': bd_pipeline_value,
@@ -1356,6 +1722,7 @@ def dashboard_overview():
                 'personal_progress_projects': pp_projects,
             },
             'audit_recent': audit_recent,
+            'ticketing': ticketing_snapshot,
         })
     except Exception as e:
         current_app.logger.error(f"Error building dashboard overview: {str(e)}", exc_info=True)
@@ -1398,6 +1765,30 @@ def get_valid_designations():
                 'label': 'General Manager',
                 'description': 'Stage 4: Final approval',
                 'stage': 4
+            },
+            {
+                'value': 'hr_manager',
+                'label': 'HR Manager',
+                'description': 'HR module workflow lead',
+                'stage': 0
+            },
+            {
+                'value': 'employee',
+                'label': 'Employee',
+                'description': 'Staff — no document workflow reviewer role',
+                'stage': 0
+            },
+            {
+                'value': 'technician',
+                'label': 'Technician',
+                'description': 'Field technician — HR forms route via supervisor chain on the PDF trail',
+                'stage': 0
+            },
+            {
+                'value': 'admin',
+                'label': 'Admin',
+                'description': 'Organizational admin label (separate from system Administrator role)',
+                'stage': 0
             }
         ]
         
@@ -2751,3 +3142,315 @@ def personal_progress_delete_project(project_id):
         current_app.logger.error(f'personal_progress_delete_project: {e}', exc_info=True)
         return error_response('Failed to delete project', status_code=500, error_code='DATABASE_ERROR')
 
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Technicians CRUD + Excel import/export
+# ──────────────────────────────────────────────────────────────────────────────
+
+def _tech_parse_date(raw):
+    if not raw:
+        return None
+    if hasattr(raw, 'date'):
+        return raw.date()
+    for fmt in ('%Y-%m-%d', '%d/%m/%Y', '%d-%m-%Y', '%m/%d/%Y'):
+        try:
+            return datetime.strptime(str(raw).strip(), fmt).date()
+        except ValueError:
+            pass
+    return None
+
+
+@admin_bp.route('/technicians', methods=['GET'])
+@jwt_required()
+@admin_required
+def list_technicians():
+    _ensure_technicians_supervisor_column()
+    status_filter = (request.args.get('status') or '').strip().lower()
+    q = Technician.query.options(joinedload(Technician.supervisor_user))
+    if status_filter and status_filter != 'all':
+        q = q.filter(Technician.status == status_filter)
+    techs = q.order_by(Technician.full_name).all()
+    return success_response({'technicians': [t.to_dict() for t in techs]})
+
+
+@admin_bp.route('/technicians', methods=['POST'])
+@jwt_required()
+@admin_required
+def create_technician():
+    data = request.get_json() or {}
+    emp_id = (data.get('employee_id') or '').strip()
+    name = (data.get('full_name') or '').strip()
+    _ensure_technicians_supervisor_column()
+    try:
+        sup_coerced = _coerce_optional_supervisor_user_id(data)
+    except ValueError as e:
+        return error_response(str(e), status_code=400, error_code='VALIDATION_ERROR')
+    if not emp_id or not name:
+        return error_response('employee_id and full_name are required', status_code=400, error_code='VALIDATION_ERROR')
+    if Technician.query.filter_by(employee_id=emp_id).first():
+        return error_response(f'Employee ID "{emp_id}" already exists', status_code=409, error_code='DUPLICATE')
+    try:
+        t = Technician(
+            employee_id=emp_id,
+            full_name=name,
+            designation=(data.get('designation') or '').strip() or None,
+            department=(data.get('department') or '').strip() or None,
+            specialization=(data.get('specialization') or '').strip() or None,
+            phone=(data.get('phone') or '').strip() or None,
+            email=(data.get('email') or '').strip() or None,
+            salary=float(data['salary']) if data.get('salary') not in (None, '') else None,
+            joining_date=_tech_parse_date(data.get('joining_date')),
+            status=(data.get('status') or 'active').strip().lower(),
+            notes=(data.get('notes') or '').strip() or None,
+            supervisor_user_id=(sup_coerced if sup_coerced != '__unset__' else None),
+        )
+        db.session.add(t)
+        db.session.commit()
+        return success_response({'technician': t.to_dict()}, message='Technician created', status_code=201)
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'create_technician: {e}', exc_info=True)
+        return error_response('Failed to create technician', status_code=500, error_code='DATABASE_ERROR')
+
+
+@admin_bp.route('/technicians/<int:tech_id>', methods=['PUT'])
+@jwt_required()
+@admin_required
+def update_technician(tech_id):
+    _ensure_technicians_supervisor_column()
+    t = Technician.query.get_or_404(tech_id)
+    data = request.get_json() or {}
+    try:
+        sup_coerced = _coerce_optional_supervisor_user_id(data)
+    except ValueError as e:
+        return error_response(str(e), status_code=400, error_code='VALIDATION_ERROR')
+    if sup_coerced != '__unset__':
+        t.supervisor_user_id = sup_coerced
+    if 'employee_id' in data:
+        new_eid = (data['employee_id'] or '').strip()
+        if not new_eid:
+            return error_response('employee_id cannot be empty', status_code=400, error_code='VALIDATION_ERROR')
+        conflict = Technician.query.filter(Technician.employee_id == new_eid, Technician.id != tech_id).first()
+        if conflict:
+            return error_response(f'Employee ID "{new_eid}" already in use', status_code=409, error_code='DUPLICATE')
+        t.employee_id = new_eid
+    if 'full_name' in data:
+        n = (data['full_name'] or '').strip()
+        if not n:
+            return error_response('full_name cannot be empty', status_code=400, error_code='VALIDATION_ERROR')
+        t.full_name = n
+    for field in ('designation', 'department', 'specialization', 'phone', 'email', 'notes'):
+        if field in data:
+            setattr(t, field, (data[field] or '').strip() or None)
+    if 'salary' in data:
+        t.salary = float(data['salary']) if data['salary'] not in (None, '') else None
+    if 'joining_date' in data:
+        t.joining_date = _tech_parse_date(data['joining_date'])
+    if 'status' in data:
+        s = (data['status'] or 'active').strip().lower()
+        if s in ('active', 'inactive', 'on_leave'):
+            t.status = s
+    try:
+        db.session.commit()
+        return success_response({'technician': t.to_dict()})
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'update_technician: {e}', exc_info=True)
+        return error_response('Failed to update technician', status_code=500, error_code='DATABASE_ERROR')
+
+
+@admin_bp.route('/technicians/<int:tech_id>', methods=['DELETE'])
+@jwt_required()
+@admin_required
+def delete_technician(tech_id):
+    t = Technician.query.get_or_404(tech_id)
+    try:
+        db.session.delete(t)
+        db.session.commit()
+        return success_response({}, message='Technician deleted')
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'delete_technician: {e}', exc_info=True)
+        return error_response('Failed to delete technician', status_code=500, error_code='DATABASE_ERROR')
+
+
+@admin_bp.route('/technicians/import-excel', methods=['POST'])
+@jwt_required()
+@admin_required
+def import_technicians_excel():
+    """Import technicians from an uploaded Excel file."""
+    try:
+        import openpyxl
+    except ImportError:
+        return error_response('openpyxl is required for Excel import (pip install openpyxl)', status_code=500, error_code='DEPENDENCY_ERROR')
+
+    if 'file' not in request.files:
+        return error_response('No file uploaded', status_code=400, error_code='VALIDATION_ERROR')
+    f = request.files['file']
+    if not f.filename:
+        return error_response('No file selected', status_code=400, error_code='VALIDATION_ERROR')
+
+    try:
+        wb = openpyxl.load_workbook(BytesIO(f.read()), read_only=True, data_only=True)
+        ws = wb.active
+        rows = list(ws.iter_rows(values_only=True))
+    except Exception as e:
+        return error_response(f'Could not read Excel file: {e}', status_code=400, error_code='PARSE_ERROR')
+
+    if not rows:
+        return error_response('Excel file is empty', status_code=400, error_code='VALIDATION_ERROR')
+
+    header_row = [str(c or '').strip().lower().replace(' ', '_') for c in rows[0]]
+    COL = {h: i for i, h in enumerate(header_row)}
+
+    def _get(row, key, alt=None):
+        idx = COL.get(key, COL.get(alt))
+        if idx is None:
+            return None
+        v = row[idx] if idx < len(row) else None
+        return str(v).strip() if v is not None and str(v).strip() else None
+
+    created, skipped, errors = 0, 0, []
+    _ensure_technicians_supervisor_column()
+    for row_num, row in enumerate(rows[1:], start=2):
+        if all(c is None or str(c).strip() == '' for c in row):
+            continue
+        emp_id = _get(row, 'employee_id', 'employee_id')
+        name = _get(row, 'full_name', 'name')
+        if not emp_id or not name:
+            errors.append(f'Row {row_num}: employee_id and full_name are required — skipped')
+            continue
+        if Technician.query.filter_by(employee_id=emp_id).first():
+            skipped += 1
+            continue
+        salary_raw = _get(row, 'salary')
+        try:
+            salary = float(salary_raw) if salary_raw else None
+        except ValueError:
+            salary = None
+        sup_raw = _get(row, 'supervisor_user_id', 'supervisor_id')
+        supervisor_uid = None
+        if sup_raw:
+            try:
+                supervisor_uid = int(str(sup_raw).strip().replace(',', '').split('.', 1)[0])
+            except ValueError:
+                errors.append(f'Row {row_num}: invalid supervisor_user_id — skipped')
+                continue
+            if not _valid_roster_supervisor_user(supervisor_uid):
+                errors.append(f'Row {row_num}: supervisor_user_id not an active supervisor/manager — skipped')
+                continue
+        t = Technician(
+            employee_id=emp_id,
+            full_name=name,
+            designation=_get(row, 'designation'),
+            department=_get(row, 'department'),
+            specialization=_get(row, 'specialization'),
+            phone=_get(row, 'phone'),
+            email=_get(row, 'email'),
+            salary=salary,
+            joining_date=_tech_parse_date(_get(row, 'joining_date')),
+            status=(_get(row, 'status') or 'active').lower(),
+            notes=_get(row, 'notes'),
+            supervisor_user_id=supervisor_uid,
+        )
+        db.session.add(t)
+        created += 1
+
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'import_technicians_excel commit: {e}', exc_info=True)
+        return error_response('Database error during import', status_code=500, error_code='DATABASE_ERROR')
+
+    return success_response({
+        'created': created,
+        'skipped': skipped,
+        'errors': errors,
+    }, message=f'{created} technician(s) imported, {skipped} skipped (duplicate ID).')
+
+
+@admin_bp.route('/technicians/export-template', methods=['GET'])
+@jwt_required()
+@admin_required
+def export_technicians_template():
+    """Return a blank Excel template for technician bulk import."""
+    try:
+        import openpyxl
+        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    except ImportError:
+        return error_response('openpyxl is required (pip install openpyxl)', status_code=500, error_code='DEPENDENCY_ERROR')
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = 'Technicians'
+
+    headers = [
+        'Employee ID', 'Full Name', 'Designation', 'Department',
+        'Specialization', 'Phone', 'Email', 'Salary', 'Joining Date',
+        'Status', 'Supervisor User ID', 'Notes',
+    ]
+    header_fill = PatternFill('solid', fgColor='125435')
+    header_font = Font(bold=True, color='FFFFFF', size=11)
+    header_align = Alignment(horizontal='center', vertical='center', wrap_text=True)
+    thin = Side(style='thin', color='AAAAAA')
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+
+    for col_idx, h in enumerate(headers, start=1):
+        cell = ws.cell(row=1, column=col_idx, value=h)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = header_align
+        cell.border = border
+
+    col_widths = [16, 28, 24, 22, 22, 16, 28, 12, 16, 12, 18, 30]
+    for i, w in enumerate(col_widths, start=1):
+        ws.column_dimensions[openpyxl.utils.get_column_letter(i)].width = w
+    ws.row_dimensions[1].height = 28
+
+    # Example row
+    example = ['EMP-001', 'John Smith', 'HVAC Technician', 'MEP', 'Air Conditioning',
+                '+971-50-000-0000', 'john@example.com', '5000', '2024-01-15', 'active',
+                '(see Users list)', '']
+    note_fill = PatternFill('solid', fgColor='F0FBF5')
+    note_font = Font(color='334433', size=10, italic=True)
+    for col_idx, v in enumerate(example, start=1):
+        cell = ws.cell(row=2, column=col_idx, value=v)
+        cell.fill = note_fill
+        cell.font = note_font
+        cell.alignment = Alignment(vertical='center')
+        cell.border = border
+
+    # Instructions sheet
+    ws2 = wb.create_sheet('Instructions')
+    ws2['A1'] = 'Technician Import — Instructions'
+    ws2['A1'].font = Font(bold=True, size=13, color='125435')
+    notes = [
+        ('Employee ID', 'Required. Unique identifier (e.g. EMP-001). Duplicates are skipped.'),
+        ('Full Name', 'Required. Full name of the technician.'),
+        ('Designation', 'Job title (e.g. HVAC Technician, Plumber, Electrician).'),
+        ('Department', 'Team/department (e.g. MEP, Civil, Cleaning).'),
+        ('Specialization', 'Area of expertise (e.g. Air Conditioning, Electrical, Plumbing).'),
+        ('Phone', 'Contact phone number.'),
+        ('Email', 'Email address (optional).'),
+        ('Salary', 'Monthly salary — numbers only, no currency symbol.'),
+        ('Joining Date', 'Format: YYYY-MM-DD or DD/MM/YYYY.'),
+        ('Status', 'One of: active, inactive, on_leave. Defaults to "active" if blank.'),
+        ('Supervisor User ID', 'Numeric user.id of an active Supervisor / Ops Manager / GM (from Staff list). Blank if unknown.'),
+        ('Notes', 'Any additional notes.'),
+    ]
+    for row_i, (col, desc) in enumerate(notes, start=3):
+        ws2.cell(row=row_i, column=1, value=col).font = Font(bold=True)
+        ws2.cell(row=row_i, column=2, value=desc)
+    ws2.column_dimensions['A'].width = 20
+    ws2.column_dimensions['B'].width = 60
+
+    buf = BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return send_file(
+        buf,
+        as_attachment=True,
+        download_name='technicians_import_template.xlsx',
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
