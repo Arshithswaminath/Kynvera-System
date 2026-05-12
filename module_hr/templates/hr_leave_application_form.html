@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-forms-unified.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/ticketing.css') }}">
   <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
   <style>
     /* Leave-type checkbox grid — specific to this form only */
@@ -43,9 +44,71 @@
     .repl-sig-stack-wrap .sig-box img{display:block;margin:0 auto;max-width:100%;max-height:96px;object-fit:contain}
     .repl-sig-stack-wrap .sig-box .repl-sig-who{font-size:.72rem;color:var(--ink3,#636366);font-weight:600;text-align:center;margin-top:.35rem;line-height:1.2;width:100%}
   </style>
-  <style>.hr-form-unified .page { padding-top: 5.5rem; }</style>
+  <style>
+    .hr-form-unified .page { padding-top: 5.5rem; }
+    body.hr-embed-mode .hr-form-unified .page { padding-top: 0 !important; }
+    body.hr-embed-mode .hr-form-unified .page-inner { padding-top: 0.75rem !important; }
+    body.hr-embed-mode .page-inner > a.back-btn { display: none !important; }
+  </style>
+  <style>
+    /* Two-column layout: form (left) + sidebar (right) — mirrors duty resumption form */
+    .leave-form-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+      gap: 1.5rem;
+      align-items: start;
+      width: 100%;
+    }
+    .leave-form-layout-main { min-width: 0; }
+    .leave-form-layout-aside {
+      position: sticky;
+      top: 5.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      min-width: 0;
+    }
+    body.hr-embed-mode .leave-form-layout-aside { top: 1rem; }
+    .leave-sidebar-card.tkt-card { border-radius: 12px; }
+    .leave-sidebar-card .tkt-card-header { padding: 14px 18px; }
+    .leave-sidebar-card .tkt-card-header h3 { font-size: 1rem; }
+    .leave-sidebar-inner .tkt-card-body { padding: 0 !important; }
+    .leave-sidebar-inner .hr-mgmt-chain-sec,
+    .leave-sidebar-inner .hr-signoff-activity-sec,
+    .leave-sidebar-inner .hr-recorded-sigs-sec {
+      margin: 0 !important; padding: 1rem 18px 1.15rem !important;
+      border: none !important; border-radius: 0 !important;
+      box-shadow: none !important; background: transparent !important;
+    }
+    .leave-sidebar-inner .hr-mgmt-chain-sec > .sec-hd,
+    .leave-sidebar-inner .hr-signoff-activity-sec > .sec-hd { display: none !important; }
+    .leave-sidebar-inner #hrMgmtChainWrap { background: #f8fafc !important; border: 1px solid #e2e8f0 !important; }
+    .leave-sidebar-inner .hr-signoff-activity-scroll { max-height: clamp(15rem, 44vh, 30rem); }
+    .leave-sidebar-inner .hr-recorded-sigs-sec {
+      margin-top: .85rem !important; padding-top: 1rem !important;
+      border-top: 1px solid #e2e8f0 !important;
+    }
+    @media (max-width: 900px) {
+      .leave-form-layout { grid-template-columns: 1fr; }
+      .leave-form-layout-aside { position: static; }
+    }
+    /* Signature summary rows (shared with duty form style) */
+    .duty-sig-summary-rows { display: flex; flex-direction: column; }
+    .duty-sig-summary-row {
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
+      padding: 12px 18px; border-bottom: 1px solid #f1f5f9;
+    }
+    .duty-sig-summary-row:last-child { border-bottom: none; padding-bottom: 14px; }
+    .duty-sig-summary-label { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #64748b; display: block; margin-bottom: 4px; }
+    .duty-sig-summary-value { font-size: .82rem; font-weight: 600; color: #1e293b; line-height: 1.35; }
+    .duty-sig-summary-value.muted { font-weight: 500; color: #94a3b8; font-style: italic; }
+    .duty-sig-badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 999px; font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
+    .duty-sig-badge--signed  { background: #dcfce7; color: #15803d; }
+    .duty-sig-badge--pending { background: #fef9c3; color: #a16207; }
+    .duty-sig-badge--optional{ background: #f1f5f9; color: #64748b; }
+  </style>
 </head>
-<body class="hr-form-unified">
+<body class="hr-form-unified{% if hr_embed %} hr-embed-mode{% endif %}">
   {% set active_page = 'hr' %}
   {% include 'partials/hr_embed_optional_navbar.html' %}
 
@@ -113,6 +176,8 @@
         <div class="step-item locked" id="step2Badge" onclick="goToStep2()" role="button" tabindex="0"><span class="num">2</span><span>Leave &amp; Signatures</span></div>
       </div>
 
+      <div class="leave-form-layout">
+      <div class="leave-form-layout-main">
       <div class="card">
         <div class="hd">
           <div class="hd-left">
@@ -303,8 +368,6 @@
 
           </div>
 
-          {% include 'partials/hr_mgmt_chain_submit_block.html' %}
-
           <div class="doc-ft">
             <div class="doc-ft-meta"><span>DOC NO: HR-FRM-007</span><span>DATE: <span id="docDate"></span></span><span>ISSUE: 00</span><span>REVISION: 00</span></div>
             P.O Box: 3456 Ajman, UAE · Tel 067116815 · www.injaaz.ae<br>Registered under trade license name INJAAZ LLC
@@ -316,6 +379,38 @@
           </div>
         </form>
       </div>
+      </div>{# leave-form-layout-main #}
+
+      <aside class="leave-form-layout-aside" aria-label="Approvals and signature status">
+        <div class="tkt-card leave-sidebar-card">
+          <div class="tkt-card-header">
+            <h3>Signature status</h3>
+            <span style="font-size:.78rem;font-weight:600;color:#64748b;">Updates as you fill</span>
+          </div>
+          <div class="tkt-card-body duty-sig-summary-rows" id="leaveSigSummaryBody"></div>
+        </div>
+        <div class="tkt-card leave-sidebar-card leave-sidebar-card--flush leave-sidebar-inner">
+          <div class="tkt-card-header">
+            <h3>Management approvals</h3>
+            <span style="font-size:.78rem;font-weight:600;color:#64748b;">Official PDF trail</span>
+          </div>
+          <div class="tkt-card-body">
+            {% include 'partials/hr_mgmt_chain_core.html' %}
+          </div>
+        </div>
+        <div class="tkt-card leave-sidebar-card leave-sidebar-card--flush leave-sidebar-inner">
+          <div class="tkt-card-header">
+            <h3>Approval activity</h3>
+            <span style="font-size:.78rem;font-weight:600;color:#64748b;">Live trail</span>
+          </div>
+          <div class="tkt-card-body">
+            {% include 'partials/hr_recorded_signatures_panel.html' %}
+          </div>
+        </div>
+        <script src="{{ url_for('static', filename='js/hr_mgmt_chain_submit.js') }}"></script>
+      </aside>
+
+      </div>{# leave-form-layout #}
     </div>
   </div>
 
@@ -1191,7 +1286,7 @@ async function hydrateFromSubmissionIfNeeded() {
   applyLeaveHydrationLocksAndBanner(payload, sid);
   startSubmissionGraceTimer();
 
-  goToStep2();
+  goToStep1();
   calc();
 }
 
@@ -1297,7 +1392,60 @@ document.getElementById('leaveFrm').addEventListener('submit',async e=>{
   }catch(err){alert('Unable to submit: '+(err && err.message ? err.message : String(err)));btn.disabled=false;btn.innerHTML='Submit Application'}
 });
 </script>
+  <script src="{{ url_for('static', filename='js/hr_generic_form_edit.js') }}"></script>
+  <script>
+    HrGenericFormEdit.attach({
+      formId: 'leaveFrm',
+      moduleTypes: ['hr_leave_application'],
+      submitBarSelector: '#submitBar',
+      privilegedFieldNames: ['gm_signature', 'hr_signature', 'hr_checked', 'hr_comments', 'hr_balance_cf', 'hr_contract_year', 'hr_paid', 'hr_unpaid', 'hr_date'],
+      afterPopulate: function (_payload, fd) {
+        window.__leaveReplacementSigners = (fd && fd.replacement_signers) || [];
+        refreshLeaveSignatureSummary();
+      },
+    });
+  </script>
   <script src="{{ url_for('static', filename='api-client.js') }}"></script>
   <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+  <script>
+    /* Signature status sidebar card — mirrors duty resumption refreshDutySignatureSummary */
+    function leaveSigFieldHasCapture(hiddenId, imgId) {
+      var inp = document.getElementById(hiddenId);
+      if (inp) { var v = (inp.value || '').trim(); if (v && v.indexOf('data:image') === 0) return true; }
+      var img = document.getElementById(imgId);
+      if (img) { var u = (img.getAttribute('src') || '').trim(); if (u && u.indexOf('data:image') === 0) return true; }
+      return false;
+    }
+    function refreshLeaveSignatureSummary() {
+      var mount = document.getElementById('leaveSigSummaryBody');
+      if (!mount) return;
+      var replSigned = (window.__leaveReplacementSigners || []).some(function(s) {
+        return s && s.signature && s.signature.indexOf('data:image') === 0;
+      });
+      var rows = [
+        { label: 'Employee signature',       required: true,  hidden: 'empSigData', img: 'empSigImg',   signed: leaveSigFieldHasCapture('empSigData', 'empSigImg') },
+        { label: 'Colleague / Replacement',  required: false, hidden: '',           img: '',             signed: replSigned },
+        { label: 'Manager signature',        required: false, hidden: 'gmSigData',  img: 'gmSigImg',    signed: leaveSigFieldHasCapture('gmSigData', 'gmSigImg') },
+        { label: 'HR (head office)',         required: false, hidden: 'hrSigData',  img: 'hrSigImg',    signed: leaveSigFieldHasCapture('hrSigData', 'hrSigImg') }
+      ];
+      var html = '';
+      rows.forEach(function(r) {
+        var badge = r.signed
+          ? '<span class="duty-sig-badge duty-sig-badge--signed">Signed</span>'
+          : (r.required ? '<span class="duty-sig-badge duty-sig-badge--pending">Pending</span>'
+                        : '<span class="duty-sig-badge duty-sig-badge--optional">Optional</span>');
+        var val = r.signed ? 'Captured on this form'
+          : (r.required ? 'Required before submit' : 'Not captured yet — workflow may collect');
+        html += '<div class="duty-sig-summary-row"><div><span class="duty-sig-summary-label">' + r.label + '</span>'
+              + '<div class="duty-sig-summary-value' + (r.signed ? '' : ' muted') + '">' + val + '</div></div><div>' + badge + '</div></div>';
+      });
+      mount.innerHTML = html;
+    }
+    (function() {
+      var frm = document.getElementById('leaveFrm');
+      if (frm) frm.addEventListener('hrSignaturePreviewApplied', refreshLeaveSignatureSummary);
+    })();
+    refreshLeaveSignatureSummary();
+  </script>
 </body>
 </html>
