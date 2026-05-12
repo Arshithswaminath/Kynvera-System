@@ -1,4 +1,4 @@
----
+﻿---
 title: "Commencement Form"
 geometry: [top=2cm, bottom=3cm, left=2cm, right=2cm]
 mainfont: Arial
@@ -14,14 +14,14 @@ header-includes: |
   \fancyhf{}
   \renewcommand{\headrulewidth}{0pt}
   \renewcommand{\footrulewidth}{0.4pt}
-  \fancyfoot[C]{\small P.O.Box:3456 Ajman, UAE \quad Tel 067116815 \quad www.injaaz.ae \\ \small Registered under trade license name INJAAZ LLC}
+  \fancyfoot[C]{\small P.O.Box:3456 Ajman, UAE \quad Tel 067116815 \quad www.amaan.ae \\ \small Registered under trade license name AMAAN LLC}
   \fancyfoot[R]{\small \thepage}
 ---
 
 <!-- ═══════════════════════  HEADER  ═══════════════════════ -->
 
 \begin{center}
-{\small\color{gray} Injaaz Facility Management}\\[2pt]
+{\small\color{gray} Amaan Facility Management}\\[2pt]
 {\LARGE\bfseries Commencement Form}
 \end{center}
 \vspace{-4pt}
@@ -98,3 +98,4 @@ header-includes: |
 \noindent\fbox{\parbox{\linewidth}{\small
 \noindent If you need assistance with Salary letter required to open new bank account, please forward an email to HR Department at joana@ajmanholding.ae
 }}
+

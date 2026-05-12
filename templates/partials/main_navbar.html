@@ -1,15 +1,15 @@
-{# Main dashboard navigation bar - use across all modules #}
+﻿{# Main dashboard navigation bar - use across all modules #}
 {# Optional: active_page = 'home' | 'about' | 'admin' | 'personal-progress' | 'report' | 'mmr-chargeable' | 'hr' | ... #}
 {# Include with `with context` so routes can pass active_page: {% include 'partials/main_navbar.html' with context %} #}
 {# About: white full wordmark. Everywhere else: official mark (PNG). #}
 {% set _about_nav_logo = active_page is defined and active_page == 'about' %}
 <nav class="nav" id="nav">
   <div class="nav-container">
-    <a href="/dashboard" class="logo" aria-label="Injaaz Home">
-      <img src="{{ url_for('static', filename=('icons/INJAAZ Logo - Edited.png' if _about_nav_logo else 'icons/icon-144x144.png')) }}" alt="Injaaz Facilities Management" class="{{ 'logo-img-about' if _about_nav_logo else 'logo-img-official' }}" width="{{ '200' if _about_nav_logo else '40' }}" height="{{ '40' if _about_nav_logo else '40' }}" decoding="async">
+    <a href="/dashboard" class="logo" aria-label="Amaan Home">
+      <img src="{{ url_for('static', filename=('icons/AMAAN Logo - Edited.png' if _about_nav_logo else 'icons/icon-144x144.png')) }}" alt="Amaan Facilities Management" class="{{ 'logo-img-about' if _about_nav_logo else 'logo-img-official' }}" width="{{ '200' if _about_nav_logo else '40' }}" height="{{ '40' if _about_nav_logo else '40' }}" decoding="async">
       <div class="logo-text">
-        <span class="logo-brand">Injaaz</span>
-        <span id="welcome-text" class="nav-welcome">Injaaz Application</span>
+        <span class="logo-brand">Amaan</span>
+        <span id="welcome-text" class="nav-welcome">Amaan Application</span>
       </div>
     </a>
     <div class="nav-center">
@@ -119,3 +119,4 @@
 {% include 'partials/profile_modal.html' %}
 {% include 'partials/todo_modal.html' %}
 <script src="{{ url_for('static', filename='js/todo_list.js') }}" defer></script>
+

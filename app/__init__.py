@@ -27,6 +27,6 @@ def create_app(config_name=None):
 
     @app.route('/')
     def health():
-        return "Injaaz App — OK"
+        return "Amaan App — OK"
 
     return app

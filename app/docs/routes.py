@@ -1,4 +1,4 @@
-"""
+﻿"""
 DocHub API routes.
 """
 import json
@@ -62,7 +62,7 @@ def _stream_remote_as_download(url, filename):
     mime, _ = mimetypes.guess_type(fn)
 
     def generate():
-        req = urllib.request.Request(url, headers={'User-Agent': 'Injaaz-DocHub/1.0'})
+        req = urllib.request.Request(url, headers={'User-Agent': 'Amaan-DocHub/1.0'})
         with urllib.request.urlopen(req, timeout=120) as r:
             while True:
                 chunk = r.read(65536)
@@ -81,7 +81,7 @@ def _download_url_to_temp(url, suffix):
     fd, path = tempfile.mkstemp(suffix=suffix)
     os.close(fd)
     try:
-        req = urllib.request.Request(url, headers={'User-Agent': 'Injaaz-DocHub/1.0'})
+        req = urllib.request.Request(url, headers={'User-Agent': 'Amaan-DocHub/1.0'})
         with urllib.request.urlopen(req, timeout=120) as r:
             with open(path, 'wb') as f:
                 shutil.copyfileobj(r, f)
@@ -727,3 +727,4 @@ def delete_document(doc_id):
             pass
 
     return success_response({'deleted': True}, message='Document deleted')
+

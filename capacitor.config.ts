@@ -2,7 +2,7 @@ import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.injaaz.app',
-  appName: 'Injaaz',
+  appName: 'Amaan',
   webDir: 'static',
   server: {
     // For development - uncomment and set your Render URL to test against live server
@@ -15,7 +15,7 @@ const config: CapacitorConfig = {
     SplashScreen: {
       launchShowDuration: 2000,
       launchAutoHide: true,
-      backgroundColor: "#125435",
+      backgroundColor: "#d21725",
       androidSplashResourceName: "splash",
       androidScaleType: "CENTER_CROP",
       showSpinner: true,
@@ -27,12 +27,12 @@ const config: CapacitorConfig = {
     },
     StatusBar: {
       style: "dark",
-      backgroundColor: "#125435"
+      backgroundColor: "#d21725"
     },
     Camera: {
       permissions: {
-        camera: "Allow Injaaz to access your camera to take photos for inspections.",
-        photos: "Allow Injaaz to access your photos to attach to reports."
+        camera: "Allow Amaan to access your camera to take photos for inspections.",
+        photos: "Allow Amaan to access your photos to attach to reports."
       }
     }
   },
@@ -46,7 +46,7 @@ const config: CapacitorConfig = {
     }
   },
   ios: {
-    scheme: "Injaaz"
+    scheme: "Amaan"
   }
 };
 

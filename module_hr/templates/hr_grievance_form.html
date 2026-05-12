@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -87,9 +87,9 @@
         <div class="hd">
           <div class="hd-left">
             <h1>Employee Grievance / Disciplinary Action Form</h1>
-            <p class="hd-sub">INJAAZ FACILITY MANAGEMENT</p>
+            <p class="hd-sub">AMAAN FACILITY MANAGEMENT</p>
           </div>
-          <img src="{{ url_for('static', filename='logo.png') }}" alt="INJAAZ" class="hd-logo">
+          <img src="{{ url_for('static', filename='logo.png') }}" alt="AMAAN" class="hd-logo">
         </div>
 
         <form id="hrForm">
@@ -261,7 +261,7 @@
 
           <div class="doc-ft">
             <div class="doc-ft-meta"><span>Grievance Form</span><span>DATE: <span id="docDate"></span></span></div>
-            P.O Box: 3456 Ajman, UAE · Tel 067116815 · www.injaaz.ae
+            P.O Box: 3456 Ajman, UAE · Tel 067116815 · www.amaan.ae
           </div>
 
           <div class="submit-bar" id="submitBar" style="display:none">
@@ -356,8 +356,8 @@ document.getElementById('hrForm').addEventListener('submit',async e=>{
   data.form_type='grievance';
   data.employee_name=data.complainant_name;
   if(!data.complainant_signature||!String(data.complainant_signature).startsWith('data:image')){alert('Complainant (1st party) signature is required.');return}
-  if(!second_party_signer_ids.length){alert('Add at least one respondent / 2nd party colleague with an Injaaz account to sign digitally first.');return}
-  if(!hod_signer_ids.length){alert('Add at least one Engineer / QHSE / HOD colleague with an Injaaz account to sign digitally first.');return}
+  if(!second_party_signer_ids.length){alert('Add at least one respondent / 2nd party colleague with an Amaan account to sign digitally first.');return}
+  if(!hod_signer_ids.length){alert('Add at least one Engineer / QHSE / HOD colleague with an Amaan account to sign digitally first.');return}
   data.second_party_signer_ids=[...second_party_signer_ids];
   data.hod_signer_ids=[...hod_signer_ids];
   const btn=e.target.querySelector('.btn-submit');
@@ -411,3 +411,4 @@ document.getElementById('hrForm').addEventListener('submit',async e=>{
   <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 </body>
 </html>
+

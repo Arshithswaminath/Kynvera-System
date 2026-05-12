@@ -1,4 +1,4 @@
-"""
+﻿"""
 Workflow Routes - New 5-Stage Approval System
 Stage 1: Supervisor/Inspector (creates form)
 Stage 2: Operations Manager (reviews, edits, approves)
@@ -938,7 +938,7 @@ def _days_with_injaaz_metric(user):
         except Exception:
             since = str(d)[:10]
     value = f'{days} days, since {since}' if since else f'{days} days'
-    return {'label': 'Days with Injaaz', 'value': value}
+    return {'label': 'Days with Amaan', 'value': value}
 
 
 def _inspection_stats_scope(user):
@@ -3507,3 +3507,4 @@ def legacy_approve_submission(submission_id):
     except Exception as e:
         current_app.logger.error(f"Error in legacy approval: {str(e)}", exc_info=True)
         return error_response('Failed to process approval', status_code=500, error_code='DATABASE_ERROR')
+

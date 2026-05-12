@@ -1,4 +1,4 @@
-import os
+﻿import os
 import sys
 import logging
 import mimetypes
@@ -466,13 +466,13 @@ def create_app():
                         ('Employee Onboarding Guide', 'onboarding', 'published',
                          '<h1>Employee Onboarding Guide</h1>'
                          '<div class="callout callout-blue"><span class="callout-icon">👋</span><div><strong>Welcome to the team!</strong> This guide will help you get up and running quickly.</div></div>'
-                         '<h2>1. Company Overview</h2><p>Injaaz Facilities Management delivers excellence in facility services across the UAE.</p>'
+                         '<h2>1. Company Overview</h2><p>Amaan Facilities Management delivers excellence in facility services across the UAE.</p>'
                          '<h2>2. Your First Week</h2><ul><li><strong>Day 1:</strong> Meet your team lead, set up workstation</li>'
                          '<li><strong>Day 2:</strong> System access, security training</li><li><strong>Day 3-5:</strong> Department walkthroughs</li></ul>'
                          '<h2>3. Key Contacts</h2><ul><li><strong>HR:</strong> arshith@injaaz.ae</li><li><strong>IT:</strong> +971 50 156 0277</li></ul>'),
                         ('Project Services Agreement Template', 'contracts', 'review',
                          '<h1>Project Services Agreement</h1><p><em>Agreement between Service Provider and Client.</em></p>'
-                         '<h2>1. Parties</h2><p><strong>Service Provider:</strong> Injaaz FM.<br/><strong>Client:</strong> [Client Name].</p>'
+                         '<h2>1. Parties</h2><p><strong>Service Provider:</strong> Amaan FM.<br/><strong>Client:</strong> [Client Name].</p>'
                          '<h2>2. Scope</h2><ul><li>Facility management services</li><li>Maintenance and repairs</li><li>Cleaning and HVAC</li></ul>'
                          '<h2>3. Payment Terms</h2><p>As per agreed milestones.</p>'),
                         ('Remote Work Policy', 'policies', 'published',
@@ -1006,6 +1006,12 @@ def create_app():
 
 
 if __name__ == '__main__':
+    import subprocess
+    try:
+        branch = subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD'], stderr=subprocess.DEVNULL).decode().strip()
+    except Exception:
+        branch = 'unknown'
+    print(f"\n  Running on branch: [{branch}]\n")
     app = create_app()
     # For local development use debug=True. Remove or set False in production.
     app.run(debug=False, host='0.0.0.0', port=5001)

@@ -1,4 +1,4 @@
-"""
+﻿"""
 Email service for sending emails (password resets, notifications)
 
 SMTP works locally and on hosts that allow outbound 587. Render *free* web services block
@@ -173,7 +173,7 @@ def _send_email_brevo_http(app, recipient, subject, body, html_body, cc, attachm
         return False
     to_list = recipient if isinstance(recipient, (list, tuple)) else [recipient]
     payload = {
-        "sender": {"email": mail_sender.strip(), "name": "Injaaz"},
+        "sender": {"email": mail_sender.strip(), "name": "Amaan"},
         "to": [{"email": e.strip()} for e in to_list if e and str(e).strip()],
         "subject": subject,
         "textContent": (body or "").rstrip(),
@@ -250,7 +250,7 @@ def _send_email_mailjet_http(
         logger.error("Mailjet: no valid recipients")
         return False
     msg = {
-        "From": {"Email": mail_sender.strip(), "Name": "Injaaz"},
+        "From": {"Email": mail_sender.strip(), "name": "Amaan"},
         "To": to_out,
         "Subject": subject,
         "TextPart": (body or "").rstrip() or " ",
@@ -376,7 +376,7 @@ def send_email(recipient, subject, body, html_body=None, cc=None, attachments=No
 
         msg = EmailMessage()
         msg['Subject'] = subject
-        msg['From'] = formataddr(("Injaaz", str(mail_sender).strip()))
+        msg['From'] = formataddr(("Amaan", str(mail_sender).strip()))
         if isinstance(recipient, (list, tuple)):
             msg['To'] = ', '.join(recipient)
         else:
@@ -455,7 +455,7 @@ def send_password_reset_email(user_email, username, temp_password):
     Returns:
         bool: True if sent successfully
     """
-    subject = "Your Injaaz Account Password Has Been Reset"
+    subject = "Your Amaan Account Password Has Been Reset"
     
     body = f"""
 Hello {username},
@@ -469,7 +469,7 @@ Please log in and change your password immediately for security.
 If you did not request this password reset, please contact support immediately.
 
 Best regards,
-Injaaz Team
+Amaan Team
 """
     
     html_body = f"""
@@ -481,10 +481,11 @@ Injaaz Team
 <p><strong>Your temporary password is: <code>{temp_password}</code></strong></p>
 <p>Please log in and change your password immediately for security.</p>
 <p>If you did not request this password reset, please contact support immediately.</p>
-<p>Best regards,<br>Injaaz Team</p>
+<p>Best regards,<br>Amaan Team</p>
 </body>
 </html>
 """
     
     return send_email(user_email, subject, body, html_body)
+
 

@@ -204,7 +204,7 @@ def _gap(doc, pt=4):
 
 # ── Page header ───────────────────────────────────────────────────────────────
 def _add_header(doc, title, doc_no=None):
-    """Full-width header: logo (left) + title & doc info (right) on green bar."""
+    """Full-width header: logo (left) + title & doc info (right) on brand-color bar."""
     table = doc.add_table(rows=1, cols=2)
     table.alignment = WD_TABLE_ALIGNMENT.CENTER
     _no_table_borders(table)
@@ -242,7 +242,7 @@ def _add_header(doc, title, doc_no=None):
     p.paragraph_format.space_after = Pt(0)
     p.paragraph_format.left_indent = Cm(0.4)
 
-    r1 = p.add_run("INJAAZ TECHNICAL SERVICES LLC\n")
+    r1 = p.add_run("AMAAN TECHNICAL SERVICES LLC\n")
     r1.font.name = FONT
     r1.font.size = Pt(7.5)
     r1.font.color.rgb = _rgb(C_SEC)
@@ -263,7 +263,7 @@ def _add_header(doc, title, doc_no=None):
 
 
 def _fallback_logo(p):
-    r = p.add_run("INJAAZ")
+    r = p.add_run("AMAAN")
     r.font.name = FONT
     r.font.size = Pt(13)
     r.font.bold = True
@@ -553,7 +553,7 @@ def _footer(doc, doc_no=None, form_date=None):
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p.paragraph_format.space_before = Pt(0)
     p.paragraph_format.space_after = Pt(0)
-    parts = ["INJAAZ TECHNICAL SERVICES LLC"]
+    parts = ["AMAAN TECHNICAL SERVICES LLC"]
     if doc_no:
         parts.append(f"Doc: {doc_no}")
     if form_date:
@@ -609,20 +609,20 @@ def _sig_to_transparent_png(data_url):
 
 
 def _add_header_pdf_style(doc, form_name):
-    """Left: Injaaz Facility Management (grey) + form title (bold); right: logo only, no text below."""
+    """Left: Amaan Facility Management (grey) + form title (bold); right: logo only, no text below."""
     t = doc.add_table(rows=1, cols=2)
     _no_table_borders(t)
     t.columns[0].width = Cm(14.0)
     t.columns[1].width = Cm(3.0)
     row = t.rows[0]
-    # Left: Injaaz Facility Management (small grey) + form name (large bold black)
+    # Left: Amaan Facility Management (small grey) + form name (large bold black)
     lc = row.cells[0]
     lc.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
     p = lc.paragraphs[0]
     p.alignment = WD_ALIGN_PARAGRAPH.LEFT
     p.paragraph_format.space_before = Pt(0)
     p.paragraph_format.space_after = Pt(2)
-    r1 = p.add_run("Injaaz Facility Management\n")
+    r1 = p.add_run("Amaan Facility Management\n")
     r1.font.name = FONT
     r1.font.size = Pt(8)
     r1.font.color.rgb = _rgb(C_BW_GRAY)
@@ -631,7 +631,7 @@ def _add_header_pdf_style(doc, form_name):
     r2.font.size = Pt(16)
     r2.font.bold = True
     r2.font.color.rgb = _rgb(C_BW_BLACK)
-    # Right: logo only (no INJAAZ text, compact)
+    # Right: logo only (no AMAAN text, compact)
     rc = row.cells[1]
     rc.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
     rp = rc.paragraphs[0]
@@ -650,7 +650,7 @@ def _add_header_pdf_style(doc, form_name):
 
 
 def _fallback_logo_bw(p):
-    r = p.add_run("INJAAZ")
+    r = p.add_run("AMAAN")
     r.font.name = FONT
     r.font.size = Pt(10)
     r.font.bold = True
@@ -979,7 +979,7 @@ def _build_commencement(fd):
         ("Full Name", _fd(fd, "employee_name")),
         ("Position / Title", _fd(fd, "position")),
         ("Department", _fd(fd, "department")),
-        ("Organization", _fd(fd, "organization", "INJAAZ")),
+        ("Organization", _fd(fd, "organization", "AMAAN")),
         ("Contact Number", _fd(fd, "contacts")),
         ("Date of Joining (DD/MM/YYYY)", _fmt(fd.get("date_of_joining"))),
     ], cols=2)
@@ -1021,7 +1021,7 @@ def _build_duty_resumption(fd):
         ("Employee Name",   _fd(fd, "employee_name")),
         ("Employee ID",     _fd(fd, "employee_id")),
         ("Job Title",       _fd(fd, "job_title")),
-        ("Company",         _fd(fd, "company", "INJAAZ LLC")),
+        ("Company",         _fd(fd, "company", "AMAAN LLC")),
     ], cols=4)
 
     _section_bar_numbered(doc, "02", "Leave & Resumption Dates")
@@ -1144,7 +1144,7 @@ def _build_visa_renewal(fd):
         ("Date",             _fmt(fd.get("form_date"))),
         ("Employee Name",    _fd(fd, "employee_name")),
         ("Employee ID",      _fd(fd, "employee_id")),
-        ("Employer",         _fd(fd, "employer", "INJAAZ")),
+        ("Employer",         _fd(fd, "employer", "AMAAN")),
         ("Position",         _fd(fd, "position")),
         ("Years Completed",  _fd(fd, "years_completed")),
         ("Decision",         dec),

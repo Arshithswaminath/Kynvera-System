@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, render_template, request, redirect, url_for, current_app, send_file
+﻿from flask import Blueprint, jsonify, render_template, request, redirect, url_for, current_app, send_file
 import os
 import mimetypes
 from urllib.parse import urlparse
@@ -303,12 +303,12 @@ def send_email_to_gm():
     if submission_ids and not attachments:
         return jsonify({'success': False, 'error': 'No PDF/Excel documents found for the selected submissions'}), 400
 
-    signature = f"\n\nSent by: {user.full_name or user.username}\nInjaaz Team"
+    signature = f"\n\nSent by: {user.full_name or user.username}\nAmaan Team"
     body = f"{message}{signature}"
     html_body = (
         "<html><body>"
         f"<p>{message.replace(chr(10), '<br>')}</p>"
-        f"<p><strong>Sent by:</strong> {user.full_name or user.username}<br>Injaaz Team</p>"
+        f"<p><strong>Sent by:</strong> {user.full_name or user.username}<br>Amaan Team</p>"
         "</body></html>"
     )
 
@@ -331,3 +331,4 @@ def send_email_to_gm():
             }), 200
         return jsonify({'success': True, 'message': 'Email sent to General Manager'}), 200
     return jsonify({'success': False, 'error': 'Failed to send email'}), 500
+

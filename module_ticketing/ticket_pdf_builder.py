@@ -93,7 +93,7 @@ class _TicketPDFCanvas(Canvas):
         # Footer
         self.setFillColor(colors.HexColor('#6b7280'))
         self.setFont('Helvetica', 7.5)
-        self.drawString(MARGIN, 10 * mm, 'Injaaz Facilities Management — Confidential')
+        self.drawString(MARGIN, 10 * mm, 'Amaan Facilities Management — Confidential')
         self.drawRightString(PAGE_W - MARGIN, 10 * mm,
                              f'Page {self._pageNumber} of {num_pages}')
         self.restoreState()
@@ -146,7 +146,7 @@ def build_ticket_pdf(ticket, notes, images, materials, manpower_entries, output_
     # Find logo
     logo_path = None
     candidates = [
-        'static/icons/INJAAZ Logo - Edited.png',
+        'static/icons/AMAAN Logo - Edited.png',
         'static/icons/icon-144x144.png',
     ]
     for c in candidates:

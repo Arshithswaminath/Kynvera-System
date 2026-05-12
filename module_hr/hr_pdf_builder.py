@@ -1,5 +1,5 @@
 """
-Professional PDF builder for HR forms — Injaaz application theme.
+Professional PDF builder for HR forms — Amaan application theme.
 Native ReportLab generation, no DOCX conversion.
 """
 import os
@@ -217,7 +217,7 @@ class HRPDFCanvas(canvas.Canvas):
         self.line(_LM, 1.3 * cm, w - _RM, 1.3 * cm)
         self.setFont("Helvetica", 5)
         self.setFillColor(C_GRAY)
-        self.drawString(_LM, 0.85 * cm, "INJAAZ")
+        self.drawString(_LM, 0.85 * cm, "AMAAN")
         self.drawRightString(w - _RM, 0.85 * cm, f"Page {self._pageNumber} of {total}")
 
 
@@ -256,7 +256,7 @@ def _get_styles():
 # ── Reusable layout components ───────────────────────────────────────────────
 
 def _header_table(form_name, styles, show_bottom_line=True):
-    """Logo right, headline: INJAAZ FACILITY MANAGEMENT (small) + form name (bold). Matches reference design."""
+    """Logo right, headline: AMAAN FACILITY MANAGEMENT (small) + form name (bold). Matches reference design."""
     logo_cell = ""
     if os.path.exists(LOGO_PATH):
         try:
@@ -266,12 +266,12 @@ def _header_table(form_name, styles, show_bottom_line=True):
             pass
     if not logo_cell:
         logo_cell = Paragraph(
-            "<b>INJAAZ</b>",
+            "<b>AMAAN</b>",
             ParagraphStyle("HL", fontSize=10, textColor=C_BLACK, fontName="Helvetica-Bold", alignment=TA_RIGHT),
         )
-    # Injaaz Facility Management - a little bigger, bold (stays gray)
+    # Amaan Facility Management - a little bigger, bold (stays gray)
     sub = Paragraph(
-        '<font size="8" color="#666666"><b>Injaaz Facility Management</b></font>',
+        '<font size="8" color="#666666"><b>Amaan Facility Management</b></font>',
         ParagraphStyle("HSub", fontSize=8, textColor=C_GRAY, fontName="Helvetica-Bold", alignment=TA_LEFT, spaceAfter=3),
     )
     # Form name - headline, compact
@@ -1279,7 +1279,7 @@ def _build_commencement(story, fd, styles):
         [_flv("Position",     _fd(fd, "position")),
          _flv("Contacts",     _fd(fd, "contacts"))],                         # r3
         [_flv("Department",   _fd(fd, "department")),
-         _flv("Organization", _fd(fd, "organization", "INJAAZ LLC"))],       # r4
+         _flv("Organization", _fd(fd, "organization", "AMAAN LLC"))],       # r4
         [_flv("Date of Joining", _fmt(fd.get("date_of_joining"))), ""],      # r5
         [_fsec("Bank Account Details:"), ""],                                # r6
         [_flv("Bank Name", _fd(fd, "bank_name")), ""],                       # r7
@@ -1381,7 +1381,7 @@ def _build_duty_resumption(story, fd, styles):
         [_flv("Employee Name", _fd(fd, "employee_name")),
          _flv("Employee ID",   _fd(fd, "employee_id"))],                     # r1
         [_flv("Job Title",     _fd(fd, "job_title")),
-         _flv("Company",       _fd(fd, "company", "INJAAZ LLC"))],           # r2
+         _flv("Company",       _fd(fd, "company", "AMAAN LLC"))],           # r2
         [_fsec("Leave Information:"), ""],                                   # r3
         [_flv("Leave Started",  _fmt(fd.get("leave_started"))),
          _flv("Leave Ended",    _fmt(fd.get("leave_ended")))],               # r4
@@ -1523,7 +1523,7 @@ def _build_visa_renewal(story, fd, styles):
 
     name       = _fd(fd, "employee_name")
     emp_id     = _fd(fd, "employee_id")
-    employer   = _fd(fd, "employer", "INJAAZ LLC")
+    employer   = _fd(fd, "employer", "AMAAN LLC")
     position   = _fd(fd, "position")
     years      = _fd(fd, "years_completed")
     form_date  = _fmt(fd.get("form_date"))
@@ -1555,7 +1555,7 @@ def _build_visa_renewal(story, fd, styles):
         [Paragraph("", VAL)],                                               # r14 blank
         [_fsig("Signature of Employee", fd.get("employee_signature"))],     # r15 sig
         [Paragraph("", VAL)],                                               # r16 blank
-        [Paragraph("<b>INJAAZ LLC</b>", VAL)],                              # r17
+        [Paragraph("<b>AMAAN LLC</b>", VAL)],                              # r17
     ]
 
     t = Table(rows, colWidths=[CW])

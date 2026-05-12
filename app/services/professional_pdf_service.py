@@ -1,4 +1,4 @@
-"""
+﻿"""
 Professional PDF Service with Branding, Logo, and Signatures
 Provides reusable components for all module PDFs
 Enhanced with cover pages and professional branding
@@ -24,17 +24,17 @@ from common.utils import get_image_for_pdf
 logger = logging.getLogger(__name__)
 
 # Company branding colors - Enhanced palette
-PRIMARY_COLOR = colors.HexColor('#125435')      # Dark green
-SECONDARY_COLOR = colors.HexColor('#1a7a4d')    # Medium green
-ACCENT_COLOR = colors.HexColor('#E8F5E9')       # Light green
-HEADER_BG = colors.HexColor('#125435')
-TABLE_HEADER_BG = colors.HexColor('#125435')
+PRIMARY_COLOR = colors.HexColor('#d21725')      # Brand red
+SECONDARY_COLOR = colors.HexColor('#e8323f')    # Medium red
+ACCENT_COLOR = colors.HexColor('#fde8ea')       # Light red
+HEADER_BG = colors.HexColor('#d21725')
+TABLE_HEADER_BG = colors.HexColor('#d21725')
 TABLE_ALT_ROW = colors.HexColor('#f9fafb')
 BORDER_COLOR = colors.HexColor('#e5e7eb')
 
 # Additional brand colors for cover page
-GRADIENT_START = colors.HexColor('#125435')
-GRADIENT_END = colors.HexColor('#1a7a4d')
+GRADIENT_START = colors.HexColor('#d21725')
+GRADIENT_END = colors.HexColor('#e8323f')
 GOLD_ACCENT = colors.HexColor('#D4AF37')
 LIGHT_BG = colors.HexColor('#fafafa')
 
@@ -48,7 +48,7 @@ class NumberedCanvas(canvas.Canvas):
     def __init__(self, *args, **kwargs):
         canvas.Canvas.__init__(self, *args, **kwargs)
         self._saved_page_states = []
-        self.report_title = kwargs.get('report_title', 'Injaaz Report')
+        self.report_title = kwargs.get('report_title', 'Amaan Report')
         
     def showPage(self):
         self._saved_page_states.append(dict(self.__dict__))
@@ -91,7 +91,7 @@ class NumberedCanvas(canvas.Canvas):
         self.setFont('Helvetica-Bold', 8)
         self.setFillColor(PRIMARY_COLOR)
         self.drawString(1.4*cm + LOGO_SZ + 0.15*cm,
-                        HDR_Y + 0.5*cm, "Injaaz Application")
+                        HDR_Y + 0.5*cm, "Amaan Application")
 
         # Report title (right-aligned)
         self.setFont('Helvetica', 7.5)
@@ -567,7 +567,7 @@ def create_professional_pdf(pdf_path, story, report_title="Injaaz Report"):
             topMargin=1.7*cm,
             bottomMargin=1.8*cm,
             title=report_title,
-            author="Injaaz Application"
+            author="Amaan Application"
         )
         
         # Build with custom canvas for headers/footers
@@ -710,7 +710,7 @@ def create_cover_page(story, report_info):
             logger.warning(f"Could not load logo for cover page: {e}")
     
     # Company name
-    story.append(Paragraph("Injaaz Application", ParagraphStyle(
+    story.append(Paragraph("Amaan Application", ParagraphStyle(
         'CompanyName',
         fontSize=14,
         textColor=SECONDARY_COLOR,
@@ -1012,3 +1012,4 @@ def add_section_with_icon(story, title, icon_char="📋"):
     story.append(Paragraph(f"■ {title}", section_style))
     
     return story
+

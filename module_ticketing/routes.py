@@ -2010,7 +2010,7 @@ def _send_completion_emails(ticket: Ticket, closed_by: User):
             ticket.assigned_to.email if ticket.assigned_to else None,
         ] + admin_emails)))
 
-        subject = f'[Injaaz] Work Order Closed — {ticket.ticket_id}'
+        subject = f'[Amaan] Work Order Closed — {ticket.ticket_id}'
         body = f"""
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h2 style="color: #1e3a5f;">Work Order Completed</h2>
@@ -2031,7 +2031,7 @@ def _send_completion_emails(ticket: Ticket, closed_by: User):
           </table>
           {"<p><strong>Closing notes:</strong> " + ticket.close_notes + "</p>" if ticket.close_notes else ""}
           <hr style="margin-top:20px;"/>
-          <p style="font-size:12px; color:#888;">This is an automated notification from Injaaz Application.</p>
+          <p style="font-size:12px; color:#888;">This is an automated notification from Amaan Application.</p>
         </div>
         """
         _send_ticket_email(subject, recipients, body)

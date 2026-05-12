@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -87,9 +87,9 @@
         <div class="hd">
           <div class="hd-left">
             <h1>Commencement Form</h1>
-            <p class="hd-sub">INJAAZ FACILITY MANAGEMENT</p>
+            <p class="hd-sub">AMAAN FACILITY MANAGEMENT</p>
           </div>
-          <img src="{{ url_for('static', filename='logo.png') }}" alt="INJAAZ" class="hd-logo">
+          <img src="{{ url_for('static', filename='logo.png') }}" alt="AMAAN" class="hd-logo">
         </div>
 
         <form id="hrForm">
@@ -107,7 +107,7 @@
                   <div class="fld"><label class="fld-lbl">Position <span class="req">*</span></label><input class="fld-inp" type="text" name="position" required></div>
                   <div class="fld"><label class="fld-lbl">Contacts <span class="req">*</span></label><input class="fld-inp" type="tel" name="contacts" required></div>
                   <div class="fld"><label class="fld-lbl">Department <span class="req">*</span></label><input class="fld-inp" type="text" name="department" required></div>
-                  <div class="fld"><label class="fld-lbl">Organization <span class="req">*</span></label><input class="fld-inp" type="text" name="organization" value="INJAAZ" required></div>
+                  <div class="fld"><label class="fld-lbl">Organization <span class="req">*</span></label><input class="fld-inp" type="text" name="organization" value="AMAAN" required></div>
                   <div class="fld"><label class="fld-lbl">Date of Joining <span class="req">*</span></label><input class="fld-inp" type="date" name="date_of_joining" required></div>
                 </div>
               </section>
@@ -162,7 +162,7 @@
                     <button type="button" class="btn-ghost" id="repOffSignerAdd">Add</button>
                   </div>
                   <div id="repOffSignerChips" style="margin-top:.4rem;display:flex;flex-wrap:wrap;gap:.2rem"></div>
-                  <p class="doc-intro" style="font-size:.8rem;margin-top:.35rem;color:var(--muted,#64748b)">Select exactly one colleague with an Injaaz account — you cannot sign on their behalf here.</p>
+                  <p class="doc-intro" style="font-size:.8rem;margin-top:.35rem;color:var(--muted,#64748b)">Select exactly one colleague with an Amaan account — you cannot sign on their behalf here.</p>
                 </div>
               </section>
               <div class="step-nav">
@@ -175,7 +175,7 @@
 
           <div class="doc-ft">
             <div class="doc-ft-meta"><span>Commencement Form</span><span>DATE: <span id="docDate"></span></span></div>
-            P.O Box: 3456 Ajman, UAE · Tel 067116815 · www.injaaz.ae<br>Registered under trade license name INJAAZ LLC
+            P.O Box: 3456 Ajman, UAE · Tel 067116815 · www.amaan.ae<br>Registered under trade license name AMAAN LLC
           </div>
 
           <div class="submit-bar" id="submitBar" style="display:none">
@@ -273,7 +273,7 @@ document.getElementById('hrForm').addEventListener('submit',async e=>{
   const fd=new FormData(e.target),data=Object.fromEntries(fd.entries());
   if(!data.employee_signature||!String(data.employee_signature).startsWith('data:image')){alert('Please add your Employee signature before submitting.');return}
   if(reporting_officer_signer_ids.length!==1){
-    alert('Select exactly one reporting officer with an Injaaz account — they must sign on their own device (you cannot sign for them).');
+    alert('Select exactly one reporting officer with an Amaan account — they must sign on their own device (you cannot sign for them).');
     return;
   }
   data.reporting_officer_signer_ids=[...reporting_officer_signer_ids];
@@ -383,3 +383,4 @@ document.getElementById('hrForm').addEventListener('submit',async e=>{
   <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 </body>
 </html>
+

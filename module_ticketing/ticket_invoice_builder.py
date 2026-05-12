@@ -78,7 +78,7 @@ class _InvoiceCanvas(Canvas):
         self.setFillColor(colors.white)
         self.setFont('Helvetica', 7)
         self.drawString(L_MARGIN, 2.8 * mm,
-                        'INJAAZ FACILITIES MANAGEMENT  —  SERVICE INVOICE  —  CONFIDENTIAL')
+                        'AMAAN FACILITIES MANAGEMENT  —  SERVICE INVOICE  —  CONFIDENTIAL')
         self.drawRightString(PAGE_W - R_MARGIN, 2.8 * mm,
                              f'Page {self._pageNumber} of {total_pages}  |  {self._invoice_no}')
 
@@ -212,7 +212,7 @@ def build_invoice_pdf(ticket, materials, manpower_entries, output_stream):
     invoice_no = f'INV-{ticket.ticket_id}'
 
     logo_path = None
-    for c in ['static/icons/INJAAZ Logo - Edited.png', 'static/icons/icon-144x144.png']:
+    for c in ['static/icons/AMAAN Logo - Edited.png', 'static/icons/icon-144x144.png']:
         if os.path.exists(c):
             logo_path = c
             break
@@ -237,13 +237,13 @@ def build_invoice_pdf(ticket, materials, manpower_entries, output_stream):
             pass
 
     company_block = [
-        _p('INJAAZ', 15, bold=True, color=BRAND, align=TA_RIGHT),
+        _p('AMAAN', 15, bold=True, color=BRAND, align=TA_RIGHT),
         _p('FACILITIES MANAGEMENT', 7.5, color=MUTED, align=TA_RIGHT),
         _p('Abu Dhabi, UAE', 8, color=INK, align=TA_RIGHT),
     ]
 
     hero_left  = _p('SERVICE INVOICE', 28, bold=True, color=ACCENT)
-    hero_right = Table([[logo_cell], [_p('INJAAZ', 13, bold=True, color=BRAND, align=TA_RIGHT)],
+    hero_right = Table([[logo_cell], [_p('AMAAN', 13, bold=True, color=BRAND, align=TA_RIGHT)],
                         [_p('FACILITIES MANAGEMENT', 7, color=MUTED, align=TA_RIGHT)],
                         [_p('Abu Dhabi, UAE', 8, color=INK, align=TA_RIGHT)]],
                        colWidths=[AVAIL_W * 0.4])
@@ -445,7 +445,7 @@ def build_invoice_pdf(ticket, materials, manpower_entries, output_stream):
     terms_text = (
         'This invoice is issued upon successful completion and closure of the above '
         'work order. The amount shown reflects the total service charge. '
-        'For queries or disputes, contact Injaaz Facilities Management.'
+        'For queries or disputes, contact Amaan Facilities Management.'
     )
     cw_terms = AVAIL_W * 0.56
     cw_sig   = AVAIL_W * 0.44

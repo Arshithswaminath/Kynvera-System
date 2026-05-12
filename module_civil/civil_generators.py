@@ -1,4 +1,4 @@
-"""
+﻿"""
 Civil report generators for Excel and PDF.
 """
 import os
@@ -529,7 +529,7 @@ def create_pdf_report(data, output_dir):
             mat_table_data = [mat_headers] + mat_data
             mat_table = Table(mat_table_data, colWidths=mat_col_widths, repeatRows=1)
             mat_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#125435')),
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#d21725')),
                 ('TEXTCOLOR',  (0, 0), (-1, 0), colors.white),
                 ('FONTNAME',   (0, 0), (-1, 0), 'Helvetica-Bold'),
                 ('FONTSIZE',   (0, 0), (-1, 0), 8),
@@ -811,8 +811,8 @@ def create_pdf_report(data, output_dir):
                         ('ALIGN', (0, 0), (0, -1), 'LEFT'),
                         ('ALIGN', (1, 0), (1, -1), 'CENTER'),
                         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                        ('GRID', (0, 0), (-1, -1), 0.75, colors.HexColor('#125435')),
-                        ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#E8F5E9')),
+                        ('GRID', (0, 0), (-1, -1), 0.75, colors.HexColor('#d21725')),
+                        ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#fde8ea')),
                         ('TOPPADDING', (0, 0), (-1, -1), 8),
                         ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
                         ('LEFTPADDING', (0, 0), (-1, -1), 6),
@@ -886,3 +886,4 @@ def create_pdf_report(data, output_dir):
     except Exception as e:
         logger.error(f"❌ Civil PDF generation error: {str(e)}")
         raise
+

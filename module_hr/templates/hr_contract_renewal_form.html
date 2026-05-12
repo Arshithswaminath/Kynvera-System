@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -83,9 +83,9 @@
         <div class="hd">
           <div class="hd-left">
             <h1>Employee Contract Renewal Assessment</h1>
-            <p class="hd-sub">INJAAZ FACILITY MANAGEMENT</p>
+            <p class="hd-sub">AMAAN FACILITY MANAGEMENT</p>
           </div>
-          <img src="{{ url_for('static', filename='logo.png') }}" alt="INJAAZ" class="hd-logo">
+          <img src="{{ url_for('static', filename='logo.png') }}" alt="AMAAN" class="hd-logo">
         </div>
 
         <form id="hrForm" novalidate>
@@ -192,7 +192,7 @@
 
           <div class="doc-ft">
             <div class="doc-ft-meta"><span>Contract Renewal Assessment</span><span>DATE: <span id="docDate"></span></span></div>
-            P.O Box: 3456 Ajman, UAE · Tel 067116815 · www.injaaz.ae
+            P.O Box: 3456 Ajman, UAE · Tel 067116815 · www.amaan.ae
           </div>
 
           <div class="submit-bar" id="submitBar" style="display:none">
@@ -290,7 +290,7 @@ document.getElementById('hrForm').addEventListener('submit',async e=>{
   }
   const fd=new FormData(form),data=Object.fromEntries(fd.entries());
   data.form_type='contract_renewal';
-  if(contract_evaluator_signer_ids.length!==1){goToStep2();alert('Select exactly one evaluator with an Injaaz account — they sign digitally on their device (you cannot sign for them).');return}
+  if(contract_evaluator_signer_ids.length!==1){goToStep2();alert('Select exactly one evaluator with an Amaan account — they sign digitally on their device (you cannot sign for them).');return}
   data.evaluator_signer_ids=[...contract_evaluator_signer_ids];
   const btn=form.querySelector('.btn-submit');
   btn.disabled=true;btn.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="spin"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Submitting…';
@@ -341,3 +341,4 @@ document.getElementById('hrForm').addEventListener('submit',async e=>{
   <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 </body>
 </html>
+

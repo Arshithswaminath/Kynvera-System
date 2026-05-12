@@ -1,4 +1,4 @@
----
+﻿---
 title: "Employee Contract Renewal Assessment"
 geometry: [top=2cm, bottom=3cm, left=2cm, right=2cm]
 mainfont: Arial
@@ -16,14 +16,14 @@ header-includes: |
   \fancyhf{}
   \renewcommand{\headrulewidth}{0pt}
   \renewcommand{\footrulewidth}{0.4pt}
-  \fancyfoot[C]{\small P.O.Box:3456 Ajman, UAE \quad Tel 067116815 \quad www.injaaz.ae \\ \small Registered under trade license name INJAAZ LLC}
+  \fancyfoot[C]{\small P.O.Box:3456 Ajman, UAE \quad Tel 067116815 \quad www.amaan.ae \\ \small Registered under trade license name AMAAN LLC}
   \fancyfoot[R]{\small \thepage}
 ---
 
 <!-- ═══════════════════════  HEADER  ═══════════════════════ -->
 
 \begin{center}
-{\small\color{gray} Injaaz Facility Management}\\[2pt]
+{\small\color{gray} Amaan Facility Management}\\[2pt]
 {\Large\bfseries EMPLOYEE CONTRACT RENEWAL ASSESSMENT}
 \end{center}
 \vspace{-4pt}
@@ -175,3 +175,4 @@ Unsatisfactory & 1 \\
 \begin{tabular}{p{0.48\linewidth} p{0.48\linewidth}}
 \textbf{Evaluator's Signature:} \underline{\hspace{4.5cm}} & \textbf{Date:} \underline{\hspace{3.5cm}}
 \end{tabular}
+
