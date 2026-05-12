@@ -17,13 +17,13 @@
   --text-muted: #9ca3af;
   --bg-light: #f9fafb;
   --white: #ffffff;
-  --bg-body: #f8faf8;
+  --bg-body: #faf8f8;
   --bg-surface: #ffffff;
   --bg-card: #ffffff;
   --border-color: #e5e7eb;
   --border-light: #f3f4f6;
   /* Main nav + module toolbars (matches BizFlow --line); avoids harsh “black” hairline on CDN/deploy */
-  --nav-hairline: #e2ede8;
+  --nav-hairline: #ede2e2;
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
@@ -49,7 +49,7 @@
 
 body {
   font-family: var(--font-sans);
-  background: var(--bg-body, #f8faf8);
+  background: var(--bg-body, #faf8f8);
   color: var(--text-dark);
   overflow-x: hidden;
   line-height: 1.6;
@@ -64,18 +64,18 @@ body {
 html {
   scroll-behavior: smooth;
   /* PWA / iOS WKWebView: unpainted bands (esp. between sections) show black if html has no fill */
-  background-color: var(--bg-body, #f8faf8);
+  background-color: var(--bg-body, #faf8f8);
   color-scheme: light;
 }
 
-/* Dashboard routes: one continuous #f8faf8 surface (mobile_responsive sets body white).
+/* Dashboard routes: one continuous #faf8f8 surface (mobile_responsive sets body white).
    design-tokens.css uses :root:not([data-theme="light"]) under prefers-color-scheme:dark,
    which beats this file's :root and sets --bg-body to ~black — modules/footer then read "black block". */
 html:not([data-theme="dark"]) body.page-dashboard,
 html:not([data-theme="dark"]) body.hr-dashboard,
 html:not([data-theme="dark"]) body.inspection-dashboard,
 html:not([data-theme="dark"]) body.review-dashboard {
-  --bg-body: #f8faf8;
+  --bg-body: #faf8f8;
   --bg-light: #f9fafb;
   --text-dark: #111827;
   --text-mid: #374151;
@@ -89,7 +89,7 @@ body.page-dashboard,
 body.hr-dashboard,
 body.inspection-dashboard,
 body.review-dashboard {
-  background: var(--bg-body, #f8faf8) !important;
+  background: var(--bg-body, #faf8f8) !important;
 }
 
 /* ===========================================
@@ -109,7 +109,7 @@ body.review-dashboard {
 
 .nav.scrolled {
   background: #ffffff;
-  box-shadow: 0 1px 3px rgba(18, 84, 53, 0.08);
+  box-shadow: 0 1px 3px rgba(210, 23, 37, 0.08);
 }
 
 .nav-container {
@@ -266,7 +266,7 @@ body.review-dashboard {
 
 .nav-menu a:hover {
   color: var(--primary);
-  background: rgba(18, 84, 53, 0.05);
+  background: rgba(210, 23, 37, 0.05);
 }
 
 /* Current route — beats Bootstrap link colour and drawer `!important` text colour */
@@ -284,7 +284,7 @@ body.review-dashboard {
   top: 100%;
   right: 0;
   min-width: 220px;
-  border: 1px solid rgba(18, 84, 53, 0.16);
+  border: 1px solid rgba(210, 23, 37, 0.16);
   border-radius: 12px;
   background: #fff;
   box-shadow: 0 10px 28px rgba(15, 23, 42, 0.14);
@@ -363,8 +363,8 @@ body.review-dashboard {
   font-size: 0.875rem;
   font-weight: 600;
   color: var(--primary);
-  background: rgba(18, 84, 53, 0.08);
-  border: 1px solid rgba(18, 84, 53, 0.25);
+  background: rgba(210, 23, 37, 0.08);
+  border: 1px solid rgba(210, 23, 37, 0.25);
   border-radius: var(--radius-sm);
   cursor: pointer;
   flex-shrink: 0;
@@ -373,7 +373,7 @@ body.review-dashboard {
   margin-right: 0.5rem;
 }
 .nav-save-draft-btn:hover {
-  background: rgba(18, 84, 53, 0.12);
+  background: rgba(210, 23, 37, 0.12);
   border-color: var(--primary);
   color: var(--primary);
 }
@@ -406,8 +406,8 @@ body.review-dashboard {
 
 .logout-btn:hover {
   color: var(--primary);
-  background: rgba(18, 84, 53, 0.05);
-  border-color: rgba(18, 84, 53, 0.2);
+  background: rgba(210, 23, 37, 0.05);
+  border-color: rgba(210, 23, 37, 0.2);
   transform: none;
   box-shadow: none;
 }
@@ -428,9 +428,9 @@ body.review-dashboard {
 .hero {
   padding: 7.5rem 0 4rem;
   background:
-    radial-gradient(ellipse 70% 60% at 0% 50%, rgba(18, 84, 53, 0.1) 0%, transparent 70%),
-    radial-gradient(ellipse 40% 40% at 100% 10%, rgba(18, 84, 53, 0.05) 0%, transparent 60%),
-    linear-gradient(160deg, #f5f9f6 0%, #fafbfa 50%, #f8faf8 100%);
+    radial-gradient(ellipse 70% 60% at 0% 50%, rgba(210, 23, 37, 0.1) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 40% at 100% 10%, rgba(210, 23, 37, 0.05) 0%, transparent 60%),
+    linear-gradient(160deg, #f9f5f5 0%, #fbfafa 50%, #faf8f8 100%);
   position: relative;
   z-index: 1;
   overflow: hidden;
@@ -442,8 +442,8 @@ body.review-dashboard {
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(18, 84, 53, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(18, 84, 53, 0.04) 1px, transparent 1px);
+    linear-gradient(rgba(210, 23, 37, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(210, 23, 37, 0.04) 1px, transparent 1px);
   background-size: 48px 48px;
   mask-image: linear-gradient(to bottom, black 0%, black 45%, transparent 95%);
   -webkit-mask-image: linear-gradient(to bottom, black 0%, black 45%, transparent 95%);
@@ -458,9 +458,9 @@ body.review-dashboard {
   flex: 1;
   min-height: 0;
   background:
-    radial-gradient(ellipse 70% 60% at 0% 50%, rgba(18, 84, 53, 0.1) 0%, transparent 70%),
-    radial-gradient(ellipse 40% 40% at 100% 10%, rgba(18, 84, 53, 0.05) 0%, transparent 60%),
-    linear-gradient(160deg, #f5f9f6 0%, #fafbfa 50%, #f8faf8 100%);
+    radial-gradient(ellipse 70% 60% at 0% 50%, rgba(210, 23, 37, 0.1) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 40% at 100% 10%, rgba(210, 23, 37, 0.05) 0%, transparent 60%),
+    linear-gradient(160deg, #f9f5f5 0%, #fbfafa 50%, #faf8f8 100%);
   overflow: hidden;
 }
 .inspection-page-content .hero,
@@ -480,15 +480,15 @@ body.review-dashboard {
 .hero.proc-hero,
 .hero.review-hero {
   background:
-    radial-gradient(ellipse 70% 60% at 0% 50%, rgba(18, 84, 53, 0.1) 0%, transparent 70%),
-    radial-gradient(ellipse 40% 40% at 100% 10%, rgba(18, 84, 53, 0.05) 0%, transparent 60%),
-    linear-gradient(160deg, #f5f9f6 0%, #fafbfa 50%, #f8faf8 100%);
+    radial-gradient(ellipse 70% 60% at 0% 50%, rgba(210, 23, 37, 0.1) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 40% at 100% 10%, rgba(210, 23, 37, 0.05) 0%, transparent 60%),
+    linear-gradient(160deg, #f9f5f5 0%, #fbfafa 50%, #faf8f8 100%);
   padding-bottom: 6rem;
 }
 
 /* HR hero: gradient at top full width, no glow orb */
 .hero.hr-hero {
-  background: linear-gradient(180deg, #eef4f0 0%, #f2f7f4 45%, #F8FAF8 100%);
+  background: linear-gradient(180deg, #eef4f0 0%, #f2f7f4 45%, #faf8f8 100%);
 }
 .hero.hr-hero::after {
   display: none;
@@ -511,7 +511,7 @@ body.review-dashboard {
 
 /* Inspection hero: same green gradient at top as HR module, no grid */
 .hero.inspection-hero {
-  background: linear-gradient(180deg, #eef4f0 0%, #f2f7f4 45%, #F8FAF8 100%);
+  background: linear-gradient(180deg, #eef4f0 0%, #f2f7f4 45%, #faf8f8 100%);
 }
 .hero.inspection-hero::before,
 .hero.inspection-hero::after {
@@ -520,7 +520,7 @@ body.review-dashboard {
 
 /* Submitted Forms (workflow history) hero — tighter bottom so stats sit closer to the list */
 .hero.review-hero {
-  background: linear-gradient(180deg, #eef4f0 0%, #f2f7f4 45%, #F8FAF8 100%);
+  background: linear-gradient(180deg, #eef4f0 0%, #f2f7f4 45%, #faf8f8 100%);
   padding-bottom: 1.25rem;
 }
 .hero.review-hero::before,
@@ -530,7 +530,7 @@ body.review-dashboard {
 
 /* Procurement hero: match Inspection - gradient at top, no grid */
 .hero.proc-hero {
-  background: linear-gradient(180deg, #eef4f0 0%, #f2f7f4 45%, #F8FAF8 100%);
+  background: linear-gradient(180deg, #eef4f0 0%, #f2f7f4 45%, #faf8f8 100%);
 }
 .hero.proc-hero::before,
 .hero.proc-hero::after {
@@ -552,7 +552,7 @@ body.review-dashboard {
 
 /* Review History dashboard: match HR/Inspection background */
 .review-dashboard {
-  background: #F8FAF8;
+  background: #faf8f8;
 }
 
 /* Grid fades gradually to bottom - no sharp cutoff (HR only; Procurement/Inspection use gradient only) */
@@ -569,7 +569,7 @@ body.review-dashboard {
   left: -8%;
   width: 420px;
   height: 420px;
-  background: radial-gradient(circle, rgba(18, 84, 53, 0.12) 0%, transparent 65%);
+  background: radial-gradient(circle, rgba(210, 23, 37, 0.12) 0%, transparent 65%);
   border-radius: 50%;
   pointer-events: none;
   z-index: 0;
@@ -606,8 +606,8 @@ body.review-dashboard {
   color: var(--primary);
   margin: 0 0 1.25rem 0;
   padding: 0.4rem 0.875rem;
-  background: rgba(18, 84, 53, 0.08);
-  border: 1px solid rgba(18, 84, 53, 0.2);
+  background: rgba(210, 23, 37, 0.08);
+  border: 1px solid rgba(210, 23, 37, 0.2);
   border-radius: 100px;
   width: fit-content;
   display: flex;
@@ -641,7 +641,7 @@ body.review-dashboard {
 
 .hero-title .hero-title-accent {
   display: inline-block;
-  background: linear-gradient(125deg, var(--primary) 0%, #1fa864 30%, var(--primary-light) 60%, var(--primary) 100%);
+  background: linear-gradient(125deg, var(--primary) 0%, #e8323f 30%, var(--primary-light) 60%, var(--primary) 100%);
   background-size: 200% auto;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -694,8 +694,8 @@ body.review-dashboard {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #22c55e;
-  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.2);
+  background: #d21725;
+  box-shadow: 0 0 0 3px rgba(210, 23, 37, 0.2);
   animation: liveDotPulse 2s ease-out infinite;
 }
 
@@ -734,7 +734,7 @@ body.review-dashboard {
 }
 .dashboard-widget-link:hover .dashboard-widget {
   box-shadow: 0 2px 16px rgba(0, 0, 0, 0.06);
-  border-color: rgba(18, 84, 53, 0.14);
+  border-color: rgba(210, 23, 37, 0.14);
 }
 .dashboard-widget {
   background: #ffffff;
@@ -855,7 +855,7 @@ body.review-dashboard {
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: rgba(18, 84, 53, 0.12);
+  background: rgba(210, 23, 37, 0.12);
   color: var(--primary);
   display: inline-flex;
   align-items: center;
@@ -991,7 +991,7 @@ body.review-dashboard {
 
 /* ---- Section ---- */
 .modules-section {
-  background: var(--bg-body, #f8faf8);
+  background: var(--bg-body, #faf8f8);
   padding: 3rem 0 7rem;
   width: 100%;
   display: block !important;
@@ -1092,8 +1092,8 @@ body.review-dashboard {
 }
 
 .module-card:hover {
-  border-color: rgba(18, 84, 53, 0.2);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.08), 0 12px 32px rgba(18,84,53,0.07);
+  border-color: rgba(210, 23, 37, 0.2);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08), 0 12px 32px rgba(210, 23, 37, 0.07);
   transform: translateY(-4px);
 }
 
@@ -1112,7 +1112,7 @@ body.review-dashboard {
 .hr-dashboard .submissions-panel.module-card:hover {
   transform: none;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
-  border-color: rgba(18, 84, 53, 0.14) !important;
+  border-color: rgba(210, 23, 37, 0.14) !important;
 }
 
 .hr-dashboard .submissions-panel.module-card::before {
@@ -1150,7 +1150,7 @@ body.review-dashboard {
 }
 
 .module-card:hover .module-icon {
-  background: rgba(18, 84, 53, 0.1);
+  background: rgba(210, 23, 37, 0.1);
   transform: scale(1.06);
 }
 
@@ -1221,7 +1221,7 @@ body.review-dashboard {
    Footer
    =========================================== */
 .footer {
-  background: var(--bg-body, #f8faf8);
+  background: var(--bg-body, #faf8f8);
   margin-top: auto;
   flex-shrink: 0;
   position: relative;
@@ -1535,7 +1535,7 @@ body.review-dashboard {
 .form-control:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(18, 84, 53, 0.08);
+  box-shadow: 0 0 0 3px rgba(210, 23, 37, 0.08);
 }
 
 /* ===========================================
@@ -1667,7 +1667,7 @@ body.review-dashboard {
 
   .mobile-menu-toggle:active,
   .mobile-menu-toggle.active {
-    background: rgba(18, 84, 53, 0.08) !important;
+    background: rgba(210, 23, 37, 0.08) !important;
     border-color: var(--primary) !important;
     color: var(--primary) !important;
   }
@@ -1732,7 +1732,7 @@ body.review-dashboard {
     border: none !important;
     box-shadow: none !important;
     border-radius: 10px !important;
-    background: rgba(18, 84, 53, 0.04) !important;
+    background: rgba(210, 23, 37, 0.04) !important;
     margin: 0.2rem 0 0.35rem 0 !important;
     padding: 0.25rem !important;
     opacity: 1 !important;
@@ -1780,13 +1780,13 @@ body.review-dashboard {
 
   .mobile-menu-drawer-list li a:hover,
   .mobile-menu-drawer-list a:hover {
-    background: rgba(18, 84, 53, 0.06) !important;
+    background: rgba(210, 23, 37, 0.06) !important;
     color: var(--primary) !important;
   }
 
   .mobile-menu-drawer-list li a:active,
   .mobile-menu-drawer-list a:active {
-    background: rgba(18, 84, 53, 0.1) !important;
+    background: rgba(210, 23, 37, 0.1) !important;
     color: var(--primary) !important;
   }
 
@@ -2159,7 +2159,7 @@ body.review-dashboard {
 
   .nav-menu li a:active,
   .nav-menu a:active {
-    background: rgba(18, 84, 53, 0.08) !important;
+    background: rgba(210, 23, 37, 0.08) !important;
   }
   
   .nav-menu a:hover {
@@ -2321,7 +2321,7 @@ body.review-dashboard {
   .module-card:active {
     transform: scale(0.985) !important;
     transition: transform 0.1s ease !important;
-    background: rgba(18, 84, 53, 0.02) !important;
+    background: rgba(210, 23, 37, 0.02) !important;
   }
 
   .module-card .module-number {
@@ -2902,7 +2902,7 @@ body.review-dashboard {
 }
 
 .mark-all-read:hover {
-  background: rgba(18, 84, 53, 0.06);
+  background: rgba(210, 23, 37, 0.06);
 }
 
 .notification-list {
@@ -3142,7 +3142,7 @@ body.review-dashboard {
 .todo-remind-input:focus {
   outline: none;
   border-color: var(--todo-accent);
-  box-shadow: 0 0 0 3px rgba(18, 84, 53, 0.12);
+  box-shadow: 0 0 0 3px rgba(210, 23, 37, 0.12);
 }
 
 .todo-new-input {
@@ -3164,7 +3164,7 @@ body.review-dashboard {
 .todo-new-input:focus {
   outline: none;
   border-color: var(--todo-accent);
-  box-shadow: 0 0 0 3px rgba(18, 84, 53, 0.1);
+  box-shadow: 0 0 0 3px rgba(210, 23, 37, 0.1);
 }
 
 .todo-add-btn {
@@ -3334,7 +3334,7 @@ body.review-dashboard {
 }
 
 .todo-clear-done:hover {
-  background: rgba(18, 84, 53, 0.09);
+  background: rgba(210, 23, 37, 0.09);
   color: var(--todo-accent-hover);
 }
 
@@ -3360,12 +3360,14 @@ body.review-dashboard {
   text-decoration: none !important;
   border: none;
   background: var(--primary, #d21725);
-  box-shadow: 0 2px 8px rgba(18, 84, 53, 0.22);
+  box-shadow: 0 2px 8px rgba(210, 23, 37, 0.22);
   transition: background 0.18s ease, box-shadow 0.18s ease;
 }
 .submission-view-pdf-btn:hover {
   background: var(--primary-dark, #a8121e);
-  box-shadow: 0 3px 12px rgba(18, 84, 53, 0.28);
+  box-shadow: 0 3px 12px rgba(210, 23, 37, 0.28);
   color: #fff !important;
 }
+
+
 
