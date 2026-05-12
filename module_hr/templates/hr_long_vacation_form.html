@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="/static/css/hr-forms.css">
   <link rel="stylesheet" href="/static/css/dashboard.css">
   <link rel="stylesheet" href="/static/mobile_responsive.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/ticketing.css') }}">
   <style>
     .form-container { max-width: 900px; margin: 0 auto; }
     .form-card { background: white; border-radius: 10px; padding: 2rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.06), 0 4px 6px -4px rgba(0,0,0,0.04); border: 1px solid var(--border, #e2e8f0); }
@@ -24,9 +25,18 @@
     .success-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15,23,42,0.5); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 9999; opacity: 0; visibility: hidden; transition: opacity 0.2s, visibility 0.2s; }
     .success-overlay.show { opacity: 1; visibility: visible; }
     .container { padding-top: 5.5rem; }
+    /* Sidebar layout */
+    .form-container { max-width: 1300px !important; }
+    .leave-form-layout { display: grid; grid-template-columns: minmax(0,1fr) minmax(280px,360px); gap: 1.5rem; align-items: start; }
+    @media(max-width:900px){ .leave-form-layout { grid-template-columns: 1fr; } }
+    .leave-form-layout-aside { display: flex; flex-direction: column; gap: 1rem; position: sticky; top: 1rem; }
+    .leave-sidebar-card { border-radius: 12px !important; }
+    .leave-sidebar-inner { padding: 0 !important; }
+    body.hr-embed-mode .container { padding-top: 0 !important; }
+    body.hr-embed-mode .back-link { display: none !important; }
   </style>
 </head>
-<body class="hr-form-page">
+<body class="hr-form-page{% if hr_embed %} hr-embed-mode{% endif %}">
   {% set active_page = 'hr' %}
   {% include 'partials/hr_embed_optional_navbar.html' %}
 
@@ -48,7 +58,8 @@
       </a>
 
       {% include 'partials/hr_submitted_edit_banners.html' %}
-      
+
+      <div class="leave-form-layout">
       <div class="form-card">
         <div class="form-header">
           <h1 style="font-size: 1.5rem; font-weight: 700; margin: 0;">Long Vacation Request</h1>
@@ -156,16 +167,24 @@
               <textarea class="form-control" name="remarks" rows="2"></textarea>
             </div>
             
-            <div class="col-12 mt-2">{% include 'partials/hr_mgmt_chain_submit_block.html' %}</div>
-
             <div class="col-12 mt-4">
               <button type="submit" class="btn-submit w-100">Submit Long Vacation Request</button>
             </div>
           </div>
         </form>
       </div>
+      <aside class="leave-form-layout-aside">
+        <div class="tkt-card leave-sidebar-card leave-sidebar-inner">
+          {% include 'partials/hr_mgmt_chain_core.html' %}
+        </div>
+        <div class="tkt-card leave-sidebar-card leave-sidebar-inner">
+          {% include 'partials/hr_recorded_signatures_panel.html' %}
+        </div>
+        <script src="{{ url_for('static', filename='js/hr_mgmt_chain_submit.js') }}"></script>
+      </aside>
     </div>
   </div>
+</div>
   
   <script>
     document.querySelector('[name="start_date"]').addEventListener('change', calculateDays);
