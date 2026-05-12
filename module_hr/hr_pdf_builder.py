@@ -1033,36 +1033,43 @@ def _build_leave(story, fd, styles):
         # r20 : Telephone (full-width)
         [Paragraph(f"<b>Telephone Number where you can be reached:</b>  {_fd(fd,'telephone_reachable')}", VAL), ""],
     ]
-    triple_row_ix = len(rows)
-    w3 = CONTENT_W / 3.0
-    triple_sig = Table(
-        [
-            [
-                _sig_cell("Employee Signature", fd.get("employee_signature"), fd.get("today_date")),
-                replacement_mid_flowable(),
-                _sig_cell("Manager Signature", fd.get("gm_signature"), None),
-            ]
-        ],
-        colWidths=[w3, w3, w3],
-    )
-    triple_sig.setStyle(
-        TableStyle(
-            [
-                ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                ("ALIGN", (0, 0), (-1, -1), "LEFT"),
-                ("LEFTPADDING", (0, 0), (-1, -1), 4),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-                ("TOPPADDING", (0, 0), (-1, -1), 4),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-            ]
-        )
-    )
-    rows.append([triple_sig, ""])
+    # ── Rows 21-22: mirror the Word template signature section exactly ───────
+    #   r21 : Replacement Name: {name}  |  Signature: {replacement sig}
+    #   r22 : Employee Signature: {sig} |  Manager Signature: {RM sig}
 
-    row_checked_hr = triple_row_ix + 1
-    row_comments_hr = triple_row_ix + 2
-    row_hr_banner = triple_row_ix + 3
-    row_hr_sig_date = triple_row_ix + 6
+    # Resolve replacement name — prefer explicit name, fall back to signer names
+    repl_name = _fd(fd, "replacement_name")
+    if repl_name in ("—", "", None, "-"):
+        sp = fd.get("replacement_signers") if isinstance(fd.get("replacement_signers"), list) else []
+        if sp:
+            names = [s.get("display_name") or s.get("username") or "" for s in sp]
+            repl_name = ", ".join(n for n in names if n) or "—"
+
+    # Resolve replacement signature image — from signers list first, then legacy field
+    repl_sig_data = None
+    sp = fd.get("replacement_signers") if isinstance(fd.get("replacement_signers"), list) else []
+    for s in sp:
+        if s.get("signature"):
+            repl_sig_data = s.get("signature")
+            break
+    if not repl_sig_data:
+        repl_sig_data = fd.get("replacement_signature")
+
+    triple_row_ix = len(rows)
+    rows += [
+        # r21 : Replacement Name | Signature (replacement)
+        [_lv2("Replacement Name", repl_name),
+         _sig_cell("Signature", repl_sig_data, None)],
+        # r22 : Employee Signature | Manager Signature (fed from RM sig, falls back to GM sig)
+        [_sig_cell("Employee Signature", fd.get("employee_signature"), fd.get("today_date")),
+         _sig_cell("Manager Signature",  fd.get("reporting_manager_signature") or fd.get("gm_signature"), None)],
+    ]
+
+    # two sig rows (r21 replacement, r22 emp/mgr) already appended above
+    row_checked_hr  = triple_row_ix + 2  # Checked by HR
+    row_comments_hr = triple_row_ix + 3  # HR Comments
+    row_hr_banner   = triple_row_ix + 4  # For Human Resources Only
+    row_hr_sig_date = triple_row_ix + 7  # HR Signature | Date
 
     rows += [
         # Checked by HR YES/NO (full-width)
@@ -1083,12 +1090,14 @@ def _build_leave(story, fd, styles):
     ]
 
     # ── assemble table ────────────────────────────────────────────────────────
-    # Row index reference (0-based, 29 total matching MAIN Word doc):
+    # Row index reference (0-based, matches Word doc template):
     #  0=Name  1=JobTitle/Date  2=EmpID/Dept  3=DOJ/Mobile  4=LastLeave
     #  5=DETAILS header  6=Leave type hdr
     #  7-15=9 leave options  16=TotalDays  17=FirstDay/LastDay  18=DateReturn
-    #  19=SalaryAdvance  20=Telephone  21=Triple signatures (Emp / Replacement / Manager)
-    #  22=CheckedByHR  23=HRComments  24=For HR Only  25=Balance/Contract  26=Paid/Unpaid  27=HRSig/Date
+    #  19=SalaryAdvance  20=Telephone
+    #  21=ReplacementName | ReplacementSignature
+    #  22=EmployeeSignature | ManagerSignature
+    #  23=CheckedByHR  24=HRComments  25=For HR Only  26=Balance/Contract  27=Paid/Unpaid  28=HRSig/Date
     # Slightly increase row heights so form fills page better.
     row_heights = [None] * len(rows)
     for ri in range(7, 16):   # leave option rows
@@ -1124,7 +1133,9 @@ def _build_leave(story, fd, styles):
     ]
 
     # Full-width spans: rows that occupy both columns
-    for ri in [0, 4, 5, 16, 18, 19, 20, triple_row_ix, row_checked_hr, row_comments_hr, row_hr_banner]:
+    # triple_row_ix (r21 Replacement Name/Sig) and triple_row_ix+1 (r22 Emp/Mgr) are
+    # two-column rows — do NOT span them.
+    for ri in [0, 4, 5, 16, 18, 19, 20, row_checked_hr, row_comments_hr, row_hr_banner]:
         style.append(("SPAN", (0, ri), (1, ri)))
 
     # Leave checkbox rows (7-15): NOT spanned — show divider + days in right col
@@ -1133,8 +1144,8 @@ def _build_leave(story, fd, styles):
         style.append(("ALIGN",  (1, ri), (1, ri), "CENTER"))
         style.append(("VALIGN", (1, ri), (1, ri), "MIDDLE"))
 
-    # Signature bands: triple row + HR signature/date row — light padding
-    for ri in [triple_row_ix, row_hr_sig_date]:
+    # Signature rows — give them comfortable vertical padding
+    for ri in [triple_row_ix, triple_row_ix + 1, row_hr_sig_date]:
         style.append(("TOPPADDING",    (0, ri), (-1, ri), 4))
         style.append(("BOTTOMPADDING", (0, ri), (-1, ri), 4))
 

@@ -8,7 +8,7 @@ Stage 4: General Manager (final approval)
 from flask import Blueprint, request, jsonify, current_app, render_template
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy import or_, and_, not_, func
-from sqlalchemy.orm import joinedload, noload
+from sqlalchemy.orm import joinedload, noload, aliased
 from sqlalchemy.orm.attributes import flag_modified
 from app.models import db, User, Submission, AuditLog, DocHubDocument, Device, BDProject
 from common.error_responses import error_response, success_response
@@ -17,7 +17,7 @@ from common.datetime_utils import utc_now_naive, naive_utc_isoformat_z
 from datetime import datetime, timedelta
 import copy
 
-from module_hr.hr_management_chain import WF_MGMT_HR
+from module_hr.hr_management_chain import WF_MGMT_HR, WF_MGMT_RM, WF_MGMT_GM
 
 workflow_bp = Blueprint('workflow_bp', __name__, url_prefix='/api/workflow')
 
@@ -1395,6 +1395,205 @@ def get_history_submissions():
     except Exception as e:
         current_app.logger.error(f"Error getting history submissions: {str(e)}", exc_info=True)
         return error_response('Failed to get submission history', status_code=500, error_code='DATABASE_ERROR')
+
+
+@workflow_bp.route('/submissions/my-trail', methods=['GET'])
+@jwt_required()
+def get_my_trail():
+    """
+    Full live trail for the current user: every submission that has touched them,
+    split into 'pending' (needs their action) and 'reviewed' (already actioned).
+    Covers both inspection and HR forms.
+    """
+    try:
+        user_id = get_jwt_identity()
+        user = db.session.get(User, user_id)
+        if not user:
+            return error_response('User not found', status_code=404, error_code='NOT_FOUND')
+
+        list_opts = (joinedload(Submission.user), noload(Submission.jobs))
+        designation = (getattr(user, 'designation', None) or '').strip().lower()
+        is_admin = (getattr(user, 'role', None) or '').strip().lower() == 'admin'
+
+        # ── helpers ───────────────────────────────────────────────────────────
+        def _serial(submission):
+            sub_user = getattr(submission, 'user', None) or (
+                db.session.get(User, submission.user_id) if submission.user_id else None
+            )
+            d = submission.to_dict(include_form_data=False, include_latest_job=False)
+            d['user'] = sub_user.to_dict() if sub_user else None
+            return d
+
+        # ── pending (awaiting this user's action) ────────────────────────────
+        # Inspection pending — reuse existing designation logic
+        insp_pending_rows = get_user_pending_submissions(user) if not is_admin else (
+            Submission.query.options(*list_opts)
+            .filter(_filter_inspection(),
+                    Submission.workflow_status.notin_(['completed', 'closed_by_admin', 'rejected']))
+            .order_by(Submission.created_at.desc()).all()
+        )
+
+        # HR pending — by designation/role
+        SubmitterAlias = aliased(User)
+        hr_pending_rows = []
+
+        if is_admin:
+            hr_pending_rows = (
+                Submission.query.options(*list_opts)
+                .filter(_filter_hr(),
+                        Submission.workflow_status.notin_(['approved', 'completed', 'closed_by_admin', 'rejected']))
+                .order_by(Submission.created_at.desc()).all()
+            )
+        elif designation == 'general_manager':
+            # GM-role submissions (legacy gm_review + management-chain GM step)
+            _gm_rows = (
+                Submission.query.options(*list_opts)
+                .filter(_filter_hr(),
+                        Submission.workflow_status.in_(['gm_review', WF_MGMT_GM]))
+                .order_by(Submission.created_at.desc()).all()
+            )
+            # GM may also be the Reporting Manager for some employees
+            _rm_rows = (
+                Submission.query.options(*list_opts)
+                .join(SubmitterAlias, Submission.user_id == SubmitterAlias.id)
+                .filter(_filter_hr(),
+                        Submission.workflow_status == WF_MGMT_RM,
+                        SubmitterAlias.reporting_manager_id == user.id)
+                .order_by(Submission.created_at.desc()).all()
+            )
+            # Deduplicate while preserving order (GM rows first)
+            _seen_ids: set = set()
+            hr_pending_rows = []
+            for _s in _gm_rows + _rm_rows:
+                if _s.id not in _seen_ids:
+                    _seen_ids.add(_s.id)
+                    hr_pending_rows.append(_s)
+        elif designation in ('hr_manager',) or getattr(user, 'access_hr', False):
+            hr_pending_rows = (
+                Submission.query.options(*list_opts)
+                .filter(_filter_hr(),
+                        Submission.workflow_status.in_(['hr_review', WF_MGMT_HR]))
+                .order_by(Submission.created_at.desc()).all()
+            )
+        else:
+            # Reporting manager: submitter's reporting_manager_id == user.id
+            hr_pending_rows = (
+                Submission.query.options(*list_opts)
+                .join(SubmitterAlias, Submission.user_id == SubmitterAlias.id)
+                .filter(_filter_hr(),
+                        Submission.workflow_status == WF_MGMT_RM,
+                        SubmitterAlias.reporting_manager_id == user.id)
+                .order_by(Submission.created_at.desc()).all()
+            )
+
+        pending_ids = {s.id for s in insp_pending_rows + hr_pending_rows}
+        pending = [_serial(s) for s in insp_pending_rows + hr_pending_rows]
+
+        # ── reviewed (already actioned by this user) ─────────────────────────
+        insp_reviewed_rows = []
+        hr_reviewed_rows  = []
+
+        if is_admin:
+            insp_reviewed_rows = (
+                Submission.query.options(*list_opts)
+                .filter(_filter_inspection(),
+                        Submission.workflow_status.in_(['completed', 'closed_by_admin', 'rejected']))
+                .order_by(Submission.updated_at.desc()).limit(200).all()
+            )
+        elif designation == 'operations_manager':
+            insp_reviewed_rows = (
+                Submission.query.options(*list_opts)
+                .filter(_filter_inspection(),
+                        Submission.operations_manager_id == user.id,
+                        Submission.operations_manager_approved_at.isnot(None))
+                .order_by(Submission.updated_at.desc()).all()
+            )
+        elif user.is_bd_inspection_reviewer():
+            insp_reviewed_rows = (
+                Submission.query.options(*list_opts)
+                .filter(_filter_inspection(),
+                        Submission.business_dev_id == user.id,
+                        Submission.business_dev_approved_at.isnot(None))
+                .order_by(Submission.updated_at.desc()).all()
+            )
+        elif designation == 'procurement':
+            insp_reviewed_rows = (
+                Submission.query.options(*list_opts)
+                .filter(_filter_inspection(),
+                        Submission.procurement_id == user.id,
+                        Submission.procurement_approved_at.isnot(None))
+                .order_by(Submission.updated_at.desc()).all()
+            )
+        elif designation == 'general_manager':
+            insp_reviewed_rows = (
+                Submission.query.options(*list_opts)
+                .filter(_filter_inspection(),
+                        Submission.general_manager_id == user.id,
+                        Submission.general_manager_approved_at.isnot(None))
+                .order_by(Submission.updated_at.desc()).all()
+            )
+
+        # HR reviewed
+        if is_admin:
+            hr_reviewed_rows = (
+                Submission.query.options(*list_opts)
+                .filter(_filter_hr(),
+                        Submission.workflow_status.in_(['approved', 'completed', 'closed_by_admin', 'rejected']))
+                .order_by(Submission.updated_at.desc()).limit(200).all()
+            )
+        elif designation == 'general_manager':
+            # Only HR submissions this GM actually approved or rejected (not every org-wide HR row)
+            hr_reviewed_rows = (
+                Submission.query.options(*list_opts)
+                .filter(
+                    _filter_hr(),
+                    or_(
+                        and_(
+                            Submission.general_manager_id == user.id,
+                            Submission.general_manager_approved_at.isnot(None),
+                        ),
+                        and_(
+                            Submission.workflow_status == 'rejected',
+                            Submission.rejected_by_id == user.id,
+                        ),
+                    ),
+                )
+                .order_by(Submission.updated_at.desc())
+                .all()
+            )
+        elif designation in ('hr_manager',) or getattr(user, 'access_hr', False):
+            hr_reviewed_rows = (
+                Submission.query.options(*list_opts)
+                .filter(_filter_hr(),
+                        Submission.workflow_status.in_(['approved', 'completed', 'rejected']))
+                .order_by(Submission.updated_at.desc()).all()
+            )
+        else:
+            # RM: forms submitted by their direct reports, past the RM stage
+            hr_reviewed_rows = (
+                Submission.query.options(*list_opts)
+                .join(SubmitterAlias, Submission.user_id == SubmitterAlias.id)
+                .filter(_filter_hr(),
+                        SubmitterAlias.reporting_manager_id == user.id,
+                        Submission.workflow_status.notin_(
+                            [WF_MGMT_RM, 'submitted', 'draft']))
+                .order_by(Submission.updated_at.desc()).all()
+            )
+
+        # Deduplicate — exclude anything already listed as pending
+        reviewed = [_serial(s) for s in insp_reviewed_rows + hr_reviewed_rows
+                    if s.id not in pending_ids]
+
+        return success_response({
+            'pending':  pending,
+            'reviewed': reviewed,
+            'pending_count':  len(pending),
+            'reviewed_count': len(reviewed),
+        })
+
+    except Exception as e:
+        current_app.logger.error(f"Error building my-trail: {str(e)}", exc_info=True)
+        return error_response('Failed to build trail', status_code=500, error_code='DATABASE_ERROR')
 
 
 @workflow_bp.route('/submissions/my-submissions', methods=['GET'])

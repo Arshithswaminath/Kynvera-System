@@ -200,6 +200,12 @@
       border-color: var(--primary);
     }
     
+    .submission-card.submission-card--highlight {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
+      box-shadow: 0 0 0 4px rgba(18, 84, 53, 0.12);
+    }
+    
     .submission-header {
       display: flex;
       justify-content: space-between;
@@ -829,6 +835,22 @@
       });
     }
 
+    function scrollHighlightSubmissionCard(listEl) {
+      try {
+        const want = (new URLSearchParams(window.location.search || '').get('submission') || '').trim();
+        if (!want || !listEl) return;
+        const cards = listEl.querySelectorAll('[data-sf-submission-id]');
+        for (const c of cards) {
+          if (c.getAttribute('data-sf-submission-id') === want) {
+            c.classList.add('submission-card--highlight');
+            c.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            window.setTimeout(() => { c.classList.remove('submission-card--highlight'); }, 4500);
+            break;
+          }
+        }
+      } catch (e) { /* ignore */ }
+    }
+
     // Load submissions
     async function loadSubmissions() {
       const loadingSpinner = document.getElementById('loadingSpinner');
@@ -966,7 +988,7 @@
             : '';
 
           return `
-            <div class="submission-card ${isDraft ? 'draft-card' : ''}">
+            <div class="submission-card ${isDraft ? 'draft-card' : ''}" data-sf-submission-id="${escapeHtml(submission.submission_id || '')}">
               <div class="submission-header">
                 <div>
                   <div class="submission-title">${submission.site_name || 'Untitled Draft'}</div>
@@ -1058,6 +1080,7 @@
             </div>
           `;
         }).join('');
+        scrollHighlightSubmissionCard(submissionsList);
         
       } catch (error) {
         console.error('Error loading submissions:', error);

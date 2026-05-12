@@ -57,6 +57,17 @@
       border: 1px solid #e2e8f0; cursor: pointer; transition: all 0.25s ease;
       box-shadow: 0 2px 8px rgba(0,0,0,0.04);
     }
+    a.request-card {
+      text-decoration: none; color: inherit;
+      display: flex; align-items: stretch; justify-content: space-between; gap: 0.75rem;
+    }
+    .request-card-main { flex: 1; min-width: 0; }
+    .request-card-go {
+      flex-shrink: 0; display: flex; align-items: center; align-self: center;
+      color: var(--primary); font-size: 0.72rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.05em; gap: 0.35rem; white-space: nowrap;
+    }
+    .request-card-go svg { width: 1.2rem; height: 1.2rem; flex-shrink: 0; }
     .request-card:hover {
       transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.08); border-color: rgba(18,84,53,0.25);
     }
@@ -267,25 +278,19 @@
     </div>
   </section>
 
-  <!-- Detail Modal (same style as hr_dashboard) -->
-  <div class="detail-overlay" id="detailModal" onclick="closeDetailModal(event)">
-    <div class="detail-modal" onclick="event.stopPropagation()">
-      <div class="detail-header">
-        <div>
-          <span class="form-type-badge" id="modalFormType"></span>
-          <h4 id="modalSubmissionId"></h4>
-        </div>
-        <button class="detail-close" onclick="closeDetailModal()" aria-label="Close">&times;</button>
-      </div>
-      <div class="detail-body" id="modalBody"></div>
-    </div>
-  </div>
-
   <script src="{{ url_for('static', filename='js/injaaz-uae-datetime.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/hr_submission_full_form_url.js') }}"></script>
   <script>
+    (function redirectLegacySubmissionModalLink() {
+      try {
+        var sp = new URLSearchParams(window.location.search || '');
+        var sid = (sp.get('submission') || '').trim();
+        if (sid) {
+          window.location.replace('/workflow/submitted-forms?scope=hr&submission=' + encodeURIComponent(sid));
+        }
+      } catch (e) {}
+    })();
+
     const token = localStorage.getItem('access_token');
-    let allSubmissions = [];
 
     function getStatusLabel(status) {
       const labels = {
@@ -307,13 +312,8 @@
     function getFormTypeClass(type) { const t = type.replace('hr_', ''); return `type-${t}`; }
     function escapeHtml(text) { if (!text) return ''; const div = document.createElement('div'); div.textContent = text; return div.innerHTML; }
 
-    function openSubmissionFromQueryIfAny() {
-      try {
-        const want = new URLSearchParams(window.location.search).get('submission');
-        if (!want || !allSubmissions || !allSubmissions.length) return;
-        const ix = allSubmissions.findIndex((s) => s.submission_id === want);
-        if (ix >= 0) showDetail(ix);
-      } catch (e) {}
+    function submittedFormsHrefForSubmission(submissionId) {
+      return '/workflow/submitted-forms?scope=hr&submission=' + encodeURIComponent(submissionId || '');
     }
 
     async function loadRequests() {
@@ -323,20 +323,27 @@
         const container = document.getElementById('requestsList');
 
         if (data.submissions && data.submissions.length > 0) {
-          allSubmissions = data.submissions;
-          container.innerHTML = data.submissions.map((s, idx) => `
-            <div class="request-card" onclick="showDetail(${idx})">
-              <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.75rem;">
-                <div>
-                  <span class="form-type-badge ${getFormTypeClass(s.module_type)}">${getFormTypeLabel(s.module_type)}</span>
-                  <h3 style="font-size: 1.05rem; font-weight: 600; margin: 0.5rem 0 0.25rem; color: #1e293b;">${s.submission_id}</h3>
-                  <p style="font-size: 0.875rem; color: #64748b; margin: 0;">Submitted: ${InjaazDateTimeUAE.formatDateMed(s.created_at)}</p>
+          container.innerHTML = data.submissions.map((s) => {
+            const sfHref = submittedFormsHrefForSubmission(s.submission_id);
+            return `
+            <a class="request-card" href="${sfHref}" aria-label="Open in Submitted forms: ${escapeHtml(s.submission_id)}">
+              <div class="request-card-main">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.75rem;">
+                  <div>
+                    <span class="form-type-badge ${getFormTypeClass(s.module_type)}">${getFormTypeLabel(s.module_type)}</span>
+                    <h3 style="font-size: 1.05rem; font-weight: 600; margin: 0.5rem 0 0.25rem; color: #1e293b;">${escapeHtml(s.submission_id)}</h3>
+                    <p style="font-size: 0.875rem; color: #64748b; margin: 0;">Submitted: ${InjaazDateTimeUAE.formatDateMed(s.created_at)}</p>
+                  </div>
+                  <span class="status-badge status-${s.workflow_status}">${getStatusLabel(s.workflow_status)}</span>
                 </div>
-                <span class="status-badge status-${s.workflow_status}">${getStatusLabel(s.workflow_status)}</span>
+                ${s.form_data?.employee_name ? `<p style="margin: 0.75rem 0 0; font-size: 0.9rem;"><strong>Employee:</strong> ${escapeHtml(s.form_data.employee_name)}</p>` : ''}
               </div>
-              ${s.form_data?.employee_name ? `<p style="margin: 0.75rem 0 0; font-size: 0.9rem;"><strong>Employee:</strong> ${escapeHtml(s.form_data.employee_name)}</p>` : ''}
-            </div>
-          `).join('');
+              <span class="request-card-go" aria-hidden="true">
+                Submitted forms
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
+              </span>
+            </a>`;
+          }).join('');
         } else {
           container.innerHTML = `
             <div style="text-align: center; padding: 3rem; background: white; border-radius: 14px; border: 1px solid #e2e8f0;">
@@ -350,48 +357,6 @@
         console.error('Error:', error);
         document.getElementById('requestsList').innerHTML = '<div style="padding: 1.5rem; background: #fee2e2; color: #dc2626; border-radius: 12px;">Error loading requests</div>';
       }
-    }
-
-    function showDetail(index) {
-      const s = allSubmissions[index];
-      if (!s) return;
-      document.getElementById('modalFormType').textContent = getFormTypeLabel(s.module_type);
-      document.getElementById('modalFormType').className = `form-type-badge ${getFormTypeClass(s.module_type)}`;
-      document.getElementById('modalSubmissionId').textContent = s.submission_id;
-
-      const fullFormUrl = (typeof getHrSubmissionFullFormViewUrl === 'function')
-        ? (getHrSubmissionFullFormViewUrl(s.module_type, s.submission_id) || ('/hr/print/' + encodeURIComponent(s.submission_id || '')))
-        : ('/hr/print/' + encodeURIComponent(s.submission_id || ''));
-      const embedUrl = (typeof getHrSubmissionFullFormEmbedUrl === 'function')
-        ? (getHrSubmissionFullFormEmbedUrl(s.module_type, s.submission_id) || (fullFormUrl + (fullFormUrl.indexOf('?') >= 0 ? '&' : '?') + 'embed=1'))
-        : (fullFormUrl + (fullFormUrl.indexOf('?') >= 0 ? '&' : '?') + 'embed=1');
-      const safeEmbed = embedUrl.replace(/"/g, '&quot;');
-      const safeUrl = fullFormUrl.replace(/"/g, '&quot;');
-
-      const body =
-        '<div id="mrFullFormPane">' +
-        '<iframe id="mrFullFormIframe" title="Submitted form" src="' + safeEmbed + '"></iframe>' +
-        '<div class="hr-embed-modal-footer" role="complementary" aria-label="Open full page for exports and timeline">' +
-        '<div class="hr-embed-modal-footer__inner">' +
-        '<span class="hr-embed-modal-footer__icon" aria-hidden="true">' +
-        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>' +
-        '</span>' +
-        '<p class="hr-embed-modal-footer__text"><span class="hr-embed-modal-footer__lead">Full workspace</span> — Print, Word/PDF, app menu, and summary &amp; timeline.</p>' +
-        '</div>' +
-        '<div class="hr-embed-modal-footer__actions">' +
-        '<a class="hr-embed-modal-footer__btn" href="' + safeUrl + '" target="_blank" rel="noopener">Open full page</a>' +
-        '</div></div>' +
-        '</div>';
-
-      document.getElementById('modalBody').innerHTML = body;
-      document.getElementById('detailModal').classList.add('show');
-    }
-
-    function closeDetailModal(e) {
-      if (e && e.target !== document.getElementById('detailModal')) return;
-      const ifr = document.getElementById('mrFullFormIframe');
-      if (ifr) ifr.src = 'about:blank';
-      document.getElementById('detailModal').classList.remove('show');
     }
 
     async function loadMgmtChainBanner(){
@@ -427,10 +392,9 @@
       } catch(e){ wrap.style.display='none'; }
     }
 
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDetailModal(); });
     loadReplacementBanner();
     loadMgmtChainBanner();
-    loadRequests().then(openSubmissionFromQueryIfAny);
+    loadRequests();
   </script>
   <script src="{{ url_for('static', filename='api-client.js') }}"></script>
   <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>

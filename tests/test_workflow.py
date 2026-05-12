@@ -38,6 +38,29 @@ class TestGetPendingSubmissions:
             assert response.status_code == 401
 
 
+class TestGetMyTrail:
+    """GET /api/workflow/submissions/my-trail — pending + reviewed for current user"""
+
+    def test_my_trail_as_admin(self, client, admin_auth_headers, app):
+        with app.app_context():
+            response = client.get(
+                '/api/workflow/submissions/my-trail',
+                headers=admin_auth_headers,
+            )
+            assert response.status_code == 200
+            data = response.get_json()
+            assert data.get('success') is True
+            assert 'pending' in data
+            assert 'reviewed' in data
+            assert isinstance(data['pending'], list)
+            assert isinstance(data['reviewed'], list)
+
+    def test_my_trail_no_auth(self, client, app):
+        with app.app_context():
+            response = client.get('/api/workflow/submissions/my-trail')
+            assert response.status_code == 401
+
+
 class TestGetHistorySubmissions:
     """Test history submissions endpoint"""
     

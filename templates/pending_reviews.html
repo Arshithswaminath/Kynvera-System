@@ -3,339 +3,367 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
-  
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
-<title>Pending Reviews - Injaaz Application</title>
+  <title>My Reviews - Injaaz Application</title>
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
-  
-  <!-- PWA Meta Tags -->
   <meta name="theme-color" content="#125435">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
-  
+
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    
-    :root {
-      --primary: #125435;
-      --primary-light: #1a7a4d;
-      --text-dark: #1a1a1a;
-      --text-light: #6b6b6b;
-      --bg-light: #fafafa;
-      --white: #ffffff;
-      --bg-card: #ffffff;
-      --border-color: rgba(18, 84, 53, 0.08);
+    /* ── page body ─────────────────────────────────────────── */
+    body { background: #F8FAF8; }
+
+    /* ── hero overrides (review-hero is already styled in dashboard.css) */
+    .review-hero::before { display: none; }
+    /* Room below list (tabs + cards live inside hero-content with the headline) */
+    .review-hero { padding-bottom: 2.75rem !important; }
+
+    /* Stack headline + list in one column so tabs/cards share the same left edge as the title */
+    .review-hero .hero-content.hero-split-inner {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0;
     }
-    
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
-      background: var(--bg-light);
-      color: var(--text-dark);
-      line-height: 1.6;
+    .review-hero .hero-left {
+      width: 100%;
+      max-width: 100%;
     }
-    
-    .nav {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      z-index: 1000;
-      background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(30px);
-      border-bottom: 1px solid rgba(18, 84, 53, 0.08);
-      box-shadow: 0 2px 20px rgba(0, 0, 0, 0.02);
+
+    /* Main list block: full width of hero-content (inherits 3rem / 2rem / 1.25rem padding from dashboard.css) */
+    .mr-main {
+      width: 100%;
+      margin-top: 1.75rem;
+      padding-top: 1.75rem;
+      border-top: 1px solid rgba(18, 84, 53, 0.1);
+      box-sizing: border-box;
     }
-    
-    .nav-container {
-      max-width: 1600px;
-      margin: 0 auto;
-      padding: 1rem 2rem;
+
+    /* ── stat chips in hero ──────────────────────────────────── */
+    .mr-stats {
       display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 2rem;
+      flex-wrap: wrap;
+      gap: .6rem;
+      margin-top: 1.75rem;
+      animation: heroFadeUp .75s cubic-bezier(.16,1,.3,1) both .5s;
+      opacity: 0;
     }
-    
-    .logo {
+    .mr-stat-chip {
       display: flex;
       align-items: center;
-      gap: 1rem;
-      text-decoration: none;
+      gap: .5rem;
+      background: #fff;
+      border: 1px solid rgba(18,84,53,.15);
+      border-radius: 10px;
+      padding: .5rem .9rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,.06);
     }
-    
-    .logo img {
-      width: 50px;
-      height: 50px;
+    .mr-stat-chip-icon {
+      width: 30px; height: 30px;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
     }
-    
-    .logo-text h1 {
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: var(--primary);
-      margin: 0;
-    }
-    
-    .container {
-      max-width: 1400px;
-      margin: 100px auto 2rem;
-      padding: 0 2rem;
-    }
-    @media (max-width: 768px) {
-      .container { margin-top: 72px; padding: 0.75rem 0.875rem; }
-      .page-header { margin-bottom: 1rem; }
-      .page-header h1 { font-size: 1.4rem; }
-      .page-header p { font-size: 0.875rem; }
-      .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 0.625rem; margin-bottom: 1rem; }
-      .stat-card { padding: 0.875rem; }
-      .stat-card h3 { font-size: 0.75rem; }
-      .stat-card .stat-value { font-size: 1.6rem; }
-      .submissions-list { border-radius: 10px; }
-      .submission-card { padding: 1rem; }
-    }
-    
-    .page-header {
-      margin-bottom: 2rem;
-    }
-    
-    .page-header h1 {
-      font-size: 2.5rem;
-      font-weight: 700;
-      color: var(--primary);
-      margin-bottom: 0.5rem;
-    }
-    
-    .page-header p {
-      color: var(--text-light);
-      font-size: 1.1rem;
-    }
-    
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 1.5rem;
-      margin-bottom: 2rem;
-    }
-    
-    .stat-card {
-      background: white;
-      padding: 1.5rem;
-      border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-    }
-    
-    .stat-card h3 {
-      font-size: 0.9rem;
+    .mr-stat-chip-icon.ic-pending { background: #fef3c7; color: #b45309; }
+    .mr-stat-chip-icon.ic-done    { background: #d1fae5; color: #065f46; }
+    .mr-stat-chip-icon.ic-role    { background: #e0f2fe; color: #0369a1; }
+    .mr-stat-chip-icon svg { width: 15px; height: 15px; }
+    .mr-stat-chip-text { line-height: 1.2; }
+    .mr-stat-chip-label {
+      display: block;
+      font-size: .67rem;
       font-weight: 600;
-      color: var(--text-light);
-      margin-bottom: 0.5rem;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: .06em;
+      color: #9ca3af;
     }
-    
-    .stat-card .stat-value {
-      font-size: 2.5rem;
+    .mr-stat-chip-val {
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: #111827;
+    }
+    .mr-stat-chip-val.role-val {
+      font-size: .8rem;
       font-weight: 700;
-      color: var(--primary);
     }
-    
-    .submissions-list {
-      background: white;
-      border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-      overflow: hidden;
+
+    /* ── tab strip (segmented control, HR-style) ─────────────── */
+    .mr-tabs-wrap {
+      margin-bottom: 1.35rem;
     }
-    
-    .submission-card {
-      padding: 1.5rem;
-      border-bottom: 1px solid #f0f0f0;
-      cursor: pointer;
-      transition: background 0.2s;
+    .mr-tabs-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: #64748b;
+      margin: 0 0 0.55rem 0;
     }
-    
-    .submission-card:hover {
-      background: #f9f9f9;
-    }
-    
-    .submission-card:last-child {
-      border-bottom: none;
-    }
-    
-    .submission-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 1rem;
-    }
-    
-    .submission-title {
-      font-size: 1.25rem;
-      font-weight: 600;
-      color: var(--text-dark);
-      margin-bottom: 0.25rem;
-    }
-    
-    .submission-meta {
-      display: flex;
+    .mr-tabs {
+      display: inline-flex;
       flex-wrap: wrap;
-      gap: 1rem;
-      color: var(--text-light);
-      font-size: 0.9rem;
-      margin-bottom: 1rem;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 0.35rem;
+      background: linear-gradient(180deg, rgba(18, 84, 53, 0.07) 0%, rgba(18, 84, 53, 0.04) 100%);
+      border: 1px solid rgba(18, 84, 53, 0.12);
+      border-radius: 14px;
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.75),
+        0 1px 2px rgba(15, 23, 42, 0.04);
     }
-    
-    .submission-tags {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-    }
-    
-    .tag {
-      display: inline-block;
-      padding: 0.25rem 0.75rem;
-      border-radius: 20px;
-      font-size: 0.85rem;
-      font-weight: 500;
-    }
-    
-    .tag-module {
-      background: #e3f2fd;
-      color: #1976d2;
-    }
-    
-    .tag-status {
-      background: #fff3e0;
-      color: #f57c00;
-    }
-    
-    .tag-date {
-      background: #f5f5f5;
-      color: var(--text-dark);
-    }
-    
-    .action-button {
+    .mr-tab {
+      flex: 0 1 auto;
       display: inline-flex;
       align-items: center;
-      gap: 0.5rem;
-      padding: 0.75rem 1.5rem;
-      background: var(--primary);
-      color: white;
-      border: none;
-      border-radius: 8px;
+      justify-content: center;
+      gap: 0.45rem;
+      padding: 0.58rem 1.1rem;
+      min-height: 44px;
+      font-size: 0.875rem;
       font-weight: 600;
+      font-family: inherit;
+      color: #64748b;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 11px;
       cursor: pointer;
-      transition: all 0.2s;
+      transition:
+        color 0.2s ease,
+        background 0.2s ease,
+        box-shadow 0.2s ease,
+        border-color 0.2s ease,
+        transform 0.15s ease;
     }
-    
-    .action-button:hover {
-      background: var(--primary-light);
-      transform: translateY(-2px);
+    .mr-tab:hover:not(.active) {
+      color: #125435;
+      background: rgba(255, 255, 255, 0.55);
     }
-    
-    .empty-state {
+    .mr-tab:focus-visible {
+      outline: 2px solid #125435;
+      outline-offset: 2px;
+    }
+    .mr-tab.active {
+      color: #125435;
+      background: #fff;
+      border-color: rgba(18, 84, 53, 0.14);
+      box-shadow:
+        0 2px 10px rgba(18, 84, 53, 0.1),
+        0 1px 2px rgba(15, 23, 42, 0.06);
+    }
+    .mr-tab:active:not(:disabled) {
+      transform: scale(0.98);
+    }
+    .mr-tab svg {
+      flex-shrink: 0;
+      width: 17px;
+      height: 17px;
+      opacity: 0.88;
+      transition: opacity 0.2s ease;
+    }
+    .mr-tab.active svg {
+      opacity: 1;
+      color: #125435;
+    }
+    .mr-tab-badge {
+      font-variant-numeric: tabular-nums;
+      font-size: 0.7rem;
+      font-weight: 800;
+      line-height: 1;
+      padding: 0.22rem 0.5rem;
+      min-width: 1.35rem;
+      border-radius: 999px;
+      transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .mr-tab:not(.active) .mr-tab-badge {
+      background: rgba(18, 84, 53, 0.1);
+      color: #125435;
+    }
+    .mr-tab.active .mr-tab-badge:not(.urgent) {
+      background: rgba(18, 84, 53, 0.1);
+      color: #0d3d25;
+    }
+    .mr-tab.active .mr-tab-badge.urgent {
+      background: linear-gradient(180deg, #f87171 0%, #ef4444 100%);
+      color: #fff;
+      box-shadow: 0 0 0 2px #fff, 0 1px 3px rgba(185, 28, 28, 0.35);
+    }
+    .mr-tab:not(.active) .mr-tab-badge.urgent {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+
+    /* ── panels ──────────────────────────────────────────────── */
+    .mr-panel { display: none; }
+    .mr-panel.active {
+      display: block;
+      animation: mrPanelIn .2s ease both;
+    }
+    @keyframes mrPanelIn {
+      from { opacity: 0; transform: translateY(5px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── cards ───────────────────────────────────────────────── */
+    .mr-card {
+      display: flex;
+      align-items: center;
+      gap: .9rem;
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 1rem 1.1rem;
+      margin-bottom: .65rem;
+      text-decoration: none;
+      color: inherit;
+      cursor: pointer;
+      position: relative;
+      transition: box-shadow .18s, border-color .18s, transform .15s;
+      animation: mrCardIn .3s cubic-bezier(.22,1,.36,1) both;
+      animation-delay: calc(var(--i,0) * 45ms);
+    }
+    @keyframes mrCardIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .mr-card:hover {
+      box-shadow: 0 4px 14px rgba(18,84,53,.1);
+      border-color: var(--primary, #125435);
+      transform: translateY(-1px);
+    }
+    .mr-card.pending { border-left: 3px solid #f59e0b; }
+    .mr-card.done    { border-left: 3px solid #10b981; }
+
+    .mr-card-icon {
+      flex-shrink: 0;
+      width: 38px; height: 38px;
+      border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem;
+    }
+    .mr-card.pending .mr-card-icon.hr   { background: rgba(18, 84, 53, 0.12); }
+    .mr-card.pending .mr-card-icon.insp { background: rgba(18, 84, 53, 0.08); }
+    .mr-card.done    .mr-card-icon.hr   { background: rgba(18, 84, 53, 0.1); }
+    .mr-card.done    .mr-card-icon.insp { background: rgba(18, 84, 53, 0.07); }
+
+    .mr-card-body { flex: 1; min-width: 0; }
+    .mr-card-title {
+      font-size: .925rem;
+      font-weight: 700;
+      color: #111827;
+      margin-bottom: .18rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .mr-card.done .mr-card-title { color: #374151; font-weight: 600; }
+    .mr-card-meta {
+      font-size: .76rem;
+      color: #6b7280;
+      display: flex;
+      flex-wrap: wrap;
+      gap: .25rem .65rem;
+      margin-bottom: .4rem;
+    }
+    .mr-card.done .mr-card-meta { color: #9ca3af; }
+    .mr-card-tags { display: flex; flex-wrap: wrap; gap: .25rem; }
+
+    /* tags */
+    .mr-tag {
+      font-size: .68rem;
+      font-weight: 600;
+      padding: .12rem .55rem;
+      border-radius: 20px;
+      letter-spacing: .02em;
+    }
+    .mr-tag-hr      { background: rgba(18, 84, 53, 0.12); color: #0d3d25; }
+    .mr-tag-insp    { background: #e8f5ec; color: #166534; }
+    .mr-tag-pending { background: #fef3c7; color: #92400e; }
+    .mr-tag-done    { background: #d1fae5; color: #065f46; }
+    .mr-tag-rejected{ background: #fee2e2; color: #991b1b; }
+    .mr-tag-neutral { background: #f3f4f6; color: #374151; }
+
+    /* right CTA / arrow */
+    .mr-card-cta {
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      gap: .3rem;
+      font-size: .76rem;
+      font-weight: 700;
+      color: #125435;
+      background: rgba(18,84,53,.08);
+      border-radius: 7px;
+      padding: .35rem .7rem;
+      transition: background .15s, color .15s;
+      white-space: nowrap;
+    }
+    .mr-card:hover .mr-card-cta { background: #125435; color: #fff; }
+    .mr-card-cta svg { width: 13px; height: 13px; }
+
+    .mr-card-arrow {
+      flex-shrink: 0;
+      width: 28px; height: 28px;
+      border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(16,185,129,.1);
+      color: #065f46;
+      transition: background .15s, transform .15s;
+    }
+    .mr-card:hover .mr-card-arrow { background: #125435; color: #fff; transform: translateX(2px); }
+    .mr-card-arrow svg { width: 13px; height: 13px; }
+
+    /* ── empty state ─────────────────────────────────────────── */
+    .mr-empty {
       text-align: center;
-      padding: 4rem 2rem;
+      padding: 3.5rem 1.5rem;
+      animation: mrPanelIn .3s ease both;
     }
-    
-    .empty-state-icon {
-      font-size: 4rem;
-      margin-bottom: 1rem;
-    }
-    
-    .empty-state h2 {
-      font-size: 1.5rem;
-      color: var(--text-dark);
-      margin-bottom: 0.5rem;
-    }
-    
-    .empty-state p {
-      color: var(--text-light);
-    }
-    
-    .loading {
-      text-align: center;
-      padding: 4rem 2rem;
-    }
-    
-    .spinner {
-      border: 4px solid rgba(18, 84, 53, 0.1);
-      border-top: 4px solid var(--primary);
-      border-radius: 50%;
-      width: 50px;
-      height: 50px;
-      animation: spin 1s linear infinite;
+    .mr-empty-icon {
+      width: 56px; height: 56px;
+      border-radius: 16px;
+      display: flex; align-items: center; justify-content: center;
       margin: 0 auto 1rem;
     }
-    
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
+    .mr-empty-icon.ok  { background: #d1fae5; }
+    .mr-empty-icon.nil { background: #f3f4f6; }
+    .mr-empty h3 { font-size: 1rem; font-weight: 700; color: #111827; margin-bottom: .3rem; }
+    .mr-empty p  { font-size: .875rem; color: #6b7280; }
+
+    /* ── skeleton ────────────────────────────────────────────── */
+    .mr-skel { display: flex; flex-direction: column; gap: .65rem; }
+    .mr-skel-card {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 1rem 1.1rem;
+      display: flex; align-items: center; gap: .9rem;
     }
-    
-    @media (max-width: 768px) {
-      .nav-container {
-        padding: 0.75rem 1rem !important;
-        gap: 0.75rem !important;
-      }
-      
-      .logo img {
-        width: 32px !important;
-        height: 32px !important;
-      }
-      
-      .logo-text h1 {
-        font-size: 1rem !important;
-      }
-      
-      .action-button {
-        font-size: 0.85rem !important;
-        padding: 0.5rem 0.75rem !important;
-        white-space: nowrap !important;
-      }
-      
-      .container {
-        margin-top: 80px;
-        padding: 0 1rem;
-      }
-
-      .page-header h1 {
-        font-size: 1.75rem;
-      }
-      
-      .page-header p {
-        font-size: 0.9rem;
-      }
-
-      .submission-header {
-        flex-direction: column;
-      }
-
-      .stats-grid {
-        grid-template-columns: 1fr;
-      }
-      
-      .stat-card {
-        padding: 1rem !important;
-      }
-      
-      .submission-card {
-        padding: 1rem !important;
-      }
+    .mr-skel-icon { width: 38px; height: 38px; border-radius: 9px; flex-shrink: 0; background: #e5e7eb; }
+    .mr-skel-lines { flex: 1; display: flex; flex-direction: column; gap: .45rem; }
+    .mr-skel-line {
+      height: 10px; border-radius: 6px;
+      background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+      background-size: 200% 100%;
+      animation: mrShimmer 1.4s ease infinite;
     }
-    
-    @media (max-width: 480px) {
-      .logo-text h1 {
-        font-size: 0.9rem !important;
-      }
-      
-      .action-button {
-        font-size: 0.8rem !important;
-        padding: 0.4rem 0.6rem !important;
-      }
-      
-      .page-header h1 {
-        font-size: 1.5rem !important;
-      }
+    .mr-skel-line.mid   { width: 60%; }
+    .mr-skel-line.short { width: 40%; }
+    @keyframes mrShimmer {
+      from { background-position: 200% 0; }
+      to   { background-position: -200% 0; }
+    }
+
+    @media (max-width: 640px) {
+      .mr-stats { gap: .4rem; margin-top: 1.25rem; }
+      .mr-stat-chip { padding: .4rem .7rem; }
+      .mr-stat-chip-val { font-size: .95rem; }
+      .mr-main { margin-top: 1.25rem; padding-top: 1.25rem; }
+      .mr-tabs { width: 100%; }
+      .mr-tab { flex: 1 1 auto; justify-content: center; min-width: 0; padding: 0.5rem 0.65rem; font-size: 0.8rem; }
+      .mr-tab svg { width: 15px; height: 15px; }
+      .mr-card { flex-wrap: wrap; }
     }
   </style>
 </head>
@@ -343,209 +371,307 @@
   {% set active_page = 'pending-review' %}
   {% include 'partials/main_navbar.html' with context %}
 
-  <!-- Main Content -->
-  <div class="container">
-    <div class="page-header">
-      <h1>📋 Pending Reviews</h1>
-      <p>Forms awaiting your review and approval</p>
+  <!-- Hero: same pattern as hr_my_requests + submitted_forms -->
+  <header class="hero hero-split review-hero">
+    <div class="hero-content hero-split-inner">
+      <div class="hero-left">
+        <p class="hero-tagline">Workflow</p>
+        <h1 class="hero-title">My <span class="hero-title-accent">Reviews</span></h1>
+        <p class="hero-subtitle">Forms that have come through your queue — pending and completed.</p>
+
+        <!-- stat chips -->
+        <div class="mr-stats">
+          <div class="mr-stat-chip">
+            <div class="mr-stat-chip-icon ic-pending">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+            </div>
+            <div class="mr-stat-chip-text">
+              <span class="mr-stat-chip-label">Awaiting</span>
+              <span class="mr-stat-chip-val" id="statPending">—</span>
+            </div>
+          </div>
+          <div class="mr-stat-chip">
+            <div class="mr-stat-chip-icon ic-done">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+            </div>
+            <div class="mr-stat-chip-text">
+              <span class="mr-stat-chip-label">Reviewed</span>
+              <span class="mr-stat-chip-val" id="statReviewed">—</span>
+            </div>
+          </div>
+          <div class="mr-stat-chip">
+            <div class="mr-stat-chip-icon ic-role">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"/></svg>
+            </div>
+            <div class="mr-stat-chip-text">
+              <span class="mr-stat-chip-label">Your role</span>
+              <span class="mr-stat-chip-val role-val" id="statRole">—</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabs + list: same horizontal band as hero-left (no separate centered column) -->
+      <div class="mr-main">
+
+    <!-- Tab selector -->
+    <div class="mr-tabs-wrap">
+      <p class="mr-tabs-label">Your queue</p>
+      <div class="mr-tabs" role="tablist" aria-label="Review queue">
+        <button type="button" class="mr-tab active" id="tabPending" role="tab" aria-selected="true" aria-controls="panelPending" onclick="switchTab('pending')">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+          Awaiting action
+          <span class="mr-tab-badge urgent" id="badgePending" style="display:none">0</span>
+        </button>
+        <button type="button" class="mr-tab" id="tabReviewed" role="tab" aria-selected="false" aria-controls="panelReviewed" onclick="switchTab('reviewed')">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+          Already reviewed
+          <span class="mr-tab-badge" id="badgeReviewed" style="display:none">0</span>
+        </button>
+      </div>
     </div>
 
-    <!-- Stats -->
-    <div class="stats-grid">
-      <div class="stat-card">
-        <h3>Pending Reviews</h3>
-        <div class="stat-value" id="totalPending">-</div>
+    <!-- Panels -->
+    <div class="mr-panel active" id="panelPending">
+      <div class="mr-skel" id="skelPending">
+        <div class="mr-skel-card"><div class="mr-skel-icon"></div><div class="mr-skel-lines"><div class="mr-skel-line mid"></div><div class="mr-skel-line short"></div></div></div>
+        <div class="mr-skel-card"><div class="mr-skel-icon"></div><div class="mr-skel-lines"><div class="mr-skel-line mid"></div><div class="mr-skel-line short"></div></div></div>
+        <div class="mr-skel-card"><div class="mr-skel-icon"></div><div class="mr-skel-lines"><div class="mr-skel-line mid"></div><div class="mr-skel-line short"></div></div></div>
       </div>
-      <div class="stat-card">
-        <h3>Your Role</h3>
-        <div class="stat-value" style="font-size: 1.5rem;" id="userRole">-</div>
+    </div>
+    <div class="mr-panel" id="panelReviewed">
+      <div class="mr-skel">
+        <div class="mr-skel-card"><div class="mr-skel-icon"></div><div class="mr-skel-lines"><div class="mr-skel-line mid"></div><div class="mr-skel-line short"></div></div></div>
+        <div class="mr-skel-card"><div class="mr-skel-icon"></div><div class="mr-skel-lines"><div class="mr-skel-line mid"></div><div class="mr-skel-line short"></div></div></div>
       </div>
     </div>
 
-    <!-- Submissions List -->
-    <div class="submissions-list" id="submissionsList">
-      <div class="loading">
-        <div class="spinner"></div>
-        <p>Loading pending submissions...</p>
-      </div>
-    </div>
-  </div>
+      </div><!-- /.mr-main -->
+    </div><!-- /.hero-content -->
+  </header>
 
   <script>
-    function escapeHtml(text) {
-      if (!text) return '';
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
-    }
-    
-    function getWorkflowAction(designation) {
-      const actionMap = {
-        'operations_manager': 'Operations Manager Review',
-        'business_development': 'Business Development Review',
-        'procurement': 'Procurement Review',
-        'general_manager': 'General Manager Approval'
-      };
-      return actionMap[designation] || 'Your Review';
-    }
-    
-    function getRoleDisplay(designation) {
-      const roleMap = {
-        'operations_manager': 'Operations Manager',
-        'business_development': 'Business Development',
-        'procurement': 'Procurement',
-        'general_manager': 'General Manager',
-        'hr_manager': 'HR Manager',
-        'employee': 'Employee',
-        'admin': 'Admin'
-      };
-      return roleMap[designation] || designation || 'Reviewer';
-    }
-    
-    async function loadPendingReviews() {
-      try {
-        // Get user from localStorage
-        const userStr = localStorage.getItem('user');
-        if (!userStr) {
-          window.location.href = '/login';
-          return;
-        }
-        
-        const user = JSON.parse(userStr);
-        
-        // Update role display
-        document.getElementById('userRole').textContent = getRoleDisplay(user.designation);
-        
-        // Fetch pending submissions
-        const token = localStorage.getItem('access_token');
-        const response = await fetch('/api/workflow/submissions/pending', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        
-        if (!response.ok) {
-          throw new Error('Failed to load pending submissions');
-        }
-        
-        const data = await response.json();
-        const submissions = data.submissions || [];
-        
-        // Update count
-        document.getElementById('totalPending').textContent = submissions.length;
-        
-        const submissionsList = document.getElementById('submissionsList');
-        
-        if (submissions.length === 0) {
-          submissionsList.innerHTML = `
-            <div class="empty-state">
-              <div class="empty-state-icon">✅</div>
-              <h2>All Caught Up!</h2>
-              <p>You have no pending reviews at this time.</p>
-            </div>
-          `;
-          return;
-        }
-        
-        // Render submissions
-        submissionsList.innerHTML = submissions.map(sub => {
-          const moduleNames = {
-            'hvac_mep': 'HVAC & MEP',
-            'civil': 'Civil Works',
-            'cleaning': 'Cleaning'
-          };
-          const moduleName = moduleNames[sub.module_type] || sub.module_type;
-          const moduleUrl = sub.module_type === 'hvac_mep' ? 'hvac-mep' : sub.module_type;
-          const submittedBy = sub.user?.full_name || sub.user?.username || 'Unknown';
-          // Helper function to ensure UTC date strings are properly parsed
-          const parseUTCDate = (dateString) => {
-            if (!dateString) return null;
-            let utcString = dateString;
-            if (!utcString.endsWith('Z') && !utcString.includes('+') && !utcString.includes('-', 10)) {
-              utcString = utcString + 'Z';
-            }
-            return new Date(utcString);
-          };
-          
-          // Visit date is date-only, format it properly (no timezone indicator needed for dates)
-          let visitDate = 'N/A';
-          if (sub.visit_date) {
-            const dateStr = sub.visit_date;
-            if (dateStr.includes('T')) {
-              // Has time component, parse as UTC and convert to Dubai (but only show date)
-              const date = parseUTCDate(dateStr);
-              visitDate = date.toLocaleDateString('en-US', {
-                year: 'numeric', month: 'short', day: 'numeric',
-                timeZone: 'Asia/Dubai'
-              });
-            } else {
-              // Date only, parse as date
-              const [year, month, day] = dateStr.split('-').map(Number);
-              const date = new Date(year, month - 1, day);
-              visitDate = date.toLocaleDateString('en-US', {
-                year: 'numeric', month: 'short', day: 'numeric',
-                timeZone: 'Asia/Dubai'
-              });
-            }
-          }
-          const createdAt = sub.created_at ? parseUTCDate(sub.created_at).toLocaleString('en-US', {
-            year: 'numeric', month: 'short', day: 'numeric',
-            hour: '2-digit', minute: '2-digit',
-            timeZone: 'Asia/Dubai'
-          }) + ' (GST)' : '';
-          
-          return `
-            <div class="submission-card" onclick="openSubmissionForReview('${sub.submission_id}', '${moduleUrl}')">
-              <div class="submission-header">
-                <div>
-                  <h3 class="submission-title">${escapeHtml(sub.site_name || 'Untitled Submission')}</h3>
-                  <div class="submission-meta">
-                    <span>👤 Submitted by <strong>${escapeHtml(submittedBy)}</strong></span>
-                    <span>📅 Visit: ${visitDate}</span>
-                  </div>
-                </div>
-                <button class="action-button" onclick="event.stopPropagation(); openSubmissionForReview('${sub.submission_id}', '${moduleUrl}')">
-                  Review →
-                </button>
-              </div>
-              <div class="submission-tags">
-                <span class="tag tag-module">${moduleName}</span>
-                <span class="tag tag-status">Awaiting ${getWorkflowAction(user.designation)}</span>
-                <span class="tag tag-date">Created: ${createdAt}</span>
-              </div>
-            </div>
-          `;
-        }).join('');
-        
-      } catch (error) {
-        console.error('Error loading pending reviews:', error);
-        document.getElementById('submissionsList').innerHTML = `
-          <div class="empty-state">
-            <div class="empty-state-icon">⚠️</div>
-            <h2>Error Loading Reviews</h2>
-            <p>Could not load pending reviews. Please refresh the page.</p>
+  /* ─── helpers ─────────────────────────────────────────── */
+  function _esc(t) {
+    if (!t) return '';
+    const d = document.createElement('div');
+    d.textContent = t; return d.innerHTML;
+  }
+  function _parseUtcDate(str) {
+    if (!str) return null;
+    let s = str;
+    if (!s.endsWith('Z') && !s.includes('+') && !/[+-]\d{2}:\d{2}$/.test(s)) s += 'Z';
+    const d = new Date(s);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  /** Date + time for list cards (Dubai / GST). */
+  function _fmtDateTime(str) {
+    const d = _parseUtcDate(str);
+    if (!d) return str || '';
+    return d.toLocaleString('en-US', {
+      year: 'numeric', month: 'short', day: 'numeric',
+      hour: 'numeric', minute: '2-digit',
+      hour12: true,
+      timeZone: 'Asia/Dubai',
+    }) + ' GST';
+  }
+  const MODULE_NAMES = {
+    hvac_mep:'HVAC & MEP', civil:'Civil Works', cleaning:'Cleaning',
+    hr_leave:'Leave', hr_leave_application:'Leave',
+    hr_duty_resumption:'Duty Resumption', hr_commencement:'Commencement',
+    hr_employee_transfer:'Transfer', hr_noc:'NOC', hr_warning:'Warning',
+    hr_salary_advance:'Salary Advance', hr_overtime:'Overtime',
+    hr_passport_release:'Passport Release', hr_contract_renewal:'Contract Renewal',
+    hr_performance_evaluation:'Performance Eval', hr_staff_appraisal:'Staff Appraisal',
+    hr_grievance:'Grievance', hr_visa_renewal:'Visa Renewal',
+    hr_interview_assessment:'Interview Asmt', hr_station_clearance:'Station Clearance',
+  };
+  function _modName(t) {
+    return MODULE_NAMES[t] || (t || '').replace(/^hr_/,'').replace(/_/g,' ')
+      .replace(/\b\w/g, c => c.toUpperCase());
+  }
+  function _isHr(t)  { return (t||'').startsWith('hr_'); }
+  function _modUrl(t){ return t === 'hvac_mep' ? 'hvac-mep' : t; }
+
+  const STATUS_LABELS = {
+    hr_review:'HR Review', gm_review:'GM Approval',
+    hr_mgmt_reporting_manager:'RM Sign-off', hr_mgmt_gm:'GM Sign-off',
+    hr_mgmt_hr_head_office:'HR (HO) Sign-off',
+    hr_mgmt_operations_manager:'Ops Mgr Sign-off',
+    hr_mgmt_supervisor:'Supervisor Sign-off',
+    approved:'Approved', rejected:'Rejected', completed:'Completed',
+    submitted:'Submitted', bd_procurement_review:'BD/Procurement Review',
+    operations_manager_review:'Ops Manager Review', general_manager_review:'GM Review',
+    general_manager_approved:'GM Approved',
+  };
+  function _statusLabel(s) {
+    return STATUS_LABELS[s] || (s||'').replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+  }
+  function _statusTagCls(s) {
+    if (!s) return 'mr-tag-neutral';
+    if (s.includes('approved') || s === 'completed') return 'mr-tag-done';
+    if (s === 'rejected') return 'mr-tag-rejected';
+    if (s === 'submitted' || s.includes('review') || s.includes('mgmt')) return 'mr-tag-pending';
+    return 'mr-tag-neutral';
+  }
+
+  const ROLE_MAP = {
+    operations_manager:'Operations Manager', business_development:'Business Development',
+    procurement:'Procurement', general_manager:'General Manager',
+    hr_manager:'HR Manager', employee:'Employee', admin:'Admin', supervisor:'Supervisor',
+  };
+  function _roleName(d) { return ROLE_MAP[d] || d || 'Reviewer'; }
+
+  /* ─── tab switch ─────────────────────────────────────── */
+  function switchTab(name) {
+    ['pending','reviewed'].forEach(n => {
+      const panel = document.getElementById('panel' + n.charAt(0).toUpperCase() + n.slice(1));
+      const tab = document.getElementById('tab' + n.charAt(0).toUpperCase() + n.slice(1));
+      const on = n === name;
+      panel.classList.toggle('active', on);
+      tab.classList.toggle('active', on);
+      tab.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+  }
+
+  /* ─── card html ──────────────────────────────────────── */
+  const ARROW_SVG = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>`;
+  const REVIEW_SVG = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z"/></svg>`;
+  const SIGN_SVG  = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 0 1-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 0 1 4.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0 1 12 15a9.065 9.065 0 0 1-6.23-.693L5 14.5m14.8.8 1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0 1 12 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5"/></svg>`;
+
+  const MGMT_WF = new Set([
+    'hr_mgmt_reporting_manager','hr_mgmt_gm',
+    'hr_mgmt_operations_manager','hr_mgmt_supervisor','hr_mgmt_hr_head_office'
+  ]);
+
+  function _hrReviewUrl(sub) {
+    const wf = sub.workflow_status || '';
+    if (MGMT_WF.has(wf)) return `/hr/mgmt-sign/${encodeURIComponent(sub.submission_id)}`;
+    if (wf === 'gm_review') return `/hr/gm-approval`;
+    if (wf === 'hr_review') return `/hr/pending-review`;
+    return `/workflow/submitted-forms?scope=hr&submission=${encodeURIComponent(sub.submission_id)}`;
+  }
+
+  function _card(sub, idx, isPending) {
+    const isHr    = _isHr(sub.module_type);
+    const modName = _modName(sub.module_type);
+    const by      = _esc(sub.user?.full_name || sub.user?.username || 'Unknown');
+    const dateStr = isPending
+      ? _fmtDateTime(sub.created_at)
+      : (_fmtDateTime(sub.updated_at) || _fmtDateTime(sub.created_at));
+    const statusLbl = _statusLabel(sub.workflow_status);
+
+    const titleRaw = sub.site_name
+      || (isHr ? modName + ' — ' + (sub.submission_id || '').slice(0, 12) : '')
+      || sub.submission_id || 'Form';
+
+    const isMgmt = isHr && MGMT_WF.has(sub.workflow_status || '');
+
+    const reviewUrl = isHr
+      ? _hrReviewUrl(sub)
+      : (isPending
+          ? `/${_modUrl(sub.module_type)}/form?edit=${encodeURIComponent(sub.submission_id)}&review=true`
+          : `/workflow/submitted-forms?submission=${encodeURIComponent(sub.submission_id)}`);
+
+    const cardCls  = isPending ? 'pending' : 'done';
+    const iconCls  = isHr ? 'hr' : 'insp';
+    const iconChar = isHr ? '📋' : '🔍';
+
+    const cta = isPending
+      ? `<span class="mr-card-cta">${isMgmt ? SIGN_SVG : REVIEW_SVG} ${isMgmt ? 'Sign' : 'Review'}</span>`
+      : `<span class="mr-card-arrow">${ARROW_SVG}</span>`;
+
+    return `
+      <a class="mr-card ${cardCls}" href="${reviewUrl}" style="--i:${idx}">
+        <div class="mr-card-icon ${iconCls}">${iconChar}</div>
+        <div class="mr-card-body">
+          <div class="mr-card-title">${_esc(titleRaw)}</div>
+          <div class="mr-card-meta">
+            <span>By <strong>${by}</strong></span>
+            ${dateStr ? `<span>${isPending ? 'Submitted' : 'Updated'}: ${dateStr}</span>` : ''}
           </div>
-        `;
-      }
+          <div class="mr-card-tags">
+            <span class="mr-tag ${isHr ? 'mr-tag-hr' : 'mr-tag-insp'}">${modName}</span>
+            <span class="mr-tag ${_statusTagCls(sub.workflow_status)}">${statusLbl}</span>
+          </div>
+        </div>
+        ${cta}
+      </a>`;
+  }
+
+  /* ─── render panel ───────────────────────────────────── */
+  function _renderPanel(panelId, rows, isPending) {
+    const panel = document.getElementById(panelId);
+    if (!rows.length) {
+      const okIcon = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="#065f46" width="28" height="28"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>`;
+      const nilIcon = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="#9ca3af" width="28" height="28"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>`;
+      panel.innerHTML = `
+        <div class="mr-empty">
+          <div class="mr-empty-icon ${isPending ? 'ok' : 'nil'}">${isPending ? okIcon : nilIcon}</div>
+          <h3>${isPending ? 'All caught up!' : 'Nothing yet'}</h3>
+          <p>${isPending ? 'No forms are awaiting your action right now.' : 'Forms you review will appear here.'}</p>
+        </div>`;
+      return;
     }
-    
-    async function openSubmissionForReview(submissionId, moduleUrl) {
-      try {
-        const token = localStorage.getItem('access_token');
-        
-        // Navigate to the form in edit/review mode
-        window.location.href = `/${moduleUrl}/form?edit=${submissionId}&review=true`;
-      } catch (error) {
-        console.error('Error opening submission:', error);
-        alert('Failed to open submission. Please try again.');
-      }
+    panel.innerHTML = rows.map((s, i) => _card(s, i, isPending)).join('');
+  }
+
+  /* ─── main load ──────────────────────────────────────── */
+  async function load() {
+    const userStr = localStorage.getItem('user');
+    if (!userStr) { window.location.href = '/login'; return; }
+    const user = JSON.parse(userStr);
+    document.getElementById('statRole').textContent = _roleName(user.designation);
+
+    const token = localStorage.getItem('access_token');
+    let data;
+    try {
+      const res  = await fetch('/api/workflow/submissions/my-trail', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.message || body.error || `HTTP ${res.status}`);
+      data = (body.pending !== undefined || body.reviewed !== undefined) ? body : (body.data || {});
+    } catch (err) {
+      console.error(err);
+      ['panelPending','panelReviewed'].forEach(id => {
+        document.getElementById(id).innerHTML = `
+          <div class="mr-empty">
+            <div class="mr-empty-icon nil">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="#9ca3af" width="28" height="28">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"/>
+              </svg>
+            </div>
+            <h3>Could not load</h3>
+            <p>${_esc((err && err.message) || 'Please refresh and try again.')}</p>
+          </div>`;
+      });
+      return;
     }
-    
-    // Load on page load
-    document.addEventListener('DOMContentLoaded', loadPendingReviews);
+
+    const pending  = data.pending  || [];
+    const reviewed = data.reviewed || [];
+
+    document.getElementById('statPending').textContent  = pending.length;
+    document.getElementById('statReviewed').textContent = reviewed.length;
+
+    const bp = document.getElementById('badgePending');
+    bp.textContent   = pending.length;
+    bp.style.display = pending.length ? '' : 'none';
+    const br = document.getElementById('badgeReviewed');
+    br.textContent   = reviewed.length;
+    br.style.display = reviewed.length ? '' : 'none';
+
+    _renderPanel('panelPending',  pending,  true);
+    _renderPanel('panelReviewed', reviewed, false);
+  }
+
+  document.addEventListener('DOMContentLoaded', load);
   </script>
+
+  <script src="{{ url_for('static', filename='mobile_utils.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='signature_pad.umd.min.js') }}"></script>
   <script src="{{ url_for('static', filename='api-client.js') }}"></script>
   <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
-  <script src="{{ url_for('static', filename='mobile_utils.js') }}" defer></script>
 </body>
 </html>

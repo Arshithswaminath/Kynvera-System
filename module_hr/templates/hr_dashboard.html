@@ -298,6 +298,23 @@
     .submission-item:last-child {
       margin-bottom: 0;
     }
+    a.submission-item {
+      text-decoration: none;
+      color: inherit;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .submission-item-go {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      color: var(--primary);
+    }
+    .submission-item-go svg { width: 1.15rem; height: 1.15rem; }
     
     /* Detail Modal - Tabbed, amazing layout */
     .detail-overlay {
@@ -689,29 +706,11 @@
     </div>
   </footer>
 
-  <!-- Detail Modal (HR form detail - tabbed) -->
-  <div class="detail-overlay" id="detailModal" onclick="closeDetailModal(event)">
-    <div class="detail-modal" onclick="event.stopPropagation()">
-      <div class="detail-header">
-        <div>
-          <span class="form-type-badge" id="modalFormType"></span>
-          <h4 id="modalSubmissionId"></h4>
-        </div>
-        <button class="detail-close" onclick="closeDetailModal()" aria-label="Close">&times;</button>
-      </div>
-      <div class="detail-body">
-        <div id="modalFormPane" class="detail-tab-pane active" style="display:block;padding:0;max-height:none;"></div>
-      </div>
-    </div>
-  </div>
-
   <!-- Profile & Contact modals are in main_navbar partial -->
   
   <script src="{{ url_for('static', filename='js/injaaz-uae-datetime.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/hr_submission_full_form_url.js') }}"></script>
   <script>
     const token = localStorage.getItem('access_token');
-    let allSubmissions = [];
     
     function getStatusLabel(status) {
       const labels = {
@@ -727,11 +726,6 @@
     
     function getFormTypeLabel(type) {
       return type.replace('hr_', '').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-    }
-    
-    function getFormTypeClass(type) {
-      const t = type.replace('hr_', '');
-      return `type-${t}`;
     }
     
     function escapeHtml(text) {
@@ -752,16 +746,19 @@
         const container = document.getElementById('submissionsList');
         
         if (data.submissions && data.submissions.length > 0) {
-          allSubmissions = data.submissions;
-          container.innerHTML = data.submissions.slice(0, 10).map((s, idx) => `
-            <div class="submission-item" style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; border-bottom: 1px solid #e2e8f0;" onclick="showDetail(${idx})">
+          const sfBase = '/workflow/submitted-forms?scope=hr&submission=';
+          container.innerHTML = data.submissions.slice(0, 10).map((s) => `
+            <a class="submission-item" href="${sfBase}${encodeURIComponent(s.submission_id || '')}" aria-label="Open in Submitted forms">
               <div>
-                <strong>${s.submission_id}</strong>
+                <strong>${escapeHtml(s.submission_id)}</strong>
                 <span style="background: #e5e7eb; color: #374151; font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: 6px; margin-left: 0.5rem;">${getFormTypeLabel(s.module_type)}</span>
-                <p style="margin: 0.25rem 0 0; color: #64748b; font-size: 0.85rem;">${escapeHtml(s.site_name)} - ${InjaazDateTimeUAE.formatDateMed(s.created_at)}</p>
+                <p style="margin: 0.25rem 0 0; color: #64748b; font-size: 0.85rem;">${escapeHtml(s.site_name || '')}${s.site_name ? ' — ' : ''}${InjaazDateTimeUAE.formatDateMed(s.created_at)}</p>
               </div>
-              <span class="status-badge status-${s.workflow_status}">${getStatusLabel(s.workflow_status)}</span>
-            </div>
+              <div style="display:flex;align-items:center;gap:0.5rem;flex-shrink:0;">
+                <span class="status-badge status-${s.workflow_status}">${getStatusLabel(s.workflow_status)}</span>
+                <span class="submission-item-go" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg></span>
+              </div>
+            </a>
           `).join('');
         } else {
           container.innerHTML = '<p style="text-align: center; color: #64748b; padding: 2rem;">No submissions yet. Create your first HR form above.</p>';
@@ -838,51 +835,6 @@
         // Silently ignore errors
       }
     }
-    
-    function showDetail(index) {
-      const s = allSubmissions[index];
-      if (!s) return;
-
-      document.getElementById('modalFormType').textContent = getFormTypeLabel(s.module_type);
-      document.getElementById('modalFormType').className = `form-type-badge ${getFormTypeClass(s.module_type)}`;
-      document.getElementById('modalSubmissionId').textContent = s.submission_id;
-
-      const formViewUrl = (typeof getHrSubmissionFullFormViewUrl === 'function')
-        ? (getHrSubmissionFullFormViewUrl(s.module_type, s.submission_id) || ('/hr/print/' + encodeURIComponent(s.submission_id || '')))
-        : ('/hr/print/' + encodeURIComponent(s.submission_id || ''));
-      const formEmbedUrl = (typeof getHrSubmissionFullFormEmbedUrl === 'function')
-        ? (getHrSubmissionFullFormEmbedUrl(s.module_type, s.submission_id) || (formViewUrl + (formViewUrl.indexOf('?') >= 0 ? '&' : '?') + 'embed=1'))
-        : (formViewUrl + (formViewUrl.indexOf('?') >= 0 ? '&' : '?') + 'embed=1');
-      const safeEmbed = formEmbedUrl.replace(/"/g, '&quot;');
-      const safeView = formViewUrl.replace(/"/g, '&quot;');
-      const formHtml = `<div style="margin:0;padding:0;background:#f8fafc;display:flex;flex-direction:column;flex:1;min-height:0;height:100%">
-        <iframe title="Submitted form" src="${safeEmbed}" style="width:100%;flex:1 1 auto;min-height:0;border:0;display:block;background:#fff"></iframe>
-        <div class="hr-embed-modal-footer" role="complementary" aria-label="Open full page for exports and timeline">
-          <div class="hr-embed-modal-footer__inner">
-            <span class="hr-embed-modal-footer__icon" aria-hidden="true">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-            </span>
-            <p class="hr-embed-modal-footer__text"><span class="hr-embed-modal-footer__lead">Full workspace</span> — Print, Word/PDF export, app menu, and the workflow timeline.</p>
-          </div>
-          <div class="hr-embed-modal-footer__actions">
-            <a class="hr-embed-modal-footer__btn" href="${safeView}" target="_blank" rel="noopener">Open full page</a>
-          </div>
-        </div></div>`;
-
-      document.getElementById('modalFormPane').innerHTML = formHtml;
-      document.getElementById('detailModal').classList.add('show');
-    }
-
-    function closeDetailModal(e) {
-      if (e && e.target !== document.getElementById('detailModal')) return;
-      const ifr = document.querySelector('#modalFormPane iframe');
-      if (ifr) ifr.src = 'about:blank';
-      document.getElementById('detailModal').classList.remove('show');
-    }
-    
-    document.addEventListener('keydown', function(e) {
-      if (e.key === 'Escape') closeDetailModal();
-    });
     
     loadSubmissions();
     loadPendingCounts();
