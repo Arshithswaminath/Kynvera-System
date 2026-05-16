@@ -74,6 +74,7 @@ html {
 html:not([data-theme="dark"]) body.page-dashboard,
 html:not([data-theme="dark"]) body.hr-dashboard,
 html:not([data-theme="dark"]) body.inspection-dashboard,
+html:not([data-theme="dark"]) body.dm-device-mgmt-page,
 html:not([data-theme="dark"]) body.review-dashboard {
   --bg-body: #f8faf8;
   --bg-light: #f9fafb;
@@ -88,6 +89,7 @@ html:not([data-theme="dark"]) body.review-dashboard {
 body.page-dashboard,
 body.hr-dashboard,
 body.inspection-dashboard,
+body.dm-device-mgmt-page,
 body.review-dashboard {
   background: var(--bg-body, #f8faf8) !important;
 }
@@ -110,6 +112,15 @@ body.review-dashboard {
 .nav.scrolled {
   background: #ffffff;
   box-shadow: 0 1px 3px rgba(18, 84, 53, 0.08);
+}
+
+/* Device Management: module topbar (.dm-topbar) already divides content; strip nav hairline (same idea as DocHub v2). */
+body.dm-device-mgmt-page.has-main-nav .nav {
+  border-bottom: none;
+}
+
+body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
+  box-shadow: none;
 }
 
 .nav-container {
@@ -249,7 +260,7 @@ body.review-dashboard {
 }
 
 .nav-menu a {
-  color: #000;
+  color: var(--text-dark, #111827);
   text-decoration: none;
   font-size: 0.875rem;
   font-weight: 500;
@@ -420,6 +431,26 @@ body.review-dashboard {
   width: 16px;
   height: 16px;
   stroke: currentColor;
+}
+
+/* ── Keyboard focus (shared chrome) ── */
+.nav .logo:focus-visible,
+.nav-menu a:focus-visible,
+.nav-submenu a:focus-visible,
+.logout-btn:focus-visible,
+.nav-save-draft-btn:focus-visible,
+.notification-btn:focus-visible,
+.todo-nav-btn:focus-visible,
+.mobile-menu-toggle:focus-visible,
+.mark-all-read:focus-visible {
+  outline: 2px solid var(--primary, #125435);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
 }
 
 /* ===========================================
@@ -1062,6 +1093,22 @@ body.review-dashboard {
     opacity: 1 !important;
     transform: none !important;
     animation: none !important;
+  }
+
+  .hero::before,
+  .hero::after {
+    animation: none !important;
+  }
+
+  .module-card,
+  .module-card:hover {
+    transform: none !important;
+    transition: none !important;
+  }
+
+  .module-card::before {
+    transition: none !important;
+    transform: none !important;
   }
 }
 

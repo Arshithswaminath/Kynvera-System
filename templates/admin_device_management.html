@@ -47,13 +47,24 @@
       :root { --sidebar-w: 232px; }
     }
     body.has-main-nav { padding-top: 5.5rem; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+      /* Canvas color comes from dashboard.css (same tokens as Inspection / HR dashboards). */
+      background: var(--bg-body, #f8faf8);
+    }
 
+    /*
+      Match Inspection Forms module: soft green tint + radial glows (dashboard.css .hero + .hero.inspection-hero).
+      Blends into #F8FAF8 at the bottom so it lines up with body.dm-device-mgmt-page from dashboard.css.
+    */
     .dm-root {
-      background: #f7fbf9;
       min-height: calc(100vh - var(--dm-nav-top));
       padding: 0;
       display: flex;
+      background:
+        radial-gradient(ellipse 70% 55% at 15% -5%, rgba(18, 84, 53, 0.09) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 40% at 92% 2%, rgba(18, 84, 53, 0.05) 0%, transparent 55%),
+        linear-gradient(180deg, #eef4f0 0%, #f2f7f4 42%, #f8faf8 100%);
     }
     .dm-layout { display: flex; flex: 1; min-height: calc(100vh - var(--dm-nav-top)); }
 
@@ -74,8 +85,12 @@
     .dm-inner { max-width: 1400px; margin: 0 auto; flex: 1; }
 
     .dm-topbar {
-      background: white;
-      border-bottom: 1px solid var(--gray-100);
+      /* Slightly warm white so it melts into the Inspection-style mint canvas */
+      background: rgba(255, 255, 255, 0.82);
+      backdrop-filter: saturate(140%) blur(10px);
+      -webkit-backdrop-filter: saturate(140%) blur(10px);
+      border-bottom: 1px solid rgba(18, 84, 53, 0.08);
+      box-shadow: none;
       padding: 0 32px;
       height: 64px;
       display: flex;
@@ -84,7 +99,6 @@
       position: sticky;
       top: var(--dm-nav-top);
       z-index: 50;
-      box-shadow: 0 1px 0 var(--gray-100);
     }
     .dm-page-title { font-size: 17px; font-weight: 600; color: var(--gray-900); }
     .dm-page-title span { color: var(--gray-400); font-weight: 400; margin-right: 4px; font-size: 15px; }
@@ -594,7 +608,7 @@
     }
   </style>
 </head>
-<body class="has-main-nav">
+<body class="has-main-nav dm-device-mgmt-page">
   {% set active_page = 'devices' %}
   {% include 'partials/main_navbar.html' with context %}
 

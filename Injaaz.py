@@ -2,6 +2,7 @@ import os
 import sys
 import logging
 import mimetypes
+import subprocess
 from datetime import datetime, timezone
 from flask import Flask, send_from_directory, abort, render_template, jsonify, request, redirect
 from concurrent.futures import ThreadPoolExecutor
@@ -1005,7 +1006,45 @@ def create_app():
     return app
 
 
+def _current_git_branch():
+    """Best-effort branch name for local console hint (detached HEAD → short SHA)."""
+    try:
+        r = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=BASE_DIR,
+            capture_output=True,
+            text=True,
+            timeout=3,
+            check=False,
+        )
+        if r.returncode == 0:
+            name = (r.stdout or "").strip()
+            if name and name != "HEAD":
+                return name
+        r2 = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=BASE_DIR,
+            capture_output=True,
+            text=True,
+            timeout=3,
+            check=False,
+        )
+        if r2.returncode == 0 and (r2.stdout or "").strip():
+            return "detached @ " + (r2.stdout or "").strip()
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+    return None
+
+
 if __name__ == '__main__':
     app = create_app()
+    _branch = _current_git_branch()
+    if _branch:
+        logger.info("Running from git branch: %s", _branch)
+    else:
+        logger.info("Git branch: (not available)")
+    # Test-Case / local default: 5000 (matches APP_BASE_URL in config). Hosts may set PORT.
+    _port = int(os.environ.get("PORT", "5000"))
+    logger.info("Starting server on http://0.0.0.0:%s", _port)
     # For local development use debug=True. Remove or set False in production.
-    app.run(debug=False, host='0.0.0.0', port=5001)
+    app.run(debug=False, host='0.0.0.0', port=_port)

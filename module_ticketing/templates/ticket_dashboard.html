@@ -175,7 +175,7 @@
     .tkt-row-list { display: flex; flex-direction: column; gap: 0; }
     /* Header + rows share one scrollport so scrollbar width doesn't offset columns */
     .tkt-recent-scroll--cap {
-      --recent-row-cap: 72px;
+      --recent-row-cap: 76px;
       --tkt-recent-head-h: 44px;
       max-height: calc(var(--tkt-recent-head-h) + 5 * var(--recent-row-cap));
       overflow-x: hidden;
@@ -206,16 +206,16 @@
     }
     .tkt-row {
       display: grid;
-      /* Explicit tracks (no shrink-to-fit auto) so headings line up with cell content */
+      /* Wider Priority/Status mins so pills are not clipped; Status may wrap to two lines */
       grid-template-columns:
-        minmax(124px, 0.72fr)
-        minmax(0, 2.05fr)
-        minmax(128px, 1.08fr)
-        minmax(120px, 0.92fr)
-        minmax(100px, 0.62fr)
-        minmax(128px, 1.08fr)
-        minmax(132px, 1.08fr)
-        minmax(108px, 0.74fr);
+        minmax(108px, 0.68fr)
+        minmax(0, 1.92fr)
+        minmax(100px, 1fr)
+        minmax(104px, 0.94fr)
+        minmax(110px, 0.72fr)
+        minmax(200px, 1.45fr)
+        minmax(128px, 1fr)
+        minmax(120px, 0.82fr);
       align-items: center; gap: 12px;
       padding: 18px 24px;
       border-bottom: 1px solid #f1f5f9;
@@ -228,14 +228,14 @@
     .tkt-row-header {
       display: grid;
       grid-template-columns:
-        minmax(124px, 0.72fr)
-        minmax(0, 2.05fr)
-        minmax(128px, 1.08fr)
-        minmax(120px, 0.92fr)
-        minmax(100px, 0.62fr)
-        minmax(128px, 1.08fr)
-        minmax(132px, 1.08fr)
-        minmax(108px, 0.74fr);
+        minmax(108px, 0.68fr)
+        minmax(0, 1.92fr)
+        minmax(100px, 1fr)
+        minmax(104px, 0.94fr)
+        minmax(110px, 0.72fr)
+        minmax(200px, 1.45fr)
+        minmax(128px, 1fr)
+        minmax(120px, 0.82fr);
       align-items: center;
       gap: 12px;
       padding: 11px 24px;
@@ -294,7 +294,7 @@
       text-align: left;
     }
 
-    /* Priority + status — fixed tracks + center badges under centered labels */
+    /* Priority + status — centered under headers; status text can wrap (no mid-word ellipsis) */
     .tkt-row-header > .tkt-col-head:nth-child(5),
     .tkt-row-header > .tkt-col-head:nth-child(6) {
       text-align: center;
@@ -302,7 +302,6 @@
       width: 100%;
       max-width: 100%;
     }
-    /* Badges cannot expand past their grid track or they paint over neighbours */
     .tkt-row > *:nth-child(5),
     .tkt-row > *:nth-child(6) {
       display: flex;
@@ -312,14 +311,26 @@
       min-width: 0;
       max-width: 100%;
       width: 100%;
-      overflow: hidden;
+      overflow: visible;
     }
-    .tkt-row > *:nth-child(5) .tkt-badge,
-    .tkt-row > *:nth-child(6) .tkt-badge {
+    .tkt-row > *:nth-child(5) .tkt-badge {
       max-width: 100%;
       min-width: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .tkt-row > *:nth-child(6) .tkt-badge {
+      max-width: 100%;
+      box-sizing: border-box;
+      white-space: normal;
+      overflow: visible;
+      text-overflow: clip;
+      text-align: center;
+      line-height: 1.2;
+      word-break: break-word;
+      hyphens: manual;
+      padding: 5px 10px;
+      justify-content: center;
     }
 
     .tkt-row-assignee {
@@ -602,13 +613,17 @@
       </div>
 
       {% if recent_tickets %}
+      {% set tkt_status_labels = {
+        'open':'Open','assigned':'Assigned','site_attended':'Site Attended','work_started':'Work Started','work_completed':'Work Completed','verification':'Verification','on_hold':'On Hold','cancelled':'Cancelled','closed':'Closed','in_progress':'In Progress','pending_parts':'Pending Parts','resolved':'Resolved','pending_supervisor':'Supervisor Queue','pending_verification':'Pending verification'
+      } %}
       {# No whitespace/newlines between spans: stray text nodes become extra grid tracks and misalign columns. #}
       <div class="tkt-recent-scroll tkt-recent-scroll--cap">
       <div class="tkt-row-header tkt-row-header--sticky"><span class="tkt-col-head">ID</span><span class="tkt-col-head">Title</span><span class="tkt-col-head">Project</span><span class="tkt-col-head">Service Group</span><span class="tkt-col-head">Priority</span><span class="tkt-col-head">Status</span><span class="tkt-col-head">Assigned to</span><span class="tkt-col-head">Created</span></div>
       <div class="tkt-row-list">
         {% for t in recent_tickets %}
         {% set initials = (t.assigned_to.full_name.split()[0][0] + t.assigned_to.full_name.split()[-1][0])|upper if t.assigned_to and t.assigned_to.full_name else '?' %}
-        <a href="{{ url_for('ticketing.ticket_detail', ticket_id=t.ticket_id) }}" class="tkt-row"><span class="tkt-row-id">{{ t.ticket_id }}</span><span class="tkt-row-title" title="{{ t.title|e }}">{{ t.title }}</span><span class="tkt-row-meta" title="{{ t.project|e }}">{{ t.project }}</span><span class="tkt-row-sg" title="{{ t.service_group|e }}">{{ t.service_group }}</span><span><span class="tkt-badge badge-priority-{{ t.priority }}">{{ t.priority|capitalize }}</span></span><span><span class="tkt-badge badge-status-{{ t.status }}">{{ t.status.replace('_',' ')|title }}</span></span><span class="tkt-row-assignee">{% if t.assigned_to %}<span class="tkt-row-avatar">{{ initials }}</span><span>{{ t.assigned_to.full_name.split()[0] }}</span>{% else %}<span style="color:#cbd5e1;">—</span>{% endif %}</span><span class="tkt-row-date">{{ t.created_at.strftime('%d %b %Y') if t.created_at else '—' }}<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="#d1d5db" width="11" height="11" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg></span></a>
+        {% set st_lbl = tkt_status_labels.get(t.status, t.status.replace('_',' ')|title) %}
+        <a href="{{ url_for('ticketing.ticket_detail', ticket_id=t.ticket_id) }}" class="tkt-row"><span class="tkt-row-id">{{ t.ticket_id }}</span><span class="tkt-row-title" title="{{ t.title|e }}">{{ t.title }}</span><span class="tkt-row-meta" title="{{ t.project|e }}">{{ t.project }}</span><span class="tkt-row-sg" title="{{ t.service_group|e }}">{{ t.service_group }}</span><span><span class="tkt-badge badge-priority-{{ t.priority }}">{{ t.priority|capitalize }}</span></span><span><span class="tkt-badge badge-status-{{ t.status }}" title="{{ st_lbl|e }}">{{ st_lbl }}</span></span><span class="tkt-row-assignee">{% if t.assigned_to %}<span class="tkt-row-avatar">{{ initials }}</span><span>{{ t.assigned_to.full_name.split()[0] }}</span>{% else %}<span style="color:#cbd5e1;">—</span>{% endif %}</span><span class="tkt-row-date"><span>{{ t.created_at.strftime('%d %b %Y') if t.created_at else '—' }}</span><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="#d1d5db" width="11" height="11" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg></span></a>
         {% endfor %}
       </div>
       </div>
