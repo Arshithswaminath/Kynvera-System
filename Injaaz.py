@@ -353,15 +353,33 @@ def create_app():
             if 'users' in inspector.get_table_names():
                 columns = [col['name'] for col in inspector.get_columns('users')]
                 missing_columns = []
-                
-                # Check for designation column
-                if 'designation' not in columns:
-                    missing_columns.append(('designation', 'VARCHAR(20) DEFAULT NULL'))
+                # Keep in sync with app.models.User — db.create_all() does not alter existing tables.
+                user_optional_columns = [
+                    ('designation', 'VARCHAR(30) DEFAULT NULL'),
+                    ('password_changed', 'BOOLEAN DEFAULT FALSE'),
+                    ('default_signature', 'TEXT'),
+                    ('default_comment', 'TEXT'),
+                    ('access_hvac', 'BOOLEAN DEFAULT FALSE'),
+                    ('access_civil', 'BOOLEAN DEFAULT FALSE'),
+                    ('access_cleaning', 'BOOLEAN DEFAULT FALSE'),
+                    ('access_hr', 'BOOLEAN DEFAULT FALSE'),
+                    ('access_procurement_module', 'BOOLEAN DEFAULT FALSE'),
+                    ('access_business_development', 'BOOLEAN DEFAULT FALSE'),
+                    ('access_report_generation', 'BOOLEAN DEFAULT FALSE'),
+                    ('access_submitted_forms', 'BOOLEAN DEFAULT FALSE'),
+                    ('access_ticketing', 'BOOLEAN DEFAULT FALSE'),
+                    ('last_login', 'TIMESTAMP'),
+                    ('employment_start_date', 'DATE'),
+                    ('job_designation', 'VARCHAR(160)'),
+                    ('annual_leave_days', 'INTEGER'),
+                    ('other_leave_days', 'INTEGER'),
+                    ('reporting_manager_id', 'INTEGER'),
+                    ('operations_manager_id', 'INTEGER'),
+                ]
+                for col_name, col_def in user_optional_columns:
+                    if col_name not in columns:
+                        missing_columns.append((col_name, col_def))
 
-                # Admin-assigned operations manager (used for HR technician routing)
-                if 'operations_manager_id' not in columns:
-                    missing_columns.append(('operations_manager_id', 'INTEGER DEFAULT NULL'))
-                
                 if missing_columns:
                     logger.info(f"Adding missing columns to users table: {[col[0] for col in missing_columns]}")
                     try:
