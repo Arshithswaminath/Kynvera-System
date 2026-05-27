@@ -119,6 +119,14 @@
     }
   }
 
+  function activatePortalModal(modalEl) {
+    if (!modalEl) return;
+    ensurePortalModal(modalEl);
+    modalEl.scrollTop = 0;
+    modalEl.classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+
   function escapeHtml(s) {
     return String(s)
       .replace(/&/g, '&amp;')
@@ -172,8 +180,7 @@
         + '"? The standard temporary password will be shown next.';
     }
     ensurePortalModal(modal);
-    modal.classList.add('active');
-    document.body.style.overflow = 'hidden';
+    activatePortalModal(modal);
   };
 
   w.closePasswordResetConfirmModal = function closePasswordResetConfirmModal() {
@@ -232,8 +239,7 @@
     }
     const inp = document.getElementById('passwordResetResultValue');
     if (inp) inp.value = password || '';
-    modal.classList.add('active');
-    document.body.style.overflow = 'hidden';
+    activatePortalModal(modal);
   };
 
   w.closePasswordResetResultModal = function closePasswordResetResultModal() {
@@ -468,8 +474,7 @@
     const tbtn = document.getElementById('profileQuickToggleBtn');
     if (tbtn) tbtn.textContent = user.is_active ? 'Deactivate account' : 'Activate account';
 
-    modal.classList.add('active');
-    document.body.style.overflow = 'hidden';
+    activatePortalModal(modal);
   };
 
   w.openAccessModal = w.openUserProfileModal;
@@ -618,7 +623,7 @@
     content.innerHTML =
       '<div style="text-align: center; padding: 2rem;"><div class="spinner" style="border: 3px solid #f3f3f3; border-top: 3px solid var(--primary); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto;"></div>'
       + '<p style="margin-top: 1rem; color: #666;">Loading user activity...</p></div>';
-    modal.classList.add('active');
+    activatePortalModal(modal);
 
     try {
       const response = await profileAuthenticatedFetch('/api/admin/users/' + userId + '/activity');

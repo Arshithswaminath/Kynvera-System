@@ -22,6 +22,18 @@ class TestLogin:
             assert 'refresh_token' in data
             assert 'user' in data
             assert data['user']['username'] == 'testuser'
+
+    def test_login_username_case_insensitive(self, client, standard_user, app):
+        """Username login ignores letter case"""
+        with app.app_context():
+            response = client.post('/api/auth/login', json={
+                'username': 'TestUser',
+                'password': 'TestPass123'
+            })
+
+            assert response.status_code == 200
+            data = response.get_json()
+            assert data['user']['username'] == 'testuser'
     
     def test_login_wrong_password(self, client, standard_user, app):
         """Test login with wrong password"""

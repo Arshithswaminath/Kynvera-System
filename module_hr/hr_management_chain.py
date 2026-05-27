@@ -1,12 +1,28 @@
 """
 HR management approval chain (PDF + workflow).
 
-Technicians: Reporting supervisor (admin: user.reporting_manager_id, Supervisor) → Operations Manager
-  (picker) → GM (skipped if supervisor is GM) → HR (head office).
-Employees:   Reporting manager (admin-only profile) → GM (skipped if they are the GM) → HR (head office).
+Routing model (fixed three-lane)
+--------------------------------
+The chain is determined by the submitter's designation, not by walking a
+hierarchy. Operations Manager, General Manager and HR are designation pools
+(any active user with the right designation can sign). Only the technician's
+immediate supervisor is a per-user, admin-assigned signer
+(``User.reporting_manager_id``).
 
-Stored in submission.form_data['hr_mgmt_chain']. Legacy submissions without this block
-keep the old flow: hr_review → gm_review.
+Lanes:
+
+* ``technician`` -> Immediate supervisor (fixed per user) -> Operations manager
+  (pool) -> General manager (pool) -> HR head office.
+* ``supervisor`` -> Operations manager (pool) -> General manager (pool) ->
+  HR head office.
+* office staff (everyone else, including operations_manager / general_manager /
+  hr_manager / employee / bd / procurement / business_development) ->
+  General manager (pool) -> HR head office (pool).
+* Admin with no profile data continues to bypass the chain to the HR review
+  queue (unchanged).
+
+Stored under ``submission.form_data['hr_mgmt_chain']``. Legacy submissions
+without this block keep the old flow: ``hr_review`` -> ``gm_review``.
 """
 from __future__ import annotations
 
@@ -21,8 +37,9 @@ from common.datetime_utils import naive_utc_isoformat_z, utc_now_naive
 MGMT_CHAIN_KEY = "hr_mgmt_chain"
 
 TECHNICIAN_DESIGNATION = "technician"
+SUPERVISOR_DESIGNATION = "supervisor"
 
-# workflow_status values for gated steps (GM only sees gm step, etc.)
+# Workflow step gates (each unique role label maps to a wf status the queue UI filters on).
 WF_MGMT_SUP = "hr_mgmt_supervisor"
 WF_MGMT_OM = "hr_mgmt_operations_manager"
 WF_MGMT_RM = "hr_mgmt_reporting_manager"
@@ -39,19 +56,81 @@ ALL_MGMT_WF_STATUSES = (
 
 
 def lane_for_user(user: User | None) -> str:
-    if user and (user.designation or "").strip().lower() == TECHNICIAN_DESIGNATION:
+    """Return the approval lane this user belongs to as a submitter."""
+    if not user:
+        return "office_staff"
+    d = (user.designation or "").strip().lower()
+    if d == TECHNICIAN_DESIGNATION:
         return "technician"
-    return "employee"
+    if d == SUPERVISOR_DESIGNATION:
+        return "supervisor"
+    return "office_staff"
 
 
 def user_is_hr_head(user: User | None) -> bool:
+    """Users who may sign or review at the HR head office workflow step."""
     if not user:
         return False
     if user.role == "admin":
         return True
     if getattr(user, "access_hr", False):
         return True
-    return (user.designation or "").strip().lower() == "hr_manager"
+    return _desig(user) in ("hr_manager", "hr")
+
+
+def _active_hr_manager_users() -> list[User]:
+    """Active users with the HR manager designation (official HR head office account)."""
+    return _active_users_with_designation("hr_manager")
+
+
+def _is_legacy_hr_seed_account(user: User) -> bool:
+    """Default bootstrap login from ``create_hr_procurement_users`` — not the live HR contact."""
+    return (user.username or "").strip().lower() == "hr_manager"
+
+
+def _canonical_hr_user() -> User | None:
+    """
+    The HR account shown by name in the sidebar.
+
+    When several users share the ``hr_manager`` designation, prefer a real staff
+    account (e.g. Mona) over the legacy seed login ``hr_manager``. Among named
+    accounts, the most recently created wins.
+    """
+    mgrs = _active_hr_manager_users()
+    if mgrs:
+        if len(mgrs) == 1:
+            return mgrs[0]
+        named = [u for u in mgrs if not _is_legacy_hr_seed_account(u)]
+        pool = named if named else mgrs
+        return max(pool, key=lambda u: int(u.id or 0))
+    # Fallback: HR module access without a formal designation row yet.
+    return (
+        User.query.filter(
+            User.is_active == True,  # noqa: E712
+            User.access_hr == True,  # noqa: E712
+            User.role != "admin",
+        )
+        .order_by(User.full_name, User.username)
+        .first()
+    )
+
+
+def _active_hr_signers() -> list[User]:
+    """Active users who may sign the HR head office management step."""
+    out: list[User] = []
+    seen: set[int] = set()
+    for u in User.query.filter(User.is_active == True).order_by(  # noqa: E712
+        User.full_name, User.username
+    ).all():
+        if user_is_hr_head(u) and u.id not in seen:
+            out.append(u)
+            seen.add(u.id)
+    return out
+
+
+def _active_hr_users() -> list[User]:
+    """Backward-compatible alias."""
+    return _active_hr_signers()
 
 
 def user_is_gm(user: User | None) -> bool:
@@ -92,7 +171,8 @@ def _step(
     return d
 
 
-def _reporting_contact(submitter: User) -> User | None:
+def _supervisor_for(submitter: User) -> User | None:
+    """Return the active Supervisor user assigned on the technician's profile, or None."""
     rid = getattr(submitter, "reporting_manager_id", None)
     if not rid:
         return None
@@ -102,94 +182,94 @@ def _reporting_contact(submitter: User) -> User | None:
     return u
 
 
-def _is_general_manager_designation(u: User | None) -> bool:
-    return bool(u and _desig(u) == "general_manager")
+def _active_users_with_designation(designation: str) -> list[User]:
+    return (
+        User.query.filter(
+            User.designation == designation,
+            User.is_active == True,  # noqa: E712
+        )
+        .order_by(User.full_name, User.username)
+        .all()
+    )
 
 
-def build_chain_for_lane(
-    lane: str,
-    reporting_contact_id: int,
-    operations_manager_id: int | None,
-) -> tuple[list[dict[str, Any]], list[str]]:
+def _people_label(
+    users: list[User],
+    fallback: str,
+    *,
+    named_only: bool = False,
+) -> tuple[str, str | None]:
     """
-    operations_manager_id — required for technician lane only.
-    Returns (steps, pdf_hint_lines).
-    """
-    hints: list[str] = []
-    rc = db.session.get(User, reporting_contact_id)
-    if not rc:
-        return [], []
+    Return ``(who_label, who_detail)`` for a pool of possible signers.
 
-    rc_is_gm = _is_general_manager_designation(rc)
+    * 0 users  -> ``(fallback, "No one with this role is set up yet.")``
+    * 1 user   -> ``(<full name>, None)``
+    * 2-3 users -> ``("<n1>, <n2>", "Either may sign.")``
+    * 4+ users -> ``("Any active <fallback>", "<first 3 names> + N more.")``
+      unless ``named_only`` is True, in which case all names are listed.
+    """
+    if not users:
+        return fallback, "No one with this role is set up yet."
+    names = [(u.full_name or u.username or f"#{u.id}") for u in users]
+    if len(names) == 1:
+        return names[0], None
+    if named_only or len(names) <= 3:
+        detail = "Either may sign." if len(names) == 2 else "Any of these may sign."
+        return ", ".join(names), detail
+    preview = ", ".join(names[:3])
+    return f"Any active {fallback}", f"{preview} + {len(names) - 3} more."
+
+
+# ---------------------------------------------------------------------------
+# Chain construction
+# ---------------------------------------------------------------------------
+
+
+def _build_chain_for_submitter(submitter: User) -> tuple[list[dict[str, Any]], str | None]:
+    """
+    Build the deterministic step list for this submitter's lane.
+
+    Returns ``(steps, setup_error)``. ``setup_error`` is non-None only when the
+    submitter cannot proceed (currently: a technician with no valid supervisor
+    on profile).
+    """
+    lane = lane_for_user(submitter)
+    steps: list[dict[str, Any]] = []
 
     if lane == "technician":
-        if operations_manager_id is None:
-            return [], []
-        if rc_is_gm:
-            hints.append(
-                "Your reporting supervisor is the General Manager — their sign-off counts as both "
-                "reporting supervisor and GM on this trail (no duplicate GM step)."
+        sup = _supervisor_for(submitter)
+        if not sup:
+            return [], (
+                "Your immediate supervisor has not been assigned by an administrator yet. "
+                "Ask an administrator to set your Reporting manager on your profile (it must "
+                "be a user with the Supervisor designation) before you can submit."
             )
-        om_user = db.session.get(User, operations_manager_id)
-        if not om_user:
-            return [], []
-
-        steps: list[dict[str, Any]] = [
+        if _desig(sup) != SUPERVISOR_DESIGNATION:
+            return [], (
+                "Your account is a Technician but the Reporting manager set on your profile "
+                "is not a Supervisor. Ask an administrator to fix it before you can submit."
+            )
+        if sup.id == submitter.id:
+            return [], "You cannot be your own supervisor. Ask an administrator to fix your profile."
+        steps.append(
             _step(
                 "supervisor",
                 WF_MGMT_SUP,
-                "Reporting supervisor",
+                "Immediate supervisor",
                 signer_mode="fixed_user",
-                signer_id=reporting_contact_id,
-                also_mirrors_gm_fields=rc_is_gm,
-            ),
+                signer_id=sup.id,
+            )
+        )
+        steps.append(
             _step(
                 "operations_manager",
                 WF_MGMT_OM,
                 "Operations manager",
-                signer_mode="fixed_user",
-                signer_id=operations_manager_id,
-            ),
-        ]
-        if not rc_is_gm:
-            steps.append(
-                _step(
-                    "general_manager",
-                    WF_MGMT_GM,
-                    "General manager",
-                    signer_mode="designation",
-                    designation_gate="general_manager",
-                )
-            )
-        steps.append(
-            _step(
-                "hr_head_office",
-                WF_MGMT_HR,
-                "HR (head office)",
                 signer_mode="designation",
-                designation_gate="hr_head_office",
+                designation_gate="operations_manager",
             )
         )
-        return steps, hints
-
-    # employee lane — reporting manager only from profile, then optional GM pool, then HR
-    if rc_is_gm:
-        hints.append(
-            "Your reporting manager is the General Manager — one signature covers both steps on this form."
-        )
-
-    steps_e: list[dict[str, Any]] = [
-        _step(
-            "reporting_manager",
-            WF_MGMT_RM,
-            "Reporting manager",
-            signer_mode="fixed_user",
-            signer_id=reporting_contact_id,
-            also_mirrors_gm_fields=rc_is_gm,
-        ),
-    ]
-    if not rc_is_gm:
-        steps_e.append(
+        steps.append(
             _step(
                 "general_manager",
                 WF_MGMT_GM,
@@ -198,7 +278,39 @@ def build_chain_for_lane(
                 designation_gate="general_manager",
             )
         )
-    steps_e.append(
+
+    elif lane == "supervisor":
+        steps.append(
+            _step(
+                "operations_manager",
+                WF_MGMT_OM,
+                "Operations manager",
+                signer_mode="designation",
+                designation_gate="operations_manager",
+            )
+        )
+        steps.append(
+            _step(
+                "general_manager",
+                WF_MGMT_GM,
+                "General manager",
+                signer_mode="designation",
+                designation_gate="general_manager",
+            )
+        )
+
+    elif lane == "office_staff":
+        steps.append(
+            _step(
+                "general_manager",
+                WF_MGMT_GM,
+                "General manager",
+                signer_mode="designation",
+                designation_gate="general_manager",
+            )
+        )
+
+    steps.append(
         _step(
             "hr_head_office",
             WF_MGMT_HR,
@@ -207,17 +319,20 @@ def build_chain_for_lane(
             designation_gate="hr_head_office",
         )
     )
-    return steps_e, hints
+    return steps, None
 
 
-def _parse_pick(raw: Any) -> int | None:
-    if raw is None or raw == "":
-        return None
-    try:
-        n = int(raw)
-        return n if n > 0 else None
-    except (TypeError, ValueError):
-        return None
+# Kept for backward compatibility with older call sites (lane, rc_id, om_id).
+def build_chain_for_lane(
+    lane: str,
+    reporting_contact_id: int,
+    operations_manager_id: int | None,
+) -> tuple[list[dict[str, Any]], list[str]]:
+    rc = db.session.get(User, reporting_contact_id)
+    if not rc:
+        return [], []
+    steps, _err = _build_chain_for_submitter(rc)
+    return steps, []
 
 
 def init_management_chain_on_submit(
@@ -225,62 +340,40 @@ def init_management_chain_on_submit(
     submitter: User,
 ) -> str | None:
     """
-    Validate picks, mutate data with hr_mgmt_chain. Returns error message or None.
-    Reporting supervisor / manager comes from submitter.reporting_manager_id (admin).
-    Technicians also submit operations_manager from the form.
+    Build the hr_mgmt_chain block from the submitter's lane.
+    All signer IDs come from admin-assigned profile data — client picks are ignored.
     """
-    lane = lane_for_user(submitter)
-    # Never trust client for reporting line
-    data.pop("mgmt_supervisor_signer_id", None)
-    data.pop("mgmt_reporting_manager_signer_id", None)
-    om_raw = _parse_pick(data.pop("mgmt_operations_manager_signer_id", None))
+    # Strip any legacy/client picker fields — routing is fully derived server-side.
+    for legacy_key in (
+        "mgmt_supervisor_signer_id",
+        "mgmt_reporting_manager_signer_id",
+        "mgmt_operations_manager_signer_id",
+    ):
+        data.pop(legacy_key, None)
 
-    contact = _reporting_contact(submitter)
-    # Admins may lack a reporting line; submitting without hr_mgmt_chain is allowed (straight to HR review).
-    if getattr(submitter, "role", None) == "admin" and contact is None:
+    # Admins with no supervisor on profile continue to bypass the chain straight to HR review.
+    if getattr(submitter, "role", None) == "admin" and _supervisor_for(submitter) is None:
         data.pop(MGMT_CHAIN_KEY, None)
         return None
 
-    if not contact:
-        return (
-            "A reporting manager / supervisor must be assigned to your account in Admin before you can "
-            "submit (Admin → Users → your profile → Reporting manager)."
-        )
-    if contact.id == submitter.id:
-        return "Invalid reporting line: you cannot be your own reporting manager. Ask an administrator to fix this."
+    steps, setup_err = _build_chain_for_submitter(submitter)
+    if setup_err:
+        return setup_err
+    if not steps:
+        return "Could not build the management approval chain. Contact support."
 
-    if lane == "technician":
-        if _desig(contact) != "supervisor":
-            return (
-                "For technicians, Admin must set your Reporting manager to your reporting supervisor "
-                "(a user with Supervisor designation)."
-            )
-        if not om_raw:
-            return "Please select the operations manager for this request."
-        u_om = db.session.get(User, om_raw)
-        if not u_om or not u_om.is_active:
-            return "Invalid operations manager selected."
-        if om_raw == submitter.id:
-            return "You cannot assign yourself as operations manager."
-        if contact.id == om_raw:
-            return "Reporting supervisor and operations manager must be different people."
-        if _desig(u_om) != "operations_manager":
-            return "Operations manager must be a user with Operations Manager designation."
-        chain_steps, hints = build_chain_for_lane("technician", contact.id, om_raw)
-    else:
-        chain_steps, hints = build_chain_for_lane("employee", contact.id, None)
-
-    if not chain_steps:
-        return "Could not build approval chain. Contact support."
-
+    sup_step = next(
+        (s for s in steps if s.get("key") == "supervisor" and s.get("signer_mode") == "fixed_user"),
+        None,
+    )
     data[MGMT_CHAIN_KEY] = {
         "v": 1,
-        "lane": lane,
+        "lane": lane_for_user(submitter),
         "current_index": 0,
-        "steps": chain_steps,
-        "reporting_contact_id": contact.id,
-        "reporting_contact_name": contact.full_name or contact.username,
-        "pdf_hints": hints,
+        "steps": steps,
+        "reporting_contact_id": (sup_step or {}).get("signer_id"),
+        "reporting_contact_name": (sup_step or {}).get("pdf_label"),
+        "pdf_hints": [],
     }
     return None
 
@@ -316,10 +409,53 @@ def user_allowed_to_sign_step(user: User, step: dict[str, Any]) -> bool:
     if mode == "fixed_user":
         return int(step.get("signer_id") or -1) == user.id
     gate = (step.get("designation_gate") or "").strip().lower()
+    if gate == "operations_manager":
+        return _desig(user) == "operations_manager"
     if gate == "general_manager":
         return _desig(user) == "general_manager"
-    if gate == "hr_head_office":
+    if gate == "hr_head_office" or gate == "hr_manager":
         return user_is_hr_head(user)
+    return False
+
+
+def user_mgmt_chain_completed_step(user: User | None, fd: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Return the management-chain step this user already signed, if any."""
+    if not user or not has_management_chain(fd):
+        return None
+    uid = int(user.id)
+    steps = (fd.get(MGMT_CHAIN_KEY) or {}).get("steps") or []
+    for step in steps:
+        if not isinstance(step, dict):
+            continue
+        if not step.get("signature"):
+            continue
+        try:
+            if int(step.get("signed_by_id") or 0) == uid:
+                return step
+        except (TypeError, ValueError):
+            pass
+    return None
+
+
+def user_is_mgmt_chain_participant(user: User | None, fd: dict[str, Any] | None) -> bool:
+    """
+    True when the user belongs on this submission's management chain: assigned to a
+    step (fixed user or designation pool) or already recorded as a signer on any step.
+    """
+    if not user or not has_management_chain(fd):
+        return False
+    uid = int(user.id)
+    steps = (fd.get(MGMT_CHAIN_KEY) or {}).get("steps") or []
+    for step in steps:
+        if not isinstance(step, dict):
+            continue
+        try:
+            if int(step.get("signed_by_id") or 0) == uid:
+                return True
+        except (TypeError, ValueError):
+            pass
+        if user_allowed_to_sign_step(user, step):
+            return True
     return False
 
 
@@ -368,7 +504,6 @@ def notify_submitter_management_final(
     """Notify original submitter after chain completes or rejects."""
     if not submission.user_id:
         return
-    fd = submission.form_data if isinstance(submission.form_data, dict) else {}
     form_type_display = (submission.module_type or "HR").replace("hr_", "").replace("_", " ").title()
     sid = submission.submission_id
     if rejected:
@@ -437,26 +572,24 @@ def notify_current_management_signers(app: Flask, submission: Submission) -> Non
         _notify_user(app, uid, title, msg, submission_id, n_type)
         return
     gate = (step.get("designation_gate") or "").lower()
-    if gate == "general_manager":
-        for u in User.query.filter(
-            User.designation == "general_manager",
-            User.is_active == True,  # noqa: E712
-        ).all():
+    if gate == "operations_manager":
+        for u in _active_users_with_designation("operations_manager"):
             _notify_user(app, u.id, title, msg, submission_id, n_type)
         return
-    if gate == "hr_head_office":
-        q = User.query.filter(User.is_active == True)  # noqa: E712
-        ids = []
-        for u in q.all():
-            if user_is_hr_head(u) and u.id not in ids:
-                ids.append(u.id)
+    if gate == "general_manager":
+        for u in _active_users_with_designation("general_manager"):
+            _notify_user(app, u.id, title, msg, submission_id, n_type)
+        return
+    if gate == "hr_head_office" or gate == "hr_manager":
+        for u in _active_hr_signers():
+            if u.role != "admin":
                 _notify_user(app, u.id, title, msg, submission_id, n_type)
+        return
 
 
 def attach_submission_enter_management(fd: dict[str, Any], submission_id: str) -> str | None:
     """Return workflow_status for first mgmt step, or None if no chain."""
-    ws = first_management_workflow_status(fd)
-    return ws
+    return first_management_workflow_status(fd)
 
 
 def apply_management_signature(
@@ -500,8 +633,7 @@ def apply_management_signature(
     step["signed_by_id"] = user.id
     step["signed_by_name"] = user.full_name or user.username
 
-    # Mirror legacy PDF fields used by existing builders
-    # Mirror legacy GM fields when RM/supervisor step covers GM (combined sign-off)
+    # Mirror legacy GM fields for any step that also covers GM duties.
     if step.get("also_mirrors_gm_fields"):
         fd["gm_signature"] = step["signature"]
         fd["gm_comments"] = step["comments"]
@@ -511,6 +643,11 @@ def apply_management_signature(
         submission.general_manager_id = user.id
         submission.general_manager_approved_at = utc_now_naive()
         submission.general_manager_comments = step["comments"]
+
+    if submission.module_type == "hr_commencement":
+        from module_hr.hr_commencement_reporting import apply_dual_role_reporting_to_mirror
+
+        apply_dual_role_reporting_to_mirror(fd, user, step)
 
     key = step.get("key")
     # Duty Resumption (and previews) read `reporting_manager_signature` on the body; chain-only RM breaks hydration.
@@ -603,53 +740,175 @@ def submissions_pending_management_for_user_query(user: User):
     ).order_by(Submission.created_at.desc())
 
 
+# ---------------------------------------------------------------------------
+# Sidebar UI context
+# ---------------------------------------------------------------------------
+
+
+_LANE_INTRO = {
+    "technician": (
+        "You are a Technician. Your form is signed in order by your immediate "
+        "supervisor, the Operations Manager, the General Manager, and finally HR."
+    ),
+    "supervisor": (
+        "You are a Supervisor. Your form is signed in order by the Operations "
+        "Manager, the General Manager, and finally HR."
+    ),
+    "office_staff": (
+        "You are office staff. Your form is signed by the General Manager and then HR."
+    ),
+}
+
+_LANE_FLOW = {
+    "technician": "Immediate supervisor -> Operations manager -> General manager -> HR",
+    "supervisor": "Operations manager -> General manager -> HR",
+    "office_staff": "General manager -> HR",
+}
+
+
+def _chain_descriptor(submitter: User, steps: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Convert internal steps to the sidebar's role+name descriptors."""
+    om_pool = _active_users_with_designation("operations_manager")
+    gm_pool = _active_users_with_designation("general_manager")
+    hr_display = _canonical_hr_user()
+
+    out: list[dict[str, Any]] = []
+    for s in steps:
+        key = s.get("key")
+        if key == "supervisor":
+            sup = db.session.get(User, int(s.get("signer_id") or 0)) if s.get("signer_id") else None
+            who_label = (
+                (sup.full_name or sup.username) if sup else "Not assigned"
+            )
+            out.append({
+                "key": key,
+                "role_label": "Immediate supervisor",
+                "who_label": who_label,
+                "who_detail": "Your reporting supervisor (assigned by admin).",
+                "signer_mode": s.get("signer_mode"),
+                "signer_id": s.get("signer_id"),
+                "missing": sup is None,
+            })
+        elif key == "operations_manager":
+            who_label, who_detail = _people_label(om_pool, "Operations Manager")
+            out.append({
+                "key": key,
+                "role_label": "Operations manager",
+                "who_label": who_label,
+                "who_detail": who_detail,
+                "signer_mode": "designation",
+                "missing": not om_pool,
+            })
+        elif key == "general_manager":
+            who_label, who_detail = _people_label(gm_pool, "General Manager")
+            out.append({
+                "key": key,
+                "role_label": "General manager",
+                "who_label": who_label,
+                "who_detail": who_detail,
+                "signer_mode": "designation",
+                "missing": not gm_pool,
+            })
+        elif key == "hr_head_office":
+            if hr_display:
+                who_label = hr_display.full_name or hr_display.username or "HR manager"
+                who_detail = "HR head office (final sign-off)."
+                missing = False
+            else:
+                who_label = "Not assigned"
+                who_detail = "Ask an administrator to create an HR manager account."
+                missing = True
+            out.append({
+                "key": key,
+                "role_label": "HR (head office)",
+                "who_label": who_label,
+                "who_detail": who_detail,
+                "signer_mode": "designation",
+                "signer_id": hr_display.id if hr_display else None,
+                "missing": missing,
+            })
+        else:
+            out.append({
+                "key": key,
+                "role_label": s.get("pdf_label") or "Reporting manager",
+                "who_label": "Assigned signer",
+                "who_detail": None,
+                "signer_mode": s.get("signer_mode"),
+                "missing": False,
+            })
+    return out
+
+
 def get_mgmt_chain_ui_context(submitter: User | None) -> dict[str, Any]:
-    """Reporting line comes from Admin (user.reporting_manager_id) only."""
+    """Routing preview for the HR submit sidebar (Box 2)."""
     if not submitter:
         return {"success": False, "error": "Not authenticated"}
 
     lane = lane_for_user(submitter)
-    c = _reporting_contact(submitter)
-    if getattr(submitter, "role", None) == "admin" and c is None:
+
+    # Admin shortcut — bypasses the chain.
+    if getattr(submitter, "role", None) == "admin" and _supervisor_for(submitter) is None:
         return {
             "success": True,
             "lane": lane,
-            "needs_operations_manager": False,
-            "has_reporting_contact": False,
-            "reporting_contact_is_general_manager": False,
-            "reporting_contact": None,
-            "technician_supervisor_valid": True,
+            "lane_intro": (
+                "As an administrator with no supervisor on your profile, this submission "
+                "skips the management chain and goes straight to the HR review queue."
+            ),
+            "lane_flow": "Direct to HR review",
+            "chain": [],
+            "supervisor": None,
+            "missing_pools": [],
             "setup_error": None,
             "admin_profile_bypass": True,
         }
 
-    rm_is_gm = _is_general_manager_designation(c) if c else False
-    technician_supervisor_ok = bool(c and lane == "technician" and _desig(c) == "supervisor")
+    steps, setup_err = _build_chain_for_submitter(submitter)
 
-    rc_payload = None
-    if c:
-        rc_payload = {
-            "id": c.id,
-            "full_name": c.full_name or c.username,
-            "designation": c.designation,
+    if setup_err and lane == "technician":
+        sup_assigned = _supervisor_for(submitter)
+        return {
+            "success": True,
+            "lane": lane,
+            "lane_intro": _LANE_INTRO.get(lane),
+            "lane_flow": _LANE_FLOW.get(lane),
+            "chain": [],
+            "supervisor": {
+                "assigned": bool(sup_assigned),
+                "full_name": (sup_assigned.full_name or sup_assigned.username) if sup_assigned else None,
+                "designation": (sup_assigned.designation if sup_assigned else None),
+            },
+            "missing_pools": [],
+            "setup_error": setup_err,
+            "admin_profile_bypass": False,
         }
 
-    err = None
-    if lane == "technician" and c and _desig(c) != "supervisor":
-        err = (
-            "Your account is Technician, but Reporting manager must be your reporting supervisor "
-            "(a user with Supervisor designation). Ask an administrator to update your profile."
-        )
-    elif not c:
-        err = "Reporting manager must be set on your user profile by an administrator before submitting HR forms."
+    chain = _chain_descriptor(submitter, steps)
+
+    sup_descriptor = None
+    if lane == "technician":
+        sup_step = next((c for c in chain if c.get("key") == "supervisor"), None)
+        if sup_step:
+            sup_descriptor = {
+                "assigned": not sup_step.get("missing"),
+                "full_name": sup_step.get("who_label") if not sup_step.get("missing") else None,
+                "designation": "supervisor",
+            }
+
+    # Warn when a non-fixed pool we depend on is empty.
+    missing_pools: list[str] = []
+    for c in chain:
+        if c.get("signer_mode") == "designation" and c.get("missing"):
+            missing_pools.append(c.get("role_label"))
 
     return {
         "success": True,
         "lane": lane,
-        "needs_operations_manager": lane == "technician",
-        "has_reporting_contact": c is not None,
-        "reporting_contact_is_general_manager": rm_is_gm,
-        "reporting_contact": rc_payload,
-        "technician_supervisor_valid": technician_supervisor_ok,
-        "setup_error": err,
+        "lane_intro": _LANE_INTRO.get(lane),
+        "lane_flow": _LANE_FLOW.get(lane),
+        "chain": chain,
+        "supervisor": sup_descriptor,
+        "missing_pools": missing_pools,
+        "setup_error": None,
+        "admin_profile_bypass": False,
     }

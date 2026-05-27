@@ -205,10 +205,8 @@ function userHasHrNavAccess(user) {
 function userHasSubmittedFormsModuleAccess(user) {
   if (!user) return false;
   if (user.role === 'admin') return true;
-  const d = (user.designation || '').trim().toLowerCase();
-  const inspectionHistoryDesignations = ['supervisor', 'operations_manager', 'business_development', 'procurement', 'general_manager'];
-  const hasInspectionHistoryAccess = inspectionHistoryDesignations.includes(d) || user.access_business_development === true;
-  return user.access_submitted_forms === true || hasInspectionHistoryAccess;
+  // Every logged-in user can open My submitted forms for items they submitted.
+  return true;
 }
 
 function userHasDocHubNavAccess(user) {
@@ -221,10 +219,7 @@ function userHasDocHubNavAccess(user) {
 function userHasReportGenerationNavAccess(user) {
   if (!user) return false;
   if (user.role === 'admin') return true;
-  if (user.access_report_generation === false) return false;
-  if (user.access_report_generation === true) return true;
-  // Stale localStorage from before this field existed — match prior “all users” behavior.
-  return true;
+  return user.access_report_generation === true;
 }
 
 /** Navbar items tied to admin profile module flags (main_navbar.html). */
@@ -468,65 +463,35 @@ function updateModuleVisibility(user) {
     reportGenCard.style.visibility = showReport ? 'visible' : 'hidden';
   }
   
-  // Update grid layout based on visible modules
   const modulesGrid = document.getElementById('modulesGrid');
   const modulesSection = document.getElementById('modules');
-  
-  if (modulesGrid) {
-    const visibleModules = Array.from(modulesGrid.children).filter(card => 
-      card.style.display !== 'none' && card.style.visibility !== 'hidden'
-    );
-    
-    const isMobile = window.innerWidth <= 768;
-    
-    if (isMobile) {
-      modulesGrid.style.gridTemplateColumns = '1fr';
-      modulesGrid.style.maxWidth = '100%';
-      modulesGrid.style.margin = '0';
-      // Remove inline display/visibility so CSS grid layout takes effect on cards
-      modulesGrid.querySelectorAll('.module-card').forEach(card => {
-        if (card.style.display !== 'none') {
-          card.style.removeProperty('display');
-          card.style.removeProperty('visibility');
-        }
-      });
-    } else {
-      if (visibleModules.length === 1) {
-        modulesGrid.style.gridTemplateColumns = '1fr';
-        modulesGrid.style.maxWidth = '600px';
-        modulesGrid.style.margin = '0 auto';
-      } else if (visibleModules.length === 2) {
-        modulesGrid.style.gridTemplateColumns = 'repeat(2, 1fr)';
-        modulesGrid.style.maxWidth = 'none';
-        modulesGrid.style.margin = '0';
-      } else {
-        modulesGrid.style.gridTemplateColumns = 'repeat(3, 1fr)';
-        modulesGrid.style.maxWidth = 'none';
-        modulesGrid.style.margin = '0';
-      }
-    }
-    
-    if (modulesSection && visibleModules.length === 0) {
-      const existingMsg = modulesSection.querySelector('.no-access-message');
-      if (existingMsg) {
-        existingMsg.remove();
-      }
-      
-      const noAccessMsg = document.createElement('div');
-      noAccessMsg.className = 'no-access-message';
-      noAccessMsg.style.cssText = 'text-align: center; padding: 3rem; color: var(--text-light);';
-      noAccessMsg.innerHTML = `
+  if (modulesSection) {
+    const visibleCount = modulesGrid
+      ? Array.from(modulesGrid.children).filter(function (card) {
+          const style = card.getAttribute('style') || '';
+          return card.classList.contains('module-card')
+            && !/display\s*:\s*none/i.test(style)
+            && card.style.visibility !== 'hidden';
+        }).length
+      : 0;
+    const existingMsg = modulesSection.querySelector('.no-access-message');
+    if (visibleCount === 0) {
+      if (!existingMsg) {
+        const noAccessMsg = document.createElement('div');
+        noAccessMsg.className = 'no-access-message';
+        noAccessMsg.style.cssText = 'text-align: center; padding: 3rem; color: var(--text-light);';
+        noAccessMsg.innerHTML = `
         <h3 style="margin-bottom: 1rem; color: var(--text-dark);">No Module Access</h3>
         <p>You don't have access to any modules yet. Please contact an administrator to grant access.</p>
       `;
-      modulesSection.appendChild(noAccessMsg);
-    } else if (modulesSection) {
-      const existingMsg = modulesSection.querySelector('.no-access-message');
-      if (existingMsg) {
-        existingMsg.remove();
+        modulesSection.appendChild(noAccessMsg);
       }
+    } else if (existingMsg) {
+      existingMsg.remove();
     }
   }
+
+  updateModuleGridLayout();
 
   if (document.body.classList.contains('page-dashboard') && document.getElementById('modulesGrid')) {
     scheduleDashboardModuleEntrance();
@@ -535,38 +500,23 @@ function updateModuleVisibility(user) {
   applyProfileBasedNavVisibility(user);
 }
 
-// Helper function to update module grid layout
+function getVisibleModuleCards(modulesGrid) {
+  if (!modulesGrid) return [];
+  return Array.from(modulesGrid.children).filter(function (card) {
+    const style = card.getAttribute('style') || '';
+    return card.classList.contains('module-card')
+      && !/display\s*:\s*none/i.test(style)
+      && card.style.visibility !== 'hidden';
+  });
+}
+
+/** Grid columns are controlled by CSS — this just clears any stale inline overrides. */
 function updateModuleGridLayout() {
   const modulesGrid = document.getElementById('modulesGrid');
   if (!modulesGrid) return;
-  
-  const visibleModules = Array.from(modulesGrid.children).filter(card => 
-    card.style.display !== 'none' && card.style.visibility !== 'hidden'
-  );
-  
-  const isMobile = window.innerWidth <= 768;
-  
-  if (isMobile) {
-    modulesGrid.style.gridTemplateColumns = '1fr';
-  } else {
-    if (visibleModules.length === 1) {
-      modulesGrid.style.gridTemplateColumns = '1fr';
-      modulesGrid.style.maxWidth = '600px';
-      modulesGrid.style.margin = '0 auto';
-    } else if (visibleModules.length === 2) {
-      modulesGrid.style.gridTemplateColumns = 'repeat(2, 1fr)';
-      modulesGrid.style.maxWidth = 'none';
-      modulesGrid.style.margin = '0';
-    } else if (visibleModules.length === 3) {
-      modulesGrid.style.gridTemplateColumns = 'repeat(3, 1fr)';
-      modulesGrid.style.maxWidth = 'none';
-      modulesGrid.style.margin = '0';
-    } else {
-      modulesGrid.style.gridTemplateColumns = 'repeat(2, 1fr)';
-      modulesGrid.style.maxWidth = 'none';
-      modulesGrid.style.margin = '0';
-    }
-  }
+  modulesGrid.style.removeProperty('grid-template-columns');
+  modulesGrid.style.removeProperty('max-width');
+  modulesGrid.style.removeProperty('margin');
 }
 
 // ===========================================
@@ -636,6 +586,7 @@ async function loadPendingCount(user) {
       pendingModule.style.display = 'none';
       pendingModule.style.visibility = 'hidden';
     }
+    updateMobileMenuHint(0);
     return;
   }
   
@@ -644,20 +595,11 @@ async function loadPendingCount(user) {
   const isSupervisor = user && user.designation === 'supervisor';
   const pendingReviewMenuItem = document.getElementById('pending-review-menu-item');
 
-  // Supervisors: show Review History (not Pending Review)
-  if (isSupervisor) {
-    if (pendingModule) {
-      pendingModule.style.display = 'none';
-      pendingModule.style.visibility = 'hidden';
-    }
-    if (pendingReviewMenuItem) {
-      pendingReviewMenuItem.style.display = 'none';
-    }
-    return;
-  }
+  // Anyone who can review forms (supervisor, OM, BD, procurement, GM) gets the Pending Review link
+  const canReview = isReviewer || isSupervisor;
 
-  // Non-reviewers (no designation): hide both
-  if (!isReviewer) {
+  // Non-reviewers (plain technicians / employees): hide both module cards
+  if (!canReview) {
     if (pendingModule) {
       pendingModule.style.display = 'none';
       pendingModule.style.visibility = 'hidden';
@@ -669,10 +611,11 @@ async function loadPendingCount(user) {
     if (pendingReviewMenuItem) {
       pendingReviewMenuItem.style.display = 'none';
     }
+    updateMobileMenuHint(0);
     return;
   }
 
-  // Reviewers: show both Pending Review and Review History (updateModuleVisibility already set Review History)
+  // Reviewers / supervisors: show the Pending Review menu item
   if (pendingReviewMenuItem) {
     pendingReviewMenuItem.style.display = 'list-item';
   }
@@ -710,6 +653,8 @@ async function loadPendingCount(user) {
         moduleBadge.style.display = 'none';
       }
     }
+
+    updateMobileMenuHint(submissions.length);
     
     updateModuleGridLayout();
     
@@ -2481,21 +2426,70 @@ async function handleLogout() {
 // Dashboard stats widget (right-side box)
 // ===========================================
 
+function dashboardStatHrefFromLabel(label) {
+  if (!label) return '/workflow/submitted-forms';
+  var L = String(label).toLowerCase();
+  if (L.indexOf('inspection') >= 0) return '/inspection/';
+  if (L.indexOf('hr form') >= 0 || L.indexOf('my hr') >= 0) return '/hr/';
+  if (L.indexOf('document') >= 0) return '/dochub';
+  if (L.indexOf('device') >= 0) return '/admin/devices';
+  if (L.indexOf('active user') >= 0) return '/admin/team-management';
+  if (L.indexOf('days with injaaz') >= 0) return '/workflow/submitted-forms';
+  if (L.indexOf('material') >= 0 || L.indexOf('catalog') >= 0) return '/procurement/';
+  if (L.indexOf('project') >= 0 || L.indexOf('rfp') >= 0 || L.indexOf('pipeline') >= 0) return '/admin/bd';
+  if (L.indexOf('pending') >= 0) return '/workflow/pending-reviews';
+  if (L.indexOf('completed') >= 0 || L.indexOf('completion rate') >= 0) return '/workflow/submitted-forms';
+  if (L.indexOf('form') >= 0) return '/workflow/submitted-forms';
+  return '/workflow/submitted-forms';
+}
+
+function bindDashboardStatCard(card) {
+  if (!card) return;
+  card.onclick = function (e) {
+    if (card.hidden) return;
+    if (e.target.closest('.dashboard-stat-joined-link')) return;
+    e.preventDefault();
+    e.stopPropagation();
+    var action = card.getAttribute('data-action');
+    if (action === 'profile') {
+      if (typeof window.openProfileModal === 'function') window.openProfileModal();
+      return;
+    }
+    var href = card.getAttribute('data-href');
+    if (href) window.location.assign(href);
+  };
+}
+
+function applyDashboardStatCardLinks(metrics) {
+  if (!Array.isArray(metrics)) return;
+  document.querySelectorAll('.dashboard-stat-card--clickable[data-metric-index]').forEach(function (card) {
+    var idx = parseInt(card.getAttribute('data-metric-index'), 10);
+    var m = metrics[idx];
+    var label = m && m.label ? m.label : '';
+    var href = (m && m.href) ? String(m.href) : dashboardStatHrefFromLabel(label);
+    card.removeAttribute('data-action');
+    card.setAttribute('data-href', href);
+    if (label) card.setAttribute('title', 'Open ' + label);
+    bindDashboardStatCard(card);
+  });
+  ['stat-card-annual', 'stat-card-sick'].forEach(function (id) {
+    var card = document.getElementById(id);
+    if (!card || card.hidden) return;
+    card.removeAttribute('data-href');
+    card.setAttribute('data-action', 'profile');
+    card.setAttribute('title', 'View profile');
+    bindDashboardStatCard(card);
+  });
+}
+
 function loadDashboardStats() {
   const widget = document.querySelector('.dashboard-widget');
   if (!widget) return;
   // Review History page populates its widget from submission data, not global stats
   if (document.body.classList.contains('review-dashboard')) return;
 
-  const textEl = document.getElementById('dashboard-activity-text');
-  const timeEl = document.getElementById('dashboard-activity-time');
-  const listEl = document.getElementById('dashboard-activity-list');
-
   const token = localStorage.getItem('access_token');
-  if (!token) {
-    if (textEl) textEl.textContent = 'Sign in to see activity';
-    return;
-  }
+  if (!token) return;
 
   authenticatedFetch('/api/workflow/dashboard-stats')
     .then(function (response) {
@@ -2506,26 +2500,70 @@ function loadDashboardStats() {
       });
     })
     .then(function (result) {
-      if (!result.ok || !result.body) {
-        if (textEl) textEl.textContent = 'Unable to load stats. Try signing in again.';
-        if (timeEl) timeEl.textContent = '';
-        if (listEl) listEl.innerHTML = '';
-        return;
-      }
+      if (!result.ok || !result.body) return;
       // API: hero_metrics + dashboard_role, or legacy forms_submitted / pending_review / ...
       var d = result.body;
       var metrics = d.hero_metrics;
       if (Array.isArray(metrics) && metrics.length) {
+        var joinedRow = document.getElementById('stat-label-row-3');
         for (var i = 0; i < 4; i++) {
           var m = metrics[i];
           var lbl = document.getElementById('stat-label-' + i);
           var val = document.getElementById('stat-value-' + i);
-          if (lbl && m && m.label) lbl.textContent = m.label;
+          if (lbl && m && m.label) {
+            if (i === 3 && joinedRow) {
+              var joinedDate = m.joined_date || d.employment_start_date;
+              if (joinedDate) {
+                joinedRow.innerHTML = escapeHtml(m.label) + ' · Joined <a href="#" id="stat-joined-link-3" class="dashboard-stat-joined-link">' + escapeHtml(joinedDate) + '</a>';
+                var joinedLink = document.getElementById('stat-joined-link-3');
+                if (joinedLink) {
+                  joinedLink.onclick = function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (typeof openProfileModal === 'function') openProfileModal();
+                  };
+                }
+              } else {
+                joinedRow.innerHTML = '<span id="stat-label-3">' + escapeHtml(m.label) + '</span>';
+              }
+            } else {
+              lbl.textContent = m.label;
+            }
+          }
           if (val && m) {
             var v = m.value;
             val.textContent = v != null && v !== '' ? String(v) : '0';
           }
+          if (i === 3) {
+            var annualCard = document.getElementById('stat-card-annual');
+            var sickCard = document.getElementById('stat-card-sick');
+            var annualValEl = document.getElementById('leave-annual-value');
+            var sickValEl = document.getElementById('leave-sick-value');
+            var gridEl = document.getElementById('dashboard-stats-grid');
+            var annual = m && m.annual_leave_days != null ? m.annual_leave_days : null;
+            var other = m && m.other_leave_days != null ? m.other_leave_days : null;
+            if (annualCard && sickCard && annualValEl && sickValEl) {
+              if (annual != null || other != null) {
+                annualValEl.textContent = annual != null ? String(annual) : '0';
+                sickValEl.textContent = other != null ? String(other) : '0';
+                annualCard.hidden = false;
+                sickCard.hidden = false;
+                annualCard.removeAttribute('data-href');
+                annualCard.setAttribute('data-action', 'profile');
+                sickCard.removeAttribute('data-href');
+                sickCard.setAttribute('data-action', 'profile');
+                bindDashboardStatCard(annualCard);
+                bindDashboardStatCard(sickCard);
+                if (gridEl) gridEl.classList.add('has-leave');
+              } else {
+                annualCard.hidden = true;
+                sickCard.hidden = true;
+                if (gridEl) gridEl.classList.remove('has-leave');
+              }
+            }
+          }
         }
+        applyDashboardStatCardLinks(metrics);
       } else {
         var formsEl = document.getElementById('stat-value-0') || document.getElementById('stat-forms-submitted');
         var pendingEl = document.getElementById('stat-value-1') || document.getElementById('stat-pending-review');
@@ -2539,41 +2577,30 @@ function loadDashboardStats() {
         if (pendingEl) pendingEl.textContent = typeof d.pending_review === 'number' ? d.pending_review : (d.pending_review != null ? d.pending_review : '0');
         if (usersEl) usersEl.textContent = typeof d.active_users === 'number' ? d.active_users : (d.active_users != null ? d.active_users : '0');
         if (rateEl) rateEl.textContent = typeof d.completion_rate === 'number' ? d.completion_rate + '%' : (d.completion_rate != null ? d.completion_rate + '%' : '0%');
-      }
-
-      var activity = d.recent_activity || [];
-      var firstItem = document.getElementById('dashboard-activity-item');
-
-      if (activity.length === 0) {
-        if (textEl) textEl.textContent = 'No recent activity';
-        if (timeEl) timeEl.textContent = '';
-        if (listEl) listEl.innerHTML = '';
-      } else {
-        if (firstItem && textEl && timeEl) {
-          textEl.textContent = activity[0].text;
-          timeEl.textContent = activity[0].time_ago || '';
+        var joinedRowFb = document.getElementById('stat-label-row-3');
+        if (joinedRowFb) {
+          var lblFb = document.getElementById('stat-label-3');
+          if (lblFb) joinedRowFb.innerHTML = '<span id="stat-label-3">' + escapeHtml(lblFb.textContent || 'Completion rate') + '</span>';
         }
-        if (listEl) {
-          listEl.innerHTML = activity.slice(1, 5).map(function (a) {
-            return '<div class="dashboard-activity-item"><span class="dashboard-activity-icon">✓</span><span class="dashboard-activity-text">' + escapeHtml(a.text) + '</span><span class="dashboard-activity-time">' + escapeHtml(a.time_ago || '') + '</span></div>';
-          }).join('');
-        }
+        var annualCardFb = document.getElementById('stat-card-annual');
+        var sickCardFb = document.getElementById('stat-card-sick');
+        var gridFb = document.getElementById('dashboard-stats-grid');
+        if (annualCardFb) annualCardFb.hidden = true;
+        if (sickCardFb) sickCardFb.hidden = true;
+        if (gridFb) gridFb.classList.remove('has-leave');
       }
     })
-    .catch(function (err) {
-      if (textEl) textEl.textContent = 'Unable to load activity';
-      if (timeEl) timeEl.textContent = '';
-      if (listEl) listEl.innerHTML = '';
-    });
+    .catch(function () {});
 }
 
 function loadInspectionDashboardStats() {
   var grid = document.getElementById('inspection-stats-grid');
   if (!grid) return;
+  var cardCount = grid.querySelectorAll('.dashboard-stat-card').length || 3;
 
   var token = localStorage.getItem('access_token');
   if (!token) {
-    for (var j = 0; j < 4; j++) {
+    for (var j = 0; j < cardCount; j++) {
       var ve = document.getElementById('insp-stat-value-' + j);
       if (ve) ve.textContent = '—';
     }
@@ -2591,13 +2618,13 @@ function loadInspectionDashboardStats() {
     .then(function (result) {
       var metrics = result.body && result.body.hero_metrics;
       if (!result.ok || !Array.isArray(metrics) || !metrics.length) {
-        for (var i = 0; i < 4; i++) {
+        for (var i = 0; i < cardCount; i++) {
           var vv = document.getElementById('insp-stat-value-' + i);
           if (vv) vv.textContent = '—';
         }
         return;
       }
-      for (var k = 0; k < 4; k++) {
+      for (var k = 0; k < cardCount; k++) {
         var m = metrics[k];
         var lbl = document.getElementById('insp-stat-label-' + k);
         var val = document.getElementById('insp-stat-value-' + k);
@@ -2605,11 +2632,13 @@ function loadInspectionDashboardStats() {
         if (val && m) {
           var v = m.value;
           val.textContent = v != null && v !== '' ? String(v) : '0';
+        } else if (val && !m) {
+          val.textContent = '—';
         }
       }
     })
     .catch(function () {
-      for (var e = 0; e < 4; e++) {
+      for (var e = 0; e < cardCount; e++) {
         var el = document.getElementById('insp-stat-value-' + e);
         if (el) el.textContent = '—';
       }
@@ -2682,7 +2711,14 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     loadUserWelcome();
+    document.querySelectorAll('.dashboard-stat-card--clickable').forEach(bindDashboardStatCard);
     loadDashboardStats();
+
+    let _moduleGridResizeTimer;
+    window.addEventListener('resize', function () {
+      clearTimeout(_moduleGridResizeTimer);
+      _moduleGridResizeTimer = setTimeout(updateModuleGridLayout, 150);
+    });
     
     // Check immediately if user data exists
     const userStr = localStorage.getItem('user');
@@ -2801,6 +2837,7 @@ document.addEventListener('DOMContentLoaded', function() {
   function closeMobileMenu() {
     if (mobileMenuToggle) {
       mobileMenuToggle.classList.remove('active');
+      mobileMenuToggle.classList.remove('is-hint-paused');
       mobileMenuToggle.setAttribute('aria-expanded', 'false');
     }
     if (mobileMenuDrawer) {
@@ -2827,6 +2864,7 @@ document.addEventListener('DOMContentLoaded', function() {
     populateDrawer();
     if (mobileMenuToggle) {
       mobileMenuToggle.classList.add('active');
+      mobileMenuToggle.classList.add('is-hint-paused');
       mobileMenuToggle.setAttribute('aria-expanded', 'true');
     }
     if (mobileMenuDrawer) {
@@ -2990,6 +3028,19 @@ async function loadNotificationCount() {
   }
 }
 
+function updateMobileMenuHint(count) {
+  const btn = document.getElementById('mobileMenuToggle');
+  if (!btn) return;
+  if (count > 0) {
+    btn.classList.add('has-unread-hint');
+    btn.setAttribute('aria-label', `Toggle menu (${count} pending)`);
+  } else {
+    btn.classList.remove('has-unread-hint');
+    btn.classList.remove('is-hint-paused');
+    btn.setAttribute('aria-label', 'Toggle menu');
+  }
+}
+
 function updateNotificationBadge(count) {
   const badge = document.getElementById('notificationBadge');
   if (!badge) return;
@@ -3017,10 +3068,13 @@ async function loadNotifications() {
     
     if (data.notifications && data.notifications.length > 0) {
       notificationList.innerHTML = data.notifications.map(n => {
+        const isInspection = (n.notification_type || '').startsWith('inspection_');
         const iconClass = n.notification_type.includes('approved') ? 'approved' : 
-                          n.notification_type.includes('rejected') ? 'rejected' : 'info';
+                          n.notification_type.includes('rejected') ? 'rejected' :
+                          isInspection ? 'pending' : 'info';
         const iconEmoji = n.notification_type.includes('approved') ? '✓' : 
-                          n.notification_type.includes('rejected') ? '✕' : 'ℹ';
+                          n.notification_type.includes('rejected') ? '✕' :
+                          isInspection ? '📋' : 'ℹ';
         const createdAt = parseUtcInstantForRelative(n.created_at);
         const timeAgo = createdAt ? getTimeAgo(createdAt) : '';
         
@@ -3072,6 +3126,25 @@ async function markNotificationRead(id, submissionId, notificationType) {
       }
       if (notificationType === 'hr_replacement_complete') {
         window.location.href = '/hr/my-requests';
+        return;
+      }
+      if (notificationType && notificationType.startsWith('inspection_')) {
+        // Approval-pending notifications go straight to the form so the
+        // reviewer can read items, comment, and sign in one click.
+        if (notificationType === 'inspection_approval_pending') {
+          window.location.href = submissionId
+            ? '/workflow/inspection/' + encodeURIComponent(submissionId)
+            : '/workflow/pending-reviews';
+          return;
+        }
+        // Approved/rejected notifications open the submitter's record.
+        if (notificationType === 'inspection_approved' || notificationType === 'inspection_rejected') {
+          window.location.href = submissionId
+            ? '/workflow/inspection/' + encodeURIComponent(submissionId)
+            : '/workflow/submitted-forms?scope=inspection';
+          return;
+        }
+        window.location.href = '/workflow/pending-reviews';
         return;
       }
       window.location.href = '/hr/';

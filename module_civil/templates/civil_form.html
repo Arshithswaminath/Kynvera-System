@@ -10,6 +10,7 @@
   
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
   <script src="{{ url_for('static', filename='js/console-guard.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/approval_comment.js') }}"></script>
 <!-- PWA Meta Tags -->
   <meta name="theme-color" content="#125435">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -47,27 +48,7 @@
       --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
     }
 
-  /* Signature display: remove inner box and green background */
-  div[id*="SignatureReadOnly"],
-  #omOwnSignatureReadOnly {
-    background: #fff !important;
-    padding: 0 !important;
-  }
-
-  div[id*="SignatureReadOnly"] img,
-  #omOwnSignatureReadOnly img {
-    background: transparent !important;
-    border: 0 !important;
-    padding: 0 !important;
-    box-shadow: none !important;
-    max-width: 100% !important;
-    max-height: 100% !important;
-    width: auto !important;
-    height: auto !important;
-    object-fit: contain;
-    display: block;
-    margin: 0 auto;
-  }
+  /* Signature display — see static/css/signature-display.css */
     
     body {
       background: var(--bg-page);
@@ -525,9 +506,9 @@
       border-radius: 6px;
       width: 100% !important;
       max-width: 100%;
-      height: 120px !important;
-      max-height: 120px !important;
-      min-height: 120px !important;
+      height: 168px !important;
+      max-height: 168px !important;
+      min-height: 168px !important;
       background: #ffffff;
       cursor: crosshair;
       display: block;
@@ -562,9 +543,9 @@
     
     /* Signature Pad - ensure proper sizing */
     canvas.signature-pad {
-      height: 120px !important;
-      min-height: 120px !important;
-      max-height: 120px !important;
+      height: 168px !important;
+      min-height: 168px !important;
+      max-height: 168px !important;
       border: 1px solid #d1d5db;
       border-radius: 6px;
     }
@@ -1261,13 +1242,21 @@
   </style>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/inspection-forms-unified.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/materials-picker.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/ticketing.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-signoff-activity.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/inspection-form-redesign.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/signature-display.css') }}">
+  <script src="{{ url_for('static', filename='js/signature_display.js') }}"></script>
 </head>
 <body class="inspection-form">
   {% set active_page = 'inspection' %}
   {% set show_inspection_save_draft = (not is_edit_mode or (submission_data and submission_data.workflow_status == 'draft')) %}
   {% include 'partials/main_navbar.html' with context %}
 
-  <div class="container">
+  <div class="container has-if-layout">
+    {% include 'partials/inspection_form_back.html' %}
+    <div class="if-layout">
+    <main class="if-layout-main">
 
     {% if is_edit_mode and can_edit == False %}
     <!-- Read-Only Mode Banner -->
@@ -1504,7 +1493,7 @@
 
     <!-- TAB 5: Sign-off & Submit -->
     <div class="tab-pane fade" id="tab-5" role="tabpanel">
-      {% if user_designation == 'supervisor' %}
+      {% if user_designation in ('supervisor', 'manager') or (user and user.role == 'admin') or not is_edit_mode %}
       <h4 class="section-heading-no-border">Supervisor Sign-off</h4>
       {% elif user_designation == 'operations_manager' %}
       <h4 class="section-heading-no-border">Operations Manager Review</h4>
@@ -1520,7 +1509,7 @@
       
       <div class="row g-3">
       <!-- Supervisor Review Section - Only visible to supervisors and admins -->
-      {% if user_designation == 'supervisor' or (user and user.role == 'admin') %}
+      {% if user_designation in ('supervisor', 'manager') or (user and user.role == 'admin') or not is_edit_mode %}
       <div class="col-12 mb-2" style="border-top: 2px solid var(--primary); padding-top: 1rem; margin-top: 0.5rem;">
         <h5 style="color: var(--primary); margin-bottom: 0.75rem; font-size: 1rem;">Supervisor Review</h5>
           
@@ -2156,11 +2145,10 @@
         <button type="button" class="btn btn-outline-secondary" onclick="goToTab(4)">&#8592; Previous</button>
         {% if can_edit != False %}
         <div class="d-flex gap-2">
-          {% if user_designation == 'supervisor' or (user and user.role == 'admin') %}
+          {% if user_designation in ('supervisor', 'manager') or (user and user.role == 'admin') or not is_edit_mode %}
           <button type="button" id="verifiedBtn" class="btn btn-success btn-lg">
-            <span id="verifiedBtnIcon">&#10003;</span> Verify
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px"><polyline points="20 6 9 17 4 12"/></svg><span id="verifiedBtnLabel">Verify</span>
           </button>
-          <span id="verifiedStatus" class="d-none align-self-center" style="color: #059669; font-weight: 600;">&#10003; Verified</span>
           {% endif %}
           <button type="button" id="uploadImagesBtn" class="btn btn-success btn-lg">
             <span id="uploadImagesBtnText">Upload Images</span>
@@ -2187,7 +2175,11 @@
     </div>
     <!-- End tab-content -->
     </form>
+    </main>
+    {% include 'partials/inspection_sidebar.html' %}
+    </div>{# /if-layout #}
   </div>
+  <script src="{{ url_for('static', filename='js/inspection_sidebar.js') }}" defer></script>
 
   <!-- Upload Progress Modal -->
   <div id="uploadModal" class="upload-modal">
@@ -2473,6 +2465,16 @@
 
     let userDefaultSignature = null;
     let userDefaultComment = '';
+    function resolveDefaultApprovalComment() {
+      return window.InjaazApprovalComment
+        ? window.InjaazApprovalComment.resolveDefaultApprovalComment()
+        : 'Signed & Verified';
+    }
+    function ensureSignedVerifiedComment(raw) {
+      return window.InjaazApprovalComment
+        ? window.InjaazApprovalComment.ensureSignedVerifiedComment(raw)
+        : (raw || '').trim();
+    }
     async function loadUserDefaults() {
       const token = localStorage.getItem('access_token');
       if (!token) return;
@@ -2485,10 +2487,22 @@
         if (data.user) {
           userDefaultSignature = data.user.default_signature || null;
           userDefaultComment = data.user.default_comment || '';
+          if (window.InjaazApprovalComment) {
+            window.InjaazApprovalComment.setUserContext(data.user);
+          }
         }
       } catch (error) {
         console.warn('Failed to load user defaults', error);
       }
+    }
+
+    async function applySignatureToPadScaled(pad, dataUrl) {
+      if (!pad || !dataUrl) return dataUrl;
+      if (window.InjaazSignatureDisplay && window.InjaazSignatureDisplay.applySignatureToPad) {
+        return await window.InjaazSignatureDisplay.applySignatureToPad(pad, pad.canvas, dataUrl);
+      }
+      pad.fromDataURL(dataUrl);
+      return dataUrl;
     }
 
     async function resolveSignatureDataUrl(src) {
@@ -2552,9 +2566,9 @@
               
               const dataUrl = await resolveSignatureDataUrl(userDefaultSignature);
               if (dataUrl) {
-                pad.fromDataURL(dataUrl);
+                const fitted = await applySignatureToPadScaled(pad, dataUrl);
                 const sigInput = document.getElementById(inputId);
-                if (sigInput) sigInput.value = dataUrl;
+                if (sigInput) sigInput.value = fitted;
                 
                 // Show success feedback
                 btn.innerHTML = checkIconSvg + '<span class="sig-text">Applied!</span>';
@@ -2580,8 +2594,8 @@
           }
           
           const commentEl = document.getElementById(commentId);
-          if (commentEl && userDefaultComment && !commentEl.value.trim()) {
-            commentEl.value = userDefaultComment;
+          if (commentEl && !commentEl.value.trim()) {
+            commentEl.value = resolveDefaultApprovalComment();
           }
         });
       });
@@ -2703,45 +2717,30 @@
       
       // Verified button handler (for supervisor)
       const verifiedBtn = document.getElementById('verifiedBtn');
-      const verifiedStatus = document.getElementById('verifiedStatus');
       let isVerified = false;
-      
+      const svgCheck = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px"><polyline points="20 6 9 17 4 12"/></svg>';
+
       if (verifiedBtn) {
         verifiedBtn.addEventListener('click', () => {
-          // Get supervisor comment and signature
           const supervisorComments = document.getElementById('supervisorComments');
           const supervisorSignatureData = document.getElementById('supervisorSignatureData');
           const supervisorPadCanvas = document.getElementById('supervisorSignaturePad');
-          
           const hasComment = supervisorComments && supervisorComments.value.trim().length > 0;
-          const hasSignature = (supervisorSignatureData && supervisorSignatureData.value.trim().length > 0) || 
-                              (supervisorPadCanvas && !supervisorPadCanvas.getContext('2d').isPointInPath && window.pads?.supervisorPad && !window.pads.supervisorPad.isEmpty());
-          
-          // If trying to verify, check if comment or signature exists
-          if (!isVerified) {
-            if (!hasComment && !hasSignature) {
-              // Show error
-              alert('Please add a comment or signature before verifying.');
-              return;
-            }
+          const hasSignature = (supervisorSignatureData && supervisorSignatureData.value.trim().length > 0) ||
+                              (supervisorPadCanvas && window.pads?.supervisorPad && !window.pads.supervisorPad.isEmpty());
+          if (!isVerified && !hasComment && !hasSignature) {
+            alert('Please add a comment or signature before verifying.');
+            return;
           }
-          
           isVerified = !isVerified;
           if (isVerified) {
             verifiedBtn.classList.remove('btn-success');
             verifiedBtn.classList.add('btn-outline-success');
-            verifiedBtn.innerHTML = '<span id="verifiedBtnIcon">✓</span> Verified';
-            if (verifiedStatus) {
-              verifiedStatus.classList.remove('d-none');
-              verifiedStatus.textContent = '✓ Verified';
-            }
+            verifiedBtn.innerHTML = svgCheck + '<span id="verifiedBtnLabel">Verified</span>';
           } else {
             verifiedBtn.classList.remove('btn-outline-success');
             verifiedBtn.classList.add('btn-success');
-            verifiedBtn.innerHTML = '<span id="verifiedBtnIcon">✓</span> Verify';
-            if (verifiedStatus) {
-              verifiedStatus.classList.add('d-none');
-            }
+            verifiedBtn.innerHTML = svgCheck + '<span id="verifiedBtnLabel">Verify</span>';
           }
         });
       }
@@ -2768,6 +2767,9 @@
 
         loadUserDefaults().then(() => {
           initDefaultSignatureButtons();
+          if (window.InjaazApprovalComment) {
+            window.InjaazApprovalComment.bindApprovalCommentFields();
+          }
         });
 
         // When the Sign-off tab becomes visible, resize canvases (Bootstrap tabs hide them by default)
@@ -2837,11 +2839,33 @@
       
       // Standard function to display signatures in read-only containers
       // This ensures all signatures are displayed consistently with proper aspect ratio
+      function _gateReviewBadgeForContainer(container, hasSignature) {
+        if (!container) return;
+        let section = container.parentElement;
+        while (section && !(section.id && section.id.indexOf('ReadOnly') !== -1 && section.id !== container.id)) {
+          section = section.parentElement;
+        }
+        if (!section) return;
+        const header = section.querySelector('h6');
+        if (!header) return;
+        if (hasSignature) {
+          header.innerHTML = header.innerHTML.replace('✓ Reviewed:', '✓ Signed:');
+        } else {
+          header.innerHTML = header.innerHTML.replace('✓ Signed:', '✓ Reviewed:');
+        }
+      }
+
       function displaySignatureInContainer(containerId, signatureData, altText) {
         const container = document.getElementById(containerId);
         if (!container) return;
+
+        if (window.InjaazSignatureDisplay && typeof window.InjaazSignatureDisplay.mountSignatureImage === 'function') {
+          window.InjaazSignatureDisplay.mountSignatureImage(container, signatureData, altText, function (ok) {
+            _gateReviewBadgeForContainer(container, !!ok);
+          });
+          return;
+        }
         
-        // Clear container
         container.innerHTML = '';
         container.style.display = 'flex';
         container.style.alignItems = 'center';
@@ -2849,28 +2873,30 @@
         
         if (!signatureData) {
           container.innerHTML = '<span style="color: #9ca3af;">Signature not available</span>';
+          _gateReviewBadgeForContainer(container, false);
           return;
         }
         
-        // Extract signature URL
         let sigUrl = signatureData;
         if (typeof sigUrl === 'object' && sigUrl !== null && sigUrl.url) {
           sigUrl = sigUrl.url;
         }
         
-        // Validate signature URL
         if (typeof sigUrl === 'string' && (sigUrl.startsWith('data:') || sigUrl.startsWith('http') || sigUrl.startsWith('/'))) {
           const img = document.createElement('img');
           img.src = sigUrl;
           img.alt = altText || 'Signature';
-          // Standard signature display style - maintains aspect ratio, centered, contained
-          img.style.cssText = 'max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; object-position: center; display: block;';
+          img.setAttribute('data-signature-display', '1');
+          img.style.cssText = 'max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; object-position: center; display: block; background: transparent; mix-blend-mode: multiply;';
           img.onerror = () => {
             container.innerHTML = '<span style="color: #dc3545;">Failed to load signature</span>';
+            _gateReviewBadgeForContainer(container, false);
           };
           container.appendChild(img);
+          _gateReviewBadgeForContainer(container, true);
         } else {
           container.innerHTML = '<span style="color: #9ca3af;">Signature not available</span>';
+          _gateReviewBadgeForContainer(container, false);
         }
       }
 
@@ -6222,6 +6248,9 @@
         statusBox.innerHTML = '';
         
         // Get supervisor signature and comments (only required for supervisors)
+        if (window.InjaazApprovalComment) {
+          window.InjaazApprovalComment.normalizeCommentFields();
+        }
         let supervisorData = '';
         let supervisorComments = '';
         let supervisorVerified = false;

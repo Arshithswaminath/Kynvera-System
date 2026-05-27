@@ -1,34 +1,17 @@
-/** HR submit: management chain from Admin reporting line; technicians pick Operations manager only. */
+/**
+ * HR submission — Box 2 ("who will sign by name").
+ *
+ * Routing is derived server-side from the submitter's lane (technician,
+ * supervisor, office staff). The client only renders ctx.chain returned by
+ * /hr/api/mgmt-chain-context — never sends signer IDs.
+ */
 (function () {
-  const state = {
-    omId: [],
-    omUsers: [],
-    allUsers: [],
-    ctx: null,
-  };
+  const state = { ctx: null };
 
-  function laneFromDom() {
-    const w = document.getElementById('hrMgmtChainWrap');
-    return (w && w.getAttribute('data-lane')) || 'employee';
-  }
-
-  function chip(html) {
-    const s = document.createElement('span');
-    s.style.cssText =
-      'display:inline-flex;align-items:center;gap:.25rem;font-size:.92rem;font-weight:600;padding:.18rem .55rem;border-radius:999px;background:#e2e8f0;color:#0f172a;';
-    s.innerHTML = html;
-    return s;
-  }
-
-  function fillSelect(sel, users) {
-    if (!sel) return;
-    sel.innerHTML = '<option value="">Select…</option>';
-    users.forEach((u) => {
-      const o = document.createElement('option');
-      o.value = String(u.id);
-      o.textContent = u.full_name || u.username || '#' + u.id;
-      sel.appendChild(o);
-    });
+  function escapeHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s == null ? '' : String(s);
+    return d.innerHTML;
   }
 
   function showSetupError(msg) {
@@ -43,223 +26,203 @@
     el.textContent = msg;
   }
 
-  function applyContext(ctx) {
-    state.ctx = ctx;
-    const lane = ctx.lane || laneFromDom();
-    const intro = document.getElementById('hrMgmtIntro');
-    const omRow = document.getElementById('hrMgmtOmRow');
-    const assignedLbl = document.getElementById('hrMgmtAssignedLbl');
-    const chips = document.getElementById('hrMgmtAssignedChips');
-    const empty = document.getElementById('hrMgmtAssignedEmpty');
-    const gmHint = document.getElementById('hrMgmtRmGmHint');
+  function showMissingPools(pools) {
+    const el = document.getElementById('hrMgmtMissingPools');
+    if (!el) return;
+    if (!pools || !pools.length) {
+      el.style.display = 'none';
+      el.innerHTML = '';
+      return;
+    }
+    const list = pools.map(escapeHtml).join(', ');
+    el.style.display = 'block';
+    el.innerHTML =
+      'Heads up: no active users are set up yet for: <strong>' + list + '</strong>. ' +
+      'Ask an administrator to assign the right designation to the relevant staff so this form can complete.';
+  }
+
+  function appendStep(list, num, role, name, desc, modifier) {
+    const li = document.createElement('li');
+    li.className = 'hr-mgmt-chain-step' + (modifier ? ' ' + modifier : '');
+    li.innerHTML =
+      '<div class="hr-mgmt-chain-step__num">' + num + '</div>' +
+      '<div class="hr-mgmt-chain-step__body">' +
+      '<div class="hr-mgmt-chain-step__role">' + escapeHtml(role) + '</div>' +
+      '<div class="hr-mgmt-chain-step__name">' + escapeHtml(name) + '</div>' +
+      (desc ? '<div class="hr-mgmt-chain-step__desc">' + escapeHtml(desc) + '</div>' : '') +
+      '</div>';
+    list.appendChild(li);
+  }
+
+  function renderChain(ctx) {
+    const list = document.getElementById('hrMgmtChainList');
+    if (!list) return;
+    list.innerHTML = '';
 
     if (ctx.admin_profile_bypass) {
-      if (intro)
-        intro.innerHTML =
-          'As an <strong>administrator</strong> with no reporting manager on your profile, this submission ' +
-          'skips the PDF management chain and goes straight to the <strong>HR review</strong> queue.';
-      if (assignedLbl) assignedLbl.textContent = 'Management chain';
-      if (omRow) omRow.style.display = 'none';
-      if (gmHint) gmHint.style.display = 'none';
-      if (chips) {
-        chips.innerHTML = '';
-        chips.appendChild(
-          chip('Admin — HR review queue (management chain skipped for this submit)')
-        );
-      }
-      if (empty) empty.style.display = 'none';
-      showSetupError(null);
+      appendStep(
+        list,
+        1,
+        'HR review queue',
+        'Direct to HR',
+        'Admin submission: the management chain is skipped.',
+        '',
+      );
       return;
     }
 
+    const chain = Array.isArray(ctx.chain) ? ctx.chain : [];
+    if (!chain.length) {
+      // Setup error path — sidebar shows the banner; leave list empty.
+      return;
+    }
+
+    let n = 1;
+    chain.forEach((c) => {
+      const cls = c.missing ? 'hr-mgmt-chain-step--missing' : '';
+      const desc = c.missing
+        ? (c.key === 'supervisor'
+            ? 'Not set on your profile. Ask an administrator to assign your supervisor.'
+            : 'No active users with this role yet. Ask an administrator to assign someone.')
+        : c.who_detail;
+      appendStep(
+        list,
+        n++,
+        c.role_label || 'Signer',
+        c.who_label || 'Assigned signer',
+        desc,
+        cls,
+      );
+    });
+  }
+
+  function applyContext(ctx) {
+    state.ctx = ctx;
+
+    const intro = document.getElementById('hrMgmtIntro');
     if (intro) {
-      if (lane === 'technician') {
-        intro.innerHTML =
-          'You are a <strong>technician</strong>. Your <strong>reporting supervisor</strong> is the person set as <em>Reporting manager</em> on your profile (must be a Supervisor account). ' +
-          'Select the <strong>operations manager</strong> below. The trail is: reporting supervisor → operations manager → general manager (skipped if your supervisor is the GM) → HR (head office).';
+      intro.textContent =
+        ctx.lane_intro ||
+        ctx.setup_error ||
+        (ctx.lane ? 'Approval routing loaded.' : 'Could not determine approval routing.');
+    }
+
+    const flow = document.getElementById('hrMgmtFlow');
+    if (flow) {
+      if (ctx.lane_flow) {
+        flow.style.display = 'block';
+        flow.innerHTML = 'Order: <strong>' + escapeHtml(ctx.lane_flow) + '</strong>';
       } else {
-        intro.innerHTML =
-          'Your <strong>reporting manager</strong> is assigned on your profile by an administrator. This form routes: reporting manager → general manager (skipped if your reporting manager is already the GM) → HR (head office). ' +
-          '<strong>No operations manager</strong> step for your role.';
+        flow.style.display = 'none';
+        flow.innerHTML = '';
       }
     }
 
-    if (assignedLbl) {
-      assignedLbl.textContent = lane === 'technician' ? 'Reporting supervisor' : 'Reporting manager';
-    }
-
-    if (omRow) omRow.style.display = ctx.needs_operations_manager ? 'block' : 'none';
-
-    if (gmHint)
-      gmHint.style.display = ctx.reporting_contact_is_general_manager ? 'block' : 'none';
-
-    if (chips) chips.innerHTML = '';
-    const rc = ctx.reporting_contact;
-    if (rc && chips) {
-      chips.appendChild(chip(escapeHtml(rc.full_name || '#' + rc.id)));
-      if (empty) empty.style.display = 'none';
-    } else if (empty) {
-      empty.style.display = 'block';
-    }
-
+    renderChain(normalizeCtx(ctx));
     showSetupError(ctx.setup_error || null);
-  }
+    showMissingPools(ctx.missing_pools || []);
 
-  function escapeHtml(s) {
-    const d = document.createElement('div');
-    d.textContent = s || '';
-    return d.innerHTML;
-  }
-
-  function bindOmPick() {
-    const sel = document.getElementById('hrMgmtOmSel');
-    const add = document.getElementById('hrMgmtOmAdd');
-    const chipHost = document.getElementById('hrMgmtOmChips');
-    if (!sel || !add || !chipHost) return;
-    function nameFor(uid) {
-      const u = state.omUsers.find((x) => String(x.id) === String(uid));
-      return u ? u.full_name || u.username : null;
-    }
-    function renderOm() {
-      chipHost.innerHTML = '';
-      state.omId.forEach((id, i) => {
-        const nm = nameFor(id) || 'User #' + id;
-        const c = chip(
-          nm +
-            ' <button type="button" data-i="' +
-            i +
-            '" style="border:none;background:transparent;cursor:pointer;font-weight:bold">×</button>'
-        );
-        c.querySelector('button').onclick = () => {
-          state.omId.splice(i, 1);
-          renderOm();
+    // Expose lane after UI is painted so listeners cannot block intro/chain updates.
+    try {
+      window.__hrMgmtChainLane = ctx.lane || null;
+      window.__hrMgmtChainSigners = (ctx.chain || []).map(function (c) {
+        return {
+          key: c.key,
+          role: c.role_label || 'Signer',
+          name: c.who_label || 'Assigned signer',
+          missing: !!c.missing,
         };
-        chipHost.appendChild(c);
       });
-    }
-    add.onclick = () => {
-      const v = sel.value;
-      if (!v) return;
-      const uid = parseInt(v, 10);
-      if (!uid) return;
-      state.omId.length = 0;
-      state.omId.push(uid);
-      renderOm();
-      sel.value = '';
-    };
+      const managerLabel = ctx.lane === 'technician'
+        ? 'Supervisor signature'
+        : (ctx.lane === 'supervisor' ? 'Operations manager signature' : 'General manager signature');
+      window.__hrMgmtManagerSigLabel = managerLabel;
+      document.dispatchEvent(new CustomEvent('hr-mgmt-chain-ready', {
+        detail: { lane: ctx.lane, managerLabel, signers: window.__hrMgmtChainSigners },
+      }));
+    } catch (_) { /* ignore */ }
+  }
+
+  /** Backward-compat: older API responses used `preview` instead of `chain`. */
+  function normalizeCtx(ctx) {
+    if (Array.isArray(ctx.chain) && ctx.chain.length) return ctx;
+    const preview = Array.isArray(ctx.preview) ? ctx.preview : [];
+    if (!preview.length) return ctx;
+    return Object.assign({}, ctx, {
+      chain: preview.map(function (p) {
+        return {
+          key: (p.designation || 'reporting_manager').replace(/\s+/g, '_'),
+          role_label: p.role_label || 'Reporting manager',
+          who_label: p.full_name || 'Assigned signer',
+          who_detail: null,
+          missing: false,
+        };
+      }),
+    });
+  }
+
+  function boot() {
+    const wrap = document.getElementById('hrMgmtChainWrap');
+    if (!wrap || wrap.dataset.hrMgmtChainBooted === '1') return;
+    wrap.dataset.hrMgmtChainBooted = '1';
+
+    const token = localStorage.getItem('access_token');
+    fetch('/hr/api/mgmt-chain-context', {
+      headers: token ? { Authorization: 'Bearer ' + token } : {},
+    })
+      .then(function (res) {
+        return res.json().catch(function () { return {}; }).then(function (ctx) {
+          if (!res.ok || !ctx.success) {
+            applyContext({
+              chain: [],
+              missing_pools: [],
+              setup_error: ctx.error || 'Could not load management routing.',
+            });
+          } else {
+            applyContext(ctx);
+          }
+        });
+      })
+      .catch(function () {
+        applyContext({
+          chain: [],
+          missing_pools: [],
+          setup_error: 'Network error loading management routing.',
+        });
+      });
   }
 
   window.HrMgmtChainValidate = function () {
     if (!document.getElementById('hrMgmtChainWrap')) return null;
     const ctx = state.ctx || {};
     if (ctx.setup_error) return ctx.setup_error;
-    if (ctx.admin_profile_bypass) return null;
-    if (!ctx.has_reporting_contact) {
-      return 'Reporting manager must be set on your profile by an administrator before you can submit.';
-    }
-    const lane = ctx.lane || laneFromDom();
-    if (lane === 'technician') {
-      if (!state.omId.length) return 'Select the operations manager.';
-    }
     return null;
   };
 
   window.HrMgmtChainGetPayload = function () {
-    if (!document.getElementById('hrMgmtChainWrap')) return {};
-    const ctx = state.ctx || {};
-    const lane = ctx.lane || laneFromDom();
-    const out = {};
-    if (lane === 'technician' && state.omId[0]) {
-      out.mgmt_operations_manager_signer_id = state.omId[0];
-    }
-    return out;
+    // Routing is fully derived server-side — never send signer IDs.
+    return {};
   };
 
   window.HrMgmtChainReset = function () {
-    state.omId.length = 0;
-    const chipHost = document.getElementById('hrMgmtOmChips');
-    if (chipHost) chipHost.innerHTML = '';
+    /* no user-picked state to reset */
   };
 
-  document.addEventListener('DOMContentLoaded', async () => {
-    const wrap = document.getElementById('hrMgmtChainWrap');
-    if (!wrap) return;
+  document.addEventListener('DOMContentLoaded', boot);
+  if (document.readyState !== 'loading') boot();
 
-    const token = localStorage.getItem('access_token');
-    try {
-      const res = await fetch('/hr/api/mgmt-chain-context', {
-        headers: token ? { Authorization: 'Bearer ' + token } : {},
-      });
-      const ctx = await res.json().catch(() => ({}));
-      if (!res.ok || !ctx.success) {
-        showSetupError(ctx.error || 'Could not load management routing.');
-        applyContext({
-          lane: laneFromDom(),
-          needs_operations_manager: laneFromDom() === 'technician',
-          has_reporting_contact: false,
-          reporting_contact_is_general_manager: false,
-          reporting_contact: null,
-          technician_supervisor_valid: false,
-          setup_error: ctx.error || 'Could not load management routing.',
-        });
-      } else {
-        applyContext(ctx);
-      }
-    } catch (_) {
-      showSetupError('Network error loading management routing.');
-      applyContext({
-        lane: laneFromDom(),
-        needs_operations_manager: laneFromDom() === 'technician',
-        has_reporting_contact: false,
-        reporting_contact_is_general_manager: false,
-        reporting_contact: null,
-        technician_supervisor_valid: false,
-        setup_error: 'Network error loading management routing.',
-      });
-    }
-
-    try {
-      if (token) {
-        const res = await fetch('/hr/api/active-users-for-picker', {
-          headers: { Authorization: 'Bearer ' + token },
-        });
-        const j = await res.json().catch(() => ({}));
-        if (res.ok && j.success && Array.isArray(j.users)) {
-          state.allUsers = j.users;
-          state.omUsers = j.users.filter((u) => (u.designation || '').toLowerCase() === 'operations_manager');
-          fillSelect(document.getElementById('hrMgmtOmSel'), state.omUsers);
-        }
-      }
-    } catch (_) {
-      /* ignore */
-    }
-
-    bindOmPick();
-
+  (function installSubmitFetchHook() {
     const origFetch = window.fetch;
     window.fetch = function (...args) {
       const resource = args[0];
-      let config = args[1];
       const url =
         typeof resource === 'string' ? resource : resource instanceof Request ? resource.url : '';
       if (!url.includes('/hr/api/submit') || !document.getElementById('hrMgmtChainWrap')) {
         return origFetch.apply(this, args);
       }
       const err = window.HrMgmtChainValidate?.();
-      if (err) {
-        return Promise.reject(new Error(err));
-      }
-      if (config && typeof config.body === 'string') {
-        try {
-          const data = JSON.parse(config.body);
-          Object.assign(data, window.HrMgmtChainGetPayload?.() || {});
-          config = Object.assign({}, config, { body: JSON.stringify(data) });
-        } catch (_e) {
-          /* noop */
-        }
-      }
-      const nextArgs = config !== undefined ? [resource, config] : [resource];
-      return origFetch.apply(this, nextArgs);
+      if (err) return Promise.reject(new Error(err));
+      return origFetch.apply(this, args);
     };
-  });
+  })();
 })();

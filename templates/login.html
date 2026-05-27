@@ -455,6 +455,14 @@
                 border-radius: 0.65rem;
                 box-sizing: border-box;
             }
+            .lp-input-wrap--password input.lp-input[type="text"],
+            .lp-input-wrap--password input.lp-input[type="password"] {
+                padding-right: 2.75rem;
+            }
+            .lp-password-toggle {
+                right: 0;
+                width: 2.75rem;
+            }
             .register-link {
                 margin-top: 1.5rem;
                 margin-bottom: 0;
@@ -554,6 +562,45 @@
             transition: color 0.2s;
         }
 
+        .lp-password-toggle {
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 2.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            border: none;
+            padding: 0;
+            margin: 0;
+            color: var(--lp-outline);
+            cursor: pointer;
+            -webkit-appearance: none;
+            appearance: none;
+            transition: color 0.2s;
+            /* Ensure tap target without affecting layout */
+            touch-action: manipulation;
+        }
+
+        .lp-password-toggle:hover,
+        .lp-input-wrap:focus-within .lp-password-toggle {
+            color: var(--lp-primary);
+            background: transparent;
+        }
+
+        .lp-password-toggle:focus-visible {
+            outline: none;
+            color: var(--lp-primary);
+        }
+
+        .lp-password-toggle .material-symbols-outlined {
+            font-size: 1.1rem;
+            line-height: 1;
+            pointer-events: none;
+        }
+
         input.lp-input[type="text"],
         input.lp-input[type="password"] {
             width: 100%;
@@ -576,6 +623,11 @@
             outline: none;
             background: var(--lp-surface-lowest);
             box-shadow: 0 0 0 2px var(--lp-primary-fixed-dim);
+        }
+
+        .lp-input-wrap--password input.lp-input[type="text"],
+        .lp-input-wrap--password input.lp-input[type="password"] {
+            padding-right: 2.5rem;
         }
 
         .btn-login {
@@ -713,9 +765,19 @@
                 border-color: var(--lp-primary-container) !important;
                 box-shadow: 0 0 0 2px var(--lp-primary-fixed-dim) !important;
             }
+            body.login-page .login-card .lp-input-wrap--password input.lp-input[type="text"],
+            body.login-page .login-card .lp-input-wrap--password input.lp-input[type="password"] {
+                padding-right: 2.75rem !important;
+            }
             body.login-page .login-card .lp-input-icon {
                 left: 1rem !important;
                 font-size: 1.35rem !important;
+            }
+            body.login-page .login-card .lp-password-toggle {
+                right: 0 !important;
+                width: 2.75rem !important;
+                background: transparent !important;
+                border: none !important;
             }
         }
 
@@ -776,18 +838,21 @@
 
                 <form id="login-form">
                     <div class="form-group">
-                        <label class="lp-label" for="username">Username or email</label>
+                        <label class="lp-label" for="username">Username or email ID</label>
                         <div class="lp-input-wrap">
                             <span class="material-symbols-outlined lp-input-icon" aria-hidden="true">mail</span>
-                            <input class="lp-input" type="text" id="username" name="username" required autocomplete="username" placeholder="you@company.com">
+                            <input class="lp-input" type="text" id="username" name="username" required autocomplete="username" placeholder="Username or email ID">
                         </div>
                     </div>
 
                     <div class="form-group">
                         <label class="lp-label" for="password">Password</label>
-                        <div class="lp-input-wrap">
+                        <div class="lp-input-wrap lp-input-wrap--password">
                             <span class="material-symbols-outlined lp-input-icon" aria-hidden="true">lock</span>
                             <input class="lp-input" type="password" id="password" name="password" required autocomplete="off" data-1p-ignore="true" data-lpignore="true" placeholder="••••••••">
+                            <button type="button" class="lp-password-toggle" id="password-toggle" aria-label="Show password" aria-pressed="false">
+                                <span class="material-symbols-outlined" id="password-toggle-icon" aria-hidden="true">visibility_off</span>
+                            </button>
                         </div>
                     </div>
 
@@ -807,7 +872,7 @@
 
     <script>
         /* ── Mobile full-screen slide-up logic ──────────────────────────── */
-        const isMobile = () => window.innerWidth <= 767;
+        const isLoginMobileViewport = () => window.innerWidth <= 767;
 
         const canvas      = document.getElementById('login-canvas');
         const hero        = document.querySelector('.login-hero');
@@ -816,7 +881,7 @@
         const sheetHandle = document.getElementById('sheet-handle');
 
         function openSheet() {
-            if (!isMobile()) return;
+            if (!isLoginMobileViewport()) return;
             canvas.classList.add('sheet-open');
             hero && hero.classList.add('hero-exit');
             // Focus first input after transition settles
@@ -867,11 +932,27 @@
 
         // Auto-open if a validation error is already present (e.g. server redirect)
         window.addEventListener('DOMContentLoaded', () => {
-            if (isMobile()) {
+            if (isLoginMobileViewport()) {
                 const err = document.getElementById('error-message');
                 if (err && err.textContent.trim()) openSheet();
             }
         });
+
+        /* ── Password visibility toggle ─────────────────────────────────── */
+        const passwordInput = document.getElementById('password');
+        const passwordToggle = document.getElementById('password-toggle');
+        const passwordToggleIcon = document.getElementById('password-toggle-icon');
+
+        if (passwordToggle && passwordInput && passwordToggleIcon) {
+            passwordToggle.addEventListener('click', () => {
+                const showPassword = passwordInput.type === 'password';
+                passwordInput.type = showPassword ? 'text' : 'password';
+                // Closed eye when hidden, open eye when revealed
+                passwordToggleIcon.textContent = showPassword ? 'visibility' : 'visibility_off';
+                passwordToggle.setAttribute('aria-label', showPassword ? 'Hide password' : 'Show password');
+                passwordToggle.setAttribute('aria-pressed', showPassword ? 'true' : 'false');
+            });
+        }
 
         /* ── Login form logic ───────────────────────────────────────────── */
         const loginForm = document.getElementById('login-form');

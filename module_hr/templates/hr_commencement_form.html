@@ -78,7 +78,7 @@
       <div class="step-bar">
         <div class="step-item active" id="step1Badge" onclick="goToStep1()" role="button" tabindex="0"><span class="num">1</span><span>Details</span></div>
         <div class="step-connector" id="connector1"></div>
-        <div class="step-item locked" id="step2Badge" onclick="goToStep2()" role="button" tabindex="0"><span class="num">2</span><span>Signatures</span></div>
+        <div class="step-item locked" id="step2Badge" onclick="onStep2BadgeClick()" role="button" tabindex="0"><span class="num">2</span><span>Signatures</span></div>
       </div>
 
       <div class="leave-form-layout">
@@ -92,7 +92,7 @@
           <img src="{{ url_for('static', filename='logo.png') }}" alt="INJAAZ" class="hd-logo">
         </div>
 
-        <form id="hrForm">
+        <form id="hrForm" novalidate>
           <div class="form-body">
 
             <div class="step-panel active" id="step1Panel">
@@ -121,16 +121,31 @@
               </section>
               <section class="sec">
                 <h2 class="sec-hd">Reporting To</h2>
+                <p style="font-size:.82rem;color:var(--muted);margin:0 0 .85rem;line-height:1.45">
+                  Select the manager who will sign the <strong>Reporting To</strong> block on this form.
+                  If they are also in your management approval chain, they sign once and their signature
+                  appears in both places; otherwise they sign first, then the management chain begins.
+                </p>
                 <div class="grid-2">
-                  <div class="fld"><label class="fld-lbl">Name <span class="req">*</span></label><input class="fld-inp" type="text" name="reporting_to_name" required></div>
-                  <div class="fld"><label class="fld-lbl">Designation / Title <span class="req">*</span></label><input class="fld-inp" type="text" name="reporting_to_designation" required></div>
+                  <div class="fld fw">
+                    <label class="fld-lbl">Injaaz account (signatory) <span class="req">*</span></label>
+                    <select id="reportingToUserSelect" class="fld-inp" aria-label="Select Reporting To signatory" required>
+                      <option value="">— Choose manager —</option>
+                    </select>
+                    <input type="hidden" name="reporting_to_signer_id" id="reportingToSignerId">
+                  </div>
+                  <div class="fld"><label class="fld-lbl">Name <span class="req">*</span></label><input class="fld-inp" type="text" name="reporting_to_name" id="reportingToName" required></div>
+                  <div class="fld"><label class="fld-lbl">Designation / Title <span class="req">*</span></label><input class="fld-inp" type="text" name="reporting_to_designation" id="reportingToDesignation" required></div>
                   <div class="fld fw"><label class="fld-lbl">Contact No <span class="req">*</span></label><input class="fld-inp" type="tel" name="reporting_to_contact" required></div>
                 </div>
               </section>
               <p class="doc-intro" style="font-size:.85rem;margin-top:1rem;">If you need assistance with Salary letter required to open new bank account, please forward an email to HR Department at joana@ajmanholding.ae</p>
               <div class="step-nav">
-                <button type="button" class="btn-ghost hr-comm-save-draft-btn" style="font-weight:600;border:1px solid var(--bd,#dde8e2)">Save progress</button>
-                <button type="button" class="btn-next" onclick="goToStep2()">Continue to Step 2 <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg></button>
+                <button type="button" class="btn-save-draft hr-comm-save-draft-btn">
+                  <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+                  <span class="btn-label">Save progress</span>
+                </button>
+                <button type="button" class="btn-next" onclick="advanceToStep2()">Continue to Step 2 <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg></button>
               </div>
             </div>
 
@@ -155,19 +170,15 @@
                     <div class="fld" style="margin-top:.75rem"><label class="fld-lbl">Date</label><input class="fld-inp" type="date" name="employee_sign_date" id="empSignDate"></div>
                   </div>
                 </div>
-                <div class="fld fw" style="margin-top:.75rem;padding-top:1rem;border-top:1px solid rgba(226,232,240,.85)">
-                  <label class="fld-lbl">Reporting officer <span class="req">*</span> — teammate signs on their own device</label>
-                  <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:flex-end">
-                    <select class="fld-inp" id="repOffSignerSel" style="flex:1;min-width:12rem"><option value="">Loading…</option></select>
-                    <button type="button" class="btn-ghost" id="repOffSignerAdd">Add</button>
-                  </div>
-                  <div id="repOffSignerChips" style="margin-top:.4rem;display:flex;flex-wrap:wrap;gap:.2rem"></div>
-                  <p class="doc-intro" style="font-size:.8rem;margin-top:.35rem;color:var(--muted,#64748b)">Select exactly one colleague with an Injaaz account — you cannot sign on their behalf here.</p>
-                </div>
               </section>
               <div class="step-nav">
-                <button type="button" class="btn-back" onclick="goToStep1()"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12"/></svg> Back to Step 1</button>
-                <button type="button" class="btn-ghost hr-comm-save-draft-btn" style="font-weight:600">Save progress</button>
+                <button type="button" class="btn-back" onclick="goToStep1()"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12"/></svg> Back to Step 1</button>
+                <div class="step-nav__actions">
+                  <button type="button" class="btn-save-draft hr-comm-save-draft-btn">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+                    <span class="btn-label">Save progress</span>
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -179,79 +190,175 @@
           </div>
 
           <div class="submit-bar" id="submitBar" style="display:none">
-            <button type="button" class="btn-reset" onclick="if(confirm('Reset the form?')){document.getElementById('hrForm').reset();clearAllSigs();goToStep1()}">Reset</button>
-            <button type="button" class="btn-ghost hr-comm-save-draft-btn" style="font-weight:600">Save progress</button>
-            <button type="submit" class="btn-submit">Submit Form</button>
+            <p class="submit-bar__hint">Review your details and signature before submitting.</p>
+            <div class="submit-bar__actions">
+              <button type="button" class="btn-reset" onclick="if(confirm('Reset the form?')){document.getElementById('hrForm').reset();clearAllSigs();goToStep1()}">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                Reset
+              </button>
+              <button type="button" class="btn-save-draft hr-comm-save-draft-btn">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+                <span class="btn-label">Save progress</span>
+              </button>
+              <button type="submit" class="btn-submit">
+                Submit Form
+                <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              </button>
+            </div>
           </div>
         </form>
       </div>
       </div>{# leave-form-layout-main #}
 
-      <aside class="leave-form-layout-aside" aria-label="Approvals and signature status">
-        <div class="tkt-card leave-sidebar-card leave-sidebar-card--flush leave-sidebar-inner">
-          <div class="tkt-card-header">
-            <h3>Management approvals</h3>
-            <span style="font-size:.78rem;font-weight:600;color:#64748b;">Official PDF trail</span>
-          </div>
-          <div class="tkt-card-body">
-            {% include 'partials/hr_mgmt_chain_core.html' %}
-          </div>
-        </div>
-        <div class="tkt-card leave-sidebar-card leave-sidebar-card--flush leave-sidebar-inner">
-          <div class="tkt-card-header">
-            <h3>Approval activity</h3>
-            <span style="font-size:.78rem;font-weight:600;color:#64748b;">Live trail</span>
-          </div>
-          <div class="tkt-card-body">
-            {% include 'partials/hr_recorded_signatures_panel.html' %}
-          </div>
-        </div>
-        <script src="{{ url_for('static', filename='js/hr_mgmt_chain_submit.js') }}"></script>
-      </aside>
+      {% include 'partials/hr_form_approvals_sidebar.html' %}
 
       </div>{# leave-form-layout #}
     </div>
   </div>
 
-<script src="{{ url_for('static', filename='js/hr_colleague_slot_picker.js') }}"></script>
 <script src="{{ url_for('static', filename='js/hr_form_draft.js') }}"></script>
 <script>
-const reporting_officer_signer_ids=[];
 document.addEventListener('DOMContentLoaded', ()=>{
-  if(window.HrColleagueSlotPicker){
-    HrColleagueSlotPicker.bind({
-      selectId:'repOffSignerSel',
-      addBtnId:'repOffSignerAdd',
-      chipsId:'repOffSignerChips',
-      ids:reporting_officer_signer_ids,
-      multi:false,
-    });
-  }
+  document.getElementById('empSignDate').value = new Date().toISOString().split('T')[0];
+  document.getElementById('docDate').textContent = new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'});
 });
-document.getElementById('empSignDate').value = new Date().toISOString().split('T')[0];
-document.getElementById('docDate').textContent = new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'});
 
-function goToStep2(){
+const COMM_STEP1_REQUIRED = [
+  'employee_name', 'position', 'contacts', 'department', 'organization', 'date_of_joining',
+  'bank_name', 'account_number', 'reporting_to_name', 'reporting_to_designation', 'reporting_to_contact',
+];
+
+let reportingToPicker = [];
+
+function desigLabel(code) {
+  if (!code) return '';
+  return String(code).replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+async function loadReportingToPicker() {
+  const sel = document.getElementById('reportingToUserSelect');
+  if (!sel) return;
+  try {
+    const res = await fetch('/hr/api/active-users-for-picker', {
+      headers: { Authorization: 'Bearer ' + localStorage.getItem('access_token') },
+    });
+    const j = await res.json();
+    reportingToPicker = (j.users) || [];
+    while (sel.children.length > 1) sel.removeChild(sel.lastChild);
+    reportingToPicker.forEach((u) => {
+      const opt = document.createElement('option');
+      opt.value = String(u.id);
+      opt.textContent = (u.full_name || u.username) + (u.designation ? ' — ' + desigLabel(u.designation) : '');
+      opt.dataset.fullName = u.full_name || u.username || '';
+      opt.dataset.designation = u.designation || '';
+      sel.appendChild(opt);
+    });
+  } catch (_e) { /* picker optional until submit */ }
+}
+
+function syncReportingToFromPicker() {
+  const sel = document.getElementById('reportingToUserSelect');
+  const hid = document.getElementById('reportingToSignerId');
+  const nameEl = document.getElementById('reportingToName');
+  const desEl = document.getElementById('reportingToDesignation');
+  if (!sel || !hid) return;
+  const uid = sel.value;
+  hid.value = uid || '';
+  if (!uid) return;
+  const opt = sel.selectedOptions[0];
+  if (!opt) return;
+  if (nameEl && !(nameEl.dataset.userEdited === '1')) {
+    nameEl.value = opt.dataset.fullName || opt.textContent.split(' — ')[0] || '';
+  }
+  if (desEl && !(desEl.dataset.userEdited === '1')) {
+    desEl.value = desigLabel(opt.dataset.designation || '');
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  void loadReportingToPicker();
+  const sel = document.getElementById('reportingToUserSelect');
+  if (sel) sel.addEventListener('change', syncReportingToFromPicker);
+  ['reportingToName', 'reportingToDesignation'].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', () => { el.dataset.userEdited = '1'; });
+  });
+});
+
+function validateCommencementStep1(form, opts) {
+  opts = opts || {};
+  if (!form) return false;
+  let firstInvalid = null;
+  for (const name of COMM_STEP1_REQUIRED) {
+    const el = form.querySelector('[name="' + name + '"]');
+    if (!el) continue;
+    const v = (el.value || '').toString().trim();
+    if (!v) { firstInvalid = el; break; }
+  }
+  if (!firstInvalid) {
+    const rtId = document.getElementById('reportingToSignerId');
+    if (!rtId || !(rtId.value || '').trim()) {
+      firstInvalid = document.getElementById('reportingToUserSelect');
+      if (opts.alert !== false) {
+        alert('Please select the Reporting To manager from the Injaaz account list.');
+      }
+      if (firstInvalid) {
+        if (opts.goToStep1 !== false) showStep1();
+        firstInvalid.focus();
+        firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      return false;
+    }
+    return true;
+  }
+  if (opts.goToStep1 !== false) showStep1();
+  if (opts.alert !== false) {
+    const label = firstInvalid.closest('.fld')?.querySelector('.fld-lbl');
+    const fieldName = label ? label.textContent.replace('*', '').trim() : 'required field';
+    alert('Please complete Step 1 — missing: ' + fieldName + '.');
+  }
+  firstInvalid.focus();
+  firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  return false;
+}
+
+function showStep2() {
   document.getElementById('step1Panel').classList.remove('active');
   document.getElementById('step2Panel').classList.add('active');
-  document.getElementById('submitBar').style.display='flex';
-  document.getElementById('step1Badge').className='step-item done';
-  document.getElementById('step1Badge').querySelector('.num').innerHTML='✓';
-  document.getElementById('step2Badge').className='step-item active';
+  document.getElementById('submitBar').style.display = 'flex';
+  document.getElementById('step1Badge').className = 'step-item done';
+  document.getElementById('step1Badge').querySelector('.num').innerHTML = '✓';
+  document.getElementById('step2Badge').className = 'step-item active';
   document.getElementById('step2Badge').classList.remove('locked');
   document.getElementById('connector1').classList.add('done');
-  document.getElementById('step2Panel').scrollIntoView({behavior:'smooth',block:'start'});
+  document.getElementById('step2Panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
-function goToStep1(){
+
+function showStep1() {
   document.getElementById('step2Panel').classList.remove('active');
   document.getElementById('step1Panel').classList.add('active');
-  document.getElementById('submitBar').style.display='none';
-  document.getElementById('step1Badge').className='step-item active';
-  document.getElementById('step1Badge').querySelector('.num').textContent='1';
-  document.getElementById('step2Badge').className='step-item locked';
+  document.getElementById('submitBar').style.display = 'none';
+  document.getElementById('step1Badge').className = 'step-item active';
+  document.getElementById('step1Badge').querySelector('.num').textContent = '1';
+  document.getElementById('step2Badge').className = 'step-item locked';
   document.getElementById('connector1').classList.remove('done');
-  document.getElementById('step1Panel').scrollIntoView({behavior:'smooth',block:'start'});
+  document.getElementById('step1Panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
+
+function advanceToStep2() {
+  const form = document.getElementById('hrForm');
+  if (!validateCommencementStep1(form)) return;
+  showStep2();
+}
+
+function onStep2BadgeClick() {
+  const locked = document.getElementById('step2Badge').classList.contains('locked');
+  if (locked) advanceToStep2();
+  else showStep2();
+}
+
+function goToStep2() { showStep2(); }
+function goToStep1() { showStep1(); }
 
 let pad=null,target=null;
 const bg=document.getElementById('sigBg'),cv=document.getElementById('sigCanvas');
@@ -270,13 +377,15 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&bg.classList.contai
 
 document.getElementById('hrForm').addEventListener('submit',async e=>{
   e.preventDefault();
-  const fd=new FormData(e.target),data=Object.fromEntries(fd.entries());
-  if(!data.employee_signature||!String(data.employee_signature).startsWith('data:image')){alert('Please add your Employee signature before submitting.');return}
-  if(reporting_officer_signer_ids.length!==1){
-    alert('Select exactly one reporting officer with an Injaaz account — they must sign on their own device (you cannot sign for them).');
+  const form=e.target;
+  syncReportingToFromPicker();
+  if(!validateCommencementStep1(form)){return}
+  const fd=new FormData(form),data=Object.fromEntries(fd.entries());
+  if(!data.employee_signature||!String(data.employee_signature).startsWith('data:image')){
+    alert('Please add your Employee signature before submitting.');
+    showStep2();
     return;
   }
-  data.reporting_officer_signer_ids=[...reporting_officer_signer_ids];
   data.form_type='commencement';
   if(window.HrFormDraft){
     var _rid = HrFormDraft.resumeDraftSubmissionId();
@@ -287,9 +396,7 @@ document.getElementById('hrForm').addEventListener('submit',async e=>{
   try{const res=await fetch('/hr/api/submit',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.getItem('access_token')},body:JSON.stringify(data)});const r=await res.json();
   if(r.success){
     const lead=document.getElementById('successMsgLead');
-    if(lead) lead.textContent = r.workflow_status==='replacement_signoff'
-      ? 'Your colleague must sign digitally before HR receives this commencement form.'
-      : 'Commencement form sent to HR for review.';
+    if(lead) lead.textContent = r.message || 'Commencement form submitted successfully.';
     window.__hrLastHrSubmissionId=r.submission_id;document.getElementById('submissionId').textContent=r.submission_id;document.getElementById('successModal').classList.add('show');
     if(window.HrFormDraft) HrFormDraft.clearStoredId('hr_commencement');
     try{history.replaceState(null,'', location.pathname)}catch(_e){}
@@ -305,24 +412,6 @@ document.getElementById('hrForm').addEventListener('submit',async e=>{
       moduleTypes: ['hr_commencement'],
       submitBarSelector: '#submitBar',
       onEnterEditUi: function () { goToStep2(); },
-      appendToPayload: function () {
-        return { reporting_officer_signer_ids: reporting_officer_signer_ids.slice() };
-      },
-      afterPopulate: function (_payload, fd) {
-        reporting_officer_signer_ids.length = 0;
-        if (Array.isArray(fd.reporting_officer_signer_ids)) {
-          fd.reporting_officer_signer_ids.forEach(function (x) {
-            var n = parseInt(x, 10);
-            if (Number.isFinite(n)) reporting_officer_signer_ids.push(n);
-          });
-        }
-        if (window.HrColleagueSlotPicker)
-          void HrColleagueSlotPicker.redrawChips({
-            chipsId: 'repOffSignerChips',
-            ids: reporting_officer_signer_ids,
-            multi: false,
-          });
-      },
     });
   </script>
   <script>
@@ -333,24 +422,7 @@ document.getElementById('hrForm').addEventListener('submit',async e=>{
         moduleType: 'hr_commencement',
         formTypeSlug: 'commencement',
         saveButtonSelector: '.hr-comm-save-draft-btn',
-        extraCollect: function () {
-          return { reporting_officer_signer_ids: reporting_officer_signer_ids.slice() };
-        },
         extraApply: function (fd) {
-          reporting_officer_signer_ids.length = 0;
-          if (Array.isArray(fd.reporting_officer_signer_ids)) {
-            fd.reporting_officer_signer_ids.forEach(function (x) {
-              var n = parseInt(x, 10);
-              if (Number.isFinite(n)) reporting_officer_signer_ids.push(n);
-            });
-          }
-          if (window.HrColleagueSlotPicker) {
-            HrColleagueSlotPicker.redrawChips({
-              chipsId: 'repOffSignerChips',
-              ids: reporting_officer_signer_ids,
-              multi: false,
-            });
-          }
           var ed = document.getElementById('empSignDate');
           var de = document.getElementById('docDate');
           if (ed && fd.employee_sign_date) ed.value = String(fd.employee_sign_date).slice(0, 10);
@@ -375,6 +447,15 @@ document.getElementById('hrForm').addEventListener('submit',async e=>{
             requestAnimationFrame(function () {
               goToStep2();
             });
+          if (fd.reporting_to_signer_id) {
+            var sel = document.getElementById('reportingToUserSelect');
+            var hid = document.getElementById('reportingToSignerId');
+            if (hid) hid.value = String(fd.reporting_to_signer_id);
+            if (sel) {
+              sel.value = String(fd.reporting_to_signer_id);
+              syncReportingToFromPicker();
+            }
+          }
         },
       });
     })();

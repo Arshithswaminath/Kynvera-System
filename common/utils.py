@@ -543,3 +543,101 @@ def get_image_for_pdf(image_info):
             return path, False
     
     return None, False
+
+
+def _signature_pixel_is_background(r, g, b, alpha=255):
+    """Treat near-white / light sheet pixels as transparent for PDF signatures."""
+    if alpha < 16:
+        return True
+    mx = max(r, g, b)
+    mn = min(r, g, b)
+    if mx < 90:
+        return False
+    if mn < 62:
+        return False
+    if mn >= 248:
+        return True
+    if mn >= 222 and mx - mn <= 16:
+        return True
+    if b >= 225 and r >= 198 and g >= 208 and b - r >= 5 and b - g >= 4:
+        return True
+    return False
+
+
+def prepare_signature_image_for_pdf(image_info, max_width, max_height):
+    """
+    Load a signature, trim empty margins, remove white backgrounds, and scale
+    uniformly to fit the given box. Returns (BytesIO, draw_width, draw_height).
+    """
+    import io
+
+    img_data, is_url = get_image_for_pdf(image_info)
+    if not img_data:
+        return None, 0, 0
+    try:
+        from PIL import Image as PILImage
+
+        if is_url:
+            img_data.seek(0)
+            pil = PILImage.open(img_data).convert('RGBA')
+        else:
+            pil = PILImage.open(img_data).convert('RGBA')
+
+        pixels = pil.load()
+        width, height = pil.size
+        for y in range(height):
+            for x in range(width):
+                r, g, b, a = pixels[x, y]
+                if _signature_pixel_is_background(r, g, b, a):
+                    pixels[x, y] = (r, g, b, 0)
+
+        alpha = pil.split()[-1]
+        bbox = alpha.getbbox()
+        if bbox:
+            pil = pil.crop(bbox)
+
+        orig_w, orig_h = pil.size
+        if orig_w <= 0 or orig_h <= 0:
+            return None, 0, 0
+
+        scale = min(float(max_width) / orig_w, float(max_height) / orig_h)
+        draw_w = orig_w * scale
+        draw_h = orig_h * scale
+
+        out = io.BytesIO()
+        pil.save(out, format='PNG')
+        out.seek(0)
+        return out, draw_w, draw_h
+    except Exception as exc:
+        logger.warning(f"prepare_signature_image_for_pdf failed: {exc}")
+        return None, 0, 0
+
+
+def normalize_approval_comment(text):
+    """Normalize sign-off comments to 'Signed & Verified — {name}' (optional extra note)."""
+    import re
+
+    t = str(text or '').strip()
+    if not t:
+        return ''
+    if re.match(r'^Signed\s*(?:&|and)\s*Verified\.?$', t, re.I):
+        return 'Signed & Verified'
+    m = re.match(
+        r'^Signed\s*(?:&|and)\s*Verified\s*[-—–]\s*([^\n—]+?)(?:\s*[—–-]\s*([\s\S]*))?$',
+        t,
+        re.I,
+    )
+    if m:
+        name = m.group(1).strip()
+        suffix = (m.group(2) or '').strip()
+        prefix = f'Signed & Verified — {name}'
+        if not suffix or re.match(r'^Signed\s*(?:&|and)\s*Verified\.?$', suffix, re.I):
+            return prefix
+        if re.match(
+            r'^Signed\s*(?:&|and)\s*Verified\s*[-—–]\s*',
+            suffix,
+            re.I,
+        ):
+            return prefix
+        return f'{prefix} — {suffix}'
+    return t

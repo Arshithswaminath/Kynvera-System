@@ -40,7 +40,7 @@ import base64
 import openpyxl
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_CENTER, TA_LEFT
+from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import cm, inch
 from reportlab.platypus import (Image, PageBreak, SimpleDocTemplate, Spacer,
@@ -549,10 +549,8 @@ def create_pdf_report(data, output_dir):
                 ('ALIGN',      (0, 0), (-1, 0), 'CENTER'),
                 ('FONTNAME',   (0, 1), (-1, -1), 'Helvetica'),
                 ('FONTSIZE',   (0, 1), (-1, -1), 8),
-                ('ALIGN',      (0, 1), (0, -1), 'CENTER'),
-                ('ALIGN',      (5, 1), (5, -1), 'CENTER'),
-                ('ALIGN',      (6, 1), (7, -1), 'RIGHT'),
-                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F0FAF5')]),
+                ('ALIGN',      (0, 1), (-1, -1), 'RIGHT'),
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.white]),
                 ('GRID',       (0, 0), (-1, -1), 0.5, colors.HexColor('#BBDEFB')),
                 ('TOPPADDING', (0, 0), (-1, -1), 5),
                 ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
@@ -560,7 +558,12 @@ def create_pdf_report(data, output_dir):
                 ('RIGHTPADDING', (0, 0), (-1, -1), 6),
             ]))
             story.append(mat_table)
-            add_paragraph(story, f"<b>Materials Grand Total (AED):</b> {materials_total:,.2f}")
+            story.append(Paragraph(
+                f"<b>Materials Grand Total (AED):</b> {materials_total:,.2f}",
+                ParagraphStyle('MatGrandTotal', parent=getSampleStyleSheet()['Normal'],
+                               alignment=TA_RIGHT, fontName='Helvetica-Bold', fontSize=10,
+                               spaceBefore=4, spaceAfter=4)
+            ))
             story.append(Spacer(1, 0.15*inch))
 
         # SIGNATURES PAGE - Professional format with all reviewer signatures
@@ -750,67 +753,16 @@ def create_pdf_report(data, output_dir):
                 
                 if signature_data:
                     try:
-                        from common.utils import get_image_for_pdf
-                        from PIL import Image as PILImage
-                        
-                        img_data, is_url = get_image_for_pdf(signature_data)
-                        if img_data:
-                            max_width = 2.5 * inch
-                            max_height = 1.2 * inch
-                            
-                            try:
-                                if is_url:
-                                    img_data.seek(0)
-                                    pil_img = PILImage.open(img_data)
-                                else:
-                                    pil_img = PILImage.open(img_data)
-                                
-                                orig_width, orig_height = pil_img.size
-                                
-                                width_ratio = max_width / orig_width
-                                height_ratio = max_height / orig_height
-                                scale_ratio = min(width_ratio, height_ratio)
-                                
-                                final_width = orig_width * scale_ratio
-                                final_height = orig_height * scale_ratio
-                                
-                                original_ratio = orig_width / orig_height if orig_height > 0 else 1
-                                final_ratio = final_width / final_height if final_height > 0 else 1
-                                
-                                if is_url:
-                                    img_data.seek(0)
-                                    sig_img = Image(img_data, width=final_width, height=final_height)
-                                else:
-                                    sig_img = Image(img_data, width=final_width, height=final_height)
-                                
-                                logger.info(f"✅ {role_name} signature aspect ratio: Original={orig_width}x{orig_height} (ratio={original_ratio:.3f}), Final={final_width:.2f}x{final_height:.2f} (ratio={final_ratio:.3f}), Scale={scale_ratio:.3f}")
-                                
-                                if abs(original_ratio - final_ratio) > 0.01:
-                                    logger.warning(f"⚠️ {role_name} signature aspect ratio mismatch! Original={original_ratio:.3f}, Final={final_ratio:.3f}")
-                            except Exception as pil_error:
-                                logger.warning(f"PIL image processing failed for {role_name}, using fallback: {pil_error}")
-                                if is_url:
-                                    img_data.seek(0)
-                                    sig_img = Image(img_data)
-                                else:
-                                    sig_img = Image(img_data)
-                                
-                                if hasattr(sig_img, 'imageWidth') and hasattr(sig_img, 'imageHeight'):
-                                    orig_width = sig_img.imageWidth
-                                    orig_height = sig_img.imageHeight
-                                    if orig_width > 0 and orig_height > 0:
-                                        width_ratio = max_width / orig_width
-                                        height_ratio = max_height / orig_height
-                                        scale_ratio = min(width_ratio, height_ratio)
-                                        final_width = orig_width * scale_ratio
-                                        final_height = orig_height * scale_ratio
-                                        sig_img.drawWidth = final_width
-                                        sig_img.drawHeight = final_height
-                                    else:
-                                        sig_img.drawWidth = max_width
-                                else:
-                                    sig_img.drawWidth = max_width
-                            
+                        from common.utils import prepare_signature_image_for_pdf
+
+                        max_width = 1.4 * inch
+                        max_height = 0.65 * inch
+                        prepared, final_width, final_height = prepare_signature_image_for_pdf(
+                            signature_data, max_width, max_height
+                        )
+                        if prepared and final_width > 0 and final_height > 0:
+                            sig_img = Image(prepared, width=final_width, height=final_height)
+                            sig_img.hAlign = 'RIGHT'
                             sig_rows.append([
                                 Paragraph(f"<b>{role_name} Signature:</b>", styles['Normal']),
                                 sig_img
@@ -835,11 +787,10 @@ def create_pdf_report(data, output_dir):
                 if sig_rows:
                     sig_table = Table(sig_rows, colWidths=[2*inch, 3.5*inch])
                     sig_table.setStyle(TableStyle([
-                        ('ALIGN', (0, 0), (0, -1), 'LEFT'),
-                        ('ALIGN', (1, 0), (1, -1), 'CENTER'),
+                        ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),
                         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
                         ('GRID', (0, 0), (-1, -1), 0.75, colors.HexColor('#125435')),
-                        ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#E8F5E9')),
+                        ('BACKGROUND', (0, 0), (-1, -1), colors.white),
                         ('TOPPADDING', (0, 0), (-1, -1), 8),
                         ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
                         ('LEFTPADDING', (0, 0), (-1, -1), 6),

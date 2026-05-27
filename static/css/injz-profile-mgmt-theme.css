@@ -14,6 +14,45 @@
   --injz-pm-shadow: 0 24px 64px rgba(0, 0, 0, 0.14);
 }
 
+/* Viewport-centered overlay — centers on the screen, not the page scroll position */
+.modal.injz-mgmt.admin-portal-modal,
+#userActivityModal.injz-mgmt.admin-portal-modal {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+  max-width: none !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: max(0.75rem, env(safe-area-inset-top, 0px))
+           max(0.75rem, env(safe-area-inset-right, 0px))
+           max(0.75rem, env(safe-area-inset-bottom, 0px))
+           max(0.75rem, env(safe-area-inset-left, 0px)) !important;
+  box-sizing: border-box !important;
+  z-index: 12000 !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  display: none !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-direction: row !important;
+}
+.modal.injz-mgmt.admin-portal-modal.active,
+#userActivityModal.injz-mgmt.admin-portal-modal.active {
+  display: flex !important;
+}
+.modal.injz-mgmt.admin-portal-modal > .modal-content,
+#userActivityModal.injz-mgmt > .modal-content {
+  margin: auto !important;
+  flex-shrink: 0 !important;
+  position: relative !important;
+  top: auto !important;
+  left: auto !important;
+  transform: none !important;
+  align-self: center !important;
+}
+
 /* ── Shell: technician-style card ───────────────────────────────────────── */
 .modal.injz-mgmt.admin-portal-modal .modal-content,
 #userActivityModal.injz-mgmt .modal-content {
@@ -24,7 +63,7 @@
   box-shadow: var(--injz-pm-shadow) !important;
   display: flex !important;
   flex-direction: column !important;
-  max-height: min(95vh, 900px) !important;
+  max-height: min(calc(100dvh - 1.5rem), 900px) !important;
   background: #fff !important;
   width: 100% !important;
 }

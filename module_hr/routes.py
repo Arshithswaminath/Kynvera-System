@@ -45,9 +45,15 @@ from module_hr.hr_management_chain import (
     notify_submitter_management_final,
     pending_management_step_for_user,
     reject_management_submission,
+    user_is_mgmt_chain_participant,
+    user_mgmt_chain_completed_step,
 )
 
-from module_hr.hr_signoff_activity import compute_hr_signoff_activity, hr_workflow_status_label
+from module_hr.hr_commencement_reporting import (
+    dual_role_hint_for_user,
+    dual_role_notify_message,
+    resolve_commencement_reporting_to,
+)
 
 from .print_utils import render_form_for_print
 from .docx_service import generate_hr_docx, get_supported_docx_forms
@@ -107,6 +113,9 @@ def _user_can_view_hr_signoff_activity(user: User | None, submission: Submission
         return False
     if not (submission.module_type or "").startswith("hr_"):
         return False
+    fd = submission.form_data if isinstance(submission.form_data, dict) else {}
+    if user_is_mgmt_chain_participant(user, fd):
+        return True
     if _role_is_admin(user):
         return True
     if submission.supervisor_id == user.id:
@@ -198,8 +207,7 @@ def _can_access_hr_submission_export(user, submission):
         fd = submission.form_data if isinstance(submission.form_data, dict) else {}
         if pending_replacement_for_user(fd, user.id, submission.module_type):
             return True
-        ws = getattr(submission, 'workflow_status', None)
-        if pending_management_step_for_user(fd, ws, user):
+        if user_is_mgmt_chain_participant(user, fd):
             return True
     return False
 
@@ -701,6 +709,20 @@ def submit_hr_form():
     if mgmt_err:
         return jsonify({'error': mgmt_err}), 400
 
+    commencement_dual_meta = None
+    if form_type == 'commencement':
+        rt_block, rt_err, rt_meta = resolve_commencement_reporting_to(data, user)
+        if rt_err:
+            return jsonify({'error': rt_err}), 400
+        if rt_block:
+            if routed_block and isinstance(routed_block.get('slots'), list):
+                routed_block['slots'].extend(rt_block['slots'])
+            else:
+                routed_block = rt_block
+        commencement_dual_meta = (
+            rt_meta if isinstance(rt_meta, dict) and rt_meta.get('mode') == 'dual_role' else None
+        )
+
     workflow_status = first_management_workflow_status(data)
     if routed_block:
         merge_routed_into_form_data_inplace(data, routed_block, module_type_full)
@@ -765,10 +787,28 @@ def submit_hr_form():
 
     if has_management_chain(data):
         notify_current_management_signers(current_app._get_current_object(), submission)
+        if commencement_dual_meta:
+            uid = commencement_dual_meta.get('user_id')
+            if uid:
+                create_notification(
+                    user_id=int(uid),
+                    title='Reporting To + management sign-off',
+                    message=dual_role_notify_message(
+                        commencement_dual_meta, employee_name, submission_id
+                    ),
+                    notification_type='hr_commencement_dual_role',
+                    submission_id=submission_id,
+                )
         done_msg = (
             'Form submitted. Management approvers were notified in order '
             '(supervisor / reporting manager → operations manager → general manager → HR).'
         )
+        if commencement_dual_meta:
+            done_msg = (
+                'Form submitted. Your Reporting To manager is also in the management chain — '
+                'they were notified that their signature will appear in both the Reporting To '
+                'block and their management step. Other approvers were notified in order.'
+            )
     else:
         _notify_hr_staff_new_submission(
             submission_id,
@@ -1043,19 +1083,51 @@ def mgmt_signoff_detail(submission_id):
 
     fd = submission.form_data or {}
     pend = pending_management_step_for_user(fd, submission.workflow_status, user)
+    completed = user_mgmt_chain_completed_step(user, fd)
     is_owner = submission.user_id == user.id
     is_hr_viewer = getattr(user, 'access_hr', False) or user.designation == 'hr_manager'
-    allowed = pend is not None or is_owner or _role_is_admin(user) or is_hr_viewer or user.designation == 'general_manager'
+    allowed = (
+        user_is_mgmt_chain_participant(user, fd)
+        or is_owner
+        or _role_is_admin(user)
+        or is_hr_viewer
+    )
 
     if not allowed:
         return jsonify({'error': 'Access denied'}), 403
+
+    if pend:
+        viewer_state = 'can_sign'
+    elif completed:
+        viewer_state = 'already_signed'
+    elif user_is_mgmt_chain_participant(user, fd):
+        viewer_state = 'not_your_turn'
+    else:
+        viewer_state = 'view_only'
+
+    signed_step = None
+    if completed:
+        signed_step = {
+            'step_key': completed.get('key'),
+            'step_label': completed.get('pdf_label'),
+            'signed_at': completed.get('signed_at'),
+            'signed_by_name': completed.get('signed_by_name'),
+            'comments': completed.get('comments'),
+            'signature': completed.get('signature'),
+        }
 
     return jsonify({
         'success': True,
         'submission': submission.to_dict(),
         'can_sign': bool(pend),
+        'already_signed': viewer_state == 'already_signed',
+        'viewer_state': viewer_state,
+        'signed_step': signed_step,
+        'current_user_id': user.id,
         'step_label': pend.get('pdf_label') if pend else None,
         'form_type_display': get_form_type_display(submission.module_type),
+        'workflow_status': submission.workflow_status,
+        'reporting_to_dual_role_hint': dual_role_hint_for_user(fd, user.id),
     })
 
 

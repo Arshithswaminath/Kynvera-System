@@ -1,0 +1,62 @@
+/**
+ * Signature display — remove white sheet backgrounds from captured signatures.
+ * Uses mix-blend-mode so PNG white areas inherit the container color.
+ */
+
+.signoff-sig-frame {
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.signoff-sig-frame:not(.is-empty) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+img[data-signature-display],
+.signoff-sig-frame img,
+.sig-box img,
+div[id*="SignatureReadOnly"] img,
+#omOwnSignatureReadOnly img,
+.if-rec-item img,
+.signature-preview,
+.admin-profile-sig-preview,
+.hr-recorded-sigs-grid img,
+.hr-recorded-sig-card .sig-box img,
+img[alt*="signature" i],
+img[alt*="Signature" i] {
+  mix-blend-mode: multiply;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  object-position: center;
+}
+
+div[id*="SignatureReadOnly"],
+#omOwnSignatureReadOnly {
+  padding: 0 !important;
+}
+
+div[id*="SignatureReadOnly"] img,
+#omOwnSignatureReadOnly img {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  object-position: center;
+  display: block;
+  margin: 0 auto;
+}
+
+.hr-form-unified .sig-box img,
+.signature-preview,
+.admin-profile-sig-preview {
+  background: transparent !important;
+}

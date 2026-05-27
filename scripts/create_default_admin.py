@@ -16,11 +16,18 @@ def create_default_admin():
     app = create_app()
     
     with app.app_context():
-        # Default admin credentials
-        username = "admin"
-        email = "admin@injaaz.com"
-        password = "Admin@123"  # Default password - should be changed!
-        full_name = "System Administrator"
+        # Default admin credentials. The password MUST be supplied via the
+        # DEFAULT_ADMIN_PASSWORD environment variable. We refuse to fall back
+        # to a well-known string so a fresh deploy cannot be taken over with a
+        # public default.
+        username = os.environ.get("DEFAULT_ADMIN_USERNAME", "admin")
+        email = os.environ.get("DEFAULT_ADMIN_EMAIL", "admin@injaaz.com")
+        password = os.environ.get("DEFAULT_ADMIN_PASSWORD")
+        if not password:
+            print("[ERROR] DEFAULT_ADMIN_PASSWORD environment variable is required.")
+            print("        Example: DEFAULT_ADMIN_PASSWORD='ChangeMeNow!' python scripts/create_default_admin.py")
+            return False
+        full_name = os.environ.get("DEFAULT_ADMIN_FULL_NAME", "System Administrator")
         
         # Check if admin already exists
         existing = User.query.filter_by(username=username).first()

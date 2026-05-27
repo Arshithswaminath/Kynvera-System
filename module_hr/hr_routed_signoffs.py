@@ -50,17 +50,6 @@ HR_ROUTED_SIGNATORY_SLOTS: dict[str, tuple[RoutedSignatorySlot, ...]] = {
             allow_multiple_signers=True,
         ),
     ),
-    "hr_commencement": (
-        RoutedSignatorySlot(
-            key="reporting_officer",
-            label_public="Reporting officer",
-            request_payload_keys=("reporting_officer_signer_ids", "reporting_signer_ids"),
-            clear_when_routed=("reporting_to_signature",),
-            pdf_merge_field="reporting_to_signature",
-            signer_list_mirror_key=None,
-            allow_multiple_signers=False,
-        ),
-    ),
     "hr_grievance": (
         RoutedSignatorySlot(
             key="second_party",
@@ -130,6 +119,17 @@ HR_ROUTED_SIGNATORY_SLOTS: dict[str, tuple[RoutedSignatorySlot, ...]] = {
             request_payload_keys=("appraiser_signer_ids", "reviewer_signer_ids"),
             clear_when_routed=("hr_signature",),
             pdf_merge_field="hr_signature",
+            signer_list_mirror_key=None,
+            allow_multiple_signers=False,
+        ),
+    ),
+    "hr_commencement": (
+        RoutedSignatorySlot(
+            key="reporting_to",
+            label_public="Reporting To",
+            request_payload_keys=("reporting_to_signer_ids", "reporting_officer_signer_ids"),
+            clear_when_routed=("reporting_to_signature", "reporting_sign_date"),
+            pdf_merge_field="reporting_to_signature",
             signer_list_mirror_key=None,
             allow_multiple_signers=False,
         ),
@@ -336,7 +336,12 @@ def sync_mirrors_and_pdf_fields(form_data: dict, module_type: str) -> None:
         ]
         all_done = signers and len(filled) == len(signers)
         if all_done and cfg.pdf_merge_field and filled:
-            form_data[cfg.pdf_merge_field] = filled[-1].get("signature")
+            last = filled[-1]
+            form_data[cfg.pdf_merge_field] = last.get("signature")
+            if cfg.key == "reporting_to":
+                signed_at = last.get("signed_at")
+                if signed_at:
+                    form_data["reporting_sign_date"] = str(signed_at)[:10]
 
 
 def collect_routed_signoffs_from_submit(

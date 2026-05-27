@@ -229,6 +229,13 @@ def create_info_table(data_list, col_widths=None):
     """
     styles = get_professional_styles()
 
+    label_style = ParagraphStyle(
+        'InfoTableLabel', parent=styles['Normal'], alignment=TA_RIGHT, fontName='Helvetica-Bold'
+    )
+    value_style = ParagraphStyle(
+        'InfoTableValue', parent=styles['Normal'], alignment=TA_RIGHT
+    )
+
     # Wrap long text values in Paragraphs so they word-wrap nicely
     table_data = []
     for row in data_list:
@@ -236,11 +243,10 @@ def create_info_table(data_list, col_widths=None):
         for col_idx, cell in enumerate(row):
             # Convert plain strings to Paragraphs for better wrapping
             if isinstance(cell, str):
-                # First column is typically the label – make it bold
                 if col_idx == 0:
-                    new_row.append(Paragraph(f"<b>{cell}</b>", styles['Normal']))
+                    new_row.append(Paragraph(f"<b>{cell}</b>", label_style))
                 else:
-                    new_row.append(Paragraph(cell, styles['Normal']))
+                    new_row.append(Paragraph(cell, value_style))
             else:
                 new_row.append(cell)
         table_data.append(new_row)
@@ -251,15 +257,11 @@ def create_info_table(data_list, col_widths=None):
 
     table = Table(table_data, colWidths=col_widths)
     n = len(table_data)
-    row_style = []
-    for i in range(n):
-        bg = ACCENT_COLOR if i % 2 == 0 else colors.white
-        row_style.append(('BACKGROUND', (0, i), (0, i), ACCENT_COLOR))
-        row_style.append(('BACKGROUND', (1, i), (1, i), bg))
+    row_style = [('BACKGROUND', (0, i), (-1, i), colors.white) for i in range(n)]
 
     table.setStyle(TableStyle([
         ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#111827')),
-        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),
         ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
         ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
         ('FONTSIZE', (0, 0), (-1, -1), 8.5),
@@ -298,12 +300,16 @@ def create_data_table(headers, rows, col_widths=None):
             header_cells.append(header)
     table_data.append(header_cells)
 
+    data_cell_style = ParagraphStyle(
+        'DataTableCell', parent=styles['Normal'], alignment=TA_RIGHT
+    )
+
     # Data rows
     for row in rows:
         new_row = []
         for cell in row:
             if isinstance(cell, str):
-                new_row.append(Paragraph(cell, styles['Normal']))
+                new_row.append(Paragraph(cell, data_cell_style))
             else:
                 new_row.append(cell)
         table_data.append(new_row)
@@ -320,11 +326,11 @@ def create_data_table(headers, rows, col_widths=None):
         # Data rows
         ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
         ('FONTSIZE', (0, 1), (-1, -1), 9),
-        ('ALIGN', (0, 1), (-1, -1), 'LEFT'),
+        ('ALIGN', (0, 1), (-1, -1), 'RIGHT'),
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
         
-        # Alternating row colors
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, TABLE_ALT_ROW]),
+        # White rows so embedded images/signatures blend cleanly
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.white]),
         
         # Grid
         ('GRID', (0, 0), (-1, -1), 0.75, BORDER_COLOR),
@@ -341,138 +347,119 @@ def create_data_table(headers, rows, col_widths=None):
     return table
 
 
+def _photo_grid_layout(photo_count, photos_per_row=None, photo_width=None, photo_height=None):
+    """Pick column count and max cell size from printable width (A4 minus margins)."""
+    content_w = 6.5 * inch
+    gap = 0.12 * inch
+
+    if photos_per_row is not None and photo_width is not None and photo_height is not None:
+        return photos_per_row, photo_width, photo_height, content_w
+
+    if photo_count == 1:
+        return 1, content_w, 5.0 * inch, content_w
+    if photo_count <= 2:
+        cell_w = (content_w - gap) / 2
+        return 2, cell_w, 3.25 * inch, content_w
+    if photo_count <= 6:
+        cell_w = (content_w - gap) / 2
+        return 2, cell_w, 2.85 * inch, content_w
+    if photo_count <= 15:
+        cell_w = (content_w - 2 * gap) / 3
+        return 3, cell_w, 2.1 * inch, content_w
+    cell_w = (content_w - 3 * gap) / 4
+    return 4, cell_w, 1.55 * inch, content_w
+
+
+def _scaled_pdf_image(img_data, max_width, max_height, styles):
+    """Build a ReportLab Image flowable scaled to fit max_width x max_height."""
+    from reportlab.lib import utils
+
+    if isinstance(img_data, str):
+        img_reader = utils.ImageReader(img_data)
+        orig_width, orig_height = img_reader.getSize()
+        img_source = img_data
+    else:
+        img_data.seek(0)
+        img_reader = utils.ImageReader(img_data)
+        orig_width, orig_height = img_reader.getSize()
+        img_data.seek(0)
+        img_source = img_data
+
+    if orig_width <= 0 or orig_height <= 0:
+        img = Image(img_source, width=max_width, height=max_height)
+    else:
+        scale = min(max_width / orig_width, max_height / orig_height)
+        final_width = orig_width * scale
+        final_height = orig_height * scale
+        img = Image(img_source, width=final_width, height=final_height)
+
+    img.hAlign = 'CENTER'
+    return img
+
+
 def add_photo_grid(story, photos, photos_per_row=None, photo_width=None, photo_height=None):
-    """Add a grid of photos to the story - optimized for 20+ images
-    
-    Args:
-        story: PDF story list
-        photos: List of photo items (URLs or base64)
-        photos_per_row: Number of photos per row (auto-calculated if None based on photo count)
-        photo_width: Width of each photo (auto-calculated if None)
-        photo_height: Height of each photo (auto-calculated if None)
-    """
+    """Add a grid of photos; each row stays on one page and scales to fit its cell."""
     styles = get_professional_styles()
-    
+
     if not photos:
         return story
-    
+
     photo_count = len(photos)
-    
-    # Auto-adjust layout - use more photos per row for smaller, compact display
-    if photos_per_row is None:
-        if photo_count > 15:
-            photos_per_row = 4  # 4 photos per row for 15+ images
-        elif photo_count > 6:
-            photos_per_row = 3  # 3 photos per row for 6-15 images
-        else:
-            photos_per_row = 3  # Default to 3 per row for better space usage
-    
-    # Smaller photo sizes for compact display while maintaining visibility
-    if photo_width is None or photo_height is None:
-        if photos_per_row == 4:
-            photo_width = 1.4*inch  # Compact size for 4 per row
-            photo_height = 1.05*inch  # Maintain 4:3 aspect ratio
-        elif photos_per_row == 3:
-            photo_width = 1.8*inch  # Compact size for 3 per row
-            photo_height = 1.35*inch  # Maintain 4:3 aspect ratio
-        else:
-            photo_width = 1.8*inch  # Compact size for 2 per row
-            photo_height = 1.35*inch  # Maintain 4:3 aspect ratio
-    
-    photo_rows = []
+    photos_per_row, max_cell_w, max_cell_h, content_w = _photo_grid_layout(
+        photo_count, photos_per_row, photo_width, photo_height
+    )
+    gap = 0.12 * inch
+    col_width = (content_w - gap * (photos_per_row - 1)) / photos_per_row
+    col_widths = [col_width] * photos_per_row
+
+    row_style = TableStyle([
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 4),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ('BOX', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
+    ])
+
     for i in range(0, len(photos), photos_per_row):
-        row_photos = photos[i:i+photos_per_row]
+        row_photos = photos[i:i + photos_per_row]
         photo_row = []
-        
+
         for photo_item in row_photos:
             try:
-                img_data, is_url = get_image_for_pdf(photo_item)
+                img_data, _is_url = get_image_for_pdf(photo_item)
                 if img_data:
-                    # Calculate proper dimensions while preserving aspect ratio for best visibility
-                    from reportlab.lib import utils
-                    import io
-                    
                     try:
-                        # Get image dimensions - handle both file paths and BytesIO streams
-                        if isinstance(img_data, str):
-                            # Local file path
-                            img_reader = utils.ImageReader(img_data)
-                            orig_width, orig_height = img_reader.getSize()
-                            img_source = img_data
-                        else:
-                            # BytesIO stream - read dimensions without consuming
-                            img_data.seek(0)
-                            temp_reader = utils.ImageReader(img_data)
-                            orig_width, orig_height = temp_reader.getSize()
-                            # Reset stream for actual image creation
-                            img_data.seek(0)
-                            img_source = img_data
-                        
-                        # Calculate scale to fit within our target size while preserving aspect ratio
-                        if orig_width > 0 and orig_height > 0:
-                            width_scale = photo_width / orig_width
-                            height_scale = photo_height / orig_height
-                            scale = min(width_scale, height_scale)  # Use smaller scale to fit both dimensions
-                            
-                            # Calculate final dimensions
-                            final_width = orig_width * scale
-                            final_height = orig_height * scale
-                            
-                            # Create image with calculated dimensions (ReportLab Image doesn't have preserveAspectRatio param)
-                            img = Image(img_source, width=final_width, height=final_height)
-                        else:
-                            # Fallback to fixed size if dimensions are invalid
-                            logger.warning(f"Invalid image dimensions: {orig_width}x{orig_height}, using fixed size")
-                            img = Image(img_source, width=photo_width, height=photo_height)
-                        
-                        photo_row.append(img)
+                        photo_row.append(_scaled_pdf_image(img_data, max_cell_w, max_cell_h, styles))
                     except Exception as img_error:
                         logger.error(f"Error processing image: {img_error}")
-                        import traceback
-                        logger.error(traceback.format_exc())
-                        # Final fallback: try simple image creation
                         try:
                             if isinstance(img_data, str):
-                                img = Image(img_data, width=photo_width, height=photo_height)
+                                img = Image(img_data, width=max_cell_w, height=max_cell_h)
                             else:
                                 img_data.seek(0)
-                                img = Image(img_data, width=photo_width, height=photo_height)
+                                img = Image(img_data, width=max_cell_w, height=max_cell_h)
+                            img.hAlign = 'CENTER'
                             photo_row.append(img)
                         except Exception as final_error:
-                            logger.error(f"Final fallback also failed: {final_error}")
+                            logger.error(f"Photo fallback failed: {final_error}")
                             photo_row.append(Paragraph("Error loading image", styles['Small']))
                 else:
                     logger.warning(f"get_image_for_pdf returned None for photo_item: {photo_item}")
                     photo_row.append(Paragraph("Image not available", styles['Small']))
             except Exception as e:
-                logger.error(f"Error loading photo: {str(e)}")
-                import traceback
-                logger.error(traceback.format_exc())
+                logger.error(f"Error loading photo: {e}")
                 photo_row.append(Paragraph("Error loading image", styles['Small']))
-        
-        # Pad row if needed
+
         while len(photo_row) < photos_per_row:
             photo_row.append('')
-        
-        photo_rows.append(photo_row)
-    
-    # Add photos in batches to avoid memory issues with many images
-    if photo_rows:
-        col_widths = [photo_width + 0.1*inch] * photos_per_row  # Reduced padding for compact display
-        photo_table = Table(photo_rows, colWidths=col_widths)
-        photo_table.setStyle(TableStyle([
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('LEFTPADDING', (0, 0), (-1, -1), 3),  # Reduced padding
-            ('RIGHTPADDING', (0, 0), (-1, -1), 3),
-            ('TOPPADDING', (0, 0), (-1, -1), 3),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
-            ('BOX', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
-            ('INNERGRID', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
-        ]))
-        story.append(photo_table)
-        story.append(Spacer(1, 0.1*inch))  # Reduced spacing between photo grids
-    
+
+        row_table = Table([photo_row], colWidths=col_widths, hAlign='CENTER')
+        row_table.setStyle(row_style)
+        story.append(KeepTogether([row_table]))
+
+    story.append(Spacer(1, 0.12 * inch))
     return story
 
 
@@ -528,11 +515,10 @@ def add_signatures_section(story, signatures_dict):
     if sig_rows:
         sig_table = Table(sig_rows, colWidths=[2*inch, 3.5*inch])
         sig_table.setStyle(TableStyle([
-            ('ALIGN', (0, 0), (0, -1), 'LEFT'),
-            ('ALIGN', (1, 0), (1, -1), 'CENTER'),
+            ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
             ('GRID', (0, 0), (-1, -1), 0.75, PRIMARY_COLOR),
-            ('BACKGROUND', (0, 0), (0, -1), ACCENT_COLOR),
+            ('BACKGROUND', (0, 0), (-1, -1), colors.white),
             ('TOPPADDING', (0, 0), (-1, -1), 8),
             ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
             ('LEFTPADDING', (0, 0), (-1, -1), 6),
@@ -621,6 +607,15 @@ def add_section_heading(story, text):
     """Add a section heading"""
     styles = get_professional_styles()
     story.append(Paragraph(text, styles['SectionHeading']))
+    return story
+
+
+def append_section_keep_together(story, heading_text, content_flowables):
+    """Keep a section heading and its content on the same page when they fit together."""
+    styles = get_professional_styles()
+    block = [Paragraph(heading_text, styles['SectionHeading'])]
+    block.extend(content_flowables)
+    story.append(KeepTogether(block))
     return story
 
 

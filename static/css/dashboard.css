@@ -75,7 +75,8 @@ html:not([data-theme="dark"]) body.page-dashboard,
 html:not([data-theme="dark"]) body.hr-dashboard,
 html:not([data-theme="dark"]) body.inspection-dashboard,
 html:not([data-theme="dark"]) body.dm-device-mgmt-page,
-html:not([data-theme="dark"]) body.review-dashboard {
+html:not([data-theme="dark"]) body.review-dashboard,
+html:not([data-theme="dark"]) body.admin-dh-page {
   --bg-body: #f8faf8;
   --bg-light: #f9fafb;
   --text-dark: #111827;
@@ -86,11 +87,16 @@ html:not([data-theme="dark"]) body.review-dashboard {
   --border-color: #e5e7eb;
 }
 
+html:not([data-theme="dark"]) body.admin-dh-page {
+  --bg-body: #eff4f1;
+}
+
 body.page-dashboard,
 body.hr-dashboard,
 body.inspection-dashboard,
 body.dm-device-mgmt-page,
-body.review-dashboard {
+body.review-dashboard,
+body.admin-dh-page {
   background: var(--bg-body, #f8faf8) !important;
 }
 
@@ -218,6 +224,18 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
 /* Mobile menu toggle (hidden by default) */
 .mobile-menu-toggle {
   display: none;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 8px;
+  color: var(--text-mid);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.mobile-menu-toggle:hover {
+  background: var(--bg-light);
+  color: var(--text-dark);
 }
 
 /* Mobile drawer and overlay - hidden on desktop (shown when nav gets tight) */
@@ -830,6 +848,29 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
   border-radius: 12px;
   padding: 1rem;
   border: 1px solid var(--border-light);
+  display: flex;
+  flex-direction: column;
+  min-height: 6.75rem;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.dashboard-stat-card--clickable[data-href],
+.dashboard-stat-card--clickable[data-action] {
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.dashboard-stat-card--clickable[data-href]:hover,
+.dashboard-stat-card--clickable[data-action]:hover {
+  border-color: rgba(18, 84, 53, 0.28);
+  box-shadow: 0 2px 8px rgba(18, 84, 53, 0.08);
+}
+
+.dashboard-stat-card--clickable[data-href]:focus-visible,
+.dashboard-stat-card--clickable[data-action]:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
 }
 
 .dashboard-stat-icon {
@@ -869,47 +910,32 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
   white-space: nowrap;
 }
 
-.dashboard-activity {
-  border-top: 1px solid var(--border-light);
-  padding-top: 0.75rem;
+#stat-label-row-3 {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.dashboard-activity-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.85rem;
-  color: var(--text-mid);
+#stat-label-row-3 a.dashboard-stat-joined-link {
+  display: inline;
+  font: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+  line-height: inherit;
+  text-transform: none;
+  text-decoration: none;
 }
 
-.dashboard-activity-icon {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: rgba(18, 84, 53, 0.12);
-  color: var(--primary);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.7rem;
-  font-weight: 700;
-  flex-shrink: 0;
+#stat-label-row-3 a.dashboard-stat-joined-link:hover {
+  text-decoration: underline;
 }
 
-.dashboard-activity-text {
-  flex: 1;
-  min-width: 0;
+#stat-card-3 .dashboard-stat-value {
+  white-space: normal;
 }
 
-.dashboard-activity-time {
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  flex-shrink: 0;
-}
-
-.dashboard-activity-list .dashboard-activity-item {
-  margin-top: 0.5rem;
-}
 
 /* Hero split + widget responsive */
 @media (max-width: 1024px) {
@@ -960,9 +986,6 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
 
 @media (max-width: 480px) {
   .hero-cta-row {
-    display: none;
-  }
-  .dashboard-activity {
     display: none;
   }
   .dashboard-stats-grid {
@@ -1057,6 +1080,18 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
   grid-template-columns: repeat(3, 1fr);
   gap: 1.25rem;
   width: 100%;
+}
+
+@media (max-width: 900px) {
+  .modules-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .modules-grid {
+    grid-template-columns: 1fr !important;
+  }
 }
 
 /* ---- Card ---- */
@@ -1692,31 +1727,29 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    width: 44px !important;
-    height: 44px !important;
-    min-width: 44px !important;
-    min-height: 44px !important;
-    border: 1px solid var(--border-color) !important;
-    background: #fff !important;
-    border-radius: 10px !important;
+    width: auto !important;
+    height: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    border-radius: 8px !important;
     cursor: pointer !important;
-    padding: 0 !important;
-    color: var(--text-dark) !important;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06) !important;
-    transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease !important;
+    padding: 0.5rem !important;
+    color: var(--text-mid) !important;
+    box-shadow: none !important;
+    transition: background 0.15s ease, color 0.15s ease !important;
   }
 
   .mobile-menu-toggle:hover {
     background: var(--bg-light) !important;
-    border-color: var(--primary) !important;
-    color: var(--primary) !important;
+    color: var(--text-dark) !important;
   }
 
   .mobile-menu-toggle:active,
   .mobile-menu-toggle.active {
-    background: rgba(18, 84, 53, 0.08) !important;
-    border-color: var(--primary) !important;
-    color: var(--primary) !important;
+    background: var(--bg-light) !important;
+    color: var(--text-dark) !important;
   }
 
   /* Hide nav-center menu in collapsed mode (links shown in drawer) */
@@ -1872,7 +1905,7 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
   }
 
   /* Hamburger — equal 2px bars, even spacing (matches nav SVG stroke 2) */
-  .mobile-menu-toggle span {
+  .mobile-menu-toggle .hamburger-bar {
     display: block !important;
     width: 18px !important;
     height: 2px !important;
@@ -1883,8 +1916,8 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
     transform: translateZ(0) !important;
   }
 
-  .mobile-menu-toggle span::before,
-  .mobile-menu-toggle span::after {
+  .mobile-menu-toggle .hamburger-bar::before,
+  .mobile-menu-toggle .hamburger-bar::after {
     content: '' !important;
     position: absolute !important;
     left: 0 !important;
@@ -1895,24 +1928,24 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
     transition: all 0.3s ease !important;
   }
 
-  .mobile-menu-toggle span::before {
+  .mobile-menu-toggle .hamburger-bar::before {
     top: -6px !important;
   }
 
-  .mobile-menu-toggle span::after {
+  .mobile-menu-toggle .hamburger-bar::after {
     bottom: -6px !important;
   }
 
-  .mobile-menu-toggle.active span {
+  .mobile-menu-toggle.active .hamburger-bar {
     background: transparent !important;
   }
 
-  .mobile-menu-toggle.active span::before {
+  .mobile-menu-toggle.active .hamburger-bar::before {
     top: 0 !important;
     transform: rotate(45deg) !important;
   }
 
-  .mobile-menu-toggle.active span::after {
+  .mobile-menu-toggle.active .hamburger-bar::after {
     bottom: 0 !important;
     transform: rotate(-45deg) !important;
   }
@@ -2222,30 +2255,31 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    width: 34px !important;
-    height: 34px !important;
-    min-width: 34px !important;
-    min-height: 34px !important;
-    border: 1px solid rgba(55, 65, 81, 0.18) !important;
-    background: #fff !important;
+    width: auto !important;
+    height: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    border: none !important;
+    background: transparent !important;
     border-radius: 8px !important;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+    box-shadow: none !important;
     cursor: pointer !important;
-    padding: 0 !important;
-    color: var(--text-dark) !important;
+    padding: 0.5rem !important;
+    color: var(--text-mid) !important;
     transition: background 0.15s ease !important;
     -webkit-tap-highlight-color: transparent !important;
   }
   
   .mobile-menu-toggle:hover {
-    background: var(--border-light) !important;
+    background: var(--bg-light) !important;
+    color: var(--text-dark) !important;
   }
   
   .mobile-menu-toggle:active {
-    background: var(--border-color) !important;
+    background: var(--bg-light) !important;
   }
   
-  .mobile-menu-toggle span {
+  .mobile-menu-toggle .hamburger-bar {
     display: block !important;
     width: 18px !important;
     height: 2px !important;
@@ -2256,8 +2290,8 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
     transform: translateZ(0) !important;
   }
   
-  .mobile-menu-toggle span::before,
-  .mobile-menu-toggle span::after {
+  .mobile-menu-toggle .hamburger-bar::before,
+  .mobile-menu-toggle .hamburger-bar::after {
     content: '' !important;
     position: absolute !important;
     left: 0 !important;
@@ -2268,24 +2302,24 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
     transition: all 0.3s ease !important;
   }
   
-  .mobile-menu-toggle span::before {
+  .mobile-menu-toggle .hamburger-bar::before {
     top: -6px !important;
   }
   
-  .mobile-menu-toggle span::after {
+  .mobile-menu-toggle .hamburger-bar::after {
     bottom: -6px !important;
   }
   
-  .mobile-menu-toggle.active span {
+  .mobile-menu-toggle.active .hamburger-bar {
     background: transparent !important;
   }
   
-  .mobile-menu-toggle.active span::before {
+  .mobile-menu-toggle.active .hamburger-bar::before {
     top: 0 !important;
     transform: rotate(45deg) !important;
   }
   
-  .mobile-menu-toggle.active span::after {
+  .mobile-menu-toggle.active .hamburger-bar::after {
     bottom: 0 !important;
     transform: rotate(-45deg) !important;
   }
@@ -2880,6 +2914,21 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
   background: var(--bg-light);
 }
 
+/* Plain hamburger — subtle zoom pulse when reviews are pending (icon stays normal, no badge/box) */
+@keyframes menu-hamburger-zoom {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.12); }
+}
+.mobile-menu-toggle.has-unread-hint:not(.active):not(.is-hint-paused) {
+  animation: menu-hamburger-zoom 1.6s ease-in-out infinite;
+  transform-origin: center;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mobile-menu-toggle.has-unread-hint {
+    animation: none;
+  }
+}
+
 .notification-badge {
   position: absolute;
   top: 2px;
@@ -3001,6 +3050,11 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
 
 .notification-icon.info {
   background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: white;
+}
+
+.notification-icon.pending {
+  background: linear-gradient(135deg, #059669, #047857);
   color: white;
 }
 

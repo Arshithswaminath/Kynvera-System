@@ -493,6 +493,78 @@ def _start_new_cycle(uploaded_by: str = 'admin') -> dict:
     return log['current']
 
 
+# How long an uploaded-but-unapproved cycle is allowed to sit before the
+# automation auto-stops and a fresh upload is required. 30 minutes per spec.
+_CYCLE_APPROVAL_TIMEOUT_SECONDS = 30 * 60
+
+
+def _current_cycle_status() -> dict | None:
+    """Return the current (in-flight) cycle dict, or None."""
+    try:
+        return (_load_cycle_log() or {}).get('current')
+    except Exception:
+        return None
+
+
+def _is_current_cycle_approved() -> bool:
+    """True only when the in-flight cycle has been reviewed/approved."""
+    cur = _current_cycle_status()
+    return bool(cur and cur.get('status') == 'approved' and cur.get('approved_at'))
+
+
+def auto_stop_stale_cycle(reason_extra: str = '') -> bool:
+    """If the current cycle is uploaded but not approved within the timeout,
+    stop the automation (disable schedule) and require a fresh upload.
+
+    Returns True when a stop was performed.
+    """
+    cur = _current_cycle_status()
+    if not cur or cur.get('status') != 'uploaded':
+        return False
+    upload_at_raw = cur.get('upload_at')
+    if not upload_at_raw:
+        return False
+    try:
+        upload_at = datetime.fromisoformat(upload_at_raw)
+    except (TypeError, ValueError):
+        return False
+    age = (datetime.now() - upload_at).total_seconds()
+    if age < _CYCLE_APPROVAL_TIMEOUT_SECONDS:
+        return False
+
+    config = _load_config()
+    config['schedule_enabled'] = False
+    config['schedule_paused'] = True
+    config['automation_waiting_for_fresh_upload'] = True
+    _save_config(config)
+    try:
+        from .scheduler import update_schedule
+        update_schedule(config, current_app._get_current_object())
+    except Exception:
+        pass
+
+    cid = cur.get('cycle_id')
+    meta: dict = {'reason': 'approval_timeout', 'timeout_minutes': _CYCLE_APPROVAL_TIMEOUT_SECONDS // 60}
+    try:
+        if cid is not None:
+            meta['cycle_id'] = int(cid)
+    except (TypeError, ValueError):
+        pass
+    detail = (
+        f'Cycle was uploaded but not approved within {_CYCLE_APPROVAL_TIMEOUT_SECONDS // 60} minutes. '
+        f'Automation has been stopped — upload a new Excel and re-enable the schedule to send again.'
+    )
+    if reason_extra:
+        detail = f'{detail} ({reason_extra})'
+    append_automation_activity(
+        'auto_stopped',
+        'Automation auto-stopped — approval timeout',
+        detail,
+        meta=meta,
+    )
+    return True
+
+
 def _approve_current_cycle(approved_by: str = 'admin') -> bool:
     """Mark current cycle as reviewed. Returns False if nothing to approve."""
     log = _load_cycle_log()
@@ -1401,6 +1473,25 @@ def send_email_now():
 
     if not os.path.exists(path):
         return jsonify({'error': 'No MMR file uploaded yet. Please upload an Excel file first.'}), 400
+
+    # Approval gate — emails (manual or scheduled) only go out for an approved cycle.
+    # Auto-stops the automation if the current cycle has aged past the approval timeout.
+    if auto_stop_stale_cycle():
+        return jsonify({
+            'error': (
+                'Approval timeout — automation has been stopped because the cycle was not '
+                'approved within 30 minutes. Upload a fresh Excel and re-enable the schedule.'
+            ),
+            'auto_stopped': True,
+        }), 400
+    if not _is_current_cycle_approved():
+        return jsonify({
+            'error': (
+                'Cycle not approved yet. Click "Review & Approve" on the current cycle '
+                'before sending the email.'
+            ),
+            'requires_approval': True,
+        }), 400
 
     to_raw = data.get('to', '').strip()
     cc_raw = data.get('cc', '').strip()

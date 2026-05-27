@@ -53,6 +53,8 @@ class User(db.Model):
     annual_leave_days = db.Column(db.Integer, nullable=True)
     other_leave_days = db.Column(db.Integer, nullable=True)
     reporting_manager_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    # Operations manager assigned to this user by admin (used for technician HR routing).
+    operations_manager_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
 
     # Relationships
     submissions = db.relationship('Submission', foreign_keys='Submission.user_id', backref='user', lazy='dynamic')
@@ -68,6 +70,11 @@ class User(db.Model):
     reporting_manager = db.relationship(
         'User',
         foreign_keys=[reporting_manager_id],
+        remote_side=[id],
+    )
+    operations_manager = db.relationship(
+        'User',
+        foreign_keys=[operations_manager_id],
         remote_side=[id],
     )
 
@@ -140,6 +147,7 @@ class User(db.Model):
             'annual_leave_days': getattr(self, 'annual_leave_days', None),
             'other_leave_days': getattr(self, 'other_leave_days', None),
             'reporting_manager_id': getattr(self, 'reporting_manager_id', None),
+            'operations_manager_id': getattr(self, 'operations_manager_id', None),
         }
         mgr = getattr(self, 'reporting_manager', None)
         if mgr:
@@ -151,6 +159,17 @@ class User(db.Model):
             }
         else:
             data['reporting_manager'] = None
+        om = getattr(self, 'operations_manager', None)
+        if om:
+            data['operations_manager'] = {
+                'id': om.id,
+                'username': om.username,
+                'email': om.email,
+                'full_name': om.full_name,
+                'designation': getattr(om, 'designation', None),
+            }
+        else:
+            data['operations_manager'] = None
         return data
     
     def to_client_dict(self):

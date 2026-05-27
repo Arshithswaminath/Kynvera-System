@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="/static/css/hr-forms.css">
   <link rel="stylesheet" href="/static/mobile_responsive.css">
   <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+  <script src="{{ url_for('static', filename='js/hr_sign_pdf_preview.js') }}"></script>
   <style>
     :root {
       --primary: #125435;
@@ -398,6 +399,217 @@
       background: linear-gradient(135deg, #1e4a7a, #163d63); color: white; border: none;
       padding: 0.7rem 2rem; border-radius: 9px; font-weight: 600; cursor: pointer;
     }
+
+    /* ── Full-screen "page-like" approval overlay (matches hr_mgmt_sign) ── */
+    #approvalModal .modal-dialog {
+      max-width: none;
+      width: 100vw;
+      height: 100dvh;
+      margin: 0;
+      display: block;
+    }
+    #approvalModal .modal-content {
+      width: 100vw;
+      min-height: 100dvh;
+      max-height: 100dvh;
+      border: none;
+      border-radius: 0;
+      box-shadow: none;
+      background: #f8faf8;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    /* Hide the dark gradient modal header (replaced by a light page bar) */
+    #approvalModal .modal-header { display: none !important; }
+    #approvalModal .modal-body {
+      flex: 1 1 auto;
+      min-height: 0;
+      background: #f8faf8;
+      padding: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+    /* Lightweight page-style top bar (Back + "SUBMITTED FORM") */
+    .gm-page-bar {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.85rem clamp(0.75rem, 1.5vw, 1.75rem);
+      background: #f8faf8;
+      border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+    }
+    .gm-page-back {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.42rem 0.85rem;
+      border-radius: 9px;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      color: #1e293b;
+      font-size: 0.84rem;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+      text-decoration: none;
+    }
+    .gm-page-back:hover { background: #f1f5f9; color: #0f172a; }
+    .gm-page-caption {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: #64748b;
+      text-transform: uppercase;
+    }
+    .gm-page-ref {
+      margin-left: auto;
+      font-size: 0.78rem;
+      color: #64748b;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      padding: 0.3rem 0.6rem;
+      border-radius: 7px;
+    }
+    .gm-modal-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(300px, min(36vw, 32rem));
+      gap: clamp(0.75rem, 1.5vw, 1.5rem);
+      padding: clamp(0.75rem, 1.5vw, 1.5rem) clamp(0.75rem, 1.5vw, 1.75rem) 2rem;
+      align-items: start;
+      min-height: 0;
+    }
+    @media (max-width: 960px) {
+      .gm-modal-grid { grid-template-columns: 1fr; padding: 0.75rem; }
+      .gm-sign-col { position: relative !important; top: auto !important; max-height: none !important; }
+    }
+    .gm-preview-col {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .gm-preview-caption {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #1e4a7a;
+      margin: 0 0 0.15rem;
+    }
+    .gm-preview-scroll {
+      max-height: calc(100dvh - 7rem);
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
+      background: #f5f5f7;
+      border-radius: 12px;
+      border: 1px solid #e5e7eb;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(100,116,139,0.42) transparent;
+    }
+    .gm-preview-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+    .gm-preview-scroll::-webkit-scrollbar-thumb { background: rgba(100,116,139,0.35); border-radius: 999px; }
+    .gm-preview-scroll::-webkit-scrollbar-thumb:hover { background: rgba(71,85,105,0.55); }
+    /* IDs reused by hr_sign_pdf_preview.js */
+    .gm-pdf-host { width: 100%; }
+    .gm-pdf-host:not([hidden]) { min-height: 10rem; }
+    .rsp-pdf-pages {
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+      padding: 0.5rem 0;
+      align-items: center;
+    }
+    .rsp-pdf-page {
+      max-width: min(820px, 100%);
+      line-height: 0;
+    }
+    .rsp-pdf-page canvas {
+      display: block;
+      max-width: 100%;
+      height: auto;
+      vertical-align: top;
+      box-shadow: 0 1px 4px rgba(15,23,42,0.06);
+      border-radius: 4px;
+    }
+    .gm-preview-zoom-fallback { width: 100%; }
+    .gm-preview-zoom-fallback #rspPreviewFrame {
+      width: 100%;
+      min-height: 32rem;
+      height: calc(100dvh - 7rem);
+      border: none;
+      display: block;
+      background: #f5f5f7;
+    }
+    .gm-preview-loading,
+    .gm-preview-fallback {
+      padding: 1.25rem 1rem;
+      text-align: center;
+      font-size: 0.86rem;
+      color: #64748b;
+    }
+    .gm-preview-fallback { color: #475569; line-height: 1.5; }
+
+    .gm-sign-col {
+      position: sticky;
+      top: 0;
+      max-height: calc(100dvh - 7rem);
+      overflow-y: auto;
+      min-width: 0;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(100,116,139,0.42) transparent;
+    }
+    .gm-sign-col::-webkit-scrollbar { width: 6px; }
+    .gm-sign-col::-webkit-scrollbar-thumb { background: rgba(100,116,139,0.35); border-radius: 999px; }
+    .gm-sign-card {
+      background: #fff;
+      border-radius: 14px;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 6px 24px rgba(15,23,42,0.06);
+      padding: 1.1rem 1.15rem 1.25rem;
+    }
+    .gm-sign-title {
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: #0f172a;
+      margin: 0 0 0.2rem;
+      letter-spacing: -0.01em;
+    }
+    .gm-sign-meta {
+      font-size: 0.82rem;
+      color: #64748b;
+      line-height: 1.5;
+      margin: 0 0 0.85rem;
+    }
+    .gm-sign-meta code {
+      background: #f1f5f9;
+      padding: 0.05rem 0.4rem;
+      border-radius: 5px;
+      font-size: 0.78rem;
+      color: #334155;
+    }
+    .gm-sign-col .gm-action-zone {
+      margin-top: 0.85rem;
+      padding: 0.9rem 1rem 1rem;
+    }
+    .gm-sign-col .gm-action-zone-title { font-size: 0.82rem; margin-bottom: 0.65rem; }
+    .gm-sign-col .hr-stamp { margin-bottom: 0.85rem; }
+    /* Compact action buttons inside the right column */
+    .gm-decision-actions {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.95rem;
+      flex-wrap: wrap;
+    }
+    .gm-decision-actions .btn-approve-gm,
+    .gm-decision-actions .btn-outline-danger {
+      flex: 1 1 auto;
+      min-height: 42px;
+      justify-content: center;
+      font-size: 0.86rem;
+    }
   </style>
   <style>body.has-main-nav { padding-top: 5.5rem; }</style>
 </head>
@@ -461,44 +673,86 @@
     </div>
   </div>
 
-  <!-- ── Approval Modal ──────────────────────────────────── -->
-  <div class="modal fade" id="approvalModal" tabindex="-1">
-    <div class="modal-dialog modal-xl">
+  <!-- ── Approval Overlay (full-screen, page-like) ──────────────────────────────────── -->
+  <div class="modal fade" id="approvalModal" tabindex="-1" aria-labelledby="gmSignTitle">
+    <div class="modal-dialog">
       <div class="modal-content">
+        <!-- Hidden legacy modal-header (kept so any code referencing modalSubtitle still works) -->
         <div class="modal-header">
-          <div style="position:relative;">
-            <h5 class="modal-title">Final Approval</h5>
-            <p class="modal-subtitle mb-0" id="modalSubtitle">Review and give your final decision</p>
-          </div>
+          <h5 class="modal-title">Final Approval</h5>
+          <p class="modal-subtitle mb-0" id="modalSubtitle">Review and give your final decision</p>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
+
+        <!-- Page-style top bar -->
+        <div class="gm-page-bar">
+          <button type="button" class="gm-page-back" data-bs-dismiss="modal" aria-label="Back to list">
+            <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
+            Back
+          </button>
+          <span class="gm-page-caption">Submitted form</span>
+          <span class="gm-page-ref" id="gmPageRef"></span>
+        </div>
+
         <div class="modal-body">
-          <div id="hrApprovalInfo"></div>
-          <div id="requestDetails" class="form-as-filled"></div>
-          <!-- GM Action Zone -->
-          <div class="gm-action-zone">
-            <div class="gm-action-zone-title">
-              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-              Your Decision
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Comments <span style="font-weight:400;color:#9ca3af;">(optional)</span></label>
-              <textarea class="form-control" id="gmComments" rows="2" placeholder="Add any remarks or conditions..."></textarea>
-            </div>
-            <div style="touch-action:none;">
-              <label class="form-label" style="font-weight:600;font-size:0.83rem;color:#374151;">GM Signature</label>
-              <div class="gm-sig-wrap">
-                <div class="gm-sig-label">
-                  <span>Sign here to confirm your decision</span>
-                  <button type="button" class="btn-clear-signature" onclick="clearSignature()">Clear</button>
+          <div class="gm-modal-grid">
+            <!-- Left: PDF preview of the submitted form -->
+            <div class="gm-preview-col">
+              <p class="gm-preview-caption">Submitted form</p>
+              <div class="gm-preview-scroll" id="rspPreviewScroll">
+                <div class="gm-preview-loading" id="rspPreviewLoading">Loading form preview…</div>
+                <div id="rspPreviewPdfHost" class="gm-pdf-host" hidden></div>
+                <div id="rspPreviewZoomWrap" class="gm-preview-zoom-fallback" style="display:none">
+                  <iframe id="rspPreviewFrame" title="Submitted HR form PDF"></iframe>
                 </div>
-                <canvas id="gmSignatureCanvas" class="w-100" width="400" height="120"
-                  style="touch-action:none; display:block; min-height:120px; background:white;"></canvas>
+                <div class="gm-preview-fallback" id="rspPreviewErr" style="display:none;"></div>
+              </div>
+              <!-- Legacy HTML fallback (kept hidden; useful if PDF is unavailable) -->
+              <div id="requestDetails" class="form-as-filled" style="display:none;"></div>
+            </div>
+
+            <!-- Right: action card -->
+            <div class="gm-sign-col">
+              <div class="gm-sign-card">
+                <h2 class="gm-sign-title" id="gmSignTitle">Final Approval</h2>
+                <p class="gm-sign-meta" id="gmSignMeta">Review and give your final decision</p>
+
+                <div id="hrApprovalInfo"></div>
+
+                <div class="gm-action-zone">
+                  <div class="gm-action-zone-title">
+                    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    Your Decision
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Comments <span style="font-weight:400;color:#9ca3af;">(optional)</span></label>
+                    <textarea class="form-control" id="gmComments" rows="2" placeholder="Add any remarks or conditions..."></textarea>
+                  </div>
+                  <div style="touch-action:none;">
+                    <label class="form-label" style="font-weight:600;font-size:0.83rem;color:#374151;">GM Signature</label>
+                    <div class="gm-sig-wrap">
+                      <div class="gm-sig-label">
+                        <span>Sign here to confirm your decision</span>
+                        <button type="button" class="btn-clear-signature" onclick="clearSignature()">Clear</button>
+                      </div>
+                      <canvas id="gmSignatureCanvas" class="w-100" width="400" height="120"
+                        style="touch-action:none; display:block; min-height:120px; background:white;"></canvas>
+                    </div>
+                  </div>
+
+                  <div class="gm-decision-actions">
+                    <button type="button" class="btn btn-outline-danger" onclick="rejectRequest()" style="border-radius:9px;font-weight:600;">Reject</button>
+                    <button type="button" class="btn-approve-gm" onclick="approveRequest()">
+                      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                      Approve
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
-        <div class="modal-footer">
+        <div class="modal-footer" style="background:#fff;border-top:1px solid rgba(15,23,42,0.06);padding:0.65rem clamp(0.75rem,1.5vw,1.75rem);flex-shrink:0;">
           <div class="d-flex gap-2 me-auto flex-wrap">
             <a id="printBtnGm" href="#" target="_blank" class="gm-export-link">
               <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
@@ -513,12 +767,7 @@
               PDF
             </a>
           </div>
-          <button type="button" class="btn btn-light border" data-bs-dismiss="modal" style="border-radius:8px;font-weight:500;">Cancel</button>
-          <button type="button" class="btn btn-outline-danger" onclick="rejectRequest()" style="border-radius:8px;font-weight:600;padding:0.48rem 1rem;">Reject</button>
-          <button type="button" class="btn-approve-gm" onclick="approveRequest()">
-            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-            Give Final Approval
-          </button>
+          <button type="button" class="btn btn-light border" data-bs-dismiss="modal" style="border-radius:8px;font-weight:500;">Close</button>
         </div>
       </div>
     </div>
@@ -535,6 +784,7 @@
     let currentSubmissionId = null;
     let currentWorkflowStatus = '';
     let signaturePad = null;
+    let gmPdfPreviewGen = 0;
 
     /* ── PDF / DOCX downloads ─────────────────────────────── */
     async function downloadHrPdf(submissionId) {
@@ -932,9 +1182,20 @@
         ? '<div style="margin-bottom:1rem;padding:0.75rem 1rem;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:10px;font-size:0.88rem;color:#065f46"><strong>Open employee view:</strong> <a href="' + fullFormUrlGm.replace(/"/g, '&quot;') + '" target="_blank" rel="noopener">Full submitted form</a> <span style="color:#64748b">(read-only layout)</span></div>'
         : '';
 
-      // Modal subtitle
+      // Modal subtitle + sign-card title/meta
       const sub = document.getElementById('modalSubtitle');
       if (sub) sub.textContent = submission.submission_id;
+      const refPill = document.getElementById('gmPageRef');
+      if (refPill) refPill.textContent = submission.submission_id || '';
+      const signTitle = document.getElementById('gmSignTitle');
+      if (signTitle) signTitle.textContent = getFormTypeLabel(submission.module_type || submission.form_type || '') || 'HR Form';
+      const signMeta = document.getElementById('gmSignMeta');
+      if (signMeta) {
+        const submitterName = escapeHtml(submission.submitter_name || formData.submitted_by_name || 'Employee');
+        signMeta.innerHTML =
+          '<strong>' + submitterName + '</strong> submitted an HR form requiring your approval.' +
+          '<br>Ref: <code>' + escapeHtml(submission.submission_id || '') + '</code>';
+      }
 
       const wf = currentWorkflowStatus || '';
       const isMgmtGm = wf === 'hr_mgmt_gm';
@@ -982,16 +1243,42 @@
         </div>`;
       }
 
-      // Form preview
-      document.getElementById('requestDetails').innerHTML = fullFormBannerGm +
-        renderFormAsFilled(formType, formData, submission.submission_id);
+      // Hidden HTML fallback (kept for legacy / debug use)
+      const reqDetails = document.getElementById('requestDetails');
+      if (reqDetails) {
+        reqDetails.innerHTML = fullFormBannerGm + renderFormAsFilled(formType, formData, submission.submission_id);
+      }
 
       // Clear comments & signature
       const gmComments = document.getElementById('gmComments');
       if (gmComments) gmComments.value = '';
 
+      // Show modal + load PDF preview
       bootstrap.Modal.getOrCreateInstance(document.getElementById('approvalModal')).show();
+      loadGmPdfPreview(submission.submission_id);
     }
+
+    /* ── PDF preview wiring (uses shared hr_sign_pdf_preview.js) ───────── */
+    async function loadGmPdfPreview(submissionId) {
+      const gen = ++gmPdfPreviewGen;
+      if (!window.HrSignPdfPreview) return;
+      await HrSignPdfPreview.load({
+        submissionId: submissionId,
+        token: token,
+        gen: gen,
+        isStale: function (g) { return g !== gmPdfPreviewGen; },
+        errMessage: 'Could not load the submitted form as PDF. You can still approve below, or open the full form via the Print link.',
+      });
+    }
+
+    document.getElementById('approvalModal')?.addEventListener('hidden.bs.modal', function () {
+      gmPdfPreviewGen += 1;
+      try { window.HrSignPdfPreview && HrSignPdfPreview.abort(); } catch (e) {}
+      const loadingEl = document.getElementById('rspPreviewLoading');
+      if (loadingEl) loadingEl.style.display = 'block';
+      const errEl = document.getElementById('rspPreviewErr');
+      if (errEl) { errEl.style.display = 'none'; errEl.textContent = ''; }
+    });
 
     /* ── Approve / Reject ─────────────────────────────────── */
     async function approveRequest() {

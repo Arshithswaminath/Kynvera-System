@@ -210,10 +210,18 @@
     border: 1.5px solid var(--tm-line);
     border-radius: 16px;
     padding: 1.1rem 1.15rem;
-    transition: box-shadow .18s, border-color .18s;
+    transition: box-shadow .18s, border-color .18s, transform .18s;
     position: relative;
   }
-  .tm-staff-card:hover { box-shadow: var(--tm-sh); border-color: #c0ecd4; }
+  .tm-staff-card--interactive {
+    cursor: pointer;
+  }
+  .tm-staff-card--interactive:hover { box-shadow: var(--tm-sh); border-color: #c0ecd4; }
+  .tm-staff-card--interactive:focus-visible {
+    outline: 2px solid var(--tm-green);
+    outline-offset: 2px;
+  }
+  .tm-staff-card--interactive:active { transform: translateY(1px); }
   .tm-staff-card-top { display: flex; gap: .75rem; align-items: flex-start; margin-bottom: .75rem; }
   .tm-avatar {
     width: 46px; height: 46px; border-radius: 14px;
@@ -844,12 +852,17 @@
       const mods = Object.entries(MODULE_LABELS).filter(([k]) => u.role === 'admin' || u[k]).map(([,v]) => `<span class="tm-mod-chip">${v}</span>`).join('');
       const roleBadge = u.role === 'admin' ? 'admin' : (u.designation === 'supervisor' || u.designation === 'operations_manager' || u.designation === 'general_manager' ? 'manager' : 'user');
       const statusDot = u.is_active ? '' : ' inactive';
+      const displayName = u.full_name || u.username;
       return `
-        <div class="tm-staff-card">
+        <div class="tm-staff-card tm-staff-card--interactive" role="button" tabindex="0"
+             onclick="openUserProfileModal(${u.id})"
+             onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openUserProfileModal(${u.id});}"
+             aria-label="Manage profile for ${displayName}"
+             title="Manage profile">
           <div class="tm-staff-card-top">
             <div class="tm-avatar ${avatarColor(idx)}">${initials(u.full_name)}</div>
             <div style="flex:1;min-width:0;">
-              <div class="tm-staff-name">${u.full_name || u.username}</div>
+              <div class="tm-staff-name">${displayName}</div>
               <div class="tm-staff-desig">${u.job_designation || u.designation || '—'}</div>
             </div>
             <span class="tm-role-badge ${roleBadge}">${u.role === 'admin' ? 'Admin' : (u.designation || 'User').replace(/_/g, ' ')}</span>
@@ -860,7 +873,7 @@
           </div>
           ${mods ? `<div class="tm-staff-modules">${mods}</div>` : ''}
           <div class="tm-staff-actions">
-            <button type="button" class="tm-btn tm-btn-outline tm-btn-sm" onclick="openUserProfileModal(${u.id})" title="Edit identity, HR fields, workflow, modules">Manage profile</button>
+            <span class="tm-btn tm-btn-outline tm-btn-sm" aria-hidden="true">Manage profile</span>
           </div>
         </div>`;
     }).join('');
@@ -957,12 +970,34 @@
     }
     wrap.style.display = '';
     empty.style.display = 'none';
-    tbody.innerHTML = list.map(t => `
+    tbody.innerHTML = list.map(t => {
+      const isLogin = t.source === 'login';
+      const safeName = (t.full_name || '').replace(/'/g, "\\'");
+      const loginChip = isLogin
+        ? '<span class="tm-role-badge user" style="margin-left:.35rem;font-size:.62rem;vertical-align:middle;">App login</span>'
+        : '';
+      const actions = isLogin
+        ? `<div class="tm-table-actions">
+            <button class="tm-btn tm-btn-outline tm-btn-sm" onclick="openUserProfileModal(${t.user_id})" title="Manage login profile">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125"/></svg>
+              Manage login
+            </button>
+          </div>`
+        : `<div class="tm-table-actions">
+            <button class="tm-btn tm-btn-outline tm-btn-sm" onclick="openTechEditModal(${t.id})" title="Edit">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125"/></svg>
+              Edit
+            </button>
+            <button class="tm-btn tm-btn-danger tm-btn-sm" onclick="confirmDeleteTech(${t.id}, '${safeName}')">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>
+            </button>
+          </div>`;
+      return `
       <tr>
         <td>
           <div style="display:flex;align-items:center;gap:.65rem;">
             <div class="tm-avatar blue" style="width:36px;height:36px;border-radius:10px;font-size:.82rem;">${initials(t.full_name)}</div>
-            <div><div class="td-name">${t.full_name}</div>${t.specialization ? `<div style="font-size:.72rem;color:var(--tm-muted)">${t.specialization}</div>` : ''}</div>
+            <div><div class="td-name">${t.full_name}${loginChip}</div>${t.specialization ? `<div style="font-size:.72rem;color:var(--tm-muted)">${t.specialization}</div>` : (isLogin && t.email ? `<div style="font-size:.72rem;color:var(--tm-muted)">${t.email}</div>` : '')}</div>
           </div>
         </td>
         <td style="vertical-align:middle;line-height:1.35;">
@@ -975,18 +1010,9 @@
         <td>${fmtSalary(t.salary)}</td>
         <td style="white-space:nowrap;">${fmtDate(t.joining_date)}</td>
         <td><span class="tm-status-badge ${t.status}">${t.status.replace('_', ' ')}</span></td>
-        <td>
-          <div class="tm-table-actions">
-            <button class="tm-btn tm-btn-outline tm-btn-sm" onclick="openTechEditModal(${t.id})" title="Edit">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125"/></svg>
-              Edit
-            </button>
-            <button class="tm-btn tm-btn-danger tm-btn-sm" onclick="confirmDeleteTech(${t.id}, '${t.full_name.replace(/'/g, "\\'")}')">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>
-            </button>
-          </div>
-        </td>
-      </tr>`).join('');
+        <td>${actions}</td>
+      </tr>`;
+    }).join('');
   }
 
   /* ── Technician Modal ─────────────────────────────────────────────── */
@@ -1003,6 +1029,10 @@
   }
 
   function openTechEditModal(techId) {
+    if (techId < 0) {
+      openUserProfileModal(-techId);
+      return;
+    }
     const t = _techData.find(x => x.id === techId);
     if (!t) return;
     document.getElementById('techModalTitle').textContent = 'Edit Technician';

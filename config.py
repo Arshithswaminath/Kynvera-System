@@ -102,7 +102,7 @@ MAILJET_API_KEY = os.getenv("MAILJET_API_KEY")
 MAILJET_SECRET_KEY = os.getenv("MAILJET_SECRET_KEY")
 
 # Application
-APP_BASE_URL = os.getenv("APP_BASE_URL", "http://localhost:5000")
+APP_BASE_URL = os.getenv("APP_BASE_URL", "http://localhost:5002")
 
 # Security
 SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "false").lower() == "true"

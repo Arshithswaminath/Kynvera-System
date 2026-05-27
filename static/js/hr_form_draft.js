@@ -112,10 +112,13 @@
       if (vd) body.visit_date = vd;
       if (draftState.id) body.submission_id = draftState.id;
 
-      var prev = btn && btn.textContent;
+      var labelEl = btn && btn.querySelector('.btn-label');
+      var prev = labelEl ? labelEl.textContent : btn && btn.textContent;
       if (btn) {
         btn.disabled = true;
-        btn.textContent = 'Saving…';
+        btn.classList.add('is-saving');
+        if (labelEl) labelEl.textContent = 'Saving…';
+        else btn.textContent = 'Saving…';
       }
       try {
         var res = await fetch('/api/workflow/submissions/save-draft', {
@@ -141,7 +144,9 @@
       } finally {
         if (btn) {
           btn.disabled = false;
-          btn.textContent = prev || 'Save progress';
+          btn.classList.remove('is-saving');
+          if (labelEl) labelEl.textContent = prev || 'Save progress';
+          else btn.textContent = prev || 'Save progress';
         }
       }
     }

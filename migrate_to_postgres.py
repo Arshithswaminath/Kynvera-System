@@ -20,11 +20,19 @@ except ImportError:
     sys.exit("psycopg2-binary not installed. Run: pip install psycopg2-binary")
 
 # ── Config ────────────────────────────────────────────────────────────────────
-SQLITE_PATH = os.path.join(os.path.dirname(__file__), "injaaz.db")
-PG_URL = (
-    "postgresql://injaaz_db_t2rb_user:BxwqYHt2GiA6uenC9PkjgebiIE2ydut8"
-    "@dpg-d6sheakr85hc73esmetg-a.oregon-postgres.render.com/injaaz_db_t2rb"
-)
+# Credentials must NEVER be committed. Pass the target PostgreSQL DSN via the
+# PG_URL or DATABASE_URL environment variable, e.g.:
+#     export PG_URL="postgresql://user:pass@host:5432/dbname"
+#     python migrate_to_postgres.py
+SQLITE_PATH = os.environ.get("SQLITE_PATH") or os.path.join(os.path.dirname(__file__), "injaaz.db")
+PG_URL = os.environ.get("PG_URL") or os.environ.get("DATABASE_URL")
+if not PG_URL:
+    sys.exit(
+        "ERROR: PG_URL (or DATABASE_URL) environment variable is required.\n"
+        "Example: PG_URL='postgresql://user:pass@host/db' python migrate_to_postgres.py"
+    )
+if PG_URL.startswith("postgres://"):
+    PG_URL = PG_URL.replace("postgres://", "postgresql://", 1)
 
 BATCH_SIZE = 100  # rows per INSERT batch
 

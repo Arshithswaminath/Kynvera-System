@@ -28,6 +28,7 @@ from app.middleware import token_required
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from app.services.cloudinary_service import upload_local_file
 from common.workflow_notifications import send_inspection_submitted
+from common.inspection_inapp_notifications import notify_inspection_stage
 
 # Rate limiting helper
 def get_limiter():
@@ -51,6 +52,7 @@ logger = logging.getLogger(__name__)
 cleaning_bp = Blueprint('cleaning', __name__, url_prefix='/cleaning', template_folder='templates')
 
 @cleaning_bp.route('/generated/<path:filename>')
+@jwt_required()
 def download_generated_cleaning(filename):
     """Serve generated files as download attachments for cleaning module."""
     GENERATED_DIR = current_app.config['GENERATED_DIR']
@@ -66,6 +68,7 @@ def download_generated_cleaning(filename):
 
 
 @cleaning_bp.route("/download/<job_id>/<file_type>", methods=["GET"])
+@jwt_required()
 def download_file(job_id, file_type):
     """
     Download proxy route that fetches files from Cloudinary or local storage
@@ -266,11 +269,20 @@ def form():
             if user.role == 'admin':
                 can_edit = True
                 can_view = True
+            # Original submitter (technician, etc.) — view own submission; edit draft/rejected only
+            elif getattr(submission, 'user_id', None) == user.id:
+                can_view = True
+                st = (getattr(submission, 'status', None) or '').lower()
+                if workflow_status in ('draft', 'rejected') or st == 'draft':
+                    can_edit = True
             # Supervisor - can edit ONLY if form is still at their stage, otherwise read-only
             elif user_designation == 'supervisor' and hasattr(submission, 'supervisor_id') and submission.supervisor_id == user.id:
-                # Supervisor can edit if form is still at operations_manager_review (pending OM approval)
-                # Once OM approves (status changes to bd_procurement_review or beyond), supervisor can only view
-                if workflow_status == 'operations_manager_review':
+                # Supervisor can edit at the supervisor stage (their queue) and during
+                # operations_manager_review (until OM has actually started approving).
+                if workflow_status in ('supervisor_review', 'supervisor_notified'):
+                    can_edit = True
+                    can_view = True
+                elif workflow_status == 'operations_manager_review':
                     # Form submitted but OM hasn't approved yet - supervisor can still edit/resubmit
                     can_edit = True
                     can_view = True
@@ -361,6 +373,7 @@ def form():
                 if user.role == 'admin':
                     can_view = True
                 elif (
+                    getattr(submission, 'user_id', None) == user.id or
                     (hasattr(submission, 'supervisor_id') and submission.supervisor_id == user.id) or
                     (hasattr(submission, 'operations_manager_id') and submission.operations_manager_id == user.id) or
                     (hasattr(submission, 'business_dev_id') and submission.business_dev_id == user.id) or
@@ -475,12 +488,18 @@ def form():
             
             submission_data = {
                 'submission_id': submission.submission_id,
+                'user_id': submission.user_id,
                 'site_name': submission.site_name or '',
                 'visit_date': submission.visit_date.isoformat() if submission.visit_date else '',
+                'status': submission.status if hasattr(submission, 'status') else None,
+                'created_at': submission.created_at.isoformat() if getattr(submission, 'created_at', None) else None,
                 'form_data': form_data,
                 'is_edit_mode': True,
                 'workflow_status': submission.workflow_status if hasattr(submission, 'workflow_status') else None,
                 'supervisor_id': submission.supervisor_id if hasattr(submission, 'supervisor_id') else None,
+                'supervisor_reviewed_at': submission.supervisor_reviewed_at.isoformat() if hasattr(submission, 'supervisor_reviewed_at') and submission.supervisor_reviewed_at else None,
+                'user': submission.user.to_dict() if submission.user else None,
+                'supervisor': submission.supervisor.to_dict() if getattr(submission, 'supervisor', None) else None,
                 'can_edit': can_edit,  # Pass can_edit to JavaScript so it can show editable vs read-only UI
                 'operations_manager_approved_at': submission.operations_manager_approved_at.isoformat() if hasattr(submission, 'operations_manager_approved_at') and submission.operations_manager_approved_at else None,
                 'business_dev_approved_at': submission.business_dev_approved_at.isoformat() if hasattr(submission, 'business_dev_approved_at') and submission.business_dev_approved_at else None,
@@ -538,6 +557,7 @@ def form():
 
 
 @cleaning_bp.route('/submit', methods=['POST'])
+@jwt_required()
 @rate_limit_if_available('10 per minute')  # Limit form submissions
 def submit():
     """Handle form submission and start background job."""
@@ -686,7 +706,7 @@ def submit():
         )
         submission_id = submission.submission_id
 
-        # Trigger real-time inspection submission email.
+        # Email notification (in-app bell is sent inside create_submission_db).
         try:
             submitter_user = db.session.get(User, int(user_id)) if user_id else None
             send_inspection_submitted(submission, submitter_user)
@@ -731,6 +751,7 @@ def submit():
 
 
 @cleaning_bp.route('/status/<job_id>', methods=['GET'])
+@jwt_required()
 def job_status(job_id):
     """Check the status of a background job."""
     try:
@@ -765,6 +786,7 @@ def process_job(sub_id, job_id, config, app):
 # ---------- Progressive Upload Endpoints ----------
 
 @cleaning_bp.route("/upload-photo", methods=["POST"])
+@jwt_required()
 def upload_photo():
     """Upload a single photo immediately to cloud storage."""
     try:
@@ -915,7 +937,7 @@ def submit_with_urls():
         )
         submission_id = submission_db.submission_id
 
-        # Trigger real-time inspection submission email.
+        # Email notification (in-app bell is sent inside create_submission_db).
         try:
             submitter_user = db.session.get(User, int(user_id)) if user_id else None
             send_inspection_submitted(submission_db, submitter_user)

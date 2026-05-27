@@ -92,20 +92,6 @@
       .leave-form-layout { grid-template-columns: 1fr; }
       .leave-form-layout-aside { position: static; }
     }
-    /* Signature summary rows (shared with duty form style) */
-    .duty-sig-summary-rows { display: flex; flex-direction: column; }
-    .duty-sig-summary-row {
-      display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
-      padding: 12px 18px; border-bottom: 1px solid #f1f5f9;
-    }
-    .duty-sig-summary-row:last-child { border-bottom: none; padding-bottom: 14px; }
-    .duty-sig-summary-label { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #64748b; display: block; margin-bottom: 4px; }
-    .duty-sig-summary-value { font-size: .82rem; font-weight: 600; color: #1e293b; line-height: 1.35; }
-    .duty-sig-summary-value.muted { font-weight: 500; color: #94a3b8; font-style: italic; }
-    .duty-sig-badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 999px; font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
-    .duty-sig-badge--signed  { background: #dcfce7; color: #15803d; }
-    .duty-sig-badge--pending { background: #fef9c3; color: #a16207; }
-    .duty-sig-badge--optional{ background: #f1f5f9; color: #64748b; }
   </style>
 </head>
 <body class="hr-form-unified{% if hr_embed %} hr-embed-mode{% endif %}">
@@ -247,22 +233,31 @@
               </section>
 
               <section class="sec">
-                <h2 class="sec-hd">Replacement signatories (coverage)</h2>
-                <p style="font-size:.8rem;color:var(--muted);margin:0 0 .85rem;line-height:1.45">
-                  Select teammates with <strong>Injaaz</strong> accounts. Each person listed will be asked to sign digitally on their own device before HR sees this leave request. You cannot capture their signature here.
-                </p>
-                <div class="rep-pick-row">
-                  <select id="repColleagueSelect" class="fld-inp" aria-label="Pick colleague">
-                    <option value="">— Choose colleague to add —</option>
-                  </select>
-                  <button type="button" class="btn-inline" id="repAddColleague">Add</button>
+                <h2 class="sec-hd">Signatures</h2>
+                <label class="leave-opt" style="margin:0 0 .85rem;display:flex;align-items:flex-start;gap:.5rem;cursor:pointer">
+                  <input type="checkbox" id="needCoverageSigChk" style="margin-top:.2rem">
+                  <span class="opt-text" style="font-size:.85rem;line-height:1.45">
+                    A colleague will cover my duties and must sign digitally on their own device
+                    <span style="display:block;font-size:.78rem;color:var(--muted);font-weight:400;margin-top:.2rem">Leave this unchecked if no coverage colleague signature is needed.</span>
+                  </span>
+                </label>
+                <div id="repCoverageBlock" style="display:none">
+                  <p style="font-size:.8rem;color:var(--muted);margin:0 0 .85rem;line-height:1.45">
+                    Select teammates with <strong>Injaaz</strong> accounts. Each person listed will be asked to sign digitally on their own device before the management approval chain continues. You cannot capture their signature here.
+                  </p>
+                  <div class="rep-pick-row">
+                    <select id="repColleagueSelect" class="fld-inp" aria-label="Pick colleague">
+                      <option value="">— Choose colleague to add —</option>
+                    </select>
+                    <button type="button" class="btn-inline" id="repAddColleague">Add</button>
+                  </div>
+                  <div id="repChipList" class="rep-chip-list" aria-live="polite"></div>
+                  <div class="fld" style="margin-top:.85rem">
+                    <label class="fld-lbl">Coverage name (reference only, optional)</label>
+                    <input class="fld-inp" type="text" name="replacement_name" id="replacementNameInp" placeholder="If you need a free-text note for who is covering">
+                  </div>
                 </div>
-                <div id="repChipList" class="rep-chip-list" aria-live="polite"></div>
-                <div class="fld" style="margin-top:.85rem">
-                  <label class="fld-lbl">Coverage name (reference only, optional)</label>
-                  <input class="fld-inp" type="text" name="replacement_name" id="replacementNameInp" placeholder="If you need a free-text note for who is covering">
-                </div>
-                <div class="grid-3 sig-row-aligned" style="margin-top:.75rem;align-items:start">
+                <div class="grid-3 sig-row-aligned" id="leaveSigGrid" style="margin-top:.75rem;align-items:start">
                   <div class="fld sig-col">
                     <label class="fld-lbl">Employee signature <span class="req">*</span></label>
                     <div class="sig-wrap">
@@ -275,7 +270,7 @@
                     </div>
                     <em id="empSigHint" class="fld-indicator">Your signature confirming this leave request. Required before submit.</em>
                   </div>
-                  <div class="fld sig-col">
+                  <div class="fld sig-col" id="replSigCol" style="display:none">
                     <label class="fld-lbl">Colleague / replacement signature</label>
                     <div class="sig-wrap">
                       <div id="replSigArea" aria-live="polite" style="width:100%">
@@ -374,41 +369,14 @@
           </div>
 
           <div class="submit-bar" id="submitBar" style="display:none">
-            <button type="button" class="btn-reset" onclick="if(confirm('Reset the form?')){document.getElementById('leaveFrm').reset();replacementSignerIds=[];renderRepChips();clearAllSigs();window.HrMgmtChainReset&&HrMgmtChainReset();goToStep1()}">Reset</button>
+            <button type="button" class="btn-reset" onclick="if(confirm('Reset the form?')){document.getElementById('leaveFrm').reset();replacementSignerIds=[];var c=document.getElementById('needCoverageSigChk');if(c)c.checked=false;syncReplacementUi();renderRepChips();clearAllSigs();window.HrMgmtChainReset&&HrMgmtChainReset();goToStep1()}">Reset</button>
             <button type="submit" class="btn-submit">Submit Application</button>
           </div>
         </form>
       </div>
       </div>{# leave-form-layout-main #}
 
-      <aside class="leave-form-layout-aside" aria-label="Approvals and signature status">
-        <div class="tkt-card leave-sidebar-card">
-          <div class="tkt-card-header">
-            <h3>Signature status</h3>
-            <span style="font-size:.78rem;font-weight:600;color:#64748b;">Updates as you fill</span>
-          </div>
-          <div class="tkt-card-body duty-sig-summary-rows" id="leaveSigSummaryBody"></div>
-        </div>
-        <div class="tkt-card leave-sidebar-card leave-sidebar-card--flush leave-sidebar-inner">
-          <div class="tkt-card-header">
-            <h3>Management approvals</h3>
-            <span style="font-size:.78rem;font-weight:600;color:#64748b;">Official PDF trail</span>
-          </div>
-          <div class="tkt-card-body">
-            {% include 'partials/hr_mgmt_chain_core.html' %}
-          </div>
-        </div>
-        <div class="tkt-card leave-sidebar-card leave-sidebar-card--flush leave-sidebar-inner">
-          <div class="tkt-card-header">
-            <h3>Approval activity</h3>
-            <span style="font-size:.78rem;font-weight:600;color:#64748b;">Live trail</span>
-          </div>
-          <div class="tkt-card-body">
-            {% include 'partials/hr_recorded_signatures_panel.html' %}
-          </div>
-        </div>
-        <script src="{{ url_for('static', filename='js/hr_mgmt_chain_submit.js') }}"></script>
-      </aside>
+      {% include 'partials/hr_form_approvals_sidebar.html' %}
 
       </div>{# leave-form-layout #}
     </div>
@@ -814,6 +782,9 @@ document.addEventListener('DOMContentLoaded', () => {
   if (td && !td.value) td.value = today;
 
   setupLeaveTypeChecks();
+  const covChk = document.getElementById('needCoverageSigChk');
+  if (covChk) covChk.addEventListener('change', syncReplacementUi);
+  syncReplacementUi();
   void (async () => {
     await loadColleaguePicker();
     await hydrateFromSubmissionIfNeeded();
@@ -853,24 +824,30 @@ let replacementSignerIds = [];
 let colleaguePicker = [];
 
 function syncReplacementUi(){
-  const on = replacementSignerIds.length > 0;
-  const nm = document.getElementById('repLegacyNameFld');
-  const sg = document.getElementById('repLegacySigFld');
-  const hm = document.getElementById('repLegacyHint');
-  if(nm) nm.style.display = on ? 'none' : '';
-  if(sg) sg.style.display = on ? 'none' : '';
-  if(hm) hm.style.display = on ? 'none' : '';
-  if(on){
-    rmSig('replacement');
+  const chk = document.getElementById('needCoverageSigChk');
+  const block = document.getElementById('repCoverageBlock');
+  const replCol = document.getElementById('replSigCol');
+  const sigGrid = document.getElementById('leaveSigGrid');
+  const on = !!(chk && chk.checked);
+  if (block) block.style.display = on ? '' : 'none';
+  if (replCol) replCol.style.display = on ? '' : 'none';
+  if (sigGrid) sigGrid.className = on ? 'grid-3 sig-row-aligned' : 'grid-2 sig-row-aligned';
+  if (!on) {
+    replacementSignerIds = [];
+    const box = document.getElementById('repChipList');
+    if (box) box.innerHTML = '';
     const ri = document.getElementById('replacementNameInp');
-    if(ri) ri.value = '';
+    if (ri) ri.value = '';
+    syncReplSigHint();
   }
+  window.__hrShowColleagueRow = on;
+  if (window.refreshHrSignatureSummary) window.refreshHrSignatureSummary();
 }
 
 function renderRepChips(){
   const box = document.getElementById('repChipList');
   if(!box) return;
-  if(!replacementSignerIds.length){ box.innerHTML=''; syncReplacementUi(); syncReplSigHint(); return; }
+  if(!replacementSignerIds.length){ box.innerHTML=''; syncReplSigHint(); if (window.refreshHrSignatureSummary) window.refreshHrSignatureSummary(); return; }
   const byId = new Map(colleaguePicker.map(u=>[u.id,u]));
   box.innerHTML = replacementSignerIds.map(id=>{
     const u = byId.get(id);
@@ -885,8 +862,8 @@ function renderRepChips(){
       renderRepChips();
     });
   });
-  syncReplacementUi();
   syncReplSigHint();
+  if (window.refreshHrSignatureSummary) window.refreshHrSignatureSummary();
 }
 
 function escapeRep(t){
@@ -1257,7 +1234,20 @@ async function hydrateFromSubmissionIfNeeded() {
 
   if (Array.isArray(fd.replacement_signer_ids) && fd.replacement_signer_ids.length) {
     replacementSignerIds = fd.replacement_signer_ids.map((x) => parseInt(x, 10)).filter(Number.isFinite);
+    const covChk = document.getElementById('needCoverageSigChk');
+    if (covChk) covChk.checked = true;
+    syncReplacementUi();
     renderRepChips();
+  } else if (Array.isArray(fd.replacement_signers) && fd.replacement_signers.length) {
+    replacementSignerIds = fd.replacement_signers
+      .map((s) => parseInt(s && (s.user_id || s.id), 10))
+      .filter(Number.isFinite);
+    const covChk = document.getElementById('needCoverageSigChk');
+    if (covChk && replacementSignerIds.length) {
+      covChk.checked = true;
+      syncReplacementUi();
+      renderRepChips();
+    }
   }
 
   applySigPreviewSlot('employee', fd.employee_signature);
@@ -1369,6 +1359,13 @@ document.getElementById('leaveFrm').addEventListener('submit',async e=>{
   const fd=new FormData(e.target),data=Object.fromEntries(fd.entries());
   data.form_type='leave_application';
   if(data.leave_type!=='other')delete data.leave_type_other;
+  const needCov = document.getElementById('needCoverageSigChk')?.checked;
+  if (needCov && !replacementSignerIds.length) {
+    alert('Add at least one coverage colleague with an Injaaz account, or uncheck the coverage signature option.');
+    btn.disabled=false;
+    btn.innerHTML='Submit Application';
+    return;
+  }
   if(replacementSignerIds.length){
     data.replacement_signer_ids = [...replacementSignerIds];
     delete data.replacement_signature;
@@ -1401,51 +1398,19 @@ document.getElementById('leaveFrm').addEventListener('submit',async e=>{
       privilegedFieldNames: ['gm_signature', 'hr_signature', 'hr_checked', 'hr_comments', 'hr_balance_cf', 'hr_contract_year', 'hr_paid', 'hr_unpaid', 'hr_date'],
       afterPopulate: function (_payload, fd) {
         window.__leaveReplacementSigners = (fd && fd.replacement_signers) || [];
-        refreshLeaveSignatureSummary();
+        const covChk = document.getElementById('needCoverageSigChk');
+        const hasCov = (Array.isArray(fd.replacement_signer_ids) && fd.replacement_signer_ids.length)
+          || (Array.isArray(fd.replacement_signers) && fd.replacement_signers.length);
+        if (covChk) {
+          covChk.checked = !!hasCov;
+          syncReplacementUi();
+        }
+        if (window.refreshHrSignatureSummary) window.refreshHrSignatureSummary();
       },
     });
   </script>
+  <script>window.__hrShowColleagueRow = false;</script>
   <script src="{{ url_for('static', filename='api-client.js') }}"></script>
   <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
-  <script>
-    /* Signature status sidebar card — mirrors duty resumption refreshDutySignatureSummary */
-    function leaveSigFieldHasCapture(hiddenId, imgId) {
-      var inp = document.getElementById(hiddenId);
-      if (inp) { var v = (inp.value || '').trim(); if (v && v.indexOf('data:image') === 0) return true; }
-      var img = document.getElementById(imgId);
-      if (img) { var u = (img.getAttribute('src') || '').trim(); if (u && u.indexOf('data:image') === 0) return true; }
-      return false;
-    }
-    function refreshLeaveSignatureSummary() {
-      var mount = document.getElementById('leaveSigSummaryBody');
-      if (!mount) return;
-      var replSigned = (window.__leaveReplacementSigners || []).some(function(s) {
-        return s && s.signature && s.signature.indexOf('data:image') === 0;
-      });
-      var rows = [
-        { label: 'Employee signature',       required: true,  hidden: 'empSigData', img: 'empSigImg',   signed: leaveSigFieldHasCapture('empSigData', 'empSigImg') },
-        { label: 'Colleague / Replacement',  required: false, hidden: '',           img: '',             signed: replSigned },
-        { label: 'Manager signature',        required: false, hidden: 'gmSigData',  img: 'gmSigImg',    signed: leaveSigFieldHasCapture('gmSigData', 'gmSigImg') },
-        { label: 'HR (head office)',         required: false, hidden: 'hrSigData',  img: 'hrSigImg',    signed: leaveSigFieldHasCapture('hrSigData', 'hrSigImg') }
-      ];
-      var html = '';
-      rows.forEach(function(r) {
-        var badge = r.signed
-          ? '<span class="duty-sig-badge duty-sig-badge--signed">Signed</span>'
-          : (r.required ? '<span class="duty-sig-badge duty-sig-badge--pending">Pending</span>'
-                        : '<span class="duty-sig-badge duty-sig-badge--optional">Optional</span>');
-        var val = r.signed ? 'Captured on this form'
-          : (r.required ? 'Required before submit' : 'Not captured yet — workflow may collect');
-        html += '<div class="duty-sig-summary-row"><div><span class="duty-sig-summary-label">' + r.label + '</span>'
-              + '<div class="duty-sig-summary-value' + (r.signed ? '' : ' muted') + '">' + val + '</div></div><div>' + badge + '</div></div>';
-      });
-      mount.innerHTML = html;
-    }
-    (function() {
-      var frm = document.getElementById('leaveFrm');
-      if (frm) frm.addEventListener('hrSignaturePreviewApplied', refreshLeaveSignatureSummary);
-    })();
-    refreshLeaveSignatureSummary();
-  </script>
 </body>
 </html>

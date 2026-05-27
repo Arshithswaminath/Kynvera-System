@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/ticketing.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-signoff-activity.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-forms-unified.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
   <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
   <style>
@@ -767,36 +768,12 @@
 
           </div>
 
-          <aside class="duty-form-layout-aside" aria-label="Approvals and signature status">
-            <div class="tkt-card duty-sidebar-card">
-              <div class="tkt-card-header">
-                <h3>Signature status</h3>
-                <span style="font-size:.78rem;font-weight:600;color:#64748b;">Updates as you fill</span>
-              </div>
-              <div class="tkt-card-body duty-sig-summary-rows" id="dutySigSummaryBody"></div>
-            </div>
-            <div class="tkt-card duty-sidebar-card duty-sidebar-card--flush duty-sidebar-inner">
-              <div class="tkt-card-header">
-                <h3>Management approvals</h3>
-                <span style="font-size:.78rem;font-weight:600;color:#64748b;">Official PDF trail</span>
-              </div>
-              <div class="tkt-card-body">
-                {% include 'partials/hr_mgmt_chain_core.html' %}
-              </div>
-            </div>
-            <div class="tkt-card duty-sidebar-card duty-sidebar-card--flush duty-sidebar-inner">
-              <div class="tkt-card-header">
-                <h3>Approval activity</h3>
-                <span style="font-size:.78rem;font-weight:600;color:#64748b;">Live trail</span>
-              </div>
-              <div class="tkt-card-body">
-                {% include 'partials/hr_recorded_signatures_panel.html' %}
-              </div>
-            </div>
-          </aside>
+          {% set hr_sidebar_aside_class = 'duty-form-layout-aside' %}
+          {% set hr_sidebar_card_class = 'tkt-card duty-sidebar-card' %}
+          {% set hr_sidebar_card_inner_class = 'duty-sidebar-card--flush duty-sidebar-inner' %}
+          {% include 'partials/hr_form_approvals_sidebar.html' %}
         </div>
 
-        <script src="{{ url_for('static', filename='js/hr_mgmt_chain_submit.js') }}"></script>
       </form>
 
       <div class="duty-form-layout duty-form-layout--after-form">
@@ -887,48 +864,13 @@ function dutyUpdatePerSignerComments(fd) {
 }
 
 /** Prefer hidden input — hydrated previews set value before async <img> decode (strip grey pad). */
-function dutySigFieldHasCapture(hiddenName,imgId){
-  var frm=document.getElementById('dutyFrm');
-  if(!frm)return false;
-  var inp=frm.elements[hiddenName];
-  if(inp&&inp.type==='hidden'){
-    var v=(inp.value||'').trim();
-    if(v.length&&(v.indexOf('data:image')===0||v.indexOf('http://')===0||v.indexOf('https://')===0||v.indexOf('/')===0))
-      return true;
-  }
-  var img=document.getElementById(imgId);
-  if(!img)return false;
-  var u=(img.getAttribute('src')||'').trim();
-  return u.length>0&&(u.indexOf('data:image')===0||u.indexOf('http://')===0||u.indexOf('https://')===0||u.indexOf('/')===0);
-}
 function refreshDutySignatureSummary(){
-  var mount=document.getElementById('dutySigSummaryBody');
-  if(!mount)return;
-  var rows=[
-    {label:'Employee signature',required:true,hidden:'employee_signature',img:'empSigImg'},
-    {label:'Reporting manager',required:false,hidden:'reporting_manager_signature',img:'rmSigImg'},
-    {label:'General manager',required:false,hidden:'gm_signature',img:'gmSigImg'},
-    {label:'HR (head office)',required:false,hidden:'hr_signature',img:'hrSigImg'}
-  ];
-  var html='';
-  rows.forEach(function(r){
-    var signed=dutySigFieldHasCapture(r.hidden,r.img);
-    var badge=signed
-      ?'<span class="duty-sig-badge duty-sig-badge--signed">Signed</span>'
-      :(r.required
-        ?'<span class="duty-sig-badge duty-sig-badge--pending">Pending</span>'
-        :'<span class="duty-sig-badge duty-sig-badge--optional">Optional</span>');
-    var val=signed?'Captured on this form':(r.required?'Required before submit':'Not captured yet — workflow may collect');
-    html+='<div class="duty-sig-summary-row"><div><span class="duty-sig-summary-label">'+r.label+'</span><div class="duty-sig-summary-value'+(signed?'':' muted')+'">'+val+'</div></div><div>'+badge+'</div></div>';
-  });
-  mount.innerHTML=html;
+  if (window.refreshHrSignatureSummary) window.refreshHrSignatureSummary();
   try { dutyUpdatePerSignerComments(window.__dutyHydratedFd); } catch (e) {}
 }
-(function(){
-  var df=document.getElementById('dutyFrm');
-  if(df)df.addEventListener('hrSignaturePreviewApplied',function(){refreshDutySignatureSummary();});
-})();
-refreshDutySignatureSummary();
+document.addEventListener('hr-sig-summary-refreshed', function () {
+  try { dutyUpdatePerSignerComments(window.__dutyHydratedFd); } catch (e) {}
+});
 
 /** When viewing a saved submission (?edit=), show steps 1+2 in one scroll instead of the wizard. */
 function dutyApplySubmittedSinglePageView(){

@@ -1,33 +1,98 @@
 """
 Injaaz App — Database Browser (User-Friendly Edition)
+
+Uses the same DATABASE_URL as the main app (.env). With no DATABASE_URL in
+development, connects to local SQLite (injaaz.db).
+
 Run: python db_browser.py
 Then open: http://localhost:8765
+
+For local-only (always injaaz.db, ignores DATABASE_URL in .env):
+  python db_browser_local.py  →  http://localhost:8766
 """
 
 import csv
 import io
 import json
 import http.server
+import os
+import re
+import sqlite3
+import sys
 import webbrowser
 import threading
 import urllib.parse
 from datetime import datetime, date
 from decimal import Decimal
+from pathlib import Path
 
-try:
-    import psycopg2
-    import psycopg2.extras
-except ImportError:
-    print("Installing psycopg2-binary...")
-    import subprocess, sys
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "psycopg2-binary"])
-    import psycopg2
-    import psycopg2.extras
+from dotenv import load_dotenv
 
-# ── CONFIG ──────────────────────────────────────────────────────────────────
-DATABASE_URL = "postgresql://injaaz_db_t2rb_user:BxwqYHt2GiA6uenC9PkjgebiIE2ydut8@dpg-d6sheakr85hc73esmetg-a.oregon-postgres.render.com/injaaz_db_t2rb"
-PORT = 8765
-# ────────────────────────────────────────────────────────────────────────────
+ROOT = Path(__file__).resolve().parent
+
+# Set by db_browser_local.py before import — never touch production/cloud DB
+FORCE_LOCAL_SQLITE = os.getenv("INJAAZ_DB_BROWSER_LOCAL") == "1"
+
+if not FORCE_LOCAL_SQLITE:
+    load_dotenv(ROOT / ".env")
+
+BASE_DIR = str(ROOT)
+LOCAL_DB_PATH = os.path.join(BASE_DIR, "injaaz.db")
+
+if FORCE_LOCAL_SQLITE:
+    DATABASE_URL = f"sqlite:///{LOCAL_DB_PATH}"
+    IS_SQLITE = True
+    PORT = int(os.getenv("DB_BROWSER_PORT", "8766"))
+else:
+    # Same resolution as config.py — local SQLite when DATABASE_URL is unset in dev
+    DATABASE_URL = os.getenv("DATABASE_URL")
+    if not DATABASE_URL:
+        if os.getenv("FLASK_ENV", "development") == "development":
+            DATABASE_URL = f"sqlite:///{LOCAL_DB_PATH}"
+        else:
+            print("DATABASE_URL is required when FLASK_ENV is not development.", file=sys.stderr)
+            sys.exit(1)
+    if DATABASE_URL.startswith("postgres://"):
+        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+    IS_SQLITE = "sqlite" in DATABASE_URL.lower()
+    PORT = int(os.getenv("DB_BROWSER_PORT", "8765"))
+
+
+def _sqlite_path() -> str:
+    if DATABASE_URL.endswith(":memory:") or DATABASE_URL.rstrip("/").endswith(":memory:"):
+        return ":memory:"
+    path = DATABASE_URL.split("sqlite:///", 1)[-1]
+    if not os.path.isabs(path):
+        path = os.path.join(BASE_DIR, path)
+    return path
+
+
+def _db_display_name() -> tuple[str, str]:
+    """Return (short label, footer description) for the UI."""
+    if FORCE_LOCAL_SQLITE:
+        return "Local Dev", LOCAL_DB_PATH
+    if IS_SQLITE:
+        path = _sqlite_path()
+        return "Local SQLite", path
+    host = "PostgreSQL"
+    match = re.search(r"@([^:/]+)", DATABASE_URL)
+    if match:
+        host = match.group(1)
+    return "PostgreSQL", host
+
+
+DB_LABEL, DB_DESC = _db_display_name()
+
+if not IS_SQLITE:
+    try:
+        import psycopg2
+        import psycopg2.extras
+    except ImportError:
+        print("Installing psycopg2-binary...")
+        import subprocess
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "psycopg2-binary"])
+        import psycopg2
+        import psycopg2.extras
 
 # Friendly metadata for each table
 TABLE_META = {
@@ -93,8 +158,52 @@ DASHBOARD_QUERIES = [
 ]
 
 
+def _adapt_filter_clause(clause: str) -> str:
+    if not clause or not IS_SQLITE:
+        return clause
+    return (
+        clause.replace(" = true", " = 1")
+        .replace(" = false", " = 0")
+        .replace("is_read = false", "is_read = 0")
+        .replace("is_read = true", "is_read = 1")
+        .replace("is_active = false", "is_active = 0")
+        .replace("is_active = true", "is_active = 1")
+    )
+
+
+def _row_to_dict(row) -> dict:
+    if isinstance(row, dict):
+        return row
+    if hasattr(row, "keys"):
+        return {k: row[k] for k in row.keys()}
+    return dict(row)
+
+
 def get_conn():
+    if IS_SQLITE:
+        conn = sqlite3.connect(_sqlite_path())
+        conn.row_factory = sqlite3.Row
+        return conn
     return psycopg2.connect(DATABASE_URL)
+
+
+def cursor(conn):
+    if IS_SQLITE:
+        return conn.cursor()
+    return conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+
+def _search_condition(col: str) -> str:
+    if IS_SQLITE:
+        return f'LOWER(CAST("{col}" AS TEXT)) LIKE ?'
+    return f'CAST("{col}" AS TEXT) ILIKE %s'
+
+
+def _execute(cur, sql, params=None):
+    if params is None:
+        cur.execute(sql)
+    else:
+        cur.execute(sql, params)
 
 
 def safe_json(obj):
@@ -109,49 +218,76 @@ def safe_json(obj):
 
 def api_tables():
     conn = get_conn()
-    cur = conn.cursor()
-    cur.execute("""
-        SELECT table_name FROM information_schema.tables
-        WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
-        ORDER BY table_name;
-    """)
-    tables = [r[0] for r in cur.fetchall()]
+    cur = cursor(conn)
+    if IS_SQLITE:
+        cur.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' "
+            "AND name NOT LIKE 'sqlite_%' ORDER BY name"
+        )
+        tables = [r[0] for r in cur.fetchall()]
+    else:
+        cur.execute("""
+            SELECT table_name FROM information_schema.tables
+            WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+            ORDER BY table_name;
+        """)
+        tables = [r[0] for r in cur.fetchall()]
     counts = {}
     for t in tables:
         cur.execute(f'SELECT COUNT(*) FROM "{t}"')
         counts[t] = cur.fetchone()[0]
     cur.close()
     conn.close()
-    return {"tables": tables, "counts": counts, "meta": TABLE_META,
-            "filters": TABLE_FILTERS, "dashboard": DASHBOARD_QUERIES}
+    return {
+        "tables": tables,
+        "counts": counts,
+        "meta": TABLE_META,
+        "filters": TABLE_FILTERS,
+        "dashboard": DASHBOARD_QUERIES,
+        "db_label": DB_LABEL,
+        "db_desc": DB_DESC,
+    }
+
+
+def _table_columns(conn, table):
+    cur = cursor(conn)
+    if IS_SQLITE:
+        cur.execute(f'PRAGMA table_info("{table}")')
+        columns = [{"column_name": r[1], "data_type": r[2]} for r in cur.fetchall()]
+    else:
+        cur.execute("""
+            SELECT column_name, data_type FROM information_schema.columns
+            WHERE table_schema='public' AND table_name=%s ORDER BY ordinal_position;
+        """, (table,))
+        columns = [_row_to_dict(r) for r in cur.fetchall()]
+    cur.close()
+    return columns
 
 
 def api_table_data(table, page=1, per_page=50, search="", sort_col="", sort_dir="asc", preset_filter=""):
     conn = get_conn()
-    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur = cursor(conn)
 
-    cur.execute("""
-        SELECT column_name, data_type FROM information_schema.columns
-        WHERE table_schema='public' AND table_name=%s ORDER BY ordinal_position;
-    """, (table,))
-    columns = cur.fetchall()
+    columns = _table_columns(conn, table)
     col_names = [c["column_name"] for c in columns]
 
     conditions = []
     params = []
 
     if preset_filter:
-        conditions.append(f"({preset_filter})")
+        conditions.append(f"({_adapt_filter_clause(preset_filter)})")
 
     if search and col_names:
-        search_conds = [f'CAST("{c}" AS TEXT) ILIKE %s' for c in col_names]
+        needle = f"%{search.lower()}%" if IS_SQLITE else f"%{search}%"
+        search_conds = [_search_condition(c) for c in col_names]
         conditions.append("(" + " OR ".join(search_conds) + ")")
-        params += [f"%{search}%"] * len(col_names)
+        params += [needle] * len(col_names)
 
     where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
 
-    cur.execute(f'SELECT COUNT(*) FROM "{table}" {where}', params)
-    total = cur.fetchone()["count"]
+    _execute(cur, f'SELECT COUNT(*) FROM "{table}" {where}', params)
+    count_row = cur.fetchone()
+    total = count_row[0] if IS_SQLITE else count_row["count"]
 
     order = ""
     if sort_col and sort_col in col_names:
@@ -159,8 +295,14 @@ def api_table_data(table, page=1, per_page=50, search="", sort_col="", sort_dir=
         order = f'ORDER BY "{sort_col}" {direction}'
 
     offset = (page - 1) * per_page
-    cur.execute(f'SELECT * FROM "{table}" {where} {order} LIMIT %s OFFSET %s', params + [per_page, offset])
-    rows = [dict(r) for r in cur.fetchall()]
+    _execute(
+        cur,
+        f'SELECT * FROM "{table}" {where} {order} LIMIT ? OFFSET ?'
+        if IS_SQLITE
+        else f'SELECT * FROM "{table}" {where} {order} LIMIT %s OFFSET %s',
+        params + [per_page, offset],
+    )
+    rows = [_row_to_dict(r) for r in cur.fetchall()]
 
     cur.close()
     conn.close()
@@ -176,21 +318,19 @@ def api_table_data(table, page=1, per_page=50, search="", sort_col="", sort_dir=
 
 def api_export_csv(table, search="", sort_col="", sort_dir="asc", preset_filter=""):
     conn = get_conn()
-    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    cur.execute("""
-        SELECT column_name FROM information_schema.columns
-        WHERE table_schema='public' AND table_name=%s ORDER BY ordinal_position;
-    """, (table,))
-    col_names = [c["column_name"] for c in cur.fetchall()]
+    cur = cursor(conn)
+    columns = _table_columns(conn, table)
+    col_names = [c["column_name"] for c in columns]
 
     conditions = []
     params = []
     if preset_filter:
-        conditions.append(f"({preset_filter})")
+        conditions.append(f"({_adapt_filter_clause(preset_filter)})")
     if search and col_names:
-        search_conds = [f'CAST("{c}" AS TEXT) ILIKE %s' for c in col_names]
+        needle = f"%{search.lower()}%" if IS_SQLITE else f"%{search}%"
+        search_conds = [_search_condition(c) for c in col_names]
         conditions.append("(" + " OR ".join(search_conds) + ")")
-        params += [f"%{search}%"] * len(col_names)
+        params += [needle] * len(col_names)
 
     where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
     order = ""
@@ -198,8 +338,8 @@ def api_export_csv(table, search="", sort_col="", sort_dir="asc", preset_filter=
         direction = "DESC" if sort_dir.lower() == "desc" else "ASC"
         order = f'ORDER BY "{sort_col}" {direction}'
 
-    cur.execute(f'SELECT * FROM "{table}" {where} {order}', params)
-    rows = [dict(r) for r in cur.fetchall()]
+    _execute(cur, f'SELECT * FROM "{table}" {where} {order}', params)
+    rows = [_row_to_dict(r) for r in cur.fetchall()]
     cur.close()
     conn.close()
 
@@ -215,13 +355,15 @@ def api_export_csv(table, search="", sort_col="", sort_dir="asc", preset_filter=
 
 def api_dashboard():
     conn = get_conn()
-    cur = conn.cursor()
+    cur = cursor(conn)
     results = []
     for q in DASHBOARD_QUERIES:
         try:
-            where = f"WHERE {q['filter']}" if q.get("filter") else ""
-            cur.execute(f"SELECT COUNT(*) FROM \"{q['table']}\" {where}")
-            count = cur.fetchone()[0]
+            filt = _adapt_filter_clause(q.get("filter") or "")
+            where = f"WHERE {filt}" if filt else ""
+            cur.execute(f'SELECT COUNT(*) FROM "{q["table"]}" {where}')
+            row = cur.fetchone()
+            count = row[0] if IS_SQLITE else row["count"]
         except Exception:
             count = 0
         results.append({**q, "count": count})
@@ -233,7 +375,17 @@ def api_dashboard():
 def api_get_primary_key(table):
     """Return the primary key column name for a table (usually 'id')."""
     conn = get_conn()
-    cur = conn.cursor()
+    cur = cursor(conn)
+    if IS_SQLITE:
+        cur.execute(f'PRAGMA table_info("{table}")')
+        for row in cur.fetchall():
+            if row[5]:
+                cur.close()
+                conn.close()
+                return row[1]
+        cur.close()
+        conn.close()
+        return "id"
     cur.execute("""
         SELECT kcu.column_name
         FROM information_schema.table_constraints tc
@@ -255,59 +407,64 @@ def api_update_row(table, pk_col, pk_val, updates):
     """Update a row. updates = {col: new_value, ...}"""
     if not updates:
         return {"error": "No fields to update."}
-    # Only allow known columns
     conn = get_conn()
-    cur = conn.cursor()
-    cur.execute("""
-        SELECT column_name FROM information_schema.columns
-        WHERE table_schema='public' AND table_name=%s;
-    """, (table,))
-    valid_cols = {r[0] for r in cur.fetchall()}
+    columns = _table_columns(conn, table)
+    valid_cols = {c["column_name"] for c in columns}
     bad = [k for k in updates if k not in valid_cols]
     if bad:
-        cur.close(); conn.close()
+        conn.close()
         return {"error": f"Unknown column(s): {', '.join(bad)}"}
-    set_clause = ", ".join(f'"{k}" = %s' for k in updates)
+    cur = cursor(conn)
+    if IS_SQLITE:
+        set_clause = ", ".join(f'"{k}" = ?' for k in updates)
+        sql = f'UPDATE "{table}" SET {set_clause} WHERE "{pk_col}" = ?'
+    else:
+        set_clause = ", ".join(f'"{k}" = %s' for k in updates)
+        sql = f'UPDATE "{table}" SET {set_clause} WHERE "{pk_col}" = %s'
     values = list(updates.values()) + [pk_val]
     try:
-        cur.execute(f'UPDATE "{table}" SET {set_clause} WHERE "{pk_col}" = %s', values)
+        _execute(cur, sql, values)
         conn.commit()
         return {"ok": True, "rowcount": cur.rowcount}
     except Exception as e:
         conn.rollback()
         return {"error": str(e)}
     finally:
-        cur.close(); conn.close()
+        cur.close()
+        conn.close()
 
 
 def api_delete_row(table, pk_col, pk_val):
     """Delete a single row by primary key."""
     conn = get_conn()
-    cur = conn.cursor()
+    cur = cursor(conn)
     try:
-        cur.execute(f'DELETE FROM "{table}" WHERE "{pk_col}" = %s', (pk_val,))
+        if IS_SQLITE:
+            _execute(cur, f'DELETE FROM "{table}" WHERE "{pk_col}" = ?', (pk_val,))
+        else:
+            _execute(cur, f'DELETE FROM "{table}" WHERE "{pk_col}" = %s', (pk_val,))
         conn.commit()
         return {"ok": True, "rowcount": cur.rowcount}
     except Exception as e:
         conn.rollback()
         return {"error": str(e)}
     finally:
-        cur.close(); conn.close()
+        cur.close()
+        conn.close()
 
 
 def api_run_query(sql):
     conn = get_conn()
-    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur = cursor(conn)
     try:
-        cur.execute(sql)
+        _execute(cur, sql)
         if cur.description:
-            col_names = [d.name for d in cur.description]
-            rows = [dict(r) for r in cur.fetchall()]
+            col_names = [d[0] for d in cur.description] if IS_SQLITE else [d.name for d in cur.description]
+            rows = [_row_to_dict(r) for r in cur.fetchall()]
             conn.commit()
             return {"columns": col_names, "rows": rows, "rowcount": len(rows), "error": None}
-        else:
-            conn.commit()
-            return {"columns": [], "rows": [], "rowcount": cur.rowcount, "error": None}
+        conn.commit()
+        return {"columns": [], "rows": [], "rowcount": cur.rowcount, "error": None}
     except Exception as e:
         conn.rollback()
         return {"columns": [], "rows": [], "rowcount": 0, "error": str(e)}
@@ -316,12 +473,21 @@ def api_run_query(sql):
         conn.close()
 
 
+def build_html() -> str:
+    page_title = "Local Data Browser" if FORCE_LOCAL_SQLITE else "Data Browser"
+    return (
+        HTML.replace("{{PAGE_TITLE}}", page_title)
+        .replace("{{DB_LABEL}}", DB_LABEL)
+        .replace("{{DB_DESC}}", DB_DESC)
+    )
+
+
 HTML = r"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Injaaz — Data Browser</title>
+<title>Injaaz — {{PAGE_TITLE}}</title>
 <style>
 :root {
   --bg:#0f1117; --surface:#1a1d27; --surface2:#22263a; --border:#2e3249;
@@ -508,7 +674,7 @@ tbody td{padding:9px 14px;max-width:260px;overflow:hidden;text-overflow:ellipsis
 <div id="sidebar">
   <div id="sidebar-top">
     <h1>🗄 Injaaz Data</h1>
-    <p>Live database · Render</p>
+    <p>{{DB_LABEL}} · {{DB_DESC}}</p>
   </div>
   <div id="sidebar-search">
     <input type="text" placeholder="Find a section…" oninput="filterSidebar(this.value)">
@@ -518,7 +684,7 @@ tbody td{padding:9px 14px;max-width:260px;overflow:hidden;text-overflow:ellipsis
   </div>
   <div id="db-footer">
     <div class="dot"></div>
-    <span>Connected to Render</span>
+    <span id="db-footer-label">Connected</span>
   </div>
 </div>
 
@@ -533,8 +699,8 @@ tbody td{padding:9px 14px;max-width:260px;overflow:hidden;text-overflow:ellipsis
 
   <!-- DASHBOARD -->
   <div id="dashboard">
-    <h2>Welcome back, Arshith 👋</h2>
-    <p>Here's a live snapshot of your Injaaz application database.</p>
+    <h2>Welcome 👋</h2>
+    <p>Live snapshot of your Injaaz database (<span id="db-banner-label">{{DB_LABEL}}</span>).</p>
     <div class="cards-grid" id="kpi-cards">
       <div style="color:var(--muted);font-size:13px;padding:20px;">Loading stats…</div>
     </div>
@@ -652,6 +818,13 @@ async function init() {
   state.counts = data.counts;
   state.meta   = data.meta || {};
   state.filters = data.filters || {};
+  if (data.db_label) {
+    const label = data.db_label + (data.db_desc ? ' · ' + data.db_desc : '');
+    const footer = document.getElementById('db-footer-label');
+    const banner = document.getElementById('db-banner-label');
+    if (footer) footer.textContent = 'Connected · ' + label;
+    if (banner) banner.textContent = data.db_label;
+  }
   renderSidebar(state.tables);
   loadDashboard(data.dashboard);
   document.getElementById('sql-input').addEventListener('keydown', e => {
@@ -1189,7 +1362,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         qs = urllib.parse.parse_qs(parsed.query)
 
         if parsed.path == "/":
-            body = HTML.encode()
+            body = build_html().encode()
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Content-Length", len(body))
@@ -1273,19 +1446,28 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
 
 def main():
+    title = "Local Data Browser" if FORCE_LOCAL_SQLITE else "Data Browser"
     print("=" * 55)
-    print("  🗄  Injaaz — Data Browser")
+    print(f"  🗄  Injaaz — {title}")
     print("=" * 55)
-    print(f"\n  Connecting to Render PostgreSQL…")
+    print(f"\n  Target: {DB_LABEL} ({DB_DESC})")
     try:
         conn = get_conn()
-        cur = conn.cursor()
-        cur.execute("SELECT version();")
-        ver = cur.fetchone()[0].split(" on ")[0]
-        cur.close(); conn.close()
+        cur = cursor(conn)
+        if IS_SQLITE:
+            cur.execute("SELECT sqlite_version()")
+            ver = f"SQLite {cur.fetchone()[0]}"
+        else:
+            cur.execute("SELECT version()")
+            ver = cur.fetchone()[0].split(" on ")[0]
+        cur.close()
+        conn.close()
         print(f"  ✅ Connected! ({ver})")
     except Exception as e:
-        print(f"  ❌ Connection failed: {e}"); return
+        print(f"  ❌ Connection failed: {e}")
+        if IS_SQLITE:
+            print(f"  Tip: run `python scripts/init_db.py` first to create {DB_DESC}")
+        return
 
     url = f"http://localhost:{PORT}"
     print(f"\n  🌐 Opening at {url}")

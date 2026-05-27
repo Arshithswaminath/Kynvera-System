@@ -55,11 +55,14 @@
             <input type="number" id="profileOtherLeaveDays" class="form-control" min="0" max="366" step="1" placeholder="—">
           </div>
           <div class="form-group" style="margin-bottom:0;grid-column:1/-1;">
-            <label class="form-label" for="profileReportingManager">Reporting manager</label>
+            <label class="form-label" for="profileReportingManager">Reporting manager (technician supervisor)</label>
             <select id="profileReportingManager" class="form-control">
               <option value="">— None —</option>
             </select>
-            <p class="admin-profile-hint" style="margin-top: 0.25rem;">Drives HR PDF routing for this person: technicians should have their <strong>reporting supervisor</strong> here (Supervisor account); other roles have their reporting manager here. If this person is also the GM, the PDF trail merges one GM signature.</p>
+            <p class="admin-profile-hint" style="margin-top: 0.25rem;">
+              Used <strong>only when this user's designation is Technician</strong>: pick the user (with <em>Supervisor</em> designation) who reviews and signs their HR forms first.
+              <br>HR routing for other roles is fixed by designation: <em>Supervisor</em> &rarr; Operations Manager &rarr; GM &rarr; HR; <em>everyone else</em> &rarr; GM &rarr; HR. Operations Manager, GM and HR are <strong>pools</strong> (any active user with that designation can sign), set via the Designation dropdown below.
+            </p>
           </div>
         </div>
       </div>
@@ -142,7 +145,7 @@
         <div class="admin-profile-defaults-split">
           <div class="form-group">
             <label class="form-label" for="profileDefaultComment">Default approval comment</label>
-            <textarea id="profileDefaultComment" class="form-control" rows="3" placeholder="Optional short text for approvals"></textarea>
+            <textarea id="profileDefaultComment" class="form-control" rows="3" placeholder="Optional notes appended after “Signed &amp; Verified — Your Name”"></textarea>
           </div>
           <div class="form-group">
             <label class="form-label" for="profileSignatureFile">Signature image</label>

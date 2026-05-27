@@ -30,12 +30,10 @@
   {# Modals #}
   {% block modals %}
     {% include 'partials/profile_modal.html' %}
-    {% include 'partials/todo_modal.html' %}
   {% endblock %}
   
   {# Core Scripts #}
   <script src="{{ url_for('static', filename='api-client.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/todo_list.js') }}" defer></script>
   
   {# Page-specific scripts #}
   {% block scripts %}{% endblock %}
@@ -125,7 +123,6 @@
       document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
           if (typeof closeProfileModal === 'function') closeProfileModal();
-          if (typeof closeTodoModal === 'function') closeTodoModal();
         }
       });
     });

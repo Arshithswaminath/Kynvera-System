@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="/static/css/hr-forms.css">
   <link rel="stylesheet" href="/static/css/dashboard.css">
   <link rel="stylesheet" href="/static/mobile_responsive.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-forms-unified.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/ticketing.css') }}">
   <style>
     .form-container { max-width: 900px; margin: 0 auto; }
@@ -173,15 +174,7 @@
           </div>
         </form>
       </div>
-      <aside class="leave-form-layout-aside">
-        <div class="tkt-card leave-sidebar-card leave-sidebar-inner">
-          {% include 'partials/hr_mgmt_chain_core.html' %}
-        </div>
-        <div class="tkt-card leave-sidebar-card leave-sidebar-inner">
-          {% include 'partials/hr_recorded_signatures_panel.html' %}
-        </div>
-        <script src="{{ url_for('static', filename='js/hr_mgmt_chain_submit.js') }}"></script>
-      </aside>
+      {% include 'partials/hr_form_approvals_sidebar.html' %}
     </div>
   </div>
 </div>

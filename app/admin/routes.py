@@ -116,6 +116,30 @@ def _resolve_reporting_manager_id(raw_mid, exclude_user_id):
     return mid
 
 
+def _resolve_operations_manager_id(raw_mid, exclude_user_id):
+    """Admin-assigned operations manager; must be an active user with operations_manager designation."""
+    if raw_mid is None:
+        return None
+    if isinstance(raw_mid, str) and not str(raw_mid).strip():
+        return None
+    try:
+        mid = int(raw_mid)
+    except (TypeError, ValueError):
+        raise ValueError('Invalid operations manager.') from None
+    if mid <= 0:
+        return None
+    if exclude_user_id is not None and mid == exclude_user_id:
+        raise ValueError('A user cannot be their own operations manager.')
+    target = User.query.filter_by(id=mid).first()
+    if target is None:
+        raise ValueError('Operations manager not found.')
+    if (target.designation or '').strip().lower() != 'operations_manager':
+        raise ValueError('Selected user must have the Operations Manager designation.')
+    if not target.is_active:
+        raise ValueError('Selected operations manager is inactive.')
+    return mid
+
+
 @admin_bp.route('/mmr/chargeable-config', methods=['GET', 'PUT'])
 @jwt_required()
 @admin_required
@@ -393,7 +417,9 @@ def mmr_chargeable_preview():
         return error_response('Failed to resolve chargeable preview', status_code=500, error_code='DATABASE_ERROR')
 
 
-DEFAULT_ADMIN_RESET_PASSWORD = 'Injaaz@123'
+# Admin-triggered password reset fallback. Override via env var in production so
+# the literal default below is never used to hand out accounts.
+DEFAULT_ADMIN_RESET_PASSWORD = os.environ.get('ADMIN_RESET_PASSWORD_DEFAULT', 'ChangeMeNow!@#')
 
 
 @admin_bp.route('/users', methods=['GET'])
@@ -405,7 +431,10 @@ def list_users():
         # Note: User.submissions, audit_logs, and sessions are dynamic relationships
         # (lazy='dynamic'), so we can't use joinedload. The to_dict() method doesn't
         # include these relationships anyway, so we just query users directly.
-        users = User.query.options(joinedload(User.reporting_manager)).order_by(User.created_at.desc()).all()
+        users = User.query.options(
+            joinedload(User.reporting_manager),
+            joinedload(User.operations_manager),
+        ).order_by(User.created_at.desc()).all()
         access_map = {row.user_id: row.can_access for row in DocHubAccess.query.all()}
         users_data = []
         for user in users:
@@ -537,7 +566,10 @@ def create_user_admin():
 def get_user(user_id):
     """Get specific user details"""
     try:
-        user = User.query.options(joinedload(User.reporting_manager)).get_or_404(user_id)
+        user = User.query.options(
+            joinedload(User.reporting_manager),
+            joinedload(User.operations_manager),
+        ).get_or_404(user_id)
         user_payload = user.to_dict()
         _merge_dochub_into_user_dict(user, user_payload)
         return jsonify({
@@ -737,6 +769,10 @@ def delete_user(user_id):
             {'reporting_manager_id': None},
             synchronize_session=False,
         )
+        User.query.filter_by(operations_manager_id=user_id).update(
+            {'operations_manager_id': None},
+            synchronize_session=False,
+        )
 
         # Delete user (cascade will handle related records)
         db.session.delete(user)
@@ -898,8 +934,17 @@ def update_user(user_id):
                 return jsonify({'error': 'Invalid signature format'}), 400
 
         if 'default_comment' in data:
+            from common.utils import normalize_approval_comment
+            import re
             c = data['default_comment']
-            user.default_comment = None if c in (None, '') else str(c)[:5000]
+            if c in (None, ''):
+                user.default_comment = None
+            else:
+                cleaned = str(c).strip()[:5000]
+                if re.match(r'^Signed\s*(?:&|and)\s*Verified\.?$', cleaned, re.I):
+                    user.default_comment = None
+                else:
+                    user.default_comment = normalize_approval_comment(cleaned) or None
 
         if 'employment_start_date' in data:
             try:
@@ -3160,6 +3205,45 @@ def _tech_parse_date(raw):
     return None
 
 
+def _technician_login_matches_roster(user, roster_by_email, roster_by_name):
+    """Skip login rows that already have a technicians-table record."""
+    email = (user.email or '').strip().lower()
+    if email and email in roster_by_email:
+        return True
+    for key in (
+        (user.full_name or '').strip().lower(),
+        (user.username or '').strip().lower(),
+    ):
+        if key and key in roster_by_name:
+            return True
+    return False
+
+
+def _technician_dict_from_login_user(user):
+    """Virtual roster row for accounts whose designation is technician."""
+    rm = user.reporting_manager
+    return {
+        'id': -int(user.id),
+        'user_id': user.id,
+        'source': 'login',
+        'employee_id': f'@{user.username}',
+        'full_name': user.full_name or user.username,
+        'designation': user.job_designation or 'Technician',
+        'department': None,
+        'specialization': None,
+        'phone': None,
+        'email': user.email,
+        'salary': None,
+        'joining_date': user.employment_start_date.isoformat() if user.employment_start_date else None,
+        'status': 'active' if user.is_active else 'inactive',
+        'notes': None,
+        'created_at': user.created_at.isoformat() if user.created_at else None,
+        'supervisor_user_id': user.reporting_manager_id,
+        'supervisor_name': (rm.full_name or rm.username) if rm else None,
+        'supervisor_username': rm.username if rm else None,
+    }
+
+
 @admin_bp.route('/technicians', methods=['GET'])
 @jwt_required()
 @admin_required
@@ -3170,7 +3254,37 @@ def list_technicians():
     if status_filter and status_filter != 'all':
         q = q.filter(Technician.status == status_filter)
     techs = q.order_by(Technician.full_name).all()
-    return success_response({'technicians': [t.to_dict() for t in techs]})
+    roster = [t.to_dict() for t in techs]
+    for row in roster:
+        row['source'] = 'roster'
+
+    roster_by_email = {
+        (r.get('email') or '').strip().lower()
+        for r in roster
+        if (r.get('email') or '').strip()
+    }
+    roster_by_name = set()
+    for r in roster:
+        for key in (r.get('full_name'),):
+            if key:
+                roster_by_name.add(str(key).strip().lower())
+
+    login_users = (
+        User.query.options(joinedload(User.reporting_manager))
+        .filter(User.designation == 'technician')
+        .order_by(User.full_name, User.username)
+        .all()
+    )
+    for user in login_users:
+        if _technician_login_matches_roster(user, roster_by_email, roster_by_name):
+            continue
+        login_row = _technician_dict_from_login_user(user)
+        if status_filter and status_filter != 'all' and login_row.get('status') != status_filter:
+            continue
+        roster.append(login_row)
+
+    roster.sort(key=lambda r: (r.get('full_name') or '').lower())
+    return success_response({'technicians': roster})
 
 
 @admin_bp.route('/technicians', methods=['POST'])

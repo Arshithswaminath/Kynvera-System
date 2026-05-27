@@ -57,6 +57,8 @@ def process_report_job(sub_id, job_id, app, module_name, create_excel_report, cr
             # This helps PDF generator determine if reviewers have approved even if data is missing
             if submission_data.get('workflow_status'):
                 submission_record['workflow_status'] = submission_data.get('workflow_status')
+            if submission_data.get('supervisor_reviewed_at'):
+                submission_record['supervisor_reviewed_at'] = submission_data.get('supervisor_reviewed_at')
             if submission_data.get('operations_manager_approved_at'):
                 submission_record['operations_manager_approved_at'] = submission_data.get('operations_manager_approved_at')
             if submission_data.get('operations_manager_id'):
@@ -206,9 +208,46 @@ def process_report_job(sub_id, job_id, app, module_name, create_excel_report, cr
                         if supervisor_sig and not submission_record.get('supervisor_signature'):
                             submission_record['supervisor_signature'] = supervisor_sig
                             logger.info(f"✅ Added Supervisor signature to submission_record for PDF generation")
+
+                        submitter_comments = form_data_dict.get('submitter_comments')
+                        if not submitter_comments and nested_form_data:
+                            submitter_comments = nested_form_data.get('submitter_comments')
+                        if submitter_comments and not submission_record.get('submitter_comments'):
+                            submission_record['submitter_comments'] = submitter_comments
+                            logger.info(f"✅ Added Submitter comments to submission_record for PDF generation")
+
+                    # Inject user objects so the PDF generator can show signer names
+                    def _user_mini(u):
+                        if not u:
+                            return None
+                        return {
+                            'full_name': getattr(u, 'full_name', None) or getattr(u, 'username', None) or '',
+                            'username':  getattr(u, 'username', None) or '',
+                            'designation': getattr(u, 'designation', None) or getattr(u, 'job_designation', None) or getattr(u, 'role', None) or '',
+                        }
+                    for _attr, _key in [
+                        ('user',            'user'),
+                        ('supervisor',      'supervisor'),
+                        ('operations_manager', 'operations_manager'),
+                        ('business_dev',    'business_dev'),
+                        ('procurement_user','procurement'),
+                        ('general_manager', 'general_manager'),
+                    ]:
+                        obj = getattr(submission, _attr, None)
+                        if obj and not submission_record.get(_key):
+                            submission_record[_key] = _user_mini(obj)
             except Exception as e:
                 logger.warning(f"⚠️ Could not fetch comments/signatures from submission model: {str(e)}")
             
+            # Propagate materials_required if present in form_data but not in submission_record
+            if not submission_record.get('materials_required'):
+                mats = form_data_wrapper.get('materials_required')
+                if not mats and isinstance(form_data_wrapper.get('data'), dict):
+                    mats = form_data_wrapper['data'].get('materials_required')
+                if mats:
+                    submission_record['materials_required'] = mats
+                    logger.info(f"✅ Propagated {len(mats)} materials to submission_record for report generation")
+
             # Generate Excel
             logger.info("📊 Generating Excel report...")
             update_job_progress_db(job_id, 30)

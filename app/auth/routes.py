@@ -141,10 +141,10 @@ def register():
 def login():
     """Authenticate user and return JWT tokens"""
     try:
-        # Debug logging
-        current_app.logger.info(f"Login attempt - Content-Type: {request.content_type}")
-        current_app.logger.info(f"Request data: {request.get_data(as_text=True)[:200]}")
-        
+        # Do not log the request body — it contains plaintext credentials.
+        # Only record the originating IP so failed-login audits stay useful.
+        current_app.logger.info(f"Login attempt from {request.remote_addr}")
+
         data = request.get_json(force=True, silent=True)
         
         if not data:
@@ -158,10 +158,12 @@ def login():
         
         username = data['username'].strip()
         password = data['password']
+        username_key = username.lower()
         
-        # Find user (support login with email or username)
+        # Find user (support login with email or username; case-insensitive)
         user = User.query.filter(
-            (User.username == username) | (User.email == username)
+            (db.func.lower(User.username) == username_key)
+            | (db.func.lower(User.email) == username_key)
         ).first()
         
         if not user or not user.check_password(password):
@@ -183,18 +185,17 @@ def login():
         access_token = create_access_token(identity=str(user.id))
         refresh_token = create_refresh_token(identity=str(user.id))
 
-        # Store session for token revocation — use get_jti instead of decode_token
-        # because decode_token key names vary across flask-jwt-extended versions.
+        # Record both the access and refresh JTIs so the blocklist loader can
+        # revoke each independently. Tracking the refresh JTI is what lets
+        # /logout actually invalidate it — otherwise a stolen refresh token
+        # would mint new access tokens until natural expiry (~7 days).
         access_jti = get_jti(access_token)
-        jwt_expires = current_app.config.get('JWT_ACCESS_TOKEN_EXPIRES') or timedelta(hours=1)
-        access_exp = datetime.now(timezone.utc) + jwt_expires
-        
-        session = Session(
-            user_id=user.id,
-            token_jti=access_jti,
-            expires_at=access_exp
-        )
-        db.session.add(session)
+        refresh_jti = get_jti(refresh_token)
+        jwt_access_expires = current_app.config.get('JWT_ACCESS_TOKEN_EXPIRES') or timedelta(hours=1)
+        jwt_refresh_expires = current_app.config.get('JWT_REFRESH_TOKEN_EXPIRES') or timedelta(days=7)
+        now_utc = datetime.now(timezone.utc)
+        db.session.add(Session(user_id=user.id, token_jti=access_jti, expires_at=now_utc + jwt_access_expires))
+        db.session.add(Session(user_id=user.id, token_jti=refresh_jti, expires_at=now_utc + jwt_refresh_expires))
         db.session.commit()
         
         # Log successful login
@@ -273,16 +274,20 @@ def refresh():
 @auth_bp.route('/logout', methods=['POST'])
 @jwt_required()
 def logout():
-    """Logout user and revoke token"""
+    """Logout user and revoke tokens.
+
+    Revokes the current access JTI explicitly AND every other live session row
+    for this user — that covers the paired refresh token. A user who logs out
+    in one tab will be signed out on every tab the same browser had open;
+    that's the intended security behaviour.
+    """
     try:
         user_id = get_jwt_identity()
         jti = get_jwt()['jti']
-        
-        # Revoke current session
-        session = Session.query.filter_by(token_jti=jti).first()
-        if session:
-            session.is_revoked = True
-            db.session.commit()
+
+        Session.query.filter_by(token_jti=jti).update({'is_revoked': True})
+        Session.query.filter_by(user_id=int(user_id), is_revoked=False).update({'is_revoked': True})
+        db.session.commit()
         
         # Log logout
         log_audit(int(user_id), 'logout', 'user', user_id)
@@ -383,7 +388,12 @@ def update_signature_default():
                 else:
                     user.default_signature = signature_url
             if default_comment is not None:
-                user.default_comment = default_comment
+                from common.utils import normalize_approval_comment
+                c = str(default_comment).strip()
+                if re.match(r'^Signed\s*(?:&|and)\s*Verified\.?$', c, re.I):
+                    user.default_comment = None
+                else:
+                    user.default_comment = normalize_approval_comment(c) or None
 
         db.session.commit()
 

@@ -55,6 +55,32 @@
       margin-bottom: 2rem;
       text-align: left;
     }
+
+    .page-header-top {
+      margin-bottom: 0.75rem;
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.875rem;
+      padding: 0.45rem 0.9rem;
+      border-radius: 999px;
+      background: white;
+      border: 1px solid var(--border);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+      transition: all 0.18s ease;
+    }
+
+    .back-link:hover {
+      color: var(--primary-light);
+      transform: translateX(-2px);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+    }
     
     .page-header h1 {
       font-size: 2.5rem;
@@ -489,6 +515,12 @@
   {% include 'partials/main_navbar.html' with context %}
   <div class="container-custom">
     <div class="page-header">
+      <div class="page-header-top">
+        <a href="/dashboard" class="back-link">
+          <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
+          Back to Dashboard
+        </a>
+      </div>
       <h1>My Submitted Forms</h1>
       <p>View, edit, and resubmit your HR and inspection forms</p>
     </div>
@@ -566,15 +598,41 @@
     // Current filter value
     let currentFilter = 'all';
     let currentScope = 'all';
+    // Workflow status filter from URL ?workflow=pending|approved|rejected (client-side narrow)
+    let currentWorkflow = 'all';
     (function initSubmittedScopeFromUrl() {
       try {
         const p = new URLSearchParams(window.location.search || '');
         const raw = (p.get('scope') || 'all').toLowerCase();
         currentScope = ['all', 'hr', 'inspection'].includes(raw) ? raw : 'all';
+        const wf = (p.get('workflow') || 'all').toLowerCase();
+        currentWorkflow = ['all', 'pending', 'approved', 'rejected'].includes(wf) ? wf : 'all';
       } catch (_) {
         currentScope = 'all';
+        currentWorkflow = 'all';
       }
     })();
+
+    // Approved == terminal success per workflow rules.
+    const APPROVED_WORKFLOW_STATUSES = new Set([
+      'completed', 'approved', 'general_manager_approved'
+    ]);
+    const REJECTED_WORKFLOW_STATUSES = new Set(['rejected', 'closed_by_admin']);
+
+    function matchesWorkflowFilter(submission) {
+      if (currentWorkflow === 'all') return true;
+      const ws = String(submission.workflow_status || submission.status || '').toLowerCase();
+      if (currentWorkflow === 'approved') return APPROVED_WORKFLOW_STATUSES.has(ws);
+      if (currentWorkflow === 'rejected') return REJECTED_WORKFLOW_STATUSES.has(ws);
+      // pending = anything that's not approved, rejected, draft, or closed
+      if (currentWorkflow === 'pending') {
+        if (APPROVED_WORKFLOW_STATUSES.has(ws)) return false;
+        if (REJECTED_WORKFLOW_STATUSES.has(ws)) return false;
+        if (ws === 'draft') return false;
+        return true;
+      }
+      return true;
+    }
     
     // Format date and time - Convert from UTC to Dubai time (GST)
     function formatDateTime(dateString) {
@@ -881,7 +939,10 @@
         }
         
         const data = await response.json();
-        const submissions = data.submissions || [];
+        const allSubmissions = data.submissions || [];
+        // Apply client-side workflow filter (pending / approved / rejected) coming from the
+        // inspection hero stat cards via ?workflow=… deep-link.
+        const submissions = allSubmissions.filter(matchesWorkflowFilter);
         const listScopeAll = data.list_scope === 'all';
         const moduleFlags = (data && data.visible_modules) || {};
         const hasHrModule = moduleFlags.hr === true;
@@ -892,13 +953,21 @@
 
         const ph1 = document.querySelector('.page-header h1');
         const ph2 = document.querySelector('.page-header p');
+        const wfHeadingMap = { pending: 'Pending', approved: 'Approved', rejected: 'Rejected' };
+        const wfHeading = wfHeadingMap[currentWorkflow] || '';
+        const scopeLabel = currentScope === 'inspection' ? 'inspection'
+                          : currentScope === 'hr' ? 'HR'
+                          : moduleLabel;
         if (ph1 && ph2) {
-          if (listScopeAll) {
+          if (wfHeading) {
+            ph1.textContent = `${wfHeading} ${scopeLabel} forms`;
+            ph2.textContent = `${wfHeading} ${scopeLabel} submissions only. Click any card to open the form, status, and PDF/Excel reports.`;
+          } else if (listScopeAll) {
             ph1.textContent = 'All submitted forms';
             ph2.textContent = `Organization-wide ${moduleLabel} submissions and drafts. Use the filter to refine the list.`;
           } else {
             ph1.textContent = 'My submitted forms';
-            ph2.textContent = `${moduleLabel.charAt(0).toUpperCase() + moduleLabel.slice(1)} forms available for your access. Open a card to view status, PDFs, and details.`;
+            ph2.textContent = 'Forms you submitted appear here. Open a card to view status, PDFs, and details.';
           }
         }
 
@@ -909,9 +978,12 @@
         
         loadingSpinner.style.display = 'none';
         
-        // Update filter count
+        // Update filter count (with workflow narrowing if any)
         const filterLabels = { all: 'All', submitted: 'Submitted', draft: 'Drafts' };
-        filterCount.textContent = `Showing ${submissions.length} ${filterLabels[currentFilter] || ''} form(s)`;
+        const workflowLabels = { all: '', pending: ' pending', approved: ' approved', rejected: ' rejected' };
+        const baseLbl = filterLabels[currentFilter] || '';
+        const wfLbl = workflowLabels[currentWorkflow] || '';
+        filterCount.textContent = `Showing ${submissions.length}${wfLbl ? wfLbl : (baseLbl ? ' ' + baseLbl : '')} form(s)`;
         
         if (submissions.length === 0) {
           emptyState.style.display = 'block';
@@ -1016,7 +1088,7 @@
                   <span>📝</span>
                   <span><strong>Form ID:</strong> ${submission.submission_id}</span>
                 </div>
-                ${listScopeAll && submission.submitted_by_display ? `
+                ${submission.submitted_by_display ? `
                 <div class="submission-detail-item">
                   <span>👤</span>
                   <span><strong>Submitted by:</strong> ${escapeHtml(submission.submitted_by_display)}${submission.submitted_by_username ? ` <span style="color:#64748b;font-weight:500;">(@${escapeHtml(submission.submitted_by_username)})</span>` : ''}</span>

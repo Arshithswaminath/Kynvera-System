@@ -7,7 +7,7 @@ cd "$ROOT"
 # shellcheck source=/dev/null
 source "$ROOT/env.sh"
 
-PORT="${PORT:-5001}"
+PORT="${PORT:-5002}"
 if [[ -f .env ]]; then
   _p="$(grep -E '^PORT=' .env | tail -1 | cut -d= -f2- | tr -d '\r' || true)"
   [[ -n "$_p" ]] && PORT="$_p"

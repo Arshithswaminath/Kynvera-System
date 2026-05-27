@@ -25,13 +25,32 @@
   --if-step-connector:rgba(18,84,53,.12);
 }
 
+/* design-tokens.css auto dark (prefers-color-scheme: dark) sets --bg-body to neutral-950;
+   inspection forms are light-only — same approach as dashboard module pages. */
+html:not([data-theme="dark"]):has(body.inspection-form),
+html:not([data-theme="dark"]) body.inspection-form {
+  --bg-body: var(--if-bg);
+  --bg-surface: var(--if-surface);
+  --bg-muted: #f4f4f5;
+  --bg-subtle: var(--if-bg);
+  --text-primary: var(--if-ink);
+  --text-secondary: var(--if-ink2);
+  --text-muted: var(--if-muted);
+  --border-default: var(--if-border);
+  color-scheme: light;
+}
+
+html:not([data-theme="dark"]):has(body.inspection-form) {
+  background-color: var(--if-bg);
+}
+
 /* ─── Page base ──────────────────────────────────────────────── */
 body.inspection-form{
-  /* Match main site / dashboard (--bg-body); beat mobile_responsive body white */
+  /* Match main site / dashboard; use --if-bg (not --bg-body) so OS dark mode cannot flip to black */
   background:
     radial-gradient(ellipse 85% 55% at 0% 0%, rgba(18, 84, 53, 0.055) 0%, transparent 58%),
     radial-gradient(ellipse 55% 45% at 100% 8%, rgba(18, 84, 53, 0.035) 0%, transparent 52%),
-    var(--bg-body, #f8faf8) !important;
+    var(--if-bg) !important;
   color:var(--if-ink);
   font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display",system-ui,"Segoe UI",sans-serif;
   -webkit-font-smoothing:antialiased;
@@ -54,30 +73,29 @@ body.inspection-form .inspection-form-bar{
   gap:.75rem;
 }
 
-/* ─── Back button pill (matches .back-btn in HR) ─────────────── */
+/* ─── Back button — transparent text link ──────────────────── */
 body.inspection-form .if-back-btn{
   display:inline-flex;
   align-items:center;
-  gap:.5rem;
-  padding:.5rem 1.1rem;
+  gap:.45rem;
+  padding:.35rem 0;
   font-size:.875rem;
   font-weight:600;
   color:var(--if-pri);
-  background:rgba(255,255,255,.95);
-  border:1px solid rgba(221,232,226,.8);
-  border-radius:999px;
+  background:transparent;
+  border:none;
+  border-radius:0;
   text-decoration:none;
-  box-shadow:0 2px 12px rgba(18,84,53,.06);
-  transition:all var(--if-t);
-  backdrop-filter:blur(8px);
-  -webkit-backdrop-filter:blur(8px);
+  box-shadow:none;
+  transition:color var(--if-t), opacity var(--if-t);
 }
 body.inspection-form .if-back-btn:hover{
-  background:#fff;
-  border-color:var(--if-pri-sm);
+  background:transparent;
+  border:none;
   color:var(--if-pri-d);
-  box-shadow:0 4px 16px rgba(18,84,53,.1);
+  box-shadow:none;
   text-decoration:none;
+  opacity:.85;
 }
 
 /* ─── Container = the card ───────────────────────────────────── */
