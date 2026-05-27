@@ -13,7 +13,8 @@
 <nav class="nav" id="nav">
   <div class="nav-container">
     <a href="/" class="logo">
-      <img src="{{ url_for('static', filename='icons/INJAAZ Logo - Edited.png') }}" alt="Injaaz Facilities Management" width="200" height="40" decoding="async">
+      {% set _about_nav_logo = active_page is defined and active_page == 'about' %}
+      <img src="{{ url_for('static', filename=('icons/INJAAZ Logo - Edited.png' if _about_nav_logo else 'icons/icon-144x144.png')) }}" alt="Injaaz Facilities Management" class="{{ 'logo-img-about' if _about_nav_logo else 'logo-img-official' }}" width="{{ '200' if _about_nav_logo else '40' }}" height="{{ '40' if _about_nav_logo else '40' }}" decoding="async">
       {% if page_title %}
         <span>{{ page_title }}</span>
       {% else %}
@@ -30,17 +31,16 @@
       {% else %}
         {# Full navigation menu #}
         <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle menu">
-          <span></span>
+          <span class="hamburger-bar" aria-hidden="true"></span>
         </button>
         <ul class="nav-menu">
           <li><a href="/dashboard">Home</a></li>
           <li><a href="/about">About</a></li>
           <li><a href="#" id="profileLink">Profile</a></li>
-          <li><a href="#" id="contactLink">Contact</a></li>
           <li><a href="/inspection/">Inspection Form</a></li>
           <li><a href="/hr/">HR Forms</a></li>
           <li id="review-history-menu-item" style="display: none;">
-            <a href="/api/workflow/history" style="color: var(--text-dark); font-weight: 500;">Review History</a>
+            <a href="/api/workflow/history" style="color: var(--text-dark); font-weight: 500;">Submitted Forms</a>
           </li>
           <li id="report-gen-menu-item" style="display: none;">
             <a href="/admin/mmr/" style="color: var(--primary); font-weight: 600;">Report Generation</a>
@@ -48,18 +48,7 @@
           <li id="admin-menu-item" style="display: none;">
             <a href="/admin/dashboard" style="color: var(--primary); font-weight: 600;">Administrative</a>
           </li>
-          <li id="bd-email-menu-item" style="display: none;">
-            <a href="/bd/email-module" style="color: var(--text-dark); font-weight: 500;">Email Module</a>
-          </li>
         </ul>
-        <div class="todo-nav-wrapper">
-          <button type="button" class="notification-btn todo-nav-btn" id="todoNavBtn" title="To-do list" aria-label="To-do list" aria-expanded="false" aria-controls="todoPanel">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="22" height="22" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
-            </svg>
-            <span class="notification-badge todo-nav-badge" id="todoNavBadge" style="display: none;">0</span>
-          </button>
-        </div>
         <button class="logout-btn" id="logoutBtn" type="button">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 9V5.25A2.25 2.25 0 0 1 10.5 3h6a2.25 2.25 0 0 1 2.25 2.25v13.5A2.25 2.25 0 0 1 16.5 21h-6a2.25 2.25 0 0 1-2.25-2.25V15m-3 0-3-3m0 0 3-3m-3 3h12.75" />

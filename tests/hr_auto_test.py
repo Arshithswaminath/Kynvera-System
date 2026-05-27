@@ -100,6 +100,9 @@ def get_sample_form_data(form_type: str) -> dict:
             "planned_resumption_date": "2026-03-01",
             "actual_resumption_date": "2026-03-01",
             "note": "Auto-test resumption",
+            "reporting_manager_signature": SIGNATURE_DATA_URL,
+            "gm_signature": SIGNATURE_DATA_URL,
+            "hr_signature": SIGNATURE_DATA_URL,
         })
     elif form_type == "passport_release":
         base.update({

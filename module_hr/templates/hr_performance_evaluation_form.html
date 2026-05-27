@@ -10,23 +10,48 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-forms-unified.css') }}">
-  <style>.hr-form-unified .page { padding-top: 5.5rem; }</style>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/ticketing.css') }}">
+  <style>
+    .hr-form-unified .page { padding-top: 5.5rem; }
+    body.hr-embed-mode .hr-form-unified .page { padding-top: 0 !important; }
+    body.hr-embed-mode .hr-form-unified .page-inner { padding-top: 0.75rem !important; }
+    body.hr-embed-mode .page-inner > a.back-btn { display: none !important; }
+  </style>
+  <style>
+    .leave-form-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,360px);gap:1.5rem;align-items:start;width:100%}
+    .leave-form-layout-main{min-width:0}
+    .leave-form-layout-aside{position:sticky;top:5.75rem;display:flex;flex-direction:column;gap:14px;min-width:0}
+    body.hr-embed-mode .leave-form-layout-aside{top:1rem}
+    body.hr-embed-mode .hr-form-unified .page{padding-top:0!important}
+    body.hr-embed-mode .hr-form-unified .page-inner{padding-top:.75rem!important}
+    body.hr-embed-mode .page-inner>a.back-btn{display:none!important}
+    .leave-sidebar-card.tkt-card{border-radius:12px}
+    .leave-sidebar-card .tkt-card-header{padding:14px 18px}
+    .leave-sidebar-card .tkt-card-header h3{font-size:1rem}
+    .leave-sidebar-inner .tkt-card-body{padding:0!important}
+    .leave-sidebar-inner .hr-mgmt-chain-sec,.leave-sidebar-inner .hr-signoff-activity-sec,.leave-sidebar-inner .hr-recorded-sigs-sec{margin:0!important;padding:1rem 18px 1.15rem!important;border:none!important;border-radius:0!important;box-shadow:none!important;background:transparent!important}
+    .leave-sidebar-inner .hr-mgmt-chain-sec>.sec-hd,.leave-sidebar-inner .hr-signoff-activity-sec>.sec-hd{display:none!important}
+    .leave-sidebar-inner #hrMgmtChainWrap{background:#f8fafc!important;border:1px solid #e2e8f0!important}
+    .leave-sidebar-inner .hr-signoff-activity-scroll{max-height:clamp(15rem,44vh,30rem)}
+    .leave-sidebar-inner .hr-recorded-sigs-sec{margin-top:.85rem!important;padding-top:1rem!important;border-top:1px solid #e2e8f0!important}
+    @media(max-width:900px){.leave-form-layout{grid-template-columns:1fr}.leave-form-layout-aside{position:static}}
+  </style>
   <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 </head>
-<body class="hr-form-unified">
+<body class="hr-form-unified{% if hr_embed %} hr-embed-mode{% endif %}">
   {% set active_page = 'hr' %}
-  {% include 'partials/main_navbar.html' with context %}
+  {% include 'partials/hr_embed_optional_navbar.html' %}
 
   <div class="success-bg" id="successModal">
     <div class="success-box">
-      <button type="button" class="success-back-btn" onclick="closeSuccessBackToForm()" title="Back to form">
+      <button type="button" class="success-back-btn" onclick="hrGoToSubmittedRequest()" title="View submitted request">
         <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
       </button>
       <div class="success-icon"><svg width="30" height="30" fill="none" stroke="#fff" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg></div>
       <h2>Form Submitted!</h2>
-      <p>Performance evaluation sent to HR.</p>
+      <p id="successMsgLead">Performance evaluation sent to HR.</p>
       <div class="sub-id" id="submissionId"></div>
-      <button class="btn-submit" style="width:100%;justify-content:center" onclick="window.location.href='/hr/my-requests'">View My Requests</button>
+      <button class="btn-submit" style="width:100%;justify-content:center" onclick="hrGoToSubmittedRequest()">View My Requests</button>
     </div>
   </div>
 
@@ -48,12 +73,16 @@
         Back to HR
       </a>
 
+      {% include 'partials/hr_submitted_edit_banners.html' %}
+
       <div class="step-bar">
         <div class="step-item active" id="step1Badge" onclick="goToStep1()" role="button" tabindex="0"><span class="num">1</span><span>Evaluation</span></div>
         <div class="step-connector" id="connector1"></div>
         <div class="step-item locked" id="step2Badge" onclick="goToStep2()" role="button" tabindex="0"><span class="num">2</span><span>Signatures</span></div>
       </div>
 
+      <div class="leave-form-layout">
+      <div class="leave-form-layout-main">
       <div class="card">
         <div class="hd">
           <div class="hd-left">
@@ -114,8 +143,8 @@
               <section class="sec sec-hr">
                 <h2 class="sec-hd">For Manager / GM / HR use</h2>
                 <div class="grid-2">
-                  <div class="fld"><label class="fld-lbl">Concern Incharge, Engineer, Manager Name</label><input class="fld-inp" type="text" name="concern_incharge_name" placeholder="For Manager use" {% if not is_hr %}readonly{% endif %}></div>
-                  <div class="fld fw"><label class="fld-lbl">Incharge, Engineer, Manager Comments</label><textarea class="fld-inp" name="incharge_comments" rows="2" {% if not is_hr %}readonly{% endif %}></textarea></div>
+                  <div class="fld"><label class="fld-lbl">Concern Incharge, Engineer, Manager Name</label><input class="fld-inp" type="text" name="concern_incharge_name" placeholder="For Manager use" {% if not is_hr_broad %}readonly{% endif %}></div>
+                  <div class="fld fw"><label class="fld-lbl">Incharge, Engineer, Manager Comments</label><textarea class="fld-inp" name="incharge_comments" rows="2" {% if not is_hr_broad %}readonly{% endif %}></textarea></div>
                   <div class="fld fw"><label class="fld-lbl">General Manager Remarks/Comments</label><textarea class="fld-inp" name="gm_remarks" rows="2" {% if not is_gm %}readonly{% endif %} placeholder="For GM use"></textarea></div>
                   <div class="fld fw"><label class="fld-lbl">HR remarks/comments</label><textarea class="fld-inp" name="hr_remarks" rows="1" {% if not is_hr %}readonly{% endif %}></textarea></div>
                 </div>
@@ -145,33 +174,6 @@
                       <input type="hidden" name="employee_signature" id="empSigData">
                     </div>
                     <div class="fld" style="margin-top:.5rem"><label class="fld-lbl">Date</label><input class="fld-inp" type="date" name="employee_sign_date" id="empSignDate"></div>
-                  </div>
-                  <div class="fld">
-                    <label class="fld-lbl">Evaluator Signature <span class="req">*</span></label>
-                    <div class="sig-wrap">
-                      <div class="sig-box" id="evalSigPrev"><span class="sig-ph">No signature</span><img id="evalSigImg" src="" style="display:none"></div>
-                      <div class="sig-actions">
-                        <button type="button" class="btn-plus" onclick="openSig('evaluator')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 4v16m8-8H4"/></svg> Sign</button>
-                        <button type="button" class="btn-rm" id="evalSigRm" onclick="rmSig('evaluator')">Remove</button>
-                      </div>
-                      <input type="hidden" name="evaluator_signature" id="evalSigData">
-                    </div>
-                    <div class="fld" style="margin-top:.5rem"><label class="fld-lbl">Date</label><input class="fld-inp" type="date" name="evaluator_sign_date" id="evalSignDate" required></div>
-                  </div>
-                  <div class="fld">
-                    <label class="fld-lbl">In-charge / Engineer Signature</label>
-                    {% if is_hr %}
-                    <div class="sig-wrap">
-                      <div class="sig-box" id="inchSigPrev"><span class="sig-ph">No signature</span><img id="inchSigImg" src="" style="display:none"></div>
-                      <div class="sig-actions">
-                        <button type="button" class="btn-plus" onclick="openSig('incharge')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 4v16m8-8H4"/></svg> Sign</button>
-                        <button type="button" class="btn-rm" id="inchSigRm" onclick="rmSig('incharge')">Remove</button>
-                      </div>
-                      <input type="hidden" name="incharge_signature" id="inchSigData">
-                    </div>
-                    {% else %}
-                    <em style="font-size:.85rem;color:var(--muted)">For In-charge / Engineer</em>
-                    {% endif %}
                   </div>
                   <div class="fld">
                     <label class="fld-lbl">GM Signature</label>
@@ -204,6 +206,26 @@
                     {% endif %}
                   </div>
                 </div>
+                <div class="fld fw" style="margin-top:1rem;padding-top:1rem;border-top:1px solid rgba(226,232,240,.9)">
+                  <p class="fld-lbl" style="margin-bottom:.55rem">Route signatures to teammates (sign before HR)</p>
+                  <div style="margin-bottom:.75rem">
+                    <span style="display:block;font-size:.86rem;font-weight:600;color:#334155">Evaluator <span style="font-weight:500;opacity:.85">(one)</span></span>
+                    <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:flex-end;margin-top:.3rem">
+                      <select class="fld-inp" id="perfEvalSel" style="flex:1;min-width:11rem"><option value="">Loading…</option></select>
+                      <button type="button" class="btn-ghost" id="perfEvalAdd">Add</button>
+                    </div>
+                    <div id="perfEvalChips" style="margin-top:.35rem;display:flex;flex-wrap:wrap;gap:.2rem"></div>
+                  </div>
+                  <div>
+                    <span style="display:block;font-size:.86rem;font-weight:600;color:#334155">In-charge / engineer <span style="font-weight:500;opacity:.85">(one)</span></span>
+                    <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:flex-end;margin-top:.3rem">
+                      <select class="fld-inp" id="perfInchSel" style="flex:1;min-width:11rem"><option value="">Loading…</option></select>
+                      <button type="button" class="btn-ghost" id="perfInchAdd">Add</button>
+                    </div>
+                    <div id="perfInchChips" style="margin-top:.35rem;display:flex;flex-wrap:wrap;gap:.2rem"></div>
+                  </div>
+                  <p class="doc-intro" style="font-size:.78rem;margin-top:.5rem;color:var(--muted)">Evaluator and in-charge must be chosen below — those colleagues sign from their account (you cannot sign for them).</p>
+                </div>
               </section>
               <div class="step-nav">
                 <button type="button" class="btn-back" onclick="goToStep1()"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12"/></svg> Back to Step 1</button>
@@ -220,16 +242,28 @@
 
           <div class="submit-bar" id="submitBar" style="display:none">
             <button type="button" class="btn-reset" onclick="if(confirm('Reset the form?')){document.getElementById('hrForm').reset();clearAllSigs();goToStep1()}">Reset</button>
-            <button type="submit" class="btn-submit"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> Submit Form</button>
+            <button type="submit" class="btn-submit">Submit Form</button>
           </div>
         </form>
       </div>
+      </div>{# leave-form-layout-main #}
+
+      {% include 'partials/hr_form_approvals_sidebar.html' %}
+
+      </div>{# leave-form-layout #}
     </div>
   </div>
 
+<script src="{{ url_for('static', filename='js/hr_colleague_slot_picker.js') }}"></script>
 <script>
+const evaluator_signer_ids=[], incharge_signer_ids=[];
+document.addEventListener('DOMContentLoaded',()=>{
+  if(window.HrColleagueSlotPicker){
+    HrColleagueSlotPicker.bind({selectId:'perfEvalSel',addBtnId:'perfEvalAdd',chipsId:'perfEvalChips',ids:evaluator_signer_ids,multi:false});
+    HrColleagueSlotPicker.bind({selectId:'perfInchSel',addBtnId:'perfInchAdd',chipsId:'perfInchChips',ids:incharge_signer_ids,multi:false});
+  }
+});
 document.querySelector('[name="date_of_evaluation"]').value = new Date().toISOString().split('T')[0];
-document.getElementById('evalSignDate').value = new Date().toISOString().split('T')[0];
 document.getElementById('empSignDate').value = new Date().toISOString().split('T')[0];
 document.getElementById('docDate').textContent = new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'});
 
@@ -263,19 +297,11 @@ function goToStep1(){
   document.getElementById('connector1').classList.remove('done');
   document.getElementById('step1Panel').scrollIntoView({behavior:'smooth',block:'start'});
 }
-function closeSuccessBackToForm(){
-  document.getElementById('successModal').classList.remove('show');
-  goToStep1();
-  const btn=document.querySelector('#hrForm .btn-submit');
-  if(btn){btn.disabled=false;btn.innerHTML='<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> Submit Form'}
-}
 
 let pad=null,target=null;
 const bg=document.getElementById('sigBg'),cv=document.getElementById('sigCanvas');
 const sigCfg={
   employee:{prev:'empSigPrev',img:'empSigImg',data:'empSigData',rm:'empSigRm',title:'Employee Signature'},
-  evaluator:{prev:'evalSigPrev',img:'evalSigImg',data:'evalSigData',rm:'evalSigRm',title:'Evaluator Signature'},
-  incharge:{prev:'inchSigPrev',img:'inchSigImg',data:'inchSigData',rm:'inchSigRm',title:'In-charge / Engineer Signature'},
   gm:{prev:'gmSigPrev',img:'gmSigImg',data:'gmSigData',rm:'gmSigRm',title:'GM Signature'},
   hr:{prev:'hrSigPrev',img:'hrSigImg',data:'hrSigData',rm:'hrSigRm',title:'HR Signature'}
 };
@@ -285,22 +311,69 @@ function closeSig(){bg.classList.remove('open');document.body.style.overflow='';
 function clearModalPad(){if(pad)pad.clear()}
 function applySig(){if(!pad||pad.isEmpty()){alert('Please draw your signature first.');return}const url=pad.toDataURL('image/png'),c=sigCfg[target];if(!c)return;const img=document.getElementById(c.img),ph=document.querySelector('#'+c.prev+' .sig-ph'),inp=document.getElementById(c.data),rm=document.getElementById(c.rm);if(img){img.src=url;img.style.display='block'}if(ph)ph.style.display='none';if(inp)inp.value=url;if(rm)rm.style.display='inline-flex';closeSig()}
 function rmSig(t){const c=sigCfg[t];if(!c)return;const img=document.getElementById(c.img),ph=document.querySelector('#'+c.prev+' .sig-ph'),inp=document.getElementById(c.data),rm=document.getElementById(c.rm);if(img){img.src='';img.style.display='none'}if(ph)ph.style.display='block';if(inp)inp.value='';if(rm)rm.style.display='none'}
-function clearAllSigs(){['employee','evaluator','incharge','gm','hr'].forEach(t=>{const c=sigCfg[t];if(c&&document.getElementById(c.rm))rmSig(t)})}
+function clearAllSigs(){['employee','gm','hr'].forEach(t=>{const c=sigCfg[t];if(c&&document.getElementById(c.rm))rmSig(t)})}
 bg.addEventListener('click',e=>{if(e.target===bg)closeSig()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&bg.classList.contains('open'))closeSig()});
+
+(function(){var fid='hrForm';if(!window.HrGenericFormEdit)return;var o=openSig,r=rmSig;openSig=function(t){if(!HrGenericFormEdit.canModifySig(fid,t))return;return o(t);};rmSig=function(t){if(!HrGenericFormEdit.canModifySig(fid,t))return;return r(t);};})();
 
 document.getElementById('hrForm').addEventListener('submit',async e=>{
   e.preventDefault();
   const fd=new FormData(e.target),data=Object.fromEntries(fd.entries());
   data.form_type='performance_evaluation';
+  if(!data.employee_signature||!String(data.employee_signature).startsWith('data:image')){alert('Employee signature is required.');return}
+  if(!evaluator_signer_ids.length){alert('Choose exactly one evaluator with an Injaaz account to sign before HR.');return}
+  if(!incharge_signer_ids.length){alert('Choose one in-charge / engineer colleague to sign before HR.');return}
+  data.evaluator_signer_ids=[...evaluator_signer_ids];
+  data.incharge_signer_ids=[...incharge_signer_ids];
   const btn=e.target.querySelector('.btn-submit');
   btn.disabled=true;btn.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="spin"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Submitting…';
   try{const res=await fetch('/hr/api/submit',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.getItem('access_token')},body:JSON.stringify(data)});const r=await res.json();
-  if(r.success){document.getElementById('submissionId').textContent=r.submission_id;document.getElementById('successModal').classList.add('show')}
-  else{alert('Error: '+(r.error||'Unknown'));btn.disabled=false;btn.innerHTML='<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> Submit Form'}
-  }catch(err){alert('Network error: '+err.message);btn.disabled=false;btn.innerHTML='<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> Submit Form'}
+  if(r.success){
+    const lead=document.getElementById('successMsgLead');
+    if(lead) lead.textContent = r.workflow_status==='replacement_signoff'
+      ? 'Colleague sign-offs queued — HR receives this once everyone signs.'
+      : 'Performance evaluation sent to HR.';
+    window.__hrLastHrSubmissionId=r.submission_id;document.getElementById('submissionId').textContent=r.submission_id;document.getElementById('successModal').classList.add('show')}
+  else{alert('Error: '+(r.error||'Unknown'));btn.disabled=false;btn.innerHTML='Submit Form'}
+  }catch(err){alert('Network error: '+err.message);btn.disabled=false;btn.innerHTML='Submit Form'}
 });
 </script>
+  <script src="{{ url_for('static', filename='js/hr_generic_form_edit.js') }}"></script>
+  <script>
+    HrGenericFormEdit.attach({
+      formId: 'hrForm',
+      moduleTypes: ['hr_performance_evaluation'],
+      submitBarSelector: '#submitBar',
+      onEnterEditUi: function () {
+        goToStep2();
+        calcOverall();
+      },
+      appendToPayload: function () {
+        return {
+          evaluator_signer_ids: evaluator_signer_ids.slice(),
+          incharge_signer_ids: incharge_signer_ids.slice(),
+        };
+      },
+      afterPopulate: function (_payload, fd) {
+        evaluator_signer_ids.length = 0;
+        incharge_signer_ids.length = 0;
+        (fd.evaluator_signer_ids || []).forEach(function (x) {
+          var n = parseInt(x, 10);
+          if (Number.isFinite(n)) evaluator_signer_ids.push(n);
+        });
+        (fd.incharge_signer_ids || []).forEach(function (x) {
+          var n = parseInt(x, 10);
+          if (Number.isFinite(n)) incharge_signer_ids.push(n);
+        });
+        if (window.HrColleagueSlotPicker) {
+          void HrColleagueSlotPicker.redrawChips({ chipsId: 'perfEvalChips', ids: evaluator_signer_ids, multi: false });
+          void HrColleagueSlotPicker.redrawChips({ chipsId: 'perfInchChips', ids: incharge_signer_ids, multi: false });
+        }
+        calcOverall();
+      },
+    });
+  </script>
   <script src="{{ url_for('static', filename='api-client.js') }}"></script>
   <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 </body>

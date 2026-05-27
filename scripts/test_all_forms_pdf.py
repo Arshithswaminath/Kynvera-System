@@ -1,4 +1,12 @@
-"""Generate test PDFs for all HR forms with realistic sample data."""
+"""Generate test PDFs for all HR forms with realistic sample data.
+
+Prefer production-path testing:
+  python scripts/test_all_hr_forms.py --pdf-only
+
+Or:  python -m pytest tests/test_hr_pdf_all_forms.py -v
+
+This script calls build_hr_pdf() directly (bypasses pdf_service normalization).
+"""
 import sys, os, io
 sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
@@ -46,8 +54,9 @@ FORMS = {
         'employee_signature': SIG,
         'sign_date': '2026-02-21',
         'line_manager_remarks': 'Approved. Welcome back.',
-        'hr_signature': SIG,
+        'reporting_manager_signature': SIG,
         'gm_signature': SIG,
+        'hr_signature': SIG,
     },
     'passport_release': {
         'passport_form_type': 'release',

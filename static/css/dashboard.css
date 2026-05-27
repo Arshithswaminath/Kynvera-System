@@ -49,7 +49,7 @@
 
 body {
   font-family: var(--font-sans);
-  background: var(--bg-body);
+  background: var(--bg-body, #f8faf8);
   color: var(--text-dark);
   overflow-x: hidden;
   line-height: 1.6;
@@ -63,13 +63,41 @@ body {
 
 html {
   scroll-behavior: smooth;
+  /* PWA / iOS WKWebView: unpainted bands (esp. between sections) show black if html has no fill */
+  background-color: var(--bg-body, #f8faf8);
+  color-scheme: light;
 }
 
-/* Dashboard routes: one continuous #f8faf8 surface (mobile_responsive sets body white) */
+/* Dashboard routes: one continuous #f8faf8 surface (mobile_responsive sets body white).
+   design-tokens.css uses :root:not([data-theme="light"]) under prefers-color-scheme:dark,
+   which beats this file's :root and sets --bg-body to ~black — modules/footer then read "black block". */
+html:not([data-theme="dark"]) body.page-dashboard,
+html:not([data-theme="dark"]) body.hr-dashboard,
+html:not([data-theme="dark"]) body.inspection-dashboard,
+html:not([data-theme="dark"]) body.dm-device-mgmt-page,
+html:not([data-theme="dark"]) body.review-dashboard,
+html:not([data-theme="dark"]) body.admin-dh-page {
+  --bg-body: #f8faf8;
+  --bg-light: #f9fafb;
+  --text-dark: #111827;
+  --text-mid: #374151;
+  --text-light: #6b7280;
+  --text-muted: #9ca3af;
+  --white: #ffffff;
+  --border-color: #e5e7eb;
+}
+
+html:not([data-theme="dark"]) body.admin-dh-page {
+  --bg-body: #eff4f1;
+}
+
 body.page-dashboard,
 body.hr-dashboard,
-body.inspection-dashboard {
-  background: var(--bg-body) !important;
+body.inspection-dashboard,
+body.dm-device-mgmt-page,
+body.review-dashboard,
+body.admin-dh-page {
+  background: var(--bg-body, #f8faf8) !important;
 }
 
 /* ===========================================
@@ -90,6 +118,15 @@ body.inspection-dashboard {
 .nav.scrolled {
   background: #ffffff;
   box-shadow: 0 1px 3px rgba(18, 84, 53, 0.08);
+}
+
+/* Device Management: module topbar (.dm-topbar) already divides content; strip nav hairline (same idea as DocHub v2). */
+body.dm-device-mgmt-page.has-main-nav .nav {
+  border-bottom: none;
+}
+
+body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
+  box-shadow: none;
 }
 
 .nav-container {
@@ -127,6 +164,9 @@ body.inspection-dashboard {
   justify-content: flex-end;
   align-items: center;
   min-width: 0;
+  max-width: 100%;
+  /* Allow mega-menu / dropdown panels to paint below the bar (overflow:hidden clips them on hover). */
+  overflow: visible;
 }
 
 .logo:hover {
@@ -140,8 +180,12 @@ body.inspection-dashboard {
   flex-shrink: 0;
   object-fit: contain;
   object-position: left center;
-  /* White wordmark PNG (icons/INJAAZ Logo - Edited.png): visible on light nav */
-  filter: brightness(0);
+  filter: none;
+}
+
+/* Official nav mark (square icon, non–About routes) — slight rounding reads as intentional */
+.logo img.logo-img-official {
+  border-radius: 12px;
 }
 
 .logo-text {
@@ -172,11 +216,26 @@ body.inspection-dashboard {
   line-height: 1.2;
   white-space: nowrap;
   text-align: left;
+  max-width: min(34vw, 360px);
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Mobile menu toggle (hidden by default) */
 .mobile-menu-toggle {
   display: none;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 8px;
+  color: var(--text-mid);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.mobile-menu-toggle:hover {
+  background: var(--bg-light);
+  color: var(--text-dark);
 }
 
 /* Mobile drawer and overlay - hidden on desktop (shown when nav gets tight) */
@@ -205,17 +264,21 @@ body.inspection-dashboard {
   align-items: center;
   margin: 0;
   padding: 0;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   justify-content: flex-end;
+  max-width: 100%;
+  overflow: visible;
+  scrollbar-width: thin;
 }
 
 .nav-menu li {
   display: flex;
   align-items: center;
+  position: relative;
 }
 
 .nav-menu a {
-  color: #000;
+  color: var(--text-dark, #111827);
   text-decoration: none;
   font-size: 0.875rem;
   font-weight: 500;
@@ -234,6 +297,89 @@ body.inspection-dashboard {
   color: var(--primary);
   background: rgba(18, 84, 53, 0.05);
 }
+
+/* Current route — beats Bootstrap link colour and drawer `!important` text colour */
+.nav-menu a.nav-current {
+  color: var(--primary) !important;
+  font-weight: 600;
+}
+
+.nav-submenu {
+  list-style: none;
+  margin: 0;
+  padding: 0.4rem;
+  position: absolute;
+  /* Flush to parent <li> bottom so :hover isn’t lost crossing a gap. */
+  top: 100%;
+  right: 0;
+  min-width: 220px;
+  border: 1px solid rgba(18, 84, 53, 0.16);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.14);
+  opacity: 0;
+  transform: translateY(-6px);
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
+  z-index: 1205;
+}
+
+/* Bridge pointer gap between trigger row and submenu (keeps hover path continuous). */
+.nav-menu li.has-submenu.has-submitted-dropdown .nav-submenu::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  height: 0.45rem;
+}
+
+.nav-submenu li {
+  display: block;
+}
+
+.nav-submenu a {
+  display: block;
+  width: 100%;
+  padding: 0.6rem 0.7rem;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-dark);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.nav-menu li.has-submenu.has-submitted-dropdown:hover .nav-submenu,
+.nav-menu li.has-submenu.has-submitted-dropdown:focus-within .nav-submenu,
+.nav-menu li.has-submenu.has-submitted-dropdown.open .nav-submenu {
+  opacity: 1;
+  transform: translateY(0);
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.nav-menu li.has-submenu.has-submitted-dropdown > a::after {
+  content: '▾';
+  display: inline-flex;
+  margin-left: 0.42rem;
+  font-size: 0.72rem;
+  color: var(--text-light);
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.nav-menu li.has-submenu.has-submitted-dropdown > a.nav-current::after {
+  color: var(--primary);
+}
+
+.nav-menu li.has-submenu.has-submitted-dropdown:hover > a::after,
+.nav-menu li.has-submenu.has-submitted-dropdown:focus-within > a::after,
+.nav-menu li.has-submenu.has-submitted-dropdown.open > a::after {
+  transform: rotate(180deg);
+  color: var(--primary);
+}
+
 
 /* ===========================================
    Save Draft (inspection form - in main nav)
@@ -303,6 +449,26 @@ body.inspection-dashboard {
   width: 16px;
   height: 16px;
   stroke: currentColor;
+}
+
+/* ── Keyboard focus (shared chrome) ── */
+.nav .logo:focus-visible,
+.nav-menu a:focus-visible,
+.nav-submenu a:focus-visible,
+.logout-btn:focus-visible,
+.nav-save-draft-btn:focus-visible,
+.notification-btn:focus-visible,
+.todo-nav-btn:focus-visible,
+.mobile-menu-toggle:focus-visible,
+.mark-all-read:focus-visible {
+  outline: 2px solid var(--primary, #125435);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
 }
 
 /* ===========================================
@@ -401,9 +567,10 @@ body.inspection-dashboard {
   display: none;
 }
 
-/* Review History hero: same as HR/Inspection - gradient at top, no grid */
+/* Submitted Forms (workflow history) hero — tighter bottom so stats sit closer to the list */
 .hero.review-hero {
   background: linear-gradient(180deg, #eef4f0 0%, #f2f7f4 45%, #F8FAF8 100%);
+  padding-bottom: 1.25rem;
 }
 .hero.review-hero::before,
 .hero.review-hero::after {
@@ -595,6 +762,17 @@ body.inspection-dashboard {
   opacity: 0;
 }
 
+/* HR workflow cards: right-align within hero-right */
+.hr-workflow-cards #quickActionsRow {
+  display: flex !important;
+  justify-content: flex-end;
+  gap: 1.25rem;
+}
+
+.hr-workflow-cards #quickActionsRow > div {
+  flex: 0 0 auto;
+}
+
 .dashboard-widget-link {
   display: block;
   text-decoration: none;
@@ -670,6 +848,29 @@ body.inspection-dashboard {
   border-radius: 12px;
   padding: 1rem;
   border: 1px solid var(--border-light);
+  display: flex;
+  flex-direction: column;
+  min-height: 6.75rem;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.dashboard-stat-card--clickable[data-href],
+.dashboard-stat-card--clickable[data-action] {
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.dashboard-stat-card--clickable[data-href]:hover,
+.dashboard-stat-card--clickable[data-action]:hover {
+  border-color: rgba(18, 84, 53, 0.28);
+  box-shadow: 0 2px 8px rgba(18, 84, 53, 0.08);
+}
+
+.dashboard-stat-card--clickable[data-href]:focus-visible,
+.dashboard-stat-card--clickable[data-action]:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
 }
 
 .dashboard-stat-icon {
@@ -706,49 +907,35 @@ body.inspection-dashboard {
   font-weight: 700;
   color: var(--text-dark);
   line-height: 1.2;
+  white-space: nowrap;
 }
 
-.dashboard-activity {
-  border-top: 1px solid var(--border-light);
-  padding-top: 0.75rem;
+#stat-label-row-3 {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.dashboard-activity-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.85rem;
-  color: var(--text-mid);
+#stat-label-row-3 a.dashboard-stat-joined-link {
+  display: inline;
+  font: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+  line-height: inherit;
+  text-transform: none;
+  text-decoration: none;
 }
 
-.dashboard-activity-icon {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: rgba(18, 84, 53, 0.12);
-  color: var(--primary);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.7rem;
-  font-weight: 700;
-  flex-shrink: 0;
+#stat-label-row-3 a.dashboard-stat-joined-link:hover {
+  text-decoration: underline;
 }
 
-.dashboard-activity-text {
-  flex: 1;
-  min-width: 0;
+#stat-card-3 .dashboard-stat-value {
+  white-space: normal;
 }
 
-.dashboard-activity-time {
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  flex-shrink: 0;
-}
-
-.dashboard-activity-list .dashboard-activity-item {
-  margin-top: 0.5rem;
-}
 
 /* Hero split + widget responsive */
 @media (max-width: 1024px) {
@@ -801,9 +988,6 @@ body.inspection-dashboard {
   .hero-cta-row {
     display: none;
   }
-  .dashboard-activity {
-    display: none;
-  }
   .dashboard-stats-grid {
     gap: 6px !important;
   }
@@ -828,8 +1012,15 @@ body.inspection-dashboard {
    Module Cards — Simple + Modern
    =========================================== */
 
-@keyframes cardReveal {
-  to { opacity: 1; transform: translateY(0); }
+@keyframes dashboardModuleIn {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 @keyframes heroReveal {
@@ -854,7 +1045,7 @@ body.inspection-dashboard {
 
 /* ---- Section ---- */
 .modules-section {
-  background: #f8faf8;
+  background: var(--bg-body, #f8faf8);
   padding: 3rem 0 7rem;
   width: 100%;
   display: block !important;
@@ -891,6 +1082,18 @@ body.inspection-dashboard {
   width: 100%;
 }
 
+@media (max-width: 900px) {
+  .modules-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .modules-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
 /* ---- Card ---- */
 .module-card {
   background: var(--white);
@@ -905,9 +1108,43 @@ body.inspection-dashboard {
   box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 4px 12px rgba(0,0,0,0.04);
   width: 100%;
   box-sizing: border-box;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.page-dashboard #modulesGrid.modules-grid--boot > .module-card:not([style*="display: none"]) {
   opacity: 0;
-  transform: translateY(12px);
-  animation: cardReveal 0.55s var(--ease-out) forwards;
+  transform: translateY(16px) scale(0.985);
+}
+
+.page-dashboard #modulesGrid.modules-grid--entrance-active > .module-card:not([style*="display: none"]) {
+  animation: dashboardModuleIn 0.52s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--dd-stagger, 0ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-dashboard #modulesGrid.modules-grid--boot > .module-card:not([style*="display: none"]),
+  .page-dashboard #modulesGrid.modules-grid--entrance-active > .module-card:not([style*="display: none"]) {
+    opacity: 1 !important;
+    transform: none !important;
+    animation: none !important;
+  }
+
+  .hero::before,
+  .hero::after {
+    animation: none !important;
+  }
+
+  .module-card,
+  .module-card:hover {
+    transform: none !important;
+    transition: none !important;
+  }
+
+  .module-card::before {
+    transition: none !important;
+    transform: none !important;
+  }
 }
 
 /* Left color accent stripe — visible on hover */
@@ -925,21 +1162,10 @@ body.inspection-dashboard {
   transition: transform 0.3s var(--ease-out);
 }
 
-.module-card:nth-child(1) { animation-delay: 0.4s; }
-.module-card:nth-child(2) { animation-delay: 0.5s; }
-.module-card:nth-child(3) { animation-delay: 0.6s; }
-.module-card:nth-child(4) { animation-delay: 0.7s; }
-.module-card:nth-child(5) { animation-delay: 0.8s; }
-.module-card:nth-child(6) { animation-delay: 0.9s; }
-.module-card:nth-child(7) { animation-delay: 1.0s; }
-.module-card:nth-child(8) { animation-delay: 1.1s; }
-.module-card:nth-child(9) { animation-delay: 1.2s; }
-
 .module-card[style*="display: none"] { display: none !important; }
 .module-card:not([style*="display: none"]) { display: block !important; }
 
-/* Review History is revealed after load (visibility JS). Entrance animation can leave
-   opacity/transform short of the end state so the tile looks like the section gray (#f8faf8). */
+/* Review History is revealed after load (visibility JS). */
 .page-dashboard .modules-grid #module-review-history.module-card {
   background: var(--white);
   opacity: 1;
@@ -1077,7 +1303,7 @@ body.inspection-dashboard {
    Footer
    =========================================== */
 .footer {
-  background: var(--bg-body);
+  background: var(--bg-body, #f8faf8);
   margin-top: auto;
   flex-shrink: 0;
   position: relative;
@@ -1214,13 +1440,23 @@ body.inspection-dashboard {
   animation: modalSlideUp 0.3s var(--ease-out) forwards;
 }
 
-/* Profile & Contact Modals - positioned near top */
-#profileModal.contact-modal,
+/* Contact modal — starts below top bar */
 #contactModal.contact-modal {
   align-items: flex-start !important;
   justify-content: center !important;
   padding: 5rem 2rem 2rem !important;
 }
+
+/* Profile sheet — anchored under fixed nav (not vertically centered) so the card sits higher */
+#profileModal.contact-modal {
+  align-items: flex-start !important;
+  justify-content: center !important;
+  padding-top: max(0.35rem, calc(env(safe-area-inset-top, 0px) + 4.25rem + 6px)) !important;
+  padding-right: 1.25rem !important;
+  padding-bottom: max(1rem, calc(env(safe-area-inset-bottom, 0px) + 0.75rem)) !important;
+  padding-left: 1.25rem !important;
+}
+
 #profileModal .contact-modal-content {
   max-width: 500px;
   width: auto;
@@ -1485,36 +1721,35 @@ body.inspection-dashboard {
     pointer-events: none !important;
   }
 
+
   /* Show hamburger as soon as resolution shrinks - nav goes to menu */
   .mobile-menu-toggle {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    width: 44px !important;
-    height: 44px !important;
-    min-width: 44px !important;
-    min-height: 44px !important;
-    border: 1px solid var(--border-color) !important;
-    background: #fff !important;
-    border-radius: 10px !important;
+    width: auto !important;
+    height: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    border-radius: 8px !important;
     cursor: pointer !important;
-    padding: 0 !important;
-    color: var(--text-dark) !important;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06) !important;
-    transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease !important;
+    padding: 0.5rem !important;
+    color: var(--text-mid) !important;
+    box-shadow: none !important;
+    transition: background 0.15s ease, color 0.15s ease !important;
   }
 
   .mobile-menu-toggle:hover {
     background: var(--bg-light) !important;
-    border-color: var(--primary) !important;
-    color: var(--primary) !important;
+    color: var(--text-dark) !important;
   }
 
   .mobile-menu-toggle:active,
   .mobile-menu-toggle.active {
-    background: rgba(18, 84, 53, 0.08) !important;
-    border-color: var(--primary) !important;
-    color: var(--primary) !important;
+    background: var(--bg-light) !important;
+    color: var(--text-dark) !important;
   }
 
   /* Hide nav-center menu in collapsed mode (links shown in drawer) */
@@ -1571,6 +1806,41 @@ body.inspection-dashboard {
     margin: 0.1rem 0 !important;
   }
 
+  .mobile-menu-drawer-list .nav-submenu {
+    position: static !important;
+    min-width: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 10px !important;
+    background: rgba(18, 84, 53, 0.04) !important;
+    margin: 0.2rem 0 0.35rem 0 !important;
+    padding: 0.25rem !important;
+    opacity: 1 !important;
+    transform: none !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    display: none !important;
+  }
+
+  .mobile-menu-drawer-list li.has-submenu.has-submitted-dropdown.open .nav-submenu {
+    display: block !important;
+  }
+
+  .mobile-menu-drawer-list .nav-submenu li {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .mobile-menu-drawer-list .nav-submenu a {
+    min-height: 42px !important;
+    padding: 0.62rem 0.75rem !important;
+    font-size: 0.86rem !important;
+    border-radius: 8px !important;
+    border-bottom: none !important;
+    color: #0f5132 !important;
+    background: #fff !important;
+  }
+
   .mobile-menu-drawer-list li a,
   .mobile-menu-drawer-list a {
     display: flex !important;
@@ -1600,6 +1870,11 @@ body.inspection-dashboard {
     color: var(--primary) !important;
   }
 
+  .mobile-menu-drawer-list a.nav-current {
+    color: var(--primary) !important;
+    font-weight: 600 !important;
+  }
+
   .mobile-menu-drawer-list li:first-child a {
     border-top: none !important;
   }
@@ -1623,14 +1898,14 @@ body.inspection-dashboard {
   #welcome-text {
     font-size: 1.08rem !important;
     font-weight: 600 !important;
-    max-width: none !important;
-    overflow: visible !important;
-    text-overflow: unset !important;
+    max-width: min(28vw, 300px) !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
     white-space: nowrap !important;
   }
 
   /* Hamburger — equal 2px bars, even spacing (matches nav SVG stroke 2) */
-  .mobile-menu-toggle span {
+  .mobile-menu-toggle .hamburger-bar {
     display: block !important;
     width: 18px !important;
     height: 2px !important;
@@ -1641,8 +1916,8 @@ body.inspection-dashboard {
     transform: translateZ(0) !important;
   }
 
-  .mobile-menu-toggle span::before,
-  .mobile-menu-toggle span::after {
+  .mobile-menu-toggle .hamburger-bar::before,
+  .mobile-menu-toggle .hamburger-bar::after {
     content: '' !important;
     position: absolute !important;
     left: 0 !important;
@@ -1653,24 +1928,24 @@ body.inspection-dashboard {
     transition: all 0.3s ease !important;
   }
 
-  .mobile-menu-toggle span::before {
+  .mobile-menu-toggle .hamburger-bar::before {
     top: -6px !important;
   }
 
-  .mobile-menu-toggle span::after {
+  .mobile-menu-toggle .hamburger-bar::after {
     bottom: -6px !important;
   }
 
-  .mobile-menu-toggle.active span {
+  .mobile-menu-toggle.active .hamburger-bar {
     background: transparent !important;
   }
 
-  .mobile-menu-toggle.active span::before {
+  .mobile-menu-toggle.active .hamburger-bar::before {
     top: 0 !important;
     transform: rotate(45deg) !important;
   }
 
-  .mobile-menu-toggle.active span::after {
+  .mobile-menu-toggle.active .hamburger-bar::after {
     bottom: 0 !important;
     transform: rotate(-45deg) !important;
   }
@@ -1742,7 +2017,7 @@ body.inspection-dashboard {
     max-width: 100% !important;
   }
   
-  .hero-title {
+  .page-dashboard .hero-title {
     font-size: clamp(1.7rem, 6.5vw, 2.25rem) !important;
     letter-spacing: -0.03em !important;
   }
@@ -1763,9 +2038,23 @@ body.inspection-dashboard {
   .contact-modal {
     padding: 6rem 1.25rem 1.5rem !important;
   }
-  #profileModal.contact-modal,
+  /* Profile fullscreen rules override this at ≤479px via later block */
+  /* Profile: keep sheet shifted up on tablet/small laptop (≤768px) */
+  #profileModal.contact-modal {
+    align-items: flex-start !important;
+    padding-top: max(0.35rem, calc(env(safe-area-inset-top, 0px) + 4.25rem + 6px)) !important;
+    padding-right: 1rem !important;
+    padding-bottom: max(1rem, calc(env(safe-area-inset-bottom, 0px) + 0.75rem)) !important;
+    padding-left: 1rem !important;
+    justify-content: center !important;
+  }
+  /* Clear fixed nav + notch (matches profile sheet inset) */
   #contactModal.contact-modal {
-    padding: 3rem 1rem 1.5rem !important;
+    padding: calc(env(safe-area-inset-top, 0px) + 4.5rem + 12px) 1rem 1.5rem !important;
+    z-index: 10050 !important;
+  }
+  #contactModal.contact-modal.active {
+    z-index: 10050 !important;
   }
   
   .modules-section {
@@ -1845,9 +2134,9 @@ body.inspection-dashboard {
     font-weight: 600 !important;
     color: var(--text-dark) !important;
     white-space: nowrap !important;
-    max-width: none !important;
-    overflow: visible !important;
-    text-overflow: unset !important;
+    max-width: min(38vw, 260px) !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
   }
   
   .nav-right {
@@ -1941,7 +2230,13 @@ body.inspection-dashboard {
     box-sizing: border-box !important;
     transition: background 0.15s ease, color 0.15s ease !important;
   }
-  
+
+  /* Keep current-route green when responsive rules force default link colours */
+  .nav-menu a.nav-current {
+    color: var(--primary) !important;
+    font-weight: 600 !important;
+  }
+
   .nav-menu li a:active,
   .nav-menu a:active {
     background: rgba(18, 84, 53, 0.08) !important;
@@ -1960,30 +2255,31 @@ body.inspection-dashboard {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    width: 34px !important;
-    height: 34px !important;
-    min-width: 34px !important;
-    min-height: 34px !important;
-    border: 1px solid rgba(55, 65, 81, 0.18) !important;
-    background: #fff !important;
+    width: auto !important;
+    height: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    border: none !important;
+    background: transparent !important;
     border-radius: 8px !important;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+    box-shadow: none !important;
     cursor: pointer !important;
-    padding: 0 !important;
-    color: var(--text-dark) !important;
+    padding: 0.5rem !important;
+    color: var(--text-mid) !important;
     transition: background 0.15s ease !important;
     -webkit-tap-highlight-color: transparent !important;
   }
   
   .mobile-menu-toggle:hover {
-    background: var(--border-light) !important;
+    background: var(--bg-light) !important;
+    color: var(--text-dark) !important;
   }
   
   .mobile-menu-toggle:active {
-    background: var(--border-color) !important;
+    background: var(--bg-light) !important;
   }
   
-  .mobile-menu-toggle span {
+  .mobile-menu-toggle .hamburger-bar {
     display: block !important;
     width: 18px !important;
     height: 2px !important;
@@ -1994,8 +2290,8 @@ body.inspection-dashboard {
     transform: translateZ(0) !important;
   }
   
-  .mobile-menu-toggle span::before,
-  .mobile-menu-toggle span::after {
+  .mobile-menu-toggle .hamburger-bar::before,
+  .mobile-menu-toggle .hamburger-bar::after {
     content: '' !important;
     position: absolute !important;
     left: 0 !important;
@@ -2006,24 +2302,24 @@ body.inspection-dashboard {
     transition: all 0.3s ease !important;
   }
   
-  .mobile-menu-toggle span::before {
+  .mobile-menu-toggle .hamburger-bar::before {
     top: -6px !important;
   }
   
-  .mobile-menu-toggle span::after {
+  .mobile-menu-toggle .hamburger-bar::after {
     bottom: -6px !important;
   }
   
-  .mobile-menu-toggle.active span {
+  .mobile-menu-toggle.active .hamburger-bar {
     background: transparent !important;
   }
   
-  .mobile-menu-toggle.active span::before {
+  .mobile-menu-toggle.active .hamburger-bar::before {
     top: 0 !important;
     transform: rotate(45deg) !important;
   }
   
-  .mobile-menu-toggle.active span::after {
+  .mobile-menu-toggle.active .hamburger-bar::after {
     bottom: 0 !important;
     transform: rotate(-45deg) !important;
   }
@@ -2211,12 +2507,11 @@ body.inspection-dashboard {
     padding: 0 1rem !important;
   }
 
+
   .logo img {
-    height: 54px !important;
+    height: 48px !important;
     width: auto !important;
-    filter: none !important;
-    content: url('/static/icons/icon-192x192.png') !important;
-    border-radius: 10px !important;
+    border-radius: 0 !important;
   }
 
   .mobile-menu-drawer {
@@ -2259,7 +2554,7 @@ body.inspection-dashboard {
     gap: 1rem !important;
   }
   
-  .hero-title {
+  .page-dashboard .hero-title {
     font-size: clamp(1.55rem, 7vw, 1.85rem) !important;
     line-height: 1.15 !important;
     letter-spacing: -0.03em !important;
@@ -2291,8 +2586,10 @@ body.inspection-dashboard {
     padding: 1.2rem 1.25rem max(1rem, env(safe-area-inset-bottom, 0px)) !important;
   }
   
+  /* Keep flush with modules — spacing comes from .modules-section padding; margin here
+     left a strip that on hosted iOS/PWA often read as solid black (unpainted html canvas). */
   .footer {
-    margin-top: 1.5rem !important;
+    margin-top: 0 !important;
   }
   
   .nav-container {
@@ -2397,7 +2694,7 @@ body.inspection-dashboard {
     gap: 0.875rem !important;
   }
 
-  .hero-title {
+  .page-dashboard .hero-title {
     font-size: clamp(1.45rem, 8vw, 1.7rem) !important;
   }
 
@@ -2441,17 +2738,22 @@ body.inspection-dashboard {
 
 #profileModal .contact-modal-content {
   padding: 0 !important;
-  max-width: 480px;
+  max-width: min(720px, calc(100vw - 1.5rem));
   border-radius: var(--radius-xl);
+  /* Scroll lives in .pro-tab-panels; shell clips to radius */
   overflow: hidden;
   background: white;
+  min-height: 0;
+  align-self: flex-start;
+  display: flex;
+  flex-direction: column;
 }
 
 #profileModal .contact-modal-close {
   position: absolute;
   top: 1rem;
   right: 1rem;
-  z-index: 10;
+  z-index: 20;
   background: rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.3);
@@ -2474,47 +2776,69 @@ body.inspection-dashboard {
 
 #profileModal #profileContent {
   padding: 0;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Profile Modal Container - shared across all modules */
 .contact-modal-content.profile-modal-container {
-  max-width: 420px !important;
-  width: 92% !important;
-  min-width: 300px;
+  max-width: min(720px, calc(100vw - 1.5rem)) !important;
+  width: min(720px, calc(100vw - 1.5rem)) !important;
+  min-width: min(300px, 100%);
   padding: 0 !important;
   border-radius: 20px !important;
   overflow: hidden;
   box-shadow: 0 25px 60px rgba(0,0,0,0.3);
-  max-height: 90vh;
-  overflow-y: auto;
-}
-
-@media (min-width: 480px) {
-  .contact-modal-content.profile-modal-container {
-    max-width: 420px !important;
-    width: 420px !important;
-    max-height: 85vh;
-  }
+  /* Fill space below fixed nav + overlay padding; tab body scrolls inside */
+  max-height: min(92vh, calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 6rem));
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  -webkit-overflow-scrolling: touch;
+  margin-top: 0;
 }
 
 @media (max-width: 479px) {
+  /* Above .nav (1000), .mobile-menu-drawer / overlays (≤1200); keeps profile sheet off the nav bar */
+  #profileModal.contact-modal {
+    padding: 0 !important;
+    z-index: 10050 !important;
+  }
+  #profileModal.contact-modal.active {
+    z-index: 10050 !important;
+  }
   .contact-modal-content.profile-modal-container {
     max-width: 100% !important;
     width: 100% !important;
-    height: 100% !important;
-    max-height: 100% !important;
+    margin: 0 !important;
     border-radius: 0 !important;
     position: fixed !important;
-    top: 0 !important;
     left: 0 !important;
     right: 0 !important;
     bottom: 0 !important;
+    top: calc(env(safe-area-inset-top, 0px) + 4.25rem + 4px) !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    -webkit-overflow-scrolling: touch;
   }
-  #profileModal.contact-modal {
-    padding: 0 !important;
+  #profileModal #profileContent {
+    flex: 1 !important;
+    min-height: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
   }
   #profileModal .contact-modal-close {
-    top: 0.75rem !important;
+    top: 0.5rem !important;
     right: 0.75rem !important;
     width: 36px !important;
     height: 36px !important;
@@ -2522,13 +2846,9 @@ body.inspection-dashboard {
   }
 }
 
-#profileContent {
-  -webkit-overflow-scrolling: touch;
-}
-
-/* Profile Modal Responsive */
+/* Profile Modal Responsive (non-fullscreen card widths only; fullscreen profile uses .profile-modal-container rules above) */
 @media (max-width: 520px) {
-  #profileModal .contact-modal-content {
+  #profileModal .contact-modal-content:not(.profile-modal-container) {
     max-width: 100%;
     margin: 0.5rem;
     border-radius: var(--radius-lg);
@@ -2592,6 +2912,21 @@ body.inspection-dashboard {
 
 .notification-btn:hover {
   background: var(--bg-light);
+}
+
+/* Plain hamburger — subtle zoom pulse when reviews are pending (icon stays normal, no badge/box) */
+@keyframes menu-hamburger-zoom {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.12); }
+}
+.mobile-menu-toggle.has-unread-hint:not(.active):not(.is-hint-paused) {
+  animation: menu-hamburger-zoom 1.6s ease-in-out infinite;
+  transform-origin: center;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mobile-menu-toggle.has-unread-hint {
+    animation: none;
+  }
 }
 
 .notification-badge {
@@ -2715,6 +3050,11 @@ body.inspection-dashboard {
 
 .notification-icon.info {
   background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: white;
+}
+
+.notification-icon.pending {
+  background: linear-gradient(135deg, #059669, #047857);
   color: white;
 }
 
@@ -3106,4 +3446,26 @@ body.inspection-dashboard {
     left: 10px;
     width: auto;
   }
+}
+
+/* HR submitted-request banner (?edit=) — Download PDF */
+.submission-view-pdf-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.52rem 1.1rem;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #fff !important;
+  text-decoration: none !important;
+  border: none;
+  background: var(--primary, #125435);
+  box-shadow: 0 2px 8px rgba(18, 84, 53, 0.22);
+  transition: background 0.18s ease, box-shadow 0.18s ease;
+}
+.submission-view-pdf-btn:hover {
+  background: var(--primary-dark, #0d3d24);
+  box-shadow: 0 3px 12px rgba(18, 84, 53, 0.28);
+  color: #fff !important;
 }

@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  test:
+    name: pytest
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      FLASK_ENV: development
+      # Tests use sqlite:///:memory: via tests/conftest.py, but config.py
+      # requires SECRET_KEY/JWT_SECRET_KEY to be set in non-default form.
+      SECRET_KEY: ci-secret-key-not-used-in-prod-0123456789abcdef
+      JWT_SECRET_KEY: ci-jwt-secret-key-not-used-in-prod-0123456789abc
+      DATABASE_URL: sqlite:///:memory:
+      DISABLE_CSRF: "true"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            requirements-prods.txt
+            requirements-dev.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-prods.txt
+          pip install -r requirements-dev.txt
+
+      - name: Run pytest
+        run: pytest tests/ -q --maxfail=5
+
+  lint:
+    name: flake8
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install flake8
+        run: pip install flake8
+      - name: Run flake8
+        # Non-blocking: report style issues but don't fail the build on the
+        # existing codebase. Tighten this rule in a follow-up.
+        run: flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics

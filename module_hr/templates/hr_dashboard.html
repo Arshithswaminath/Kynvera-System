@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-forms.css') }}">
   <style>
     :root {
       --primary: #125435;
@@ -43,6 +44,12 @@
     }
     .hr-dashboard .modules-section {
       background: #F8FAF8 !important;
+    }
+    /* dashboard.css gives .modules-section margin-top: -3rem to tuck under the hero; that
+       must not apply to the second section or "Recent Submissions" overlaps the last form row. */
+    .hr-dashboard .hr-modules-section + .modules-section {
+      margin-top: 0;
+      padding-top: 2.5rem;
     }
     /* Workflow cards next to headline - same size as HR form cards */
     .hr-hero .hero-content {
@@ -291,56 +298,152 @@
     .submission-item:last-child {
       margin-bottom: 0;
     }
+    a.submission-item {
+      text-decoration: none;
+      color: inherit;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .submission-item-go {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      color: var(--primary);
+    }
+    .submission-item-go svg { width: 1.15rem; height: 1.15rem; }
     
     /* Detail Modal - Tabbed, amazing layout */
     .detail-overlay {
       position: fixed; top: 0; left: 0; right: 0; bottom: 0;
       background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center;
       z-index: 9999; opacity: 0; visibility: hidden; transition: all 0.3s ease;
-      padding: 1rem; backdrop-filter: blur(4px);
+      padding: 1.25rem 0.75rem; backdrop-filter: blur(4px);
     }
     .detail-overlay.show { opacity: 1; visibility: visible; }
+    /* Centered window — full ?edit= form in iframe, not edge-to-edge fullscreen */
     .detail-modal {
-      background: white; border-radius: 20px; max-width: 900px; width: 100%;
-      max-height: 90vh; overflow: hidden; transform: scale(0.95); transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
+      background: white; border-radius: 20px; max-width: min(1320px, calc(100vw - 1.5rem)); width: 100%;
+      height: min(88dvh, 1080px);
+      max-height: min(88dvh, 1080px);
+      overflow: hidden; transform: scale(0.95); transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
       display: flex; flex-direction: column; box-shadow: 0 24px 48px rgba(0,0,0,0.18);
     }
     .detail-overlay.show .detail-modal { transform: scale(1); }
+
     .detail-header {
       padding: 1.25rem 1.5rem; background: #0f172a;
       color: white; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;
+      flex-shrink: 0;
     }
     .detail-header .form-type-badge { background: rgba(255,255,255,0.2); color: white; }
     .detail-header h4 { color: white; font-weight: 700; margin: 0.35rem 0 0; font-size: 1.1rem; }
-    .detail-body { padding: 0; overflow: hidden; flex: 1; display: flex; flex-direction: column; }
-    .detail-tabs { display: flex; gap: 0; border-bottom: 2px solid #e2e8f0; background: #f8fafc; }
+    .detail-body { padding: 0; overflow: hidden; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+    .detail-tabs { display: flex; gap: 0; border-bottom: 2px solid #e2e8f0; background: #fff; }
     .detail-tab { padding: 1rem 1.5rem; font-weight: 600; font-size: 0.9rem; cursor: pointer; color: #64748b; border-bottom: 3px solid transparent; transition: all 0.2s; }
     .detail-tab:hover { color: var(--primary); }
     .detail-tab.active { color: var(--primary); border-bottom-color: var(--primary); background: white; }
-    .detail-tab-pane { display: none; padding: 1.5rem; overflow-y: auto; flex: 1; background: white; }
+    .detail-tab-pane { display: none; padding: 1.5rem; overflow-y: auto; flex: 1; background: white; max-height: min(78vh, 820px); }
     .detail-tab-pane.active { display: block; }
     .detail-close {
       background: rgba(255,255,255,0.15); border: none; width: 40px; height: 40px;
       border-radius: 10px; font-size: 1.5rem; cursor: pointer; color: white; line-height: 1; transition: all 0.2s;
     }
     .detail-close:hover { background: rgba(255,255,255,0.25); }
+    /* Embed iframe: only the iframe scrolls — not this pane (avoids double scrollbars) */
+    #modalFormPane.detail-tab-pane.active {
+      overflow: hidden !important;
+      max-height: none !important;
+      padding: 0 !important;
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
     .detail-row { display: flex; padding: 0.75rem 0; border-bottom: 1px solid #f1f5f9; }
     .detail-label { width: 40%; font-weight: 600; color: #64748b; font-size: 0.875rem; }
     .detail-value { width: 60%; color: #1e293b; }
     .detail-section { margin-bottom: 1.5rem; }
     .detail-section-title { font-weight: 700; color: #1e293b; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid var(--primary); }
-    .workflow-timeline { margin-top: 1rem; }
-    .timeline-item { display: flex; padding: 0.75rem 0; position: relative; padding-left: 2rem; }
-    .timeline-item::before { content: ''; position: absolute; left: 6px; top: 0; bottom: 0; width: 2px; background: #e2e8f0; }
+    .workflow-timeline { margin-top: 0.65rem; --tl-line: #e2e8f0; }
+    .timeline-item {
+      display: flex; gap: 0.85rem; align-items: flex-start;
+      position: relative; padding: 0 0 1rem 0;
+    }
+    .timeline-item:last-child { padding-bottom: 0; }
+    .timeline-item::before {
+      content: ''; position: absolute; left: 7px; top: 1.5rem; bottom: 0;
+      width: 2px; background: var(--tl-line); border-radius: 1px;
+    }
     .timeline-item:last-child::before { display: none; }
-    .timeline-dot { position: absolute; left: 0; top: 0.875rem; width: 14px; height: 14px; border-radius: 50%; background: #e2e8f0; border: 2px solid white; box-shadow: 0 0 0 2px #e2e8f0; }
-    .timeline-dot.completed { background: #10b981; box-shadow: 0 0 0 2px #10b981; }
-    .timeline-dot.current { background: #3b82f6; box-shadow: 0 0 0 2px #3b82f6; }
-    .timeline-dot.rejected { background: #ef4444; box-shadow: 0 0 0 2px #ef4444; }
-    .signature-preview { max-width: 200px; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.5rem; background: #f8fafc; }
+    .timeline-dot {
+      position: relative; flex-shrink: 0;
+      margin-top: 0.3rem;
+      width: 16px; height: 16px; border-radius: 50%; z-index: 1;
+      background: #e2e8f0;
+      border: 2px solid white;
+      box-shadow: 0 0 0 2px #e2e8f0;
+    }
+    .timeline-dot.completed { background: #10b981; box-shadow: 0 0 0 2px rgba(16,185,129,0.35); }
+    .timeline-dot.current { background: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.4); }
+    .timeline-dot.rejected { background: #ef4444; box-shadow: 0 0 0 2px rgba(239,68,68,0.35); }
+    .timeline-body { flex: 1; min-width: 0; padding-bottom: 0.15rem; }
+    .timeline-title { font-weight: 700; font-size: 0.9125rem; color: #0f172a; letter-spacing: -0.015em; }
+    .timeline-meta { font-size: 0.8rem; color: #64748b; margin-top: 0.2rem; line-height: 1.45; }
+    .timeline-card {
+      margin-top: 0.6rem;
+      padding: 0.62rem 0.82rem;
+      background: #fff;
+      border: 1px solid #eef0f4;
+      border-radius: 10px;
+      box-shadow: 0 1px 3px rgba(15,23,42,0.04);
+    }
+    .timeline-card--alert {
+      border-color: #fecaca;
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(239,68,68,0.06);
+    }
+    .timeline-dl { margin: 0; display: grid; grid-template-columns: 5.25rem 1fr; gap: 0.3rem 0.72rem; font-size: 0.8075rem; align-items: start; }
+    .timeline-dl + .timeline-dl { margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid #f1f5f9; }
+    .timeline-dl dt { margin: 0; font-weight: 600; color: #64748b; }
+    .timeline-dl dd { margin: 0; color: #1e293b; word-break: break-word; white-space: pre-wrap; line-height: 1.48; }
+    .timeline-dd-muted { color: #94a3b8 !important; font-style: normal; }
+    /* White canvas matches SignaturePad PNGs (no grey “halo”) */
+    .timeline-sig {
+      box-sizing: border-box;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: min(280px, 100%);
+      height: 92px;
+      flex-shrink: 0;
+      padding: 0.4rem 0.5rem;
+      margin: 0;
+      background: #fff;
+      border: 1px solid #e5e9ef;
+      border-radius: 10px;
+      overflow: hidden;
+      line-height: 0;
+    }
+    .timeline-sig img {
+      display: block;
+      margin: 0;
+      max-width: 100%;
+      max-height: 100%;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      object-position: center center;
+    }
+    .signature-preview { max-width: 220px; max-height: 88px; object-fit: contain; border: 1px solid #e5e9ef; border-radius: 8px; padding: 0.4rem; background: transparent; mix-blend-mode: multiply; }
     
     .status-badge { padding: 0.35rem 0.75rem; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
     .status-hr_review { background: #fef3c7; color: #b45309; }
+    .status-replacement_signoff { background: #e9d5ff; color: #5b21b6; }
     .status-gm_review { background: #dbeafe; color: #1d4ed8; }
     .status-approved { background: #d1fae5; color: #047857; }
     .status-rejected { background: #fee2e2; color: #dc2626; }
@@ -349,13 +452,18 @@
     .form-type-badge { padding: 0.25rem 0.5rem; border-radius: 6px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; background: #e5e7eb; color: #374151; }
     .type-leave, .type-leave_application { background: #d1fae5; color: #047857; }
     .type-termination { background: #fee2e2; color: #dc2626; }
-    .type-long_vacation { background: #dbeafe; color: #1d4ed8; }
-    .type-asset { background: #fef3c7; color: #b45309; }
-    .type-commencement, .type-duty_resumption, .type-passport_release, .type-visa_renewal { background: #dbeafe; color: #1d4ed8; }
-    .type-contract_renewal, .type-performance_evaluation, .type-staff_appraisal { background: #e0e7ff; color: #4338ca; }
-    .type-grievance { background: #fee2e2; color: #dc2626; }
-    .type-interview_assessment { background: #fef3c7; color: #b45309; }
-    .type-station_clearance { background: #d1fae5; color: #047857; }
+    .type-long_vacation { background: #dbeafe; color: #2563eb; }
+    .type-asset { background: #fef3c7; color: #d97706; }
+    .type-grievance { background: #fecaca; color: #b91c1c; }
+    .type-passport_release { background: #ede9fe; color: #6d28d9; }
+    .type-duty_resumption { background: #e0f2fe; color: #0369a1; }
+    .type-commencement { background: #ccfbf1; color: #0f766e; }
+    .type-visa_renewal { background: #fbcfe8; color: #9d174d; }
+    .type-performance_evaluation { background: #bfdbfe; color: #1d4ed8; }
+    .type-staff_appraisal { background: #e0e7ff; color: #4338ca; }
+    .type-contract_renewal { background: #fed7aa; color: #c2410c; }
+    .type-station_clearance { background: #a5f3fc; color: #0e7490; }
+    .type-interview_assessment { background: #fef9c3; color: #ca8a04; }
     
     /* Quick action cards - attractive redesign */
     .quick-action-card { display: flex; flex-direction: column; }
@@ -388,7 +496,12 @@
     
     /* Mobile Responsive - HR Detail Modal */
     @media (max-width: 768px) {
-      .detail-modal { max-height: 95vh !important; margin: 0.5rem !important; border-radius: 14px !important; }
+      .detail-modal {
+        height: min(86dvh, 1000px) !important;
+        max-height: min(86dvh, 1000px) !important;
+        margin: 0.75rem !important;
+        border-radius: 14px !important;
+      }
       .detail-header { padding: 1rem !important; flex-direction: column !important; align-items: flex-start !important; gap: 0.75rem !important; }
       .detail-header .d-flex { width: 100%; justify-content: flex-end; }
       .detail-tabs { overflow-x: auto !important; -webkit-overflow-scrolling: touch !important; }
@@ -402,7 +515,7 @@
 </head>
 <body class="hr-dashboard">
   {% set active_page = 'hr' %}
-  {% include 'partials/main_navbar.html' with context %}
+  {% include 'partials/hr_embed_optional_navbar.html' %}
 
   <main class="hr-dashboard-content">
   <!-- Hero: gradient at top only (no grid) -->
@@ -572,7 +685,7 @@
   </section>
 
   <!-- Recent Submissions -->
-  <section class="modules-section" style="padding-top: 1rem;">
+  <section class="modules-section">
     <div class="modules-inner">
       <h2 class="modules-section-label">Recent Submissions</h2>
       <div id="submissionsList" class="module-card submissions-panel" style="padding: 1.5rem; min-height: 120px;">
@@ -593,41 +706,16 @@
     </div>
   </footer>
 
-  <!-- Detail Modal (HR form detail - tabbed) -->
-  <div class="detail-overlay" id="detailModal" onclick="closeDetailModal(event)">
-    <div class="detail-modal" onclick="event.stopPropagation()">
-      <div class="detail-header">
-        <div>
-          <span class="form-type-badge" id="modalFormType"></span>
-          <h4 id="modalSubmissionId"></h4>
-        </div>
-        <div style="display: flex; align-items: center; gap: 0.5rem;">
-          <a id="modalPrintBtn" href="#" target="_blank" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.5); padding: 0.375rem 0.75rem; border-radius: 8px; font-size: 0.875rem; text-decoration: none;">🖨️ Print</a>
-          <a id="modalDocxBtn" href="#" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.5); padding: 0.375rem 0.75rem; border-radius: 8px; font-size: 0.875rem; text-decoration: none; display: none;">📄 DOCX</a>
-          <button class="detail-close" onclick="closeDetailModal()" aria-label="Close">&times;</button>
-        </div>
-      </div>
-      <div class="detail-body">
-        <div class="detail-tabs">
-          <div class="detail-tab active" data-tab="form" onclick="switchDetailTab('form')">Form</div>
-          <div class="detail-tab" data-tab="workflow" onclick="switchDetailTab('workflow')">Workflow</div>
-        </div>
-        <div id="modalFormPane" class="detail-tab-pane active"></div>
-        <div id="modalWorkflowPane" class="detail-tab-pane"></div>
-      </div>
-    </div>
-  </div>
-
   <!-- Profile & Contact modals are in main_navbar partial -->
   
+  <script src="{{ url_for('static', filename='js/injaaz-uae-datetime.js') }}"></script>
   <script>
-    const HR_SUPPORTED_DOCX_FORMS = {{ (supported_docx_forms or [])|tojson }};
     const token = localStorage.getItem('access_token');
-    let allSubmissions = [];
     
     function getStatusLabel(status) {
       const labels = {
         'hr_review': 'Pending HR Review',
+        'replacement_signoff': 'Replacement signatures',
         'gm_review': 'Pending GM Approval',
         'approved': 'Approved',
         'rejected': 'Rejected',
@@ -638,11 +726,6 @@
     
     function getFormTypeLabel(type) {
       return type.replace('hr_', '').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-    }
-    
-    function getFormTypeClass(type) {
-      const t = type.replace('hr_', '');
-      return `type-${t}`;
     }
     
     function escapeHtml(text) {
@@ -663,16 +746,19 @@
         const container = document.getElementById('submissionsList');
         
         if (data.submissions && data.submissions.length > 0) {
-          allSubmissions = data.submissions;
-          container.innerHTML = data.submissions.slice(0, 10).map((s, idx) => `
-            <div class="submission-item" style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; border-bottom: 1px solid #e2e8f0;" onclick="showDetail(${idx})">
+          const sfBase = '/workflow/submitted-forms?scope=hr&submission=';
+          container.innerHTML = data.submissions.slice(0, 10).map((s) => `
+            <a class="submission-item" href="${sfBase}${encodeURIComponent(s.submission_id || '')}" aria-label="Open in Submitted forms">
               <div>
-                <strong>${s.submission_id}</strong>
+                <strong>${escapeHtml(s.submission_id)}</strong>
                 <span style="background: #e5e7eb; color: #374151; font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: 6px; margin-left: 0.5rem;">${getFormTypeLabel(s.module_type)}</span>
-                <p style="margin: 0.25rem 0 0; color: #64748b; font-size: 0.85rem;">${escapeHtml(s.site_name)} - ${new Date(s.created_at).toLocaleDateString()}</p>
+                <p style="margin: 0.25rem 0 0; color: #64748b; font-size: 0.85rem;">${escapeHtml(s.site_name || '')}${s.site_name ? ' — ' : ''}${InjaazDateTimeUAE.formatDateMed(s.created_at)}</p>
               </div>
-              <span class="status-badge status-${s.workflow_status}">${getStatusLabel(s.workflow_status)}</span>
-            </div>
+              <div style="display:flex;align-items:center;gap:0.5rem;flex-shrink:0;">
+                <span class="status-badge status-${s.workflow_status}">${getStatusLabel(s.workflow_status)}</span>
+                <span class="submission-item-go" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg></span>
+              </div>
+            </a>
           `).join('');
         } else {
           container.innerHTML = '<p style="text-align: center; color: #64748b; padding: 2rem;">No submissions yet. Create your first HR form above.</p>';
@@ -749,194 +835,6 @@
         // Silently ignore errors
       }
     }
-    
-    function switchDetailTab(tabName) {
-      document.querySelectorAll('.detail-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tabName));
-      document.getElementById('modalFormPane').classList.toggle('active', tabName === 'form');
-      document.getElementById('modalWorkflowPane').classList.toggle('active', tabName === 'workflow');
-    }
-    
-    function showDetail(index) {
-      const s = allSubmissions[index];
-      if (!s) return;
-      
-      const printBtn = document.getElementById('modalPrintBtn');
-      if (printBtn) printBtn.href = '/hr/print/' + encodeURIComponent(s.submission_id);
-      const docxBtn = document.getElementById('modalDocxBtn');
-      if (docxBtn) {
-        const formType = (s.module_type || '').replace('hr_', '');
-        const supportsDocx = (HR_SUPPORTED_DOCX_FORMS || []).includes(formType);
-        docxBtn.style.display = supportsDocx ? 'inline-block' : 'none';
-        docxBtn.href = supportsDocx ? ('/hr/download-docx/' + encodeURIComponent(s.submission_id)) : '#';
-      }
-      
-      const formType = s.module_type.replace('hr_', '');
-      document.getElementById('modalFormType').textContent = getFormTypeLabel(s.module_type);
-      document.getElementById('modalFormType').className = `form-type-badge ${getFormTypeClass(s.module_type)}`;
-      document.getElementById('modalSubmissionId').textContent = s.submission_id;
-      
-      let formHtml = '';
-      const fd = s.form_data || {};
-      
-      // Form tab: document-style layout
-      formHtml += `<div class="form-doc-wrapper" style="background: linear-gradient(180deg, #fafbfc 0%, #fff 100%); border-radius: 12px; padding: 1.5rem; border: 1px solid #e2e8f0;">
-        <div class="detail-section" style="margin-bottom: 0;">
-          <h5 class="detail-section-title" style="font-size: 1rem; color: var(--primary);">Form Details</h5>`;
-      
-      if (fd.employee_name) formHtml += detailRow('Employee Name', fd.employee_name);
-      if (fd.employee_id) formHtml += detailRow('Employee ID', fd.employee_id);
-      if (fd.department) formHtml += detailRow('Department', formatValue(fd.department));
-      if (fd.position) formHtml += detailRow('Position', fd.position);
-      
-      if (formType === 'leave' || formType === 'leave_application') {
-        if (fd.leave_type) formHtml += detailRow('Leave Type', formatValue(fd.leave_type));
-        if (fd.start_date || fd.first_day_of_leave) formHtml += detailRow('Start Date', formatDate(fd.start_date || fd.first_day_of_leave));
-        if (fd.end_date || fd.last_day_of_leave) formHtml += detailRow('End Date', formatDate(fd.end_date || fd.last_day_of_leave));
-        if (fd.total_days || fd.total_days_requested) formHtml += detailRow('Total Days', fd.total_days || fd.total_days_requested);
-        if (fd.reason) formHtml += detailRow('Reason', fd.reason);
-        if (fd.contact_number || fd.telephone_reachable) formHtml += detailRow('Contact During Leave', fd.contact_number || fd.telephone_reachable);
-        if (fd.handover_notes) formHtml += detailRow('Handover Notes', fd.handover_notes);
-      }
-      
-      if (formType === 'termination') {
-        if (fd.termination_type) formHtml += detailRow('Termination Type', formatValue(fd.termination_type));
-        if (fd.join_date) formHtml += detailRow('Date of Joining', formatDate(fd.join_date));
-        if (fd.last_working_day) formHtml += detailRow('Last Working Day', formatDate(fd.last_working_day));
-        if (fd.notice_served) formHtml += detailRow('Notice Period', formatValue(fd.notice_served));
-        if (fd.reason) formHtml += detailRow('Reason', fd.reason);
-        if (fd.exit_notes) formHtml += detailRow('Exit Interview Notes', fd.exit_notes);
-      }
-      
-      if (formType === 'long_vacation') {
-        if (fd.start_date) formHtml += detailRow('Vacation Start', formatDate(fd.start_date));
-        if (fd.end_date) formHtml += detailRow('Return Date', formatDate(fd.end_date));
-        if (fd.total_days) formHtml += detailRow('Total Days', fd.total_days);
-        if (fd.destination) formHtml += detailRow('Destination', fd.destination);
-        if (fd.ticket_required) formHtml += detailRow('Flight Ticket', formatValue(fd.ticket_required));
-        if (fd.vacation_phone) formHtml += detailRow('Phone During Vacation', fd.vacation_phone);
-        if (fd.covering_employee) formHtml += detailRow('Covering Employee', fd.covering_employee);
-        if (fd.handover_notes) formHtml += detailRow('Handover Notes', fd.handover_notes);
-      }
-      
-      if (formType === 'asset') {
-        if (fd.asset_form_type) formHtml += detailRow('Form Type', formatValue(fd.asset_form_type));
-        if (fd.form_date) formHtml += detailRow('Date', formatDate(fd.form_date));
-        if (fd.transfer_to_name) formHtml += detailRow('Transfer To', fd.transfer_to_name);
-        if (fd.remarks) formHtml += detailRow('Remarks', fd.remarks);
-        if (fd.assets && fd.assets.length > 0) {
-          formHtml += `<div style="margin-top: 1rem;"><strong>Assets:</strong></div>`;
-          fd.assets.forEach((asset, i) => {
-            formHtml += `<div style="background: #f8fafc; padding: 0.75rem; border-radius: 8px; margin-top: 0.5rem; border-left: 4px solid var(--primary);">
-              <strong>Asset ${i + 1}:</strong> ${escapeHtml(asset.type || 'N/A')}<br>
-              <small>Serial: ${escapeHtml(asset.serial || 'N/A')} | Condition: ${escapeHtml(asset.condition || 'N/A')}</small>
-            </div>`;
-          });
-        }
-      }
-      
-      const handledTypes = ['leave', 'leave_application', 'termination', 'long_vacation', 'asset'];
-      const commonKeys = ['employee_name', 'employee_id', 'department', 'position'];
-      if (!handledTypes.includes(formType)) {
-        const skipKeys = ['submitted_by_id', 'submitted_by_name', 'submitted_at', 'form_type'];
-        const isInternal = (k) => skipKeys.some(p => k.startsWith(p)) || k.startsWith('hr_') || k.startsWith('gm_') || commonKeys.includes(k);
-        for (const [key, value] of Object.entries(fd)) {
-          if (isInternal(key) || value === '' || value === null || value === undefined) continue;
-          if (Array.isArray(value) || (typeof value === 'object' && value !== null && !(value instanceof String))) continue;
-          const label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-          if (key.includes('signature') && typeof value === 'string' && value.startsWith('data:image')) {
-            formHtml += detailRow(label, '<img src="' + value + '" style="max-width:180px;border:1px solid #e2e8f0;border-radius:6px;padding:4px;" alt="Signature">', true);
-            continue;
-          }
-          const displayVal = typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value) ? formatDate(value) : value;
-          formHtml += detailRow(label, displayVal);
-        }
-      }
-      
-      formHtml += `</div></div>`;
-      
-      let workflowHtml = `<div class="detail-section">
-        <h5 class="detail-section-title" style="font-size: 1rem; color: var(--primary);">Approval Timeline</h5>
-        <div class="workflow-timeline">`;
-      
-      workflowHtml += timelineItem('Submitted', fd.submitted_by_name || s.site_name, fd.submitted_at || s.created_at, 'completed');
-      
-      if (fd.hr_reviewed_at) {
-        workflowHtml += timelineItem('HR Reviewed', fd.hr_reviewed_by_name, fd.hr_reviewed_at, 'completed', fd.hr_comments, fd.hr_signature);
-      } else if (fd.hr_rejected_at) {
-        workflowHtml += timelineItem('HR Rejected', fd.hr_rejected_by_name, fd.hr_rejected_at, 'rejected', fd.hr_rejection_reason);
-      } else if (s.workflow_status === 'hr_review') {
-        workflowHtml += timelineItem('HR Review', 'Pending', null, 'current');
-      }
-      
-      if (fd.gm_approved_at) {
-        workflowHtml += timelineItem('GM Approved', fd.gm_approved_by_name, fd.gm_approved_at, 'completed', fd.gm_comments, fd.gm_signature);
-      } else if (fd.gm_rejected_at) {
-        workflowHtml += timelineItem('GM Rejected', fd.gm_rejected_by_name, fd.gm_rejected_at, 'rejected', fd.gm_rejection_reason);
-      } else if (s.workflow_status === 'gm_review') {
-        workflowHtml += timelineItem('GM Approval', 'Pending', null, 'current');
-      }
-      
-      workflowHtml += `</div></div>`;
-      
-      document.getElementById('modalFormPane').innerHTML = formHtml;
-      document.getElementById('modalWorkflowPane').innerHTML = workflowHtml;
-      switchDetailTab('workflow'); // Don't show form by default; user clicks Form tab to view it
-      document.getElementById('detailModal').classList.add('show');
-    }
-    
-    function detailRow(label, value, isRaw) {
-      const val = isRaw ? value : (escapeHtml(value) || '-');
-      return `<div class="detail-row">
-        <div class="detail-label">${label}</div>
-        <div class="detail-value">${val || '-'}</div>
-      </div>`;
-    }
-    
-    function formatValue(val) {
-      if (!val) return '-';
-      return val.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-    }
-    
-    function formatDate(dateStr) {
-      if (!dateStr) return '-';
-      try {
-        return new Date(dateStr).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-      } catch { return dateStr; }
-    }
-    
-    function timelineItem(title, by, date, status, comment, signature) {
-      let dateStr = date ? formatDate(date) : '';
-      let html = `<div class="timeline-item">
-        <div class="timeline-dot ${status}"></div>
-        <div style="flex: 1;">
-          <div style="font-weight: 600; color: #1e293b;">${title}</div>
-          <div style="font-size: 0.85rem; color: #64748b;">${escapeHtml(by)}${dateStr ? ' • ' + dateStr : ''}</div>`;
-      
-      if (comment) {
-        html += `<div style="margin-top: 0.5rem; padding: 0.5rem; background: #f8fafc; border-radius: 6px; font-size: 0.85rem;">
-          <strong>Comment:</strong> ${escapeHtml(comment)}
-        </div>`;
-      }
-      
-      if (signature && signature.startsWith('data:image')) {
-        html += `<div style="margin-top: 0.5rem;">
-          <strong style="font-size: 0.85rem;">Signature:</strong><br>
-          <img src="${signature}" class="signature-preview" alt="Signature">
-        </div>`;
-      }
-      
-      html += `</div></div>`;
-      return html;
-    }
-    
-    function closeDetailModal(e) {
-      if (e && e.target !== document.getElementById('detailModal')) return;
-      document.getElementById('detailModal').classList.remove('show');
-    }
-    
-    document.addEventListener('keydown', function(e) {
-      if (e.key === 'Escape') closeDetailModal();
-    });
     
     loadSubmissions();
     loadPendingCounts();

@@ -3,546 +3,791 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
-  
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
-<title>Pending Reviews - Injaaz Application</title>
+  <title>My Reviews - Injaaz Application</title>
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
-  
-  <!-- PWA Meta Tags -->
   <meta name="theme-color" content="#125435">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
-  
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    
     :root {
-      --primary: #125435;
-      --primary-light: #1a7a4d;
-      --text-dark: #1a1a1a;
-      --text-light: #6b6b6b;
-      --bg-light: #fafafa;
-      --white: #ffffff;
-      --bg-card: #ffffff;
-      --border-color: rgba(18, 84, 53, 0.08);
+      --wf-green: #125435;
+      --wf-green-mid: #0d3d25;
+      --wf-green-deep: #051a10;
+      --reviews-max: 76rem;
     }
-    
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
-      background: var(--bg-light);
-      color: var(--text-dark);
-      line-height: 1.6;
+      background:
+        radial-gradient(1100px 520px at 10% -10%, rgba(18, 84, 53, 0.08), transparent 60%),
+        radial-gradient(900px 480px at 110% 10%, rgba(13, 61, 37, 0.06), transparent 60%),
+        #f1f5f4;
     }
-    
-    .nav {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      z-index: 1000;
-      background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(30px);
-      border-bottom: 1px solid rgba(18, 84, 53, 0.08);
-      box-shadow: 0 2px 20px rgba(0, 0, 0, 0.02);
-    }
-    
-    .nav-container {
-      max-width: 1600px;
-      margin: 0 auto;
-      padding: 1rem 2rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 2rem;
-    }
-    
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      text-decoration: none;
-    }
-    
-    .logo img {
-      width: 50px;
-      height: 50px;
-    }
-    
-    .logo-text h1 {
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: var(--primary);
-      margin: 0;
-    }
-    
-    .container {
-      max-width: 1400px;
-      margin: 100px auto 2rem;
-      padding: 0 2rem;
-    }
-    @media (max-width: 768px) {
-      .container { margin-top: 72px; padding: 0.75rem 0.875rem; }
-      .page-header { margin-bottom: 1rem; }
-      .page-header h1 { font-size: 1.4rem; }
-      .page-header p { font-size: 0.875rem; }
-      .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 0.625rem; margin-bottom: 1rem; }
-      .stat-card { padding: 0.875rem; }
-      .stat-card h3 { font-size: 0.75rem; }
-      .stat-card .stat-value { font-size: 1.6rem; }
-      .submissions-list { border-radius: 10px; }
-      .submission-card { padding: 1rem; }
-    }
-    
-    .page-header {
-      margin-bottom: 2rem;
-    }
-    
-    .page-header h1 {
-      font-size: 2.5rem;
-      font-weight: 700;
-      color: var(--primary);
-      margin-bottom: 0.5rem;
-    }
-    
-    .page-header p {
-      color: var(--text-light);
-      font-size: 1.1rem;
-    }
-    
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 1.5rem;
-      margin-bottom: 2rem;
-    }
-    
-    .stat-card {
-      background: white;
-      padding: 1.5rem;
-      border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-    }
-    
-    .stat-card h3 {
-      font-size: 0.9rem;
-      font-weight: 600;
-      color: var(--text-light);
-      margin-bottom: 0.5rem;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    
-    .stat-card .stat-value {
-      font-size: 2.5rem;
-      font-weight: 700;
-      color: var(--primary);
-    }
-    
-    .submissions-list {
-      background: white;
-      border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    body.has-main-nav { padding-top: 5.5rem; }
+
+    body.hr-queue-list-page {
+      display: flex; flex-direction: column;
+      height: 100vh; height: 100dvh;
       overflow: hidden;
     }
-    
-    .submission-card {
-      padding: 1.5rem;
-      border-bottom: 1px solid #f0f0f0;
-      cursor: pointer;
-      transition: background 0.2s;
-    }
-    
-    .submission-card:hover {
-      background: #f9f9f9;
-    }
-    
-    .submission-card:last-child {
-      border-bottom: none;
-    }
-    
-    .submission-header {
+    .reviews-page-shell {
+      width: 100%;
+      max-width: var(--reviews-max);
+      margin: 0 auto;
+      padding: 1.25rem 1.25rem 0;
+      flex: 1 1 auto;
+      min-height: 0;
       display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 1rem;
+      flex-direction: column;
     }
-    
-    .submission-title {
-      font-size: 1.25rem;
-      font-weight: 600;
-      color: var(--text-dark);
-      margin-bottom: 0.25rem;
-    }
-    
-    .submission-meta {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 1rem;
-      color: var(--text-light);
-      font-size: 0.9rem;
-      margin-bottom: 1rem;
-    }
-    
-    .submission-tags {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-    }
-    
-    .tag {
-      display: inline-block;
-      padding: 0.25rem 0.75rem;
-      border-radius: 20px;
-      font-size: 0.85rem;
-      font-weight: 500;
-    }
-    
-    .tag-module {
-      background: #e3f2fd;
-      color: #1976d2;
-    }
-    
-    .tag-status {
-      background: #fff3e0;
-      color: #f57c00;
-    }
-    
-    .tag-date {
-      background: #f5f5f5;
-      color: var(--text-dark);
-    }
-    
-    .action-button {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.75rem 1.5rem;
-      background: var(--primary);
+
+    .page-header {
+      background: linear-gradient(135deg, var(--wf-green) 0%, var(--wf-green-mid) 58%, var(--wf-green-deep) 100%);
       color: white;
-      border: none;
-      border-radius: 8px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    
-    .action-button:hover {
-      background: var(--primary-light);
-      transform: translateY(-2px);
-    }
-    
-    .empty-state {
-      text-align: center;
-      padding: 4rem 2rem;
-    }
-    
-    .empty-state-icon {
-      font-size: 4rem;
+      padding: 1.25rem 1.5rem 1.35rem;
+      border-radius: 18px;
       margin-bottom: 1rem;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 12px 38px rgba(18, 84, 53, 0.22), 0 1px 0 rgba(255,255,255,0.04) inset;
     }
-    
-    .empty-state h2 {
-      font-size: 1.5rem;
-      color: var(--text-dark);
-      margin-bottom: 0.5rem;
+    .page-header::before {
+      content: '';
+      position: absolute; top: -80px; right: -50px;
+      width: 240px; height: 240px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,255,255,0.14) 0%, transparent 70%);
+      pointer-events: none;
     }
-    
-    .empty-state p {
-      color: var(--text-light);
+    .page-header::after {
+      content: '';
+      position: absolute; bottom: -90px; left: 30%;
+      width: 220px; height: 220px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, transparent 70%);
+      pointer-events: none;
     }
-    
-    .loading {
-      text-align: center;
-      padding: 4rem 2rem;
+    .page-header-top {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 0.75rem; flex-wrap: wrap; position: relative;
     }
-    
-    .spinner {
-      border: 4px solid rgba(18, 84, 53, 0.1);
-      border-top: 4px solid var(--primary);
-      border-radius: 50%;
-      width: 50px;
-      height: 50px;
-      animation: spin 1s linear infinite;
-      margin: 0 auto 1rem;
+    .back-link {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      color: var(--wf-green-mid) !important; background: rgba(255,255,255,0.97);
+      text-decoration: none; font-weight: 600; font-size: 0.78rem;
+      padding: 0.4rem 0.8rem; border-radius: 999px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: all 0.18s ease;
     }
-    
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
+    .back-link:hover { background: white; transform: translateX(-2px); box-shadow: 0 4px 14px rgba(0,0,0,0.12); }
+    .role-chip {
+      display: inline-flex; align-items: center;
+      padding: 0.4rem 0.85rem; border-radius: 999px;
+      background: rgba(255,255,255,0.97); color: var(--wf-green-mid);
+      font-size: 0.78rem; font-weight: 600; letter-spacing: 0.01em;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      white-space: nowrap;
     }
-    
-    @media (max-width: 768px) {
-      .nav-container {
-        padding: 0.75rem 1rem !important;
-        gap: 0.75rem !important;
-      }
-      
-      .logo img {
-        width: 32px !important;
-        height: 32px !important;
-      }
-      
-      .logo-text h1 {
-        font-size: 1rem !important;
-      }
-      
-      .action-button {
-        font-size: 0.85rem !important;
-        padding: 0.5rem 0.75rem !important;
-        white-space: nowrap !important;
-      }
-      
-      .container {
-        margin-top: 80px;
-        padding: 0 1rem;
-      }
+    .page-header h1 {
+      font-size: 1.55rem; font-weight: 800; margin: 0.85rem 0 0.3rem;
+      letter-spacing: -0.03em; position: relative;
+    }
+    .page-header p {
+      opacity: 0.85; margin: 0; font-size: 0.86rem; position: relative; max-width: 38rem;
+      line-height: 1.5;
+    }
 
-      .page-header h1 {
-        font-size: 1.75rem;
-      }
-      
-      .page-header p {
-        font-size: 0.9rem;
-      }
-
-      .submission-header {
-        flex-direction: column;
-      }
-
-      .stats-grid {
-        grid-template-columns: 1fr;
-      }
-      
-      .stat-card {
-        padding: 1rem !important;
-      }
-      
-      .submission-card {
-        padding: 1rem !important;
-      }
+    .queue-panel {
+      flex: 1 1 auto; min-height: 0;
+      display: flex; flex-direction: column;
+      background: transparent;
+      border: 0;
+      border-radius: 0;
+      box-shadow: none;
+      overflow: hidden;
     }
-    
-    @media (max-width: 480px) {
-      .logo-text h1 {
-        font-size: 0.9rem !important;
-      }
-      
-      .action-button {
-        font-size: 0.8rem !important;
-        padding: 0.4rem 0.6rem !important;
-      }
-      
-      .page-header h1 {
-        font-size: 1.5rem !important;
-      }
+
+    #queueList {
+      flex: 1 1 0; min-height: 0;
+      overflow-y: auto; -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+      padding: 0 0 2rem;
+      display: flex; flex-direction: column; gap: 0;
+      background: transparent;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+    #queueList::-webkit-scrollbar {
+      display: none;
+      width: 0;
+      height: 0;
+    }
+
+    .queue-date-section {
+      display: flex; flex-direction: column; gap: 0.5rem;
+    }
+    .queue-date-section + .queue-date-section {
+      margin-top: 1rem;
+    }
+    .queue-date-header {
+      display: flex; align-items: center; gap: 0.4rem;
+      padding: 0.5rem 0.1rem 0.35rem;
+      font-size: 0.8125rem; font-weight: 600; color: #64748b;
+      letter-spacing: 0.01em;
+      position: sticky; top: 0; z-index: 2;
+      background: linear-gradient(to bottom, #f1f5f4 78%, rgba(241, 245, 244, 0));
+      border-bottom: 1px solid rgba(148, 163, 184, 0.22);
+      margin-bottom: 0.15rem;
+    }
+    .queue-date-header svg {
+      width: 14px; height: 14px; flex-shrink: 0; opacity: 0.7;
+    }
+    .queue-date-items {
+      display: flex; flex-direction: column; gap: 0.65rem;
+    }
+
+    .queue-tabs {
+      display: flex;
+      gap: 0.35rem;
+      padding: 0.35rem;
+      margin-bottom: 1rem;
+      background: #eef2f0;
+      border: 1px solid #e2e8e6;
+      border-radius: 14px;
+    }
+    .wf-folder-btn {
+      flex: 1 1 0;
+      display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+      border: none;
+      border-radius: 10px;
+      padding: 0.72rem 1rem;
+      font-size: 0.84rem; font-weight: 600; color: #64748b;
+      background: transparent;
+      cursor: pointer; transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+      font-family: inherit;
+    }
+    .wf-folder-btn:hover:not(.active) {
+      color: #334155;
+      background: rgba(255, 255, 255, 0.45);
+    }
+    .wf-folder-btn.active {
+      background: #ffffff;
+      color: var(--wf-green-mid);
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.07), 0 1px 2px rgba(15, 23, 42, 0.04);
+    }
+    .wf-folder-btn:focus-visible {
+      outline: 2px solid rgba(18, 84, 53, 0.35);
+      outline-offset: 2px;
+    }
+    .wf-folder-label { line-height: 1.2; }
+    .wf-folder-count {
+      font-size: 0.72rem; font-weight: 700; font-variant-numeric: tabular-nums;
+      background: rgba(15, 23, 42, 0.06); color: #64748b;
+      padding: 0.14rem 0.48rem; border-radius: 999px; min-width: 1.35rem; text-align: center;
+      transition: background 0.18s ease, color 0.18s ease;
+    }
+    .wf-folder-btn.active .wf-folder-count {
+      background: rgba(18, 84, 53, 0.1);
+      color: var(--wf-green-mid);
+    }
+    .wf-folder-btn[data-folder="pending"] .wf-folder-count.urgent.has-items {
+      background: #fee2e2; color: #b91c1c;
+    }
+    .wf-folder-btn.active[data-folder="pending"] .wf-folder-count.urgent.has-items {
+      background: #fecaca; color: #991b1b;
+    }
+
+    .pending-list-header {
+      flex-shrink: 0; flex-wrap: wrap; gap: 0.65rem;
+      padding: 0 0 0.85rem;
+      display: flex; align-items: center; justify-content: flex-end;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+      margin-bottom: 0.85rem;
+      background: transparent;
+    }
+    .pending-list-header-left { display: none; }
+    .pending-list-header h2 {
+      font-size: 0.92rem; font-weight: 700; color: #0f172a; margin: 0;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      letter-spacing: -0.01em;
+    }
+    .list-count-note {
+      font-size: 0.74rem; color: #94a3b8; font-weight: 500;
+    }
+    .pending-list-sort-wrap { display: flex; align-items: center; gap: 0.45rem; }
+    .pending-sort-label { font-size: 0.74rem; font-weight: 600; color: #64748b; margin: 0; white-space: nowrap; }
+    .pending-sort-select {
+      width: auto; min-width: 9.5rem; min-height: 2.25rem;
+      font-size: 0.78rem; font-weight: 500;
+      padding: 0.32rem 1.8rem 0.32rem 0.65rem; border-radius: 10px;
+      border: 1px solid #e2e8e6;
+      background-color: #fff; color: #0f2918;
+      cursor: pointer; transition: all 0.18s ease;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+    }
+    .pending-sort-select:hover { border-color: rgba(18, 84, 53, 0.25); }
+    .pending-sort-select:focus {
+      border-color: rgba(18, 84, 53, 0.4);
+      box-shadow: 0 0 0 3px rgba(18, 84, 53, 0.1);
+      outline: none;
+    }
+
+    /* ── Minimal grid review card (refreshed) ────────────────────── */
+    .queue-date-items {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1rem;
+    }
+
+    .review-card {
+      position: relative;
+      display: flex; flex-direction: column;
+      min-height: 240px;
+      padding: 1.4rem 1.4rem 1.25rem;
+      border-radius: 18px;
+      background: #ffffff;
+      border: 1px solid #e5ebf0;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+      text-decoration: none;
+      color: inherit;
+      cursor: pointer;
+      transition: transform 0.18s ease, box-shadow 0.2s ease, border-color 0.18s ease;
+      overflow: hidden;
+    }
+    .review-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(18, 84, 53, 0.28);
+      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08), 0 2px 6px rgba(15, 23, 42, 0.04);
+    }
+    .review-card:focus-visible {
+      outline: 2px solid rgba(18, 84, 53, 0.45);
+      outline-offset: 3px;
+    }
+
+    .review-card-top {
+      margin-bottom: 0.85rem;
+    }
+    .review-card-title {
+      margin: 0;
+      font-size: 1.18rem;
+      font-weight: 800;
+      color: #0f172a;
+      line-height: 1.22;
+      letter-spacing: -0.02em;
+      word-break: break-word;
+    }
+    .review-card-desc {
+      font-size: 0.88rem;
+      color: #475569;
+      line-height: 1.5;
+      margin: 0 0 0.7rem;
+    }
+    .review-card-desc strong { color: #0f172a; font-weight: 600; }
+
+    .review-card-meta {
+      display: flex; flex-wrap: wrap; gap: 0.4rem 0.55rem;
+      font-size: 0.7rem; color: #64748b;
+      margin-bottom: 0.95rem;
+    }
+    .review-card-meta .copy-id {
+      font-family: 'SF Mono', ui-monospace, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.68rem;
+      color: #475569;
+      background: #f1f5f9;
+      padding: 0.16rem 0.5rem;
+      border-radius: 6px;
+      border: 1px solid #e2e8f0;
+      letter-spacing: 0.02em;
+    }
+
+    .review-card-foot {
+      margin-top: auto;
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 0.75rem;
+    }
+
+    /* Status pill (subtle) */
+    .status-pill {
+      font-size: 0.68rem; font-weight: 700; padding: 0.3rem 0.65rem;
+      border-radius: 999px; line-height: 1; white-space: nowrap;
+      display: inline-flex; align-items: center; gap: 0.35rem;
+      flex-shrink: 0;
+      background: #f1f5f9; color: #334155;
+      border: 1px solid #e2e8f0;
+    }
+    .status-pill::before {
+      content: ''; width: 6px; height: 6px; border-radius: 50%;
+      background: #94a3b8;
+    }
+    .status-pill.pending { background: #fff7ed; color: #9a3412; border-color: #fed7aa; }
+    .status-pill.pending::before { background: #f59e0b; }
+    .status-pill.done { background: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
+    .status-pill.done::before { background: #16a34a; }
+    .status-pill.rejected { background: #fef2f2; color: #991b1b; border-color: #fecaca; }
+    .status-pill.rejected::before { background: #ef4444; }
+    .status-pill.neutral { background: #f1f5f9; color: #334155; border-color: #e2e8f0; }
+
+    /* Read-more pill button */
+    .btn-review-card {
+      display: inline-flex; align-items: center; gap: 0.45rem;
+      padding: 0.45rem 0.95rem;
+      border-radius: 999px;
+      background: #ffffff;
+      color: #0f172a;
+      border: 1px solid #d8dee6;
+      font-size: 0.82rem; font-weight: 600;
+      text-decoration: none; white-space: nowrap;
+      transition: all 0.18s ease;
+    }
+    .btn-review-card svg { width: 14px; height: 14px; transition: transform 0.18s ease; }
+    .btn-review-card:hover {
+      color: var(--wf-green);
+      border-color: rgba(18, 84, 53, 0.45);
+      background: #f0fdf4;
+    }
+    .btn-review-card:hover svg { transform: translateX(3px); }
+    .btn-review-card.is-view { color: #475569; }
+    .btn-review-card.is-view:hover { color: var(--wf-green); }
+
+    .btn-review-pdf {
+      display: inline-flex; align-items: center; gap: 0.3rem;
+      padding: 0.4rem 0.7rem;
+      border-radius: 999px;
+      background: #ffffff;
+      color: #475569;
+      border: 1px solid #e2e8f0;
+      font-size: 0.74rem; font-weight: 600;
+      text-decoration: none; white-space: nowrap;
+      transition: all 0.18s ease;
+    }
+    .btn-review-pdf:hover { color: var(--wf-green); border-color: rgba(18, 84, 53, 0.32); background: #f0fdf4; }
+
+    .review-card-actions {
+      display: flex; align-items: center; gap: 0.4rem;
+    }
+
+    .empty-state {
+      grid-column: 1 / -1;
+      width: 100%;
+      padding: 3rem 1.5rem; text-align: center;
+      border: 1px dashed #c5cad1; border-radius: 16px;
+      background: #ffffff;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+    }
+    .empty-state-icon {
+      width: 60px; height: 60px; border-radius: 16px;
+      background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 1.1rem;
+      box-shadow: 0 4px 12px rgba(18, 84, 53, 0.08);
+    }
+
+    .review-card.accent-hvac { --card-accent: #1d4ed8; --card-accent-bg: #dbeafe; }
+    .review-card.accent-civil { --card-accent: #b45309; --card-accent-bg: #fef3c7; }
+    .review-card.accent-cleaning { --card-accent: #0369a1; --card-accent-bg: #e0f2fe; }
+    .review-card.accent-hr { --card-accent: #047857; --card-accent-bg: #d1fae5; }
+    .review-card.accent-default { --card-accent: #125435; --card-accent-bg: rgba(18, 84, 53, 0.10); }
+
+    @media (max-width: 640px) {
+      body.hr-queue-list-page { height: auto; min-height: 100vh; overflow: visible; }
+      .reviews-page-shell { padding: 0.85rem 0.85rem 2rem; }
+      .page-header { padding: 1.1rem 1rem; border-radius: 14px; }
+      .page-header h1 { font-size: 1.25rem; }
+      .queue-tabs { flex-direction: column; gap: 0.35rem; }
+      .pending-list-header { justify-content: stretch; }
+      .pending-list-sort-wrap { width: 100%; }
+      .pending-sort-select { flex: 1; min-width: 0; }
+      .queue-date-items { grid-template-columns: 1fr; gap: 0.75rem; }
+      .review-card { min-height: 0; padding: 1.15rem 1.15rem 1rem; }
+      .review-card-title { font-size: 1.05rem; }
     }
   </style>
 </head>
-<body>
+<body class="has-main-nav hr-queue-list-page review-dashboard">
   {% set active_page = 'pending-review' %}
   {% include 'partials/main_navbar.html' with context %}
 
-  <!-- Main Content -->
-  <div class="container">
+  <div class="reviews-page-shell">
     <div class="page-header">
-      <h1>📋 Pending Reviews</h1>
-      <p>Forms awaiting your review and approval</p>
+      <div class="page-header-top">
+        <a href="/dashboard" class="back-link">
+          <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
+          Back to Dashboard
+        </a>
+        <span class="role-chip" id="statRole">—</span>
+      </div>
+      <h1>My Reviews</h1>
+      <p>Inspection &amp; HR forms awaiting your action, plus items you have already signed off.</p>
     </div>
 
-    <!-- Stats -->
-    <div class="stats-grid">
-      <div class="stat-card">
-        <h3>Pending Reviews</h3>
-        <div class="stat-value" id="totalPending">-</div>
+    <div class="queue-panel">
+      <div class="queue-tabs" role="tablist" aria-label="Review folders">
+        <button type="button" class="wf-folder-btn active" id="folderPending" data-folder="pending" role="tab" aria-selected="true" onclick="switchFolder('pending')">
+          <span class="wf-folder-label">Awaiting action</span>
+          <span class="wf-folder-count urgent" id="badgePending">0</span>
+        </button>
+        <button type="button" class="wf-folder-btn" id="folderReviewed" data-folder="reviewed" role="tab" aria-selected="false" onclick="switchFolder('reviewed')">
+          <span class="wf-folder-label">Signed off</span>
+          <span class="wf-folder-count" id="badgeReviewed">0</span>
+        </button>
       </div>
-      <div class="stat-card">
-        <h3>Your Role</h3>
-        <div class="stat-value" style="font-size: 1.5rem;" id="userRole">-</div>
-      </div>
-    </div>
 
-    <!-- Submissions List -->
-    <div class="submissions-list" id="submissionsList">
-      <div class="loading">
-        <div class="spinner"></div>
-        <p>Loading pending submissions...</p>
+      <div class="pending-list-header">
+        <div class="pending-list-header-left">
+          <h2 id="listPaneTitle">Awaiting action</h2>
+          <span class="list-count-note" id="listCountNote"></span>
+        </div>
+        <div class="pending-list-sort-wrap">
+          <label for="queueSortOrder" class="pending-sort-label">Sort</label>
+          <select id="queueSortOrder" class="form-select pending-sort-select" aria-label="Sort by date">
+            <option value="newest" selected>Newest first</option>
+            <option value="oldest">Oldest first</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="queueList">
+        <div class="text-center py-5">
+          <div class="spinner-border spinner-border-sm" style="color:#125435;"></div>
+          <p class="mt-2 text-muted small mb-0">Loading your queue…</p>
+        </div>
       </div>
     </div>
   </div>
 
   <script>
-    function escapeHtml(text) {
-      if (!text) return '';
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
+  let queueCache = { pending: [], reviewed: [] };
+  let activeFolder = 'pending';
+  let currentUser = null;
+
+  function _esc(t) {
+    if (!t) return '';
+    const d = document.createElement('div');
+    d.textContent = t; return d.innerHTML;
+  }
+  function _parseUtcDate(str) {
+    if (!str) return null;
+    let s = str;
+    if (!s.endsWith('Z') && !s.includes('+') && !/[+-]\d{2}:\d{2}$/.test(s)) s += 'Z';
+    const d = new Date(s);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  function _fmtDateTime(str) {
+    const d = _parseUtcDate(str);
+    if (!d) return str || '';
+    return d.toLocaleString('en-US', {
+      year: 'numeric', month: 'short', day: 'numeric',
+      hour: 'numeric', minute: '2-digit', hour12: true,
+      timeZone: 'Asia/Dubai',
+    }) + ' GST';
+  }
+
+  function _dubaiDayKey(d) {
+    if (!d || isNaN(d.getTime())) return 'unknown';
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Dubai',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+    }).format(d);
+  }
+
+  function _rowDateKey(sub, isPending) {
+    const raw = isPending
+      ? sub.created_at
+      : (_reviewedAt(sub, currentUser) || sub.updated_at || sub.created_at);
+    return _dubaiDayKey(_parseUtcDate(raw));
+  }
+
+  function _dateGroupLabel(dayKey) {
+    if (!dayKey || dayKey === 'unknown') return 'Earlier';
+    const todayKey = _dubaiDayKey(new Date());
+    if (dayKey === todayKey) return 'Today';
+    const todayStart = new Date(`${todayKey}T00:00:00+04:00`);
+    const yesterdayKey = _dubaiDayKey(new Date(todayStart.getTime() - 86400000));
+    if (dayKey === yesterdayKey) return 'Yesterday';
+    const anchor = new Date(`${dayKey}T12:00:00+04:00`);
+    return anchor.toLocaleDateString('en-US', {
+      weekday: 'long', month: 'short', day: 'numeric',
+      timeZone: 'Asia/Dubai',
+    });
+  }
+
+  function _groupRowsByDate(rows, isPending) {
+    const order = [];
+    const map = new Map();
+    rows.forEach(function (sub) {
+      const key = _rowDateKey(sub, isPending);
+      if (!map.has(key)) {
+        map.set(key, []);
+        order.push(key);
+      }
+      map.get(key).push(sub);
+    });
+    return order.map(function (key) {
+      return { key: key, label: _dateGroupLabel(key), items: map.get(key) };
+    });
+  }
+
+  const chevronSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6"/></svg>';
+
+  const MODULE_NAMES = {
+    hvac_mep:'HVAC & MEP', civil:'Civil Works', cleaning:'Cleaning',
+    hr_leave:'Leave', hr_leave_application:'Leave',
+    hr_duty_resumption:'Duty Resumption', hr_commencement:'Commencement',
+    hr_grievance:'Grievance', hr_passport_release:'Passport Release',
+    hr_performance_evaluation:'Performance Eval', hr_staff_appraisal:'Staff Appraisal',
+    hr_visa_renewal:'Visa Renewal', hr_interview_assessment:'Interview Asmt',
+    hr_station_clearance:'Station Clearance', hr_contract_renewal:'Contract Renewal',
+  };
+  function _modName(t) {
+    return MODULE_NAMES[t] || (t || '').replace(/^hr_/,'').replace(/_/g,' ')
+      .replace(/\b\w/g, c => c.toUpperCase());
+  }
+  function _modTypeClass(t) {
+    if (!t) return 'type-default';
+    if (t.startsWith('hr_')) return 'type-hr';
+    return 'type-' + t.replace(/[^a-z0-9_]/gi, '');
+  }
+  function _isHr(t) { return (t || '').startsWith('hr_'); }
+  function _modUrl(t) { return t === 'hvac_mep' ? 'hvac-mep' : t; }
+  function _accentClass(t) {
+    if (!t) return 'accent-default';
+    if (t.startsWith('hr_')) return 'accent-hr';
+    if (t === 'hvac_mep' || t === 'hvac') return 'accent-hvac';
+    if (t === 'civil') return 'accent-civil';
+    if (t === 'cleaning') return 'accent-cleaning';
+    return 'accent-default';
+  }
+  const MODULE_ICONS = {
+    hvac_mep: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12h3m12 0h3M5.6 5.6l2.1 2.1m8.6 8.6 2.1 2.1M12 3v3m0 12v3M5.6 18.4l2.1-2.1m8.6-8.6 2.1-2.1M12 9a3 3 0 1 1 0 6 3 3 0 0 1 0-6Z"/></svg>',
+    civil: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 21h18M5 21V8l7-5 7 5v13M9 21v-6h6v6M9 12h.01M15 12h.01"/></svg>',
+    cleaning: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.5 21 13l-3-3-1.5 1.5M13 8l-8 8v3h3l8-8M11 6l4 4"/></svg>',
+    hr: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0ZM3 21a9 9 0 0 1 18 0"/></svg>',
+    default: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m-7 5h8a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2Z"/></svg>',
+  };
+  function _modIcon(t) {
+    if (!t) return MODULE_ICONS.default;
+    if (t.startsWith('hr_')) return MODULE_ICONS.hr;
+    if (t === 'hvac_mep' || t === 'hvac') return MODULE_ICONS.hvac_mep;
+    return MODULE_ICONS[t] || MODULE_ICONS.default;
+  }
+
+  const STATUS_LABELS = {
+    hr_review:'HR Review', gm_review:'GM Approval',
+    approved:'Approved', rejected:'Rejected', completed:'Completed',
+    submitted:'Submitted', supervisor_review:'Supervisor Review', supervisor_notified:'Supervisor Review',
+    bd_procurement_review:'BD/Procurement Review',
+    operations_manager_review:'Ops Manager Review', general_manager_review:'GM Review',
+  };
+  function _statusLabel(s) {
+    return STATUS_LABELS[s] || (s || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  }
+  function _statusPillCls(s) {
+    if (!s) return 'neutral';
+    if (s.includes('approved') || s === 'completed') return 'done';
+    if (s === 'rejected') return 'rejected';
+    if (s.includes('review') || s === 'submitted') return 'pending';
+    return 'neutral';
+  }
+
+  const ROLE_MAP = {
+    operations_manager:'Operations Manager', business_development:'Business Development',
+    procurement:'Procurement', general_manager:'General Manager',
+    hr_manager:'HR Manager', supervisor:'Supervisor', manager:'Supervisor', admin:'Admin',
+  };
+  function _roleName(d) { return ROLE_MAP[d] || d || 'Reviewer'; }
+
+  function _reviewedAt(sub, user) {
+    const d = (user && user.designation || '').toLowerCase();
+    if (d === 'supervisor' || d === 'manager') return sub.supervisor_reviewed_at;
+    if (d === 'operations_manager') return sub.operations_manager_approved_at;
+    if (d === 'business_development') return sub.business_dev_approved_at;
+    if (d === 'procurement') return sub.procurement_approved_at;
+    if (d === 'general_manager') return sub.general_manager_approved_at;
+    return sub.updated_at || sub.created_at;
+  }
+
+  const MGMT_WF = new Set([
+    'hr_mgmt_reporting_manager','hr_mgmt_gm',
+    'hr_mgmt_operations_manager','hr_mgmt_supervisor','hr_mgmt_hr_head_office'
+  ]);
+  function _hrReviewUrl(sub) {
+    const wf = sub.workflow_status || '';
+    if (MGMT_WF.has(wf)) return `/hr/mgmt-sign/${encodeURIComponent(sub.submission_id)}`;
+    if (wf === 'gm_review') return `/hr/gm-approval`;
+    if (wf === 'hr_review') return `/hr/pending-review`;
+    return `/workflow/submitted-forms?scope=hr&submission=${encodeURIComponent(sub.submission_id)}`;
+  }
+
+  function _reviewUrl(sub, isPending) {
+    const isHr = _isHr(sub.module_type);
+    if (isHr) return _hrReviewUrl(sub);
+    const base = `/${_modUrl(sub.module_type)}/form?edit=${encodeURIComponent(sub.submission_id)}&review=true`;
+    return base;
+  }
+
+  function _sortRows(rows, order) {
+    const copy = rows.slice();
+    copy.sort((a, b) => {
+      const da = _parseUtcDate(a.created_at) || new Date(0);
+      const db = _parseUtcDate(b.created_at) || new Date(0);
+      return order === 'oldest' ? da - db : db - da;
+    });
+    return copy;
+  }
+
+  function _pdfDownloadUrl(sub) {
+    if (_isHr(sub.module_type)) {
+      return '/hr/download-pdf/' + encodeURIComponent(sub.submission_id);
     }
-    
-    function getWorkflowAction(designation) {
-      const actionMap = {
-        'operations_manager': 'Operations Manager Review',
-        'business_development': 'Business Development Review',
-        'procurement': 'Procurement Review',
-        'general_manager': 'General Manager Approval'
-      };
-      return actionMap[designation] || 'Your Review';
+    if (!sub.latest_job_id) return null;
+    const slug = _modUrl(sub.module_type);
+    if (!slug || slug.startsWith('hr')) return null;
+    return '/' + slug + '/download/' + encodeURIComponent(sub.latest_job_id) + '/pdf';
+  }
+
+  function _initials(name) {
+    const s = String(name || '').trim();
+    if (!s) return '—';
+    const parts = s.split(/\s+/).filter(Boolean);
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+
+  function _rowHtml(sub, isPending) {
+    const isHr = _isHr(sub.module_type);
+    const modName = _modName(sub.module_type);
+    const byName = sub.user?.full_name || sub.user?.username || 'Unknown';
+    const by = _esc(byName);
+    const dateStr = isPending
+      ? _fmtDateTime(sub.created_at)
+      : (_fmtDateTime(_reviewedAt(sub, currentUser)) || _fmtDateTime(sub.updated_at));
+    const dateLabel = isPending ? 'Submitted' : 'Signed';
+    const titleRaw = sub.site_name || modName || sub.submission_id || 'Form';
+    const url = _reviewUrl(sub, isPending);
+    const isMgmt = isHr && MGMT_WF.has(sub.workflow_status || '');
+    const btnLabel = isPending ? (isMgmt ? 'Sign' : 'Review') : 'Open';
+
+    const shortId = _esc((sub.submission_id || '').slice(0, 16));
+    const pdfUrl = !isPending ? _pdfDownloadUrl(sub) : null;
+
+    const arrowSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="m9 5 7 7-7 7"/></svg>';
+    const statusHtml = isPending
+      ? `<span class="status-pill ${_statusPillCls(sub.workflow_status)}">${_esc(_statusLabel(sub.workflow_status))}</span>`
+      : `<span class="status-pill done">Signed off</span>`;
+
+    const pdfBtn = pdfUrl
+      ? `<a class="btn-review-pdf" href="${pdfUrl}" target="_blank" rel="noopener" onclick="event.stopPropagation();" title="Download PDF">
+           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"/></svg>
+           PDF
+         </a>`
+      : '';
+
+    return `
+      <div class="review-card ${_accentClass(sub.module_type)}${isPending ? '' : ' is-signed'}" onclick="window.location.href='${url}'" role="link" tabindex="0" onkeydown="if(event.key==='Enter'){window.location.href='${url}';}">
+        <div class="review-card-top">
+          <h3 class="review-card-title">${_esc(titleRaw)}</h3>
+        </div>
+        <p class="review-card-desc">
+          <strong>${_esc(modName)}</strong> · ${dateLabel.toLowerCase()} ${dateStr ? 'on ' + dateStr : ''} by ${by}.
+        </p>
+        <div class="review-card-meta">
+          ${statusHtml}
+          <span class="copy-id">${shortId}</span>
+        </div>
+        <div class="review-card-foot">
+          <a class="btn-review-card${isPending ? '' : ' is-view'}" href="${url}" onclick="event.stopPropagation();">${btnLabel}${arrowSvg}</a>
+          <div class="review-card-actions">${pdfBtn}</div>
+        </div>
+      </div>`;
+  }
+
+  function renderQueue() {
+    const isPending = activeFolder === 'pending';
+    const rows = _sortRows(queueCache[activeFolder] || [], document.getElementById('queueSortOrder').value);
+    const list = document.getElementById('queueList');
+    document.getElementById('listPaneTitle').textContent = isPending ? 'Awaiting action' : 'Signed off';
+    const countNote = document.getElementById('listCountNote');
+    if (countNote) {
+      countNote.textContent = rows.length
+        ? `${rows.length} item${rows.length === 1 ? '' : 's'}`
+        : '';
     }
-    
-    function getRoleDisplay(designation) {
-      const roleMap = {
-        'operations_manager': 'Operations Manager',
-        'business_development': 'Business Development',
-        'procurement': 'Procurement',
-        'general_manager': 'General Manager'
-      };
-      return roleMap[designation] || designation || 'Reviewer';
-    }
-    
-    async function loadPendingReviews() {
-      try {
-        // Get user from localStorage
-        const userStr = localStorage.getItem('user');
-        if (!userStr) {
-          window.location.href = '/login';
-          return;
-        }
-        
-        const user = JSON.parse(userStr);
-        
-        // Update role display
-        document.getElementById('userRole').textContent = getRoleDisplay(user.designation);
-        
-        // Fetch pending submissions
-        const token = localStorage.getItem('access_token');
-        const response = await fetch('/api/workflow/submissions/pending', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        
-        if (!response.ok) {
-          throw new Error('Failed to load pending submissions');
-        }
-        
-        const data = await response.json();
-        const submissions = data.submissions || [];
-        
-        // Update count
-        document.getElementById('totalPending').textContent = submissions.length;
-        
-        const submissionsList = document.getElementById('submissionsList');
-        
-        if (submissions.length === 0) {
-          submissionsList.innerHTML = `
-            <div class="empty-state">
-              <div class="empty-state-icon">✅</div>
-              <h2>All Caught Up!</h2>
-              <p>You have no pending reviews at this time.</p>
-            </div>
-          `;
-          return;
-        }
-        
-        // Render submissions
-        submissionsList.innerHTML = submissions.map(sub => {
-          const moduleNames = {
-            'hvac_mep': 'HVAC & MEP',
-            'civil': 'Civil Works',
-            'cleaning': 'Cleaning'
-          };
-          const moduleName = moduleNames[sub.module_type] || sub.module_type;
-          const moduleUrl = sub.module_type === 'hvac_mep' ? 'hvac-mep' : sub.module_type;
-          const submittedBy = sub.user?.full_name || sub.user?.username || 'Unknown';
-          // Helper function to ensure UTC date strings are properly parsed
-          const parseUTCDate = (dateString) => {
-            if (!dateString) return null;
-            let utcString = dateString;
-            if (!utcString.endsWith('Z') && !utcString.includes('+') && !utcString.includes('-', 10)) {
-              utcString = utcString + 'Z';
-            }
-            return new Date(utcString);
-          };
-          
-          // Visit date is date-only, format it properly (no timezone indicator needed for dates)
-          let visitDate = 'N/A';
-          if (sub.visit_date) {
-            const dateStr = sub.visit_date;
-            if (dateStr.includes('T')) {
-              // Has time component, parse as UTC and convert to Dubai (but only show date)
-              const date = parseUTCDate(dateStr);
-              visitDate = date.toLocaleDateString('en-US', {
-                year: 'numeric', month: 'short', day: 'numeric',
-                timeZone: 'Asia/Dubai'
-              });
-            } else {
-              // Date only, parse as date
-              const [year, month, day] = dateStr.split('-').map(Number);
-              const date = new Date(year, month - 1, day);
-              visitDate = date.toLocaleDateString('en-US', {
-                year: 'numeric', month: 'short', day: 'numeric',
-                timeZone: 'Asia/Dubai'
-              });
-            }
-          }
-          const createdAt = sub.created_at ? parseUTCDate(sub.created_at).toLocaleString('en-US', {
-            year: 'numeric', month: 'short', day: 'numeric',
-            hour: '2-digit', minute: '2-digit',
-            timeZone: 'Asia/Dubai'
-          }) + ' (GST)' : '';
-          
-          return `
-            <div class="submission-card" onclick="openSubmissionForReview('${sub.submission_id}', '${moduleUrl}')">
-              <div class="submission-header">
-                <div>
-                  <h3 class="submission-title">${escapeHtml(sub.site_name || 'Untitled Submission')}</h3>
-                  <div class="submission-meta">
-                    <span>👤 Submitted by <strong>${escapeHtml(submittedBy)}</strong></span>
-                    <span>📅 Visit: ${visitDate}</span>
-                  </div>
-                </div>
-                <button class="action-button" onclick="event.stopPropagation(); openSubmissionForReview('${sub.submission_id}', '${moduleUrl}')">
-                  Review →
-                </button>
-              </div>
-              <div class="submission-tags">
-                <span class="tag tag-module">${moduleName}</span>
-                <span class="tag tag-status">Awaiting ${getWorkflowAction(user.designation)}</span>
-                <span class="tag tag-date">Created: ${createdAt}</span>
-              </div>
-            </div>
-          `;
-        }).join('');
-        
-      } catch (error) {
-        console.error('Error loading pending reviews:', error);
-        document.getElementById('submissionsList').innerHTML = `
-          <div class="empty-state">
-            <div class="empty-state-icon">⚠️</div>
-            <h2>Error Loading Reviews</h2>
-            <p>Could not load pending reviews. Please refresh the page.</p>
+
+    if (!rows.length) {
+      list.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon">
+            <svg width="28" height="28" fill="none" stroke="#065f46" stroke-width="1.8" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="${isPending ? 'M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z' : 'M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5'}"/>
+            </svg>
           </div>
-        `;
-      }
+          <h3 style="font-size:1rem;font-weight:700;color:#111827;">${isPending ? 'All caught up!' : 'Nothing signed off yet'}</h3>
+          <p style="font-size:0.875rem;color:#6b7280;margin:0;">${isPending
+            ? 'No forms are awaiting your action right now.'
+            : 'Forms you sign off will appear in this folder.'}</p>
+        </div>`;
+      return;
     }
-    
-    async function openSubmissionForReview(submissionId, moduleUrl) {
-      try {
-        const token = localStorage.getItem('access_token');
-        
-        // Navigate to the form in edit/review mode
-        window.location.href = `/${moduleUrl}/form?edit=${submissionId}&review=true`;
-      } catch (error) {
-        console.error('Error opening submission:', error);
-        alert('Failed to open submission. Please try again.');
-      }
+    const groups = _groupRowsByDate(rows, isPending);
+    list.innerHTML = groups.map(function (g) {
+      return `
+      <section class="queue-date-section" aria-label="${_esc(g.label)}">
+        <div class="queue-date-header">${chevronSvg}<span>${_esc(g.label)}</span></div>
+        <div class="queue-date-items">
+          ${g.items.map(function (s) { return _rowHtml(s, isPending); }).join('')}
+        </div>
+      </section>`;
+    }).join('');
+  }
+
+  function switchFolder(name) {
+    activeFolder = name;
+    document.querySelectorAll('.wf-folder-btn').forEach(btn => {
+      const isActive = btn.getAttribute('data-folder') === name;
+      btn.classList.toggle('active', isActive);
+      btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    });
+    renderQueue();
+  }
+
+  async function load() {
+    const userStr = localStorage.getItem('user');
+    if (!userStr) { window.location.href = '/login'; return; }
+    currentUser = JSON.parse(userStr);
+    document.getElementById('statRole').textContent = _roleName(currentUser.designation);
+
+    const token = localStorage.getItem('access_token');
+    try {
+      const res = await fetch('/api/workflow/submissions/my-trail', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.message || body.error || `HTTP ${res.status}`);
+      const data = (body.pending !== undefined || body.reviewed !== undefined) ? body : (body.data || {});
+      queueCache.pending = data.pending || [];
+      queueCache.reviewed = data.reviewed || [];
+    } catch (err) {
+      console.error(err);
+      document.getElementById('queueList').innerHTML = `
+        <div class="alert alert-danger m-3">Could not load queue. Please refresh.</div>`;
+      return;
     }
-    
-    // Load on page load
-    document.addEventListener('DOMContentLoaded', loadPendingReviews);
+
+    const pendingCount = queueCache.pending.length;
+    const reviewedCount = queueCache.reviewed.length;
+    document.getElementById('badgePending').textContent = pendingCount;
+    document.getElementById('badgeReviewed').textContent = reviewedCount;
+    const pendingBadge = document.getElementById('badgePending');
+    if (pendingBadge) {
+      pendingBadge.classList.toggle('has-items', pendingCount > 0);
+    }
+
+    renderQueue();
+  }
+
+  document.getElementById('queueSortOrder').addEventListener('change', renderQueue);
+  document.addEventListener('DOMContentLoaded', load);
   </script>
+
+  <script src="{{ url_for('static', filename='mobile_utils.js') }}" defer></script>
   <script src="{{ url_for('static', filename='api-client.js') }}"></script>
   <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
-  <script src="{{ url_for('static', filename='mobile_utils.js') }}" defer></script>
 </body>
 </html>

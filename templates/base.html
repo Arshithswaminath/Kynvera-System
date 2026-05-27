@@ -30,13 +30,10 @@
   {# Modals #}
   {% block modals %}
     {% include 'partials/profile_modal.html' %}
-    {% include 'partials/contact_modal.html' %}
-    {% include 'partials/todo_modal.html' %}
   {% endblock %}
   
   {# Core Scripts #}
   <script src="{{ url_for('static', filename='api-client.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/todo_list.js') }}" defer></script>
   
   {# Page-specific scripts #}
   {% block scripts %}{% endblock %}
@@ -122,43 +119,13 @@
         });
       }
       
-      // Contact link
-      const contactLink = document.getElementById('contactLink');
-      if (contactLink) {
-        contactLink.addEventListener('click', function(e) {
-          e.preventDefault();
-          if (typeof openContactModal === 'function') {
-            openContactModal();
-          }
-        });
-      }
-      
       // Close modal with Escape key
       document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
-          if (typeof closeContactModal === 'function') closeContactModal();
           if (typeof closeProfileModal === 'function') closeProfileModal();
-          if (typeof closeTodoModal === 'function') closeTodoModal();
         }
       });
     });
-    
-    // Modal functions
-    window.openContactModal = function() {
-      const modal = document.getElementById('contactModal');
-      if (modal) {
-        modal.classList.add('active');
-        document.body.style.overflow = 'hidden';
-      }
-    };
-    
-    window.closeContactModal = function() {
-      const modal = document.getElementById('contactModal');
-      if (modal) {
-        modal.classList.remove('active');
-        document.body.style.overflow = '';
-      }
-    };
     
     window.openProfileModal = function() {
       const modal = document.getElementById('profileModal');

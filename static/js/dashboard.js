@@ -180,18 +180,86 @@ function loadUserWelcome() {
   }
 }
 
+function userHasBdEmailAccess(user) {
+  if (!user) return false;
+  if (user.role === 'admin') return true;
+  if (user.designation === 'business_development') return true;
+  return user.access_business_development === true;
+}
+
+function userHasInspectionNavAccess(user) {
+  if (!user) return false;
+  if (user.role === 'admin') return true;
+  return user.access_hvac === true || user.access_civil === true || user.access_cleaning === true;
+}
+
+function userHasHrNavAccess(user) {
+  if (!user) return false;
+  if (user.role === 'admin') return true;
+  if (user.access_hr === true) return true;
+  const d = (user.designation || '').trim().toLowerCase();
+  if (d === 'hr_manager' || d === 'general_manager') return true;
+  return false;
+}
+
+function userHasSubmittedFormsModuleAccess(user) {
+  if (!user) return false;
+  if (user.role === 'admin') return true;
+  // Every logged-in user can open My submitted forms for items they submitted.
+  return true;
+}
+
+function userHasDocHubNavAccess(user) {
+  if (!user) return false;
+  if (user.role === 'admin') return true;
+  if (user.can_access_dochub === false) return false;
+  return true;
+}
+
+function userHasReportGenerationNavAccess(user) {
+  if (!user) return false;
+  if (user.role === 'admin') return true;
+  return user.access_report_generation === true;
+}
+
+/** Navbar items tied to admin profile module flags (main_navbar.html). */
+function applyProfileBasedNavVisibility(user) {
+  const inspectionEl = document.getElementById('inspection-forms-menu-item');
+  if (inspectionEl) {
+    inspectionEl.style.display = userHasInspectionNavAccess(user) ? 'list-item' : 'none';
+  }
+  const hrEl = document.getElementById('hr-forms-menu-item');
+  if (hrEl) {
+    hrEl.style.display = userHasHrNavAccess(user) ? 'list-item' : 'none';
+  }
+  const dhEl = document.getElementById('dochub-menu-item');
+  if (dhEl) {
+    dhEl.style.display = userHasDocHubNavAccess(user) ? 'list-item' : 'none';
+  }
+  const tktEl = document.getElementById('ticketing-menu-item');
+  if (tktEl) {
+    tktEl.style.display = (user && (user.role === 'admin' || user.access_ticketing === true)) ? 'list-item' : 'none';
+  }
+  const reportEl = document.getElementById('report-gen-menu-item');
+  if (reportEl) {
+    reportEl.style.display = userHasReportGenerationNavAccess(user) ? 'list-item' : 'none';
+  }
+}
+
 // Function to check and show admin menu
 function checkAndShowAdminMenu(user) {
   const adminMenuItem = document.getElementById('admin-menu-item');
   const deviceMgmtMenuItem = document.getElementById('device-management-menu-item');
   const bdModuleMenuItem = document.getElementById('bd-module-menu-item');
-  const bdEmailMenuItem = document.getElementById('bd-email-menu-item');
-  const reportGenMenuItem = document.getElementById('report-gen-menu-item');
   const historyMenuItem = document.getElementById('review-history-menu-item');
   const submittedFormsMenuItem = document.getElementById('submitted-forms-menu-item');
 
-  // Submitted Forms: deprecated — always hidden (supervisors use Review History)
-  if (submittedFormsMenuItem) submittedFormsMenuItem.style.display = 'none';
+  if (submittedFormsMenuItem) {
+    const showSubmitted = userHasSubmittedFormsModuleAccess(user);
+    submittedFormsMenuItem.style.display = showSubmitted ? 'list-item' : 'none';
+    submittedFormsMenuItem.classList.toggle('has-submitted-dropdown', !!showSubmitted);
+    if (!showSubmitted) submittedFormsMenuItem.classList.remove('open');
+  }
 
   // Admin menu and Device Management: admin only — explicitly hide for non-admin
   if (adminMenuItem) {
@@ -204,22 +272,12 @@ function checkAndShowAdminMenu(user) {
     bdModuleMenuItem.style.display = (user && user.role === 'admin') ? 'list-item' : 'none';
   }
 
-  // BD Email: Business Development only — explicitly hide for non-BD
-  if (bdEmailMenuItem) {
-    bdEmailMenuItem.style.display = (user && user.designation === 'business_development') ? 'inline-block' : 'none';
-  }
-
-  // Report Generation: all authenticated users
-  if (reportGenMenuItem && user) {
-    reportGenMenuItem.style.display = 'list-item';
-  }
-
-  // Review History: admin, reviewers (OM/BD/Procurement/GM), and supervisors (replaces old "Submitted Forms")
-  const historyDesignations = ['supervisor', 'operations_manager', 'business_development', 'procurement', 'general_manager'];
-  const hasHistoryAccess = user && (user.role === 'admin' || (user.designation && historyDesignations.includes(user.designation)));
+  // Legacy Review History nav is retired in favor of unified Submitted Forms.
   if (historyMenuItem) {
-    historyMenuItem.style.display = hasHistoryAccess ? 'list-item' : 'none';
+    historyMenuItem.style.display = 'none';
   }
+
+  applyProfileBasedNavVisibility(user);
   
   if (user && !user.role) {
     const token = localStorage.getItem('access_token');
@@ -251,6 +309,71 @@ function checkAndShowAdminMenu(user) {
 // Module Visibility Functions
 // ===========================================
 
+let _dashboardModuleEntranceTimer = null;
+
+function _dashboardPrefersReducedMotion() {
+  try {
+    return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  } catch (e) {
+    return false;
+  }
+}
+
+function scheduleDashboardModuleEntrance() {
+  if (!document.body.classList.contains('page-dashboard')) return;
+  const grid = document.getElementById('modulesGrid');
+  if (!grid) return;
+  clearTimeout(_dashboardModuleEntranceTimer);
+  _dashboardModuleEntranceTimer = setTimeout(function() {
+    _dashboardModuleEntranceTimer = null;
+    playDashboardModuleEntrance();
+  }, 50);
+}
+
+function playDashboardModuleEntrance() {
+  const grid = document.getElementById('modulesGrid');
+  if (!grid || !document.body.classList.contains('page-dashboard')) return;
+
+  if (window.innerWidth <= 768) {
+    grid.classList.remove('modules-grid--boot');
+    grid.classList.remove('modules-grid--entrance-active');
+    Array.from(grid.querySelectorAll(':scope > .module-card')).forEach(function(card) {
+      card.style.removeProperty('--dd-stagger');
+    });
+    return;
+  }
+
+  const cards = Array.from(grid.querySelectorAll(':scope > .module-card'));
+  const visible = cards.filter(function(card) {
+    return !/display\s*:\s*none/i.test(card.getAttribute('style') || '');
+  });
+
+  cards.forEach(function(card) {
+    card.style.removeProperty('--dd-stagger');
+  });
+  grid.classList.remove('modules-grid--entrance-active');
+
+  if (_dashboardPrefersReducedMotion()) {
+    grid.classList.remove('modules-grid--boot');
+    return;
+  }
+
+  if (!visible.length) {
+    grid.classList.remove('modules-grid--boot');
+    return;
+  }
+
+  requestAnimationFrame(function() {
+    requestAnimationFrame(function() {
+      visible.forEach(function(card, i) {
+        card.style.setProperty('--dd-stagger', (72 + i * 46) + 'ms');
+      });
+      grid.classList.remove('modules-grid--boot');
+      grid.classList.add('modules-grid--entrance-active');
+    });
+  });
+}
+
 function updateModuleVisibility(user) {
   if (!user) return;
   
@@ -264,38 +387,30 @@ function updateModuleVisibility(user) {
     inspectionCard.style.visibility = hasInspectionAccess ? 'visible' : 'hidden';
   }
   
-  // Submitted Forms: deprecated in favor of Review History - hide for all (supervisors use Review History)
   const submittedFormsCard = document.getElementById('module-submitted-forms');
   const submittedFormsMenuItem = document.getElementById('submitted-forms-menu-item');
+  const showSubmittedFormsMod = userHasSubmittedFormsModuleAccess(user);
   if (submittedFormsCard) {
-    submittedFormsCard.style.display = 'none';
-    submittedFormsCard.style.visibility = 'hidden';
+    submittedFormsCard.style.display = showSubmittedFormsMod ? 'block' : 'none';
+    submittedFormsCard.style.visibility = showSubmittedFormsMod ? 'visible' : 'hidden';
   }
   if (submittedFormsMenuItem) {
-    submittedFormsMenuItem.style.display = 'none';
+    submittedFormsMenuItem.style.display = showSubmittedFormsMod ? 'list-item' : 'none';
   }
 
-  // Review History card: show for admin, supervisors, and reviewers (OM, BD, Procurement, GM)
+  // Legacy Review History card is retired in favor of unified Submitted Forms.
   const reviewHistoryCard = document.getElementById('module-review-history');
-  const historyDesignations = ['supervisor', 'operations_manager', 'business_development', 'procurement', 'general_manager'];
-  const hasReviewHistoryAccess = isAdmin || (user.designation && historyDesignations.includes(user.designation));
   if (reviewHistoryCard) {
-    reviewHistoryCard.style.display = hasReviewHistoryAccess ? 'block' : 'none';
-    reviewHistoryCard.style.visibility = hasReviewHistoryAccess ? 'visible' : 'hidden';
+    reviewHistoryCard.style.display = 'none';
+    reviewHistoryCard.style.visibility = 'hidden';
   }
 
-  // Check BD Email Module access (BD only)
+  // Check BD Email Module access (BD designation, module flag, or admin via userHasBdEmailAccess)
   const bdEmailCard = document.getElementById('module-bd-email');
   if (bdEmailCard) {
-    const isBD = user.designation === 'business_development';
-    bdEmailCard.style.display = isBD ? 'block' : 'none';
-    bdEmailCard.style.visibility = isBD ? 'visible' : 'hidden';
-  }
-
-  const bdEmailMenuItem = document.getElementById('bd-email-menu-item');
-  if (bdEmailMenuItem) {
-    const isBD = user.designation === 'business_development';
-    bdEmailMenuItem.style.display = isBD ? 'inline-block' : 'none';
+    const showBdEmail = userHasBdEmailAccess(user);
+    bdEmailCard.style.display = showBdEmail ? 'block' : 'none';
+    bdEmailCard.style.visibility = showBdEmail ? 'visible' : 'hidden';
   }
 
   // Check Device Management access (admin only)
@@ -312,11 +427,12 @@ function updateModuleVisibility(user) {
     bdCard.style.visibility = isAdmin ? 'visible' : 'hidden';
   }
 
-  // Check HR Module access (visible to all authenticated users)
+  // HR Module: match admin "HR module" flag and HR/GM designations (see /hr/ hub routing)
   const hrCard = document.getElementById('module-hr');
   if (hrCard) {
-    hrCard.style.display = 'block';
-    hrCard.style.visibility = 'visible';
+    const showHr = userHasHrNavAccess(user);
+    hrCard.style.display = showHr ? 'block' : 'none';
+    hrCard.style.visibility = showHr ? 'visible' : 'hidden';
   }
 
   // Check Procurement Module access
@@ -331,106 +447,76 @@ function updateModuleVisibility(user) {
     procurementMenuItem.style.display = hasProcurementAccess ? 'list-item' : 'none';
   }
 
-  // Check Report Generation access (all authenticated users)
+  // Service tickets (same rule as main_navbar ticketing-menu-item)
+  const ticketingCard = document.getElementById('module-ticketing');
+  if (ticketingCard) {
+    const showTicketing = isAdmin || user.access_ticketing === true;
+    ticketingCard.style.display = showTicketing ? 'block' : 'none';
+    ticketingCard.style.visibility = showTicketing ? 'visible' : 'hidden';
+  }
+
+  // Check Report Generation / MMR hub
   const reportGenCard = document.getElementById('module-report-generation');
   if (reportGenCard) {
-    reportGenCard.style.display = 'block';
-    reportGenCard.style.visibility = 'visible';
+    const showReport = userHasReportGenerationNavAccess(user);
+    reportGenCard.style.display = showReport ? 'block' : 'none';
+    reportGenCard.style.visibility = showReport ? 'visible' : 'hidden';
   }
   
-  // Update grid layout based on visible modules
   const modulesGrid = document.getElementById('modulesGrid');
   const modulesSection = document.getElementById('modules');
-  
-  if (modulesGrid) {
-    const visibleModules = Array.from(modulesGrid.children).filter(card => 
-      card.style.display !== 'none' && card.style.visibility !== 'hidden'
-    );
-    
-    const isMobile = window.innerWidth <= 768;
-    
-    if (isMobile) {
-      modulesGrid.style.gridTemplateColumns = '1fr';
-      modulesGrid.style.maxWidth = '100%';
-      modulesGrid.style.margin = '0';
-      // Remove inline display/visibility so CSS grid layout takes effect on cards
-      modulesGrid.querySelectorAll('.module-card').forEach(card => {
-        if (card.style.display !== 'none') {
-          card.style.removeProperty('display');
-          card.style.removeProperty('visibility');
-        }
-      });
-    } else {
-      if (visibleModules.length === 1) {
-        modulesGrid.style.gridTemplateColumns = '1fr';
-        modulesGrid.style.maxWidth = '600px';
-        modulesGrid.style.margin = '0 auto';
-      } else if (visibleModules.length === 2) {
-        modulesGrid.style.gridTemplateColumns = 'repeat(2, 1fr)';
-        modulesGrid.style.maxWidth = 'none';
-        modulesGrid.style.margin = '0';
-      } else {
-        modulesGrid.style.gridTemplateColumns = 'repeat(3, 1fr)';
-        modulesGrid.style.maxWidth = 'none';
-        modulesGrid.style.margin = '0';
-      }
-    }
-    
-    if (modulesSection && visibleModules.length === 0) {
-      const existingMsg = modulesSection.querySelector('.no-access-message');
-      if (existingMsg) {
-        existingMsg.remove();
-      }
-      
-      const noAccessMsg = document.createElement('div');
-      noAccessMsg.className = 'no-access-message';
-      noAccessMsg.style.cssText = 'text-align: center; padding: 3rem; color: var(--text-light);';
-      noAccessMsg.innerHTML = `
+  if (modulesSection) {
+    const visibleCount = modulesGrid
+      ? Array.from(modulesGrid.children).filter(function (card) {
+          const style = card.getAttribute('style') || '';
+          return card.classList.contains('module-card')
+            && !/display\s*:\s*none/i.test(style)
+            && card.style.visibility !== 'hidden';
+        }).length
+      : 0;
+    const existingMsg = modulesSection.querySelector('.no-access-message');
+    if (visibleCount === 0) {
+      if (!existingMsg) {
+        const noAccessMsg = document.createElement('div');
+        noAccessMsg.className = 'no-access-message';
+        noAccessMsg.style.cssText = 'text-align: center; padding: 3rem; color: var(--text-light);';
+        noAccessMsg.innerHTML = `
         <h3 style="margin-bottom: 1rem; color: var(--text-dark);">No Module Access</h3>
         <p>You don't have access to any modules yet. Please contact an administrator to grant access.</p>
       `;
-      modulesSection.appendChild(noAccessMsg);
-    } else if (modulesSection) {
-      const existingMsg = modulesSection.querySelector('.no-access-message');
-      if (existingMsg) {
-        existingMsg.remove();
+        modulesSection.appendChild(noAccessMsg);
       }
+    } else if (existingMsg) {
+      existingMsg.remove();
     }
   }
+
+  updateModuleGridLayout();
+
+  if (document.body.classList.contains('page-dashboard') && document.getElementById('modulesGrid')) {
+    scheduleDashboardModuleEntrance();
+  }
+
+  applyProfileBasedNavVisibility(user);
 }
 
-// Helper function to update module grid layout
+function getVisibleModuleCards(modulesGrid) {
+  if (!modulesGrid) return [];
+  return Array.from(modulesGrid.children).filter(function (card) {
+    const style = card.getAttribute('style') || '';
+    return card.classList.contains('module-card')
+      && !/display\s*:\s*none/i.test(style)
+      && card.style.visibility !== 'hidden';
+  });
+}
+
+/** Grid columns are controlled by CSS — this just clears any stale inline overrides. */
 function updateModuleGridLayout() {
   const modulesGrid = document.getElementById('modulesGrid');
   if (!modulesGrid) return;
-  
-  const visibleModules = Array.from(modulesGrid.children).filter(card => 
-    card.style.display !== 'none' && card.style.visibility !== 'hidden'
-  );
-  
-  const isMobile = window.innerWidth <= 768;
-  
-  if (isMobile) {
-    modulesGrid.style.gridTemplateColumns = '1fr';
-  } else {
-    if (visibleModules.length === 1) {
-      modulesGrid.style.gridTemplateColumns = '1fr';
-      modulesGrid.style.maxWidth = '600px';
-      modulesGrid.style.margin = '0 auto';
-    } else if (visibleModules.length === 2) {
-      modulesGrid.style.gridTemplateColumns = 'repeat(2, 1fr)';
-      modulesGrid.style.maxWidth = 'none';
-      modulesGrid.style.margin = '0';
-    } else if (visibleModules.length === 3) {
-      modulesGrid.style.gridTemplateColumns = 'repeat(3, 1fr)';
-      modulesGrid.style.maxWidth = 'none';
-      modulesGrid.style.margin = '0';
-    } else {
-      modulesGrid.style.gridTemplateColumns = 'repeat(2, 1fr)';
-      modulesGrid.style.maxWidth = 'none';
-      modulesGrid.style.margin = '0';
-    }
-  }
+  modulesGrid.style.removeProperty('grid-template-columns');
+  modulesGrid.style.removeProperty('max-width');
+  modulesGrid.style.removeProperty('margin');
 }
 
 // ===========================================
@@ -490,42 +576,30 @@ async function loadPendingCount(user) {
   const pendingModule = document.getElementById('module-pending-review');
   const reviewHistoryModule = document.getElementById('module-review-history');
   const moduleBadge = document.getElementById('modulePendingBadge');
+  if (reviewHistoryModule) {
+    reviewHistoryModule.style.display = 'none';
+    reviewHistoryModule.style.visibility = 'hidden';
+  }
   
   if (user && user.role === 'admin') {
     if (pendingModule) {
       pendingModule.style.display = 'none';
       pendingModule.style.visibility = 'hidden';
     }
-    if (reviewHistoryModule) {
-      reviewHistoryModule.style.display = 'block';
-      reviewHistoryModule.style.visibility = 'visible';
-    }
+    updateMobileMenuHint(0);
     return;
   }
   
   const reviewerDesignations = ['operations_manager', 'business_development', 'procurement', 'general_manager'];
-  const isReviewer = user && (user.designation && reviewerDesignations.includes(user.designation));
+  const isReviewer = user && ((user.designation && reviewerDesignations.includes(user.designation)) || user.access_business_development === true);
   const isSupervisor = user && user.designation === 'supervisor';
   const pendingReviewMenuItem = document.getElementById('pending-review-menu-item');
 
-  // Supervisors: show Review History (not Pending Review)
-  if (isSupervisor) {
-    if (pendingModule) {
-      pendingModule.style.display = 'none';
-      pendingModule.style.visibility = 'hidden';
-    }
-    if (reviewHistoryModule) {
-      reviewHistoryModule.style.display = 'block';
-      reviewHistoryModule.style.visibility = 'visible';
-    }
-    if (pendingReviewMenuItem) {
-      pendingReviewMenuItem.style.display = 'none';
-    }
-    return;
-  }
+  // Anyone who can review forms (supervisor, OM, BD, procurement, GM) gets the Pending Review link
+  const canReview = isReviewer || isSupervisor;
 
-  // Non-reviewers (no designation): hide both
-  if (!isReviewer) {
+  // Non-reviewers (plain technicians / employees): hide both module cards
+  if (!canReview) {
     if (pendingModule) {
       pendingModule.style.display = 'none';
       pendingModule.style.visibility = 'hidden';
@@ -537,10 +611,11 @@ async function loadPendingCount(user) {
     if (pendingReviewMenuItem) {
       pendingReviewMenuItem.style.display = 'none';
     }
+    updateMobileMenuHint(0);
     return;
   }
 
-  // Reviewers: show both Pending Review and Review History (updateModuleVisibility already set Review History)
+  // Reviewers / supervisors: show the Pending Review menu item
   if (pendingReviewMenuItem) {
     pendingReviewMenuItem.style.display = 'list-item';
   }
@@ -578,6 +653,8 @@ async function loadPendingCount(user) {
         moduleBadge.style.display = 'none';
       }
     }
+
+    updateMobileMenuHint(submissions.length);
     
     updateModuleGridLayout();
     
@@ -648,6 +725,8 @@ function loadProfileData() {
       try {
         const user = JSON.parse(cachedUser);
         displayProfileData(user);
+        checkAndShowAdminMenu(user);
+        updateModuleVisibility(user);
         return;
       } catch (e) {
         console.warn('Failed to parse cached user data');
@@ -671,6 +750,8 @@ function loadProfileData() {
           const user = JSON.parse(cachedUser);
           console.log('Using cached user data due to 401');
           displayProfileData(user);
+          checkAndShowAdminMenu(user);
+          updateModuleVisibility(user);
           return null;
         } catch (e) {
           console.warn('Failed to parse cached user data');
@@ -685,6 +766,11 @@ function loadProfileData() {
     if (data && data.user) {
       localStorage.setItem('user', JSON.stringify(data.user));
       displayProfileData(data.user);
+      checkAndShowAdminMenu(data.user);
+      updateModuleVisibility(data.user);
+      if (typeof loadPendingCount === 'function') {
+        loadPendingCount(data.user);
+      }
     } else {
       throw new Error('No user data received');
     }
@@ -696,6 +782,8 @@ function loadProfileData() {
         const user = JSON.parse(cachedUser);
         console.log('Using cached user data as fallback');
         displayProfileData(user);
+        checkAndShowAdminMenu(user);
+        updateModuleVisibility(user);
         return;
       } catch (e) {
         console.warn('Failed to parse cached user data');
@@ -734,8 +822,10 @@ function displayProfileData(user) {
     if (user.role === 'admin' || user.access_hvac) modules.push('HVAC & MEP');
     if (user.role === 'admin' || user.access_civil) modules.push('Civil Works');
     if (user.role === 'admin' || user.access_cleaning) modules.push('Cleaning');
-    if (user.role === 'admin' || user.access_hr) modules.push('HR');
+    if (userHasHrNavAccess(user)) modules.push('HR');
     if (user.role === 'admin' || user.access_procurement_module) modules.push('Procurement');
+    if (user.role === 'admin' || user.designation === 'business_development' || user.access_business_development) modules.push('Business Development');
+    if (userHasReportGenerationNavAccess(user)) modules.push('Report Generation');
     return modules.length > 0 ? modules.join(', ') : 'None';
   };
 
@@ -755,7 +845,10 @@ function displayProfileData(user) {
       'operations_manager': 'Operations Manager',
       'business_development': 'Business Development',
       'procurement': 'Procurement',
-      'general_manager': 'General Manager'
+      'general_manager': 'General Manager',
+      'hr_manager': 'HR Manager',
+      'employee': 'Employee',
+      'admin': 'Admin'
     };
     return designationMap[user.designation] || user.designation;
   };
@@ -770,6 +863,7 @@ function displayProfileData(user) {
   const html = getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDisplay, getModuleAccess, formatDate);
   profileContent.innerHTML = html;
   initProfileSignatureDefaults(user);
+  initManagedProfileFields();
 }
 
 function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDisplay, getModuleAccess, formatDate) {
@@ -777,12 +871,22 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
   if (user.role === 'admin' || user.access_hvac) modules.push({ name: 'HVAC & MEP', icon: '🔧', color: '#3b82f6' });
   if (user.role === 'admin' || user.access_civil) modules.push({ name: 'Civil Works', icon: '🏢', color: '#8b5cf6' });
   if (user.role === 'admin' || user.access_cleaning) modules.push({ name: 'Cleaning', icon: '🧹', color: '#10b981' });
-  if (user.role === 'admin' || user.access_hr) modules.push({ name: 'HR', icon: '👤', color: '#f59e0b' });
+  if (userHasHrNavAccess(user)) modules.push({ name: 'HR', icon: '👤', color: '#f59e0b' });
   if (user.role === 'admin' || user.access_procurement_module) modules.push({ name: 'Procurement', icon: '📦', color: '#7c3aed' });
+  if (user.role === 'admin' || user.designation === 'business_development' || user.access_business_development) modules.push({ name: 'Business Development', icon: '📧', color: '#0d9488' });
+  if (userHasReportGenerationNavAccess(user)) modules.push({ name: 'Report Generation', icon: '📊', color: '#0369a1' });
   
   const moduleBadges = modules.length > 0 
     ? modules.map(m => `<span class="pro-module-badge" style="--badge-color: ${m.color}">${m.icon} ${m.name}</span>`).join('')
     : '<span class="pro-no-access">No modules assigned</span>';
+
+  const hrJobTitle = escapeHtml(user.job_designation || '—');
+  const annualLeavesDisp = user.annual_leave_days != null ? escapeHtml(String(user.annual_leave_days)) : '—';
+  const otherLeavesDisp = user.other_leave_days != null ? escapeHtml(String(user.other_leave_days)) : '—';
+  const rm = user.reporting_manager;
+  const reportingMgrDisp = rm
+    ? `${escapeHtml(rm.full_name || rm.username || '')}${rm.email ? `<span style="display:block;font-size:0.8rem;color:#64748b;margin-top:2px;">${escapeHtml(rm.email)}</span>` : ''}`
+    : '—';
 
   return `
     <style>
@@ -791,17 +895,23 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
         width: 100%;
         max-width: 100%;
-        padding: 0 1.25rem 1.25rem;
+        padding: 0;
         box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-height: 0;
+        overflow: hidden;
       }
       
-      /* Hero Section */
+      /* Hero Section — fixed strip at top, left-aligned row */
       .pro-hero {
         position: relative;
-        padding: 2rem 1.5rem 1.5rem;
+        flex-shrink: 0;
+        padding: 0.85rem 3.5rem 1rem 1.25rem;
         background: linear-gradient(135deg, #0f4a2a 0%, #1a6b3d 50%, #22885a 100%);
         border-radius: 0;
-        margin: 0 -1.25rem;
+        margin: 0;
         overflow: hidden;
       }
       
@@ -817,14 +927,35 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
         position: relative;
         z-index: 1;
         display: flex;
-        flex-direction: column;
+        flex-direction: row;
         align-items: center;
-        text-align: center;
+        justify-content: flex-start;
+        text-align: left;
+        gap: 0;
+      }
+      
+      .pro-hero-main {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 0.85rem;
+        min-width: 0;
+        flex: 1;
+      }
+      
+      .pro-hero-text {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: center;
+        gap: 0.35rem;
+        min-width: 0;
+        flex: 1;
       }
       
       .pro-avatar {
-        width: 85px;
-        height: 85px;
+        width: 64px;
+        height: 64px;
         border-radius: 50%;
         background: rgba(255,255,255,0.15);
         backdrop-filter: blur(10px);
@@ -832,12 +963,13 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1.85rem;
+        font-size: 1.35rem;
         font-weight: 700;
         color: white;
-        margin-bottom: 0.875rem;
+        margin-bottom: 0;
         box-shadow: 0 8px 32px rgba(0,0,0,0.2);
         position: relative;
+        flex-shrink: 0;
       }
       
       .pro-avatar::after {
@@ -845,8 +977,8 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
         position: absolute;
         bottom: 2px;
         right: 2px;
-        width: 16px;
-        height: 16px;
+        width: 14px;
+        height: 14px;
         background: ${user.is_active ? '#22c55e' : '#ef4444'};
         border: 2px solid white;
         border-radius: 50%;
@@ -854,11 +986,15 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
       }
       
       .pro-name {
-        font-size: 1.35rem;
+        font-size: 1.15rem;
         font-weight: 700;
         color: white;
-        margin: 0 0 0.5rem;
-        letter-spacing: -0.5px;
+        margin: 0;
+        letter-spacing: -0.03em;
+        line-height: 1.2;
+        text-align: left;
+        align-self: stretch;
+        word-break: break-word;
       }
       
       .pro-role-badge {
@@ -867,12 +1003,17 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
         gap: 0.4rem;
         background: rgba(255,255,255,0.15);
         backdrop-filter: blur(10px);
-        padding: 0.45rem 1rem;
+        padding: 0.35rem 0.75rem;
         border-radius: 100px;
-        font-size: 0.75rem;
+        font-size: 0.72rem;
         font-weight: 500;
         color: rgba(255,255,255,0.95);
         border: 1px solid rgba(255,255,255,0.2);
+        max-width: 100%;
+        flex-wrap: wrap;
+        justify-content: flex-start;
+        text-align: left;
+        line-height: 1.3;
       }
       
       .pro-role-badge svg {
@@ -881,14 +1022,34 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
         opacity: 0.8;
       }
       
-      /* Tabs */
+      /* Tabs — fixed under hero */
       .pro-tabs {
         display: flex;
         gap: 0.375rem;
-        padding: 0.625rem 1rem;
+        padding: 0.65rem 1rem;
         background: #f8fafc;
         border-bottom: 1px solid #e2e8f0;
-        margin: 0 -1.25rem;
+        margin: 0;
+        flex-shrink: 0;
+      }
+      
+      /* Only tab bodies scroll */
+      .pro-tab-panels {
+        flex: 1;
+        min-height: 0;
+        overflow-x: hidden;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+        padding: 0 1.25rem calc(1rem + env(safe-area-inset-bottom, 0px));
+        box-sizing: border-box;
+      }
+      
+      .pro-tab-panels::-webkit-scrollbar {
+        width: 0;
+        height: 0;
+        background: transparent;
       }
       
       .pro-tab {
@@ -927,7 +1088,7 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
       /* Tab Content */
       .pro-tab-content {
         display: none;
-        padding: 1rem 0;
+        padding: 0.55rem 0 0.5rem;
         animation: fadeIn 0.3s ease;
       }
       
@@ -940,18 +1101,18 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
         to { opacity: 1; transform: translateY(0); }
       }
       
-      /* Info List */
+      /* Info List — two columns on wide profile sheet */
       .pro-info-list {
-        display: flex;
-        flex-direction: column;
-        gap: 0.75rem;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.65rem;
       }
       
       .pro-info-item {
         display: flex;
         align-items: center;
-        gap: 0.875rem;
-        padding: 0.75rem 0.875rem;
+        gap: 0.75rem;
+        padding: 0.65rem 0.75rem;
         background: #f8fafc;
         border-radius: 12px;
         border: 1px solid #e2e8f0;
@@ -963,14 +1124,19 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
         border-color: #cbd5e1;
       }
       
+      .pro-info-item--span {
+        grid-column: 1 / -1;
+        align-items: flex-start;
+      }
+      
       .pro-info-icon {
-        width: 40px;
-        height: 40px;
+        width: 36px;
+        height: 36px;
         border-radius: 10px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1.1rem;
+        font-size: 1rem;
         background: linear-gradient(135deg, #125435 0%, #1a7a4d 100%);
         color: white;
         flex-shrink: 0;
@@ -997,8 +1163,24 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
         word-break: break-word;
       }
       
+      .pro-profile-edit-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.65rem;
+      }
+      
+      @media (max-width: 540px) {
+        .pro-info-list {
+          grid-template-columns: 1fr;
+        }
+        .pro-profile-edit-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      
       /* Module Badges */
       .pro-modules-wrap {
+        margin-top: 1rem;
         padding: 0.875rem;
         background: #f8fafc;
         border-radius: 12px;
@@ -1240,68 +1422,97 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
         gap: 0.75rem;
       }
       
-      /* Mobile Responsive - Profile Modal */
+      /* Mobile Responsive - Profile Modal (phones) */
       @media (max-width: 480px) {
         .pro-sig-grid {
           grid-template-columns: 1fr;
         }
         
-        .pro-container {
-          padding: 0 1rem 1.5rem;
+        .pro-tab-panels {
+          padding: 0 0.875rem calc(1rem + env(safe-area-inset-bottom, 0px));
+          box-sizing: border-box;
         }
         
         .pro-hero {
-          margin: 0 -1rem;
-          padding: 2rem 1rem 1.5rem;
+          margin: 0;
+          padding: 0.85rem 3.25rem 0.95rem 0.75rem;
+        }
+        
+        .pro-hero-main {
+          gap: 0.65rem;
         }
         
         .pro-avatar {
-          width: 70px;
-          height: 70px;
-          font-size: 1.5rem;
-        }
-        
-        .pro-avatar::after {
-          width: 14px;
-          height: 14px;
-        }
-        
-        .pro-name {
+          width: 56px;
+          height: 56px;
           font-size: 1.2rem;
         }
         
-        .pro-role-badge {
-          font-size: 0.7rem;
-          padding: 0.375rem 0.75rem;
-        }
-        
-        .pro-tabs {
-          margin: 0 -1rem;
-          padding: 0.625rem 0.5rem;
-          gap: 0.25rem;
-        }
-        
-        .pro-tab {
-          padding: 0.5rem 0.375rem;
-          font-size: 0.7rem;
-          gap: 0.25rem;
-        }
-        
-        .pro-tab svg {
+        .pro-avatar::after {
           width: 12px;
           height: 12px;
         }
         
+        .pro-name {
+          font-size: 1rem;
+          line-height: 1.25;
+          max-width: 100%;
+          padding: 0;
+        }
+        
+        .pro-role-badge {
+          font-size: 0.65rem;
+          padding: 0.3rem 0.6rem;
+          max-width: 100%;
+          flex-wrap: wrap;
+          justify-content: flex-start;
+          text-align: left;
+          line-height: 1.35;
+        }
+        
+        .pro-tabs {
+          margin: 0;
+          padding: 0.55rem 0.45rem;
+          gap: 0.35rem;
+          width: 100%;
+          max-width: none;
+          box-sizing: border-box;
+          justify-content: stretch;
+        }
+        
+        .pro-tab {
+          flex: 1;
+          min-width: 0;
+          min-height: 44px;
+          padding: 0.45rem 0.35rem;
+          font-size: 0.7rem;
+          gap: 0.3rem;
+          border-radius: 10px;
+          -webkit-tap-highlight-color: rgba(18, 84, 53, 0.12);
+        }
+        
+        .pro-tab svg {
+          width: 20px;
+          height: 20px;
+          flex-shrink: 0;
+        }
+        
+        .pro-tab span {
+          display: none;
+        }
+        
         .pro-tab-content {
-          padding: 1rem 0;
+          padding: 0.65rem 0 0;
         }
         
         .pro-info-list {
-          gap: 0.625rem;
+          gap: 0.5rem;
+          grid-template-columns: 1fr;
         }
         
         .pro-info-item {
-          padding: 0.625rem 0.75rem;
+          align-items: flex-start;
+          padding: 0.625rem 0.625rem;
           gap: 0.625rem;
         }
         
@@ -1310,6 +1521,7 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
           height: 36px;
           font-size: 0.95rem;
           border-radius: 8px;
+          margin-top: 0.1rem;
         }
         
         .pro-info-label {
@@ -1317,11 +1529,13 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
         }
         
         .pro-info-value {
-          font-size: 0.85rem;
+          font-size: 0.875rem;
+          line-height: 1.35;
         }
         
         .pro-modules-wrap {
-          padding: 0.75rem;
+          padding: 0.625rem 0.625rem;
+          margin-top: 0.75rem;
         }
         
         .pro-modules-title {
@@ -1329,14 +1543,26 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
           margin-bottom: 0.5rem;
         }
         
+        .pro-modules-list {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 0.45rem;
+        }
+        
         .pro-module-badge {
-          padding: 0.375rem 0.625rem;
-          font-size: 0.7rem;
+          width: 100%;
+          max-width: 100%;
+          box-sizing: border-box;
+          justify-content: flex-start;
+          padding: 0.5rem 0.7rem;
+          font-size: 0.8125rem;
         }
         
         .pro-security-card {
-          padding: 0.625rem;
-          gap: 0.625rem;
+          flex-direction: column;
+          text-align: center;
+          gap: 0.75rem;
+          padding: 0.75rem 0.625rem;
         }
         
         .pro-security-icon {
@@ -1353,8 +1579,16 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
           font-size: 0.7rem;
         }
         
+        .pro-security-action {
+          width: 100%;
+        }
+        
+        .pro-security-action .pro-btn {
+          width: 100%;
+        }
+        
         .pro-btn {
-          padding: 0.375rem 0.75rem;
+          padding: 0.45rem 0.85rem;
           font-size: 0.7rem;
         }
         
@@ -1373,12 +1607,14 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
         .pro-sig-comment {
           min-height: 70px;
           padding: 0.625rem;
-          font-size: 0.75rem;
+          font-size: 0.8rem;
         }
         
         .pro-member-since {
-          font-size: 0.75rem;
-          padding: 0.75rem 0 0.25rem;
+          font-size: 0.8125rem;
+          padding: 1rem 0 0.35rem;
+          margin-top: 0.35rem;
+          line-height: 1.45;
         }
       }
       
@@ -1578,72 +1814,21 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
         color: #334155;
       }
       
-      /* Responsive */
-      @media (max-width: 480px) {
-        .pro-hero {
-          padding: 2rem 1rem 1.25rem;
-          margin: -1.75rem -1.75rem 0;
-        }
-        
-        .pro-avatar {
-          width: 76px;
-          height: 76px;
-          font-size: 1.75rem;
-        }
-        
-        .pro-name {
-          font-size: 1.3rem;
-        }
-        
-        .pro-tabs {
-          padding: 0.5rem 0.75rem;
-          margin: 0 -1.75rem;
-        }
-        
-        .pro-tab {
-          padding: 0.5rem;
-          font-size: 0.75rem;
-        }
-        
-        .pro-tab span {
-          display: none;
-        }
-        
-        .pro-info-item {
-          padding: 0.75rem;
-        }
-        
-        .pro-info-icon {
-          width: 36px;
-          height: 36px;
-          font-size: 1rem;
-        }
-        
-        .pro-security-card {
-          flex-direction: column;
-          text-align: center;
-          gap: 0.75rem;
-        }
-        
-        .pro-security-action {
-          width: 100%;
-        }
-        
-        .pro-security-action .pro-btn {
-          width: 100%;
-        }
-      }
     </style>
     
     <div class="pro-container">
       <!-- Hero Section -->
       <div class="pro-hero">
         <div class="pro-hero-content">
-          <div class="pro-avatar">${getInitials()}</div>
-          <h2 class="pro-name">${escapeHtml(user.full_name || user.username)}</h2>
-          <div class="pro-role-badge">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
-            ${escapeHtml(getDesignationDisplay())} • ${escapeHtml(getRoleDisplay())}
+          <div class="pro-hero-main">
+            <div class="pro-avatar">${getInitials()}</div>
+            <div class="pro-hero-text">
+              <h2 class="pro-name">${escapeHtml(user.full_name || user.username)}</h2>
+              <div class="pro-role-badge">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                ${escapeHtml(getDesignationDisplay())} • ${escapeHtml(getRoleDisplay())}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -1664,6 +1849,7 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
         </button>
       </div>
       
+      <div class="pro-tab-panels">
       <!-- Profile Tab -->
       <div class="pro-tab-content active" data-content="profile">
         <div class="pro-info-list">
@@ -1681,9 +1867,50 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
               <div class="pro-info-value">${escapeHtml(user.email || 'Not provided')}</div>
             </div>
           </div>
+          <div class="pro-info-item">
+            <div class="pro-info-icon">💼</div>
+            <div class="pro-info-content">
+              <div class="pro-info-label">Job title (HR)</div>
+              <div class="pro-info-value">${hrJobTitle}</div>
+            </div>
+          </div>
+          <div class="pro-info-item">
+            <div class="pro-info-icon">🏖️</div>
+            <div class="pro-info-content">
+              <div class="pro-info-label">Annual leave (days)</div>
+              <div class="pro-info-value">${annualLeavesDisp}</div>
+            </div>
+          </div>
+          <div class="pro-info-item">
+            <div class="pro-info-icon">📋</div>
+            <div class="pro-info-content">
+              <div class="pro-info-label">Other leave (days)</div>
+              <div class="pro-info-value">${otherLeavesDisp}</div>
+            </div>
+          </div>
+          <div class="pro-info-item pro-info-item--span">
+            <div class="pro-info-icon">👔</div>
+            <div class="pro-info-content">
+              <div class="pro-info-label">Reporting manager</div>
+              <div class="pro-info-value">${reportingMgrDisp}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="pro-profile-edit" style="margin: 0.85rem 0 0; padding: 1rem 1rem; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">
+          <div style="font-size: 0.82rem; font-weight: 700; color: #334155; margin-bottom: 0.5rem;">Your details</div>
+          <p style="font-size: 0.72rem; color: #64748b; margin: 0 0 0.55rem;">Used for your name on documents and tenure on the home dashboard. Job title, leave balances, and reporting manager are maintained by an administrator.</p>
+          <div class="pro-profile-edit-grid">
+            <label class="pro-mini-lbl"><span style="display:block;margin-bottom:.25rem;font-size:.74rem;color:#64748b;">Full name</span>
+              <input type="text" id="profileManagedFullName" style="width:100%;padding:0.5rem 0.65rem;border:1px solid #cbd5e1;border-radius:8px;font-size:0.9rem;box-sizing:border-box;" value="${escapeHtml(user.full_name || '')}" maxlength="120" autocomplete="name" /></label>
+            <label class="pro-mini-lbl"><span style="display:block;margin-bottom:.25rem;font-size:.74rem;color:#64748b;">Joined company</span>
+              <input type="date" id="profileManagedJoined" style="width:100%;padding:0.5rem 0.65rem;border:1px solid #cbd5e1;border-radius:8px;font-size:0.9rem;box-sizing:border-box;" value="${user.employment_start_date ? escapeHtml(String(user.employment_start_date).slice(0, 10)) : ''}" /></label>
+          </div>
+          <button type="button" class="pro-btn pro-btn-primary pro-btn-sm" id="profileManagedSaveBtn" style="margin-top: 0.65rem;">Save profile details</button>
+          <p id="profileManagedSaveHint" style="font-size: 0.74rem; color: #64748b; margin: 0.5rem 0 0;"></p>
         </div>
         
-        <div class="pro-modules-wrap" style="margin-top: 1rem;">
+        <div class="pro-modules-wrap">
           <div class="pro-modules-title">Module Access</div>
           <div class="pro-modules-list">
             ${moduleBadges}
@@ -1758,6 +1985,7 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
           </div>
         </div>
       </div>
+      </div><!-- /.pro-tab-panels -->
       
       <!-- Signature Popup -->
       <div class="pro-popup-overlay" id="sigPopupOverlay">
@@ -2007,6 +2235,59 @@ function initProfileSignatureDefaults(user) {
   }
 }
 
+function initManagedProfileFields() {
+  const btn = document.getElementById('profileManagedSaveBtn');
+  const hint = document.getElementById('profileManagedSaveHint');
+  if (!btn) return;
+
+  btn.addEventListener('click', async () => {
+    const token = localStorage.getItem('access_token');
+    const nameEl = document.getElementById('profileManagedFullName');
+    const joinedEl = document.getElementById('profileManagedJoined');
+    if (!token) {
+      if (hint) hint.textContent = 'Please log in again.';
+      return;
+    }
+    btn.disabled = true;
+    if (hint) hint.textContent = 'Saving…';
+    try {
+      const res = await fetch('/api/auth/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          full_name: (nameEl && nameEl.value) ? nameEl.value.trim() : '',
+          employment_start_date: (joinedEl && joinedEl.value) ? joinedEl.value : ''
+        })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Could not save');
+      }
+      if (hint) hint.textContent = 'Saved.';
+      if (data.user) {
+        localStorage.setItem('user', JSON.stringify(data.user));
+        if (typeof loadUserWelcome === 'function') {
+          loadUserWelcome();
+        }
+        if (typeof loadDashboardStats === 'function') {
+          loadDashboardStats();
+        }
+      }
+    } catch (e) {
+      if (hint) hint.textContent = e.message || 'Save failed.';
+    } finally {
+      btn.disabled = false;
+      setTimeout(() => {
+        const h = document.getElementById('profileManagedSaveHint');
+        if (h && (h.textContent === 'Saved.' || h.textContent === 'Saving…')) h.textContent = '';
+      }, 2500);
+    }
+  });
+}
+
 // ===========================================
 // Change Password Functions
 // ===========================================
@@ -2108,26 +2389,6 @@ window.submitChangePassword = async function() {
 };
 
 // ===========================================
-// Contact Modal Functions
-// ===========================================
-
-window.openContactModal = function() {
-  const modal = document.getElementById('contactModal');
-  if (modal) {
-    modal.classList.add('active');
-    document.body.style.overflow = 'hidden';
-  }
-};
-
-window.closeContactModal = function() {
-  const modal = document.getElementById('contactModal');
-  if (modal) {
-    modal.classList.remove('active');
-    document.body.style.overflow = '';
-  }
-};
-
-// ===========================================
 // Logout Function
 // ===========================================
 
@@ -2165,21 +2426,70 @@ async function handleLogout() {
 // Dashboard stats widget (right-side box)
 // ===========================================
 
+function dashboardStatHrefFromLabel(label) {
+  if (!label) return '/workflow/submitted-forms';
+  var L = String(label).toLowerCase();
+  if (L.indexOf('inspection') >= 0) return '/inspection/';
+  if (L.indexOf('hr form') >= 0 || L.indexOf('my hr') >= 0) return '/hr/';
+  if (L.indexOf('document') >= 0) return '/dochub';
+  if (L.indexOf('device') >= 0) return '/admin/devices';
+  if (L.indexOf('active user') >= 0) return '/admin/team-management';
+  if (L.indexOf('days with injaaz') >= 0) return '/workflow/submitted-forms';
+  if (L.indexOf('material') >= 0 || L.indexOf('catalog') >= 0) return '/procurement/';
+  if (L.indexOf('project') >= 0 || L.indexOf('rfp') >= 0 || L.indexOf('pipeline') >= 0) return '/admin/bd';
+  if (L.indexOf('pending') >= 0) return '/workflow/pending-reviews';
+  if (L.indexOf('completed') >= 0 || L.indexOf('completion rate') >= 0) return '/workflow/submitted-forms';
+  if (L.indexOf('form') >= 0) return '/workflow/submitted-forms';
+  return '/workflow/submitted-forms';
+}
+
+function bindDashboardStatCard(card) {
+  if (!card) return;
+  card.onclick = function (e) {
+    if (card.hidden) return;
+    if (e.target.closest('.dashboard-stat-joined-link')) return;
+    e.preventDefault();
+    e.stopPropagation();
+    var action = card.getAttribute('data-action');
+    if (action === 'profile') {
+      if (typeof window.openProfileModal === 'function') window.openProfileModal();
+      return;
+    }
+    var href = card.getAttribute('data-href');
+    if (href) window.location.assign(href);
+  };
+}
+
+function applyDashboardStatCardLinks(metrics) {
+  if (!Array.isArray(metrics)) return;
+  document.querySelectorAll('.dashboard-stat-card--clickable[data-metric-index]').forEach(function (card) {
+    var idx = parseInt(card.getAttribute('data-metric-index'), 10);
+    var m = metrics[idx];
+    var label = m && m.label ? m.label : '';
+    var href = (m && m.href) ? String(m.href) : dashboardStatHrefFromLabel(label);
+    card.removeAttribute('data-action');
+    card.setAttribute('data-href', href);
+    if (label) card.setAttribute('title', 'Open ' + label);
+    bindDashboardStatCard(card);
+  });
+  ['stat-card-annual', 'stat-card-sick'].forEach(function (id) {
+    var card = document.getElementById(id);
+    if (!card || card.hidden) return;
+    card.removeAttribute('data-href');
+    card.setAttribute('data-action', 'profile');
+    card.setAttribute('title', 'View profile');
+    bindDashboardStatCard(card);
+  });
+}
+
 function loadDashboardStats() {
   const widget = document.querySelector('.dashboard-widget');
   if (!widget) return;
   // Review History page populates its widget from submission data, not global stats
   if (document.body.classList.contains('review-dashboard')) return;
 
-  const textEl = document.getElementById('dashboard-activity-text');
-  const timeEl = document.getElementById('dashboard-activity-time');
-  const listEl = document.getElementById('dashboard-activity-list');
-
   const token = localStorage.getItem('access_token');
-  if (!token) {
-    if (textEl) textEl.textContent = 'Sign in to see activity';
-    return;
-  }
+  if (!token) return;
 
   authenticatedFetch('/api/workflow/dashboard-stats')
     .then(function (response) {
@@ -2190,26 +2500,70 @@ function loadDashboardStats() {
       });
     })
     .then(function (result) {
-      if (!result.ok || !result.body) {
-        if (textEl) textEl.textContent = 'Unable to load stats. Try signing in again.';
-        if (timeEl) timeEl.textContent = '';
-        if (listEl) listEl.innerHTML = '';
-        return;
-      }
+      if (!result.ok || !result.body) return;
       // API: hero_metrics + dashboard_role, or legacy forms_submitted / pending_review / ...
       var d = result.body;
       var metrics = d.hero_metrics;
       if (Array.isArray(metrics) && metrics.length) {
+        var joinedRow = document.getElementById('stat-label-row-3');
         for (var i = 0; i < 4; i++) {
           var m = metrics[i];
           var lbl = document.getElementById('stat-label-' + i);
           var val = document.getElementById('stat-value-' + i);
-          if (lbl && m && m.label) lbl.textContent = m.label;
+          if (lbl && m && m.label) {
+            if (i === 3 && joinedRow) {
+              var joinedDate = m.joined_date || d.employment_start_date;
+              if (joinedDate) {
+                joinedRow.innerHTML = escapeHtml(m.label) + ' · Joined <a href="#" id="stat-joined-link-3" class="dashboard-stat-joined-link">' + escapeHtml(joinedDate) + '</a>';
+                var joinedLink = document.getElementById('stat-joined-link-3');
+                if (joinedLink) {
+                  joinedLink.onclick = function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (typeof openProfileModal === 'function') openProfileModal();
+                  };
+                }
+              } else {
+                joinedRow.innerHTML = '<span id="stat-label-3">' + escapeHtml(m.label) + '</span>';
+              }
+            } else {
+              lbl.textContent = m.label;
+            }
+          }
           if (val && m) {
             var v = m.value;
             val.textContent = v != null && v !== '' ? String(v) : '0';
           }
+          if (i === 3) {
+            var annualCard = document.getElementById('stat-card-annual');
+            var sickCard = document.getElementById('stat-card-sick');
+            var annualValEl = document.getElementById('leave-annual-value');
+            var sickValEl = document.getElementById('leave-sick-value');
+            var gridEl = document.getElementById('dashboard-stats-grid');
+            var annual = m && m.annual_leave_days != null ? m.annual_leave_days : null;
+            var other = m && m.other_leave_days != null ? m.other_leave_days : null;
+            if (annualCard && sickCard && annualValEl && sickValEl) {
+              if (annual != null || other != null) {
+                annualValEl.textContent = annual != null ? String(annual) : '0';
+                sickValEl.textContent = other != null ? String(other) : '0';
+                annualCard.hidden = false;
+                sickCard.hidden = false;
+                annualCard.removeAttribute('data-href');
+                annualCard.setAttribute('data-action', 'profile');
+                sickCard.removeAttribute('data-href');
+                sickCard.setAttribute('data-action', 'profile');
+                bindDashboardStatCard(annualCard);
+                bindDashboardStatCard(sickCard);
+                if (gridEl) gridEl.classList.add('has-leave');
+              } else {
+                annualCard.hidden = true;
+                sickCard.hidden = true;
+                if (gridEl) gridEl.classList.remove('has-leave');
+              }
+            }
+          }
         }
+        applyDashboardStatCardLinks(metrics);
       } else {
         var formsEl = document.getElementById('stat-value-0') || document.getElementById('stat-forms-submitted');
         var pendingEl = document.getElementById('stat-value-1') || document.getElementById('stat-pending-review');
@@ -2223,41 +2577,30 @@ function loadDashboardStats() {
         if (pendingEl) pendingEl.textContent = typeof d.pending_review === 'number' ? d.pending_review : (d.pending_review != null ? d.pending_review : '0');
         if (usersEl) usersEl.textContent = typeof d.active_users === 'number' ? d.active_users : (d.active_users != null ? d.active_users : '0');
         if (rateEl) rateEl.textContent = typeof d.completion_rate === 'number' ? d.completion_rate + '%' : (d.completion_rate != null ? d.completion_rate + '%' : '0%');
-      }
-
-      var activity = d.recent_activity || [];
-      var firstItem = document.getElementById('dashboard-activity-item');
-
-      if (activity.length === 0) {
-        if (textEl) textEl.textContent = 'No recent activity';
-        if (timeEl) timeEl.textContent = '';
-        if (listEl) listEl.innerHTML = '';
-      } else {
-        if (firstItem && textEl && timeEl) {
-          textEl.textContent = activity[0].text;
-          timeEl.textContent = activity[0].time_ago || '';
+        var joinedRowFb = document.getElementById('stat-label-row-3');
+        if (joinedRowFb) {
+          var lblFb = document.getElementById('stat-label-3');
+          if (lblFb) joinedRowFb.innerHTML = '<span id="stat-label-3">' + escapeHtml(lblFb.textContent || 'Completion rate') + '</span>';
         }
-        if (listEl) {
-          listEl.innerHTML = activity.slice(1, 5).map(function (a) {
-            return '<div class="dashboard-activity-item"><span class="dashboard-activity-icon">✓</span><span class="dashboard-activity-text">' + escapeHtml(a.text) + '</span><span class="dashboard-activity-time">' + escapeHtml(a.time_ago || '') + '</span></div>';
-          }).join('');
-        }
+        var annualCardFb = document.getElementById('stat-card-annual');
+        var sickCardFb = document.getElementById('stat-card-sick');
+        var gridFb = document.getElementById('dashboard-stats-grid');
+        if (annualCardFb) annualCardFb.hidden = true;
+        if (sickCardFb) sickCardFb.hidden = true;
+        if (gridFb) gridFb.classList.remove('has-leave');
       }
     })
-    .catch(function (err) {
-      if (textEl) textEl.textContent = 'Unable to load activity';
-      if (timeEl) timeEl.textContent = '';
-      if (listEl) listEl.innerHTML = '';
-    });
+    .catch(function () {});
 }
 
 function loadInspectionDashboardStats() {
   var grid = document.getElementById('inspection-stats-grid');
   if (!grid) return;
+  var cardCount = grid.querySelectorAll('.dashboard-stat-card').length || 3;
 
   var token = localStorage.getItem('access_token');
   if (!token) {
-    for (var j = 0; j < 4; j++) {
+    for (var j = 0; j < cardCount; j++) {
       var ve = document.getElementById('insp-stat-value-' + j);
       if (ve) ve.textContent = '—';
     }
@@ -2275,13 +2618,13 @@ function loadInspectionDashboardStats() {
     .then(function (result) {
       var metrics = result.body && result.body.hero_metrics;
       if (!result.ok || !Array.isArray(metrics) || !metrics.length) {
-        for (var i = 0; i < 4; i++) {
+        for (var i = 0; i < cardCount; i++) {
           var vv = document.getElementById('insp-stat-value-' + i);
           if (vv) vv.textContent = '—';
         }
         return;
       }
-      for (var k = 0; k < 4; k++) {
+      for (var k = 0; k < cardCount; k++) {
         var m = metrics[k];
         var lbl = document.getElementById('insp-stat-label-' + k);
         var val = document.getElementById('insp-stat-value-' + k);
@@ -2289,11 +2632,13 @@ function loadInspectionDashboardStats() {
         if (val && m) {
           var v = m.value;
           val.textContent = v != null && v !== '' ? String(v) : '0';
+        } else if (val && !m) {
+          val.textContent = '—';
         }
       }
     })
     .catch(function () {
-      for (var e = 0; e < 4; e++) {
+      for (var e = 0; e < cardCount; e++) {
         var el = document.getElementById('insp-stat-value-' + e);
         if (el) el.textContent = '—';
       }
@@ -2311,7 +2656,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const isReviewHistoryPage = document.body.classList.contains('review-dashboard');
   const hasMainNav = document.getElementById('nav') && document.querySelector('#nav .nav-center');
 
-  // Run nav visibility on any page with main dashboard nav (admin, hr, mmr, procurement, bd-email, etc.)
+  // Run nav visibility on any page with main dashboard nav (admin, hr, mmr, procurement, etc.)
   function runNavVisibility() {
     const userStr = localStorage.getItem('user');
     if (userStr) {
@@ -2357,7 +2702,6 @@ document.addEventListener('DOMContentLoaded', function() {
     if (modulesSection) {
       modulesSection.style.display = 'block';
       modulesSection.style.visibility = 'visible';
-      modulesSection.style.opacity = '1';
     }
     
     const modulesGrid = document.getElementById('modulesGrid');
@@ -2367,7 +2711,14 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     loadUserWelcome();
+    document.querySelectorAll('.dashboard-stat-card--clickable').forEach(bindDashboardStatCard);
     loadDashboardStats();
+
+    let _moduleGridResizeTimer;
+    window.addEventListener('resize', function () {
+      clearTimeout(_moduleGridResizeTimer);
+      _moduleGridResizeTimer = setTimeout(updateModuleGridLayout, 150);
+    });
     
     // Check immediately if user data exists
     const userStr = localStorage.getItem('user');
@@ -2435,47 +2786,22 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  // Contact link click handler
-  const contactLink = document.getElementById('contactLink');
-  if (contactLink) {
-    contactLink.addEventListener('click', function(e) {
-      e.preventDefault();
-      openContactModal();
-    });
-  }
-  const footerContactLink = document.getElementById('footerContactLink');
-  if (footerContactLink) {
-    footerContactLink.addEventListener('click', function(e) {
-      e.preventDefault();
-      openContactModal();
-    });
-  }
-
-  // Close modal when clicking outside
-  const contactModal = document.getElementById('contactModal');
-  if (contactModal) {
-    contactModal.addEventListener('click', function(e) {
-      if (e.target === this) {
-        closeContactModal();
-      }
-    });
-  }
-  
   // Close modal with Escape key
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
-      closeContactModal();
       closeProfileModal();
     }
   });
   
-  // Smooth scroll for anchor links (exclude Profile/Contact which open modals)
+  // Smooth scroll for anchor links (exclude Profile which opens modal)
   document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-    if (anchor.id === 'profileLink' || anchor.id === 'contactLink') return;
+    if (anchor.id === 'profileLink') return;
     anchor.addEventListener('click', function (e) {
-      e.preventDefault();
       const href = this.getAttribute('href');
       if (!href || href === '#') return;
+      /* href may change after hydrate (e.g. # → /hr/download-pdf/...) — only intercept fragment jumps */
+      if (!href.startsWith('#')) return;
+      e.preventDefault();
       const target = document.querySelector(href);
       if (target) {
         target.scrollIntoView({
@@ -2511,6 +2837,7 @@ document.addEventListener('DOMContentLoaded', function() {
   function closeMobileMenu() {
     if (mobileMenuToggle) {
       mobileMenuToggle.classList.remove('active');
+      mobileMenuToggle.classList.remove('is-hint-paused');
       mobileMenuToggle.setAttribute('aria-expanded', 'false');
     }
     if (mobileMenuDrawer) {
@@ -2524,7 +2851,8 @@ document.addEventListener('DOMContentLoaded', function() {
   function populateDrawer() {
     if (!navMenu || !mobileMenuDrawerList) return;
     mobileMenuDrawerList.innerHTML = '';
-    navMenu.querySelectorAll('li').forEach(function(li) {
+    Array.from(navMenu.children).forEach(function(li) {
+      if (!li || li.tagName !== 'LI') return;
       if (getComputedStyle(li).display === 'none') return;
       var clone = li.cloneNode(true);
       clone.querySelectorAll('[id]').forEach(function(el) { el.removeAttribute('id'); });
@@ -2536,6 +2864,7 @@ document.addEventListener('DOMContentLoaded', function() {
     populateDrawer();
     if (mobileMenuToggle) {
       mobileMenuToggle.classList.add('active');
+      mobileMenuToggle.classList.add('is-hint-paused');
       mobileMenuToggle.setAttribute('aria-expanded', 'true');
     }
     if (mobileMenuDrawer) {
@@ -2573,19 +2902,50 @@ document.addEventListener('DOMContentLoaded', function() {
     mobileMenuDrawerList.addEventListener('click', function(e) {
       var a = e.target.closest('a');
       if (!a) return;
+      var parentLi = a.closest('li');
+      if (
+        parentLi &&
+        parentLi.classList.contains('has-submenu') &&
+        parentLi.classList.contains('has-submitted-dropdown') &&
+        !a.closest('.nav-submenu')
+      ) {
+        e.preventDefault();
+        parentLi.classList.toggle('open');
+        return;
+      }
       var text = (a.textContent || '').trim().toLowerCase();
       if (text === 'profile') {
         e.preventDefault();
         if (typeof openProfileModal === 'function') openProfileModal();
         closeMobileMenu();
-      } else if (text === 'contact') {
-        e.preventDefault();
-        if (typeof openContactModal === 'function') openContactModal();
-        closeMobileMenu();
       } else if (a.getAttribute('href') === '#' || a.getAttribute('href') === 'javascript:void(0)') {
         closeMobileMenu();
       } else {
         closeMobileMenu();
+      }
+    });
+  }
+
+  const submittedNavItem = document.getElementById('submitted-forms-menu-item');
+  if (submittedNavItem) {
+    const submittedTopLink = submittedNavItem.querySelector('a');
+    if (submittedTopLink) {
+      submittedTopLink.addEventListener('click', function(e) {
+        if (!submittedNavItem.classList.contains('has-submitted-dropdown')) return;
+        // Desktop / fine pointer: rely on CSS :hover for the menu; allow normal navigation / modified clicks.
+        const useClickToggle =
+          window.matchMedia('(hover: none), (pointer: coarse)').matches;
+        if (!useClickToggle) return;
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+        e.preventDefault();
+        e.stopPropagation();
+        submittedNavItem.classList.toggle('open');
+      });
+    }
+    document.addEventListener('click', function(e) {
+      if (!submittedNavItem.classList.contains('open')) return;
+      if (!submittedNavItem.contains(e.target)) {
+        submittedNavItem.classList.remove('open');
       }
     });
   }
@@ -2595,9 +2955,6 @@ document.addEventListener('DOMContentLoaded', function() {
   if (logoutBtn) {
     logoutBtn.addEventListener('click', handleLogout);
   }
-  
-  // Initialize notifications
-  initNotifications();
 });
 
 // ===========================================
@@ -2610,7 +2967,9 @@ function initNotifications() {
   const markAllReadBtn = document.getElementById('markAllRead');
   
   if (!notificationBtn || !notificationDropdown) return;
-  
+  if (notificationBtn.dataset.injaazNotifBound === '1') return;
+  notificationBtn.dataset.injaazNotifBound = '1';
+
   // Toggle dropdown
   notificationBtn.addEventListener('click', function(e) {
     e.stopPropagation();
@@ -2669,6 +3028,19 @@ async function loadNotificationCount() {
   }
 }
 
+function updateMobileMenuHint(count) {
+  const btn = document.getElementById('mobileMenuToggle');
+  if (!btn) return;
+  if (count > 0) {
+    btn.classList.add('has-unread-hint');
+    btn.setAttribute('aria-label', `Toggle menu (${count} pending)`);
+  } else {
+    btn.classList.remove('has-unread-hint');
+    btn.classList.remove('is-hint-paused');
+    btn.setAttribute('aria-label', 'Toggle menu');
+  }
+}
+
 function updateNotificationBadge(count) {
   const badge = document.getElementById('notificationBadge');
   if (!badge) return;
@@ -2696,11 +3068,15 @@ async function loadNotifications() {
     
     if (data.notifications && data.notifications.length > 0) {
       notificationList.innerHTML = data.notifications.map(n => {
+        const isInspection = (n.notification_type || '').startsWith('inspection_');
         const iconClass = n.notification_type.includes('approved') ? 'approved' : 
-                          n.notification_type.includes('rejected') ? 'rejected' : 'info';
+                          n.notification_type.includes('rejected') ? 'rejected' :
+                          isInspection ? 'pending' : 'info';
         const iconEmoji = n.notification_type.includes('approved') ? '✓' : 
-                          n.notification_type.includes('rejected') ? '✕' : 'ℹ';
-        const timeAgo = getTimeAgo(new Date(n.created_at));
+                          n.notification_type.includes('rejected') ? '✕' :
+                          isInspection ? '📋' : 'ℹ';
+        const createdAt = parseUtcInstantForRelative(n.created_at);
+        const timeAgo = createdAt ? getTimeAgo(createdAt) : '';
         
         return `
           <div class="notification-item ${n.is_read ? '' : 'unread'}" onclick="markNotificationRead(${n.id}, '${(n.submission_id || '').replace(/'/g, "\\'")}', '${(n.notification_type || '').replace(/'/g, "\\'")}')">
@@ -2736,21 +3112,89 @@ async function markNotificationRead(id, submissionId, notificationType) {
     
     // Navigate based on notification type when submission exists
     if (submissionId) {
-      const url = (notificationType === 'gm_approval_pending') ? '/hr/gm-approval' : '/hr/';
-      window.location.href = url;
+      if (notificationType === 'gm_approval_pending') {
+        window.location.href = '/hr/gm-approval';
+        return;
+      }
+      if (notificationType === 'hr_mgmt_chain_signoff') {
+        window.location.href = '/hr/mgmt-sign/' + encodeURIComponent(submissionId);
+        return;
+      }
+      if (notificationType === 'hr_replacement_signoff') {
+        window.location.href = '/hr/replacement-sign/' + encodeURIComponent(submissionId);
+        return;
+      }
+      if (notificationType === 'hr_replacement_complete') {
+        window.location.href = '/hr/my-requests';
+        return;
+      }
+      if (notificationType && notificationType.startsWith('inspection_')) {
+        // Approval-pending notifications go straight to the form so the
+        // reviewer can read items, comment, and sign in one click.
+        if (notificationType === 'inspection_approval_pending') {
+          window.location.href = submissionId
+            ? '/workflow/inspection/' + encodeURIComponent(submissionId)
+            : '/workflow/pending-reviews';
+          return;
+        }
+        // Approved/rejected notifications open the submitter's record.
+        if (notificationType === 'inspection_approved' || notificationType === 'inspection_rejected') {
+          window.location.href = submissionId
+            ? '/workflow/inspection/' + encodeURIComponent(submissionId)
+            : '/workflow/submitted-forms?scope=inspection';
+          return;
+        }
+        window.location.href = '/workflow/pending-reviews';
+        return;
+      }
+      window.location.href = '/hr/';
     }
   } catch (error) {
     console.error('Error marking notification as read:', error);
   }
 }
 
+window.__hrLastHrSubmissionId = '';
+window.hrGoToSubmittedRequest = function hrGoToSubmittedRequest() {
+  let id = String(window.__hrLastHrSubmissionId || '').trim();
+  if (!id) {
+    const el = document.getElementById('submissionId');
+    id = el ? String(el.textContent || '').trim() : '';
+  }
+  window.location.href = id
+    ? '/hr/my-requests?submission=' + encodeURIComponent(id)
+    : '/hr/my-requests';
+};
+
+/** Parse API timestamps: naive ISO strings from the server are stored as UTC (SQLAlchemy _utcnow). */
+function parseUtcInstantForRelative(iso) {
+  if (iso == null || iso === '') return null;
+  let str = String(iso).trim().replace(' ', 'T');
+  const hasTz = /[zZ]$/.test(str) || /[+-]\d{2}:?\d{2}$/.test(str);
+  if (!hasTz) str += 'Z';
+  const d = new Date(str);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
 function getTimeAgo(date) {
   const now = new Date();
   const seconds = Math.floor((now - date) / 1000);
-  
+
+  if (seconds < 0) return 'Just now';
   if (seconds < 60) return 'Just now';
   if (seconds < 3600) return `${Math.floor(seconds / 60)} min ago`;
   if (seconds < 86400) return `${Math.floor(seconds / 3600)} hr ago`;
   if (seconds < 604800) return `${Math.floor(seconds / 86400)} day${Math.floor(seconds / 86400) > 1 ? 's' : ''} ago`;
   return date.toLocaleDateString();
 }
+
+(function bootstrapNotificationsBell() {
+  if (typeof initNotifications !== 'function') return;
+  function bind() {
+    initNotifications();
+  }
+  bind();
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bind);
+  }
+})();

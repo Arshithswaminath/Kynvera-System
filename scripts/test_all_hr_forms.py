@@ -10,20 +10,137 @@ Generates sample-filled documents for every HR form type to verify:
 Usage:
   python scripts/test_all_hr_forms.py
   python scripts/test_all_hr_forms.py --pdf
+  python scripts/test_all_hr_forms.py --pdf-only   # PDF only (production path); no DOCX
+  # All PDF sample payloads include hr_mgmt_chain so exports match real app downloads
+  # (Management approvals — official sign-off trail on a following page/section).
   python scripts/test_all_hr_forms.py --check   # Run fidelity check after generation
 """
 from __future__ import annotations
 
 import argparse
+import base64
+import copy
 import os
 import sys
 import uuid
+from io import BytesIO
 from datetime import datetime, timedelta
 from pathlib import Path
 
 # Add project root to path
 BASE = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BASE))
+
+
+_DUMMY_SIGNATURE_DATA_URL: str | None = None
+
+
+def _dummy_signature_data_url() -> str:
+    """
+    One vivid green PNG as data URL — matches obvious “dummy signature” blocks in PDF reviews.
+    Also used for each hr_mgmt_chain step signature so the management table matches the main form slots.
+    """
+    global _DUMMY_SIGNATURE_DATA_URL
+    if _DUMMY_SIGNATURE_DATA_URL is None:
+        from PIL import Image
+
+        img = Image.new("RGB", (180, 72), (0, 230, 95))
+        buf = BytesIO()
+        img.save(buf, format="PNG")
+        _DUMMY_SIGNATURE_DATA_URL = (
+            "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode("ascii")
+        )
+    return _DUMMY_SIGNATURE_DATA_URL
+
+
+# Keys consumed by hr_pdf_builder._fsig / leave _sig_cell for each form (batch PDF previews).
+_FORM_SIGNATURE_KEYS: dict[str, tuple[str, ...]] = {
+    "leave_application": (
+        "employee_signature",
+        "replacement_signature",
+        "gm_signature",
+        "hr_signature",
+    ),
+    "leave": (
+        "employee_signature",
+        "replacement_signature",
+        "gm_signature",
+        "hr_signature",
+    ),
+    "commencement": ("employee_signature", "reporting_to_signature"),
+    "duty_resumption": ("employee_signature", "reporting_manager_signature", "gm_signature", "hr_signature"),
+    "passport_release": ("employee_signature", "gm_signature", "hr_signature"),
+    "grievance": (
+        "complainant_signature",
+        "hod_signature",
+        "second_party_signature",
+        "hr_signature",
+        "gm_signature",
+    ),
+    "performance_evaluation": (
+        "employee_signature",
+        "evaluator_signature",
+        "incharge_signature",
+        "gm_signature",
+        "hr_signature",
+    ),
+    "interview_assessment": ("interviewer_signature",),
+    "staff_appraisal": ("employee_signature", "hr_signature"),
+    "station_clearance": ("employee_signature", "hr_signature"),
+    "visa_renewal": ("employee_signature",),
+    "contract_renewal": ("evaluator_signature",),
+}
+
+
+def _apply_dummy_signatures(form_type: str, data: dict) -> dict:
+    keys = _FORM_SIGNATURE_KEYS.get(form_type)
+    if not keys:
+        return data
+    url = _dummy_signature_data_url()
+    for k in keys:
+        data[k] = url
+    return data
+
+
+def _sample_hr_mgmt_chain_pdf() -> dict:
+    """
+    Sample v1 chain appended to every HR PDF export (matches init_management_chain_on_submit shape).
+    Ensures batch-generated PDFs include “Management approvals — official sign-off trail” like manual exports.
+    Step signatures use the same dummy PNG as on-form slots so the Signature column shows green blocks.
+    """
+    sig_url = _dummy_signature_data_url()
+    return {
+        "v": 1,
+        "lane": "employee",
+        "current_index": 0,
+        "steps": [
+            {
+                "key": "reporting_manager",
+                "wf": "hr_mgmt_reporting_manager",
+                "pdf_label": "Reporting manager",
+                "signer_mode": "fixed_user",
+                "signer_id": 1,
+                "signed_by_name": "Taha",
+                "comments": "Approved",
+                "signature": sig_url,
+                "signed_at": "2026-05-06T10:00:00+00:00",
+            },
+            {
+                "key": "hr_head_office",
+                "wf": "hr_mgmt_hr_head_office",
+                "pdf_label": "HR (head office)",
+                "signer_mode": "designation",
+                "designation_gate": "hr_head_office",
+                "signed_by_name": None,
+                "comments": "—",
+                "signature": sig_url,
+                "signed_at": None,
+            },
+        ],
+        "pdf_hints": [
+            "Your reporting manager is the General Manager — one signature covers both steps on this form.",
+        ],
+    }
 
 
 def _mock_submission(module_type: str, form_data: dict, submission_id: str | None = None):
@@ -316,15 +433,76 @@ def _sample_form_data(form_type: str) -> dict:
         },
     }
 
-    return samples.get(form_type, common)
+    raw = copy.deepcopy(samples.get(form_type, common))
+    raw = _apply_dummy_signatures(form_type, raw)
+    raw.setdefault("hr_mgmt_chain", _sample_hr_mgmt_chain_pdf())
+    return raw
+
+
+def _write_pdf_and_verify(submission, pdf_path: Path) -> tuple[bool, str | None]:
+    """Generate PDF via production path and ensure output is a valid PDF file."""
+    from io import BytesIO
+    from module_hr.pdf_service import generate_hr_pdf
+
+    buf = BytesIO()
+    gen_ok, err = generate_hr_pdf(submission, buf)
+    if not gen_ok:
+        return False, err or "generate_hr_pdf failed"
+    raw = buf.getvalue()
+    if len(raw) < 100 or not raw.startswith(b"%PDF"):
+        return False, "output is not a valid PDF"
+    pdf_path.write_bytes(raw)
+    return True, None
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Auto-test all HR document forms.")
-    parser.add_argument("--pdf", action="store_true", help="Also generate PDF for each form")
+    parser.add_argument("--pdf", action="store_true", help="Also generate PDF for each form (after DOCX)")
+    parser.add_argument(
+        "--pdf-only",
+        dest="pdf_only",
+        action="store_true",
+        help="Generate PDFs only (uses generate_hr_pdf + field normalization; no DOCX)",
+    )
     parser.add_argument("--check", action="store_true", help="Run fidelity check after generation")
     parser.add_argument("--out", type=str, default="", help="Output directory (default: test_output/hr_forms_<timestamp>)")
     args = parser.parse_args()
+
+    if args.pdf_only:
+        from module_hr.pdf_service import get_supported_pdf_forms
+
+        form_types = get_supported_pdf_forms()
+        if not form_types:
+            print("ERROR: No supported PDF forms found.")
+            return 1
+
+        out_dir = Path(args.out) if args.out else BASE / "test_output" / f"hr_pdf_only_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        print(f"Output directory: {out_dir}")
+        print(f"PDF forms to generate: {len(form_types)}")
+        print()
+
+        ok = 0
+        fail = 0
+        for form_type in form_types:
+            form_data = _sample_form_data(form_type)
+            submission = _mock_submission(form_type, form_data)
+            pdf_path = out_dir / f"{form_type}_{submission.submission_id}.pdf"
+            try:
+                good, err = _write_pdf_and_verify(submission, pdf_path)
+                if good:
+                    print(f"  [OK] {form_type} -> {pdf_path.name}")
+                    ok += 1
+                else:
+                    print(f"  [FAIL] {form_type}: {err}")
+                    fail += 1
+            except Exception as e:
+                print(f"  [FAIL] {form_type}: {e}")
+                fail += 1
+
+        print()
+        print(f"Summary: OK={ok} FAIL={fail}")
+        return 0 if fail == 0 else 1
 
     from module_hr.docx_service import generate_hr_docx, get_supported_docx_forms
 
@@ -359,10 +537,8 @@ def main() -> int:
 
                 if args.pdf:
                     try:
-                        from module_hr.pdf_service import generate_hr_pdf
                         pdf_path = out_dir / f"{form_type}_{submission.submission_id}.pdf"
-                        with open(pdf_path, "wb") as pf:
-                            gen_ok, err = generate_hr_pdf(submission, pf)
+                        gen_ok, err = _write_pdf_and_verify(submission, pdf_path)
                         if gen_ok:
                             print(f"       PDF -> {pdf_path.name}")
                         else:

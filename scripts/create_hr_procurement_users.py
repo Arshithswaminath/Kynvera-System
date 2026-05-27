@@ -54,13 +54,17 @@ def create_users():
             # Set HR access
             hr_user.access_hr = True
             hr_user.access_procurement_module = False
-            hr_user.set_password('HRInjaaz@2026')
+            hr_password = os.environ.get('HR_MANAGER_PASSWORD')
+            if not hr_password:
+                print("[ERROR] HR_MANAGER_PASSWORD env var required to create HR Manager user.")
+                return
+            hr_user.set_password(hr_password)
             hr_user.password_changed = False
             db.session.add(hr_user)
             db.session.commit()
             print("[OK] HR Manager user created")
             print("   Username: hr_manager")
-            print("   Password: HRInjaaz@2026")
+            print("   Password: (set from HR_MANAGER_PASSWORD env var)")
         else:
             # Update existing user to have HR access
             hr_user.access_hr = True
@@ -86,13 +90,17 @@ def create_users():
             # Set Procurement access
             proc_user.access_hr = False
             proc_user.access_procurement_module = True
-            proc_user.set_password('ProcInjaaz@2026')
+            proc_password = os.environ.get('PROCUREMENT_MANAGER_PASSWORD')
+            if not proc_password:
+                print("[ERROR] PROCUREMENT_MANAGER_PASSWORD env var required to create Procurement Manager user.")
+                return
+            proc_user.set_password(proc_password)
             proc_user.password_changed = False
             db.session.add(proc_user)
             db.session.commit()
             print("[OK] Procurement Manager user created")
             print("   Username: procurement_manager")
-            print("   Password: ProcInjaaz@2026")
+            print("   Password: (set from PROCUREMENT_MANAGER_PASSWORD env var)")
         else:
             # Update existing user to have procurement access
             proc_user.access_procurement_module = True
@@ -101,14 +109,14 @@ def create_users():
             print("   Username: procurement_manager")
         
         print("\n" + "="*50)
-        print("USER ACCOUNTS CREATED:")
+        print("USER ACCOUNTS READY:")
         print("="*50)
         print("\nHR MODULE:")
         print("   Username: hr_manager")
-        print("   Password: HRInjaaz@2026")
+        print("   Password: (set via HR_MANAGER_PASSWORD env var if newly created)")
         print("\nPROCUREMENT MODULE:")
         print("   Username: procurement_manager")
-        print("   Password: ProcInjaaz@2026")
+        print("   Password: (set via PROCUREMENT_MANAGER_PASSWORD env var if newly created)")
         print("\nPlease change these passwords after first login!")
         print("="*50)
 

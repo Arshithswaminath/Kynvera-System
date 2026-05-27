@@ -5,26 +5,54 @@ Provides a clean interface for database operations used by all modules
 import logging
 from datetime import datetime
 from app.models import db, Submission, Job, File, User
+from common.inspection_inapp_notifications import is_inspection_submission
 from common.utils import random_id
 from common.datetime_utils import utc_now_naive
 
 logger = logging.getLogger(__name__)
 
 
+def _supervisor_for_submitter(user_id: int | None):
+    """Resolve the supervisor for a technician submitter via team mapping."""
+    if user_id:
+        try:
+            from app.models import TicketSupervisorTeam
+            entry = TicketSupervisorTeam.query.filter_by(
+                technician_id=user_id, is_active=True
+            ).first()
+            if entry:
+                sup = db.session.get(User, entry.supervisor_id)
+                if sup and sup.is_active:
+                    return sup
+        except Exception as e:
+            logger.debug(f"Team supervisor lookup failed for user {user_id}: {e}")
+    return User.query.filter_by(designation='supervisor', is_active=True).first()
+
+
 def _notify_supervisor(submission, session):
-    """Notify supervisor when technician submits a form"""
+    """Assign a supervisor to the submission and place it in the supervisor-review stage.
+
+    Workflow: technician → supervisor → OM → BD&PO → GM. The submission stays at
+    'supervisor_review' until the supervisor signs off; only then does it move to
+    'operations_manager_review'. (When the submitter is themselves a supervisor,
+    create_submission_db sets the status straight to 'operations_manager_review'.)
+    """
     try:
-        # Find a supervisor (first available supervisor)
-        supervisor = User.query.filter_by(designation='supervisor', is_active=True).first()
-        
+        submitter_id = getattr(submission, 'user_id', None)
+        supervisor = _supervisor_for_submitter(submitter_id)
+
         if supervisor and hasattr(submission, 'supervisor_id'):
             submission.supervisor_id = supervisor.id
-            submission.workflow_status = 'supervisor_notified'
-            submission.supervisor_notified_at = utc_now_naive()
+            submission.workflow_status = 'supervisor_review'
+            if hasattr(submission, 'supervisor_notified_at'):
+                submission.supervisor_notified_at = utc_now_naive()
             session.commit()
-            logger.info(f"✅ Notified supervisor {supervisor.username} about submission {submission.submission_id}")
+            logger.info(
+                "Assigned supervisor %s to submission %s; workflow_status=supervisor_review",
+                supervisor.username, submission.submission_id,
+            )
     except Exception as e:
-        logger.warning(f"Could not notify supervisor: {e}")
+        logger.warning(f"Could not assign supervisor: {e}")
 
 
 def _notify_manager(submission, session):
@@ -112,17 +140,30 @@ def create_submission_db(module_type, form_data, site_name=None, visit_date=None
         db.session.add(submission)
         db.session.commit()
         
-        # Trigger workflow notification if user has designation
-        if user_id:
+        # Assign supervisor / advance state for non-supervisor submitters.
+        # Supervisor submissions skip the supervisor stage (handled above).
+        if user_id and not is_supervisor_submission:
             try:
-                from app.models import User
+                from app.models import User as _UserCls
             except ImportError:
                 pass
             else:
-                user = db.session.get(User, user_id)
-                if user and user.designation == 'technician':
-                    # Find supervisor and notify
+                _u = db.session.get(_UserCls, user_id)
+                if _u and _u.designation != 'supervisor' and _u.role != 'admin':
                     _notify_supervisor(submission, db.session)
+
+        # In-app bell notification for the correct reviewer (supervisor for techs).
+        if is_inspection_submission(submission):
+            try:
+                from common.inspection_inapp_notifications import notify_inspection_stage
+                notify_inspection_stage(submission, submission.workflow_status)
+                db.session.commit()
+            except Exception as notify_err:
+                db.session.rollback()
+                logger.warning(
+                    "In-app inspection notification failed for %s: %s",
+                    submission.submission_id, notify_err,
+                )
         
         logger.info(f"✅ Created submission {submission_id} for {module_type}")
         return submission
@@ -270,6 +311,32 @@ def fail_job_db(job_id, error_message):
         logger.error(f"❌ Failed to mark job as failed: {e}")
 
 
+def get_latest_completed_job_id(submission_id_or_obj):
+    """Return job_id of the most recent completed report job for a submission."""
+    try:
+        from app.models import Job
+
+        if isinstance(submission_id_or_obj, Submission):
+            submission_db_id = submission_id_or_obj.id
+        elif isinstance(submission_id_or_obj, int):
+            submission_db_id = submission_id_or_obj
+        else:
+            submission = Submission.query.filter_by(submission_id=submission_id_or_obj).first()
+            if not submission:
+                return None
+            submission_db_id = submission.id
+
+        job = (
+            Job.query.filter_by(submission_id=submission_db_id, status='completed')
+            .order_by(Job.completed_at.desc().nullslast(), Job.id.desc())
+            .first()
+        )
+        return job.job_id if job else None
+    except Exception as e:
+        logger.error(f"Failed to resolve latest completed job: {e}")
+        return None
+
+
 def get_job_status_db(job_id):
     """
     Get job status from database
@@ -391,6 +458,17 @@ def update_submission_db(submission_id, form_data=None, site_name=None, visit_da
                     if 'supervisor_comments' in existing_form_data and existing_form_data.get('supervisor_comments'):
                         form_data['supervisor_comments'] = existing_form_data['supervisor_comments']
                         logger.info(f"✅ Preserved existing supervisor_comments from database")
+
+                # Preserve submitter_comments when supervisor sign-off updates other fields
+                if not (form_data.get('submitter_comments') or '').strip():
+                    existing_submitter = (existing_form_data.get('submitter_comments') or '').strip()
+                    if not existing_submitter and not submission.supervisor_reviewed_at:
+                        legacy = (existing_form_data.get('supervisor_comments') or '').strip()
+                        if legacy:
+                            existing_submitter = legacy
+                    if existing_submitter:
+                        form_data['submitter_comments'] = existing_submitter
+                        logger.info("✅ Preserved existing submitter_comments from database")
             
             # Merge form_data to preserve any fields not in the update
             # This ensures all existing data is preserved, not just signatures

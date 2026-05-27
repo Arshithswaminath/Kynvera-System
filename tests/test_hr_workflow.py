@@ -1,6 +1,9 @@
 """
 HR form workflow: submit → HR review/sign → GM final approval.
 Also sanity-checks PDF output includes approval signatures in form_data.
+
+init_management_chain_on_submit is monkeypatched so submissions stay on the legacy
+hr_review workflow expected by these tests.
 """
 import uuid
 from io import BytesIO
@@ -8,6 +11,17 @@ from io import BytesIO
 import pytest
 
 SIG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+
+
+@pytest.fixture(autouse=True)
+def _hr_workflow_without_mgmt_chain(monkeypatch):
+    """Keep legacy hr_review path for hr-approve/gm-approve assertions."""
+    import module_hr.routes as hr_routes
+
+    def _no_mgmt_chain(data, user):
+        return None
+
+    monkeypatch.setattr(hr_routes, "init_management_chain_on_submit", _no_mgmt_chain)
 
 
 def _login_headers(client, username, password):

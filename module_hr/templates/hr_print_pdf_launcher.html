@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Print PDF</title>
+  <style>
+    :root {
+      --bar-bg: rgba(248, 249, 250, 0.98);
+      --bar-bd: #dadce0;
+      --pri: #125435;
+    }
+    html, body { margin: 0; height: 100%; background: #525659; }
+    .toolbar {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 2;
+      display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;
+      padding: 0.5rem 0.75rem;
+      background: var(--bar-bg);
+      border-bottom: 1px solid var(--bar-bd);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+      font-size: 0.875rem;
+      color: #1c1c1e;
+    }
+    .toolbar span.hint { flex: 1 1 8rem; min-width: 0; }
+    .toolbar button {
+      padding: 0.45rem 1.1rem;
+      border-radius: 999px;
+      border: none;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.875rem;
+    }
+    .toolbar .btn-print { background: var(--pri); color: #fff; }
+    .toolbar .btn-print:hover { background: #0d3d24; }
+    .toolbar .btn-close {
+      background: #fff;
+      color: var(--pri);
+      border: 1.5px solid #dde8e2;
+    }
+    .toolbar .btn-close:hover { border-color: var(--pri); }
+    .frame-wrap {
+      position: fixed;
+      top: 48px;
+      left: 0;
+      right: 0;
+      bottom: 0;
+    }
+    iframe {
+      display: block;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      background: #525659;
+    }
+    @media print {
+      .toolbar { display: none !important; }
+      .frame-wrap { top: 0; }
+      html, body { background: #fff; height: auto; }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <span class="hint" id="hint">Loading PDF… If the print window does not open, click Print.</span>
+    <button type="button" class="btn-print" id="btnPrint">Print</button>
+    <button type="button" class="btn-close" id="btnClose" onclick="window.close()">Close</button>
+  </div>
+  <div class="frame-wrap">
+    <iframe id="pdfFrame" title="Document PDF" src="{{ pdf_url }}"></iframe>
+  </div>
+  <script>
+    (function () {
+      var frame = document.getElementById('pdfFrame');
+      var hint = document.getElementById('hint');
+      var attempt = 0;
+      var autoSettled = false;
+
+      function tryIframePrint() {
+        try {
+          var w = frame.contentWindow;
+          if (w && typeof w.print === 'function') {
+            w.focus();
+            w.print();
+            return true;
+          }
+        } catch (e) {}
+        return false;
+      }
+
+      function tryParentPrint() {
+        window.focus();
+        window.print();
+      }
+
+      function autoPrintPass() {
+        if (autoSettled) return;
+        if (tryIframePrint()) {
+          autoSettled = true;
+          hint.textContent = 'Use the print dialog to print or save as PDF.';
+          return;
+        }
+        attempt += 1;
+        if (attempt >= 3) {
+          autoSettled = true;
+          hint.textContent = 'Print this page — your browser will include the PDF below.';
+          tryParentPrint();
+        }
+      }
+
+      frame.addEventListener('load', function () {
+        hint.textContent = 'Opening print… You can use Print again if needed.';
+        setTimeout(autoPrintPass, 120);
+        setTimeout(autoPrintPass, 700);
+        setTimeout(autoPrintPass, 1600);
+      });
+
+      document.getElementById('btnPrint').addEventListener('click', function () {
+        if (!tryIframePrint()) {
+          tryParentPrint();
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,498 @@
+/**
+ * Injaaz unified “profile management” shells — mirrors Users & Teams technician modals:
+ * forest green gradient header, section rules, uppercase muted labels, soft inputs + green focus ring,
+ * footer actions (ghost cancel + gradient primary save).
+ *
+ * Activated by `.injz-mgmt` on modal roots (#accessModal, password portals, activity, create user).
+ */
+:root {
+  --injz-pm-green: #125435;
+  --injz-pm-green-2: #1a7a4d;
+  --injz-pm-line: #e2ede8;
+  --injz-pm-muted: #587569;
+  --injz-pm-fill: #fafdfb;
+  --injz-pm-shadow: 0 24px 64px rgba(0, 0, 0, 0.14);
+}
+
+/* Viewport-centered overlay — centers on the screen, not the page scroll position */
+.modal.injz-mgmt.admin-portal-modal,
+#userActivityModal.injz-mgmt.admin-portal-modal {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+  max-width: none !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: max(0.75rem, env(safe-area-inset-top, 0px))
+           max(0.75rem, env(safe-area-inset-right, 0px))
+           max(0.75rem, env(safe-area-inset-bottom, 0px))
+           max(0.75rem, env(safe-area-inset-left, 0px)) !important;
+  box-sizing: border-box !important;
+  z-index: 12000 !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  display: none !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-direction: row !important;
+}
+.modal.injz-mgmt.admin-portal-modal.active,
+#userActivityModal.injz-mgmt.admin-portal-modal.active {
+  display: flex !important;
+}
+.modal.injz-mgmt.admin-portal-modal > .modal-content,
+#userActivityModal.injz-mgmt > .modal-content {
+  margin: auto !important;
+  flex-shrink: 0 !important;
+  position: relative !important;
+  top: auto !important;
+  left: auto !important;
+  transform: none !important;
+  align-self: center !important;
+}
+
+/* ── Shell: technician-style card ───────────────────────────────────────── */
+.modal.injz-mgmt.admin-portal-modal .modal-content,
+#userActivityModal.injz-mgmt .modal-content {
+  padding: 0 !important;
+  border-radius: 18px !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(18, 84, 53, 0.12) !important;
+  box-shadow: var(--injz-pm-shadow) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  max-height: min(calc(100dvh - 1.5rem), 900px) !important;
+  background: #fff !important;
+  width: 100% !important;
+}
+
+.modal.injz-mgmt.admin-portal-modal.admin-profile-shell .modal-content {
+  width: min(680px, calc(100vw - 2rem)) !important;
+  max-width: 680px !important;
+}
+
+#userActivityModal.injz-mgmt .modal-content {
+  max-width: 900px !important;
+}
+
+/* ── Gradient top bar (Manage profile header, Create user, dialogs) ───────── */
+#accessModal.injz-mgmt .admin-profile-header {
+  flex-wrap: nowrap;
+  gap: 0.75rem;
+  margin-bottom: 0 !important;
+  padding: 1.05rem 1.2rem !important;
+  border-bottom: none !important;
+  background: linear-gradient(135deg, var(--injz-pm-green) 0%, var(--injz-pm-green-2) 100%) !important;
+  border-radius: 0 !important;
+}
+
+#createUserModal.injz-mgmt .admin-profile-header.modal-header {
+  margin-bottom: 0 !important;
+  padding: 1.05rem 1.2rem !important;
+  border-bottom: none !important;
+  background: linear-gradient(135deg, var(--injz-pm-green) 0%, var(--injz-pm-green-2) 100%) !important;
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  gap: 1rem !important;
+}
+
+#createUserModal.injz-mgmt #createUserModalTitle,
+#accessModal.injz-mgmt #userProfileModalTitle {
+  margin-bottom: 0.15rem !important;
+}
+
+#accessModal.injz-mgmt #userProfileSubtitle,
+#createUserModal.injz-mgmt .admin-profile-header p {
+  margin: 0.2rem 0 0 !important;
+  font-size: 0.82rem !important;
+  font-weight: 500 !important;
+  color: rgba(255, 255, 255, 0.88) !important;
+  line-height: 1.4 !important;
+}
+
+#accessModal.injz-mgmt .modal-title,
+#createUserModal.injz-mgmt .modal-title {
+  color: #fff !important;
+}
+
+/* Layout toggle + pills on dark header */
+#accessModal.injz-mgmt .admin-profile-layout-toggle {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 255, 255, 0.35) !important;
+  color: #fff !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-layout-toggle:hover {
+  background: rgba(255, 255, 255, 0.2) !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-layout-toggle[aria-pressed="true"] {
+  background: rgba(255, 255, 255, 0.22) !important;
+  border-color: rgba(255, 255, 255, 0.45) !important;
+  color: #fff !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-status-pill--on {
+  background: rgba(255, 255, 255, 0.92) !important;
+  color: var(--injz-pm-green) !important;
+  border-color: rgba(255, 255, 255, 0.5) !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-status-pill--off {
+  background: rgba(255, 255, 255, 0.18) !important;
+  color: rgba(255, 255, 255, 0.94) !important;
+  border-color: rgba(255, 255, 255, 0.35) !important;
+}
+
+/* Header close button (create user — replaces plain ×) */
+.injz-mgmt-xclose {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  border: 1.5px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.injz-mgmt-xclose:hover {
+  background: rgba(255, 255, 255, 0.28);
+  border-color: rgba(255, 255, 255, 0.55);
+}
+
+/* ── Form column + scrolling body ───────────────────────────────────────── */
+#accessModal.injz-mgmt .admin-profile-form,
+#createUserModal.injz-mgmt #createUserForm {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  overflow: hidden;
+}
+
+#accessModal.injz-mgmt .injz-mgmt-form-scroll {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  padding: 0.35rem 0 0.25rem;
+}
+
+#createUserModal.injz-mgmt #createUserForm .admin-profile-section {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+/* ── Sections: muted caps labels + divider line ───────────────────────────── */
+#accessModal.injz-mgmt .admin-profile-section,
+#createUserModal.injz-mgmt .admin-profile-section {
+  margin: 0 0 0.25rem !important;
+  padding: 0.65rem 1.15rem 1rem !important;
+  border: none !important;
+  border-bottom: 1px solid var(--injz-pm-line) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-section:last-of-type,
+#createUserModal.injz-mgmt .admin-profile-section:last-of-type {
+  border-bottom: none !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-section h3,
+#createUserModal.injz-mgmt .admin-profile-section h3 {
+  font-size: 0.68rem !important;
+  font-weight: 800 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.07em !important;
+  color: var(--injz-pm-muted) !important;
+  margin: 0.85rem 0 0.5rem !important;
+  padding: 0 !important;
+}
+
+/* Create-user: inject section label via sibling — use simple top margin title block */
+#createUserModal.injz-mgmt form .admin-profile-section .admin-profile-grid {
+  padding-top: 0.35rem;
+}
+
+#accessModal.injz-mgmt .admin-profile-section h3 {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+  border-bottom: none !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-section h3::before,
+#accessModal.injz-mgmt.admin-profile-shell--v2 .admin-profile-section h3::before {
+  display: none !important;
+  content: none !important;
+}
+
+#createUserModal.injz-mgmt .admin-profile-section h3::before {
+  display: none !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-section h3::after,
+#accessModal.injz-mgmt.admin-profile-shell.admin-profile-shell--v2 .admin-profile-section h3::after,
+#createUserModal.injz-mgmt .admin-profile-section h3::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--injz-pm-line);
+  display: block !important;
+}
+
+#createUserModal.injz-mgmt .admin-profile-section h3 {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+  border-bottom: none !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-section:first-of-type h3,
+#createUserModal.injz-mgmt .admin-profile-section:first-of-type h3 {
+  margin-top: 0.35rem !important;
+}
+
+/* Line layout (Cards toggle): same technician shell hierarchy */
+#accessModal.injz-mgmt.admin-profile-shell--v2 .modal-content {
+  background: #fff !important;
+}
+
+#accessModal.injz-mgmt.admin-profile-shell--v2 .admin-profile-header {
+  background: linear-gradient(135deg, var(--injz-pm-green), var(--injz-pm-green-2)) !important;
+}
+
+#accessModal.injz-mgmt.admin-profile-shell--v2 .admin-profile-form {
+  padding: 0 !important;
+}
+
+#accessModal.injz-mgmt.admin-profile-shell--v2 .admin-profile-section {
+  border: none !important;
+  border-radius: 0 !important;
+  border-bottom: 1px solid var(--injz-pm-line) !important;
+}
+
+#accessModal.injz-mgmt.admin-profile-shell--v2 .admin-profile-section h3 {
+  border-bottom: none !important;
+  text-transform: uppercase !important;
+  font-weight: 800 !important;
+  color: var(--injz-pm-muted) !important;
+}
+
+/* Field labels — inspection form style */
+#accessModal.injz-mgmt .form-label,
+#createUserModal.injz-mgmt .form-label {
+  font-size: 0.73rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+  color: var(--injz-pm-muted) !important;
+  margin-bottom: 0.28rem !important;
+}
+
+/* Inputs */
+#accessModal.injz-mgmt .form-control,
+#accessModal.injz-mgmt select.form-control,
+#createUserModal.injz-mgmt .form-control {
+  border-radius: 10px !important;
+  border: 1.5px solid var(--injz-pm-line) !important;
+  background: var(--injz-pm-fill) !important;
+  padding: 0.58rem 0.72rem !important;
+  font-size: 0.9rem !important;
+  transition: border-color 0.15s, box-shadow 0.15s !important;
+}
+
+#accessModal.injz-mgmt .form-control:hover,
+#createUserModal.injz-mgmt .form-control:hover {
+  border-color: #c5d9ce !important;
+}
+
+#accessModal.injz-mgmt .form-control:focus,
+#createUserModal.injz-mgmt .form-control:focus {
+  outline: none !important;
+  border-color: var(--injz-pm-green) !important;
+  box-shadow: 0 0 0 3px rgba(18, 84, 53, 0.12) !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-hint,
+#createUserModal.injz-mgmt .admin-profile-hint {
+  font-size: 0.78rem !important;
+  color: #6b8178 !important;
+}
+
+/* Module checkbox grid softer */
+#accessModal.injz-mgmt .admin-profile-module-grid .checkbox-item {
+  border-color: var(--injz-pm-line) !important;
+  border-radius: 10px !important;
+}
+
+/* Defaults split collapses cleanly */
+#accessModal.injz-mgmt .admin-profile-defaults-split > .form-group {
+  border-color: var(--injz-pm-line) !important;
+}
+
+/* Quick actions pills */
+#accessModal.injz-mgmt .admin-profile-section--quick .admin-profile-quick .btn {
+  border-radius: 10px !important;
+}
+
+/* ── Footer actions ─────────────────────────────────────────────────────── */
+#accessModal.injz-mgmt .admin-profile-modal-actions,
+#createUserModal.injz-mgmt .admin-profile-modal-actions {
+  margin: 0 !important;
+  padding: 0.9rem 1.15rem !important;
+  border-top: 1.5px solid var(--injz-pm-line) !important;
+  background: #fff !important;
+  justify-content: flex-end !important;
+  gap: 0.55rem !important;
+  flex-wrap: wrap !important;
+  border-radius: 0 !important;
+}
+
+#createUserModal.injz-mgmt .admin-profile-modal-actions {
+  flex-shrink: 0 !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-modal-actions .btn-cancel,
+#createUserModal.injz-mgmt .admin-profile-modal-actions .btn-cancel {
+  background: transparent !important;
+  border: none !important;
+  color: var(--injz-pm-muted) !important;
+  font-weight: 600 !important;
+  padding-inline: 0.35rem !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-modal-actions .btn-cancel:hover,
+#createUserModal.injz-mgmt .admin-profile-modal-actions .btn-cancel:hover {
+  background: #f5faf8 !important;
+  border-radius: 8px !important;
+}
+
+.injz-mgmt-btn-submit {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.42rem !important;
+  padding: 0.55rem 1.15rem !important;
+  border-radius: 11px !important;
+  border: none !important;
+  font-weight: 700 !important;
+  font-size: 0.82rem !important;
+  cursor: pointer !important;
+  background: linear-gradient(135deg, var(--injz-pm-green) 0%, var(--injz-pm-green-2) 100%) !important;
+  color: #fff !important;
+  box-shadow: 0 6px 16px rgba(18, 84, 53, 0.25) !important;
+}
+
+.injz-mgmt-btn-submit:hover {
+  filter: brightness(1.06);
+}
+
+/* Password reset dialogs */
+#passwordResetConfirmModal.injz-mgmt .modal-content,
+#passwordResetResultModal.injz-mgmt .modal-content {
+  max-width: 440px !important;
+}
+
+#passwordResetConfirmModal.injz-mgmt .modal-header,
+#passwordResetResultModal.injz-mgmt .modal-header {
+  margin: 0 !important;
+  padding: 1.05rem 1.15rem !important;
+  border-bottom: none !important;
+  background: linear-gradient(135deg, var(--injz-pm-green), var(--injz-pm-green-2));
+}
+
+#passwordResetConfirmModal.injz-mgmt .modal-title,
+#passwordResetResultModal.injz-mgmt .modal-title {
+  color: #fff !important;
+  font-size: 1.06rem !important;
+  font-weight: 800 !important;
+}
+
+#passwordResetConfirmModal.injz-mgmt #passwordResetConfirmIntro,
+#passwordResetResultModal.injz-mgmt #passwordResetResultIntro {
+  padding: 1rem 1.15rem 0 !important;
+  margin: 0 !important;
+}
+
+#passwordResetResultModal.injz-mgmt .modal-content > .form-group {
+  padding: 0 1.15rem;
+}
+
+#passwordResetResultModal.injz-mgmt .modal-content > p:last-of-type {
+  padding-left: 1.15rem;
+  padding-right: 1.15rem;
+}
+
+#passwordResetConfirmModal.injz-mgmt .modal-actions,
+#passwordResetResultModal.injz-mgmt .modal-actions {
+  margin-top: 0 !important;
+  padding: 0.95rem 1.15rem !important;
+  border-top: 1px solid var(--injz-pm-line) !important;
+  justify-content: flex-end !important;
+}
+
+#passwordResetConfirmModal.injz-mgmt .btn-cancel {
+  background: transparent !important;
+  border: none !important;
+  color: var(--injz-pm-muted) !important;
+}
+
+#passwordResetConfirmModal.injz-mgmt .btn-reset {
+  background: linear-gradient(135deg, #fef3c7, #fed7aa) !important;
+  border: 1px solid rgba(234, 88, 12, 0.35) !important;
+  color: #b45309 !important;
+}
+
+#passwordResetResultModal.injz-mgmt .modal-actions .btn-secondary {
+  background: #64748b !important;
+}
+
+#passwordResetResultModal.injz-mgmt .modal-actions .btn-primary {
+  background: linear-gradient(135deg, var(--injz-pm-green), var(--injz-pm-green-2)) !important;
+}
+
+/* Activity modal header */
+#userActivityModal.injz-mgmt .injz-mgmt-activity-top {
+  padding: 1.05rem 1.15rem;
+  border-bottom: 1px solid var(--injz-pm-line);
+  background: linear-gradient(135deg, var(--injz-pm-green), var(--injz-pm-green-2));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-shrink: 0;
+}
+
+#userActivityModal.injz-mgmt .injz-mgmt-activity-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #fff;
+}
+
+#userActivityModal.injz-mgmt #userActivityContent {
+  padding: 1rem 1.15rem 1.2rem !important;
+  overflow-y: auto !important;
+  flex: 1 !important;
+}
+
+/* Activity cards slightly warmer to match technician page */
+#userActivityModal.injz-mgmt .activity-section {
+  background: #f9fcfa;
+  border-color: var(--injz-pm-line);
+}
+
+#userActivityModal.injz-mgmt .user-info-card {
+  background: linear-gradient(135deg, var(--injz-pm-green), var(--injz-pm-green-2)) !important;
+}

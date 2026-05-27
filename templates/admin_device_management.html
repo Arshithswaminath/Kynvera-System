@@ -9,6 +9,7 @@
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}">
   <style>
     :root {
       --green: #125435;
@@ -31,179 +32,73 @@
       --shadow-sm: 0 1px 3px rgba(18,84,53,0.08), 0 1px 2px rgba(18,84,53,0.06);
       --shadow: 0 4px 16px rgba(18,84,53,0.10), 0 1px 4px rgba(18,84,53,0.08);
       --shadow-lg: 0 12px 40px rgba(18,84,53,0.14), 0 4px 12px rgba(18,84,53,0.08);
+      --sb-bg: #125435;
+      --sidebar-w: 288px;
+      --accent: #125435;
+      --accent-2: #1a7a4d;
+      --dh-fs-sidebar: 16px;
+      --dh-fs-sidebar-label: 12px;
+      --dm-nav-top: 5.5rem;
+    }
+    @media (max-width: 1280px) {
+      :root { --sidebar-w: 252px; }
+    }
+    @media (max-width: 1100px) {
+      :root { --sidebar-w: 232px; }
     }
     body.has-main-nav { padding-top: 5.5rem; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+      /* Canvas color comes from dashboard.css (same tokens as Inspection / HR dashboards). */
+      background: var(--bg-body, #f8faf8);
+    }
 
+    /*
+      Match Inspection Forms module: soft green tint + radial glows (dashboard.css .hero + .hero.inspection-hero).
+      Blends into #F8FAF8 at the bottom so it lines up with body.dm-device-mgmt-page from dashboard.css.
+    */
     .dm-root {
-      background: #f7fbf9;
-      min-height: calc(100vh - 5.5rem);
+      min-height: calc(100vh - var(--dm-nav-top));
       padding: 0;
       display: flex;
+      background:
+        radial-gradient(ellipse 70% 55% at 15% -5%, rgba(18, 84, 53, 0.09) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 40% at 92% 2%, rgba(18, 84, 53, 0.05) 0%, transparent 55%),
+        linear-gradient(180deg, #eef4f0 0%, #f2f7f4 42%, #f8faf8 100%);
     }
-    .dm-layout { display: flex; flex: 1; min-height: calc(100vh - 5.5rem); }
+    .dm-layout { display: flex; flex: 1; min-height: calc(100vh - var(--dm-nav-top)); }
+
+    /* DocHub / BizFlow sidebar shell */
+    .dm-layout > .dh-sidebar {
+      --radius: 10px;
+      position: sticky;
+      top: var(--dm-nav-top);
+      align-self: flex-start;
+      height: calc(100vh - var(--dm-nav-top));
+      z-index: 40;
+      flex-shrink: 0;
+    }
+    @media (max-width: 900px) {
+      .dm-layout > .dh-sidebar { display: none !important; }
+    }
+
     .dm-inner { max-width: 1400px; margin: 0 auto; flex: 1; }
 
-    /* DeviceCore-style sidebar */
-    .dm-sidebar {
-      width: 260px;
-      min-width: 260px;
-      background: var(--green);
-      display: flex;
-      flex-direction: column;
-      position: sticky;
-      top: 5.5rem;
-      height: calc(100vh - 5.5rem);
-      z-index: 40;
-      overflow: hidden;
-      flex-shrink: 0;
-    }
-    .dm-sidebar-nav {
-      flex: 1;
-      overflow-y: auto;
-      overflow-x: hidden;
-      min-height: 0;
-    }
-    .dm-sidebar-nav::-webkit-scrollbar { width: 4px; }
-    .dm-sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
-    .dm-sidebar::before {
-      content: '';
-      position: absolute;
-      top: -80px; right: -80px;
-      width: 240px; height: 240px;
-      background: rgba(255,255,255,0.05);
-      border-radius: 50%;
-      pointer-events: none;
-    }
-    .dm-sidebar::after {
-      content: '';
-      position: absolute;
-      bottom: -60px; left: -60px;
-      width: 200px; height: 200px;
-      background: rgba(255,255,255,0.04);
-      border-radius: 50%;
-      pointer-events: none;
-    }
-    .dm-sidebar-logo {
-      padding: 28px 24px 20px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      border-bottom: 1px solid rgba(255,255,255,0.1);
-      margin-bottom: 8px;
-      position: relative;
-      z-index: 1;
-    }
-    .dm-sidebar-logo-icon {
-      width: 38px; height: 38px;
-      background: rgba(255,255,255,0.15);
-      border-radius: 10px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 18px;
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255,255,255,0.2);
-      flex-shrink: 0;
-    }
-    .dm-sidebar-logo-text { display: flex; flex-direction: column; }
-    .dm-sidebar-logo-text span:first-child {
-      font-size: 16px; font-weight: 700; color: white; letter-spacing: -0.3px;
-    }
-    .dm-sidebar-logo-text span:last-child {
-      font-size: 10px; color: rgba(255,255,255,0.5); font-weight: 500; letter-spacing: 1px; text-transform: uppercase;
-    }
-    .dm-sidebar-section { padding: 8px 16px; margin-top: 4px; position: relative; z-index: 1; }
-    .dm-sidebar-label {
-      font-size: 10px; font-weight: 600; letter-spacing: 1.2px;
-      color: rgba(255,255,255,0.4); text-transform: uppercase;
-      padding: 4px 8px 8px;
-    }
-    .dm-nav-item {
-      display: flex; align-items: center; gap: 10px;
-      padding: 10px 12px;
-      border-radius: var(--radius-sm);
-      cursor: pointer;
-      color: rgba(255,255,255,0.65);
-      font-size: 13.5px;
-      font-weight: 500;
-      transition: all 0.18s;
-      position: relative;
-      user-select: none;
-      text-decoration: none;
-      border: none;
-      background: none;
-      font-family: inherit;
-      width: 100%;
-      text-align: left;
-    }
-    .dm-nav-item:hover { background: rgba(255,255,255,0.09); color: white; }
-    .dm-nav-item.active {
-      background: rgba(255,255,255,0.14);
-      color: white;
-    }
-    .dm-nav-item.active::before {
-      content: '';
-      position: absolute;
-      left: 0; top: 25%; bottom: 25%;
-      width: 3px;
-      background: rgba(255,255,255,0.7);
-      border-radius: 0 3px 3px 0;
-    }
-    .dm-nav-item .dm-nav-icon { font-size: 16px; width: 20px; text-align: center; flex-shrink: 0; }
-    .dm-nav-badge {
-      margin-left: auto;
-      background: rgba(255,255,255,0.2);
-      color: white;
-      font-size: 10px;
-      font-weight: 600;
-      padding: 2px 7px;
-      border-radius: 20px;
-    }
-    .dm-nav-badge.alert { background: #e74c3c; }
-    .dm-sidebar-footer {
-      margin-top: auto;
-      padding: 16px;
-      border-top: 1px solid rgba(255,255,255,0.1);
-      position: relative;
-      z-index: 1;
-      flex-shrink: 0;
-    }
-    .dm-user-card {
-      display: flex; align-items: center; gap: 10px;
-      padding: 10px 12px;
-      background: rgba(255,255,255,0.08);
-      border-radius: var(--radius-sm);
-      cursor: pointer;
-      transition: background 0.18s;
-    }
-    .dm-user-card:hover { background: rgba(255,255,255,0.12); }
-    .dm-user-avatar {
-      width: 32px; height: 32px;
-      background: rgba(255,255,255,0.2);
-      border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 13px; font-weight: 700; color: white;
-      flex-shrink: 0;
-    }
-    .dm-user-info { flex: 1; }
-    .dm-user-name { font-size: 12.5px; font-weight: 600; color: white; }
-    .dm-user-role { font-size: 10.5px; color: rgba(255,255,255,0.5); }
-    @media (max-width: 900px) {
-      .dm-sidebar { display: none; }
-      .dm-main-col { margin-left: 0 !important; }
-    }
-
     .dm-topbar {
-      background: white;
-      border-bottom: 1px solid var(--gray-100);
+      /* Slightly warm white so it melts into the Inspection-style mint canvas */
+      background: rgba(255, 255, 255, 0.82);
+      backdrop-filter: saturate(140%) blur(10px);
+      -webkit-backdrop-filter: saturate(140%) blur(10px);
+      border-bottom: 1px solid rgba(18, 84, 53, 0.08);
+      box-shadow: none;
       padding: 0 32px;
       height: 64px;
       display: flex;
       align-items: center;
       gap: 16px;
       position: sticky;
-      top: 5.5rem;
+      top: var(--dm-nav-top);
       z-index: 50;
-      box-shadow: 0 1px 0 var(--gray-100);
     }
     .dm-page-title { font-size: 17px; font-weight: 600; color: var(--gray-900); }
     .dm-page-title span { color: var(--gray-400); font-weight: 400; margin-right: 4px; font-size: 15px; }
@@ -713,63 +608,44 @@
     }
   </style>
 </head>
-<body class="has-main-nav">
+<body class="has-main-nav dm-device-mgmt-page">
+  {% set active_page = 'devices' %}
   {% include 'partials/main_navbar.html' with context %}
 
   <div class="dm-root">
-    <aside class="dm-sidebar">
-      <div class="dm-sidebar-nav">
-      <div class="dm-sidebar-logo">
-        <div class="dm-sidebar-logo-icon">🖥️</div>
-        <div class="dm-sidebar-logo-text">
-          <span>DeviceCore</span>
-          <span>Enterprise</span>
+    <aside class="dh-sidebar" id="dmSidebar" aria-label="Device management menu">
+      <div class="sb-brand">
+        <div class="sb-brand-text">
+          <span class="name">DeviceCore</span>
+          <span class="tagline">Enterprise</span>
         </div>
       </div>
-      <div class="dm-sidebar-section">
-        <div class="dm-sidebar-label">Overview</div>
-        <a href="#" class="dm-nav-item active" data-dm-nav="dashboard">
-          <span class="dm-nav-icon">📊</span> Dashboard
-        </a>
-        <a href="#deviceTable" class="dm-nav-item" data-dm-nav="devices">
-          <span class="dm-nav-icon">🖥️</span> All Devices
-          <span class="dm-nav-badge" id="sidebarDeviceCount">0</span>
-        </a>
-        <a href="#" class="dm-nav-item" data-dm-nav="map" onclick="showToast('Device Map coming soon')">
-          <span class="dm-nav-icon">🗺️</span> Device Map
-        </a>
-      </div>
-      <div class="dm-sidebar-section">
-        <div class="dm-sidebar-label">Reports</div>
-        <a href="#" class="dm-nav-item" data-dm-nav="analytics" onclick="showToast('Analytics coming soon')">
-          <span class="dm-nav-icon">📈</span> Analytics
-        </a>
-        <a href="#" class="dm-nav-item" data-dm-nav="compliance" onclick="document.getElementById('complianceList')?.scrollIntoView({behavior:'smooth'})">
-          <span class="dm-nav-icon">✅</span> Compliance
-          <span class="dm-nav-badge alert" id="sidebarComplianceBadge">0</span>
-        </a>
-        <a href="#" class="dm-nav-item" data-dm-nav="audit" onclick="showToast('Audit Logs coming soon')">
-          <span class="dm-nav-icon">📋</span> Audit Logs
-        </a>
-      </div>
-      <div class="dm-sidebar-section">
-        <div class="dm-sidebar-label">System</div>
-        <a href="/admin/dashboard" class="dm-nav-item">
-          <span class="dm-nav-icon">👥</span> Users & Groups
-        </a>
-        <a href="/admin/dashboard" class="dm-nav-item">
-          <span class="dm-nav-icon">⚙️</span> Settings
-        </a>
-      </div>
-      </div><!-- dm-sidebar-nav -->
-      <div class="dm-sidebar-footer">
-        <div class="dm-user-card" onclick="if(typeof openProfileModal==='function'){openProfileModal();}">
-          <div class="dm-user-avatar" id="dmUserAvatar">—</div>
-          <div class="dm-user-info">
-            <div class="dm-user-name" id="dmUserName">Loading…</div>
-            <div class="dm-user-role" id="dmUserRole">Admin</div>
+      <nav class="sb-nav">
+        <div class="dh-sb-section">
+          <div class="sb-section-label">Overview</div>
+          <a href="#" class="sb-nav-item active" data-dm-nav="dashboard">Dashboard</a>
+          <a href="#deviceTable" class="sb-nav-item" data-dm-nav="devices">All Devices <span class="sb-badge" id="sidebarDeviceCount">0</span></a>
+          <a href="#" class="sb-nav-item" data-dm-nav="map" onclick="showToast('Device Map coming soon');return false;">Device Map</a>
+        </div>
+        <div class="dh-sb-section">
+          <div class="sb-section-label">Reports</div>
+          <a href="#" class="sb-nav-item" data-dm-nav="analytics" onclick="showToast('Analytics coming soon');return false;">Analytics</a>
+          <a href="#" class="sb-nav-item" data-dm-nav="compliance" onclick="document.getElementById('complianceList')?.scrollIntoView({behavior:'smooth'});return false;">Compliance <span class="sb-badge sb-badge--alert" id="sidebarComplianceBadge">0</span></a>
+          <a href="#" class="sb-nav-item" data-dm-nav="audit" onclick="showToast('Audit Logs coming soon');return false;">Audit Logs</a>
+        </div>
+        <div class="dh-sb-section">
+          <div class="sb-section-label">System</div>
+          <a href="/admin/dashboard" class="sb-nav-item">Users &amp; Groups</a>
+          <a href="/admin/dashboard" class="sb-nav-item">Settings</a>
+        </div>
+      </nav>
+      <div class="sb-footer">
+        <div class="sb-user-row" onclick="if(typeof openProfileModal==='function'){openProfileModal();}" role="button" tabindex="0">
+          <div class="sb-avatar" id="dmUserAvatar">—</div>
+          <div class="sb-user-text">
+            <div class="sb-user-name" id="dmUserName">Loading…</div>
+            <div class="sb-user-role" id="dmUserRole">Admin</div>
           </div>
-          <span style="font-size:14px; color:rgba(255,255,255,0.4)">⚙️</span>
         </div>
       </div>
     </aside>
@@ -1438,10 +1314,11 @@
   document.getElementById('enrollSubmitBtn').onclick = enrollDevice;
   document.getElementById('enrollModal').onclick = function(e) { if (e.target === this) this.classList.remove('open'); };
 
-  document.querySelectorAll('.dm-nav-item[data-dm-nav]').forEach(el => {
+  document.querySelectorAll('.sb-nav-item[data-dm-nav]').forEach(el => {
     el.addEventListener('click', function(e) {
-      if (this.getAttribute('href') === '#') e.preventDefault();
-      document.querySelectorAll('.dm-nav-item').forEach(n => n.classList.remove('active'));
+      const href = this.getAttribute('href') || '';
+      if (href.startsWith('#')) e.preventDefault();
+      document.querySelectorAll('.dh-sidebar .sb-nav-item[data-dm-nav]').forEach(n => n.classList.remove('active'));
       this.classList.add('active');
       if (this.dataset.dmNav === 'devices') {
         document.getElementById('deviceTable')?.closest('.dm-card')?.scrollIntoView({ behavior: 'smooth' });

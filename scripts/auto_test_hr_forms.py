@@ -97,6 +97,7 @@ def _sample_form_data():
             "note": "Resumed as scheduled",
             "line_manager_remarks": "Employee resumed duties on time. No issues noted.",
             "employee_signature": SIG_PLACEHOLDER,
+            "reporting_manager_signature": SIG_PLACEHOLDER,
             "gm_signature": SIG_PLACEHOLDER,
             "hr_signature": SIG_PLACEHOLDER,
         },

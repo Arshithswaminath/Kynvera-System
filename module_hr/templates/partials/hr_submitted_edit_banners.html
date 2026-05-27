@@ -1,0 +1,27 @@
+{# Banners for ?edit=<submission_id> — used with static/js/hr_generic_form_edit.js #}
+{# submissionGraceExpiredWrap is required so syncGraceExpiredHintVisibility can hide the amber hints entirely. #}
+<div id="submissionViewBanner" style="display:none;margin-bottom:1rem;line-height:1.5;color:#0d3d24;background:#e8f5ed;border:1.5px solid var(--pri-sm,#c2dece);border-radius:12px;padding:.9rem 1.05rem;">
+  <div style="font-size:1.08rem;font-weight:700;line-height:1.45;">
+    <strong>Submitted request.</strong>
+    <span id="submissionViewBannerText"></span>
+  </div>
+  <div id="submissionEditGraceRow" style="display:none;margin-top:.62rem;padding-top:.62rem;border-top:1px solid rgba(13,61,36,.22);font-size:.98rem;font-weight:600;line-height:1.45;color:#063a27;">
+    <strong>30-minute submitter edit (live):</strong>
+    <span id="submissionEditGraceCountdownTick" aria-live="polite"></span>
+  </div>
+  <div id="submissionApprovedRow" style="display:none;margin-top:.62rem;padding:.65rem .95rem;background:#ecfdf5;border:1.5px solid #34d399;border-radius:10px;font-size:.98rem;font-weight:700;line-height:1.45;color:#065f46;">
+    <strong>Approved</strong> — <span id="submissionApprovedDetail">This request is finalized. Editing is closed; use <strong>Download PDF</strong> below for the official signed record.</span>
+  </div>
+  <div id="submissionGraceExpiredWrap" role="status" aria-live="polite" style="display:none;margin-top:.55rem;">
+    <div id="submissionGraceExpiredHintTime" style="padding:.62rem .9rem;background:#fef3c7;border:1px solid #f59e0b;border-radius:10px;font-size:.96rem;font-weight:700;line-height:1.45;color:#92400e;">
+      <strong>30-minute employee edit window has ended.</strong> You can't change employee fields on this page anymore; your submission stays on record. Reporting manager / HR / GM / admin can still edit as needed — use PDF for reference or contact HR for corrections.
+    </div>
+    <div id="submissionGraceExpiredHintMgmt" style="display:none;padding:.62rem .9rem;background:#fef3c7;border:1px solid #f59e0b;border-radius:10px;font-size:.96rem;font-weight:700;line-height:1.45;color:#92400e;">
+      <strong>Reporting manager / management has signed this request.</strong> The employee edit window closed early — you can't change employee fields on this page anymore. Your submission stays on record; reporting manager / HR / GM / admin can still edit if needed — use PDF for reference or contact HR for corrections.
+    </div>
+  </div>
+  <div style="margin-top:.65rem;display:flex;flex-wrap:wrap;gap:.5rem;">
+    <a id="submissionViewPdf" href="#" class="submission-view-pdf-btn" download>Download PDF</a>
+  </div>
+</div>
+<div id="submissionRevisionBanner" style="display:none;margin-bottom:.85rem;font-size:1rem;font-weight:700;line-height:1.5;color:#7c3aed;background:#ede9fe;border:1px solid #c4b5fd;border-radius:12px;padding:.75rem 1rem;"></div>

@@ -185,10 +185,49 @@ body.dochub-page-v2 * {
 .sb-brand {
   display: flex;
   align-items: center;
+  gap: 12px;
   padding: 22px 20px 18px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.07);
   position: relative;
   flex-shrink: 0;
+}
+
+/* Optional logo tile (Admin shell, emoji brand tile in Device module) */
+.sb-brand-logo {
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.sb-brand-logo img {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+  filter: brightness(0) invert(1);
+}
+
+.sb-brand-logo:not(:has(img)) {
+  font-size: 18px;
+  line-height: 1;
+}
+
+/* Horizontal rule between nav groups (Admin, etc.) */
+.sb-nav-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.07);
+  margin: 6px 12px;
+  border: 0;
+  flex-shrink: 0;
+}
+
+.sb-nav-item:has(.sb-nav-icon) {
+  gap: 10px;
 }
 
 .sb-brand-text .name {
@@ -287,14 +326,14 @@ body.dochub-page-v2 * {
 }
 
 .sb-nav-item.active {
-  color: rgba(255, 255, 255, 0.65);
+  color: rgba(255, 255, 255, 0.95);
   font-weight: 600;
-  background: transparent;
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .sb-nav-item.active:hover {
-  color: rgba(255, 255, 255, 0.88);
-  background: rgba(255, 255, 255, 0.04);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .sb-nav-icon {

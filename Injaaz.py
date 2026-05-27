@@ -2,6 +2,7 @@ import os
 import sys
 import logging
 import mimetypes
+import subprocess
 from datetime import datetime, timezone
 from flask import Flask, send_from_directory, abort, render_template, jsonify, request, redirect
 from concurrent.futures import ThreadPoolExecutor
@@ -22,6 +23,27 @@ logging.basicConfig(
     handlers=[logging.StreamHandler(sys.stdout)]
 )
 logger = logging.getLogger(__name__)
+
+# Optional Sentry error tracking. No-op when SENTRY_DSN is not set or the SDK
+# is not installed — added so we get observability in production without
+# forcing the dependency in development.
+_sentry_dsn = (os.environ.get("SENTRY_DSN") or "").strip()
+if _sentry_dsn:
+    try:
+        import sentry_sdk
+        from sentry_sdk.integrations.flask import FlaskIntegration
+
+        sentry_sdk.init(
+            dsn=_sentry_dsn,
+            integrations=[FlaskIntegration()],
+            environment=os.environ.get("FLASK_ENV", "development"),
+            release=os.environ.get("APP_VERSION") or None,
+            traces_sample_rate=float(os.environ.get("SENTRY_TRACES_SAMPLE_RATE", "0.0")),
+            send_default_pii=False,
+        )
+        logger.info("Sentry initialized")
+    except Exception as _sentry_err:
+        logger.warning(f"Sentry not initialized: {_sentry_err}")
 
 # Try importing blueprints; if any import fails we log and continue so the app still starts.
 hvac_mep_bp = None
@@ -122,6 +144,15 @@ try:
 except Exception as e:
     logger.exception("Could not import module_mmr.routes.mmr_bp: %s", e)
     mmr_bp = None
+
+# Ticketing / Work Order Module
+ticketing_bp = None
+try:
+    from module_ticketing.routes import ticketing_bp  # noqa: F401
+    logger.info("Imported module_ticketing.routes.ticketing_bp")
+except Exception as e:
+    logger.exception("Could not import module_ticketing.routes.ticketing_bp: %s", e)
+    ticketing_bp = None
 
 # Ensure required directories exist at startup
 os.makedirs(GENERATED_DIR, exist_ok=True)
@@ -245,25 +276,34 @@ def create_app():
     # JWT token verification callback (check if token is revoked)
     @jwt.token_in_blocklist_loader
     def check_if_token_revoked(jwt_header, jwt_payload):
-        from app.models import Session
-        from common.jwt_session import sync_access_session_row
+        """Return True if the access token must be rejected (revoked). Must not raise — that becomes HTTP 500."""
+        try:
+            from app.models import Session
+            from common.jwt_session import sync_access_session_row
 
-        if jwt_payload.get('type') == 'refresh':
-            return False
-        jti = jwt_payload.get('jti')
-        if not jti:
+            jti = jwt_payload.get('jti')
+            if not jti:
+                return True
+            is_refresh = jwt_payload.get('type') == 'refresh'
+            session = Session.query.filter_by(token_jti=jti).first()
+            # Only access tokens get auto-synced if their Session row is
+            # missing (legacy tokens issued before this change). Refresh
+            # tokens MUST have been recorded by /login or /refresh — a
+            # missing row means the token is unknown and is treated as
+            # revoked.
+            if session is None and not is_refresh:
+                session = sync_access_session_row(jti, jwt_payload)
+            if session is None:
+                logger.warning(
+                    "JWT blocklist: missing session for jti=%s sub=%s — token treated as revoked",
+                    jti,
+                    jwt_payload.get('sub'),
+                )
+                return True
+            return session.is_revoked
+        except Exception as exc:
+            logger.exception("JWT blocklist check failed; treating token as revoked: %s", exc)
             return True
-        session = Session.query.filter_by(token_jti=jti).first()
-        if session is None:
-            session = sync_access_session_row(jti, jwt_payload)
-        if session is None:
-            logger.warning(
-                "JWT blocklist: missing session for jti=%s sub=%s — token treated as revoked",
-                jti,
-                jwt_payload.get('sub'),
-            )
-            return True
-        return session.is_revoked
     
     logger.info("✅ Database and JWT initialized")
     
@@ -317,6 +357,10 @@ def create_app():
                 # Check for designation column
                 if 'designation' not in columns:
                     missing_columns.append(('designation', 'VARCHAR(20) DEFAULT NULL'))
+
+                # Admin-assigned operations manager (used for HR technician routing)
+                if 'operations_manager_id' not in columns:
+                    missing_columns.append(('operations_manager_id', 'INTEGER DEFAULT NULL'))
                 
                 if missing_columns:
                     logger.info(f"Adding missing columns to users table: {[col[0] for col in missing_columns]}")
@@ -553,6 +597,23 @@ def create_app():
         if redis_url:
             redis_url = redis_url.strip()
         
+        def _make_memory_limiter():
+            """Fallback to in-memory storage when Redis is unavailable.
+
+            Single-worker deployments (current default on Render) benefit from
+            this because it still throttles brute-force attempts on /login
+            and /register from a single IP. It is NOT shared across workers,
+            so multi-worker setups should provide Redis.
+            """
+            lim = Limiter(
+                app=app,
+                key_func=get_remote_address,
+                default_limits=[os.environ.get('RATELIMIT_DEFAULT', '100 per hour')],
+                storage_uri="memory://",
+                strategy="fixed-window",
+            )
+            return lim
+
         if redis_url:
             try:
                 # Test Redis connection first (Upstash: use rediss:// URL from dashboard)
@@ -560,7 +621,7 @@ def create_app():
                 r = redis.from_url(redis_url, socket_connect_timeout=5)
                 r.ping()
                 logger.info("✓ Redis connection test successful")
-                
+
                 limiter = Limiter(
                     app=app,
                     key_func=get_remote_address,
@@ -571,11 +632,11 @@ def create_app():
                 app.limiter = limiter
                 logger.info("✓ Rate limiting enabled with Redis storage")
             except Exception as redis_error:
-                logger.warning(f"⚠️  Redis connection failed - Rate limiting disabled: {redis_error}")
-                app.limiter = None
+                logger.warning(f"⚠️  Redis connection failed — falling back to in-memory rate limiter: {redis_error}")
+                app.limiter = _make_memory_limiter()
         else:
-            logger.info("✓ Rate limiting disabled (no Redis URL configured)")
-            app.limiter = None
+            logger.info("✓ Rate limiting using in-memory storage (no Redis URL configured)")
+            app.limiter = _make_memory_limiter()
     except ImportError:
         logger.warning("⚠️  Flask-Limiter not installed - rate limiting disabled")
         app.limiter = None
@@ -609,7 +670,10 @@ def create_app():
     def not_found(e):
         if request.path.startswith('/api/'):
             return jsonify({"success": False, "error": "Resource not found"}), 404
-        return render_template('404.html') if os.path.exists(os.path.join(app.template_folder, '404.html')) else ("Not Found", 404)
+        try:
+            return render_template('404.html'), 404
+        except Exception:
+            return ("Not Found", 404)
     
     @app.errorhandler(413)
     def too_large(e):
@@ -623,7 +687,13 @@ def create_app():
     @app.errorhandler(500)
     def internal_error(e):
         logger.exception(f"Internal server error: {e}")
-        return jsonify({"success": False, "error": "Internal server error", "request_id": request.headers.get('X-Request-ID', 'unknown')}), 500
+        request_id = request.headers.get('X-Request-ID', 'unknown')
+        if request.path.startswith('/api/'):
+            return jsonify({"success": False, "error": "Internal server error", "request_id": request_id}), 500
+        try:
+            return render_template('500.html', request_id=request_id), 500
+        except Exception:
+            return ("Internal Server Error", 500)
     
     @app.errorhandler(400)
     def bad_request(e):
@@ -810,6 +880,15 @@ def create_app():
     else:
         logger.warning("⚠️  MMR blueprint not available")
 
+    # Register Ticketing blueprint
+    if ticketing_bp:
+        if hasattr(app, 'csrf') and app.csrf:
+            app.csrf.exempt(ticketing_bp)
+        app.register_blueprint(ticketing_bp, url_prefix='/tickets')
+        logger.info("✅ Registered Ticketing blueprint at /tickets")
+    else:
+        logger.warning("⚠️  Ticketing blueprint not available - check imports")
+
     # Register reports API blueprint for on-demand regeneration
     try:
         from app.reports_api import reports_bp
@@ -832,12 +911,49 @@ def create_app():
     # except:
     #     pass  # File doesn't exist or already deleted (good!)
 
-    # Security headers middleware
+    # Security headers middleware.
+    #
+    # Defaults are chosen to be additive — they do NOT block any current
+    # rendering path. CSP is intentionally sent as Report-Only so the existing
+    # inline `<script>` blocks and event handlers keep working; flip to
+    # Content-Security-Policy (enforced) in a later iteration once any
+    # violations have been triaged.
+    _is_prod = app.config.get('FLASK_ENV', 'development') == 'production'
+    _csp_default = (
+        "default-src 'self'; "
+        "img-src 'self' data: blob: https:; "
+        "media-src 'self' blob: https:; "
+        "style-src 'self' 'unsafe-inline' https:; "
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; "
+        "font-src 'self' data: https:; "
+        "connect-src 'self' https: wss:; "
+        "frame-ancestors 'self'; "
+        "base-uri 'self'; "
+        "object-src 'none'"
+    )
+    _csp_policy = os.environ.get('CSP_POLICY', _csp_default)
+    _csp_enforce = os.environ.get('CSP_ENFORCE', '').lower() == 'true'
+
     @app.after_request
     def add_security_headers(response):
-        response.headers['X-Content-Type-Options'] = 'nosniff'
-        response.headers['X-Frame-Options'] = 'SAMEORIGIN'
-        response.headers['X-XSS-Protection'] = '1; mode=block'
+        response.headers.setdefault('X-Content-Type-Options', 'nosniff')
+        response.headers.setdefault('X-Frame-Options', 'SAMEORIGIN')
+        response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
+        response.headers.setdefault(
+            'Permissions-Policy',
+            'camera=(self), microphone=(), geolocation=(self), payment=()'
+        )
+        # HSTS only makes sense over HTTPS — enable in production where the
+        # service is fronted by TLS. 6 months + preload-friendly.
+        if _is_prod:
+            response.headers.setdefault(
+                'Strict-Transport-Security',
+                'max-age=15552000; includeSubDomains'
+            )
+        # Report-Only by default to avoid breaking inline handlers used by
+        # existing forms. Set CSP_ENFORCE=true once violations are clean.
+        csp_header = 'Content-Security-Policy' if _csp_enforce else 'Content-Security-Policy-Report-Only'
+        response.headers.setdefault(csp_header, _csp_policy)
         return response
 
     # Authentication routes
@@ -876,6 +992,29 @@ def create_app():
     def submitted_forms():
         """Submitted forms page - supervisors can view their submissions"""
         return render_template('submitted_forms.html')
+
+    @app.route('/workflow/inspection/<submission_id>')
+    def open_inspection_submission(submission_id):
+        """Resolve an inspection submission to its module-specific form URL.
+
+        Used by in-app notification clicks so reviewers land directly on the
+        form to review, comment, and sign without an intermediate listing page.
+        """
+        from app.models import Submission
+        sub = Submission.query.filter_by(submission_id=submission_id).first()
+        if not sub:
+            return redirect('/workflow/pending-reviews')
+        module_paths = {
+            'hvac_mep': '/hvac-mep/form',
+            'hvac': '/hvac-mep/form',
+            'civil': '/civil/form',
+            'cleaning': '/cleaning/form',
+        }
+        base = module_paths.get((sub.module_type or '').lower())
+        if not base:
+            return redirect('/workflow/pending-reviews')
+        # Include review=true so the form opens in reviewer mode
+        return redirect(f"{base}?edit={submission_id}&review=true")
     
     @app.route('/admin')
     def admin_root():
@@ -911,6 +1050,11 @@ def create_app():
     def admin_personal_progress():
         """Personal work-in-progress tracker — admin only"""
         return render_template('admin_personal_progress.html', active_page='personal-progress')
+
+    @app.route('/admin/team-management')
+    def admin_team_management():
+        """Team & technician management — admin only"""
+        return render_template('admin_team_management.html', active_page='team-management')
 
     @app.route('/dochub')
     def dochub():
@@ -977,7 +1121,45 @@ def create_app():
     return app
 
 
+def _current_git_branch():
+    """Best-effort branch name for local console hint (detached HEAD → short SHA)."""
+    try:
+        r = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=BASE_DIR,
+            capture_output=True,
+            text=True,
+            timeout=3,
+            check=False,
+        )
+        if r.returncode == 0:
+            name = (r.stdout or "").strip()
+            if name and name != "HEAD":
+                return name
+        r2 = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=BASE_DIR,
+            capture_output=True,
+            text=True,
+            timeout=3,
+            check=False,
+        )
+        if r2.returncode == 0 and (r2.stdout or "").strip():
+            return "detached @ " + (r2.stdout or "").strip()
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+    return None
+
+
 if __name__ == '__main__':
     app = create_app()
+    _branch = _current_git_branch()
+    if _branch:
+        logger.info("Running from git branch: %s", _branch)
+    else:
+        logger.info("Git branch: (not available)")
+    # Local default: 5002 (matches APP_BASE_URL in .env). Production hosts set PORT.
+    _port = int(os.environ.get("PORT", "5002"))
+    logger.info("Starting server on http://0.0.0.0:%s", _port)
     # For local development use debug=True. Remove or set False in production.
-    app.run(debug=False, host='0.0.0.0', port=5000)
+    app.run(debug=False, host='0.0.0.0', port=_port)

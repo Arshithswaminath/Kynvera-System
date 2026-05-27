@@ -8,7 +8,7 @@ from reportlab.lib.units import inch, cm
 from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image, PageBreak
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.enums import TA_CENTER, TA_LEFT
+from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 from io import BytesIO
 import base64
 from common.utils import get_image_for_pdf
@@ -64,6 +64,7 @@ try:
         add_photo_grid,
         add_signatures_section,
         add_section_heading,
+        append_section_keep_together,
         add_item_heading,
         add_paragraph,
         get_professional_styles
@@ -472,10 +473,8 @@ def create_pdf_report(data, output_dir):
                 ('ALIGN',      (0, 0), (-1, 0), 'CENTER'),
                 ('FONTNAME',   (0, 1), (-1, -1), 'Helvetica'),
                 ('FONTSIZE',   (0, 1), (-1, -1), 8),
-                ('ALIGN',      (0, 1), (0, -1), 'CENTER'),
-                ('ALIGN',      (5, 1), (5, -1), 'CENTER'),
-                ('ALIGN',      (6, 1), (7, -1), 'RIGHT'),
-                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F0FAF5')]),
+                ('ALIGN',      (0, 1), (-1, -1), 'RIGHT'),
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.white]),
                 ('GRID',       (0, 0), (-1, -1), 0.5, colors.HexColor('#BBDEFB')),
                 ('TOPPADDING', (0, 0), (-1, -1), 5),
                 ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
@@ -483,7 +482,12 @@ def create_pdf_report(data, output_dir):
                 ('RIGHTPADDING', (0, 0), (-1, -1), 6),
             ]))
             story.append(mat_table)
-            add_paragraph(story, f"<b>Materials Grand Total (AED):</b> {materials_total:,.2f}")
+            story.append(Paragraph(
+                f"<b>Materials Grand Total (AED):</b> {materials_total:,.2f}",
+                ParagraphStyle('MatGrandTotal', parent=getSampleStyleSheet()['Normal'],
+                               alignment=TA_RIGHT, fontName='Helvetica-Bold', fontSize=10,
+                               spaceBefore=4, spaceAfter=4)
+            ))
             story.append(Spacer(1, 0.15*inch))
 
         # SIGNATURES PAGE - Professional format with all signatures
@@ -491,51 +495,71 @@ def create_pdf_report(data, output_dir):
         
         # Get nested data dict if it exists (extract once to avoid f-string issues)
         nested_data = data.get('data') if isinstance(data.get('data'), dict) else {}
-        
-        # Check for supervisor signature (new workflow field)
-        # Try multiple paths: direct key, nested in data, form_data, etc.
+
+        # ── Helper: extract a field value across all data paths ──────────────
+        def _get_field(field, fallbacks=None):
+            """Return first non-empty value for field across direct / nested / form_data paths."""
+            fd = data.get('form_data', {}) if isinstance(data.get('form_data'), dict) else {}
+            nested_fd = fd.get('data', {}) if isinstance(fd.get('data'), dict) else {}
+            sources = [data, nested_data or {}, fd, nested_fd]
+            all_keys = [field] + (fallbacks or [])
+            for k in all_keys:
+                for src in sources:
+                    v = src.get(k)
+                    if v is not None and v != '' and v != 'None':
+                        if isinstance(v, dict):
+                            url = v.get('url') or v.get('saved') or v.get('path')
+                            return url if url else None
+                        return v
+            return None
+
+        # ── Submitter (technician) info ───────────────────────────────────────
+        submitter_user = data.get('user') or {}
+        if isinstance(submitter_user, str):
+            submitter_user = {}
+        submitter_name = (submitter_user.get('full_name') or
+                          submitter_user.get('username') or
+                          submitter_user.get('name') or 'Submitter')
+        raw_desig = (submitter_user.get('designation') or
+                     submitter_user.get('job_designation') or
+                     submitter_user.get('role') or '').strip().lower()
+        _desig_labels = {
+            'technician': 'Technician', 'supervisor': 'Supervisor',
+            'manager': 'Manager', 'operations_manager': 'Operations Manager',
+            'business_development': 'Business Development',
+            'procurement': 'Procurement', 'general_manager': 'General Manager',
+            'admin': 'Admin',
+        }
+        submitter_role_label = _desig_labels.get(raw_desig, raw_desig.replace('_', ' ').title() if raw_desig else 'Staff')
+
+        # ── Submitter signature: prefer tech_signature; legacy used supervisor_signature ──
+        supervisor_reviewed_at = data.get('supervisor_reviewed_at')
+        submitter_sig = _get_field('tech_signature', ['submitter_signature'])
+        # Legacy: if no tech_signature but supervisor_signature exists and supervisor
+        # has not yet reviewed, that image is actually the submitter's signature.
+        if not submitter_sig and not supervisor_reviewed_at:
+            submitter_sig = _get_field('supervisor_signature')
+        # Normalise object format
+        if submitter_sig and isinstance(submitter_sig, dict):
+            submitter_sig = submitter_sig.get('url') or submitter_sig.get('saved') or None
+
+        # ── Submitter comments ────────────────────────────────────────────────
+        submitter_comments = _get_field('submitter_comments') or _get_field('general_comments')
+        if not submitter_comments and not supervisor_reviewed_at:
+            submitter_comments = _get_field('supervisor_comments') or ''
+        submitter_comments = (submitter_comments or '').strip()
+        if submitter_comments.lower() == 'none':
+            submitter_comments = ''
+
+        # ── Supervisor signature (only after formal supervisor review) ────────
         supervisor_sig = None
         supervisor_sig_path = None
-        
-        # Check direct path first - handle None/null explicitly
-        supervisor_sig_raw = data.get('supervisor_signature')
-        if supervisor_sig_raw is not None and supervisor_sig_raw != '' and supervisor_sig_raw != 'None':
-            supervisor_sig = supervisor_sig_raw
-            supervisor_sig_path = 'direct (supervisor_signature)'
-        # Check nested in data
-        elif nested_data:
-            supervisor_sig_raw = nested_data.get('supervisor_signature')
-            if supervisor_sig_raw is not None and supervisor_sig_raw != '' and supervisor_sig_raw != 'None':
-                supervisor_sig = supervisor_sig_raw
-                supervisor_sig_path = 'nested (data.supervisor_signature)'
-        # Check in form_data if it exists
-        if supervisor_sig is None and isinstance(data.get('form_data'), dict):
-            form_data_dict = data.get('form_data', {})
-            supervisor_sig_raw = form_data_dict.get('supervisor_signature')
-            if supervisor_sig_raw is not None and supervisor_sig_raw != '' and supervisor_sig_raw != 'None':
-                supervisor_sig = supervisor_sig_raw
-                supervisor_sig_path = 'form_data (supervisor_signature)'
-            # Also check nested form_data['data']
-            elif isinstance(form_data_dict.get('data'), dict):
-                nested_form_data = form_data_dict.get('data', {})
-                supervisor_sig_raw = nested_form_data.get('supervisor_signature')
-                if supervisor_sig_raw is not None and supervisor_sig_raw != '' and supervisor_sig_raw != 'None':
-                    supervisor_sig = supervisor_sig_raw
-                    supervisor_sig_path = 'form_data.data (supervisor_signature)'
-        
-        # Also check if supervisor_signature is an object with url property
+        if supervisor_reviewed_at:
+            supervisor_sig = _get_field('supervisor_signature')
+            if supervisor_sig:
+                supervisor_sig_path = 'auto-detected'
         if supervisor_sig and isinstance(supervisor_sig, dict):
-            if supervisor_sig.get('url'):
-                supervisor_sig = supervisor_sig.get('url')
-                logger.info(f"✅ Extracted supervisor signature URL from object format")
-            else:
-                # Object without url - might be invalid, set to None
-                logger.warning(f"⚠️ Supervisor signature is object but has no 'url' property: {supervisor_sig}")
-                supervisor_sig = None
-        
-        # Convert empty strings to None
-        if supervisor_sig == '' or supervisor_sig == 'None':
-            supervisor_sig = None
+            supervisor_sig = supervisor_sig.get('url') or supervisor_sig.get('saved') or supervisor_sig.get('path')
         
         # Check for supervisor comments - try all possible paths - handle None/null explicitly
         supervisor_comments = None
@@ -1026,11 +1050,10 @@ def create_pdf_report(data, output_dir):
                 if sig_rows:
                     sig_table = Table(sig_rows, colWidths=[2*inch, 3.5*inch])
                     sig_table.setStyle(TableStyle([
-                        ('ALIGN', (0, 0), (0, -1), 'LEFT'),
-                        ('ALIGN', (1, 0), (1, -1), 'CENTER'),
+                        ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),
                         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
                         ('GRID', (0, 0), (-1, -1), 0.75, colors.HexColor('#125435')),
-                        ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#E8F5E9')),
+                        ('BACKGROUND', (0, 0), (-1, -1), colors.white),
                         ('TOPPADDING', (0, 0), (-1, -1), 8),
                         ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
                         ('LEFTPADDING', (0, 0), (-1, -1), 6),
@@ -1070,272 +1093,168 @@ def create_pdf_report(data, output_dir):
         if isinstance(data.get('form_data'), dict):
             logger.info(f"  - form_data keys: {list(data.get('form_data').keys())[:20]}")
         
-        # Always show supervisor section
-        add_section_heading(story, "Supervisor Review")
+        # ══════════════════════════════════════════════════════════════════════
+        #  UNIFIED SIGN-OFF TABLE
+        #  3 columns per row: Role (Name)  |  Comments  |  Signature
+        #  One row per signer — only signers that have actually participated.
+        # ══════════════════════════════════════════════════════════════════════
         styles = get_professional_styles()
-        # Add comments with more spacing and bold
-        if supervisor_comments_display:
-            story.append(Paragraph(supervisor_comments_display, styles['CommentLead']))
-        else:
-            story.append(Paragraph("<i>No comments provided</i>", styles['CommentLead']))
-        story.append(Spacer(1, 0.1*inch))
-        
-        # Add signature section
-        styles = get_professional_styles()
-        sig_rows = []
-        
-        if supervisor_sig_display:
+
+        _MAX_SIG_W, _MAX_SIG_H = 1.4 * inch, 0.65 * inch
+        _COL_W = [1.6*inch, 2.7*inch, 2.2*inch]   # Role | Comments | Signature
+
+        def _u_name(u_dict):
+            if not u_dict or not isinstance(u_dict, dict):
+                return ''
+            return (u_dict.get('full_name') or u_dict.get('username') or '').strip()
+
+        _signoff_cell = ParagraphStyle(
+            'SignoffCell', parent=styles['Normal'], alignment=TA_RIGHT
+        )
+        _signoff_cell_small = ParagraphStyle(
+            'SignoffCellSmall', parent=styles['Small'], alignment=TA_RIGHT
+        )
+
+        def _make_sig_cell(sig_url, _sty):
+            """Return an Image flowable or a fallback Paragraph."""
+            if not sig_url:
+                return Paragraph('<i>Not signed</i>', _signoff_cell_small)
             try:
-                from common.utils import get_image_for_pdf
-                
-                img_data, is_url = get_image_for_pdf(supervisor_sig_display)
-                if img_data:
-                    # Calculate size maintaining aspect ratio
-                    max_width = 2.5 * inch
-                    max_height = 1.2 * inch
-                    
-                    if HAS_PIL:
-                        # Use PIL to get actual image dimensions for proper aspect ratio
-                        try:
-                            if is_url:
-                                # BytesIO stream
-                                img_data.seek(0)
-                                pil_img = PILImage.open(img_data)
-                            else:
-                                # File path
-                                pil_img = PILImage.open(img_data)
-                            
-                            # Get original dimensions
-                            orig_width, orig_height = pil_img.size
-                            
-                            # Calculate scaling factor to fit within max dimensions while maintaining aspect ratio
-                            width_ratio = max_width / orig_width
-                            height_ratio = max_height / orig_height
-                            scale_ratio = min(width_ratio, height_ratio)  # Use min to ensure it fits within bounds
-                            
-                            # Calculate final dimensions
-                            final_width = orig_width * scale_ratio
-                            final_height = orig_height * scale_ratio
-                            
-                            # Verify aspect ratio is maintained
-                            original_ratio = orig_width / orig_height if orig_height > 0 else 1
-                            final_ratio = final_width / final_height if final_height > 0 else 1
-                            
-                            # Create ReportLab Image with calculated dimensions
-                            # By calculating both dimensions from the same scale_ratio, aspect ratio is preserved
-                            if is_url:
-                                img_data.seek(0)  # Reset stream
-                                sig_img = Image(img_data, width=final_width, height=final_height)
-                            else:
-                                sig_img = Image(img_data, width=final_width, height=final_height)
-                            
-                            # Log dimensions for verification
-                            logger.info(f"✅ Supervisor signature aspect ratio: Original={orig_width}x{orig_height} (ratio={original_ratio:.3f}), Final={final_width:.2f}x{final_height:.2f} (ratio={final_ratio:.3f}), Scale={scale_ratio:.3f}")
-                            
-                            # Double-check: aspect ratios should match (within rounding error)
-                            if abs(original_ratio - final_ratio) > 0.01:
-                                logger.warning(f"⚠️ Supervisor signature aspect ratio mismatch! Original={original_ratio:.3f}, Final={final_ratio:.3f}")
-                        except Exception as pil_error:
-                            logger.warning(f"PIL image processing failed, using fallback: {pil_error}")
-                            # Fallback: use max dimensions but let ReportLab maintain aspect ratio
-                            if is_url:
-                                img_data.seek(0)
-                                sig_img = Image(img_data)
-                            else:
-                                sig_img = Image(img_data)
-                            
-                            # Get image dimensions and calculate aspect-ratio-preserving size
-                            if hasattr(sig_img, 'imageWidth') and hasattr(sig_img, 'imageHeight'):
-                                orig_width = sig_img.imageWidth
-                                orig_height = sig_img.imageHeight
-                                if orig_width > 0 and orig_height > 0:
-                                    # Calculate scaling factor to fit within max dimensions
-                                    width_ratio = max_width / orig_width
-                                    height_ratio = max_height / orig_height
-                                    scale_ratio = min(width_ratio, height_ratio)
-                                    
-                                    # Set dimensions maintaining aspect ratio
-                                    final_width = orig_width * scale_ratio
-                                    final_height = orig_height * scale_ratio
-                                    sig_img.drawWidth = final_width
-                                    sig_img.drawHeight = final_height
-                                    logger.debug(f"✅ Supervisor signature (fallback): Original={orig_width}x{orig_height}, Final={final_width:.2f}x{final_height:.2f}, Ratio={scale_ratio:.3f}")
-                                else:
-                                    # If dimensions unknown, set max width only and let height adjust automatically
-                                    sig_img.drawWidth = max_width
-                                    logger.debug(f"⚠️ Supervisor signature: Unknown dimensions, using max width only")
-                            else:
-                                # Fallback: set max width only and let height adjust automatically
-                                sig_img.drawWidth = max_width
-                                logger.debug(f"⚠️ Supervisor signature: No dimension attributes, using max width only")
-                    else:
-                        # Fallback without PIL: load image and calculate dimensions manually
-                        if is_url:
-                            img_data.seek(0)
-                            sig_img = Image(img_data)
-                        else:
-                            sig_img = Image(img_data)
-                        
-                        # Get image dimensions from ReportLab Image object
-                        orig_width = sig_img.imageWidth
-                        orig_height = sig_img.imageHeight
-                        
-                        if orig_width > 0 and orig_height > 0:
-                            # Calculate scaling factor to fit within max dimensions
-                            width_ratio = max_width / orig_width
-                            height_ratio = max_height / orig_height
-                            scale_ratio = min(width_ratio, height_ratio)
-                            
-                            # Set dimensions maintaining aspect ratio
-                            final_width = orig_width * scale_ratio
-                            final_height = orig_height * scale_ratio
-                            sig_img.drawWidth = final_width
-                            sig_img.drawHeight = final_height
-                            logger.debug(f"✅ Supervisor signature (no PIL): Original={orig_width}x{orig_height}, Final={final_width:.2f}x{final_height:.2f}, Ratio={scale_ratio:.3f}")
-                        else:
-                            # If dimensions unknown, use max width only and let height adjust automatically
-                            sig_img.drawWidth = max_width
-                            logger.debug(f"⚠️ Supervisor signature: Unknown dimensions, using max width only")
-                    
-                    sig_rows.append([
-                        Paragraph(f"<b>Supervisor Signature:</b>", styles['Normal']),
-                        sig_img
-                    ])
-                else:
-                    sig_rows.append([
-                        Paragraph(f"<b>Supervisor Signature:</b>", styles['Normal']),
-                        Paragraph("Signature not available", styles['Small'])
-                    ])
-            except Exception as e:
-                logger.error(f"Error processing Supervisor signature: {str(e)}")
-                logger.error(traceback.format_exc())
-                sig_rows.append([
-                    Paragraph(f"<b>Supervisor Signature:</b>", styles['Normal']),
-                    Paragraph("Error loading signature", styles['Small'])
-                ])
-        else:
-            # Show placeholder for missing signature
-            sig_rows.append([
-                Paragraph(f"<b>Supervisor Signature:</b>", styles['Normal']),
-                Paragraph("<i>Not signed</i>", styles['Small'])
+                from common.utils import prepare_signature_image_for_pdf
+                prepared, draw_w, draw_h = prepare_signature_image_for_pdf(
+                    sig_url, _MAX_SIG_W, _MAX_SIG_H
+                )
+                if prepared and draw_w > 0 and draw_h > 0:
+                    sig_img = Image(prepared, width=draw_w, height=draw_h)
+                    sig_img.hAlign = 'RIGHT'
+                    return sig_img
+                return Paragraph('<i>Signature not available</i>', _signoff_cell_small)
+            except Exception as _ex:
+                logger.warning(f"Sig render failed: {_ex}")
+                return Paragraph('<i>Error loading signature</i>', _signoff_cell_small)
+
+        def _role_cell(role_label, name, _sty):
+            txt = f'<b>{role_label}</b>'
+            if name:
+                txt += f'<br/><font size="8">({name})</font>'
+            return Paragraph(txt, _signoff_cell)
+
+        def _comment_cell(txt, _sty):
+            from common.utils import normalize_approval_comment
+            raw = normalize_approval_comment(txt) if txt and str(txt).strip() else ''
+            body = raw if raw else '<i>No comments provided</i>'
+            return Paragraph(body, _signoff_cell)
+
+        # Header row — use white text via inline XML so it shows on the dark background
+        _hdr_style = ParagraphStyle(
+            'HdrCell', parent=styles['Normal'], textColor=colors.white, fontSize=9, alignment=TA_RIGHT
+        )
+        signoff_rows = [[
+            Paragraph('<b>Role</b>', _hdr_style),
+            Paragraph('<b>Comments</b>', _hdr_style),
+            Paragraph('<b>Signature</b>', _hdr_style),
+        ]]
+
+        # ── Row 1: Submitter (always present) ──────────────────────────────
+        signoff_rows.append([
+            _role_cell(submitter_role_label, submitter_name, styles),
+            _comment_cell(submitter_comments, styles),
+            _make_sig_cell(submitter_sig, styles),
+        ])
+
+        # ── Row 2: Supervisor (only after formal review) ────────────────────
+        sup_user   = data.get('supervisor') or {}
+        sup_name   = _u_name(sup_user)
+        sup_reviewed = data.get('supervisor_reviewed_at')
+        if sup_reviewed or supervisor_sig:
+            signoff_rows.append([
+                _role_cell('Supervisor', sup_name, styles),
+                _comment_cell(supervisor_comments, styles),
+                _make_sig_cell(supervisor_sig, styles),
             ])
-        
-        if sig_rows:
-            sig_table = Table(sig_rows, colWidths=[2*inch, 3.5*inch])
-            sig_table.setStyle(TableStyle([
-                ('ALIGN', (0, 0), (0, -1), 'LEFT'),
-                ('ALIGN', (1, 0), (1, -1), 'CENTER'),
-                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                ('GRID', (0, 0), (-1, -1), 0.75, colors.HexColor('#125435')),
-                ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#E8F5E9')),
-                ('TOPPADDING', (0, 0), (-1, -1), 8),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-                ('LEFTPADDING', (0, 0), (-1, -1), 6),
-                ('RIGHTPADDING', (0, 0), (-1, -1), 6),
-            ]))
-            story.append(sig_table)
-            story.append(Spacer(1, 0.15*inch))
-        
-        # 2. Operations Manager - ALWAYS show if comments exist (even without signature)
-        ops_mgr_comments = operations_manager_comments.strip() if operations_manager_comments and operations_manager_comments.strip() else None
-        ops_mgr_sig = signatures.get('Operations Manager')
-        logger.info(f"🔍 Operations Manager section check:")
-        logger.info(f"  - Comments present: {bool(ops_mgr_comments)}")
-        logger.info(f"  - Comments value: {str(ops_mgr_comments)[:100] if ops_mgr_comments else 'None'}")
-        logger.info(f"  - Signature present: {bool(ops_mgr_sig)}")
-        logger.info(f"  - Signature type: {type(ops_mgr_sig) if ops_mgr_sig else 'None'}")
-        if ops_mgr_sig and isinstance(ops_mgr_sig, str):
-            logger.info(f"  - Signature length: {len(ops_mgr_sig)}")
-            logger.info(f"  - Signature preview: {ops_mgr_sig[:100]}...")
-        elif ops_mgr_sig and isinstance(ops_mgr_sig, dict):
-            logger.info(f"  - Signature dict keys: {list(ops_mgr_sig.keys())}")
-            logger.info(f"  - Signature URL: {ops_mgr_sig.get('url', 'N/A')[:100] if ops_mgr_sig.get('url') else 'N/A'}")
-        
-        # Check if Operations Manager has approved (even if data is missing, we should show the section)
-        om_has_approved = False
-        if data.get('operations_manager_approved_at') or data.get('operations_manager_id'):
-            om_has_approved = True
-            logger.info(f"✅ Operations Manager has approved (operations_manager_approved_at or operations_manager_id present)")
-        # Also check workflow status
-        if data.get('workflow_status'):
-            workflow_status = str(data.get('workflow_status'))
-            if 'operations_manager_approved' in workflow_status or 'bd_procurement' in workflow_status:
-                om_has_approved = True
-                logger.info(f"✅ Operations Manager has approved (based on workflow_status: {workflow_status})")
-        
-        logger.info(f"🔍 Operations Manager section check:")
-        logger.info(f"  - Comments present: {bool(ops_mgr_comments)}")
-        logger.info(f"  - Comments value: {ops_mgr_comments[:50] if ops_mgr_comments else 'None'}")
-        logger.info(f"  - Signature present: {bool(ops_mgr_sig)}")
-        logger.info(f"  - Signature type: {type(ops_mgr_sig)}")
-        logger.info(f"  - OM has approved (based on workflow/approval fields): {om_has_approved}")
-        
-        # Always show Operations Manager section if OM has approved OR if we have comments/signature
-        # Use always_show_signature=True to ensure signature section appears even if missing
-        if ops_mgr_comments or ops_mgr_sig or om_has_approved:
-            logger.info(f"✅ Adding Operations Manager section to PDF (comments: {bool(ops_mgr_comments)}, signature: {bool(ops_mgr_sig)}, approved: {om_has_approved})")
-            # Always show signature section for Operations Manager (even if missing, show "Not signed")
-            add_reviewer_section("Operations Manager", ops_mgr_comments, ops_mgr_sig, always_show_signature=True)
-        else:
-            logger.warning("⚠️ Skipping Operations Manager section - no comments, signature, or approval found")
-            # Log available keys for debugging
-            logger.warning(f"  - Available keys in data: {list(data.keys())[:30]}")
-            if isinstance(data.get('form_data'), dict):
-                logger.warning(f"  - Available keys in form_data: {list(data.get('form_data').keys())[:30]}")
-        
-        # 3. Business Development
-        # Only show BD section if they have actually signed (don't show "Not signed" placeholder)
-        # Check if BD has signed (has signature data)
-        bd_has_signed = bool(signatures.get('Business Development'))
-        bd_has_approved = False
-        if data.get('business_dev_approved_at') or data.get('business_dev_id'):
-            bd_has_approved = True
-        # Also check workflow status
-        if data.get('workflow_status'):
-            workflow_status = str(data.get('workflow_status'))
-            if 'bd_procurement' in workflow_status or 'general_manager' in workflow_status:
-                bd_has_approved = True
-        
-        # Only show BD section if BD has actually signed (has signature) OR has comments
-        # Don't show "Not signed" placeholder - only show when they've signed
-        if bd_has_signed or (business_dev_comments and business_dev_comments.strip()):
-            logger.info(f"✅ Adding Business Development section to PDF (comments: {bool(business_dev_comments)}, signature: {bool(bd_has_signed)}, approved: {bd_has_approved})")
-            # Use always_show_signature=False so "Not signed" is not shown if signature is missing
-            add_reviewer_section("Business Development", business_dev_comments, signatures.get('Business Development'), always_show_signature=False)
-        
-        # 4. Procurement
-        # Only show Procurement section if they have actually signed (don't show "Not signed" placeholder)
-        # Check if Procurement has signed (has signature data)
-        procurement_has_signed = bool(signatures.get('Procurement'))
-        procurement_has_approved = False
-        if data.get('procurement_approved_at') or data.get('procurement_id'):
-            procurement_has_approved = True
-        # Also check workflow status
-        if data.get('workflow_status'):
-            workflow_status = str(data.get('workflow_status'))
-            if 'bd_procurement' in workflow_status or 'general_manager' in workflow_status:
-                procurement_has_approved = True
-        
-        # Only show Procurement section if Procurement has actually signed (has signature) OR has comments
-        # Don't show "Not signed" placeholder - only show when they've signed
-        if procurement_has_signed or (procurement_comments and procurement_comments.strip()):
-            logger.info(f"✅ Adding Procurement section to PDF (comments: {bool(procurement_comments)}, signature: {bool(procurement_has_signed)}, approved: {procurement_has_approved})")
-            # Use always_show_signature=False so "Not signed" is not shown if signature is missing
-            add_reviewer_section("Procurement", procurement_comments, signatures.get('Procurement'), always_show_signature=False)
-        
-        # 5. General Manager
-        if general_manager_comments or signatures.get('General Manager'):
-            add_reviewer_section("General Manager", general_manager_comments, signatures.get('General Manager'))
-        
-        # Add document signed timestamp if any signatures exist
-        if any(signatures.values()):
-            styles = get_professional_styles()
-            story.append(Spacer(1, 0.15*inch))
-            story.append(Paragraph(
-                f"<i>Document signed on: {format_dubai_datetime(format_str='%B %d, %Y at %H:%M')} (GST)</i>",
+
+        # ── Row 3: Operations Manager ───────────────────────────────────────
+        om_user    = data.get('operations_manager') or {}
+        om_name    = _u_name(om_user)
+        om_sig     = signatures.get('Operations Manager')
+        om_comments_v = operations_manager_comments or ''
+        om_approved = data.get('operations_manager_approved_at') or data.get('operations_manager_id')
+        if om_approved or om_sig or om_comments_v.strip():
+            signoff_rows.append([
+                _role_cell('Operations Manager', om_name, styles),
+                _comment_cell(om_comments_v, styles),
+                _make_sig_cell(om_sig, styles),
+            ])
+
+        # ── Row 4: Business Development ─────────────────────────────────────
+        bd_user    = data.get('business_dev') or {}
+        bd_name    = _u_name(bd_user)
+        bd_sig     = signatures.get('Business Development')
+        bd_comments_v = business_dev_comments or ''
+        if bd_sig or bd_comments_v.strip():
+            signoff_rows.append([
+                _role_cell('BD & Procurement', bd_name, styles),
+                _comment_cell(bd_comments_v, styles),
+                _make_sig_cell(bd_sig, styles),
+            ])
+
+        # ── Row 5: Procurement (only if different from BD) ──────────────────
+        proc_user  = data.get('procurement') or {}
+        proc_name  = _u_name(proc_user)
+        proc_sig   = signatures.get('Procurement')
+        proc_comments_v = procurement_comments or ''
+        # Skip if same name as BD (combined role)
+        if (proc_sig or proc_comments_v.strip()) and proc_name != bd_name:
+            signoff_rows.append([
+                _role_cell('Procurement', proc_name, styles),
+                _comment_cell(proc_comments_v, styles),
+                _make_sig_cell(proc_sig, styles),
+            ])
+
+        # ── Row 6: General Manager ───────────────────────────────────────────
+        gm_user    = data.get('general_manager') or {}
+        gm_name    = _u_name(gm_user)
+        gm_sig     = signatures.get('General Manager')
+        gm_comments_v = general_manager_comments or ''
+        if gm_sig or gm_comments_v.strip():
+            signoff_rows.append([
+                _role_cell('General Manager', gm_name, styles),
+                _comment_cell(gm_comments_v, styles),
+                _make_sig_cell(gm_sig, styles),
+            ])
+
+        # Build the table
+        signoff_table = Table(signoff_rows, colWidths=_COL_W, repeatRows=1)
+        n = len(signoff_rows)
+        ts = TableStyle([
+            # Header row
+            ('BACKGROUND',    (0, 0), (-1, 0),  colors.HexColor('#125435')),
+            ('TEXTCOLOR',     (0, 0), (-1, 0),  colors.white),
+            ('FONTNAME',      (0, 0), (-1, 0),  'Helvetica-Bold'),
+            ('FONTSIZE',      (0, 0), (-1, 0),  9),
+            # Data rows: white background so transparent signatures blend in
+            ('BACKGROUND',    (0, 1), (-1, n-1), colors.white),
+            # Grid
+            ('GRID',          (0, 0), (-1, -1), 0.75, colors.HexColor('#125435')),
+            # Alignment
+            ('VALIGN',        (0, 0), (-1, -1), 'MIDDLE'),
+            ('ALIGN',         (0, 0), (-1, -1), 'RIGHT'),
+            # Padding
+            ('TOPPADDING',    (0, 0), (-1, -1), 8),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+            ('LEFTPADDING',   (0, 0), (-1, -1), 6),
+            ('RIGHTPADDING',  (0, 0), (-1, -1), 6),
+        ])
+        signoff_table.setStyle(ts)
+
+        signoff_block = [signoff_table, Spacer(1, 0.15 * inch)]
+        if any(signatures.values()) or submitter_sig:
+            signoff_block.append(Paragraph(
+                f'<i>Document generated: {format_dubai_datetime(format_str="%B %d, %Y at %H:%M")} (GST)</i>',
                 styles['Small']
             ))
-        
+        append_section_keep_together(story, 'Sign-off Record', signoff_block)
+
         # Build professional PDF with logo and branding
         create_professional_pdf(
             pdf_path, 

@@ -1,0 +1,1251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+  <meta name="theme-color" content="#125435">
+  <title>Users &amp; Teams | Injaaz Admin</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
+  {% include 'partials/caveat_font.html' %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin-manage-profile-modal.css') }}">
+  <style>
+  /* ── Design tokens ─────────────────────────────────────────────────────── */
+  :root {
+    /* Dashboard-style aliases for shared Manage profile / portal modals */
+    --primary: var(--tm-green);
+    --primary-hover: var(--tm-green2);
+    --primary-muted: rgba(18, 84, 53, 0.1);
+    --text: var(--tm-ink);
+    --text-dark: var(--tm-ink);
+    --text-muted: var(--tm-muted);
+    --bg-card: var(--tm-card);
+    --border: var(--tm-line);
+    --secondary: #e2e8f0;
+    --radius-sm: 10px;
+    --radius: 14px;
+    --shadow-lg: var(--tm-sh);
+
+    --tm-green:   #125435;
+    --tm-green2:  #1a7a4d;
+    --tm-line:    #e2ede8;
+    --tm-bg:      #f5faf7;
+    --tm-card:    #ffffff;
+    --tm-ink:     #0c1f17;
+    --tm-muted:   #587569;
+    --tm-r:       12px;
+    --tm-sh:      0 4px 24px rgba(18,84,53,.10);
+    --tm-blue:    #2563eb;
+    --tm-blue2:   #1d4ed8;
+  }
+  *,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", Roboto, sans-serif;
+    background: var(--tm-bg);
+    color: var(--tm-ink);
+    min-height: 100vh;
+    font-size: 15px;
+    line-height: 1.45;
+  }
+  body.has-main-nav { padding-top: 5.5rem; }
+
+  /* ── Layout ─────────────────────────────────────────────────────────────── */
+  .tm-app-root { display: flex; min-height: calc(100vh - 5.5rem); }
+  .tm-sidebar {
+    width: 220px;
+    flex-shrink: 0;
+    background: var(--tm-card);
+    border-right: 1.5px solid var(--tm-line);
+    display: flex;
+    flex-direction: column;
+    position: sticky;
+    top: 5.5rem;
+    height: calc(100vh - 5.5rem);
+    overflow-y: auto;
+  }
+  .tm-main { flex: 1; min-width: 0; padding: 1.5rem 1.75rem 3rem; }
+  @media (max-width: 768px) {
+    .tm-app-root { flex-direction: column; }
+    .tm-sidebar { width: 100%; height: auto; position: static; flex-direction: row; overflow-x: auto; border-right: none; border-bottom: 1.5px solid var(--tm-line); }
+    .tm-main { padding: 1rem; }
+  }
+
+  /* ── Sidebar ─────────────────────────────────────────────────────────────── */
+  .sb-brand {
+    padding: 1.1rem 1rem 0.75rem;
+    border-bottom: 1.5px solid var(--tm-line);
+    flex-shrink: 0;
+  }
+  .sb-brand .name { font-size: 1rem; font-weight: 800; color: var(--tm-green); display: block; }
+  .sb-brand .tagline { font-size: .72rem; color: var(--tm-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+  .sb-nav { padding: .6rem .5rem; flex: 1; }
+  .sb-section-label { font-size: .65rem; font-weight: 800; text-transform: uppercase; letter-spacing: .07em; color: var(--tm-muted); padding: .65rem .5rem .3rem; }
+  .sb-nav-item {
+    display: flex; align-items: center; gap: .5rem;
+    padding: .6rem .75rem; border-radius: 10px;
+    font-size: .88rem; font-weight: 600; color: var(--tm-ink);
+    text-decoration: none; transition: background .15s, color .15s;
+    cursor: pointer; border: none; background: none; width: 100%; text-align: left;
+  }
+  .sb-nav-item:hover { background: #edf7f2; color: var(--tm-green); }
+  .sb-nav-item.active { background: #ddf3e8; color: var(--tm-green); }
+  .sb-nav-item svg { flex-shrink: 0; }
+  .sb-badge { margin-left: auto; background: var(--tm-green); color: #fff; font-size: .68rem; font-weight: 800; border-radius: 99px; padding: .1rem .45rem; min-width: 22px; text-align: center; }
+  .sb-divider { border: none; border-top: 1.5px solid var(--tm-line); margin: .35rem .5rem; }
+  .sb-footer {
+    padding: .85rem 1rem;
+    border-top: 1.5px solid var(--tm-line);
+    flex-shrink: 0;
+  }
+  .sb-back-link { display: flex; align-items: center; gap: .4rem; color: var(--tm-muted); font-size: .82rem; font-weight: 600; text-decoration: none; }
+  .sb-back-link:hover { color: var(--tm-green); }
+
+  /* ── Page header ─────────────────────────────────────────────────────────── */
+  .tm-page-header {
+    display: flex; flex-wrap: wrap; gap: 1rem;
+    align-items: flex-start; justify-content: space-between;
+    margin-bottom: 1.5rem;
+  }
+  .tm-page-header h1 { font-size: 1.5rem; font-weight: 800; letter-spacing: -.02em; }
+  .tm-page-header p { color: var(--tm-muted); font-size: .92rem; margin-top: .3rem; max-width: 52ch; }
+  .tm-header-actions { display: flex; gap: .55rem; flex-wrap: wrap; }
+
+  /* ── KPI strip ───────────────────────────────────────────────────────────── */
+  .tm-kpi-strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: .85rem;
+    margin-bottom: 1.5rem;
+  }
+  @media (max-width: 900px) { .tm-kpi-strip { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 480px) { .tm-kpi-strip { grid-template-columns: 1fr; } }
+  .tm-kpi-card {
+    background: var(--tm-card);
+    border: 1.5px solid var(--tm-line);
+    border-radius: 14px;
+    padding: 1rem 1.15rem;
+    display: flex; align-items: center; gap: .85rem;
+  }
+  .tm-kpi-icon {
+    width: 44px; height: 44px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .tm-kpi-icon.green { background: #ddf3e8; }
+  .tm-kpi-icon.blue  { background: #dbeafe; }
+  .tm-kpi-icon.amber { background: #fef3c7; }
+  .tm-kpi-icon.red   { background: #fee2e2; }
+  .tm-kpi-lbl { font-size: .72rem; font-weight: 700; color: var(--tm-muted); text-transform: uppercase; letter-spacing: .04em; }
+  .tm-kpi-val { font-size: 1.65rem; font-weight: 800; line-height: 1.15; margin-top: .1rem; }
+
+  /* ── Tabs ────────────────────────────────────────────────────────────────── */
+  .tm-tabs {
+    display: flex; gap: 0;
+    border-bottom: 2px solid var(--tm-line);
+    margin-bottom: 1.25rem;
+  }
+  .tm-tab {
+    padding: .7rem 1.3rem; font-size: .92rem; font-weight: 700;
+    color: var(--tm-muted); cursor: pointer; border: none; background: none;
+    border-bottom: 2.5px solid transparent; margin-bottom: -2px;
+    display: flex; align-items: center; gap: .45rem;
+    transition: color .15s, border-color .15s;
+  }
+  .tm-tab:hover { color: var(--tm-green); }
+  .tm-tab.active { color: var(--tm-green); border-bottom-color: var(--tm-green); }
+  .tm-tab-count {
+    background: #e4f7ed; color: var(--tm-green);
+    font-size: .68rem; font-weight: 800; border-radius: 99px; padding: .1rem .45rem;
+  }
+  .tm-tab.active .tm-tab-count { background: var(--tm-green); color: #fff; }
+  .tm-tab-panel { display: none; }
+  .tm-tab-panel.active { display: block; }
+
+  /* ── Toolbar ─────────────────────────────────────────────────────────────── */
+  .tm-toolbar {
+    display: flex; flex-wrap: wrap; gap: .6rem;
+    align-items: center; margin-bottom: 1rem;
+  }
+  .tm-search-wrap { position: relative; flex: 1; min-width: 180px; max-width: 320px; }
+  .tm-search-wrap svg { position: absolute; left: .65rem; top: 50%; transform: translateY(-50%); color: var(--tm-muted); pointer-events: none; }
+  .tm-search { width: 100%; padding: .55rem .65rem .55rem 2.1rem; border: 1.5px solid var(--tm-line); border-radius: 10px; font-size: .88rem; background: var(--tm-card); }
+  .tm-search:focus { outline: none; border-color: var(--tm-green); box-shadow: 0 0 0 3px rgba(18,84,53,.12); }
+  .tm-select {
+    padding: .55rem .65rem; border: 1.5px solid var(--tm-line); border-radius: 10px;
+    font-size: .88rem; background: var(--tm-card); color: var(--tm-ink); cursor: pointer;
+  }
+  .tm-select:focus { outline: none; border-color: var(--tm-green); box-shadow: 0 0 0 3px rgba(18,84,53,.12); }
+
+  /* ── Buttons ─────────────────────────────────────────────────────────────── */
+  .tm-btn {
+    display: inline-flex; align-items: center; gap: .45rem;
+    padding: .6rem 1.1rem; border-radius: var(--tm-r); font-size: .88rem; font-weight: 700;
+    cursor: pointer; border: 1.5px solid transparent; min-height: 40px; transition: background .15s, transform .12s;
+    white-space: nowrap;
+  }
+  .tm-btn:active { transform: translateY(1px); }
+  .tm-btn-primary { background: var(--tm-green); color: #fff; }
+  .tm-btn-primary:hover { background: var(--tm-green2); }
+  .tm-btn-outline { background: var(--tm-card); color: var(--tm-green); border-color: var(--tm-line); }
+  .tm-btn-outline:hover { background: #edf7f2; border-color: #c0ecd4; }
+  .tm-btn-ghost { background: transparent; color: var(--tm-muted); border-color: transparent; }
+  .tm-btn-ghost:hover { background: #f1f5f9; color: var(--tm-ink); }
+  .tm-btn-danger { background: #b91c1c; color: #fff; }
+  .tm-btn-danger:hover { background: #991b1b; }
+  .tm-btn-sm { padding: .35rem .7rem; font-size: .78rem; min-height: 32px; }
+  .tm-btn-blue { background: var(--tm-blue); color: #fff; }
+  .tm-btn-blue:hover { background: var(--tm-blue2); }
+
+  /* ── Staff grid ──────────────────────────────────────────────────────────── */
+  .tm-staff-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+    gap: 1rem;
+  }
+  .tm-staff-card {
+    background: var(--tm-card);
+    border: 1.5px solid var(--tm-line);
+    border-radius: 16px;
+    padding: 1.1rem 1.15rem;
+    transition: box-shadow .18s, border-color .18s, transform .18s;
+    position: relative;
+  }
+  .tm-staff-card--interactive {
+    cursor: pointer;
+  }
+  .tm-staff-card--interactive:hover { box-shadow: var(--tm-sh); border-color: #c0ecd4; }
+  .tm-staff-card--interactive:focus-visible {
+    outline: 2px solid var(--tm-green);
+    outline-offset: 2px;
+  }
+  .tm-staff-card--interactive:active { transform: translateY(1px); }
+  .tm-staff-card-top { display: flex; gap: .75rem; align-items: flex-start; margin-bottom: .75rem; }
+  .tm-avatar {
+    width: 46px; height: 46px; border-radius: 14px;
+    background: linear-gradient(135deg, var(--tm-green), var(--tm-green2));
+    color: #fff; font-weight: 800; font-size: 1.05rem;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; letter-spacing: -.02em;
+  }
+  .tm-avatar.blue { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
+  .tm-avatar.amber { background: linear-gradient(135deg, #d97706, #b45309); }
+  .tm-avatar.purple { background: linear-gradient(135deg, #7c3aed, #6d28d9); }
+  .tm-staff-name { font-weight: 800; font-size: .97rem; line-height: 1.25; }
+  .tm-staff-desig { font-size: .78rem; color: var(--tm-muted); font-weight: 600; margin-top: .1rem; }
+  .tm-role-badge {
+    margin-left: auto; font-size: .65rem; font-weight: 800; text-transform: uppercase;
+    letter-spacing: .05em; padding: .22rem .5rem; border-radius: 6px; white-space: nowrap; flex-shrink: 0;
+  }
+  .tm-role-badge.admin   { background: #fce7f3; color: #9d174d; }
+  .tm-role-badge.user    { background: #e0f2fe; color: #075985; }
+  .tm-role-badge.manager { background: #ede9fe; color: #5b21b6; }
+
+  .tm-staff-modules {
+    display: flex; flex-wrap: wrap; gap: .3rem; margin-bottom: .75rem;
+  }
+  .tm-mod-chip {
+    font-size: .62rem; font-weight: 700; padding: .18rem .42rem;
+    border-radius: 5px; background: #edf7f2; color: var(--tm-green);
+    text-transform: uppercase; letter-spacing: .04em;
+  }
+  .tm-staff-meta { font-size: .78rem; color: var(--tm-muted); display: flex; flex-direction: column; gap: .2rem; margin-bottom: .85rem; }
+  .tm-staff-meta-row { display: flex; align-items: center; gap: .4rem; }
+  .tm-status-dot { width: 8px; height: 8px; border-radius: 99px; background: #22c55e; display: inline-block; }
+  .tm-status-dot.inactive { background: #9ca3af; }
+  .tm-staff-actions { display: flex; gap: .4rem; flex-wrap: wrap; }
+
+  /* ── Technicians table ───────────────────────────────────────────────────── */
+  .tm-table-wrap { background: var(--tm-card); border: 1.5px solid var(--tm-line); border-radius: 16px; overflow: hidden; }
+  .tm-table { width: 100%; border-collapse: collapse; }
+  .tm-table thead th {
+    padding: .85rem 1rem; background: #f9fcfa; text-align: left;
+    font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .05em;
+    color: var(--tm-muted); border-bottom: 1.5px solid var(--tm-line); white-space: nowrap;
+  }
+  .tm-table tbody tr { border-bottom: 1px solid var(--tm-line); transition: background .12s; }
+  .tm-table tbody tr:last-child { border-bottom: none; }
+  .tm-table tbody tr:hover { background: #f5faf7; }
+  .tm-table td { padding: .82rem 1rem; font-size: .88rem; vertical-align: middle; }
+  .tm-table .td-name { font-weight: 700; }
+  .tm-table .td-eid { font-size: .78rem; color: var(--tm-muted); font-weight: 600; font-family: monospace; }
+  .tm-status-badge {
+    display: inline-block; font-size: .68rem; font-weight: 800; text-transform: uppercase;
+    letter-spacing: .05em; padding: .22rem .55rem; border-radius: 6px;
+  }
+  .tm-status-badge.active   { background: #d1fae5; color: #065f46; }
+  .tm-status-badge.inactive { background: #f1f5f9; color: #475569; }
+  .tm-status-badge.on_leave { background: #fef3c7; color: #92400e; }
+  .tm-table-actions { display: flex; gap: .3rem; }
+  .tm-empty-state {
+    text-align: center; padding: 3.5rem 1.5rem;
+    color: var(--tm-muted); border: 2px dashed var(--tm-line);
+    border-radius: 16px; background: rgba(255,255,255,.6); margin-top: .5rem;
+  }
+  .tm-empty-state svg { margin-bottom: .75rem; opacity: .4; }
+  .tm-empty-state h3 { font-size: 1rem; font-weight: 800; margin-bottom: .35rem; color: var(--tm-ink); }
+  .tm-empty-state p { font-size: .88rem; max-width: 38ch; margin: 0 auto; }
+
+  /* ── Modal ───────────────────────────────────────────────────────────────── */
+  .tm-modal-veil {
+    position: fixed; inset: 0; z-index: 600;
+    background: rgba(8,24,15,.45); backdrop-filter: blur(4px);
+    display: flex; align-items: flex-start; justify-content: center;
+    padding: max(1rem, env(safe-area-inset-top)) 1rem 1rem;
+    opacity: 0; pointer-events: none; transition: opacity .2s; overflow-y: auto;
+  }
+  .tm-modal-veil.open { opacity: 1; pointer-events: all; }
+  .tm-modal {
+    background: var(--tm-card); border-radius: 18px;
+    width: 100%; max-width: 640px; margin: auto;
+    box-shadow: 0 24px 64px rgba(0,0,0,.18);
+    transform: translateY(12px); transition: transform .22s;
+    display: flex; flex-direction: column; max-height: min(95vh, 900px);
+  }
+  .tm-modal-veil.open .tm-modal { transform: translateY(0); }
+  .tm-modal-head {
+    padding: 1.1rem 1.2rem; border-bottom: 1.5px solid var(--tm-line);
+    display: flex; align-items: center; gap: .75rem; flex-shrink: 0;
+  }
+  .tm-modal-head h3 { font-size: 1.05rem; font-weight: 800; flex: 1; }
+  .tm-modal-close {
+    width: 38px; height: 38px; border-radius: 10px; border: 1.5px solid var(--tm-line);
+    background: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    color: var(--tm-muted); flex-shrink: 0;
+  }
+  .tm-modal-close:hover { background: #fee2e2; color: #b91c1c; border-color: #fca5a5; }
+  .tm-modal-body { padding: 1.15rem 1.2rem; overflow-y: auto; flex: 1; }
+  .tm-modal-foot {
+    padding: .9rem 1.2rem; border-top: 1.5px solid var(--tm-line);
+    display: flex; gap: .5rem; justify-content: flex-end; flex-shrink: 0;
+  }
+  .tm-modal-head.green-head { background: linear-gradient(135deg, var(--tm-green) 0%, var(--tm-green2) 100%); color: #fff; border-radius: 18px 18px 0 0; }
+  .tm-modal-head.green-head h3 { color: #fff; }
+  .tm-modal-head.green-head .tm-modal-close { background: rgba(255,255,255,.15); border-color: rgba(255,255,255,.3); color: #fff; }
+  .tm-modal-head.green-head .tm-modal-close:hover { background: rgba(255,255,255,.25); }
+
+  /* ── Form fields ─────────────────────────────────────────────────────────── */
+  .tm-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .85rem; }
+  @media (max-width: 560px) { .tm-form-grid { grid-template-columns: 1fr; } }
+  .tm-form-grid .col-span-2 { grid-column: span 2; }
+  @media (max-width: 560px) { .tm-form-grid .col-span-2 { grid-column: span 1; } }
+  .tm-fld { display: flex; flex-direction: column; gap: .3rem; }
+  .tm-fld label { font-size: .75rem; font-weight: 700; color: var(--tm-muted); text-transform: uppercase; letter-spacing: .04em; }
+  .tm-fld input, .tm-fld select, .tm-fld textarea {
+    padding: .6rem .75rem; border: 1.5px solid var(--tm-line);
+    border-radius: 10px; font-size: .92rem; font-family: inherit;
+    background: #fafdfb; color: var(--tm-ink);
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .tm-fld input:focus, .tm-fld select:focus, .tm-fld textarea:focus {
+    outline: none; border-color: var(--tm-green); box-shadow: 0 0 0 3px rgba(18,84,53,.12);
+  }
+  .tm-fld textarea { min-height: 72px; resize: vertical; }
+  .tm-fld.required label::after { content: ' *'; color: #dc2626; }
+  .tm-section-label {
+    font-size: .7rem; font-weight: 800; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--tm-muted); margin: 1rem 0 .5rem; display: flex; align-items: center; gap: .5rem;
+  }
+  .tm-section-label::after { content: ''; flex: 1; height: 1px; background: var(--tm-line); }
+
+  /* ── Import area ─────────────────────────────────────────────────────────── */
+  .tm-import-zone {
+    border: 2px dashed var(--tm-line); border-radius: 14px; padding: 2rem;
+    text-align: center; cursor: pointer; transition: border-color .2s, background .2s;
+    background: #fafdfb;
+  }
+  .tm-import-zone:hover, .tm-import-zone.drag { border-color: var(--tm-green); background: #edf7f2; }
+  .tm-import-zone svg { color: var(--tm-muted); margin-bottom: .6rem; }
+  .tm-import-zone h4 { font-weight: 800; font-size: .95rem; margin-bottom: .3rem; }
+  .tm-import-zone p { font-size: .82rem; color: var(--tm-muted); }
+  #importFileInput { display: none; }
+
+  /* ── Toast ───────────────────────────────────────────────────────────────── */
+  #tmToast {
+    position: fixed; bottom: 1.5rem; right: 1.5rem; max-width: min(360px, calc(100% - 2rem));
+    background: var(--tm-green); color: #fff; padding: .75rem 1rem;
+    border-radius: 12px; font-weight: 600; font-size: .9rem;
+    box-shadow: var(--tm-sh); z-index: 999;
+    transform: translateY(120%); opacity: 0; transition: .3s; pointer-events: none;
+  }
+  #tmToast.show { transform: translateY(0); opacity: 1; }
+  #tmToast.error { background: #b91c1c; }
+
+  /* ── Spinner ─────────────────────────────────────────────────────────────── */
+  .tm-spinner {
+    display: inline-block; width: 18px; height: 18px; border-radius: 50%;
+    border: 2.5px solid rgba(255,255,255,.3); border-top-color: #fff;
+    animation: tm-spin .7s linear infinite;
+  }
+  @keyframes tm-spin { to { transform: rotate(360deg); } }
+
+  /* ── Responsive table scroll ─────────────────────────────────────────────── */
+  .tm-table-scroll { overflow-x: auto; }
+  </style>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/injz-profile-mgmt-theme.css') }}">
+</head>
+<body class="has-main-nav">
+  {% include 'partials/main_navbar.html' with context %}
+
+  <div class="tm-app-root">
+
+    <!-- ── Left sidebar ─────────────────────────────────────────────────── -->
+    <aside class="tm-sidebar" aria-label="Team management navigation">
+      <div class="sb-brand">
+        <span class="name">Users &amp; Teams</span>
+        <span class="tagline">Admin Control Center</span>
+      </div>
+      <nav class="sb-nav">
+        <div class="sb-section-label">People</div>
+        <button class="sb-nav-item active" id="sideStaff" onclick="switchView('staff')">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/></svg>
+          Staffs
+          <span class="sb-badge" id="sbStaffCount">0</span>
+        </button>
+        <button class="sb-nav-item" id="sideTech" onclick="switchView('tech')">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17 17.25 21A2.652 2.652 0 0 0 21 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 1 1-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 0 0 4.486-6.336l-3.276 3.277a3.004 3.004 0 0 1-2.25-2.25l3.276-3.276a4.5 4.5 0 0 0-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085m-1.745 1.437L5.909 7.5H4.5L2.25 3.75l1.5-1.5L7.5 4.5v1.409l4.26 4.26m-1.745 1.437 1.745-1.437m6.615 8.206L15.75 15.75M4.867 19.125h.008v.008h-.008v-.008Z"/></svg>
+          Technicians
+          <span class="sb-badge" id="sbTechCount">0</span>
+        </button>
+        <hr class="sb-divider">
+        <div class="sb-section-label">Quick Actions</div>
+        <button class="sb-nav-item" onclick="openTechModal()">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+          Add Technician
+        </button>
+        <button class="sb-nav-item" onclick="openImportModal()">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+          Import Excel
+        </button>
+        <button class="sb-nav-item" onclick="downloadTemplate()">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m.75 12 3 3m0 0 3-3m-3 3v-6m-1.5-9H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>
+          Excel Template
+        </button>
+      </nav>
+      <div class="sb-footer">
+        <a href="/admin/dashboard" class="sb-back-link">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18"/></svg>
+          Back to Admin
+        </a>
+      </div>
+    </aside>
+
+    <!-- ── Main content ──────────────────────────────────────────────────── -->
+    <main class="tm-main">
+
+      <!-- Page header -->
+      <div class="tm-page-header">
+        <div>
+          <h1>Users & Teams</h1>
+          <p>Central place for staff logins (roles, passwords, profiles) and the field technician roster. The admin dashboard shows a live count summary only.</p>
+        </div>
+        <div class="tm-header-actions">
+          <button class="tm-btn tm-btn-outline" onclick="downloadTemplate()">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m.75 12 3 3m0 0 3-3m-3 3v-6m-1.5-9H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>
+            Excel Template
+          </button>
+          <button class="tm-btn tm-btn-blue" onclick="openImportModal()">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+            Import Excel
+          </button>
+          <a class="tm-btn tm-btn-outline" href="/admin/dashboard?tool=create_user" title="Add a new user account">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+            Create login
+          </a>
+          <button class="tm-btn tm-btn-primary" onclick="openTechModal()">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+            Add Technician
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI strip -->
+      <div class="tm-kpi-strip" id="tmKpiStrip">
+        <div class="tm-kpi-card">
+          <div class="tm-kpi-icon green">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="#125435" width="22" height="22"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/></svg>
+          </div>
+          <div><div class="tm-kpi-lbl">Total Staff</div><div class="tm-kpi-val" id="kpiStaff">—</div></div>
+        </div>
+        <div class="tm-kpi-card">
+          <div class="tm-kpi-icon blue">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="#2563eb" width="22" height="22"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17 17.25 21A2.652 2.652 0 0 0 21 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 1 1-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 0 0 4.486-6.336l-3.276 3.277a3.004 3.004 0 0 1-2.25-2.25l3.276-3.276a4.5 4.5 0 0 0-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085m-1.745 1.437L5.909 7.5H4.5L2.25 3.75l1.5-1.5L7.5 4.5v1.409l4.26 4.26m-1.745 1.437 1.745-1.437m6.615 8.206L15.75 15.75M4.867 19.125h.008v.008h-.008v-.008Z"/></svg>
+          </div>
+          <div><div class="tm-kpi-lbl">Technicians</div><div class="tm-kpi-val" id="kpiTech">—</div></div>
+        </div>
+        <div class="tm-kpi-card">
+          <div class="tm-kpi-icon amber">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="#d97706" width="22" height="22"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+          </div>
+          <div><div class="tm-kpi-lbl">Active Technicians</div><div class="tm-kpi-val" id="kpiActive">—</div></div>
+        </div>
+        <div class="tm-kpi-card">
+          <div class="tm-kpi-icon red">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="#dc2626" width="22" height="22"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+          </div>
+          <div><div class="tm-kpi-lbl">Inactive / Leave</div><div class="tm-kpi-val" id="kpiOff">—</div></div>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="tm-tabs" role="tablist">
+        <button class="tm-tab active" id="tabBtnStaff" role="tab" aria-selected="true" onclick="switchTab('staff')">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/></svg>
+          Staffs
+          <span class="tm-tab-count" id="tabStaffCount">0</span>
+        </button>
+        <button class="tm-tab" id="tabBtnTech" role="tab" aria-selected="false" onclick="switchTab('tech')">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17 17.25 21A2.652 2.652 0 0 0 21 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 1 1-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 0 0 4.486-6.336l-3.276 3.277a3.004 3.004 0 0 1-2.25-2.25l3.276-3.276a4.5 4.5 0 0 0-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085m-1.745 1.437L5.909 7.5H4.5L2.25 3.75l1.5-1.5L7.5 4.5v1.409l4.26 4.26m-1.745 1.437 1.745-1.437m6.615 8.206L15.75 15.75M4.867 19.125h.008v.008h-.008v-.008Z"/></svg>
+          Technicians
+          <span class="tm-tab-count" id="tabTechCount">0</span>
+        </button>
+      </div>
+
+      <!-- ── Staff tab ──────────────────────────────────────────────────── -->
+      <div class="tm-tab-panel active" id="panelStaff" role="tabpanel">
+        <div class="tm-toolbar" style="flex-wrap:wrap;">
+          <div class="tm-search-wrap">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg>
+            <input type="search" class="tm-search" id="staffSearch" placeholder="Search staff…" oninput="filterStaff()" autocomplete="off">
+          </div>
+          <select class="tm-select" id="staffRoleFilter" onchange="filterStaff()">
+            <option value="">All roles</option>
+            <option value="admin">Admin</option>
+            <option value="user">User</option>
+          </select>
+          <select class="tm-select" id="staffStatusFilter" onchange="filterStaff()">
+            <option value="">All status</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+          <a href="/admin/dashboard?tool=create_user" class="tm-btn tm-btn-primary tm-btn-sm" title="Opens admin dashboard modal to add a login" style="margin-left:auto;">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+            Create login
+          </a>
+        </div>
+        <div class="tm-staff-grid" id="staffGrid">
+          <div class="tm-empty-state" style="grid-column:1/-1;">
+            <div class="tm-spinner" style="border-top-color:var(--tm-green);border-color:rgba(18,84,53,.15);width:28px;height:28px;margin:0 auto .75rem;"></div>
+            <p>Loading staff…</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Technicians tab ───────────────────────────────────────────── -->
+      <div class="tm-tab-panel" id="panelTech" role="tabpanel">
+        <div class="tm-toolbar">
+          <div class="tm-search-wrap">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg>
+            <input type="search" class="tm-search" id="techSearch" placeholder="Search technicians…" oninput="filterTech()" autocomplete="off">
+          </div>
+          <select class="tm-select" id="techStatusFilter" onchange="filterTech()">
+            <option value="">All status</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+            <option value="on_leave">On Leave</option>
+          </select>
+          <select class="tm-select" id="techDeptFilter" onchange="filterTech()">
+            <option value="">All departments</option>
+          </select>
+          <select class="tm-select" id="techSupervisorFilter" onchange="filterTech()">
+            <option value="">All supervisors</option>
+          </select>
+          <button class="tm-btn tm-btn-primary tm-btn-sm" onclick="openTechModal()" style="margin-left:auto;">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+            Add Technician
+          </button>
+        </div>
+        <div class="tm-table-scroll">
+          <div class="tm-table-wrap">
+            <table class="tm-table" id="techTable">
+              <thead>
+                <tr>
+                  <th>Technician</th>
+                  <th>Supervisor</th>
+                  <th>Employee ID</th>
+                  <th>Designation</th>
+                  <th>Department</th>
+                  <th>Phone</th>
+                  <th>Salary</th>
+                  <th>Joined</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="techTableBody">
+                <tr>
+                  <td colspan="10" style="text-align:center;padding:2.5rem;color:var(--tm-muted);">
+                    <div class="tm-spinner" style="border-top-color:var(--tm-green);border-color:rgba(18,84,53,.15);width:24px;height:24px;margin:0 auto .5rem;"></div>
+                    Loading…
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="tm-empty-state" id="techEmptyState" style="display:none;">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="48" height="48"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17 17.25 21A2.652 2.652 0 0 0 21 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 1 1-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 0 0 4.486-6.336l-3.276 3.277a3.004 3.004 0 0 1-2.25-2.25l3.276-3.276a4.5 4.5 0 0 0-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085m-1.745 1.437L5.909 7.5H4.5L2.25 3.75l1.5-1.5L7.5 4.5v1.409l4.26 4.26m-1.745 1.437 1.745-1.437m6.615 8.206L15.75 15.75M4.867 19.125h.008v.008h-.008v-.008Z"/></svg>
+            <h3>No technicians yet</h3>
+            <p>Add your first technician manually or import a filled Excel template.</p>
+            <div style="margin-top:1rem;display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap;">
+              <button class="tm-btn tm-btn-primary" onclick="openTechModal()">Add Technician</button>
+              <button class="tm-btn tm-btn-blue" onclick="openImportModal()">Import Excel</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div><!-- /.tm-app-root -->
+
+  <!-- ════════════════════════════════════════════════════════════════════
+       Technician Add / Edit Modal
+  ═══════════════════════════════════════════════════════════════════════ -->
+  <div class="tm-modal-veil" id="techModal" aria-hidden="true" aria-modal="true" role="dialog" aria-labelledby="techModalTitle">
+    <div class="tm-modal">
+      <div class="tm-modal-head green-head">
+        <h3 id="techModalTitle">Add Technician</h3>
+        <button class="tm-modal-close" id="techModalClose" aria-label="Close">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="tm-modal-body">
+        <input type="hidden" id="techEditId">
+        <div class="tm-section-label">Identity</div>
+        <div class="tm-form-grid">
+          <div class="tm-fld required"><label for="techEmpId">Employee ID</label><input type="text" id="techEmpId" placeholder="EMP-001" autocomplete="off"></div>
+          <div class="tm-fld required col-span-2"><label for="techFullName">Full Name</label><input type="text" id="techFullName" placeholder="e.g. Ahmed Al Rashidi" autocomplete="off"></div>
+          <div class="tm-fld"><label for="techDesig">Designation</label><input type="text" id="techDesig" placeholder="e.g. HVAC Technician" autocomplete="off"></div>
+          <div class="tm-fld"><label for="techDept">Department</label><input type="text" id="techDept" placeholder="e.g. MEP" autocomplete="off"></div>
+          <div class="tm-fld col-span-2"><label for="techSpec">Specialization</label><input type="text" id="techSpec" placeholder="e.g. Air Conditioning, Electrical" autocomplete="off"></div>
+        </div>
+        <div class="tm-section-label">Contact</div>
+        <div class="tm-form-grid">
+          <div class="tm-fld"><label for="techPhone">Phone</label><input type="tel" id="techPhone" placeholder="+971-50-000-0000" autocomplete="off"></div>
+          <div class="tm-fld"><label for="techEmail">Email</label><input type="email" id="techEmail" placeholder="name@company.com" autocomplete="off"></div>
+        </div>
+        <div class="tm-section-label">Supervisor link</div>
+        <div class="tm-form-grid">
+          <div class="tm-fld col-span-2">
+            <label for="techSupervisorUser">Reporting supervisor account</label>
+            <select id="techSupervisorUser">
+              <option value="">— None —</option>
+            </select>
+            <p style="margin-top:.45rem;font-size:.78rem;color:var(--tm-muted);line-height:1.35;">
+              Shows who manages this technician in the roster. Active supervisor, Operations Manager, or General Manager accounts only.
+            </p>
+          </div>
+        </div>
+        <div class="tm-section-label">Employment Details</div>
+        <div class="tm-form-grid">
+          <div class="tm-fld"><label for="techSalary">Monthly Salary (AED)</label><input type="number" id="techSalary" placeholder="0.00" min="0" step="0.01" autocomplete="off"></div>
+          <div class="tm-fld"><label for="techJoining">Joining Date</label><input type="date" id="techJoining" autocomplete="off"></div>
+          <div class="tm-fld"><label for="techStatus">Status</label>
+            <select id="techStatus">
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+              <option value="on_leave">On Leave</option>
+            </select>
+          </div>
+        </div>
+        <div class="tm-section-label">Notes</div>
+        <div class="tm-form-grid">
+          <div class="tm-fld col-span-2"><label for="techNotes">Notes (optional)</label><textarea id="techNotes" rows="3" placeholder="Any additional information…"></textarea></div>
+        </div>
+      </div>
+      <div class="tm-modal-foot">
+        <button class="tm-btn tm-btn-ghost" id="techModalCancel">Cancel</button>
+        <button class="tm-btn tm-btn-primary" id="techModalSave">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+          Save Technician
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════════════════
+       Import Excel Modal
+  ═══════════════════════════════════════════════════════════════════════ -->
+  <div class="tm-modal-veil" id="importModal" aria-hidden="true" aria-modal="true" role="dialog" aria-labelledby="importModalTitle">
+    <div class="tm-modal" style="max-width:520px;">
+      <div class="tm-modal-head green-head">
+        <h3 id="importModalTitle">Import Technicians from Excel</h3>
+        <button class="tm-modal-close" id="importModalClose" aria-label="Close">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="tm-modal-body">
+        <div class="tm-import-zone" id="importZone" onclick="document.getElementById('importFileInput').click()">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="40" height="40"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m6.75 12-3-3m0 0-3 3m3-3v6m-1.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>
+          <h4>Click to select or drag &amp; drop</h4>
+          <p>Excel files only (.xlsx, .xls) · Use the template for correct column headers</p>
+          <p id="importFileName" style="margin-top:.5rem;font-weight:700;color:var(--tm-green);min-height:1.2em;"></p>
+        </div>
+        <input type="file" id="importFileInput" accept=".xlsx,.xls" onchange="handleFileSelect(event)">
+        <div id="importResult" style="margin-top:.85rem;display:none;">
+          <div style="border-radius:10px;padding:.75rem 1rem;font-size:.88rem;font-weight:600;" id="importResultBox"></div>
+        </div>
+        <div style="margin-top:.85rem;padding:.7rem .9rem;background:#f0fbf5;border-radius:10px;border:1.5px solid #c0ecd4;font-size:.82rem;color:var(--tm-muted);">
+          <strong style="color:var(--tm-green);">Required columns:</strong> Employee ID, Full Name<br>
+          Optional: Designation, Department, Specialization, Phone, Email, Salary, Joining Date, Status, Notes, Supervisor User ID
+        </div>
+      </div>
+      <div class="tm-modal-foot">
+        <button class="tm-btn tm-btn-ghost" id="importModalCancel">Cancel</button>
+        <button class="tm-btn tm-btn-outline" onclick="downloadTemplate()">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+          Download Template
+        </button>
+        <button class="tm-btn tm-btn-primary" id="importSubmitBtn" disabled>
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+          Import
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════════════════
+       Delete Confirm Modal
+  ═══════════════════════════════════════════════════════════════════════ -->
+  <div class="tm-modal-veil" id="deleteModal" aria-hidden="true" aria-modal="true" role="dialog">
+    <div class="tm-modal" style="max-width:400px;">
+      <div class="tm-modal-head">
+        <h3>Delete Technician</h3>
+        <button class="tm-modal-close" id="deleteModalClose" aria-label="Close">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="tm-modal-body">
+        <p style="margin-bottom:.5rem;">Are you sure you want to permanently delete <strong id="deleteModalName"></strong>? This action cannot be undone.</p>
+      </div>
+      <div class="tm-modal-foot">
+        <button class="tm-btn tm-btn-ghost" id="deleteModalCancel">Cancel</button>
+        <button class="tm-btn tm-btn-danger" id="deleteModalConfirm">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>
+          Delete
+        </button>
+      </div>
+    </div>
+  </div>
+
+  {% include 'partials/admin_manage_profile_modals.html' %}
+
+  <div id="tmToast" role="alert" aria-live="assertive"></div>
+
+  <script src="{{ url_for('static', filename='mobile_utils.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='api-client.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/admin-manage-profile-modal.js') }}"></script>
+
+  <script>
+  /* ═══════════════════════════════════════════════════════════════════════
+     Utilities
+  ════════════════════════════════════════════════════════════════════════ */
+  const API = '/api/admin';
+  let _jwt = null;
+
+  function getJwt() {
+    if (_jwt) return _jwt;
+    try { _jwt = JSON.parse(localStorage.getItem('user'))?.access_token || localStorage.getItem('access_token') || ''; }
+    catch(_) { _jwt = ''; }
+    return _jwt;
+  }
+
+  async function apiFetch(path, opts = {}) {
+    const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getJwt()}`, ...(opts.headers || {}) };
+    const res = await fetch(API + path, { ...opts, headers });
+    const data = await res.json().catch(() => ({}));
+    return { ok: res.ok, status: res.status, data };
+  }
+
+  let _toastTimer = null;
+  function tmToast(msg, type = 'success') {
+    const el = document.getElementById('tmToast');
+    el.textContent = msg;
+    el.className = type === 'error' ? 'error show' : 'show';
+    clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(() => el.classList.remove('show'), 3800);
+  }
+
+  function initials(name) {
+    return (name || '').split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('') || '?';
+  }
+
+  const AVATAR_COLORS = ['', 'blue', 'amber', 'purple'];
+  function avatarColor(idx) { return AVATAR_COLORS[idx % AVATAR_COLORS.length]; }
+
+  function fmtDate(d) {
+    if (!d) return '—';
+    try { return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }); } catch(_) { return d; }
+  }
+
+  function fmtSalary(v) {
+    if (v === null || v === undefined || v === '') return '—';
+    return 'AED ' + Number(v).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     Tab / view switching
+  ════════════════════════════════════════════════════════════════════════ */
+  function switchTab(tab) {
+    document.querySelectorAll('.tm-tab').forEach(b => { b.classList.remove('active'); b.setAttribute('aria-selected', 'false'); });
+    document.querySelectorAll('.tm-tab-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('tabBtn' + (tab === 'staff' ? 'Staff' : 'Tech')).classList.add('active');
+    document.getElementById('panel' + (tab === 'staff' ? 'Staff' : 'Tech')).classList.add('active');
+    // Sidebar
+    document.getElementById('sideStaff').classList.toggle('active', tab === 'staff');
+    document.getElementById('sideTech').classList.toggle('active', tab === 'tech');
+  }
+
+  function switchView(tab) { switchTab(tab); }
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     Staff section
+  ════════════════════════════════════════════════════════════════════════ */
+  let _allAdminUsersRaw = [];
+  let _staffData = [];
+  const MODULE_LABELS = {
+    access_hvac: 'HVAC', access_civil: 'Civil', access_cleaning: 'Cleaning',
+    access_hr: 'HR', access_procurement_module: 'Procurement',
+    access_business_development: 'BD', access_report_generation: 'Reports',
+    access_submitted_forms: 'Submitted', access_ticketing: 'Ticketing',
+  };
+
+  function _isStaffRosterRow(u) {
+    return (u.designation || '').toLowerCase().trim() !== 'technician';
+  }
+
+  async function loadStaff() {
+    const res = await apiFetch('/users');
+    if (!res.ok) { tmToast('Failed to load staff.', 'error'); return; }
+    const raw = res.data.users || res.data.data?.users || res.data.data || res.data || [];
+    const rows = Array.isArray(raw) ? raw : [];
+    _allAdminUsersRaw = rows;
+    _staffData = rows.filter(_isStaffRosterRow);
+    renderStaff(_staffData);
+    document.getElementById('sbStaffCount').textContent = _staffData.length;
+    document.getElementById('tabStaffCount').textContent = _staffData.length;
+    document.getElementById('kpiStaff').textContent = _staffData.length;
+  }
+
+  function filterStaff() {
+    const q = (document.getElementById('staffSearch').value || '').toLowerCase();
+    const role = document.getElementById('staffRoleFilter').value;
+    const status = document.getElementById('staffStatusFilter').value;
+    const filtered = _staffData.filter(u => {
+      const matchQ = !q || (u.full_name || '').toLowerCase().includes(q) || (u.username || '').toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q);
+      const matchRole = !role || u.role === role;
+      const matchStat = !status || (status === 'active' ? u.is_active : !u.is_active);
+      return matchQ && matchRole && matchStat;
+    });
+    renderStaff(filtered);
+  }
+
+  function renderStaff(list) {
+    const grid = document.getElementById('staffGrid');
+    if (!list.length) {
+      grid.innerHTML = `<div class="tm-empty-state" style="grid-column:1/-1;"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="48" height="48"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/></svg><h3>No staff found</h3><p>Try adjusting your search or filters.</p></div>`;
+      return;
+    }
+    grid.innerHTML = list.map((u, idx) => {
+      const mods = Object.entries(MODULE_LABELS).filter(([k]) => u.role === 'admin' || u[k]).map(([,v]) => `<span class="tm-mod-chip">${v}</span>`).join('');
+      const roleBadge = u.role === 'admin' ? 'admin' : (u.designation === 'supervisor' || u.designation === 'operations_manager' || u.designation === 'general_manager' ? 'manager' : 'user');
+      const statusDot = u.is_active ? '' : ' inactive';
+      const displayName = u.full_name || u.username;
+      return `
+        <div class="tm-staff-card tm-staff-card--interactive" role="button" tabindex="0"
+             onclick="openUserProfileModal(${u.id})"
+             onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openUserProfileModal(${u.id});}"
+             aria-label="Manage profile for ${displayName}"
+             title="Manage profile">
+          <div class="tm-staff-card-top">
+            <div class="tm-avatar ${avatarColor(idx)}">${initials(u.full_name)}</div>
+            <div style="flex:1;min-width:0;">
+              <div class="tm-staff-name">${displayName}</div>
+              <div class="tm-staff-desig">${u.job_designation || u.designation || '—'}</div>
+            </div>
+            <span class="tm-role-badge ${roleBadge}">${u.role === 'admin' ? 'Admin' : (u.designation || 'User').replace(/_/g, ' ')}</span>
+          </div>
+          <div class="tm-staff-meta">
+            <div class="tm-staff-meta-row"><span class="tm-status-dot${statusDot}"></span> ${u.is_active ? 'Active' : 'Inactive'} &nbsp;·&nbsp; ${u.email || u.username}</div>
+            ${u.employment_start_date ? `<div class="tm-staff-meta-row" style="margin-left:18px;">Joined: ${fmtDate(u.employment_start_date)}</div>` : ''}
+          </div>
+          ${mods ? `<div class="tm-staff-modules">${mods}</div>` : ''}
+          <div class="tm-staff-actions">
+            <span class="tm-btn tm-btn-outline tm-btn-sm" aria-hidden="true">Manage profile</span>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     Technicians section
+  ════════════════════════════════════════════════════════════════════════ */
+  let _techData = [];
+  let _techPendingDelete = null;
+  let _supervisorPickList = [];
+
+  async function loadSupervisorPickList() {
+    const paths = ['/users/by-designation/supervisor', '/users/by-designation/operations_manager', '/users/by-designation/general_manager'];
+    const seen = new Map();
+    for (const p of paths) {
+      const res = await apiFetch(p);
+      if (!res.ok) continue;
+      const users = res.data.users || [];
+      users.forEach(u => { if (!seen.has(u.id)) seen.set(u.id, u); });
+    }
+    _supervisorPickList = [...seen.values()].sort((a, b) =>
+      ((a.full_name || a.username) || '').localeCompare(((b.full_name || b.username) || ''), undefined, { sensitivity: 'base' })
+    );
+
+    function fill(selId, includeAllLabel) {
+      const sel = document.getElementById(selId);
+      if (!sel) return;
+      const cur = sel.value;
+      sel.innerHTML = includeAllLabel + _supervisorPickList.map(u => {
+        const label = `${u.full_name || u.username} · @${u.username}`;
+        return `<option value="${u.id}">${label}</option>`;
+      }).join('');
+      if ([...sel.options].some(o => o.value === cur)) sel.value = cur;
+    }
+    fill('techSupervisorFilter', '<option value="">All supervisors</option>');
+    fill('techSupervisorUser', '<option value="">— None —</option>');
+  }
+  async function loadTechnicians() {
+    const res = await apiFetch('/technicians');
+    if (!res.ok) { tmToast('Failed to load technicians.', 'error'); return; }
+    _techData = (res.data.data?.technicians || res.data.technicians || []);
+    buildDeptFilter();
+    renderTechnicians(_techData);
+    updateTechKPIs();
+  }
+
+  function buildDeptFilter() {
+    const depts = [...new Set(_techData.map(t => t.department).filter(Boolean))].sort();
+    const sel = document.getElementById('techDeptFilter');
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">All departments</option>' + depts.map(d => `<option value="${d}">${d}</option>`).join('');
+    sel.value = cur;
+  }
+
+  function updateTechKPIs() {
+    const total = _techData.length;
+    const active = _techData.filter(t => t.status === 'active').length;
+    const off = _techData.filter(t => t.status !== 'active').length;
+    document.getElementById('kpiTech').textContent   = total;
+    document.getElementById('kpiActive').textContent = active;
+    document.getElementById('kpiOff').textContent    = off;
+    document.getElementById('sbTechCount').textContent = total;
+    document.getElementById('tabTechCount').textContent = total;
+  }
+
+  function filterTech() {
+    const q = (document.getElementById('techSearch').value || '').toLowerCase();
+    const st = document.getElementById('techStatusFilter').value;
+    const dp = document.getElementById('techDeptFilter').value;
+    const sf = document.getElementById('techSupervisorFilter').value;
+    const filtered = _techData.filter(t => {
+      const fields = [
+        t.full_name, t.employee_id, t.designation, t.specialization,
+        t.supervisor_name, t.supervisor_username,
+      ];
+      const matchQ = !q || fields.some(v => (v || '').toLowerCase().includes(q));
+      const matchSt = !st || t.status === st;
+      const matchDp = !dp || t.department === dp;
+      const matchSup = !sf || String(t.supervisor_user_id ?? '') === sf;
+      return matchQ && matchSt && matchDp && matchSup;
+    });
+    renderTechnicians(filtered);
+  }
+
+  function renderTechnicians(list) {
+    const tbody = document.getElementById('techTableBody');
+    const empty = document.getElementById('techEmptyState');
+    const wrap = document.querySelector('.tm-table-wrap');
+    if (!list.length) {
+      wrap.style.display = 'none';
+      empty.style.display = 'block';
+      return;
+    }
+    wrap.style.display = '';
+    empty.style.display = 'none';
+    tbody.innerHTML = list.map(t => {
+      const isLogin = t.source === 'login';
+      const safeName = (t.full_name || '').replace(/'/g, "\\'");
+      const loginChip = isLogin
+        ? '<span class="tm-role-badge user" style="margin-left:.35rem;font-size:.62rem;vertical-align:middle;">App login</span>'
+        : '';
+      const actions = isLogin
+        ? `<div class="tm-table-actions">
+            <button class="tm-btn tm-btn-outline tm-btn-sm" onclick="openUserProfileModal(${t.user_id})" title="Manage login profile">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125"/></svg>
+              Manage login
+            </button>
+          </div>`
+        : `<div class="tm-table-actions">
+            <button class="tm-btn tm-btn-outline tm-btn-sm" onclick="openTechEditModal(${t.id})" title="Edit">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125"/></svg>
+              Edit
+            </button>
+            <button class="tm-btn tm-btn-danger tm-btn-sm" onclick="confirmDeleteTech(${t.id}, '${safeName}')">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>
+            </button>
+          </div>`;
+      return `
+      <tr>
+        <td>
+          <div style="display:flex;align-items:center;gap:.65rem;">
+            <div class="tm-avatar blue" style="width:36px;height:36px;border-radius:10px;font-size:.82rem;">${initials(t.full_name)}</div>
+            <div><div class="td-name">${t.full_name}${loginChip}</div>${t.specialization ? `<div style="font-size:.72rem;color:var(--tm-muted)">${t.specialization}</div>` : (isLogin && t.email ? `<div style="font-size:.72rem;color:var(--tm-muted)">${t.email}</div>` : '')}</div>
+          </div>
+        </td>
+        <td style="vertical-align:middle;line-height:1.35;">
+          ${t.supervisor_name ? `<strong style="display:block;font-size:.87rem;color:var(--tm-ink);">${t.supervisor_name}</strong>${t.supervisor_username ? `<span style="font-size:.72rem;color:var(--tm-muted);">@${t.supervisor_username}</span>` : ''}` : '<span style="color:#94a3b8;">—</span>'}
+        </td>
+        <td><span class="td-eid">${t.employee_id}</span></td>
+        <td>${t.designation || '—'}</td>
+        <td>${t.department || '—'}</td>
+        <td>${t.phone ? `<a href="tel:${t.phone}" style="color:var(--tm-green);text-decoration:none;">${t.phone}</a>` : '—'}</td>
+        <td>${fmtSalary(t.salary)}</td>
+        <td style="white-space:nowrap;">${fmtDate(t.joining_date)}</td>
+        <td><span class="tm-status-badge ${t.status}">${t.status.replace('_', ' ')}</span></td>
+        <td>${actions}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  /* ── Technician Modal ─────────────────────────────────────────────── */
+  function openTechModal() {
+    document.getElementById('techModalTitle').textContent = 'Add Technician';
+    document.getElementById('techEditId').value = '';
+    ['techEmpId','techFullName','techDesig','techDept','techSpec','techPhone','techEmail','techNotes'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('techSalary').value = '';
+    document.getElementById('techJoining').value = '';
+    document.getElementById('techStatus').value = 'active';
+    document.getElementById('techSupervisorUser').value = '';
+    openModal('techModal');
+    setTimeout(() => document.getElementById('techEmpId').focus(), 200);
+  }
+
+  function openTechEditModal(techId) {
+    if (techId < 0) {
+      openUserProfileModal(-techId);
+      return;
+    }
+    const t = _techData.find(x => x.id === techId);
+    if (!t) return;
+    document.getElementById('techModalTitle').textContent = 'Edit Technician';
+    document.getElementById('techEditId').value = t.id;
+    document.getElementById('techEmpId').value = t.employee_id || '';
+    document.getElementById('techFullName').value = t.full_name || '';
+    document.getElementById('techDesig').value = t.designation || '';
+    document.getElementById('techDept').value = t.department || '';
+    document.getElementById('techSpec').value = t.specialization || '';
+    document.getElementById('techPhone').value = t.phone || '';
+    document.getElementById('techEmail').value = t.email || '';
+    document.getElementById('techSalary').value = t.salary !== null && t.salary !== undefined ? t.salary : '';
+    document.getElementById('techJoining').value = t.joining_date || '';
+    document.getElementById('techStatus').value = t.status || 'active';
+    document.getElementById('techNotes').value = t.notes || '';
+    document.getElementById('techSupervisorUser').value = t.supervisor_user_id ? String(t.supervisor_user_id) : '';
+    openModal('techModal');
+    setTimeout(() => document.getElementById('techFullName').focus(), 200);
+  }
+
+  document.getElementById('techModalSave').addEventListener('click', async () => {
+    const editId = document.getElementById('techEditId').value;
+    const supSel = document.getElementById('techSupervisorUser').value.trim();
+    const payload = {
+      employee_id: document.getElementById('techEmpId').value.trim(),
+      full_name: document.getElementById('techFullName').value.trim(),
+      designation: document.getElementById('techDesig').value.trim(),
+      department: document.getElementById('techDept').value.trim(),
+      specialization: document.getElementById('techSpec').value.trim(),
+      phone: document.getElementById('techPhone').value.trim(),
+      email: document.getElementById('techEmail').value.trim(),
+      salary: document.getElementById('techSalary').value || null,
+      joining_date: document.getElementById('techJoining').value || null,
+      status: document.getElementById('techStatus').value,
+      notes: document.getElementById('techNotes').value.trim(),
+    };
+    const isEdit = !!editId;
+    if (isEdit) {
+      payload.supervisor_user_id = supSel === '' ? null : parseInt(supSel, 10);
+    } else if (supSel !== '') {
+      payload.supervisor_user_id = parseInt(supSel, 10);
+    }
+    if (!payload.employee_id || !payload.full_name) {
+      tmToast('Employee ID and Full Name are required.', 'error'); return;
+    }
+    const btn = document.getElementById('techModalSave');
+    btn.disabled = true;
+    const prevHtml = btn.innerHTML;
+    btn.innerHTML = '<span class="tm-spinner"></span> Saving…';
+
+    const res = await apiFetch(isEdit ? `/technicians/${editId}` : '/technicians', {
+      method: isEdit ? 'PUT' : 'POST',
+      body: JSON.stringify(payload),
+    });
+    btn.disabled = false;
+    btn.innerHTML = prevHtml;
+    if (!res.ok) { tmToast(res.data?.message || res.data?.error || 'Failed to save.', 'error'); return; }
+    tmToast(isEdit ? 'Technician updated.' : 'Technician added.', 'success');
+    closeModal('techModal');
+    await loadTechnicians();
+  });
+
+  /* ── Delete ───────────────────────────────────────────────────────── */
+  function confirmDeleteTech(techId, name) {
+    _techPendingDelete = techId;
+    document.getElementById('deleteModalName').textContent = name;
+    openModal('deleteModal');
+  }
+
+  document.getElementById('deleteModalConfirm').addEventListener('click', async () => {
+    if (!_techPendingDelete) return;
+    const btn = document.getElementById('deleteModalConfirm');
+    btn.disabled = true;
+    const res = await apiFetch(`/technicians/${_techPendingDelete}`, { method: 'DELETE' });
+    btn.disabled = false;
+    if (!res.ok) { tmToast(res.data?.message || 'Failed to delete.', 'error'); return; }
+    tmToast('Technician deleted.', 'success');
+    closeModal('deleteModal');
+    _techPendingDelete = null;
+    await loadTechnicians();
+  });
+
+  /* ── Import Modal ─────────────────────────────────────────────────── */
+  let _importFile = null;
+
+  function openImportModal() {
+    _importFile = null;
+    document.getElementById('importFileName').textContent = '';
+    document.getElementById('importResult').style.display = 'none';
+    document.getElementById('importSubmitBtn').disabled = true;
+    document.getElementById('importFileInput').value = '';
+    openModal('importModal');
+  }
+
+  function handleFileSelect(e) {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    _importFile = f;
+    document.getElementById('importFileName').textContent = f.name;
+    document.getElementById('importSubmitBtn').disabled = false;
+  }
+
+  const importZone = document.getElementById('importZone');
+  importZone.addEventListener('dragover', e => { e.preventDefault(); importZone.classList.add('drag'); });
+  importZone.addEventListener('dragleave', () => importZone.classList.remove('drag'));
+  importZone.addEventListener('drop', e => {
+    e.preventDefault(); importZone.classList.remove('drag');
+    const f = e.dataTransfer.files?.[0];
+    if (f) { _importFile = f; document.getElementById('importFileName').textContent = f.name; document.getElementById('importSubmitBtn').disabled = false; }
+  });
+
+  document.getElementById('importSubmitBtn').addEventListener('click', async () => {
+    if (!_importFile) return;
+    const btn = document.getElementById('importSubmitBtn');
+    btn.disabled = true;
+    const prevHtml = btn.innerHTML;
+    btn.innerHTML = '<span class="tm-spinner"></span> Importing…';
+
+    const fd = new FormData();
+    fd.append('file', _importFile);
+    const res = await fetch(API + '/technicians/import-excel', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${getJwt()}` },
+      body: fd,
+    });
+    const data = await res.json().catch(() => ({}));
+    btn.disabled = false;
+    btn.innerHTML = prevHtml;
+
+    const resultBox = document.getElementById('importResultBox');
+    const resultWrap = document.getElementById('importResult');
+    resultWrap.style.display = 'block';
+
+    const payload = data.data || data;
+    if (res.ok && (payload.created !== undefined)) {
+      resultBox.style.background = '#d1fae5';
+      resultBox.style.color = '#065f46';
+      resultBox.style.border = '1.5px solid #6ee7b7';
+      let msg = `✓ ${payload.created} technician(s) imported successfully.`;
+      if (payload.skipped) msg += ` ${payload.skipped} skipped (duplicate Employee ID).`;
+      if (payload.errors?.length) msg += `\n⚠ ${payload.errors.slice(0, 3).join('; ')}`;
+      resultBox.textContent = msg;
+      if (payload.created > 0) {
+        await loadTechnicians();
+        setTimeout(() => { closeModal('importModal'); tmToast(`${payload.created} technician(s) imported.`); }, 1600);
+      }
+    } else {
+      resultBox.style.background = '#fee2e2';
+      resultBox.style.color = '#991b1b';
+      resultBox.style.border = '1.5px solid #fca5a5';
+      resultBox.textContent = '✗ ' + (data.message || data.error || 'Import failed. Check the file format.');
+    }
+  });
+
+  function downloadTemplate() {
+    const a = document.createElement('a');
+    a.href = API + '/technicians/export-template';
+    a.click();
+  }
+
+  /* ── Modal helpers ────────────────────────────────────────────────── */
+  function openModal(id) {
+    const el = document.getElementById(id);
+    el.classList.add('open');
+    el.setAttribute('aria-hidden', 'false');
+  }
+  function closeModal(id) {
+    const el = document.getElementById(id);
+    el.classList.remove('open');
+    el.setAttribute('aria-hidden', 'true');
+  }
+
+  // Wire close buttons
+  ['techModal','importModal','deleteModal'].forEach(id => {
+    const veil = document.getElementById(id);
+    veil.addEventListener('click', e => { if (e.target === veil) closeModal(id); });
+  });
+  document.getElementById('techModalClose').addEventListener('click', () => closeModal('techModal'));
+  document.getElementById('techModalCancel').addEventListener('click', () => closeModal('techModal'));
+  document.getElementById('importModalClose').addEventListener('click', () => closeModal('importModal'));
+  document.getElementById('importModalCancel').addEventListener('click', () => closeModal('importModal'));
+  document.getElementById('deleteModalClose').addEventListener('click', () => closeModal('deleteModal'));
+  document.getElementById('deleteModalCancel').addEventListener('click', () => closeModal('deleteModal'));
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { ['techModal','importModal','deleteModal'].forEach(closeModal); }
+  });
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     Init
+  ═══════════════════════════════════════════════════════════════════════ */
+  AdminManageProfileModal.configure({
+    getUsersDirectory: () => _allAdminUsersRaw,
+    reloadDirectory: loadStaff,
+    notify(msg, type) {
+      tmToast(msg || '', type === 'error' ? 'error' : 'success');
+    },
+    onUnauthorized() { return false; },
+  });
+  AdminManageProfileModal.init();
+
+  (async function initTmPage() {
+    await Promise.all([loadStaff(), loadSupervisorPickList(), loadTechnicians()]);
+    try {
+      const u = new URL(window.location.href);
+      if ((u.searchParams.get('tool') || '').trim() === 'profile') {
+        const id = parseInt(String(u.searchParams.get('user_id') || '').trim(), 10);
+        u.searchParams.delete('tool');
+        u.searchParams.delete('user_id');
+        history.replaceState({}, '', u.pathname + (u.search ? ('?' + u.search) : '') + u.hash);
+        if (Number.isFinite(id)) openUserProfileModal(id);
+      }
+    } catch (_) { /* ignore */ }
+  })();
+  </script>
+</body>
+</html>

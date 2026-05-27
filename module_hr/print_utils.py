@@ -20,13 +20,19 @@ def _fmt_date(v):
 
 
 def _row(label, value):
-    val = _esc(value) if not (isinstance(value, str) and value.startswith('data:image')) else f'<img src="{value}" style="max-width:200px;max-height:80px;border:1px solid #e2e8f0;border-radius:6px;" alt="Signature">'
+    if isinstance(value, str) and value.startswith('data:image'):
+        val = f'<span class="doc-sig-wrap"><img src="{value}" class="doc-sig-img" alt="Signature"></span>'
+    else:
+        val = _esc(value)
     return f'<tr><td class="label">{_esc(label)}</td><td>{val}</td></tr>'
 
 
 def _sig_row(label, value):
     if value and isinstance(value, str) and value.startswith('data:image'):
-        return f'<tr><td class="label">{_esc(label)}</td><td><img src="{value}" style="max-width:200px;max-height:80px;border:1px solid #e2e8f0;border-radius:6px;" alt="Signature"></td></tr>'
+        return (
+            f'<tr><td class="label">{_esc(label)}</td>'
+            f'<td><span class="doc-sig-wrap"><img src="{value}" class="doc-sig-img" alt="Signature"></span></td></tr>'
+        )
     return _row(label, value or '-')
 
 
@@ -80,18 +86,20 @@ def render_leave_print(fd):
         _sig_row('GM Signature', fd.get('gm_signature')),
     ]
     return (
-        '<div class="doc-form-grid">'
-        '<div class="doc-form-col">'
+        '<div class="doc-form-grid doc-form-grid--leave">'
+        '<div class="doc-panel">'
         '<div class="doc-section-title">Employee Details</div>'
         '<table class="doc-table">' + ''.join(emp_rows) + '</table>'
         '</div>'
-        '<div class="doc-form-col">'
+        '<div class="doc-panel">'
         '<div class="doc-section-title">Details of Leave</div>'
         '<table class="doc-table">' + ''.join(leave_rows) + '</table>'
         '</div>'
         '</div>'
-        '<div class="doc-section-title">For Human Resources Only</div>'
+        '<div class="doc-panel doc-panel--hr">'
+        '<div class="doc-section-title doc-section-title--hr">For Human Resources Only</div>'
         '<table class="doc-table">' + ''.join(hr_rows) + '</table>'
+        '</div>'
     )
 
 
@@ -149,6 +157,9 @@ def render_form_for_print(module_type, form_data, submission_id):
             _row('Leave Started', _fmt_date(fd.get('leave_started'))),
             _row('Actual Resumption', _fmt_date(fd.get('actual_resumption_date'))),
             _sig_row('Employee Signature', fd.get('employee_signature')),
+            _sig_row('Reporting Manager Signature', fd.get('reporting_manager_signature')),
+            _sig_row('GM Signature', fd.get('gm_signature')),
+            _sig_row('HR Signature', fd.get('hr_signature')),
         ]
         body = '<div class="doc-section-title">Duty Resumption</div><table class="doc-table">' + ''.join(rows) + '</table>'
     else:

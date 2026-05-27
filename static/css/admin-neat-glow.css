@@ -321,19 +321,22 @@ body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admin-v4-
 /* ─────────────────────────────────────────
    BENTO GRID  (left + right)
 ───────────────────────────────────────── */
-body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-bento.admin-v4-grid {
-  display: grid !important;
-  grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr) !important;
-  gap: 0.65rem !important;
-  align-items: start !important;
+@media (min-width: 1101px) {
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-bento.admin-v4-grid {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr) !important;
+    grid-template-rows: auto minmax(420px, var(--admin-paired-row-h, min(92dvh, 1340px))) !important;
+    gap: 0.65rem !important;
+    align-items: stretch !important;
+  }
 }
 body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-bento-main,
-body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-bento-side {
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-bento-side-top {
   gap: 0.58rem !important;
 }
 
 /* Hide Module Pulse from the side column — right column shows Activity only */
-body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-bento-side .admv2-right-panel {
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-bento-side-top .admv2-right-panel {
   display: none !important;
   visibility: hidden !important;
   pointer-events: none !important;
@@ -385,6 +388,9 @@ body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv3-rp-
 body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-card-body {
   padding: 0.75rem 0.95rem 0.85rem !important;
 }
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-docs-card .admv2-card-body {
+  padding: 0 !important;
+}
 
 /* ── Operator cards ── */
 body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv3-op-card {
@@ -400,7 +406,7 @@ body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv3-op-
   transform: translateY(-1px);
 }
 body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv3-op-grid {
-  gap: 0.5rem !important;
+  gap: 0.92rem !important;
 }
 body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv3-op-avatar {
   width: 38px !important;
@@ -419,8 +425,38 @@ body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-doc
 }
 body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-docs-inner-scroll {
   background: var(--neat-card) !important;
-  /* Taller table viewport than body.admin-v4 default min(56vh, 600px) */
-  max-height: min(73vh, 860px) !important;
+}
+@media (min-width: 1101px) {
+  /* Fill paired grid row: documents + notifications share the same track height */
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-bento > #section-documents.admv2-docs-card {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    height: 100% !important;
+    max-height: none !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-bento > #section-documents.admv2-docs-card > .admv2-card-hd {
+    flex-shrink: 0 !important;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-docs-card .admv2-card-body {
+    flex: 1 1 0% !important;
+    min-height: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-docs-controls {
+    flex-shrink: 0 !important;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-docs-inner-scroll {
+    flex: 1 1 0% !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+  }
 }
 body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-rp-section {
   padding: 0.65rem 0.85rem !important;
@@ -487,8 +523,12 @@ body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-acti
   border: 1px solid var(--neat-border);
   box-shadow: var(--neat-sh);
   overflow: hidden;
-  margin-bottom: 0.5rem;
-  min-height: 300px;
+  margin-bottom: 0;
+  min-height: 0;
+  flex: 0 1 auto;
+  display: flex;
+  flex-direction: column;
+  max-height: min(52dvh, 420px);
 }
 body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-activity-hd {
   display: flex;
@@ -522,6 +562,8 @@ body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-acti
   margin: 0;
   padding: 0.35rem 0.5rem;
   overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-activity-row {
   display: flex;
@@ -559,6 +601,89 @@ body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-acti
   font-size: 0.72rem;
   color: var(--neat-muted);
   margin-top: 0.05rem;
+}
+
+/* Bridge panel: absorbs extra height in paired grid row beside Team Management */
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-side-fill {
+  border-radius: calc(var(--neat-r) - 3px);
+  border: 1px solid var(--neat-border);
+  background: linear-gradient(
+    165deg,
+    hsl(210 40% 99%) 0%,
+    hsl(150 35% 96%) 100%
+  );
+  box-shadow: var(--neat-sh);
+  padding: 0.82rem 0.92rem;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-side-fill-title {
+  margin: 0 0 0.48rem;
+  font-size: 0.69rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.11em;
+  color: hsl(222 47% 16%);
+  flex-shrink: 0;
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-side-metrics-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(215 16% 75%) transparent;
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-side-metrics-grid {
+  gap: 0.34rem 0.38rem !important;
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-side-metric {
+  background: hsl(0 0% 100% / 0.92);
+  border-color: var(--neat-border) !important;
+  box-shadow: 0 1px 2px hsl(222 47% 11% / 0.04);
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-side-metric-val {
+  color: var(--neat-fg);
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-side-metric-lbl {
+  color: var(--neat-muted);
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-side-metric-sub {
+  color: hsl(215 14% 52%);
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-side-metric-ico--a {
+  background: var(--neat-primary-soft) !important;
+  color: var(--neat-primary);
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-side-metric-ico--b {
+  background: hsl(211 88% 94%) !important;
+  color: var(--neat-info);
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-side-metric-ico--c {
+  background: hsl(38 92% 50% / 0.14) !important;
+  color: var(--neat-warn);
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-side-metric-ico--d {
+  background: hsl(145 55% 92%) !important;
+  color: var(--neat-success);
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-side-metric-ico--e {
+  background: hsl(262 52% 94%) !important;
+  color: hsl(262 45% 38%);
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-side-fill-jump {
+  margin-top: 0.42rem;
+  padding-top: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 0.77rem;
+  font-weight: 700;
+  color: var(--neat-primary);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
+  align-self: flex-start;
+}
+body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-side-fill-jump:hover {
+  color: hsl(150 62% 24%);
 }
 
 /* Notification section */
@@ -635,10 +760,41 @@ body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv3-ani
 ───────────────────────────────────────── */
 @media (max-width: 1100px) {
   body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-bento.admin-v4-grid {
-    grid-template-columns: 1fr !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.65rem !important;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-bento-main {
+    order: 1;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow #section-documents.admv2-docs-card {
+    order: 2;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-bento-side-top {
+    order: 3;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-side-fill {
+    flex: 0 1 auto;
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-side-metrics-scroll {
+    max-height: min(52dvh, 400px);
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow #section-notification-settings {
+    order: 4;
   }
   body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admin-v4-quick-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+@media (min-width: 1101px) {
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-side-fill .neat-side-metrics-grid {
+    flex: 1 1 auto;
+    min-height: 0;
+    grid-auto-rows: minmax(min-content, 1fr);
+  }
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-side-fill .neat-side-metric {
+    height: 100%;
+    justify-content: center;
   }
 }
 @media (max-width: 900px) {
@@ -726,9 +882,6 @@ body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv3-ani
     padding: 0.65rem 2.35rem 0.65rem 0.65rem !important;
     min-height: 3.35rem;
   }
-  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-docs-inner-scroll {
-    max-height: min(42vh, 340px) !important;
-  }
   /* Activity panel — no forced height on mobile */
   body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .neat-activity {
     min-height: 0 !important;
@@ -805,7 +958,7 @@ body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv3-ani
   }
   body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-bento.admin-v4-grid,
   body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-bento-main,
-  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-bento-side {
+  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-bento-side-top {
     gap: 0.75rem;
   }
   body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-card,
@@ -899,9 +1052,6 @@ body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv3-ani
   }
   body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admin-v4-quick-sub {
     display: none !important;
-  }
-  body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-docs-inner-scroll {
-    max-height: min(38vh, 280px) !important;
   }
   body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow .admv2-bento.admin-v4-grid {
     gap: 0.65rem !important;

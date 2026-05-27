@@ -31,13 +31,15 @@ from common.db_utils import (
     complete_job_db,
     fail_job_db,
     get_job_status_db,
-    get_submission_db
+    get_submission_db,
+    get_latest_completed_job_id,
 )
 from app.models import db, User
 from app.middleware import token_required, module_access_required
 from app.services.cloudinary_service import upload_local_file
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from common.workflow_notifications import send_inspection_submitted
+from common.inspection_inapp_notifications import notify_inspection_stage
 
 # Rate limiting helper (import from auth routes)
 def get_limiter():
@@ -170,12 +172,20 @@ def index():
             if user.role == 'admin':
                 can_edit = True
                 can_view = True
+            # Original submitter (technician, etc.) — view own submission; edit draft/rejected only
+            elif getattr(submission, 'user_id', None) == user.id:
+                can_view = True
+                st = (getattr(submission, 'status', None) or '').lower()
+                if workflow_status in ('draft', 'rejected') or st == 'draft':
+                    can_edit = True
             # Supervisor - can edit ONLY if form is still at their stage, otherwise read-only
             elif user_designation == 'supervisor' and hasattr(submission, 'supervisor_id') and submission.supervisor_id == user.id:
-                # Supervisor can edit if form is still at operations_manager_review (pending OM approval)
-                # Once OM approves (status changes to bd_procurement_review or beyond), supervisor can only view
-                if workflow_status == 'operations_manager_review':
-                    # Form submitted but OM hasn't approved yet - supervisor can still edit/resubmit
+                # Supervisor can edit at the supervisor stage (their queue) and during
+                # operations_manager_review (until OM has actually started approving).
+                if workflow_status in ('supervisor_review', 'supervisor_notified'):
+                    can_edit = True
+                    can_view = True
+                elif workflow_status == 'operations_manager_review':
                     can_edit = True
                     can_view = True
                 elif workflow_status in ['bd_procurement_review', 'general_manager_review', 'completed']:
@@ -206,7 +216,7 @@ def index():
                     can_view = True
             # Business Development - can edit while form is at bd_procurement_review stage
             # Can re-sign even after signing, and also at general_manager_review if GM hasn't started yet
-            elif user_designation == 'business_development':
+            elif user_designation == 'business_development' or user.is_bd_inspection_reviewer():
                 if workflow_status == 'bd_procurement_review':
                     # BD can edit while form is at this stage (even after they've signed)
                     can_edit = True
@@ -265,6 +275,7 @@ def index():
                 if user.role == 'admin':
                     can_view = True
                 elif (
+                    getattr(submission, 'user_id', None) == user.id or
                     (hasattr(submission, 'supervisor_id') and submission.supervisor_id == user.id) or
                     (hasattr(submission, 'operations_manager_id') and submission.operations_manager_id == user.id) or
                     (hasattr(submission, 'business_dev_id') and submission.business_dev_id == user.id) or
@@ -301,6 +312,13 @@ def index():
                 if nested_data and nested_data.get('supervisor_comments'):
                     form_data['supervisor_comments'] = nested_data.get('supervisor_comments')
                     logger.info(f"✅ Found Supervisor comments in nested form_data.data structure")
+            if not form_data.get('tech_signature') and isinstance(submission.form_data, dict):
+                nested_data = submission.form_data.get('data') if isinstance(submission.form_data.get('data'), dict) else {}
+                if nested_data and nested_data.get('tech_signature'):
+                    form_data['tech_signature'] = nested_data.get('tech_signature')
+                    logger.info("✅ Found Submitter (tech) signature in nested form_data.data structure")
+            if not form_data.get('submitter_signature') and form_data.get('tech_signature'):
+                form_data['submitter_signature'] = form_data['tech_signature']
             
             # Merge Operations Manager comments from model field into form_data if not already present
             # This ensures BD and other reviewers can see OM comments even if not in form_data
@@ -408,17 +426,28 @@ def index():
             
             submission_data = {
                 'submission_id': submission.submission_id,
+                'user_id': submission.user_id,
                 'site_name': site_name,
                 'visit_date': visit_date,
+                'status': submission.status if hasattr(submission, 'status') else None,
+                'created_at': submission.created_at.isoformat() if getattr(submission, 'created_at', None) else None,
                 'form_data': form_data,
                 'is_edit_mode': True,
                 'workflow_status': submission.workflow_status if hasattr(submission, 'workflow_status') else None,
                 'supervisor_id': submission.supervisor_id if hasattr(submission, 'supervisor_id') else None,
+                'supervisor_reviewed_at': submission.supervisor_reviewed_at.isoformat() if hasattr(submission, 'supervisor_reviewed_at') and submission.supervisor_reviewed_at else None,
+                'user': submission.user.to_dict() if submission.user else None,
+                'supervisor': submission.supervisor.to_dict() if getattr(submission, 'supervisor', None) else None,
+                'operations_manager': submission.operations_manager.to_dict() if getattr(submission, 'operations_manager', None) else None,
+                'business_dev': submission.business_dev.to_dict() if getattr(submission, 'business_dev', None) else None,
+                'procurement': submission.procurement_user.to_dict() if getattr(submission, 'procurement_user', None) else None,
+                'general_manager': submission.general_manager.to_dict() if getattr(submission, 'general_manager', None) else None,
                 'can_edit': can_edit,  # Pass can_edit to JavaScript so it can show editable vs read-only UI
                 'operations_manager_approved_at': submission.operations_manager_approved_at.isoformat() if hasattr(submission, 'operations_manager_approved_at') and submission.operations_manager_approved_at else None,
                 'business_dev_approved_at': submission.business_dev_approved_at.isoformat() if hasattr(submission, 'business_dev_approved_at') and submission.business_dev_approved_at else None,
                 'procurement_approved_at': submission.procurement_approved_at.isoformat() if hasattr(submission, 'procurement_approved_at') and submission.procurement_approved_at else None,
                 'general_manager_approved_at': submission.general_manager_approved_at.isoformat() if hasattr(submission, 'general_manager_approved_at') and submission.general_manager_approved_at else None,
+                'latest_job_id': get_latest_completed_job_id(submission) or submission_dict.get('latest_job_id'),
             }
             is_edit_mode = True
             
@@ -438,7 +467,12 @@ def index():
         # This allows reviewers to see the same editable view and add their comments/signatures
         review_param = request.args.get('review') == 'true'
         reviewer_designations = ['supervisor', 'manager', 'operations_manager', 'business_development', 'procurement', 'general_manager']
-        is_supervisor_edit = is_edit_mode and (user_designation in reviewer_designations or user.role == 'admin' or review_param)
+        is_supervisor_edit = is_edit_mode and (
+            user_designation in reviewer_designations
+            or user.is_bd_inspection_reviewer()
+            or user.role == 'admin'
+            or review_param
+        )
         
         # Log for debugging
         if is_edit_mode:
@@ -472,11 +506,23 @@ def index():
             # New form - supervisor can always create
             can_edit_form = True
         
+        bd_inspection_reviewer = user.is_bd_inspection_reviewer() or (user_designation == 'business_development')
+        is_submitter_readonly = bool(
+            edit_submission_id
+            and is_edit_mode
+            and not can_edit_form
+            and locals().get('submission') is not None
+            and getattr(submission, 'user_id', None) == user.id
+        )
         return render_template("hvac_mep_form.html", 
                              submission_data=submission_data, 
                              is_edit_mode=is_edit_mode,
+                             latest_job_id=(get_latest_completed_job_id(submission) if is_edit_mode and edit_submission_id and locals().get('submission') else None),
+                             edit_submission_id=edit_submission_id if is_edit_mode else None,
                              user_designation=user_designation,
+                             bd_inspection_reviewer=bd_inspection_reviewer,
                              is_supervisor_edit=is_supervisor_edit,
+                             is_submitter_readonly=is_submitter_readonly,
                              can_edit=can_edit_form,
                              current_user_id=user_id,
                              user=user)
@@ -488,6 +534,7 @@ def index():
 
 
 @hvac_mep_bp.route("/dropdowns", methods=["GET"])
+@jwt_required()
 def dropdowns():
     # prefer module-level dropdown_data.json (BLUEPRINT_DIR/dropdown_data.json)
     local = os.path.join(BLUEPRINT_DIR, "dropdown_data.json")
@@ -499,6 +546,7 @@ def dropdowns():
 
 
 @hvac_mep_bp.route("/save-draft", methods=["POST"])
+@jwt_required()
 def save_draft():
     GENERATED_DIR, UPLOADS_DIR, JOBS_DIR, EXECUTOR = get_paths()
     payload = request.get_json(force=True)
@@ -549,6 +597,7 @@ def save_signature_dataurl(dataurl, uploads_dir, prefix="signature"):
 
 # ---------- Submit route (handles multi-item + per-item photos + signatures) ----------
 @hvac_mep_bp.route("/submit", methods=["POST"])
+@jwt_required()
 @rate_limit_if_available('10 per minute')  # Limit form submissions
 def submit():
     GENERATED_DIR, UPLOADS_DIR, JOBS_DIR, EXECUTOR = get_paths()
@@ -750,7 +799,7 @@ def submit():
         )
         sub_id = submission.submission_id
 
-        # Trigger inspection email notification for real-time supervisor submission.
+        # Email notification (in-app bell is sent inside create_submission_db).
         try:
             submitter_user = db.session.get(User, int(user_id)) if user_id else None
             send_inspection_submitted(submission, submitter_user)
@@ -798,6 +847,7 @@ def submit():
 
 
 @hvac_mep_bp.route("/status/<job_id>", methods=["GET"])
+@jwt_required()
 def status(job_id):
     try:
         job_data = get_job_status_db(job_id)
@@ -811,13 +861,34 @@ def status(job_id):
 
 
 @hvac_mep_bp.route("/generated/<path:filename>", methods=["GET"])
+@jwt_required()
 def download_generated(filename):
     GENERATED_DIR, UPLOADS_DIR, JOBS_DIR, EXECUTOR = get_paths()
-    # allow nested paths like uploads/<name>
+    safe_target = os.path.join(GENERATED_DIR, filename)
+    if not is_path_safe_for_directory(GENERATED_DIR, safe_target):
+        logger.warning(f"Path traversal attempt blocked: {filename}")
+        return error_response("Invalid file path", status_code=403, error_code='FORBIDDEN')
     return send_from_directory(GENERATED_DIR, filename, as_attachment=True)
 
 
+@hvac_mep_bp.route("/download/submission/<submission_id>/<file_type>", methods=["GET"])
+@jwt_required()
+def download_by_submission(submission_id, file_type):
+    """Download latest PDF/Excel for a submission (resolves most recent completed job)."""
+    from flask import redirect, url_for
+
+    if file_type not in ('pdf', 'excel'):
+        return error_response("Invalid file type. Use 'excel' or 'pdf'", status_code=400, error_code='VALIDATION_ERROR')
+
+    job_id = get_latest_completed_job_id(submission_id)
+    if not job_id:
+        return error_response("Report not available yet. Submit or sign off to generate reports.", status_code=404, error_code='NOT_FOUND')
+
+    return redirect(url_for('hvac_mep_bp.download_file', job_id=job_id, file_type=file_type))
+
+
 @hvac_mep_bp.route("/download/<job_id>/<file_type>", methods=["GET"])
+@jwt_required()
 def download_file(job_id, file_type):
     """
     Download proxy route that fetches files from Cloudinary or local storage
@@ -990,6 +1061,7 @@ def process_job(sub_id, job_id, config, app):
 # ---------- Progressive Upload Endpoints ----------
 
 @hvac_mep_bp.route("/upload-photo", methods=["POST"])
+@jwt_required()
 @rate_limit_if_available('20 per minute')  # Allow multiple photos per submission
 def upload_photo():
     """
@@ -1058,6 +1130,7 @@ def upload_photo():
 
 
 @hvac_mep_bp.route("/submit-with-urls", methods=["POST"])
+@jwt_required()
 @rate_limit_if_available('10 per minute')  # Limit form submissions
 def submit_with_urls():
     """
@@ -1101,6 +1174,7 @@ def submit_with_urls():
         opman_sig_dataurl = payload.get("opMan_signature", "")
         supervisor_sig_dataurl = payload.get("supervisor_signature", "")
         supervisor_comments = payload.get("supervisor_comments", "")
+        submitter_comments = payload.get("submitter_comments", "") or ""
         
         tech_sig_file = None
         opman_sig_file = None
@@ -1161,6 +1235,15 @@ def submit_with_urls():
             else:
                 logger.warning(f"⚠️ Supervisor signature data is empty, skipping upload")
         
+        # Materials required (preserve across edit submissions too)
+        materials_required = payload.get("materials_required", [])
+        if is_edit_mode and not materials_required:
+            existing_submission = existing_submission if 'existing_submission' in locals() else get_submission_db(edit_submission_id)
+            if existing_submission and existing_submission.get('form_data'):
+                materials_required = existing_submission['form_data'].get('materials_required', [])
+                if materials_required:
+                    logger.info(f"✅ Preserving {len(materials_required)} existing materials from submission")
+
         # Process items with photo URLs
         items_data = payload.get("items", [])
         items = []
@@ -1204,6 +1287,7 @@ def submit_with_urls():
             "tech_signature": tech_sig_file,
             "opMan_signature": opman_sig_file,
             "items": items,
+            "materials_required": materials_required,
             "timestamp": datetime.now().isoformat(),
             "base_url": request.host_url.rstrip('/')
         }
@@ -1234,6 +1318,24 @@ def submit_with_urls():
         
         # Always include supervisor_comments (even if empty, so field is preserved)
         submission_data["supervisor_comments"] = supervisor_comments or ''
+        # Submitter comments: only set from explicit submitter payload or initial tech submit.
+        # Never copy supervisor review comments into submitter_comments.
+        if submitter_comments.strip():
+            submission_data["submitter_comments"] = submitter_comments.strip()
+        elif tech_sig_dataurl and supervisor_comments.strip() and not supervisor_sig_dataurl:
+            submission_data["submitter_comments"] = supervisor_comments.strip()
+        elif is_edit_mode and supervisor_sig_dataurl:
+            from common.db_utils import get_submission_db
+            _existing = get_submission_db(edit_submission_id)
+            if _existing and _existing.get('form_data'):
+                _efd = _existing['form_data']
+                _preserved = (_efd.get('submitter_comments') or '').strip()
+                if not _preserved and not _existing.get('supervisor_reviewed_at'):
+                    _legacy = (_efd.get('supervisor_comments') or '').strip()
+                    if _legacy:
+                        _preserved = _legacy
+                if _preserved:
+                    submission_data["submitter_comments"] = _preserved
         if supervisor_comments:
             logger.info(f"✅ Supervisor comments: {len(supervisor_comments)} characters")
         else:
@@ -1293,7 +1395,7 @@ def submit_with_urls():
             sub_id = submission_db.submission_id
             logger.info(f"✅ Created submission {sub_id} with {len(items)} items")
 
-            # Trigger inspection email notification on real HVAC submission.
+            # Email notification (in-app bell is sent inside create_submission_db).
             try:
                 submitter_user = db.session.get(User, int(user_id)) if user_id else None
                 send_inspection_submitted(submission_db, submitter_user)
@@ -1347,6 +1449,7 @@ def submit_with_urls():
 
 
 @hvac_mep_bp.route("/add-photos-to-item", methods=["POST"])
+@jwt_required()
 def add_photos_to_item():
     """
     Add additional photos to an existing item in a submission.
