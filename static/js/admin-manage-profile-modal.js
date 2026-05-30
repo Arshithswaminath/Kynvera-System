@@ -24,6 +24,16 @@
   let bindingsDone = false;
   let passwordResetConfirmContext = null;
 
+  function setProfileQuickToggleButton(tbtn, isActive) {
+    if (!tbtn) return;
+    const label = tbtn.querySelector('.admin-quick-action-label');
+    const text = isActive ? 'Deactivate account' : 'Activate account';
+    if (label) label.textContent = text;
+    else tbtn.textContent = text;
+    tbtn.classList.toggle('is-deactivate', !!isActive);
+    tbtn.classList.toggle('is-activate', !isActive);
+  }
+
   function fillProfilePasswordField(user) {
     const el = document.getElementById('profilePassword');
     const hint = document.getElementById('profilePasswordHint');
@@ -549,7 +559,7 @@
     updateProfileSignaturePreview();
 
     const tbtn = document.getElementById('profileQuickToggleBtn');
-    if (tbtn) tbtn.textContent = user.is_active ? 'Deactivate account' : 'Activate account';
+    setProfileQuickToggleButton(tbtn, user.is_active);
 
     activatePortalModal(modal);
   };
