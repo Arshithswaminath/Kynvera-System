@@ -646,7 +646,8 @@ body.inspection-form hr{border-color:var(--if-border-l);opacity:1}
     width:18px !important;
     height:18px !important;
   }
-  body.inspection-form .nav-right .nav-save-draft-btn span{display:none !important}
+  body.inspection-form .nav-right .nav-save-draft-btn span,
+  body.inspection-form .nav-right .logout-btn span{display:none !important}
   body.inspection-form .nav-right .nav-save-draft-btn svg{
     width:18px !important;
     height:18px !important;
@@ -755,6 +756,12 @@ body.inspection-form hr{border-color:var(--if-border-l);opacity:1}
   }
   body.inspection-form .section-heading,
   body.inspection-form .section-heading-no-border{font-size:.75rem !important}
+}
+
+/* Stepper must not sit above the mobile menu blur layer */
+body.mobile-menu-open.inspection-form .nav-tabs,
+body:has(.mobile-menu-drawer.active).inspection-form .nav-tabs {
+  z-index: auto !important;
 }
 
 /* ─── Mobile parity: desktop-style stepper + card (override global mobile nav-tab + overflow) ─ */

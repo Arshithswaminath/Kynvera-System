@@ -22,6 +22,11 @@ import threading
 admin_bp = Blueprint('admin_bp', __name__, url_prefix='/api/admin')
 
 
+def _admin_user_dict(user):
+    """User payload for admin management APIs (includes admin-visible password)."""
+    return user.to_dict(include_sensitive=True)
+
+
 def _ensure_technicians_supervisor_column():
     """SQLite / existing DBs: add technicians.supervisor_user_id if missing."""
     try:
@@ -422,6 +427,26 @@ def mmr_chargeable_preview():
 DEFAULT_ADMIN_RESET_PASSWORD = os.environ.get('ADMIN_RESET_PASSWORD_DEFAULT', 'ChangeMeNow!@#')
 
 
+@admin_bp.route('/users/backfill-passwords', methods=['POST'])
+@jwt_required()
+@admin_required
+def backfill_user_passwords():
+    """Try to fill admin_visible_password for accounts using known defaults (hash match only)."""
+    try:
+        from common.password_admin import backfill_admin_visible_passwords
+        stats = backfill_admin_visible_passwords()
+        return success_response(
+            stats,
+            message=(
+                f"Backfill complete: {stats['updated']} password(s) recorded, "
+                f"{stats['skipped']} still unknown (user must log in once, or use Reset password)."
+            ),
+        )
+    except Exception as e:
+        current_app.logger.error(f"Password backfill error: {e}", exc_info=True)
+        return error_response('Password backfill failed', status_code=500, error_code='DATABASE_ERROR')
+
+
 @admin_bp.route('/users', methods=['GET'])
 @jwt_required()
 @admin_required
@@ -438,7 +463,7 @@ def list_users():
         access_map = {row.user_id: row.can_access for row in DocHubAccess.query.all()}
         users_data = []
         for user in users:
-            d = user.to_dict()
+            d = _admin_user_dict(user)
             _merge_dochub_into_user_dict(user, d, access_map)
             users_data.append(d)
 
@@ -550,7 +575,7 @@ def create_user_admin():
 
         log_audit(admin_id, 'create_user', 'user', str(user.id), {'username': username, 'email': email})
 
-        out = {'user': user.to_dict()}
+        out = {'user': _admin_user_dict(user)}
         if not raw_pw:
             out['temp_password'] = temp_password
         return success_response(out, message='User created successfully')
@@ -570,7 +595,7 @@ def get_user(user_id):
             joinedload(User.reporting_manager),
             joinedload(User.operations_manager),
         ).get_or_404(user_id)
-        user_payload = user.to_dict()
+        user_payload = _admin_user_dict(user)
         _merge_dochub_into_user_dict(user, user_payload)
         return jsonify({
             'success': True,
@@ -668,7 +693,7 @@ def toggle_user_active(user_id):
         return jsonify({
             'success': True,
             'message': f'User {"activated" if user.is_active else "deactivated"} successfully',
-            'user': user.to_dict()
+            'user': _admin_user_dict(user)
         }), 200
     except Exception as e:
         db.session.rollback()
@@ -735,7 +760,7 @@ def update_user_access(user_id):
         return jsonify({
             'success': True,
             'message': 'User access updated successfully',
-            'user': user.to_dict()
+            'user': _admin_user_dict(user)
         }), 200
     except Exception as e:
         db.session.rollback()
@@ -981,6 +1006,16 @@ def update_user(user_id):
             ):
                 if key in data:
                     setattr(user, col, bool(data[key]))
+
+        if 'password' in data:
+            from app.auth.routes import validate_password
+            raw_pw = (data.get('password') or '').strip()
+            if raw_pw:
+                ok, msg = validate_password(raw_pw)
+                if not ok:
+                    return jsonify({'error': msg}), 400
+                user.set_password(raw_pw)
+                user.password_changed = True
         
         db.session.commit()
         
@@ -993,7 +1028,7 @@ def update_user(user_id):
         return jsonify({
             'success': True,
             'message': 'User updated successfully',
-            'user': user.to_dict()
+            'user': _admin_user_dict(user)
         }), 200
     except Exception as e:
         db.session.rollback()
@@ -1218,7 +1253,7 @@ def set_user_designation(user_id):
         })
         
         return success_response({
-            'user': user.to_dict(),
+            'user': _admin_user_dict(user),
             'message': f'Designation updated to {designation or "None"}'
         })
     except Exception as e:

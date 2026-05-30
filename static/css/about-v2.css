@@ -68,6 +68,12 @@
     body.about-page #welcome-text {
       color:rgba(255,255,255,.9);
     }
+    @media (max-width: 600px) {
+      body.about-page .nav-welcome,
+      body.about-page #welcome-text {
+        color:rgba(255,255,255,.92) !important;
+      }
+    }
     body.about-page .nav-menu a {
       color:rgba(255,255,255,.78);
     }
@@ -88,25 +94,22 @@
     body.about-page .about-details-nav-item a:hover {
       color:var(--gold2) !important;
     }
-    body.about-page .notification-btn {
-      color:rgba(255,255,255,.85);
+    body.about-page .notification-btn,
+    body.about-page .logout-btn,
+    body.about-page .nav-save-draft-btn {
+      background:transparent;
+      border:none;
+      box-shadow:none;
+      color:rgba(255,255,255,.9);
     }
-    body.about-page .notification-btn:hover {
+    body.about-page .notification-btn:hover,
+    body.about-page .logout-btn:hover,
+    body.about-page .nav-save-draft-btn:hover {
       background:rgba(255,255,255,.08);
       color:var(--gold2);
     }
     body.about-page .notification-badge {
       border-color:rgba(4,32,15,.95);
-    }
-    body.about-page .logout-btn {
-      color:rgba(255,255,255,.88);
-      background:rgba(255,255,255,.06);
-      border:1px solid rgba(255,255,255,.18);
-    }
-    body.about-page .logout-btn:hover {
-      color:var(--gold2);
-      background:rgba(255,255,255,.1);
-      border-color:rgba(232,201,122,.45);
     }
     body.about-page .nav-save-draft-btn {
       color:var(--g6);
@@ -120,22 +123,40 @@
     }
 
     @media (max-width: 2500px) {
-      body.about-page .mobile-menu-toggle {
-        background:transparent !important;
-        border-color:transparent !important;
-        color:#fff !important;
-        box-shadow:none !important;
+      /* Dark nav: transparent icon rail, light strokes */
+      body.about-page .nav-right {
+        gap: 0.5rem !important;
       }
-      body.about-page .mobile-menu-toggle:hover {
-        background:transparent !important;
-        border-color:transparent !important;
-        color:var(--gold2) !important;
+      body.about-page .nav-right > .mobile-menu-toggle,
+      body.about-page .nav-right .notification-btn,
+      body.about-page .nav-right .nav-save-draft-btn,
+      body.about-page .nav-right .logout-btn {
+        background: transparent !important;
+        border: none !important;
+        color: rgba(255, 255, 255, 0.9) !important;
+        box-shadow: none !important;
       }
-      body.about-page .mobile-menu-toggle:active,
-      body.about-page .mobile-menu-toggle.active {
-        background:transparent !important;
-        border-color:transparent !important;
-        color:#fff !important;
+      body.about-page .nav-right .notification-btn:hover,
+      body.about-page .nav-right .logout-btn:hover,
+      body.about-page .nav-right .nav-save-draft-btn:hover,
+      body.about-page .nav-right > .mobile-menu-toggle:hover {
+        background: rgba(255, 255, 255, 0.08) !important;
+        border: none !important;
+        color: var(--gold2) !important;
+      }
+      body.about-page .nav-right > .mobile-menu-toggle.active {
+        background: rgba(255, 255, 255, 0.1) !important;
+        border: none !important;
+        color: var(--gold2) !important;
+        box-shadow: none !important;
+      }
+      body.about-page .nav-right .notification-btn svg,
+      body.about-page .nav-right .logout-btn svg,
+      body.about-page .nav-right .nav-save-draft-btn svg {
+        width: 20px !important;
+        height: 20px !important;
+        stroke: currentColor !important;
+        flex-shrink: 0 !important;
       }
       /* Space first links below tall / dense nav bar on About */
       body.about-page .mobile-menu-drawer {

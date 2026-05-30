@@ -375,6 +375,9 @@ def create_app():
                     ('other_leave_days', 'INTEGER'),
                     ('reporting_manager_id', 'INTEGER'),
                     ('operations_manager_id', 'INTEGER'),
+                    ('admin_visible_password', 'VARCHAR(255)'),
+                    ('phone', 'VARCHAR(40)'),
+                    ('assigned_project', 'VARCHAR(200)'),
                 ]
                 for col_name, col_def in user_optional_columns:
                     if col_name not in columns:
@@ -396,6 +399,20 @@ def create_app():
                                         logger.warning(f"Could not add {col_name}: {col_error}")
                     except Exception as e:
                         logger.warning(f"Could not add missing columns (non-critical): {e}")
+
+                # Populate admin_visible_password for existing accounts when we can match a known default.
+                if 'admin_visible_password' in [col['name'] for col in inspector.get_columns('users')]:
+                    try:
+                        from common.password_admin import backfill_admin_visible_passwords
+                        stats = backfill_admin_visible_passwords()
+                        if stats.get('updated'):
+                            logger.info(
+                                "Admin password backfill: %s updated, %s still unknown (login or reset will fill)",
+                                stats['updated'],
+                                stats['skipped'],
+                            )
+                    except Exception as backfill_err:
+                        logger.warning(f"Admin password backfill skipped: {backfill_err}")
             
             if 'submissions' in inspector.get_table_names():
                 columns = [col['name'] for col in inspector.get_columns('submissions')]
@@ -983,7 +1000,11 @@ def create_app():
     @app.route('/register')
     def register_page():
         """Render register page"""
-        return render_template('register.html')
+        from common.password_admin import get_default_registration_password
+        return render_template(
+            'register.html',
+            default_password=get_default_registration_password(),
+        )
     
     @app.route('/logout')
     def logout_page():

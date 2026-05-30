@@ -24,6 +24,81 @@
   let bindingsDone = false;
   let passwordResetConfirmContext = null;
 
+  function fillProfilePasswordField(user) {
+    const el = document.getElementById('profilePassword');
+    const hint = document.getElementById('profilePasswordHint');
+    if (!el) return;
+    const stored = user && user.admin_visible_password ? String(user.admin_visible_password) : '';
+    el.value = stored;
+    el.placeholder = stored ? '' : 'No password on file for admin view';
+    el.dataset.storedPassword = stored;
+    el.type = 'password';
+    const toggle = document.getElementById('profilePasswordToggle');
+    if (toggle) toggle.textContent = 'Show';
+    if (hint) {
+      if (stored) {
+        hint.textContent = 'Stored for admin reference. Edit and save to change.';
+      } else if (user && user.password_changed) {
+        hint.textContent =
+          'This account already has a login password, but it was never saved for admin view (e.g. set before this feature or by the user). Use Reset password in Quick actions, or enter a new password here and save — you cannot recover the old one from the database.';
+      } else {
+        hint.textContent =
+          'No password stored for admin view yet. Enter one and save, or use Reset password in Quick actions.';
+      }
+    }
+  }
+
+  function profilePasswordPayload() {
+    const el = document.getElementById('profilePassword');
+    if (!el) return {};
+    const v = el.value.trim();
+    const stored = (el.dataset.storedPassword || '').trim();
+    if (v && v !== stored) return { password: v };
+    return {};
+  }
+
+  function patchDirectoryUserPassword(userId, password) {
+    const list = directoryUsers();
+    const u = list.find(function (x) {
+      return Number(x.id) === Number(userId);
+    });
+    if (u) u.admin_visible_password = password || '';
+  }
+
+  w.toggleProfilePasswordVisibility = function toggleProfilePasswordVisibility() {
+    const el = document.getElementById('profilePassword');
+    const btn = document.getElementById('profilePasswordToggle');
+    if (!el || !btn) return;
+    const show = el.type === 'password';
+    el.type = show ? 'text' : 'password';
+    btn.textContent = show ? 'Hide' : 'Show';
+    btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+  };
+
+  w.copyProfilePassword = function copyProfilePassword() {
+    const el = document.getElementById('profilePassword');
+    if (!el || !el.value.trim()) {
+      notify('No password to copy', 'error');
+      return;
+    }
+    const v = el.value;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(v).then(function () {
+        notify('Password copied', 'success');
+      }).catch(function () {
+        el.select();
+        document.execCommand('copy');
+        notify('Password copied', 'success');
+      });
+    } else {
+      el.type = 'text';
+      el.select();
+      document.execCommand('copy');
+      el.type = 'password';
+      notify('Password copied', 'success');
+    }
+  };
+
   /** @type {FileReader['_result']|''} */
   let profileSignatureDataUrl = '';
 
@@ -219,6 +294,7 @@
       const data = await response.json();
       if (data.success) {
         const pw = data.temp_password || DEFAULT_RESET_DISPLAY_PASSWORD;
+        patchDirectoryUserPassword(userId, pw);
         openPasswordResetResultModal(username, pw);
       } else {
         notify(data.error || 'Failed to reset password', 'error');
@@ -387,6 +463,7 @@
     document.getElementById('profileFullName').value = user.full_name || '';
     document.getElementById('profileEmail').value = user.email || '';
     document.getElementById('profileUsername').value = user.username || '';
+    fillProfilePasswordField(user);
     const jdEl = document.getElementById('profileJobDesignation');
     if (jdEl) jdEl.value = user.job_designation || '';
     const alEl = document.getElementById('profileAnnualLeaveDays');
@@ -720,6 +797,7 @@
               ? document.getElementById('profileOtherLeaveDays').value.trim()
               : '',
         };
+        Object.assign(payload, profilePasswordPayload());
         const prm = document.getElementById('profileReportingManager');
         if (prm) {
           if (!prm.value) payload.reporting_manager_id = null;
@@ -756,6 +834,11 @@
           const roleIsAdmin = document.getElementById('profileRole').value === 'admin';
           const okPut = response.ok && data.success;
           if (okPut) {
+            if (data.user && data.user.admin_visible_password != null) {
+              patchDirectoryUserPassword(userId, data.user.admin_visible_password);
+            } else if (payload.password) {
+              patchDirectoryUserPassword(userId, payload.password);
+            }
             if (!roleIsAdmin) {
               const dhub = document.getElementById('accessDocHub');
               const dhRes = await profileAuthenticatedFetch('/api/admin/dochub/access-users/' + userId, {
@@ -790,6 +873,19 @@
         }
       });
     }
+
+    try {
+      const pwToggle = document.getElementById('profilePasswordToggle');
+      if (pwToggle && !pwToggle.dataset.bound) {
+        pwToggle.dataset.bound = '1';
+        pwToggle.addEventListener('click', w.toggleProfilePasswordVisibility);
+      }
+      const pwCopy = document.getElementById('profilePasswordCopy');
+      if (pwCopy && !pwCopy.dataset.bound) {
+        pwCopy.dataset.bound = '1';
+        pwCopy.addEventListener('click', w.copyProfilePassword);
+      }
+    } catch (_) { /* ignore */ }
 
     try {
       const lt = document.getElementById('adminProfileLayoutToggle');

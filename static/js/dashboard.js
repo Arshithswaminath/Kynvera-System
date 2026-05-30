@@ -113,68 +113,106 @@ async function authenticatedFetch(url, options = {}) {
 // User & Authentication Functions
 // ===========================================
 
+function isAppAdmin(user) {
+  if (!user) return false;
+  return String(user.role || '').trim().toLowerCase() === 'admin';
+}
+
+function accessFlagOn(user, key) {
+  if (!user) return false;
+  const v = user[key];
+  return v === true || v === 1;
+}
+
+function readCachedUser() {
+  try {
+    const raw = localStorage.getItem('user');
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+/** Always prefer server profile when a JWT exists (fixes stale localStorage hiding admin modules). */
+function refreshCurrentUser(callback) {
+  const token = localStorage.getItem('access_token');
+  if (!token) {
+    const cached = readCachedUser();
+    if (callback) callback(cached);
+    return Promise.resolve(cached);
+  }
+  return fetch('/api/auth/me', {
+    headers: { Authorization: 'Bearer ' + token }
+  })
+    .then(function (response) {
+      if (!response.ok) throw new Error('auth_me_' + response.status);
+      return response.json();
+    })
+    .then(function (data) {
+      if (data && data.user) {
+        localStorage.setItem('user', JSON.stringify(data.user));
+        if (callback) callback(data.user);
+        return data.user;
+      }
+      const cached = readCachedUser();
+      if (callback) callback(cached);
+      return cached;
+    })
+    .catch(function (err) {
+      console.warn('Failed to refresh user from server:', err);
+      const cached = readCachedUser();
+      if (callback) callback(cached);
+      return cached;
+    });
+}
+
+function applyUserSession(user) {
+  if (!user) return;
+  applyNavWelcome(user);
+  checkAndShowAdminMenu(user);
+  updateModuleVisibility(user);
+  if (typeof loadPendingCount === 'function') {
+    loadPendingCount(user);
+  }
+}
+
+function isNavWelcomeCompact() {
+  return window.matchMedia('(max-width: 600px)').matches;
+}
+
+function getNavWelcomeFirstName(user) {
+  const raw = (user && (user.full_name || user.username)) || '';
+  const trimmed = String(raw).trim();
+  if (!trimmed) return 'there';
+  return trimmed.split(/\s+/)[0];
+}
+
+/** Desktop: "Welcome, Full Name!" — phone (≤600px): "Hi, FirstName" */
+function formatNavWelcome(user) {
+  const displayName = (user && (user.full_name || user.username)) || '';
+  if (!displayName) {
+    return isNavWelcomeCompact() ? 'Hi' : 'Injaaz Application';
+  }
+  if (isNavWelcomeCompact()) {
+    return `Hi, ${getNavWelcomeFirstName(user)}`;
+  }
+  return `Welcome, ${displayName}!`;
+}
+
+function applyNavWelcome(user) {
+  const welcomeText = document.getElementById('welcome-text');
+  if (!welcomeText) return;
+  welcomeText.textContent = formatNavWelcome(user);
+  welcomeText.classList.toggle('nav-welcome--compact', isNavWelcomeCompact());
+  welcomeText.setAttribute('title', (user && (user.full_name || user.username)) || '');
+}
+
 // Load and display user welcome message
 function loadUserWelcome() {
   try {
-    const userData = localStorage.getItem('user');
-    if (userData) {
-      const user = JSON.parse(userData);
-      const displayName = user.full_name || user.username;
-      
-      const welcomeText = document.getElementById('welcome-text');
-      if (welcomeText) {
-        welcomeText.textContent = `Welcome, ${displayName}!`;
-      }
-      
-      checkAndShowAdminMenu(user);
-      updateModuleVisibility(user);
-      if (typeof loadPendingCount === 'function') {
-        loadPendingCount(user);
-      }
-    } else {
-      const token = localStorage.getItem('access_token');
-      if (token) {
-        fetch('/api/auth/me', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        })
-        .then(response => response.json())
-        .then(data => {
-          if (data.user) {
-            localStorage.setItem('user', JSON.stringify(data.user));
-            const displayName = data.user.full_name || data.user.username;
-            const welcomeText = document.getElementById('welcome-text');
-            if (welcomeText) {
-              welcomeText.textContent = `Welcome, ${displayName}!`;
-            }
-            
-            checkAndShowAdminMenu(data.user);
-            updateModuleVisibility(data.user);
-            if (typeof loadPendingCount === 'function') {
-              loadPendingCount(data.user);
-            }
-          }
-        })
-        .catch(error => {
-          console.error('Failed to fetch user:', error);
-        });
-      } else {
-        const userStr = localStorage.getItem('user');
-        if (userStr) {
-          try {
-            const user = JSON.parse(userStr);
-            checkAndShowAdminMenu(user);
-            updateModuleVisibility(user);
-            if (typeof loadPendingCount === 'function') {
-              loadPendingCount(user);
-            }
-          } catch (e) {
-            console.error('Error parsing user from localStorage:', e);
-          }
-        }
-      }
-    }
+    const cached = readCachedUser();
+    if (cached) applyUserSession(cached);
+    refreshCurrentUser(applyUserSession);
   } catch (error) {
     console.error('Error loading user welcome:', error);
   }
@@ -182,21 +220,21 @@ function loadUserWelcome() {
 
 function userHasBdEmailAccess(user) {
   if (!user) return false;
-  if (user.role === 'admin') return true;
+  if (isAppAdmin(user)) return true;
   if (user.designation === 'business_development') return true;
-  return user.access_business_development === true;
+  return accessFlagOn(user, 'access_business_development');
 }
 
 function userHasInspectionNavAccess(user) {
   if (!user) return false;
-  if (user.role === 'admin') return true;
-  return user.access_hvac === true || user.access_civil === true || user.access_cleaning === true;
+  if (isAppAdmin(user)) return true;
+  return accessFlagOn(user, 'access_hvac') || accessFlagOn(user, 'access_civil') || accessFlagOn(user, 'access_cleaning');
 }
 
 function userHasHrNavAccess(user) {
   if (!user) return false;
-  if (user.role === 'admin') return true;
-  if (user.access_hr === true) return true;
+  if (isAppAdmin(user)) return true;
+  if (accessFlagOn(user, 'access_hr')) return true;
   const d = (user.designation || '').trim().toLowerCase();
   if (d === 'hr_manager' || d === 'general_manager') return true;
   return false;
@@ -204,22 +242,22 @@ function userHasHrNavAccess(user) {
 
 function userHasSubmittedFormsModuleAccess(user) {
   if (!user) return false;
-  if (user.role === 'admin') return true;
+  if (isAppAdmin(user)) return true;
   // Every logged-in user can open My submitted forms for items they submitted.
   return true;
 }
 
 function userHasDocHubNavAccess(user) {
   if (!user) return false;
-  if (user.role === 'admin') return true;
+  if (isAppAdmin(user)) return true;
   if (user.can_access_dochub === false) return false;
   return true;
 }
 
 function userHasReportGenerationNavAccess(user) {
   if (!user) return false;
-  if (user.role === 'admin') return true;
-  return user.access_report_generation === true;
+  if (isAppAdmin(user)) return true;
+  return accessFlagOn(user, 'access_report_generation');
 }
 
 /** Navbar items tied to admin profile module flags (main_navbar.html). */
@@ -238,7 +276,7 @@ function applyProfileBasedNavVisibility(user) {
   }
   const tktEl = document.getElementById('ticketing-menu-item');
   if (tktEl) {
-    tktEl.style.display = (user && (user.role === 'admin' || user.access_ticketing === true)) ? 'list-item' : 'none';
+    tktEl.style.display = (user && (isAppAdmin(user) || accessFlagOn(user, 'access_ticketing'))) ? 'list-item' : 'none';
   }
   const reportEl = document.getElementById('report-gen-menu-item');
   if (reportEl) {
@@ -263,13 +301,13 @@ function checkAndShowAdminMenu(user) {
 
   // Admin menu and Device Management: admin only — explicitly hide for non-admin
   if (adminMenuItem) {
-    adminMenuItem.style.display = (user && user.role === 'admin') ? 'list-item' : 'none';
+    adminMenuItem.style.display = (user && isAppAdmin(user)) ? 'list-item' : 'none';
   }
   if (deviceMgmtMenuItem) {
-    deviceMgmtMenuItem.style.display = (user && user.role === 'admin') ? 'list-item' : 'none';
+    deviceMgmtMenuItem.style.display = (user && isAppAdmin(user)) ? 'list-item' : 'none';
   }
   if (bdModuleMenuItem) {
-    bdModuleMenuItem.style.display = (user && user.role === 'admin') ? 'list-item' : 'none';
+    bdModuleMenuItem.style.display = (user && isAppAdmin(user)) ? 'list-item' : 'none';
   }
 
   // Legacy Review History nav is retired in favor of unified Submitted Forms.
@@ -280,34 +318,21 @@ function checkAndShowAdminMenu(user) {
   applyProfileBasedNavVisibility(user);
   
   if (user && !user.role) {
-    const token = localStorage.getItem('access_token');
-    if (token) {
-      fetch('/api/auth/me', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (data.user) {
-          localStorage.setItem('user', JSON.stringify(data.user));
-          checkAndShowAdminMenu(data.user);
-          updateModuleVisibility(data.user);
-          if (typeof loadPendingCount === 'function') {
-            loadPendingCount(data.user);
-          }
-        }
-      })
-      .catch(error => {
-        console.error('Failed to fetch user role:', error);
-      });
-    }
+    refreshCurrentUser(applyUserSession);
   }
 }
 
 // ===========================================
 // Module Visibility Functions
 // ===========================================
+
+function isModuleCardVisible(card) {
+  if (!card || !card.classList.contains('module-card')) return false;
+  const computed = window.getComputedStyle(card);
+  if (computed.display === 'none' || computed.visibility === 'hidden') return false;
+  if (card.style.display === 'none' || card.style.visibility === 'hidden') return false;
+  return true;
+}
 
 let _dashboardModuleEntranceTimer = null;
 
@@ -344,9 +369,7 @@ function playDashboardModuleEntrance() {
   }
 
   const cards = Array.from(grid.querySelectorAll(':scope > .module-card'));
-  const visible = cards.filter(function(card) {
-    return !/display\s*:\s*none/i.test(card.getAttribute('style') || '');
-  });
+  const visible = cards.filter(isModuleCardVisible);
 
   cards.forEach(function(card) {
     card.style.removeProperty('--dd-stagger');
@@ -377,12 +400,12 @@ function playDashboardModuleEntrance() {
 function updateModuleVisibility(user) {
   if (!user) return;
   
-  const isAdmin = user.role === 'admin';
+  const isAdmin = isAppAdmin(user);
   
   // Check Inspection Form access (HVAC, Civil, or Cleaning)
   const inspectionCard = document.getElementById('module-inspection');
   if (inspectionCard) {
-    const hasInspectionAccess = isAdmin || user.access_hvac === true || user.access_civil === true || user.access_cleaning === true;
+    const hasInspectionAccess = isAdmin || accessFlagOn(user, 'access_hvac') || accessFlagOn(user, 'access_civil') || accessFlagOn(user, 'access_cleaning');
     inspectionCard.style.display = hasInspectionAccess ? 'block' : 'none';
     inspectionCard.style.visibility = hasInspectionAccess ? 'visible' : 'hidden';
   }
@@ -438,7 +461,7 @@ function updateModuleVisibility(user) {
   // Check Procurement Module access
   const procurementCard = document.getElementById('module-procurement');
   const procurementMenuItem = document.getElementById('procurement-menu-item');
-  const hasProcurementAccess = isAdmin || user.access_procurement_module === true;
+  const hasProcurementAccess = isAdmin || accessFlagOn(user, 'access_procurement_module');
   if (procurementCard) {
     procurementCard.style.display = hasProcurementAccess ? 'block' : 'none';
     procurementCard.style.visibility = hasProcurementAccess ? 'visible' : 'hidden';
@@ -450,7 +473,7 @@ function updateModuleVisibility(user) {
   // Service tickets (same rule as main_navbar ticketing-menu-item)
   const ticketingCard = document.getElementById('module-ticketing');
   if (ticketingCard) {
-    const showTicketing = isAdmin || user.access_ticketing === true;
+    const showTicketing = isAdmin || accessFlagOn(user, 'access_ticketing');
     ticketingCard.style.display = showTicketing ? 'block' : 'none';
     ticketingCard.style.visibility = showTicketing ? 'visible' : 'hidden';
   }
@@ -466,28 +489,26 @@ function updateModuleVisibility(user) {
   const modulesGrid = document.getElementById('modulesGrid');
   const modulesSection = document.getElementById('modules');
   if (modulesSection) {
-    const visibleCount = modulesGrid
-      ? Array.from(modulesGrid.children).filter(function (card) {
-          const style = card.getAttribute('style') || '';
-          return card.classList.contains('module-card')
-            && !/display\s*:\s*none/i.test(style)
-            && card.style.visibility !== 'hidden';
-        }).length
-      : 0;
     const existingMsg = modulesSection.querySelector('.no-access-message');
-    if (visibleCount === 0) {
-      if (!existingMsg) {
-        const noAccessMsg = document.createElement('div');
-        noAccessMsg.className = 'no-access-message';
-        noAccessMsg.style.cssText = 'text-align: center; padding: 3rem; color: var(--text-light);';
-        noAccessMsg.innerHTML = `
+    // Only the home dashboard uses #modulesGrid; inspection/HR hubs use their own grids.
+    if (!modulesGrid) {
+      if (existingMsg) existingMsg.remove();
+    } else {
+      const visibleCount = Array.from(modulesGrid.children).filter(isModuleCardVisible).length;
+      if (visibleCount === 0) {
+        if (!existingMsg) {
+          const noAccessMsg = document.createElement('div');
+          noAccessMsg.className = 'no-access-message';
+          noAccessMsg.style.cssText = 'text-align: center; padding: 3rem; color: var(--text-light);';
+          noAccessMsg.innerHTML = `
         <h3 style="margin-bottom: 1rem; color: var(--text-dark);">No Module Access</h3>
         <p>You don't have access to any modules yet. Please contact an administrator to grant access.</p>
       `;
-        modulesSection.appendChild(noAccessMsg);
+          modulesSection.appendChild(noAccessMsg);
+        }
+      } else if (existingMsg) {
+        existingMsg.remove();
       }
-    } else if (existingMsg) {
-      existingMsg.remove();
     }
   }
 
@@ -502,12 +523,7 @@ function updateModuleVisibility(user) {
 
 function getVisibleModuleCards(modulesGrid) {
   if (!modulesGrid) return [];
-  return Array.from(modulesGrid.children).filter(function (card) {
-    const style = card.getAttribute('style') || '';
-    return card.classList.contains('module-card')
-      && !/display\s*:\s*none/i.test(style)
-      && card.style.visibility !== 'hidden';
-  });
+  return Array.from(modulesGrid.children).filter(isModuleCardVisible);
 }
 
 /** Grid columns are controlled by CSS — this just clears any stale inline overrides. */
@@ -581,7 +597,7 @@ async function loadPendingCount(user) {
     reviewHistoryModule.style.visibility = 'hidden';
   }
   
-  if (user && user.role === 'admin') {
+  if (user && isAppAdmin(user)) {
     if (pendingModule) {
       pendingModule.style.display = 'none';
       pendingModule.style.visibility = 'hidden';
@@ -698,11 +714,38 @@ window.openSubmissionForReview = async function(submissionId, moduleUrl) {
 // Profile Modal Functions
 // ===========================================
 
+let _profileModalScrollY = 0;
+
+function lockProfileModalPageScroll() {
+  _profileModalScrollY = window.scrollY || window.pageYOffset || 0;
+  document.documentElement.classList.add('profile-modal-open');
+  document.body.classList.add('profile-modal-open');
+}
+
+function unlockProfileModalPageScroll() {
+  document.documentElement.classList.remove('profile-modal-open');
+  document.body.classList.remove('profile-modal-open');
+  window.scrollTo(0, _profileModalScrollY);
+}
+
+function bindProfileModalScrollTrap() {
+  const modal = document.getElementById('profileModal');
+  if (!modal || modal.dataset.scrollTrapBound === '1') return;
+  modal.dataset.scrollTrapBound = '1';
+  modal.addEventListener('wheel', function (e) {
+    if (e.target === modal) e.preventDefault();
+  }, { passive: false });
+  modal.addEventListener('touchmove', function (e) {
+    if (e.target === modal) e.preventDefault();
+  }, { passive: false });
+}
+
 window.openProfileModal = function() {
   const modal = document.getElementById('profileModal');
   if (modal) {
+    bindProfileModalScrollTrap();
     modal.classList.add('active');
-    document.body.style.overflow = 'hidden';
+    lockProfileModalPageScroll();
     loadProfileData();
   }
 };
@@ -711,7 +754,7 @@ window.closeProfileModal = function() {
   const modal = document.getElementById('profileModal');
   if (modal) {
     modal.classList.remove('active');
-    document.body.style.overflow = '';
+    unlockProfileModalPageScroll();
   }
 };
 
@@ -819,12 +862,12 @@ function displayProfileData(user) {
 
   const getModuleAccess = () => {
     const modules = [];
-    if (user.role === 'admin' || user.access_hvac) modules.push('HVAC & MEP');
-    if (user.role === 'admin' || user.access_civil) modules.push('Civil Works');
-    if (user.role === 'admin' || user.access_cleaning) modules.push('Cleaning');
+    if (isAppAdmin(user) || user.access_hvac) modules.push('HVAC & MEP');
+    if (isAppAdmin(user) || user.access_civil) modules.push('Civil Works');
+    if (isAppAdmin(user) || user.access_cleaning) modules.push('Cleaning');
     if (userHasHrNavAccess(user)) modules.push('HR');
-    if (user.role === 'admin' || user.access_procurement_module) modules.push('Procurement');
-    if (user.role === 'admin' || user.designation === 'business_development' || user.access_business_development) modules.push('Business Development');
+    if (isAppAdmin(user) || user.access_procurement_module) modules.push('Procurement');
+    if (isAppAdmin(user) || user.designation === 'business_development' || user.access_business_development) modules.push('Business Development');
     if (userHasReportGenerationNavAccess(user)) modules.push('Report Generation');
     return modules.length > 0 ? modules.join(', ') : 'None';
   };
@@ -868,12 +911,12 @@ function displayProfileData(user) {
 
 function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDisplay, getModuleAccess, formatDate) {
   const modules = [];
-  if (user.role === 'admin' || user.access_hvac) modules.push({ name: 'HVAC & MEP', icon: '🔧', color: '#3b82f6' });
-  if (user.role === 'admin' || user.access_civil) modules.push({ name: 'Civil Works', icon: '🏢', color: '#8b5cf6' });
-  if (user.role === 'admin' || user.access_cleaning) modules.push({ name: 'Cleaning', icon: '🧹', color: '#10b981' });
+  if (isAppAdmin(user) || user.access_hvac) modules.push({ name: 'HVAC & MEP', icon: '🔧', color: '#3b82f6' });
+  if (isAppAdmin(user) || user.access_civil) modules.push({ name: 'Civil Works', icon: '🏢', color: '#8b5cf6' });
+  if (isAppAdmin(user) || user.access_cleaning) modules.push({ name: 'Cleaning', icon: '🧹', color: '#10b981' });
   if (userHasHrNavAccess(user)) modules.push({ name: 'HR', icon: '👤', color: '#f59e0b' });
-  if (user.role === 'admin' || user.access_procurement_module) modules.push({ name: 'Procurement', icon: '📦', color: '#7c3aed' });
-  if (user.role === 'admin' || user.designation === 'business_development' || user.access_business_development) modules.push({ name: 'Business Development', icon: '📧', color: '#0d9488' });
+  if (isAppAdmin(user) || user.access_procurement_module) modules.push({ name: 'Procurement', icon: '📦', color: '#7c3aed' });
+  if (isAppAdmin(user) || user.designation === 'business_development' || user.access_business_development) modules.push({ name: 'Business Development', icon: '📧', color: '#0d9488' });
   if (userHasReportGenerationNavAccess(user)) modules.push({ name: 'Report Generation', icon: '📊', color: '#0369a1' });
   
   const moduleBadges = modules.length > 0 
@@ -1039,6 +1082,7 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
         min-height: 0;
         overflow-x: hidden;
         overflow-y: auto;
+        overscroll-behavior: contain;
         -webkit-overflow-scrolling: touch;
         scrollbar-width: none;
         -ms-overflow-style: none;
@@ -2658,42 +2702,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Run nav visibility on any page with main dashboard nav (admin, hr, mmr, procurement, etc.)
   function runNavVisibility() {
-    const userStr = localStorage.getItem('user');
-    if (userStr) {
-      try {
-        const user = JSON.parse(userStr);
-        checkAndShowAdminMenu(user);
-        updateModuleVisibility(user);
-        if (typeof loadPendingCount === 'function') {
-          loadPendingCount(user);
-        }
-      } catch (e) {
-        console.error('Error parsing user from localStorage:', e);
-      }
-    } else {
-      const token = localStorage.getItem('access_token');
-      if (token) {
-        fetch('/api/auth/me', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        })
-        .then(response => response.json())
-        .then(data => {
-          if (data.user) {
-            localStorage.setItem('user', JSON.stringify(data.user));
-            checkAndShowAdminMenu(data.user);
-            updateModuleVisibility(data.user);
-            if (typeof loadPendingCount === 'function') {
-              loadPendingCount(data.user);
-            }
-          }
-        })
-        .catch(error => {
-          console.error('Failed to fetch user data:', error);
-        });
-      }
-    }
+    const cached = readCachedUser();
+    if (cached) applyUserSession(cached);
+    refreshCurrentUser(applyUserSession);
   }
 
   // Ensure modules section is visible on load (dashboard only)
@@ -2719,50 +2730,25 @@ document.addEventListener('DOMContentLoaded', function() {
       clearTimeout(_moduleGridResizeTimer);
       _moduleGridResizeTimer = setTimeout(updateModuleGridLayout, 150);
     });
-    
-    // Check immediately if user data exists
-    const userStr = localStorage.getItem('user');
-    if (userStr) {
-      try {
-        const user = JSON.parse(userStr);
-        checkAndShowAdminMenu(user);
-        updateModuleVisibility(user);
-        if (typeof loadPendingCount === 'function') {
-          loadPendingCount(user);
-        }
-      } catch (e) {
-        console.error('Error parsing user from localStorage:', e);
-      }
-    } else {
-      const token = localStorage.getItem('access_token');
-      if (token) {
-        fetch('/api/auth/me', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        })
-        .then(response => response.json())
-        .then(data => {
-          if (data.user) {
-            localStorage.setItem('user', JSON.stringify(data.user));
-            checkAndShowAdminMenu(data.user);
-            updateModuleVisibility(data.user);
-            if (typeof loadPendingCount === 'function') {
-              loadPendingCount(data.user);
-            }
-          }
-        })
-        .catch(error => {
-          console.error('Failed to fetch user data:', error);
-        });
-      }
-    }
   } else if (isReviewHistoryPage || hasMainNav) {
     loadUserWelcome();
     runNavVisibility();
     if (document.getElementById('inspection-stats-grid')) {
       loadInspectionDashboardStats();
     }
+  }
+
+  if (document.getElementById('welcome-text')) {
+    let navWelcomeResizeTimer;
+    window.addEventListener('resize', function () {
+      clearTimeout(navWelcomeResizeTimer);
+      navWelcomeResizeTimer = setTimeout(function () {
+        try {
+          const userStr = localStorage.getItem('user');
+          if (userStr) applyNavWelcome(JSON.parse(userStr));
+        } catch (e) { /* ignore */ }
+      }, 120);
+    });
   }
 
   // Enhanced scroll effect
@@ -2845,6 +2831,7 @@ document.addEventListener('DOMContentLoaded', function() {
       mobileMenuDrawer.setAttribute('aria-hidden', 'true');
     }
     if (mobileOverlay) mobileOverlay.classList.remove('active');
+    document.body.classList.remove('mobile-menu-open');
     document.body.style.overflow = '';
   }
 
@@ -2872,6 +2859,7 @@ document.addEventListener('DOMContentLoaded', function() {
       mobileMenuDrawer.setAttribute('aria-hidden', 'false');
     }
     if (mobileOverlay) mobileOverlay.classList.add('active');
+    document.body.classList.add('mobile-menu-open');
     document.body.style.overflow = 'hidden';
   }
 
@@ -3005,23 +2993,35 @@ function initNotifications() {
   
   // Load initial notification count
   loadNotificationCount();
-  
-  // Poll for new notifications every 30 seconds
-  setInterval(loadNotificationCount, 30000);
+
+  // Poll for new notifications (60s — avoids hitting global rate limits in dev)
+  if (!window._injaazNotifPollTimer) {
+    window._injaazNotifPollTimer = setInterval(loadNotificationCount, 60000);
+  }
 }
+
+let _notifPollBackoffUntil = 0;
 
 async function loadNotificationCount() {
   const badge = document.getElementById('notificationBadge');
   if (!badge) return;
-  
+
+  if (Date.now() < _notifPollBackoffUntil) return;
+
   try {
     const token = localStorage.getItem('access_token');
     if (!token) return;
-    
+
     const response = await authenticatedFetch('/hr/api/notifications/unread-count');
+    if (response.status === 429) {
+      // Server rate limit — back off quietly (global default is often 100/hour)
+      _notifPollBackoffUntil = Date.now() + 5 * 60 * 1000;
+      return;
+    }
     if (response.ok) {
       const data = await response.json();
       updateNotificationBadge(data.unread_count || 0);
+      _notifPollBackoffUntil = 0;
     }
   } catch (error) {
     console.error('Error loading notification count:', error);

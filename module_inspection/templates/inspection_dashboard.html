@@ -11,7 +11,7 @@
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=16">
   <style>
     :root {
       --primary: #125435;
@@ -68,8 +68,8 @@
           </svg>
           Back to Dashboard
         </a>
-        <p class="hero-tagline">Inspection Module</p>
         <h1 class="hero-title">Inspection <span class="hero-title-accent">Forms</span></h1>
+        <p class="hero-subtitle">Complete HVAC &amp; MEP, Civil, and Cleaning inspections on site — capture findings, photos, and signatures, then track each submission through approval.</p>
       </div>
       <div class="hero-right">
         <div class="dashboard-widget inspection-stats-widget">
@@ -164,39 +164,47 @@
   <script>
     // Show inspection form cards based on user access
     (function() {
-      const userStr = localStorage.getItem('user');
-      if (!userStr) {
-        fetch('/api/auth/me', { headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('access_token') || '') } })
-          .then(r => r.ok ? r.json() : null)
-          .then(data => {
-            if (data && data.user) {
-              localStorage.setItem('user', JSON.stringify(data.user));
-              updateInspectionCards(data.user);
-            }
-          })
-          .catch(() => {});
-        return;
+      function applyUser(user) {
+        if (!user) return;
+        updateInspectionCards(user);
       }
       try {
-        const user = JSON.parse(userStr);
-        updateInspectionCards(user);
-      } catch (e) {}
+        const cached = localStorage.getItem('user');
+        if (cached) applyUser(JSON.parse(cached));
+      } catch (e) { /* ignore */ }
+      const token = localStorage.getItem('access_token');
+      if (!token) return;
+      fetch('/api/auth/me', { headers: { 'Authorization': 'Bearer ' + token } })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (data) {
+          if (data && data.user) {
+            localStorage.setItem('user', JSON.stringify(data.user));
+            applyUser(data.user);
+          }
+        })
+        .catch(function () {});
     })();
 
     function updateInspectionCards(user) {
       if (!user) return;
-      const isAdmin = user.role === 'admin';
+      const isAdmin = String(user.role || '').trim().toLowerCase() === 'admin';
+      const flagOn = function (key) {
+        const v = user[key];
+        return v === true || v === 1;
+      };
       const hvac = document.getElementById('inspection-hvac');
       const civil = document.getElementById('inspection-civil');
       const cleaning = document.getElementById('inspection-cleaning');
-      if (hvac) hvac.style.display = (isAdmin || user.access_hvac) ? 'flex' : 'none';
-      if (civil) civil.style.display = (isAdmin || user.access_civil) ? 'flex' : 'none';
-      if (cleaning) cleaning.style.display = (isAdmin || user.access_cleaning) ? 'flex' : 'none';
+      if (hvac) hvac.style.display = (isAdmin || flagOn('access_hvac')) ? 'flex' : 'none';
+      if (civil) civil.style.display = (isAdmin || flagOn('access_civil')) ? 'flex' : 'none';
+      if (cleaning) cleaning.style.display = (isAdmin || flagOn('access_cleaning')) ? 'flex' : 'none';
+      const noAccessMsg = document.querySelector('#modules .no-access-message');
+      if (noAccessMsg) noAccessMsg.remove();
     }
   </script>
   <script src="{{ url_for('static', filename='pwa-install.js') }}" defer></script>
   <script src="{{ url_for('static', filename='mobile_utils.js') }}" defer></script>
   <script src="{{ url_for('static', filename='api-client.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}?v=16"></script>
 </body>
 </html>

@@ -104,6 +104,10 @@
     .hr-workflow-cards .module-arrow {
       margin-top: 0.5rem;
       font-size: 0.8rem;
+      align-self: stretch;
+      width: 100%;
+      display: flex;
+      justify-content: flex-end;
     }
     .hr-workflow-cards .module-number {
       font-size: 0.6rem;
@@ -122,7 +126,7 @@
         grid-template-columns: repeat(3, minmax(0, 1fr));
         width: 100%;
         margin: 0;
-        gap: 0.65rem;
+        gap: 0.9rem;
       }
     }
 
@@ -132,47 +136,37 @@
         padding-top: max(4rem, calc(56px + env(safe-area-inset-top, 0px) + 0.85rem)) !important;
       }
       .hr-hero {
-        padding: 1.05rem 0 1.45rem !important;
-      }
-      /* One readable column: same horizontal inset as HR forms list below */
-      .hr-hero .hero-content.hero-split-inner {
-        padding-left: 1.45rem !important;
-        padding-right: 1.45rem !important;
-        box-sizing: border-box !important;
-      }
-      .hr-dashboard .hr-modules-section .modules-inner {
-        padding-left: 1.45rem !important;
-        padding-right: 1.45rem !important;
+        padding: 1.05rem 0 1.85rem !important;
       }
       .hr-hero .hero-content {
-        gap: 1.2rem !important;
+        gap: 1.5rem !important;
       }
       .hr-hero .hero-left {
         display: flex !important;
         flex-direction: column !important;
         align-items: flex-start !important;
         max-width: 100% !important;
-        padding-left: 0.3rem !important;
+        padding-left: 0 !important;
+        margin-left: 0 !important;
         box-sizing: border-box !important;
       }
       .hr-hero .back-btn {
-        margin-top: 0.2rem !important;
-        margin-bottom: 0.55rem !important;
+        margin-top: 0.15rem !important;
+        margin-bottom: 0.45rem !important;
         align-self: flex-start !important;
-      }
-      .hr-hero .hero-tagline {
-        margin-bottom: 0.5rem !important;
-        align-self: flex-start !important;
-      }
-      .hr-hero .hero-title {
-        align-self: flex-start !important;
-        text-align: left !important;
       }
       .hr-workflow-cards {
-        margin-top: 0.15rem !important;
+        margin-top: 0.25rem !important;
       }
       .hr-workflow-cards .modules-grid {
-        gap: 0.45rem !important;
+        gap: 0.9rem !important;
+        column-gap: 0.9rem !important;
+      }
+      .hr-dashboard .hr-modules-section {
+        padding-top: 1.65rem !important;
+      }
+      .hr-dashboard .hr-modules-section .modules-grid {
+        gap: 0.85rem !important;
       }
       .hr-dashboard .hr-workflow-cards .module-card:not([style*="display: none"]) {
         display: flex !important;
@@ -244,7 +238,6 @@
         top: -4px !important;
         right: -4px !important;
       }
-      /* Minimal CTA: hairline rule + label + chevron (no pill chrome) */
       .hr-dashboard .hr-workflow-cards .module-arrow {
         grid-column: unset !important;
         grid-row: unset !important;
@@ -269,7 +262,7 @@
         color: var(--primary) !important;
         display: inline-flex !important;
         align-items: center !important;
-        justify-content: flex-start !important;
+        justify-content: flex-end !important;
         gap: 0.2rem !important;
         line-height: 1.2 !important;
       }
@@ -286,27 +279,77 @@
       }
     }
     
+    .submissions-panel {
+      padding: 1.5rem;
+      min-height: 120px;
+      background: var(--bg-body, #f8faf8);
+      border: 1px solid var(--border-color, #e2e8f0);
+      border-radius: 12px;
+      box-shadow: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
     .submission-item {
       cursor: pointer;
-      transition: all 0.2s;
+      transition: background 0.2s ease;
       border-radius: 8px;
-      margin-bottom: 0.5rem;
     }
     .submission-item:hover {
       background: #f8fafc;
-    }
-    .submission-item:last-child {
-      margin-bottom: 0;
     }
     a.submission-item {
       text-decoration: none;
       color: inherit;
       display: flex;
       justify-content: space-between;
-      align-items: center;
+      align-items: flex-start;
       gap: 0.75rem;
-      padding: 0.75rem;
+      padding: 0.85rem 0.25rem;
       border-bottom: 1px solid #e2e8f0;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    a.submission-item:last-child {
+      border-bottom: none;
+    }
+    .submission-item-main {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+    .submission-item-title {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.35rem 0.5rem;
+      line-height: 1.3;
+    }
+    .submission-item-title strong {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #0f172a;
+      word-break: break-word;
+    }
+    .submission-item-type {
+      background: #e5e7eb;
+      color: #374151;
+      font-size: 0.7rem;
+      padding: 0.15rem 0.45rem;
+      border-radius: 6px;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    .submission-item-meta {
+      margin: 0.3rem 0 0;
+      color: #64748b;
+      font-size: 0.85rem;
+      line-height: 1.35;
+    }
+    .submission-item-end {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-shrink: 0;
     }
     .submission-item-go {
       flex-shrink: 0;
@@ -315,6 +358,25 @@
       color: var(--primary);
     }
     .submission-item-go svg { width: 1.15rem; height: 1.15rem; }
+
+    @media (max-width: 768px) {
+      .submissions-panel {
+        padding: 0.65rem 0.85rem !important;
+      }
+      a.submission-item {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.55rem;
+        padding: 0.85rem 0.15rem !important;
+      }
+      .submission-item-end {
+        width: 100%;
+        justify-content: space-between;
+      }
+      .submission-item-title strong {
+        font-size: 0.84rem;
+      }
+    }
     
     /* Detail Modal - Tabbed, amazing layout */
     .detail-overlay {
@@ -528,7 +590,6 @@
           </svg>
           Back to Dashboard
         </a>
-        <p class="hero-tagline">HR Module</p>
         <h1 class="hero-title">HR <span class="hero-title-accent">Forms</span></h1>
       </div>
       <div class="hero-right hr-workflow-cards" id="hrWorkflowCards" style="display: none;">
@@ -688,7 +749,7 @@
   <section class="modules-section">
     <div class="modules-inner">
       <h2 class="modules-section-label">Recent Submissions</h2>
-      <div id="submissionsList" class="module-card submissions-panel" style="padding: 1.5rem; min-height: 120px;">
+      <div id="submissionsList" class="submissions-panel">
         <div style="text-align: center; padding: 2rem;">
           <div class="spinner" style="border: 4px solid rgba(18,84,53,0.1); border-top: 4px solid var(--primary); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto;"></div>
           <p style="margin-top: 1rem; color: var(--text-light);">Loading submissions...</p>
@@ -749,12 +810,14 @@
           const sfBase = '/workflow/submitted-forms?scope=hr&submission=';
           container.innerHTML = data.submissions.slice(0, 10).map((s) => `
             <a class="submission-item" href="${sfBase}${encodeURIComponent(s.submission_id || '')}" aria-label="Open in Submitted forms">
-              <div>
-                <strong>${escapeHtml(s.submission_id)}</strong>
-                <span style="background: #e5e7eb; color: #374151; font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: 6px; margin-left: 0.5rem;">${getFormTypeLabel(s.module_type)}</span>
-                <p style="margin: 0.25rem 0 0; color: #64748b; font-size: 0.85rem;">${escapeHtml(s.site_name || '')}${s.site_name ? ' — ' : ''}${InjaazDateTimeUAE.formatDateMed(s.created_at)}</p>
+              <div class="submission-item-main">
+                <div class="submission-item-title">
+                  <strong>${escapeHtml(s.submission_id)}</strong>
+                  <span class="submission-item-type">${getFormTypeLabel(s.module_type)}</span>
+                </div>
+                <p class="submission-item-meta">${escapeHtml(s.site_name || '')}${s.site_name ? ' — ' : ''}${InjaazDateTimeUAE.formatDateMed(s.created_at)}</p>
               </div>
-              <div style="display:flex;align-items:center;gap:0.5rem;flex-shrink:0;">
+              <div class="submission-item-end">
                 <span class="status-badge status-${s.workflow_status}">${getStatusLabel(s.workflow_status)}</span>
                 <span class="submission-item-go" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg></span>
               </div>

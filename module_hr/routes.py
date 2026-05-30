@@ -77,6 +77,17 @@ def get_current_user():
     return db.session.get(User, int(user_id))
 
 
+def _exempt_global_rate_limit(f):
+    """Notification/read APIs are polled often; skip the app-wide default (e.g. 100/hour)."""
+    try:
+        limiter = current_app.limiter
+        if limiter:
+            return limiter.exempt(f)
+    except (AttributeError, RuntimeError):
+        pass
+    return f
+
+
 def _discard_hr_resume_draft(user: User | None, draft_id: str | None, module_type_full: str) -> None:
     """Drop a saved workflow draft once the same HR form is formally submitted."""
     if not user or not draft_id or not isinstance(draft_id, str) or not str(draft_id).strip():
@@ -1618,6 +1629,7 @@ def get_hr_submissions():
 
 @hr_bp.route('/api/notifications')
 @jwt_required()
+@_exempt_global_rate_limit
 def get_notifications():
     """Get current user's notifications"""
     user = get_current_user()
@@ -1641,6 +1653,7 @@ def get_notifications():
 
 @hr_bp.route('/api/notifications/unread-count')
 @jwt_required()
+@_exempt_global_rate_limit
 def get_unread_count():
     """Get count of unread notifications"""
     user = get_current_user()
@@ -1657,6 +1670,7 @@ def get_unread_count():
 
 @hr_bp.route('/api/notifications/<int:notification_id>/read', methods=['POST'])
 @jwt_required()
+@_exempt_global_rate_limit
 def mark_notification_read(notification_id):
     """Mark a notification as read"""
     user = get_current_user()
@@ -1675,6 +1689,7 @@ def mark_notification_read(notification_id):
 
 @hr_bp.route('/api/notifications/mark-all-read', methods=['POST'])
 @jwt_required()
+@_exempt_global_rate_limit
 def mark_all_notifications_read():
     """Mark all notifications as read"""
     user = get_current_user()

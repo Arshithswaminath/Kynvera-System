@@ -72,7 +72,10 @@
    * ============================================ */
   
   /* Font families — iOS/macOS: San Francisco via -apple-system; others fall through system-ui / platform UI */
-  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "SF Pro", ui-sans-serif, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-body: var(--font-sans);
+  --font-ui: var(--font-sans);
+  --font-display: var(--font-sans);
   /* Footer “built by” name — Caveat (loaded in base_head / about) */
   --font-footer-author: "Caveat", "Segoe Script", "Apple Chancery", cursive;
   /* Author name colour — brand green on light UI; mint on dark footers */
@@ -338,9 +341,11 @@
 
 html {
   font-size: 16px;
+  font-family: var(--font-sans);
   -webkit-text-size-adjust: 100%;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 body {
@@ -352,6 +357,43 @@ body {
   background-color: var(--bg-body);
   transition: background-color var(--duration-300) var(--ease-in-out),
               color var(--duration-300) var(--ease-in-out);
+}
+
+/* App-wide UI typography — inherit SF / system stack (mono + footer author excluded) */
+button,
+input,
+select,
+textarea,
+optgroup,
+label,
+legend,
+keygen,
+.dh-page-root,
+.admin-dh-page-root,
+table,
+th,
+td,
+h1, h2, h3, h4, h5, h6,
+p,
+a,
+li,
+span:not(.material-symbols-outlined):not(.ms-icon) {
+  font-family: inherit;
+}
+
+code,
+pre,
+kbd,
+samp,
+.mono,
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+.font-footer-author,
+.site-footer-author,
+.footer-author-name {
+  font-family: var(--font-footer-author);
 }
 
 /* Focus visible for accessibility */

@@ -34,8 +34,8 @@
   --radius-xl: 20px;
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-  /* iOS / system UI (SF on Apple devices) */
-  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", "Helvetica Neue", sans-serif;
+  /* iOS / system UI (SF on Apple devices) — keep in sync with design-tokens.css */
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "SF Pro", ui-sans-serif, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
 /* ===========================================
@@ -59,6 +59,11 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  /* Shared with .mobile-menu-drawer / .mobile-overlay (siblings of .nav) */
+  --nav-inner-h: 72px;
+  --nav-pad-top: calc(env(safe-area-inset-top, 0px) + 0.35rem);
+  --nav-pad-bottom: 0.35rem;
+  --nav-bar-h: calc(var(--nav-inner-h) + var(--nav-pad-top) + var(--nav-pad-bottom));
 }
 
 html {
@@ -113,6 +118,7 @@ body.admin-dh-page {
   background: #ffffff;
   border-bottom: 1px solid var(--nav-hairline);
   transition: box-shadow 0.3s ease, background 0.3s ease;
+  overflow: visible;
 }
 
 .nav.scrolled {
@@ -139,8 +145,9 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: 1.5rem;
-  min-height: 72px;
+  min-height: var(--nav-inner-h, 72px);
   box-sizing: border-box;
+  overflow: visible;
 }
 
 /* Logo */
@@ -543,18 +550,37 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
   display: none;
 }
 .hero.hr-hero .back-btn,
-.hero.inspection-hero .back-btn {
+.hero.inspection-hero .back-btn,
+.hero.proc-hero .back-btn,
+.hero.review-hero .back-btn,
+body:not(.page-dashboard) .hero-left .back-btn {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--hero-back-gap, 0.35rem);
   color: var(--primary);
   text-decoration: none;
+  font-size: 0.8125rem;
   font-weight: 500;
-  margin-bottom: 1.25rem;
+  line-height: 1.3;
+  margin-bottom: 1rem;
   transition: color 0.2s;
 }
+
+.hero.hr-hero .back-btn svg,
+.hero.inspection-hero .back-btn svg,
+.hero.proc-hero .back-btn svg,
+.hero.review-hero .back-btn svg,
+body:not(.page-dashboard) .hero-left .back-btn svg {
+  width: var(--hero-back-icon, 16px);
+  height: var(--hero-back-icon, 16px);
+  flex-shrink: 0;
+}
+
 .hero.hr-hero .back-btn:hover,
-.hero.inspection-hero .back-btn:hover {
+.hero.inspection-hero .back-btn:hover,
+.hero.proc-hero .back-btn:hover,
+.hero.review-hero .back-btn:hover,
+body:not(.page-dashboard) .hero-left .back-btn:hover {
   color: var(--primary-light);
 }
 
@@ -565,6 +591,19 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
 .hero.inspection-hero::before,
 .hero.inspection-hero::after {
   display: none;
+}
+
+/* Inspection hero: one left edge for back link, title, and subtitle */
+.hero.inspection-hero .hero-left .back-btn + .hero-title {
+  padding-left: 0;
+}
+.hero.inspection-hero .hero-left .hero-subtitle {
+  padding-left: 0;
+  margin-left: 0;
+  margin-top: 1rem;
+  max-width: 36rem;
+  text-align: left;
+  align-self: flex-start;
 }
 
 /* Submitted Forms (workflow history) hero — tighter bottom so stats sit closer to the list */
@@ -585,20 +624,6 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
 .hero.proc-hero::after {
   display: none;
 }
-.hero.proc-hero .back-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: var(--primary);
-  text-decoration: none;
-  font-weight: 500;
-  margin-bottom: 1.25rem;
-  transition: color 0.2s;
-}
-.hero.proc-hero .back-btn:hover {
-  color: var(--primary-light);
-}
-
 /* Review History dashboard: match HR/Inspection background */
 .review-dashboard {
   background: #F8FAF8;
@@ -645,34 +670,25 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
   align-items: flex-start;
   justify-content: center;
   text-align: left;
+  --hero-back-icon: 16px;
+  --hero-back-gap: 0.35rem;
 }
 
+body.procurement-page .proc-hero-inner {
+  --hero-back-icon: 14px;
+  --hero-back-gap: 0.35rem;
+}
+
+/* Module dashboards: headline lines up with back-link label (past chevron) */
+body:not(.page-dashboard) .hero-left .back-btn + .hero-title,
+body.procurement-page .proc-hero-inner > .back-btn + .hero-title {
+  padding-left: calc(var(--hero-back-icon) + var(--hero-back-gap));
+  box-sizing: border-box;
+}
+
+/* “Injaaz Application” / module kicker pill — removed from all module heroes */
 .hero-tagline {
-  font-size: 0.68rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.16em;
-  color: var(--primary);
-  margin: 0 0 1.25rem 0;
-  padding: 0.4rem 0.875rem;
-  background: rgba(18, 84, 53, 0.08);
-  border: 1px solid rgba(18, 84, 53, 0.2);
-  border-radius: 100px;
-  width: fit-content;
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  animation: heroBadgeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) both 0.1s;
-  opacity: 0;
-}
-
-.hero-tagline::before {
-  content: '';
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  background: var(--primary);
-  border-radius: 50%;
+  display: none !important;
 }
 
 .hero-title {
@@ -841,6 +857,45 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
   margin-bottom: 1rem;
 }
 
+/* Main dashboard — roomier hero copy + stats widget */
+.page-dashboard .hero-left {
+  gap: 1.35rem;
+}
+
+.page-dashboard .hero-subtitle {
+  margin-top: 0;
+}
+
+.page-dashboard .hero-cta-row {
+  margin-top: 0;
+}
+
+.page-dashboard .dashboard-widget-header {
+  padding: 12px 16px 10px;
+}
+
+.page-dashboard .dashboard-widget-body {
+  padding: 1.35rem 1.4rem;
+}
+
+.page-dashboard .dashboard-stats-grid {
+  gap: 1rem;
+  margin-bottom: 0;
+}
+
+.page-dashboard .dashboard-stat-card {
+  padding: 1.1rem 1.15rem;
+  min-height: 7rem;
+}
+
+.page-dashboard .dashboard-stat-icon {
+  margin-bottom: 0.65rem;
+}
+
+.page-dashboard .dashboard-stat-label {
+  margin-bottom: 0.45rem;
+}
+
 .dashboard-stat-card {
   background: #ffffff;
   background-color: #ffffff;
@@ -943,6 +998,10 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
     flex-direction: column;
     gap: 2rem;
   }
+
+  .page-dashboard .hero-split .hero-content {
+    gap: 2.25rem;
+  }
   .hero-right {
     width: 100%;
     max-width: 640px;
@@ -976,6 +1035,36 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
   .dashboard-stat-card {
     padding: 0.75rem;
   }
+
+  .page-dashboard .hero-split .hero-content {
+    gap: 1.85rem !important;
+  }
+
+  .page-dashboard .hero-left {
+    gap: 1.15rem !important;
+  }
+
+  .page-dashboard .hero-cta-row {
+    margin-top: 0 !important;
+  }
+
+  .page-dashboard .dashboard-widget-body {
+    padding: 1.15rem 1.2rem !important;
+  }
+
+  .page-dashboard .dashboard-stats-grid {
+    gap: 0.8rem !important;
+    margin-bottom: 0 !important;
+  }
+
+  .page-dashboard .dashboard-stat-card {
+    padding: 0.95rem 1rem !important;
+    min-height: 6.5rem !important;
+  }
+
+  .page-dashboard .dashboard-stat-icon {
+    margin-bottom: 0.55rem !important;
+  }
   .dashboard-stat-value {
     font-size: 1.4rem;
   }
@@ -993,6 +1082,14 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
   }
   .dashboard-stat-card {
     padding: 0.6rem 0.5rem !important;
+  }
+
+  .page-dashboard .dashboard-stats-grid {
+    gap: 0.65rem !important;
+  }
+
+  .page-dashboard .dashboard-stat-card {
+    padding: 0.8rem 0.85rem !important;
   }
   .dashboard-stat-value {
     font-size: 1.2rem !important;
@@ -1183,22 +1280,36 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
   transform: scaleY(1);
 }
 
-/* HR “Recent Submissions” — same surface as footer (no white floating slab) */
-.hr-dashboard .submissions-panel.module-card {
+/* HR “Recent Submissions” — list panel, not a module card (avoids mobile grid overlap) */
+.hr-dashboard .submissions-panel {
   background: var(--bg-body) !important;
   box-shadow: none !important;
   border: 1px solid var(--border-color) !important;
   border-radius: 12px;
 }
 
-.hr-dashboard .submissions-panel.module-card:hover {
-  transform: none;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
-  border-color: rgba(18, 84, 53, 0.14) !important;
-}
+/* Never apply compact module-card grid to submission rows */
+@media (max-width: 768px) {
+  .submissions-panel.module-card,
+  .hr-dashboard .submissions-panel {
+    display: flex !important;
+    flex-direction: column !important;
+    grid-template-columns: unset !important;
+    grid-template-rows: unset !important;
+    min-height: 0 !important;
+    padding: 0.65rem 0.85rem !important;
+    gap: 0 !important;
+  }
 
-.hr-dashboard .submissions-panel.module-card::before {
-  display: none;
+  .submissions-panel .submission-item,
+  .submissions-panel a.submission-item {
+    display: flex !important;
+    grid-column: unset !important;
+    grid-row: unset !important;
+    width: 100% !important;
+    min-height: 0 !important;
+    position: static !important;
+  }
 }
 
 /* ---- Card Body ---- */
@@ -1455,6 +1566,28 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
   padding-right: 1.25rem !important;
   padding-bottom: max(1rem, calc(env(safe-area-inset-bottom, 0px) + 0.75rem)) !important;
   padding-left: 1.25rem !important;
+  /* Black frosted backdrop — dim + blur page behind profile */
+  background: rgba(0, 0, 0, 0.62) !important;
+  backdrop-filter: blur(14px) saturate(1.05);
+  -webkit-backdrop-filter: blur(14px) saturate(1.05);
+  /* Scroll inside the card only — not the backdrop or page behind */
+  overflow: hidden !important;
+  overscroll-behavior: none;
+  touch-action: none;
+  animation: none;
+  opacity: 1;
+}
+
+#profileModal.contact-modal.active {
+  background: rgba(0, 0, 0, 0.62) !important;
+  backdrop-filter: blur(14px) saturate(1.05);
+  -webkit-backdrop-filter: blur(14px) saturate(1.05);
+  opacity: 1;
+}
+
+#profileModal.contact-modal .contact-modal-content.profile-modal-container,
+#profileModal.contact-modal .profile-modal-container {
+  touch-action: pan-y;
 }
 
 #profileModal .contact-modal-content {
@@ -1709,7 +1842,9 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
    =========================================== */
 @media (max-width: 2500px) {
   .nav-container {
-    padding: 0 1.5rem;
+    padding: var(--nav-pad-top) 1.5rem var(--nav-pad-bottom);
+    min-height: var(--nav-inner-h);
+    height: auto;
   }
 
   .nav-center {
@@ -1762,16 +1897,95 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
     display: block !important;
   }
 
+  /* Nav icon rail — transparent icons, equal tap targets */
+  .nav-right {
+    align-items: center !important;
+    gap: 0.5rem !important;
+    flex-wrap: nowrap !important;
+  }
+  .nav-right > .mobile-menu-toggle,
+  .nav-right .notification-btn,
+  .nav-right .nav-save-draft-btn,
+  .nav-right .logout-btn,
+  .nav-right #pwa-install-btn.pwa-nav-icon {
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    min-height: 36px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+    flex-shrink: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border: none !important;
+    background: transparent !important;
+    border-radius: 8px !important;
+    box-shadow: none !important;
+    color: var(--text-dark) !important;
+    vertical-align: middle !important;
+  }
+  .nav-right > .mobile-menu-toggle:hover,
+  .nav-right .notification-btn:hover,
+  .nav-right .nav-save-draft-btn:hover,
+  .nav-right .logout-btn:hover,
+  .nav-right #pwa-install-btn.pwa-nav-icon:hover {
+    background: rgba(18, 84, 53, 0.06) !important;
+    color: var(--text-dark) !important;
+  }
+  .nav-right > .mobile-menu-toggle {
+    overflow: visible !important;
+    position: relative !important;
+  }
+  .nav-right > .mobile-menu-toggle.active {
+    border: none !important;
+    background: rgba(18, 84, 53, 0.08) !important;
+    color: var(--primary) !important;
+    box-shadow: none !important;
+  }
+  .nav-right > .mobile-menu-toggle:focus-visible,
+  .nav-right .notification-btn:focus-visible,
+  .nav-right .logout-btn:focus-visible,
+  .nav-right .nav-save-draft-btn:focus-visible {
+    outline: 2px solid var(--primary, #125435) !important;
+    outline-offset: 0 !important;
+  }
+  .nav-right .notification-btn svg,
+  .nav-right .logout-btn svg,
+  .nav-right #pwa-install-btn.pwa-nav-icon svg {
+    width: 18px !important;
+    height: 18px !important;
+  }
+
+  /* Icon rail: hide labels so text does not spill out of 36×36 buttons */
+  .nav-right .logout-btn span,
+  .nav-right .nav-save-draft-btn span {
+    display: none !important;
+  }
+
+  .nav-right .logout-btn,
+  .nav-right .nav-save-draft-btn {
+    gap: 0 !important;
+    overflow: hidden !important;
+    white-space: nowrap !important;
+  }
+
+  .notification-wrapper .notification-badge {
+    top: 1px !important;
+    right: 1px !important;
+  }
+
   /* Slide-out menu drawer - right side, outside nav to avoid backdrop-filter containing block */
   .mobile-menu-drawer {
     position: fixed !important;
-    top: 72px !important;
+    top: var(--nav-bar-h, 72px) !important;
     right: 0 !important;
     left: auto !important;
     width: min(320px, 88vw) !important;
     max-width: 320px !important;
-    height: calc(100vh - 72px) !important;
-    height: calc(100dvh - 72px) !important;
+    height: calc(100vh - var(--nav-bar-h, 72px)) !important;
+    height: calc(100dvh - var(--nav-bar-h, 72px)) !important;
     background: linear-gradient(180deg, #ffffff 0%, #fafafa 100%) !important;
     box-shadow: none !important;
     padding: 0 !important;
@@ -1794,7 +2008,7 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
   .mobile-menu-drawer-list {
     list-style: none !important;
     margin: 0 !important;
-    padding: 0.5rem 0 !important;
+    padding: 0.35rem 0 !important;
     display: flex !important;
     flex-direction: column !important;
   }
@@ -1941,29 +2155,27 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
   }
 
   .mobile-menu-toggle.active .hamburger-bar::before {
-    top: 0 !important;
-    transform: rotate(45deg) !important;
+    top: 50% !important;
+    transform: translateY(-50%) rotate(45deg) !important;
   }
 
   .mobile-menu-toggle.active .hamburger-bar::after {
-    bottom: 0 !important;
-    transform: rotate(-45deg) !important;
+    top: 50% !important;
+    bottom: auto !important;
+    transform: translateY(-50%) rotate(-45deg) !important;
   }
 
   /* Backdrop overlay when menu is open (below drawer 1200, above page / steppers) */
   .mobile-overlay {
     display: none;
     position: fixed;
-    top: 72px;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.35);
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
     z-index: 1150;
     opacity: 0;
     transition: opacity 0.3s ease;
-    -webkit-backdrop-filter: blur(4px);
-    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(12px) saturate(1.05);
+    backdrop-filter: blur(12px) saturate(1.05);
     pointer-events: none;
   }
 
@@ -1971,6 +2183,30 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
     display: block;
     opacity: 1;
     pointer-events: auto;
+  }
+
+  /* Blur all page content (stepper, forms, sidebars) — overlay alone misses elevated layers */
+  body.mobile-menu-open > *:not(.nav):not(.mobile-menu-drawer):not(.mobile-overlay):not(#profileModal),
+  body:has(.mobile-menu-drawer.active) > *:not(.nav):not(.mobile-menu-drawer):not(.mobile-overlay):not(#profileModal) {
+    filter: blur(8px) saturate(0.92);
+    pointer-events: none;
+    user-select: none;
+  }
+
+  /* Keep icon rail above the slide-out panel */
+  body:has(.mobile-menu-drawer.active) .nav,
+  body.mobile-menu-open .nav {
+    z-index: 1300 !important;
+    filter: none !important;
+    pointer-events: auto !important;
+    user-select: auto !important;
+  }
+
+  body.mobile-menu-open .mobile-menu-drawer,
+  body:has(.mobile-menu-drawer.active) .mobile-menu-drawer {
+    filter: none !important;
+    pointer-events: auto !important;
+    user-select: auto !important;
   }
 }
 
@@ -2004,6 +2240,10 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
    Responsive - Mobile
    =========================================== */
 @media (max-width: 768px) {
+  body {
+    --nav-inner-h: 56px;
+  }
+
   .hero {
     padding: 7rem 0 4.5rem !important;
   }
@@ -2015,11 +2255,115 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
   .hero-left {
     width: 100% !important;
     max-width: 100% !important;
+    padding-left: 0 !important;
+    margin-left: 0 !important;
+  }
+
+  /* Module dashboards (HR, Inspection, Procurement, Ticketing, etc.) */
+  body.hr-dashboard,
+  body.inspection-dashboard,
+  body.review-dashboard,
+  body.procurement-page,
+  body.tkt-dh-page {
+    --module-gutter: max(1.45rem, calc(env(safe-area-inset-left, 0px) + 0.85rem));
+  }
+
+  body:not(.page-dashboard) .hero-split .hero-content.hero-split-inner,
+  body.procurement-page .proc-hero-inner,
+  body.tkt-dh-page .hero-split .hero-content.hero-split-inner {
+    padding-left: var(--module-gutter) !important;
+    padding-right: max(1.45rem, calc(env(safe-area-inset-right, 0px) + 0.85rem)) !important;
+    box-sizing: border-box !important;
+  }
+
+  body:not(.page-dashboard) .hero-left .back-btn,
+  body.procurement-page .proc-hero-inner > .back-btn {
+    margin-left: 0 !important;
+    padding-left: 0 !important;
+    text-align: left !important;
+    align-self: flex-start !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  body:not(.page-dashboard) .hero-left .hero-title,
+  body.procurement-page .proc-hero-inner > .hero-title,
+  body.tkt-dh-page .hero-left .hero-title {
+    margin: 0 !important;
+    text-align: left !important;
+    align-self: flex-start !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    font-size: clamp(2.05rem, 8.5vw, 2.55rem) !important;
+    letter-spacing: -0.03em !important;
+    line-height: 1.12 !important;
+  }
+
+  body:not(.page-dashboard) .hero-left .back-btn,
+  body.procurement-page .proc-hero-inner > .back-btn {
+    font-size: 0.75rem !important;
+    margin-bottom: 0.5rem !important;
+    gap: 0.3rem !important;
+  }
+
+  body:not(.page-dashboard) .hero-left,
+  body.procurement-page .proc-hero-inner {
+    --hero-back-icon: 14px;
+    --hero-back-gap: 0.3rem;
+  }
+
+  body:not(.page-dashboard) .hero-left .back-btn + .hero-title,
+  body.procurement-page .proc-hero-inner > .back-btn + .hero-title {
+    padding-left: calc(var(--hero-back-icon) + var(--hero-back-gap)) !important;
+  }
+
+  body.inspection-dashboard .hero-left .back-btn + .hero-title,
+  body.inspection-dashboard .hero-left .hero-subtitle {
+    padding-left: 0 !important;
+    margin-left: 0 !important;
+    text-align: left !important;
+    align-self: flex-start !important;
+  }
+
+  body.tkt-dh-page .hero-left .hero-title {
+    padding-left: 0 !important;
+  }
+
+  body.hr-dashboard .hr-modules-section {
+    padding-top: 1.65rem !important;
+  }
+
+  body.hr-dashboard .hr-modules-section .modules-grid {
+    gap: 0.85rem !important;
+  }
+
+  body.hr-dashboard .modules-inner,
+  body.inspection-dashboard .modules-inner,
+  body.review-dashboard .modules-inner,
+  body.tkt-dh-page .tkt-body {
+    padding-left: var(--module-gutter) !important;
+    padding-right: max(1.45rem, calc(env(safe-area-inset-right, 0px) + 0.85rem)) !important;
+    box-sizing: border-box !important;
+  }
+
+  body.procurement-page .proc-main,
+  body.procurement-page .proc-kpi-strip {
+    padding-left: var(--module-gutter) !important;
+    padding-right: max(1.45rem, calc(env(safe-area-inset-right, 0px) + 0.85rem)) !important;
+    box-sizing: border-box !important;
   }
   
   .page-dashboard .hero-title {
     font-size: clamp(1.7rem, 6.5vw, 2.25rem) !important;
     letter-spacing: -0.03em !important;
+  }
+
+  .page-dashboard .hero-subtitle {
+    font-size: 0.9rem !important;
+    margin-top: 0 !important;
+    line-height: 1.65 !important;
+    max-width: 100% !important;
   }
   
   .hero-subtitle {
@@ -2027,12 +2371,6 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
     margin-top: 1rem !important;
     line-height: 1.65 !important;
     max-width: 100% !important;
-  }
-
-  .hero-tagline {
-    font-size: 0.65rem !important;
-    padding: 0.35rem 0.75rem !important;
-    margin-bottom: 0.875rem !important;
   }
 
   .contact-modal {
@@ -2096,21 +2434,19 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
   
   /* Nav - mobile */
   .nav-container {
-    padding: 0 1rem !important;
+    padding: var(--nav-pad-top) 1rem var(--nav-pad-bottom) !important;
     gap: 0.5rem !important;
-    height: 56px !important;
+    min-height: var(--nav-inner-h) !important;
+    height: auto !important;
   }
 
   .nav-center {
     position: absolute !important;
     width: 0 !important;
     height: 0 !important;
-    overflow: visible !important;
+    overflow: hidden !important;
+    visibility: hidden !important;
     pointer-events: none !important;
-  }
-
-  .nav-center .nav-menu {
-    pointer-events: auto !important;
   }
   
   .logo {
@@ -2141,40 +2477,40 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
   
   .nav-right {
     flex: 0 0 auto !important;
-    gap: 0.3rem !important;
+    gap: 0.5rem !important;
   }
 
   /* Save Draft: icon-only on tablet/mobile to save space */
   .nav-save-draft-btn span { display: none !important; }
-  .nav-save-draft-btn {
+  .nav-right .nav-save-draft-btn {
     padding: 0 !important;
-    width: 34px !important;
-    height: 34px !important;
-    min-width: 34px !important;
-    min-height: 34px !important;
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    min-height: 36px !important;
     justify-content: center !important;
     margin-right: 0 !important;
     border-radius: 8px !important;
-    background: #fff !important;
-    border: 1px solid rgba(55, 65, 81, 0.18) !important;
+    background: transparent !important;
+    border: none !important;
     color: var(--text-dark) !important;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+    box-shadow: none !important;
   }
 
-  .notification-btn {
-    width: 34px !important;
-    height: 34px !important;
+  .nav-right .notification-btn {
+    width: 36px !important;
+    height: 36px !important;
     padding: 0 !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
     border-radius: 8px !important;
-    background: #fff !important;
+    background: transparent !important;
     color: var(--text-dark) !important;
-    border: 1px solid rgba(55, 65, 81, 0.18) !important;
-    min-width: 34px !important;
-    min-height: 34px !important;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+    border: none !important;
+    min-width: 36px !important;
+    min-height: 36px !important;
+    box-shadow: none !important;
   }
 
   .notification-btn svg {
@@ -2182,35 +2518,46 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
     height: 18px !important;
   }
 
-  .notification-btn:hover {
-    background: var(--border-light) !important;
+  .nav-right .notification-btn:hover {
+    background: rgba(18, 84, 53, 0.06) !important;
   }
 
-  #pwa-install-btn.pwa-nav-icon {
-    width: 34px !important;
-    height: 34px !important;
-    min-width: 34px !important;
-    min-height: 34px !important;
+  .nav-right #pwa-install-btn.pwa-nav-icon {
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    min-height: 36px !important;
     padding: 0 !important;
-    background: #fff !important;
-    border: 1px solid rgba(55, 65, 81, 0.18) !important;
+    background: transparent !important;
+    border: none !important;
     border-radius: 8px !important;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+    box-shadow: none !important;
   }
 
-  #pwa-install-btn.pwa-nav-icon:hover {
-    background: var(--border-light) !important;
+  .nav-right #pwa-install-btn.pwa-nav-icon:hover {
+    background: rgba(18, 84, 53, 0.06) !important;
   }
   
-  /* Drawer position at 768px (nav height 56px) */
+  /* Drawer: full width below nav (no left gap beside logo) */
   .mobile-menu-drawer {
-    top: 56px !important;
-    height: calc(100vh - 56px) !important;
-    height: calc(100dvh - 56px) !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    border-left: none !important;
+    transform: translateX(100%) !important;
+    top: var(--nav-bar-h, 56px) !important;
+    height: calc(100vh - var(--nav-bar-h, 56px)) !important;
+    height: calc(100dvh - var(--nav-bar-h, 56px)) !important;
+  }
+
+  .mobile-menu-drawer.active {
+    transform: translateX(0) !important;
+    box-shadow: none !important;
   }
 
   .mobile-overlay {
-    top: 56px !important;
+    inset: 0 !important;
   }
   
   .nav-menu li a,
@@ -2315,53 +2662,72 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
   }
   
   .mobile-menu-toggle.active .hamburger-bar::before {
-    top: 0 !important;
-    transform: rotate(45deg) !important;
+    top: 50% !important;
+    transform: translateY(-50%) rotate(45deg) !important;
   }
   
   .mobile-menu-toggle.active .hamburger-bar::after {
-    bottom: 0 !important;
-    transform: rotate(-45deg) !important;
+    top: 50% !important;
+    bottom: auto !important;
+    transform: translateY(-50%) rotate(-45deg) !important;
   }
   
   /* Mobile overlay — same stack as collapsed-nav overlay (below drawer 1200) */
   .mobile-overlay {
     display: none;
     position: fixed;
-    top: 56px;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.4);
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
     z-index: 1150;
     opacity: 0;
     transition: opacity 0.3s ease;
-    -webkit-backdrop-filter: blur(2px);
-    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(12px) saturate(1.05);
+    backdrop-filter: blur(12px) saturate(1.05);
   }
   
   .mobile-overlay.active {
     display: block;
     opacity: 1;
   }
+
+  body.mobile-menu-open > *:not(.nav):not(.mobile-menu-drawer):not(.mobile-overlay):not(#profileModal),
+  body:has(.mobile-menu-drawer.active) > *:not(.nav):not(.mobile-menu-drawer):not(.mobile-overlay):not(#profileModal) {
+    filter: blur(8px) saturate(0.92);
+    pointer-events: none;
+    user-select: none;
+  }
+
+  body.mobile-menu-open .nav,
+  body:has(.mobile-menu-drawer.active) .nav {
+    filter: none !important;
+    pointer-events: auto !important;
+    user-select: auto !important;
+  }
+
+  body.mobile-menu-open .mobile-menu-drawer,
+  body:has(.mobile-menu-drawer.active) .mobile-menu-drawer {
+    filter: none !important;
+    pointer-events: auto !important;
+    user-select: auto !important;
+  }
   
   /* Logout - compact on mobile */
-  .logout-btn {
+  .nav-right .logout-btn {
     font-size: 0.8rem !important;
     padding: 0 !important;
-    min-height: 34px !important;
-    min-width: 34px !important;
-    width: 34px !important;
-    height: 34px !important;
+    min-height: 36px !important;
+    min-width: 36px !important;
+    width: 36px !important;
+    height: 36px !important;
     flex-shrink: 0 !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
     border-radius: 8px !important;
-    background: #fff !important;
-    border: 1px solid rgba(55, 65, 81, 0.18) !important;
+    background: transparent !important;
+    border: none !important;
     color: var(--text-dark) !important;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+    box-shadow: none !important;
   }
 
   .logout-btn svg {
@@ -2480,6 +2846,19 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
     color: var(--text-light) !important;
     align-self: start !important;
   }
+
+  /* HR workflow shortcuts: “Open ›” on the right like form list arrows */
+  .hr-workflow-cards .module-arrow,
+  .hr-dashboard .hr-workflow-cards .module-arrow {
+    justify-content: flex-end !important;
+    text-align: right !important;
+  }
+
+  .hr-workflow-cards .modules-grid,
+  .hr-dashboard .hr-workflow-cards .modules-grid {
+    gap: 0.9rem !important;
+    column-gap: 0.9rem !important;
+  }
   
   /* Notification dropdown full width on mobile */
   .notification-dropdown {
@@ -2494,44 +2873,113 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
    Responsive - Phone (logo-only navbar zone)
    =========================================== */
 @media (max-width: 600px) {
-  /* Hide welcome text + brand label — logo image alone at phone widths */
-  .nav-welcome,
-  #welcome-text,
-  .logo-brand,
-  .logo-text {
-    display: none !important;
+  body {
+    --nav-inner-h: 64px;
   }
 
+  /* Phone: logo + "Hi, Name" left-aligned, actions right */
   .nav-container {
-    height: 64px !important;
-    padding: 0 1rem !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    gap: 0.4rem !important;
+    min-height: var(--nav-inner-h) !important;
+    height: auto !important;
+    padding: var(--nav-pad-top) 0.75rem var(--nav-pad-bottom) !important;
   }
 
+  .logo {
+    display: flex !important;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    align-items: center !important;
+    gap: 0.45rem !important;
+    grid-column: 1 !important;
+    margin-right: 0 !important;
+  }
 
   .logo img {
-    height: 48px !important;
+    flex-shrink: 0 !important;
+    height: 40px !important;
     width: auto !important;
     border-radius: 0 !important;
   }
 
+  .logo-brand {
+    display: none !important;
+  }
+
+  .logo-text {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .nav-welcome,
+  #welcome-text {
+    display: block !important;
+    font-size: 0.9rem !important;
+    font-weight: 600 !important;
+    line-height: 1.15 !important;
+    text-align: left !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    color: var(--text-dark) !important;
+  }
+
+  .nav-welcome--compact {
+    font-size: 0.88rem !important;
+    letter-spacing: -0.01em;
+  }
+
+  .nav-right {
+    grid-column: 2 !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* Full-width menu panel — no left strip beside the logo when open */
   .mobile-menu-drawer {
-    top: 64px !important;
-    height: calc(100vh - 64px) !important;
-    height: calc(100dvh - 64px) !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    border-left: none !important;
+    transform: translateX(100%) !important;
+    top: var(--nav-bar-h, 64px) !important;
+    height: calc(100vh - var(--nav-bar-h, 64px)) !important;
+    height: calc(100dvh - var(--nav-bar-h, 64px)) !important;
+  }
+
+  .mobile-menu-drawer.active {
+    transform: translateX(0) !important;
+    box-shadow: none !important;
+  }
+
+  .mobile-menu-drawer-list {
+    padding-top: 0.5rem !important;
+  }
+
+  .mobile-menu-drawer-list li {
+    padding: 0 1rem !important;
   }
 
   .mobile-overlay {
-    top: 64px !important;
+    inset: 0 !important;
   }
 
   /* Logout: icon-only, compact */
   .logout-btn span { display: none !important; }
   .logout-btn {
     padding: 0 !important;
-    width: 32px !important;
-    height: 32px !important;
-    min-width: 32px !important;
-    min-height: 32px !important;
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    min-height: 36px !important;
     justify-content: center !important;
     border-radius: 7px !important;
   }
@@ -2553,6 +3001,35 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
     padding: 0 1rem !important;
     gap: 1rem !important;
   }
+
+  body.hr-dashboard,
+  body.inspection-dashboard,
+  body.review-dashboard,
+  body.procurement-page,
+  body.tkt-dh-page {
+    --module-gutter: max(1.25rem, calc(env(safe-area-inset-left, 0px) + 0.75rem));
+  }
+
+  body:not(.page-dashboard) .hero-split .hero-content.hero-split-inner,
+  body.procurement-page .proc-hero-inner,
+  body.tkt-dh-page .hero-split .hero-content.hero-split-inner {
+    padding-left: var(--module-gutter) !important;
+    padding-right: max(1.25rem, calc(env(safe-area-inset-right, 0px) + 0.75rem)) !important;
+  }
+
+  body:not(.page-dashboard) .hero-left .hero-title,
+  body.procurement-page .proc-hero-inner > .hero-title,
+  body.tkt-dh-page .hero-left .hero-title {
+    font-size: clamp(1.95rem, 9vw, 2.35rem) !important;
+  }
+
+  body.hr-dashboard .modules-inner,
+  body.inspection-dashboard .modules-inner,
+  body.review-dashboard .modules-inner,
+  body.tkt-dh-page .tkt-body {
+    padding-left: var(--module-gutter) !important;
+    padding-right: max(1.25rem, calc(env(safe-area-inset-right, 0px) + 0.75rem)) !important;
+  }
   
   .page-dashboard .hero-title {
     font-size: clamp(1.55rem, 7vw, 1.85rem) !important;
@@ -2567,12 +3044,31 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
     max-width: none !important;
   }
 
-  .hero-tagline {
-    font-size: 0.6rem !important;
-    padding: 0.3rem 0.65rem !important;
-    margin-bottom: 0.75rem !important;
+  .page-dashboard .hero-split .hero-content {
+    gap: 1.65rem !important;
   }
-  
+
+  .page-dashboard .hero-left {
+    gap: 1rem !important;
+  }
+
+  .page-dashboard .hero-subtitle {
+    margin-top: 0 !important;
+  }
+
+  .page-dashboard .dashboard-widget-body {
+    padding: 1rem 1.05rem !important;
+  }
+
+  .page-dashboard .dashboard-stats-grid {
+    gap: 0.7rem !important;
+  }
+
+  .page-dashboard .dashboard-stat-card {
+    padding: 0.85rem 0.9rem !important;
+    min-height: 6.25rem !important;
+  }
+
   .modules-grid {
     gap: 0.5rem !important;
   }
@@ -2606,38 +3102,35 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
     width: auto !important;
   }
   
-  /* Hide welcome text + brand label — logo image alone identifies the app on small phones */
   .nav-welcome,
-  #welcome-text,
-  .logo-brand,
-  .logo-text {
-    display: none !important;
+  #welcome-text {
+    font-size: 0.86rem !important;
   }
 
   /* Logout: icon-only to save space */
   .logout-btn span { display: none !important; }
   .logout-btn {
     padding: 0 !important;
-    width: 32px !important;
-    height: 32px !important;
-    min-width: 32px !important;
-    min-height: 32px !important;
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    min-height: 36px !important;
     justify-content: center !important;
-    border-radius: 7px !important;
+    border-radius: 8px !important;
   }
   .logout-btn svg {
-    width: 16px !important;
-    height: 16px !important;
+    width: 18px !important;
+    height: 18px !important;
   }
 
   .mobile-menu-drawer {
-    top: 64px !important;
-    height: calc(100vh - 64px) !important;
-    height: calc(100dvh - 64px) !important;
+    top: var(--nav-bar-h, 64px) !important;
+    height: calc(100vh - var(--nav-bar-h, 64px)) !important;
+    height: calc(100dvh - var(--nav-bar-h, 64px)) !important;
   }
 
   .mobile-overlay {
-    top: 64px !important;
+    inset: 0 !important;
   }
 
   .module-card {
@@ -2784,6 +3277,11 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
   -webkit-overflow-scrolling: touch;
 }
 
+#profileModal .pro-tab-panels {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
 /* Profile Modal Container - shared across all modules */
 .contact-modal-content.profile-modal-container {
   max-width: min(720px, calc(100vw - 1.5rem)) !important;
@@ -2793,13 +3291,21 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
   border-radius: 20px !important;
   overflow: hidden;
   box-shadow: 0 25px 60px rgba(0,0,0,0.3);
-  /* Fill space below fixed nav + overlay padding; tab body scrolls inside */
+  /* Fixed height so tab panels scroll inside the card, not the page */
+  height: min(92vh, calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 6rem));
   max-height: min(92vh, calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 6rem));
   min-height: 0;
   display: flex;
   flex-direction: column;
   -webkit-overflow-scrolling: touch;
   margin-top: 0;
+}
+
+/* Lock page scroll while profile is open (no position:fixed — avoids shifting the dashboard) */
+html.profile-modal-open,
+body.profile-modal-open {
+  overflow: hidden !important;
+  overscroll-behavior: none;
 }
 
 @media (max-width: 479px) {
@@ -2893,6 +3399,8 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
 
 .notification-wrapper {
   position: relative;
+  display: flex;
+  align-items: center;
   flex-shrink: 0;
 }
 

@@ -70,6 +70,8 @@ def main():
                 sup.is_active = True
                 if not sup.full_name:
                     sup.full_name = sup_name
+                if not getattr(sup, 'admin_visible_password', None):
+                    sup.set_password(PASSWORD)
 
             uname_tech = f'demo_{tech_slug}'
             tech_user = User.query.filter_by(username=uname_tech).first()
@@ -93,6 +95,8 @@ def main():
                 tech_user.is_active = True
                 if not tech_user.full_name:
                     tech_user.full_name = tech_full
+                if not getattr(tech_user, 'admin_visible_password', None):
+                    tech_user.set_password(PASSWORD)
 
             pair = TicketSupervisorTeam.query.filter_by(
                 supervisor_id=sup.id, technician_id=tech_user.id,

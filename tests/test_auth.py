@@ -85,30 +85,41 @@ class TestLogin:
 
 class TestRegister:
     """Test registration endpoint"""
+
+    @staticmethod
+    def _wizard_payload(**overrides):
+        payload = {
+            'first_name': 'New',
+            'last_name': 'User',
+            'email': 'newuser@example.com',
+            'mobile_number': '+971501234567',
+            'project_name': 'Marina Tower',
+            'job_designation': 'Technician',
+            'employment_start_date': '2024-06-01',
+        }
+        payload.update(overrides)
+        return payload
     
     def test_register_success(self, client, app):
-        """Test successful registration"""
+        """Test successful wizard-style registration"""
         with app.app_context():
-            response = client.post('/api/auth/register', json={
-                'username': 'newuser',
-                'email': 'newuser@example.com',
-                'password': 'SecurePass123',
-                'full_name': 'New User'
-            })
+            response = client.post('/api/auth/register', json=self._wizard_payload())
             
             assert response.status_code == 201
             data = response.get_json()
             assert 'user' in data
-            assert data['user']['username'] == 'newuser'
+            assert data['user']['email'] == 'newuser@example.com'
+            assert data['user']['full_name'] == 'New User'
+            assert data['user']['job_designation'] == 'Technician'
+            assert data['default_password'] is not None
+            assert data['login_hint'] == 'newuser@example.com'
     
     def test_register_weak_password(self, client, app):
-        """Test registration with weak password"""
+        """Test legacy registration with weak password"""
         with app.app_context():
             response = client.post('/api/auth/register', json={
-                'username': 'weakpassuser',
-                'email': 'weakpass@example.com',
+                **self._wizard_payload(email='weakpass@example.com'),
                 'password': 'weak',
-                'full_name': 'Weak Pass User'
             })
             
             assert response.status_code == 400
@@ -119,12 +130,9 @@ class TestRegister:
     def test_register_invalid_email(self, client, app):
         """Test registration with invalid email"""
         with app.app_context():
-            response = client.post('/api/auth/register', json={
-                'username': 'bademailuser',
-                'email': 'not-an-email',
-                'password': 'SecurePass123',
-                'full_name': 'Bad Email User'
-            })
+            response = client.post('/api/auth/register', json=self._wizard_payload(
+                email='not-an-email',
+            ))
             
             assert response.status_code == 400
             data = response.get_json()
@@ -135,10 +143,8 @@ class TestRegister:
         """Test registration with existing username"""
         with app.app_context():
             response = client.post('/api/auth/register', json={
-                'username': 'testuser',  # Already exists
-                'email': 'different@example.com',
-                'password': 'SecurePass123',
-                'full_name': 'Duplicate User'
+                **self._wizard_payload(email='different@example.com'),
+                'username': 'testuser',
             })
             
             assert response.status_code == 409
@@ -149,12 +155,9 @@ class TestRegister:
     def test_register_duplicate_email(self, client, standard_user, app):
         """Test registration with existing email"""
         with app.app_context():
-            response = client.post('/api/auth/register', json={
-                'username': 'differentuser',
-                'email': 'test@example.com',  # Already exists
-                'password': 'SecurePass123',
-                'full_name': 'Duplicate Email User'
-            })
+            response = client.post('/api/auth/register', json=self._wizard_payload(
+                email='test@example.com',
+            ))
             
             assert response.status_code == 409
             data = response.get_json()
@@ -165,7 +168,7 @@ class TestRegister:
         """Test registration with missing required fields"""
         with app.app_context():
             response = client.post('/api/auth/register', json={
-                'username': 'incomplete'
+                'first_name': 'Incomplete',
             })
             
             assert response.status_code == 400

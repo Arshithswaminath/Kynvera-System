@@ -1974,39 +1974,11 @@
     }
 
     function syncAdmDashTicketsSplitHeights() {
-      const body = document.getElementById('dashTicketsBody');
-      if (!body) return;
-      const nav = body.querySelector('.adm-dash-tk-split-nav');
-      const rec = body.querySelector('.adm-dash-tk-split-rec');
-      if (!nav || !rec) return;
-      if (window.innerWidth <= 900) {
-        rec.style.height = '';
-        rec.style.maxHeight = '';
-        return;
-      }
-      const h = Math.max(1, nav.offsetHeight);
-      rec.style.height = h + 'px';
-      rec.style.maxHeight = h + 'px';
+      /* Layout is CSS-driven; no forced height sync (was squashing the recent-tickets column). */
     }
 
     function attachAdmDashTicketsSplitObserver() {
       detachAdmDashTicketsSplitObserver();
-      const body = document.getElementById('dashTicketsBody');
-      if (!body || typeof ResizeObserver === 'undefined') return;
-      const nav = body.querySelector('.adm-dash-tk-split-nav');
-      if (!nav) return;
-      window.__admDashTkSplitRo = new ResizeObserver(function () {
-        syncAdmDashTicketsSplitHeights();
-      });
-      window.__admDashTkSplitRo.observe(nav);
-    }
-
-    if (!window.__admDashTkSplitResizeBound) {
-      window.__admDashTkSplitResizeBound = true;
-      window.addEventListener('resize', function () {
-        clearTimeout(window.__admDashTkSplitResizeT);
-        window.__admDashTkSplitResizeT = setTimeout(syncAdmDashTicketsSplitHeights, 100);
-      });
     }
 
     function renderTicketingOverview(ticketing) {
@@ -2049,15 +2021,11 @@
 
       const leadCardHtml =
         '<div class="adm-dash-tk-lead-card">' +
-          '<div class="adm-dash-tk-lead-val-wrap">' +
-            '<div class="adm-dash-tk-lead-val">' + String(activePipe) + '</div>' +
-            '<div class="adm-dash-tk-lead-lbl">Active pipeline</div>' +
-            '<div class="adm-dash-tk-lead-meta">Not closed, resolved, or cancelled · ' + String(total) + ' lifetime tickets in the system</div>' +
-            '<div class="adm-dash-tk-bar-wrap" aria-hidden="true"><div class="adm-dash-tk-bar-fill" style="width:' + pct + '%"></div></div>' +
-          '</div>' +
-          '<div class="adm-dash-tk-lead-meta" style="text-align:right;max-width:14rem;justify-self:end">' +
-            'Rough load: <strong>' + pct + '%</strong> of all tickets are still in motion.' +
-          '</div>' +
+          '<div class="adm-dash-tk-lead-val">' + String(activePipe) + '</div>' +
+          '<div class="adm-dash-tk-lead-lbl">Active pipeline</div>' +
+          '<div class="adm-dash-tk-lead-meta">Not closed, resolved, or cancelled · ' + String(total) + ' lifetime tickets in the system</div>' +
+          '<div class="adm-dash-tk-bar-wrap" aria-hidden="true"><div class="adm-dash-tk-bar-fill" style="width:' + pct + '%"></div></div>' +
+          '<div class="adm-dash-tk-lead-foot">Rough load: <strong>' + pct + '%</strong> of all tickets are still in motion.</div>' +
         '</div>';
 
       const statTilesHtml =
@@ -2137,11 +2105,6 @@
         '</div>';
 
       body.innerHTML = attentionHtml + holdLine + bottomSplit;
-      syncAdmDashTicketsSplitHeights();
-      attachAdmDashTicketsSplitObserver();
-      requestAnimationFrame(function () {
-        requestAnimationFrame(syncAdmDashTicketsSplitHeights);
-      });
     }
 
     function updateSideSummaries(summary) {
@@ -2546,6 +2509,7 @@
         const data = await response.json();
         if (data.success) {
           const pw = data.temp_password || DEFAULT_RESET_DISPLAY_PASSWORD;
+          patchUserPasswordInDirectory(userId, pw);
           openPasswordResetResultModal(username, pw);
         } else {
           showAlert(data.error || 'Failed to reset password', 'error');
@@ -2603,6 +2567,76 @@
     }
 
     let profileSignatureDataUrl = '';
+
+    function fillProfilePasswordField(user) {
+      const el = document.getElementById('profilePassword');
+      const hint = document.getElementById('profilePasswordHint');
+      if (!el) return;
+      const stored = user && user.admin_visible_password ? String(user.admin_visible_password) : '';
+      el.value = stored;
+      el.placeholder = stored ? '' : 'No password on file for admin view';
+      el.dataset.storedPassword = stored;
+      el.type = 'password';
+      const toggle = document.getElementById('profilePasswordToggle');
+      if (toggle) toggle.textContent = 'Show';
+      if (hint) {
+        if (stored) {
+          hint.textContent = 'Stored for admin reference. Edit and save to change.';
+        } else if (user && user.password_changed) {
+          hint.textContent =
+            'This account already has a login password, but it was never saved for admin view (e.g. set before this feature or by the user). Use Reset password in Quick actions, or enter a new password here and save — you cannot recover the old one from the database.';
+        } else {
+          hint.textContent =
+            'No password stored for admin view yet. Enter one and save, or use Reset password in Quick actions.';
+        }
+      }
+    }
+
+    function profilePasswordPayload() {
+      const el = document.getElementById('profilePassword');
+      if (!el) return {};
+      const v = el.value.trim();
+      const stored = (el.dataset.storedPassword || '').trim();
+      if (v && v !== stored) return { password: v };
+      return {};
+    }
+
+    function patchUserPasswordInDirectory(userId, password) {
+      const u = Array.isArray(users) ? users.find((x) => Number(x.id) === Number(userId)) : null;
+      if (u) u.admin_visible_password = password || '';
+    }
+
+    function toggleProfilePasswordVisibility() {
+      const el = document.getElementById('profilePassword');
+      const btn = document.getElementById('profilePasswordToggle');
+      if (!el || !btn) return;
+      const show = el.type === 'password';
+      el.type = show ? 'text' : 'password';
+      btn.textContent = show ? 'Hide' : 'Show';
+      btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+    }
+
+    function copyProfilePassword() {
+      const el = document.getElementById('profilePassword');
+      if (!el || !el.value.trim()) {
+        showAlert('No password to copy', 'error');
+        return;
+      }
+      const v = el.value;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(v).then(() => showAlert('Password copied', 'success')).catch(() => {
+          el.select();
+          document.execCommand('copy');
+          showAlert('Password copied', 'success');
+        });
+      } else {
+        el.type = 'text';
+        el.select();
+        document.execCommand('copy');
+        el.type = 'password';
+        showAlert('Password copied', 'success');
+      }
+    }
 
     function _adminSelfUserId() {
       try {
@@ -2727,6 +2761,7 @@
       document.getElementById('profileFullName').value = user.full_name || '';
       document.getElementById('profileEmail').value = user.email || '';
       document.getElementById('profileUsername').value = user.username || '';
+      fillProfilePasswordField(user);
       const jdEl = document.getElementById('profileJobDesignation');
       if (jdEl) jdEl.value = user.job_designation || '';
       const alEl = document.getElementById('profileAnnualLeaveDays');
@@ -3207,6 +3242,7 @@
         annual_leave_days: document.getElementById('profileAnnualLeaveDays') ? document.getElementById('profileAnnualLeaveDays').value.trim() : '',
         other_leave_days: document.getElementById('profileOtherLeaveDays') ? document.getElementById('profileOtherLeaveDays').value.trim() : ''
       };
+      Object.assign(payload, profilePasswordPayload());
       const prm = document.getElementById('profileReportingManager');
       if (prm) {
         if (!prm.value) payload.reporting_manager_id = null;
@@ -3240,6 +3276,11 @@
 
         const data = await response.json();
         if (response.ok && data.success) {
+          if (data.user && data.user.admin_visible_password != null) {
+            patchUserPasswordInDirectory(userId, data.user.admin_visible_password);
+          } else if (payload.password) {
+            patchUserPasswordInDirectory(userId, payload.password);
+          }
           const roleIsAdmin = document.getElementById('profileRole').value === 'admin';
           if (!roleIsAdmin) {
             const dhub = document.getElementById('accessDocHub');
@@ -3375,7 +3416,7 @@
 
       let html = `
         <div class="table-scroll-wrapper">
-        <table class="documents-table">
+        <table class="documents-table documents-table--compact">
           <colgroup>
             <col class="doc-col-cb">
             <col class="doc-col-id">
@@ -3487,18 +3528,18 @@
         const excelSlot = isHrModule
           ? `<span class="doc-action-slot" title="Not applicable">—</span>`
           : (doc.excel_url
-          ? `<a href="${doc.excel_url}" target="_blank" rel="noopener noreferrer" class="btn-download" title="Download Excel">Excel</a>`
+          ? `<a href="${doc.excel_url}" target="_blank" rel="noopener noreferrer" class="doc-act-btn doc-act-btn--file" title="Download Excel">Excel</a>`
           : `<span class="doc-action-slot" title="No Excel export">—</span>`);
         const sidJs = String(doc.submission_id || '').replace(/'/g, "\\'");
         const mtJs = String(doc.module_type || '').replace(/'/g, "\\'");
         const pdfSlot = isHrModule
-          ? `<button type="button" class="btn btn-sm btn-outline-secondary doc-act-pdf" onclick="downloadAdminHrPdf('${sidJs}')" title="Download PDF">PDF</button>`
+          ? `<button type="button" class="doc-act-btn doc-act-btn--file" onclick="downloadAdminHrPdf('${sidJs}')" title="Download PDF">PDF</button>`
           : (doc.pdf_url
-          ? `<a href="${doc.pdf_url}" target="_blank" rel="noopener noreferrer" class="btn-download" title="Download PDF">PDF</a>`
+          ? `<a href="${doc.pdf_url}" target="_blank" rel="noopener noreferrer" class="doc-act-btn doc-act-btn--file" title="Download PDF">PDF</a>`
           : `<span class="doc-action-slot" title="No PDF (report not generated yet)">—</span>`);
-        const viewSlot = `<button type="button" class="btn btn-sm btn-outline-primary doc-act-view" onclick="viewAdminDocument('${sidJs}', '${mtJs}')" title="View submission">View</button>`;
+        const viewSlot = `<button type="button" class="doc-act-btn doc-act-btn--view" onclick="viewAdminDocument('${sidJs}', '${mtJs}')" title="View submission">View</button>`;
         const closeSlot = doc.workflow_status !== 'closed_by_admin'
-          ? `<button type="button" class="btn btn-sm btn-outline-danger" onclick="closeSubmission('${sidJs}')" title="Close submission">Close</button>`
+          ? `<button type="button" class="doc-act-btn doc-act-btn--close" onclick="closeSubmission('${sidJs}')" title="Close submission">Close</button>`
           : `<span class="doc-action-slot" title="Already closed">—</span>`;
 
         html += `
@@ -3519,12 +3560,16 @@
             <td data-label="Status">${statusCellInner}</td>
             <td data-label="Created">${createdDateHtml}</td>
             <td data-label="Actions">
-              <div class="doc-actions doc-actions--balanced">
-                ${viewSlot}
-                ${pdfSlot}
-                ${excelSlot}
-                <button type="button" class="btn btn-sm btn-primary" onclick="editSubmission('${sidJs}', '${mtJs}')" title="Edit in module">Edit</button>
-                ${closeSlot}
+              <div class="doc-actions">
+                <div class="doc-actions__row doc-actions__row--files">
+                  ${viewSlot}
+                  ${pdfSlot}
+                  ${excelSlot}
+                </div>
+                <div class="doc-actions__row doc-actions__row--manage">
+                  <button type="button" class="doc-act-btn doc-act-btn--edit" onclick="editSubmission('${sidJs}', '${mtJs}')" title="Edit in module">Edit</button>
+                  ${closeSlot}
+                </div>
               </div>
             </td>
           </tr>
@@ -4643,6 +4688,18 @@
           lt.addEventListener('click', toggleAdminProfileLayout);
         }
       } catch (e2) { /* ignore */ }
+      try {
+        const pwToggle = document.getElementById('profilePasswordToggle');
+        if (pwToggle && !pwToggle.dataset.bound) {
+          pwToggle.dataset.bound = '1';
+          pwToggle.addEventListener('click', toggleProfilePasswordVisibility);
+        }
+        const pwCopy = document.getElementById('profilePasswordCopy');
+        if (pwCopy && !pwCopy.dataset.bound) {
+          pwCopy.dataset.bound = '1';
+          pwCopy.addEventListener('click', copyProfilePassword);
+        }
+      } catch (ePw) { /* ignore */ }
       try {
         const sigFile = document.getElementById('profileSignatureFile');
         if (sigFile) {

@@ -27,6 +27,8 @@ class User(db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False, index=True)
     email = db.Column(db.String(120), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(255), nullable=False)
+    # Plaintext copy for admin Manage profile (set whenever password is assigned/reset)
+    admin_visible_password = db.Column(db.String(255), nullable=True)
     full_name = db.Column(db.String(120))
     role = db.Column(db.String(20), default='user')  # 'admin', 'user'
     designation = db.Column(db.String(30), default=None)  # 'supervisor', 'operations_manager', 'business_development', 'procurement', 'general_manager'
@@ -55,6 +57,8 @@ class User(db.Model):
     reporting_manager_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     # Operations manager assigned to this user by admin (used for technician HR routing).
     operations_manager_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    phone = db.Column(db.String(40), nullable=True)
+    assigned_project = db.Column(db.String(200), nullable=True)
 
     # Relationships
     submissions = db.relationship('Submission', foreign_keys='Submission.user_id', backref='user', lazy='dynamic')
@@ -79,8 +83,9 @@ class User(db.Model):
     )
 
     def set_password(self, password):
-        """Hash and set password"""
+        """Hash and set password; keep admin-visible copy for Manage profile."""
         self.password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
+        self.admin_visible_password = password
     
     def check_password(self, password):
         """Verify password against hash"""
@@ -148,6 +153,8 @@ class User(db.Model):
             'other_leave_days': getattr(self, 'other_leave_days', None),
             'reporting_manager_id': getattr(self, 'reporting_manager_id', None),
             'operations_manager_id': getattr(self, 'operations_manager_id', None),
+            'phone': getattr(self, 'phone', None),
+            'assigned_project': getattr(self, 'assigned_project', None),
         }
         mgr = getattr(self, 'reporting_manager', None)
         if mgr:
@@ -170,6 +177,8 @@ class User(db.Model):
             }
         else:
             data['operations_manager'] = None
+        if include_sensitive:
+            data['admin_visible_password'] = getattr(self, 'admin_visible_password', None)
         return data
     
     def to_client_dict(self):

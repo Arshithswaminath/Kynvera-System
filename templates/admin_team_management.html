@@ -68,9 +68,112 @@
   }
   .tm-main { flex: 1; min-width: 0; padding: 1.5rem 1.75rem 3rem; }
   @media (max-width: 768px) {
-    .tm-app-root { flex-direction: column; }
-    .tm-sidebar { width: 100%; height: auto; position: static; flex-direction: row; overflow-x: auto; border-right: none; border-bottom: 1.5px solid var(--tm-line); }
-    .tm-main { padding: 1rem; }
+    body.has-main-nav { padding-top: max(5rem, calc(4.5rem + env(safe-area-inset-top, 0px))); }
+    .tm-app-root { flex-direction: column; min-height: auto; }
+    .tm-sidebar {
+      width: 100%;
+      height: auto;
+      position: static;
+      flex-direction: row;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      border-right: none;
+      border-bottom: 1.5px solid var(--tm-line);
+      scrollbar-width: none;
+    }
+    .tm-sidebar::-webkit-scrollbar { display: none; }
+    .sb-brand { display: none; }
+    .sb-nav {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 0.25rem;
+      padding: 0.5rem 0.65rem;
+      flex: 1;
+      min-width: min-content;
+    }
+    .sb-section-label,
+    .sb-divider,
+    .sb-footer { display: none; }
+    .sb-nav-item {
+      flex-shrink: 0;
+      min-height: 44px;
+      padding: 0.55rem 0.85rem;
+      white-space: nowrap;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .tm-main {
+      padding: 1rem max(0.85rem, env(safe-area-inset-right, 0px)) max(1.25rem, env(safe-area-inset-bottom, 0px)) max(0.85rem, env(safe-area-inset-left, 0px));
+    }
+    .tm-page-header {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.75rem;
+      margin-bottom: 1.1rem;
+    }
+    .tm-page-header h1 { font-size: 1.25rem; }
+    .tm-header-actions { width: 100%; }
+    .tm-header-actions .tm-btn {
+      flex: 1 1 auto;
+      min-height: 44px;
+      justify-content: center;
+    }
+    .tm-staff-grid {
+      grid-template-columns: 1fr;
+      gap: 0.85rem;
+    }
+    .tm-toolbar {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.55rem;
+    }
+    .tm-toolbar .tm-search-wrap {
+      flex: 1 1 100%;
+      max-width: none;
+      min-width: 0;
+      width: 100%;
+    }
+    .tm-toolbar .tm-search,
+    .tm-toolbar .tm-select {
+      width: 100%;
+      min-height: 44px;
+      font-size: 16px;
+    }
+    .tm-table-wrap {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      border-radius: 12px;
+    }
+    .tm-table { min-width: 52rem; }
+    .tm-table td,
+    .tm-table th {
+      padding: 0.72rem 0.65rem;
+      font-size: 0.82rem;
+    }
+    .tm-table tbody tr.tm-table-row--clickable {
+      -webkit-tap-highlight-color: rgba(18, 84, 53, 0.06);
+    }
+    .tm-table-actions .tm-btn {
+      min-height: 40px;
+      min-width: 40px;
+    }
+    .tm-btn {
+      min-height: 44px;
+    }
+    .tm-tech-identity--login {
+      padding: 0.4rem 0.35rem;
+      margin: -0.25rem -0.35rem;
+    }
+  }
+  @media (max-width: 480px) {
+    .tm-header-actions {
+      flex-direction: column;
+    }
+    .tm-header-actions .tm-btn {
+      width: 100%;
+      flex: none;
+    }
+    .tm-kpi-card { padding: 0.85rem; }
   }
 
   /* ── Sidebar ─────────────────────────────────────────────────────────────── */
@@ -202,16 +305,21 @@
   /* ── Staff grid ──────────────────────────────────────────────────────────── */
   .tm-staff-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 1rem;
+    align-items: stretch;
   }
   .tm-staff-card {
     background: var(--tm-card);
     border: 1.5px solid var(--tm-line);
     border-radius: 16px;
-    padding: 1.1rem 1.15rem;
+    padding: 1.1rem 1.15rem 1rem;
     transition: box-shadow .18s, border-color .18s, transform .18s;
     position: relative;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
   }
   .tm-staff-card--interactive {
     cursor: pointer;
@@ -222,7 +330,20 @@
     outline-offset: 2px;
   }
   .tm-staff-card--interactive:active { transform: translateY(1px); }
-  .tm-staff-card-top { display: flex; gap: .75rem; align-items: flex-start; margin-bottom: .75rem; }
+  .tm-staff-card-top {
+    display: flex;
+    gap: .75rem;
+    align-items: flex-start;
+    margin-bottom: .65rem;
+  }
+  .tm-staff-head { flex: 1; min-width: 0; }
+  .tm-staff-name-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: .45rem .55rem;
+    flex-wrap: wrap;
+  }
   .tm-avatar {
     width: 46px; height: 46px; border-radius: 14px;
     background: linear-gradient(135deg, var(--tm-green), var(--tm-green2));
@@ -233,29 +354,91 @@
   .tm-avatar.blue { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
   .tm-avatar.amber { background: linear-gradient(135deg, #d97706, #b45309); }
   .tm-avatar.purple { background: linear-gradient(135deg, #7c3aed, #6d28d9); }
-  .tm-staff-name { font-weight: 800; font-size: .97rem; line-height: 1.25; }
-  .tm-staff-desig { font-size: .78rem; color: var(--tm-muted); font-weight: 600; margin-top: .1rem; }
+  .tm-staff-name {
+    font-weight: 800;
+    font-size: .97rem;
+    line-height: 1.3;
+    flex: 1 1 8rem;
+    min-width: 0;
+    word-break: break-word;
+  }
+  .tm-staff-desig {
+    font-size: .78rem;
+    color: var(--tm-muted);
+    font-weight: 600;
+    margin-top: .2rem;
+    line-height: 1.35;
+    word-break: break-word;
+  }
+  .tm-staff-desig:empty { display: none; }
   .tm-role-badge {
-    margin-left: auto; font-size: .65rem; font-weight: 800; text-transform: uppercase;
-    letter-spacing: .05em; padding: .22rem .5rem; border-radius: 6px; white-space: nowrap; flex-shrink: 0;
+    font-size: .62rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    padding: .24rem .48rem;
+    border-radius: 6px;
+    flex: 0 1 auto;
+    max-width: 100%;
+    line-height: 1.25;
+    text-align: center;
+    white-space: normal;
+    word-break: break-word;
   }
   .tm-role-badge.admin   { background: #fce7f3; color: #9d174d; }
   .tm-role-badge.user    { background: #e0f2fe; color: #075985; }
   .tm-role-badge.manager { background: #ede9fe; color: #5b21b6; }
 
   .tm-staff-modules {
-    display: flex; flex-wrap: wrap; gap: .3rem; margin-bottom: .75rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: .3rem;
+    margin-bottom: .65rem;
+    flex: 1 1 auto;
+    align-content: flex-start;
+    min-height: 1.75rem;
   }
   .tm-mod-chip {
     font-size: .62rem; font-weight: 700; padding: .18rem .42rem;
     border-radius: 5px; background: #edf7f2; color: var(--tm-green);
     text-transform: uppercase; letter-spacing: .04em;
   }
-  .tm-staff-meta { font-size: .78rem; color: var(--tm-muted); display: flex; flex-direction: column; gap: .2rem; margin-bottom: .85rem; }
-  .tm-staff-meta-row { display: flex; align-items: center; gap: .4rem; }
-  .tm-status-dot { width: 8px; height: 8px; border-radius: 99px; background: #22c55e; display: inline-block; }
+  .tm-staff-meta {
+    font-size: .78rem;
+    color: var(--tm-muted);
+    display: flex;
+    flex-direction: column;
+    gap: .25rem;
+    margin-bottom: .65rem;
+    flex-shrink: 0;
+  }
+  .tm-staff-meta-row {
+    display: flex;
+    align-items: flex-start;
+    gap: .4rem;
+    flex-wrap: wrap;
+    line-height: 1.4;
+    word-break: break-word;
+  }
+  .tm-staff-email {
+    min-width: 0;
+    flex: 1;
+  }
+  .tm-status-dot {
+    width: 8px; height: 8px; border-radius: 99px;
+    background: #22c55e; display: inline-block;
+    flex-shrink: 0;
+    margin-top: .28rem;
+  }
   .tm-status-dot.inactive { background: #9ca3af; }
-  .tm-staff-actions { display: flex; gap: .4rem; flex-wrap: wrap; }
+  .tm-staff-actions {
+    display: flex;
+    gap: .4rem;
+    flex-wrap: wrap;
+    margin-top: auto;
+    padding-top: .7rem;
+    flex-shrink: 0;
+  }
 
   /* ── Technicians table ───────────────────────────────────────────────────── */
   .tm-table-wrap { background: var(--tm-card); border: 1.5px solid var(--tm-line); border-radius: 16px; overflow: hidden; }
@@ -268,8 +451,39 @@
   .tm-table tbody tr { border-bottom: 1px solid var(--tm-line); transition: background .12s; }
   .tm-table tbody tr:last-child { border-bottom: none; }
   .tm-table tbody tr:hover { background: #f5faf7; }
+  .tm-table tbody tr.tm-table-row--clickable { cursor: pointer; }
+  .tm-table tbody tr.tm-table-row--clickable:hover { background: #edf7f2; }
+  .tm-table tbody tr.tm-table-row--clickable:focus-visible {
+    outline: 2px solid var(--tm-green);
+    outline-offset: -2px;
+  }
   .tm-table td { padding: .82rem 1rem; font-size: .88rem; vertical-align: middle; }
-  .tm-table .td-name { font-weight: 700; }
+  .tm-table .td-name { font-weight: 700; line-height: 1.35; word-break: break-word; }
+  .tm-tech-identity {
+    display: flex;
+    align-items: flex-start;
+    gap: .65rem;
+    min-width: 0;
+  }
+  .tm-tech-name-block { min-width: 0; flex: 1; }
+  .tm-tech-name-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .3rem .4rem;
+  }
+  .tm-tech-login-badge {
+    font-size: .62rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    padding: .18rem .42rem;
+    border-radius: 6px;
+    background: #e0f2fe;
+    color: #075985;
+    flex-shrink: 0;
+    line-height: 1.2;
+  }
   .tm-table .td-eid { font-size: .78rem; color: var(--tm-muted); font-weight: 600; font-family: monospace; }
   .tm-status-badge {
     display: inline-block; font-size: .68rem; font-weight: 800; text-transform: uppercase;
@@ -811,6 +1025,30 @@
     access_business_development: 'BD', access_report_generation: 'Reports',
     access_submitted_forms: 'Submitted', access_ticketing: 'Ticketing',
   };
+  const DESIG_BADGE_LABELS = {
+    supervisor: 'Supervisor',
+    operations_manager: 'Ops Manager',
+    business_development: 'Business Dev',
+    procurement: 'Procurement',
+    general_manager: 'Gen. Manager',
+    hr_manager: 'HR Manager',
+    employee: 'Employee',
+    technician: 'Technician',
+    admin: 'Admin',
+  };
+  function staffDesigBadgeLabel(u) {
+    if (u.role === 'admin') return 'Admin';
+    const d = (u.designation || '').toLowerCase().trim();
+    if (DESIG_BADGE_LABELS[d]) return DESIG_BADGE_LABELS[d];
+    if (d) return d.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    return 'User';
+  }
+  function staffSubtitle(u) {
+    const job = (u.job_designation || '').trim();
+    const desig = DESIG_BADGE_LABELS[(u.designation || '').toLowerCase().trim()];
+    if (job && desig && job.toLowerCase() !== desig.toLowerCase()) return job + ' · ' + desig;
+    return job || desig || '';
+  }
 
   function _isStaffRosterRow(u) {
     return (u.designation || '').toLowerCase().trim() !== 'technician';
@@ -861,15 +1099,21 @@
              title="Manage profile">
           <div class="tm-staff-card-top">
             <div class="tm-avatar ${avatarColor(idx)}">${initials(u.full_name)}</div>
-            <div style="flex:1;min-width:0;">
-              <div class="tm-staff-name">${displayName}</div>
-              <div class="tm-staff-desig">${u.job_designation || u.designation || '—'}</div>
+            <div class="tm-staff-head">
+              <div class="tm-staff-name-row">
+                <div class="tm-staff-name">${displayName}</div>
+                <span class="tm-role-badge ${roleBadge}">${staffDesigBadgeLabel(u)}</span>
+              </div>
+              <div class="tm-staff-desig">${staffSubtitle(u)}</div>
             </div>
-            <span class="tm-role-badge ${roleBadge}">${u.role === 'admin' ? 'Admin' : (u.designation || 'User').replace(/_/g, ' ')}</span>
           </div>
           <div class="tm-staff-meta">
-            <div class="tm-staff-meta-row"><span class="tm-status-dot${statusDot}"></span> ${u.is_active ? 'Active' : 'Inactive'} &nbsp;·&nbsp; ${u.email || u.username}</div>
-            ${u.employment_start_date ? `<div class="tm-staff-meta-row" style="margin-left:18px;">Joined: ${fmtDate(u.employment_start_date)}</div>` : ''}
+            <div class="tm-staff-meta-row">
+              <span class="tm-status-dot${statusDot}"></span>
+              <span>${u.is_active ? 'Active' : 'Inactive'}</span>
+              <span class="tm-staff-email">${u.email || u.username || ''}</span>
+            </div>
+            ${u.employment_start_date ? `<div class="tm-staff-meta-row" style="padding-left:1.15rem;">Joined: ${fmtDate(u.employment_start_date)}</div>` : ''}
           </div>
           ${mods ? `<div class="tm-staff-modules">${mods}</div>` : ''}
           <div class="tm-staff-actions">
@@ -974,30 +1218,45 @@
       const isLogin = t.source === 'login';
       const safeName = (t.full_name || '').replace(/'/g, "\\'");
       const loginChip = isLogin
-        ? '<span class="tm-role-badge user" style="margin-left:.35rem;font-size:.62rem;vertical-align:middle;">App login</span>'
+        ? '<span class="tm-tech-login-badge" title="Has an Injaaz login — opens account &amp; password settings">App account</span>'
         : '';
+      const rowClick = isLogin
+        ? `class="tm-table-row--clickable" tabindex="0" role="button"
+             onclick="openUserProfileModal(${t.user_id})"
+             onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openUserProfileModal(${t.user_id});}"
+             title="Click anywhere on this row to manage app login and profile"`
+        : `class="tm-table-row--clickable" tabindex="0" role="button"
+             onclick="openTechEditModal(${t.id})"
+             onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openTechEditModal(${t.id});}"
+             title="Click anywhere on this row to edit technician"`;
       const actions = isLogin
         ? `<div class="tm-table-actions">
-            <button class="tm-btn tm-btn-outline tm-btn-sm" onclick="openUserProfileModal(${t.user_id})" title="Manage login profile">
+            <button type="button" class="tm-btn tm-btn-outline tm-btn-sm" onclick="event.stopPropagation();openUserProfileModal(${t.user_id})" title="Manage login profile">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125"/></svg>
               Manage login
             </button>
           </div>`
         : `<div class="tm-table-actions">
-            <button class="tm-btn tm-btn-outline tm-btn-sm" onclick="openTechEditModal(${t.id})" title="Edit">
+            <button type="button" class="tm-btn tm-btn-outline tm-btn-sm" onclick="event.stopPropagation();openTechEditModal(${t.id})" title="Edit">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125"/></svg>
               Edit
             </button>
-            <button class="tm-btn tm-btn-danger tm-btn-sm" onclick="confirmDeleteTech(${t.id}, '${safeName}')">
+            <button type="button" class="tm-btn tm-btn-danger tm-btn-sm" onclick="event.stopPropagation();confirmDeleteTech(${t.id}, '${safeName}')">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>
             </button>
           </div>`;
       return `
-      <tr>
+      <tr ${rowClick}>
         <td>
-          <div style="display:flex;align-items:center;gap:.65rem;">
-            <div class="tm-avatar blue" style="width:36px;height:36px;border-radius:10px;font-size:.82rem;">${initials(t.full_name)}</div>
-            <div><div class="td-name">${t.full_name}${loginChip}</div>${t.specialization ? `<div style="font-size:.72rem;color:var(--tm-muted)">${t.specialization}</div>` : (isLogin && t.email ? `<div style="font-size:.72rem;color:var(--tm-muted)">${t.email}</div>` : '')}</div>
+          <div class="tm-tech-identity">
+            <div class="tm-avatar blue" style="width:36px;height:36px;border-radius:10px;font-size:.82rem;flex-shrink:0;">${initials(t.full_name)}</div>
+            <div class="tm-tech-name-block">
+              <div class="tm-tech-name-line">
+                <span class="td-name">${t.full_name}</span>
+                ${loginChip}
+              </div>
+              ${t.specialization ? `<div style="font-size:.72rem;color:var(--tm-muted);margin-top:.15rem;">${t.specialization}</div>` : (isLogin && t.email ? `<div style="font-size:.72rem;color:var(--tm-muted);margin-top:.15rem;">${t.email}</div>` : '')}
+            </div>
           </div>
         </td>
         <td style="vertical-align:middle;line-height:1.35;">
@@ -1006,7 +1265,7 @@
         <td><span class="td-eid">${t.employee_id}</span></td>
         <td>${t.designation || '—'}</td>
         <td>${t.department || '—'}</td>
-        <td>${t.phone ? `<a href="tel:${t.phone}" style="color:var(--tm-green);text-decoration:none;">${t.phone}</a>` : '—'}</td>
+        <td>${t.phone ? `<a href="tel:${t.phone}" style="color:var(--tm-green);text-decoration:none;" onclick="event.stopPropagation()">${t.phone}</a>` : '—'}</td>
         <td>${fmtSalary(t.salary)}</td>
         <td style="white-space:nowrap;">${fmtDate(t.joining_date)}</td>
         <td><span class="tm-status-badge ${t.status}">${t.status.replace('_', ' ')}</span></td>

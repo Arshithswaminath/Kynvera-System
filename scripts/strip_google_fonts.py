@@ -60,7 +60,7 @@ def ensure_preconnect_for_google_fonts(text: str) -> str:
 
 
 def ensure_design_tokens(s: str) -> str:
-    if "css/design-tokens.css" in s:
+    if "css/design-tokens.css" in s or "partials/base_head.html" in s:
         return s
     m = re.search(
         r"(<meta[^>]+name=[\"']viewport[\"'][^>]*>\s*)",
