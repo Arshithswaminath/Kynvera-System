@@ -1077,6 +1077,26 @@ class Ticket(db.Model):
     close_signed_by = db.Column(db.String(160), nullable=True)
     close_signed_role = db.Column(db.String(120), nullable=True)
 
+    # Client sign-off (digital signature from the client upon completion)
+    client_signature = db.Column(db.Text, nullable=True)       # base64 data-URL
+    client_signed_by = db.Column(db.String(160), nullable=True)
+    client_signed_at = db.Column(db.DateTime, nullable=True)
+
+    # Finance approval gate: required when profit margin < 15%
+    gm_approval_required = db.Column(db.Boolean, default=False)
+    gm_approved_at = db.Column(db.DateTime, nullable=True)
+    gm_approved_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    gm_approval_notes = db.Column(db.Text, nullable=True)
+    # GM rejection (sends back to supervisor for re-verification)
+    gm_rejected_at = db.Column(db.DateTime, nullable=True)
+    gm_rejection_notes = db.Column(db.Text, nullable=True)
+    # Finance confirmation (finance team confirms invoice created, ticket fully closes)
+    finance_confirmed_at = db.Column(db.DateTime, nullable=True)
+    finance_confirmed_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    finance_invoice_ref = db.Column(db.String(80), nullable=True)
+    # Linked finance contract
+    finance_contract_id = db.Column(db.Integer, db.ForeignKey('finance_contracts.id'), nullable=True)
+
     # Timestamps
     created_at = db.Column(db.DateTime, default=_utcnow, index=True)
     updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
@@ -1092,6 +1112,12 @@ class Ticket(db.Model):
                                  backref=db.backref('supervised_tickets', lazy='dynamic'))
     technician = db.relationship('User', foreign_keys=[technician_id],
                                  backref=db.backref('technician_tickets', lazy='dynamic'))
+    gm_approved_by = db.relationship('User', foreign_keys=[gm_approved_by_id],
+                                     backref=db.backref('gm_approved_tickets', lazy='dynamic'))
+    finance_confirmed_by = db.relationship('User', foreign_keys=[finance_confirmed_by_id],
+                                           backref=db.backref('finance_confirmed_tickets', lazy='dynamic'))
+    finance_contract = db.relationship('FinanceContract', foreign_keys=[finance_contract_id],
+                                       backref=db.backref('tickets', lazy='dynamic'))
     notes = db.relationship('TicketNote', backref='ticket',
                             lazy='dynamic', cascade='all, delete-orphan',
                             order_by='TicketNote.created_at')
@@ -1346,3 +1372,142 @@ class Technician(db.Model):
 
     def __repr__(self):
         return f'<Technician {self.employee_id} — {self.full_name}>'
+
+
+class InspectionNotification(db.Model):
+    """Civil Defense / regulatory inspection notifications registered by Sales."""
+    __tablename__ = 'inspection_notifications'
+
+    id = db.Column(db.Integer, primary_key=True)
+    notif_id = db.Column(db.String(50), unique=True, nullable=False, index=True)  # INSP-NOTIF-XXXXXXXX
+    civil_defense_ref = db.Column(db.String(120), nullable=True)   # reference from the portal
+    site_name = db.Column(db.String(255), nullable=False)
+    notification_date = db.Column(db.Date, nullable=False)          # date received from portal
+    inspection_date = db.Column(db.Date, nullable=False)            # scheduled inspection date
+    inspection_type = db.Column(db.String(80), nullable=True)       # Fire Safety / Civil / Electrical…
+    notes = db.Column(db.Text, nullable=True)
+    status = db.Column(db.String(30), default='pending', index=True)  # pending, scheduled, completed, overdue
+    registered_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    ops_notified_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, default=_utcnow, index=True)
+    updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
+
+    registered_by = db.relationship('User', foreign_keys=[registered_by_id],
+                                    backref=db.backref('registered_inspection_notifs', lazy='dynamic'))
+
+    def days_notice(self):
+        """Days between notification date and inspection date."""
+        if self.notification_date and self.inspection_date:
+            return (self.inspection_date - self.notification_date).days
+        return None
+
+    def days_remaining(self):
+        """Days from today until inspection date (negative = overdue)."""
+        from datetime import date
+        if self.inspection_date:
+            return (self.inspection_date - date.today()).days
+        return None
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'notif_id': self.notif_id,
+            'civil_defense_ref': self.civil_defense_ref,
+            'site_name': self.site_name,
+            'notification_date': self.notification_date.isoformat() if self.notification_date else None,
+            'inspection_date': self.inspection_date.isoformat() if self.inspection_date else None,
+            'inspection_type': self.inspection_type,
+            'notes': self.notes,
+            'status': self.status,
+            'days_notice': self.days_notice(),
+            'days_remaining': self.days_remaining(),
+            'registered_by_id': self.registered_by_id,
+            'registered_by_name': self.registered_by.full_name if self.registered_by else None,
+            'ops_notified_at': self.ops_notified_at.isoformat() if self.ops_notified_at else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+    def __repr__(self):
+        return f'<InspectionNotification {self.notif_id} [{self.status}]>'
+
+
+class FinanceContract(db.Model):
+    """AMC / service contracts tracked by the Finance module."""
+    __tablename__ = 'finance_contracts'
+
+    id = db.Column(db.Integer, primary_key=True)
+    contract_id = db.Column(db.String(50), unique=True, nullable=False, index=True)  # FIN-CON-XXXXXXXX
+    client_name = db.Column(db.String(255), nullable=False)
+    property_name = db.Column(db.String(255), nullable=True)
+    contract_type = db.Column(db.String(40), nullable=False)  # quarterly, semi_annual, annual, monthly
+    service_type = db.Column(db.String(120), nullable=True)   # HVAC AMC, Civil, Cleaning…
+    start_date = db.Column(db.Date, nullable=False)
+    end_date = db.Column(db.Date, nullable=False)
+    contract_value = db.Column(db.Float, nullable=True)       # total contract value (AED)
+    billing_day = db.Column(db.Integer, default=29)           # day of month for invoice generation
+    status = db.Column(db.String(30), default='active', index=True)  # active, expired, cancelled
+    notes = db.Column(db.Text, nullable=True)
+    created_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=_utcnow, index=True)
+    updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
+
+    created_by = db.relationship('User', foreign_keys=[created_by_id],
+                                 backref=db.backref('finance_contracts', lazy='dynamic'))
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'contract_id': self.contract_id,
+            'client_name': self.client_name,
+            'property_name': self.property_name,
+            'contract_type': self.contract_type,
+            'service_type': self.service_type,
+            'start_date': self.start_date.isoformat() if self.start_date else None,
+            'end_date': self.end_date.isoformat() if self.end_date else None,
+            'contract_value': self.contract_value,
+            'billing_day': self.billing_day,
+            'status': self.status,
+            'notes': self.notes,
+            'created_by_id': self.created_by_id,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+    def __repr__(self):
+        return f'<FinanceContract {self.contract_id} {self.client_name}>'
+
+
+class FinanceMonthlyReport(db.Model):
+    """Snapshot of completed jobs generated for Finance billing."""
+    __tablename__ = 'finance_monthly_reports'
+
+    id = db.Column(db.Integer, primary_key=True)
+    report_id = db.Column(db.String(50), unique=True, nullable=False, index=True)
+    period_label = db.Column(db.String(40), nullable=False)   # e.g. "May 2026"
+    period_start = db.Column(db.Date, nullable=False)
+    period_end = db.Column(db.Date, nullable=False)
+    total_jobs = db.Column(db.Integer, default=0)
+    total_value = db.Column(db.Float, default=0.0)
+    report_data = db.Column(JSON, nullable=True)              # serialised job list
+    generated_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    sent_to_finance_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, default=_utcnow)
+
+    generated_by = db.relationship('User', foreign_keys=[generated_by_id],
+                                   backref=db.backref('generated_finance_reports', lazy='dynamic'))
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'report_id': self.report_id,
+            'period_label': self.period_label,
+            'period_start': self.period_start.isoformat() if self.period_start else None,
+            'period_end': self.period_end.isoformat() if self.period_end else None,
+            'total_jobs': self.total_jobs,
+            'total_value': self.total_value,
+            'generated_by_id': self.generated_by_id,
+            'sent_to_finance_at': self.sent_to_finance_at.isoformat() if self.sent_to_finance_at else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+    def __repr__(self):
+        return f'<FinanceMonthlyReport {self.report_id}>'

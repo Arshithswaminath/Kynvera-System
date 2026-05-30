@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+  <title>Service Report — {{ ticket.ticket_id }}</title>
+  {% include 'partials/caveat_font.html' ignore missing %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
+  <style>
+    :root { --accent: #d21725; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; background: #f7f8fa; color: #111; }
+    body.has-main-nav { padding-top: 5.5rem; }
+    .sr-wrap { max-width: 860px; margin: 0 auto; padding: 32px 20px 60px; }
+    /* print header */
+    .sr-print-header { display: none; }
+    @media print {
+      body.has-main-nav { padding-top: 0; }
+      nav, .no-print { display: none !important; }
+      .sr-print-header { display: block; }
+      .sr-wrap { padding: 0; max-width: none; }
+      .sig-canvas { border: 1px solid #d1d5db !important; }
+    }
+    /* top bar */
+    .sr-topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; gap: 12px; flex-wrap: wrap; }
+    .sr-topbar h1 { font-size: 1.4rem; font-weight: 800; margin: 0; }
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px; border-radius: 8px; font-size: .85rem; font-weight: 600; cursor: pointer; border: none; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: #b91c1c; }
+    .btn-outline { background: #fff; border: 1.5px solid #d1d5db; color: #374151; }
+    .btn-outline:hover { background: #f3f4f6; }
+    .btn-green { background: #16a34a; color: #fff; }
+    .btn-green:hover { background: #15803d; }
+    /* sections */
+    .sr-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 24px; margin-bottom: 20px; }
+    .sr-card h2 { font-size: 1rem; font-weight: 800; color: #111; margin: 0 0 16px; border-bottom: 2px solid #f3f4f6; padding-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+    .info-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+    .info-item { }
+    .info-label { font-size: .7rem; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 3px; }
+    .info-val { font-size: .9rem; font-weight: 600; color: #111; }
+    /* status timeline */
+    .timeline { display: flex; flex-direction: column; gap: 10px; }
+    .tl-item { display: flex; gap: 12px; align-items: flex-start; }
+    .tl-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); flex-shrink: 0; margin-top: 5px; }
+    .tl-line { flex: 1; }
+    .tl-meta { font-size: .75rem; color: #9ca3af; margin-top: 2px; }
+    /* materials table */
+    table.mat-table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+    table.mat-table th { background: #f9fafb; padding: 8px 12px; text-align: left; font-size: .72rem; font-weight: 700; color: #9ca3af; text-transform: uppercase; border-bottom: 1.5px solid #e5e7eb; }
+    table.mat-table td { padding: 9px 12px; border-bottom: 1px solid #f3f4f6; }
+    table.mat-table tr:last-child td { border-bottom: none; }
+    .total-row td { font-weight: 700; background: #f9fafb; }
+    /* images */
+    .img-grid { display: flex; flex-wrap: wrap; gap: 10px; }
+    .img-thumb { width: 120px; height: 90px; object-fit: cover; border-radius: 8px; border: 1.5px solid #e5e7eb; cursor: pointer; }
+    /* signature pad */
+    .sig-area { border: 2px dashed #d1d5db; border-radius: 10px; padding: 16px; text-align: center; }
+    .sig-canvas { border: 1.5px solid #d1d5db; border-radius: 8px; touch-action: none; cursor: crosshair; background: #fff; display: block; margin: 0 auto 10px; }
+    .sig-controls { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+    /* existing sig */
+    .sig-display img { max-width: 260px; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px; }
+    /* status badge */
+    .badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 999px; font-size: .72rem; font-weight: 700; }
+    .badge-blue    { background: #ffe4e6; color: #a8121e; }
+    .badge-green   { background: #d1fae5; color: #065f46; }
+    .badge-amber   { background: #fef3c7; color: #92400e; }
+    .badge-red     { background: #fee2e2; color: #dc2626; }
+    .badge-gray    { background: #f3f4f6; color: #374151; }
+    /* lightbox */
+    .lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.85); z-index: 9999; align-items: center; justify-content: center; }
+    .lightbox.open { display: flex; }
+    .lightbox img { max-width: 90vw; max-height: 90vh; border-radius: 8px; }
+    .lightbox-close { position: absolute; top: 16px; right: 20px; color: #fff; font-size: 2rem; cursor: pointer; background: none; border: none; }
+    /* section icon */
+    .sec-icon { width: 20px; height: 20px; color: var(--accent); }
+    .report-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
+    .report-logo img { height: 40px; }
+  </style>
+</head>
+<body class="has-main-nav">
+  {% set active_page = 'ticketing' %}
+  {% include 'partials/main_navbar.html' with context %}
+
+  <div class="sr-wrap">
+    <!-- Top bar (no-print) -->
+    <div class="sr-topbar no-print">
+      <div>
+        <a href="/tickets/{{ ticket.ticket_id }}" style="color:var(--accent);text-decoration:none;font-size:.85rem;">← Back to Ticket</a>
+        <h1 style="margin-top:6px;">Digital Service Report</h1>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="btn btn-outline" onclick="window.print()">
+          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+          Print / PDF
+        </button>
+        <a href="/tickets/{{ ticket.ticket_id }}/pdf" class="btn btn-outline">
+          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          Download PDF
+        </a>
+      </div>
+    </div>
+
+    <!-- Print-only header -->
+    <div class="sr-print-header">
+      <div class="report-logo">
+        <img src="{{ url_for('static', filename='icons/Amaan.png') }}" alt="Amaan">
+        <div><div style="font-size:1.2rem;font-weight:800;">Amaan Facilities Management</div><div style="font-size:.85rem;color:#6b7280;">Digital Service Report</div></div>
+      </div>
+      <hr style="margin-bottom:20px;">
+    </div>
+
+    <!-- 1. Job Information -->
+    <div class="sr-card">
+      <h2><svg class="sec-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>Job Information</h2>
+      <div class="info-grid">
+        <div class="info-item"><div class="info-label">Work Order</div><div class="info-val">{{ ticket.ticket_id }}</div></div>
+        <div class="info-item"><div class="info-label">Status</div><div class="info-val">
+          <span class="badge {{ 'badge-green' if ticket.status == 'closed' else 'badge-blue' if ticket.status in ('work_completed','verification') else 'badge-amber' if ticket.status == 'on_hold' else 'badge-gray' }}">{{ ticket.status | tkt_status_label }}</span>
+        </div></div>
+        <div class="info-item"><div class="info-label">Priority</div><div class="info-val">{{ ticket.priority | upper }}</div></div>
+        <div class="info-item"><div class="info-label">Project</div><div class="info-val">{{ ticket.project }}</div></div>
+        <div class="info-item"><div class="info-label">Service Group</div><div class="info-val">{{ ticket.service_group }}</div></div>
+        <div class="info-item"><div class="info-label">Category</div><div class="info-val">{{ ticket.category }}</div></div>
+        <div class="info-item"><div class="info-label">Fault Type</div><div class="info-val">{{ ticket.fault_type }}</div></div>
+        <div class="info-item"><div class="info-label">Property</div><div class="info-val">{{ ticket.property_name or '—' }}</div></div>
+        <div class="info-item"><div class="info-label">Location</div><div class="info-val">{{ [ticket.zone, ticket.sub_zone, ticket.base_unit] | select | join(' / ') or '—' }}</div></div>
+        <div class="info-item"><div class="info-label">Reported By</div><div class="info-val">{{ ticket.reporter.full_name if ticket.reporter else '—' }}</div></div>
+        <div class="info-item"><div class="info-label">Technician</div><div class="info-val">{{ ticket.technician.full_name if ticket.technician else (ticket.assigned_to.full_name if ticket.assigned_to else '—') }}</div></div>
+        <div class="info-item"><div class="info-label">Created</div><div class="info-val">{{ ticket.created_at | tkt_datetime if ticket.created_at else '—' }}</div></div>
+        {% if ticket.closed_at %}<div class="info-item"><div class="info-label">Completed</div><div class="info-val">{{ ticket.closed_at | tkt_datetime }}</div></div>{% endif %}
+      </div>
+      {% if ticket.work_description %}
+      <div style="margin-top:16px;">
+        <div class="info-label">Work Description</div>
+        <div style="margin-top:6px;font-size:.9rem;line-height:1.6;color:#374151;white-space:pre-line;">{{ ticket.work_description }}</div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- 2. Work Activity Log -->
+    <div class="sr-card">
+      <h2><svg class="sec-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Activity Log</h2>
+      {% if notes %}
+      <div class="timeline">
+        {% for note in notes %}
+        <div class="tl-item">
+          <div class="tl-dot" style="{{ 'background:#16a34a' if note.note_type == 'status_change' else '' }}"></div>
+          <div class="tl-line">
+            <div style="font-size:.88rem;color:#111;">{{ note.content }}</div>
+            <div class="tl-meta">{{ note.author_name }} · {{ note.created_at | tkt_datetime }}</div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p style="color:#9ca3af;font-size:.88rem;">No activity recorded.</p>
+      {% endif %}
+    </div>
+
+    <!-- 3. Materials Used -->
+    {% if materials %}
+    <div class="sr-card">
+      <h2><svg class="sec-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>Materials Used</h2>
+      <table class="mat-table">
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>Qty</th>
+            <th>Unit</th>
+            <th>Unit Price (AED)</th>
+            <th>Total (AED)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for m in materials %}
+          <tr>
+            <td>{{ m.material_name }}</td>
+            <td>{{ m.quantity }}</td>
+            <td>{{ m.unit or '—' }}</td>
+            <td>{{ '%.2f' % m.unit_price }}</td>
+            <td>{{ '%.2f' % m.total_price }}</td>
+          </tr>
+          {% endfor %}
+          <tr class="total-row">
+            <td colspan="4" style="text-align:right;">Materials Total</td>
+            <td>AED {{ '%.2f' % materials | sum(attribute='total_price') }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+
+    <!-- 4. Manpower -->
+    {% if manpower_entries %}
+    <div class="sr-card">
+      <h2><svg class="sec-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>Manpower</h2>
+      <table class="mat-table">
+        <thead>
+          <tr><th>Worker</th><th>Date</th><th>Hours</th><th>Rate/hr (AED)</th><th>Total (AED)</th></tr>
+        </thead>
+        <tbody>
+          {% for m in manpower_entries %}
+          <tr>
+            <td>{{ m.worker_name }}</td>
+            <td>{{ m.work_date | tkt_datetime if m.work_date else '—' }}</td>
+            <td>{{ m.hours }}</td>
+            <td>{{ '%.2f' % (m.rate_per_hour or 0) }}</td>
+            <td>{{ '%.2f' % (m.total_cost or 0) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+
+    <!-- 5. Cost Summary -->
+    {% if ticket.is_chargeable %}
+    <div class="sr-card">
+      <h2><svg class="sec-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Cost Summary</h2>
+      <div class="info-grid">
+        <div class="info-item"><div class="info-label">Total Cost (Raw)</div><div class="info-val">AED {{ '%.2f' % (ticket.total_cost or 0) }}</div></div>
+        <div class="info-item"><div class="info-label">Overhead ({{ ticket.overhead_pct or 10 }}%)</div><div class="info-val">AED {{ '%.2f' % ((ticket.total_cost or 0) * (ticket.overhead_pct or 10) / 100) }}</div></div>
+        <div class="info-item"><div class="info-label">Actual Price</div><div class="info-val">AED {{ '%.2f' % (ticket.actual_price or 0) }}</div></div>
+        {% if ticket.markup_pct %}<div class="info-item"><div class="info-label">Markup ({{ ticket.markup_pct }}%)</div><div class="info-val">AED {{ '%.2f' % ((ticket.actual_price or 0) * ticket.markup_pct / 100) }}</div></div>{% endif %}
+        <div class="info-item"><div class="info-label">Selling Price</div><div class="info-val" style="color:var(--accent);font-size:1.05rem;">AED {{ '%.2f' % (ticket.selling_price or 0) }}</div></div>
+        {% if ticket.gm_approval_required %}
+        <div class="info-item" style="grid-column:1/-1;">
+          <div class="info-label">GM Approval</div>
+          <div class="info-val" style="color:#16a34a;">
+            {% if ticket.gm_approved_at %}✓ Approved by {{ ticket.gm_approved_by.full_name if ticket.gm_approved_by else 'GM' }} on {{ ticket.gm_approved_at | tkt_datetime }}{% else %}<span style="color:#d97706;">⚠ Pending GM approval (margin below 15%)</span>{% endif %}
+          </div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- 6. Job Photos -->
+    {% if images %}
+    <div class="sr-card">
+      <h2><svg class="sec-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>Job Photos ({{ images | length }})</h2>
+      <div class="img-grid">
+        {% for img in images %}
+        <img class="img-thumb" src="{{ img.url() }}" alt="{{ img.caption or 'Job photo' }}" onclick="openLightbox('{{ img.url() }}')" loading="lazy">
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- 7. Technician Notes -->
+    {% if ticket.technician_resolution_notes or ticket.service_report_notes %}
+    <div class="sr-card">
+      <h2><svg class="sec-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>Field Notes</h2>
+      {% if ticket.service_report_notes %}
+      <div style="margin-bottom:12px;">
+        <div class="info-label">Service Report</div>
+        <div style="margin-top:6px;font-size:.9rem;line-height:1.6;color:#374151;white-space:pre-line;">{{ ticket.service_report_notes }}</div>
+      </div>
+      {% endif %}
+      {% if ticket.technician_resolution_notes %}
+      <div>
+        <div class="info-label">Technician Resolution Notes</div>
+        <div style="margin-top:6px;font-size:.9rem;line-height:1.6;color:#374151;white-space:pre-line;">{{ ticket.technician_resolution_notes }}</div>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- 8. Sign-off section -->
+    <div class="sr-card">
+      <h2><svg class="sec-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>Sign-off</h2>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;flex-wrap:wrap;">
+        <!-- Technician / Supervisor signature -->
+        <div>
+          <div class="info-label" style="margin-bottom:8px;">Technician / Supervisor</div>
+          {% if ticket.close_signature %}
+          <div class="sig-display"><img src="{{ ticket.close_signature }}" alt="Technician signature"><div style="font-size:.8rem;color:#374151;margin-top:6px;"><strong>{{ ticket.close_signed_by }}</strong> ({{ ticket.close_signed_role or 'Technician' }})</div></div>
+          {% else %}
+          <div style="background:#f9fafb;border-radius:8px;padding:16px;text-align:center;color:#9ca3af;font-size:.85rem;">Not yet signed</div>
+          {% endif %}
+        </div>
+
+        <!-- Client signature -->
+        <div>
+          <div class="info-label" style="margin-bottom:8px;">Client Sign-off</div>
+          {% if ticket.client_signature %}
+          <div class="sig-display"><img src="{{ ticket.client_signature }}" alt="Client signature"><div style="font-size:.8rem;color:#374151;margin-top:6px;"><strong>{{ ticket.client_signed_by }}</strong><br><span style="color:#9ca3af;">{{ ticket.client_signed_at | tkt_datetime if ticket.client_signed_at else '' }}</span></div></div>
+          {% else %}
+          <!-- Client signature pad -->
+          <div id="clientSignArea" class="sig-area no-print">
+            <p style="font-size:.8rem;color:#6b7280;margin-bottom:10px;">Client — please sign below to acknowledge completion</p>
+            <canvas id="clientSigCanvas" class="sig-canvas" width="280" height="120"></canvas>
+            <div style="margin-bottom:10px;">
+              <label style="font-size:.75rem;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Client Name *</label>
+              <input type="text" id="clientName" placeholder="Full name" style="width:100%;border:1.5px solid #d1d5db;border-radius:6px;padding:7px 10px;font-size:.85rem;box-sizing:border-box;">
+            </div>
+            <div class="sig-controls">
+              <button class="btn btn-outline" onclick="clearClientSig()" style="font-size:.78rem;padding:6px 12px;">Clear</button>
+              <button class="btn btn-green" onclick="submitClientSign()" style="font-size:.78rem;padding:6px 12px;">Submit Client Sign-off</button>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Image lightbox -->
+  <div class="lightbox" id="lightbox" onclick="closeLightbox()">
+    <button class="lightbox-close" onclick="closeLightbox()">×</button>
+    <img id="lightboxImg" src="" alt="">
+  </div>
+
+  <script src="{{ url_for('static', filename='api-client.js') }}"></script>
+  <script>
+    // ── Signature pad
+    const canvas = document.getElementById('clientSigCanvas');
+    let drawing = false, lastX = 0, lastY = 0;
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      ctx.strokeStyle = '#111'; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+
+      function getPos(e) {
+        const r = canvas.getBoundingClientRect();
+        const src = e.touches ? e.touches[0] : e;
+        return [src.clientX - r.left, src.clientY - r.top];
+      }
+      canvas.addEventListener('mousedown',  e => { drawing = true; [lastX, lastY] = getPos(e); });
+      canvas.addEventListener('touchstart', e => { drawing = true; [lastX, lastY] = getPos(e); e.preventDefault(); }, {passive:false});
+      canvas.addEventListener('mousemove',  e => { if (!drawing) return; const [x,y]=getPos(e); ctx.beginPath(); ctx.moveTo(lastX,lastY); ctx.lineTo(x,y); ctx.stroke(); [lastX,lastY]=[x,y]; });
+      canvas.addEventListener('touchmove',  e => { if (!drawing) return; const [x,y]=getPos(e); ctx.beginPath(); ctx.moveTo(lastX,lastY); ctx.lineTo(x,y); ctx.stroke(); [lastX,lastY]=[x,y]; e.preventDefault(); }, {passive:false});
+      canvas.addEventListener('mouseup',    () => drawing = false);
+      canvas.addEventListener('touchend',   () => drawing = false);
+    }
+
+    function clearClientSig() {
+      if (!canvas) return;
+      canvas.getContext('2d').clearRect(0,0,canvas.width,canvas.height);
+    }
+
+    async function submitClientSign() {
+      const name = (document.getElementById('clientName').value||'').trim();
+      if (!name) { alert('Please enter the client name.'); return; }
+      if (!canvas) return;
+      const blank = !canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height).data.some(v=>v>0);
+      if (blank) { alert('Please provide a signature before submitting.'); return; }
+      try {
+        await apiClient.post('/tickets/api/tickets/{{ ticket.ticket_id }}/client-sign', {
+          signature: canvas.toDataURL('image/png'),
+          signed_by: name,
+        });
+        location.reload();
+      } catch(e) { alert(e.message || 'Failed to save signature.'); }
+    }
+
+    // ── Lightbox
+    function openLightbox(src) {
+      document.getElementById('lightboxImg').src = src;
+      document.getElementById('lightbox').classList.add('open');
+    }
+    function closeLightbox() { document.getElementById('lightbox').classList.remove('open'); }
+  </script>
+</body>
+</html>

@@ -1,0 +1,69 @@
+{# Inspection forms sidebar — Workflow status + Inspection summary + Signature status.
+   Uses ticketing.css `.tkt-card` + leave-sidebar overrides to match HR forms exactly.
+   Hydrated by static/js/inspection_sidebar.js. #}
+<aside class="if-layout-aside" aria-label="Approvals and signature status">
+
+  {% if report_download_base and (report_download_submission_id or report_download_job_id) %}
+  <div class="tkt-card leave-sidebar-card leave-sidebar-card--flush leave-sidebar-inner if-side-card if-side-card--reports" id="ifReportsCard">
+    <div class="tkt-card-header">
+      <h3>Reports</h3>
+      <span class="if-side-card__chip">Ready</span>
+    </div>
+    <div class="tkt-card-body if-side-card__body">
+      <p class="if-side-card__hint mb-2">Download the latest generated PDF and Excel for this submission.</p>
+      {% if report_download_submission_id %}
+      <a href="{{ report_download_base }}/download/submission/{{ report_download_submission_id }}/pdf"
+         class="btn btn-success btn-sm w-100 mb-2"
+         target="_blank" rel="noopener">Download PDF</a>
+      <a href="{{ report_download_base }}/download/submission/{{ report_download_submission_id }}/excel"
+         class="btn btn-outline-success btn-sm w-100"
+         target="_blank" rel="noopener">Download Excel</a>
+      {% else %}
+      <a href="{{ report_download_base }}/download/{{ report_download_job_id }}/pdf"
+         class="btn btn-success btn-sm w-100 mb-2"
+         target="_blank" rel="noopener">Download PDF</a>
+      <a href="{{ report_download_base }}/download/{{ report_download_job_id }}/excel"
+         class="btn btn-outline-success btn-sm w-100"
+         target="_blank" rel="noopener">Download Excel</a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="tkt-card leave-sidebar-card leave-sidebar-card--flush leave-sidebar-inner if-side-card if-side-card--workflow">
+    <div class="tkt-card-header">
+      <h3>Workflow status</h3>
+      <span class="if-side-card__chip">Live trail</span>
+    </div>
+    <div class="tkt-card-body if-side-card__body">
+      <p class="hr-signoff-activity-hint if-side-card__hint">
+        <span id="ifWfLiveNote" class="hr-signoff-activity-live-prefix" hidden>Live — </span>
+        Approval steps update automatically as managers sign off on this submission.
+      </p>
+      <p id="ifWfBadge" class="hr-signoff-wf-badge if-side-card__wf-badge" style="display:none" role="status" aria-live="polite"></p>
+      <div class="hr-signoff-activity-scroll if-scroll-hide if-side-card__timeline" aria-label="Approval steps timeline">
+        <ul id="ifWorkflowTimeline" class="hr-signoff-activity-list" aria-live="polite"></ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="tkt-card leave-sidebar-card leave-sidebar-card--flush leave-sidebar-inner if-side-card if-side-card--summary" id="ifSummaryCard">
+    <div class="tkt-card-header">
+      <h3>Inspection summary</h3>
+      <span class="if-side-card__chip">Live</span>
+    </div>
+    <div class="tkt-card-body if-side-card__scroll if-scroll-hide">
+      <p id="ifSummaryEmpty" class="if-rec-empty">Start filling the form to see a summary here.</p>
+      <dl id="ifSummaryList" class="if-summary-list" hidden></dl>
+    </div>
+  </div>
+
+  <div class="tkt-card leave-sidebar-card if-side-card if-side-card--signatures">
+    <div class="tkt-card-header">
+      <h3>Signature status</h3>
+      <span class="if-side-card__chip">Updates as you fill</span>
+    </div>
+    <div class="tkt-card-body duty-sig-summary-rows if-side-card__scroll if-scroll-hide" id="ifSignatureRows"></div>
+  </div>
+
+</aside>

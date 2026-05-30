@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -187,7 +187,7 @@
           <p id="rspNote" style="display:none;font-size:.84rem;color:#64748b;margin:0 0 .75rem"></p>
 
           <label class="fld-lbl">Comments <span style="opacity:.65">(optional)</span></label>
-          <textarea class="fld-inp" id="rspComments" placeholder="Brief note"></textarea>
+          <textarea class="fld-inp" id="rspComments" data-approval-comment placeholder="Add notes for the next reviewer…"></textarea>
 
           <p class="fld-lbl" style="margin-top:1rem;"><strong>Signature</strong> <span class="req">*</span></p>
           <div class="sig-canvas-box" style="margin-top:.35rem;">
@@ -204,6 +204,7 @@
     </div>
   </div>
 
+<script src="{{ url_for('static', filename='js/approval_comment.js') }}"></script>
 <script src="{{ url_for('static', filename='js/hr_sign_pdf_preview.js') }}"></script>
 <script src="{{ url_for('static', filename='js/hr_center_notice_modal.js') }}"></script>
 <script>
@@ -259,6 +260,28 @@ function hideGuide(){
   g.style.opacity = (pad && !pad.isEmpty()) ? '0' : '1';
 }
 
+async function loadUserDefaults() {
+  if (!TOKEN) return;
+  try {
+    const response = await fetch('/api/auth/me', { headers: { Authorization: 'Bearer ' + TOKEN } });
+    if (!response.ok) return;
+    const data = await response.json();
+    if (data.user && window.InjaazApprovalComment) {
+      window.InjaazApprovalComment.setUserContext(data.user);
+    }
+  } catch (_e) { /* ignore */ }
+}
+
+function prefillSignComment() {
+  const el = document.getElementById('rspComments');
+  if (!el || el.value.trim()) return;
+  const text = window.InjaazApprovalComment
+    ? window.InjaazApprovalComment.resolveDefaultApprovalComment()
+    : '';
+  if (text) el.value = text;
+  if (window.InjaazApprovalComment) window.InjaazApprovalComment.bindCommentField(el);
+}
+
 async function boot(){
   if (!TOKEN){ window.location.href = '/login'; return; }
 
@@ -269,6 +292,7 @@ async function boot(){
   window.addEventListener('resize', ()=>{ resizeCanvas(); });
 
   void loadSubmittedFormPdfPreview();
+  await loadUserDefaults();
 
   const res = await fetch('/hr/api/replacement-signoff-detail/'+encodeURIComponent(SUBMISSION_ID), {
     headers: { 'Authorization':'Bearer '+TOKEN }
@@ -313,6 +337,8 @@ async function boot(){
     return;
   }
 
+  prefillSignComment();
+
   document.getElementById('rspClear').addEventListener('click', ()=>{
     if(pad) pad.clear();
     hideGuide();
@@ -334,7 +360,10 @@ async function submitSig(){
     return;
   }
   const dataUrl = pad.toDataURL('image/png');
-  const comments = document.getElementById('rspComments').value.trim();
+  let comments = document.getElementById('rspComments').value.trim();
+  if (window.InjaazApprovalComment) {
+    comments = window.InjaazApprovalComment.ensureSignedVerifiedComment(comments);
+  }
   document.getElementById('rspSubmit').disabled = true;
 
   try{
@@ -365,5 +394,3 @@ boot();
   <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 </body>
 </html>
-
-

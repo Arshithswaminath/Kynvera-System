@@ -1,0 +1,646 @@
+/* ═══════════════════════════════════════════════════════════════
+   INSPECTION FORMS — REDESIGN LAYER
+   2-column layout + sidebar styled to match the HR leave/duty form theme
+   (ticketing.css `.tkt-card` + `.leave-sidebar-card` overrides + HR signoff
+   activity timeline). Loaded AFTER inspection-forms-unified.css.
+   Companion files:
+     - templates/partials/inspection_sidebar.html
+     - static/js/inspection_sidebar.js
+     - static/css/ticketing.css         (already loaded by template)
+     - static/css/hr-signoff-activity.css (already loaded by template)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ─── Widen the outer shell when the layout wrapper is present ───── */
+body.inspection-form .container:has(.if-layout) { max-width: 1320px !important; }
+body.inspection-form .container.has-if-layout   { max-width: 1320px !important; }
+
+/* ─── Two-box layout: form card (left) + separate sidebar (right) ──
+   Matches HR `.leave-form-layout` — outer shell is transparent; only the
+   main column and sidebar cards are boxed. */
+body.inspection-form .container.has-if-layout,
+body.inspection-form .container:has(.if-layout) {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  overflow: visible !important;
+}
+
+/* ─── 2-column grid wrapper ───────────────────────────────────── */
+.if-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 300px);
+  gap: 1.25rem;
+  align-items: flex-start;
+  overflow: visible;
+}
+
+/* Form column — shell is transparent; the form card is built from header + body */
+.if-layout-main {
+  min-width: 0;
+  position: relative;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+  overflow: visible;
+}
+
+/* In-flow stepper (no negative absolute top — prevents bottom clip on split layout) */
+body.inspection-form .container.has-if-layout .if-layout-main form:has(> ul.nav.nav-tabs),
+body.inspection-form .container:has(.if-layout) .if-layout-main form:has(> ul.nav.nav-tabs) {
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: visible !important;
+  min-width: 0 !important;
+}
+
+body.inspection-form .container.has-if-layout .if-layout-main form:has(> ul.nav.nav-tabs) > ul.nav.nav-tabs,
+body.inspection-form .container:has(.if-layout) .if-layout-main form:has(> ul.nav.nav-tabs) > ul.nav.nav-tabs {
+  order: 1 !important;
+  position: relative !important;
+  top: auto !important;
+  left: auto !important;
+  right: auto !important;
+  transform: none !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  justify-content: center !important;
+  padding: 0 0 1rem !important;
+  margin: 0 !important;
+  flex-wrap: nowrap !important;
+  overflow-x: auto !important;
+  overflow-y: visible !important;
+}
+
+body.inspection-form .container.has-if-layout .if-layout-main form:has(> ul.nav.nav-tabs) > .if-form-hd,
+body.inspection-form .container:has(.if-layout) .if-layout-main form:has(> ul.nav.nav-tabs) > .if-form-hd {
+  order: 2 !important;
+  border-radius: 20px 20px 0 0 !important;
+  border: 1px solid rgba(232, 240, 236, .9) !important;
+  border-bottom: none !important;
+  box-shadow: none !important;
+}
+
+body.inspection-form .container.has-if-layout .if-layout-main form:has(> ul.nav.nav-tabs) > .tab-content,
+body.inspection-form .container:has(.if-layout) .if-layout-main form:has(> ul.nav.nav-tabs) > .tab-content {
+  order: 3 !important;
+  background: rgba(255, 255, 255, .98) !important;
+  border: 1px solid rgba(232, 240, 236, .9) !important;
+  border-top: none !important;
+  border-radius: 0 0 20px 20px !important;
+  box-shadow: var(--if-sh) !important;
+}
+
+/* Comfortable gap below fixed navbar before stepper + content */
+body.inspection-form .container.has-if-layout,
+body.inspection-form .container:has(.if-layout) {
+  margin-top: calc(72px + 5.5rem) !important;
+}
+
+/* Back button row — sits above the stepper + 2-column layout */
+body.inspection-form .container.has-if-layout > .inspection-form-bar,
+body.inspection-form .container:has(.if-layout) > .inspection-form-bar {
+  max-width: 100%;
+  width: 100%;
+  padding: 0 0 0.65rem !important;
+  margin: 0 0 0.15rem;
+}
+
+body.inspection-form .container.has-if-layout .if-layout,
+body.inspection-form .container:has(.if-layout) .if-layout {
+  padding-top: 1.25rem;
+}
+
+body.inspection-form .container.has-if-layout .if-layout-main > .alert:not(.d-none),
+body.inspection-form .container:has(.if-layout) .if-layout-main > .alert:not(.d-none) {
+  margin: 1rem 1.5rem 0;
+  border-radius: 10px;
+}
+body.inspection-form .container.has-if-layout .if-layout-main > .alert:not(.d-none) ~ form .if-form-hd,
+body.inspection-form .container:has(.if-layout) .if-layout-main > .alert:not(.d-none) ~ form .if-form-hd {
+  border-radius: 0;
+}
+
+.if-layout-aside {
+  position: sticky;
+  top: 5.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  max-height: calc(100vh - 5.75rem - 1rem);
+  max-height: calc(100dvh - 5.75rem - 1rem);
+  overflow-x: hidden;
+  overflow-y: auto;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.if-layout-aside::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* Scrollable regions without a visible scrollbar (still mouse/touch scrollable) */
+.if-scroll-hide {
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.if-scroll-hide::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+@media (max-width: 860px) {
+  .if-layout { grid-template-columns: 1fr; }
+  .if-layout-aside {
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
+  .if-layout-aside .if-side-card--workflow {
+    --if-side-card-h: clamp(16rem, 34vh, 20rem);
+  }
+  .if-layout-aside .if-side-card--summary {
+    --if-side-card-h: clamp(10rem, 20vh, 14rem);
+  }
+  .if-layout-aside .if-side-card--signatures {
+    --if-side-card-h: clamp(12rem, 26vh, 17rem);
+  }
+  body.inspection-form .container.has-if-layout > .inspection-form-bar,
+  body.inspection-form .container:has(.if-layout) > .inspection-form-bar {
+    padding: 0 0 0.5rem !important;
+  }
+  body.inspection-form .container.has-if-layout,
+  body.inspection-form .container:has(.if-layout) {
+    margin-top: calc(72px + 4rem) !important;
+  }
+}
+
+@media (max-width: 768px) {
+  body.inspection-form .container.has-if-layout,
+  body.inspection-form .container:has(.if-layout) {
+    margin-top: calc(56px + 3.25rem) !important;
+  }
+  body.inspection-form .container.has-if-layout .if-layout,
+  body.inspection-form .container:has(.if-layout) .if-layout {
+    padding-top: 1rem;
+  }
+  .if-layout-main {
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: transparent !important;
+  }
+  body.inspection-form .container.has-if-layout .if-layout-main form:has(> ul.nav.nav-tabs) > .if-form-hd,
+  body.inspection-form .container:has(.if-layout) .if-layout-main form:has(> ul.nav.nav-tabs) > .if-form-hd {
+    box-shadow: var(--if-sh) !important;
+    border: 1px solid rgba(232, 240, 236, .9) !important;
+    border-bottom: none !important;
+  }
+  body.inspection-form .container.has-if-layout .if-layout-main form:has(> ul.nav.nav-tabs) > .tab-content,
+  body.inspection-form .container:has(.if-layout) .if-layout-main form:has(> ul.nav.nav-tabs) > .tab-content {
+    background: rgba(255, 255, 255, .98) !important;
+    border: 1px solid rgba(232, 240, 236, .9) !important;
+    border-top: none !important;
+    border-radius: 0 0 14px 14px !important;
+  }
+}
+
+/* ─── Sidebar card overrides (identical to HR leave-sidebar pattern) ── */
+.if-layout-aside .leave-sidebar-card.tkt-card { border-radius: 12px; }
+.if-layout-aside .leave-sidebar-card .tkt-card-header { padding: 14px 18px; }
+.if-layout-aside .leave-sidebar-card .tkt-card-header h3 { font-size: 1rem; }
+.if-layout-aside .leave-sidebar-card.leave-sidebar-card--flush .tkt-card-body {
+  padding: 0 !important;
+}
+.if-layout-aside .leave-sidebar-card .tkt-card-body.duty-sig-summary-rows {
+  padding: 0 !important;
+}
+
+/* Header chip — match HR small grey hint label */
+.if-side-card__chip {
+  font-size: .78rem;
+  font-weight: 600;
+  color: #64748b;
+  letter-spacing: 0;
+  text-transform: none;
+  flex-shrink: 0;
+}
+
+/* ─── Signature summary rows (shared with HR `.duty-sig-summary-rows`) ── */
+.if-layout-aside .duty-sig-summary-rows { display: flex; flex-direction: column; }
+.if-layout-aside .duty-sig-summary-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 18px;
+  border-bottom: 1px solid #f1f5f9;
+}
+.if-layout-aside .duty-sig-summary-row:last-child { border-bottom: none; padding-bottom: 14px; }
+.if-layout-aside .duty-sig-summary-label {
+  font-size: .68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: #64748b;
+  display: block;
+  margin-bottom: 4px;
+}
+.if-layout-aside .duty-sig-summary-value {
+  font-size: .82rem;
+  font-weight: 600;
+  color: #1e293b;
+  line-height: 1.35;
+}
+.if-layout-aside .duty-sig-summary-value.muted {
+  font-weight: 500;
+  color: #94a3b8;
+  font-style: italic;
+}
+.if-layout-aside .duty-sig-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: .68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  white-space: nowrap;
+}
+.if-layout-aside .duty-sig-badge--signed   { background: #dcfce7; color: #15803d; }
+.if-layout-aside .duty-sig-badge--pending  { background: #fef9c3; color: #a16207; }
+.if-layout-aside .duty-sig-badge--optional { background: #f1f5f9; color: #64748b; }
+
+/* ─── Sidebar cards — fixed footprint, inner scroll (no visible bar) ─ */
+.if-layout-aside .if-side-card--workflow,
+.if-layout-aside .if-side-card--summary,
+.if-layout-aside .if-side-card--signatures {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.if-layout-aside .if-side-card--workflow {
+  --if-side-card-h: clamp(17.5rem, 36vh, 21.5rem);
+}
+.if-layout-aside .if-side-card--summary {
+  --if-side-card-h: clamp(11rem, 22vh, 15rem);
+}
+.if-layout-aside .if-side-card--signatures {
+  --if-side-card-h: clamp(13rem, 28vh, 18rem);
+}
+.if-layout-aside .if-side-card--workflow,
+.if-layout-aside .if-side-card--summary,
+.if-layout-aside .if-side-card--signatures {
+  max-height: var(--if-side-card-h);
+}
+.if-layout-aside .if-side-card__scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.if-layout-aside .if-side-card--summary .if-side-card__scroll {
+  padding: 14px 18px 16px !important;
+}
+.if-layout-aside .if-side-card--signatures .if-side-card__scroll {
+  padding: 0 !important;
+}
+
+.if-layout-aside .if-side-card--workflow .if-side-card__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.if-layout-aside .if-side-card__hint {
+  flex-shrink: 0;
+  padding: 14px 18px 0;
+  margin: 0 0 0.55rem;
+}
+.if-layout-aside .if-side-card__wf-badge {
+  flex-shrink: 0;
+  margin: 0 18px 0.55rem;
+}
+.if-layout-aside .if-side-card__timeline {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+  padding: 0 18px 16px;
+  margin: 0;
+}
+
+/* ─── Workflow timeline tweaks on top of hr-signoff-activity.css ── */
+.if-layout-aside .if-side-card--workflow .hr-signoff-activity-scroll {
+  max-height: none;
+}
+.if-layout-aside .hr-signoff-activity-scroll:not(.if-side-card__timeline) {
+  max-height: clamp(15rem, 44vh, 30rem);
+}
+.if-layout-aside .hr-signoff-activity-item.is-current .hr-signoff-activity-dot {
+  background: #fff;
+  border-color: var(--if-pri, #d21725);
+  box-shadow: 0 0 0 3px rgba(210, 23, 37, .14);
+  animation: ifWfPulse 1.6s ease-in-out infinite;
+}
+.if-layout-aside .hr-signoff-activity-item.is-done .hr-signoff-activity-dot {
+  background: var(--if-pri, #d21725);
+  border-color: var(--if-pri, #d21725);
+  box-shadow: 0 0 0 1px rgba(210, 23, 37, .12);
+}
+.if-layout-aside .hr-signoff-activity-item.is-rejected .hr-signoff-activity-dot {
+  background: #fee2e2;
+  border-color: #ef4444;
+  box-shadow: 0 0 0 1px rgba(239, 68, 68, .18);
+}
+.if-layout-aside .hr-signoff-activity-item.is-rejected .hr-signoff-activity-title { color: #b91c1c; }
+.if-layout-aside .hr-signoff-activity-item.is-rejected .hr-signoff-activity-detail { color: #b91c1c; }
+
+@keyframes ifWfPulse {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(210, 23, 37, .14); }
+  50%      { box-shadow: 0 0 0 6px rgba(210, 23, 37, .20); }
+}
+
+/* ─── Inspection summary list ─────────────────────────────────── */
+.if-summary-list {
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.if-summary-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
+}
+.if-summary-row dt {
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: #64748b;
+  margin: 0;
+}
+.if-summary-row dd {
+  font-size: .85rem;
+  color: #0f172a;
+  margin: 0;
+  line-height: 1.35;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+/* ─── Recorded signatures grid ────────────────────────────────── */
+.if-rec-empty {
+  font-size: .8125rem;
+  color: #94a3b8;
+  margin: 0;
+  font-style: italic;
+  text-align: left;
+  line-height: 1.4;
+}
+.if-rec-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.if-rec-item {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 8px 6px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
+}
+.if-rec-item img {
+  max-width: 100%;
+  height: 42px;
+  object-fit: contain;
+  background: transparent;
+  mix-blend-mode: multiply;
+}
+.if-rec-item__lbl {
+  font-size: .68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: #64748b;
+  text-align: center;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SIGNATURE BLOCK — polished card look for sign-off tab
+   Applies inside .if-layout-main only to avoid touching HR forms.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Wrap each review section in a clean card */
+body.inspection-form .if-layout-main .col-12.mb-2,
+body.inspection-form .if-layout-main .col-12.mb-4 {
+  padding: 0;
+}
+
+/* Sign-off section container: card wrap */
+body.inspection-form .if-layout-main .tab-pane .row.g-3 > .col-12 > .row {
+  background: #f8fafc;
+  border: 1px solid #e8f0ec;
+  border-radius: 14px;
+  padding: 1.25rem 1.35rem 1rem;
+  gap: 1rem 0;
+}
+
+/* Section title inside sign-off rows */
+body.inspection-form .if-layout-main h5,
+body.inspection-form .if-layout-main h6.fw-bold {
+  font-size: .82rem !important;
+  font-weight: 700 !important;
+  letter-spacing: .06em !important;
+  text-transform: uppercase !important;
+  color: var(--if-pri, #d21725) !important;
+  margin-bottom: .65rem !important;
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+}
+body.inspection-form .if-layout-main h5::before,
+body.inspection-form .if-layout-main h6.fw-bold::before {
+  content: "";
+  display: inline-block;
+  width: 3px;
+  height: 14px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, var(--if-pri, #d21725), #e8323f);
+  flex-shrink: 0;
+}
+
+/* Signature container — main drawing area */
+body.inspection-form .if-layout-main .signature-container {
+  background: #ffffff !important;
+  border: 1.5px dashed rgba(210, 23, 37, .28) !important;
+  border-radius: 12px !important;
+  padding: 0 !important;
+  min-height: 140px !important;
+  position: relative;
+  overflow: hidden;
+  transition: border-color .18s ease, box-shadow .18s ease;
+}
+body.inspection-form .if-layout-main .signature-container:focus-within,
+body.inspection-form .if-layout-main .signature-container:hover {
+  border-color: var(--if-pri, #d21725) !important;
+  box-shadow: 0 0 0 3px rgba(210, 23, 37, .08);
+}
+
+/* "Sign here" placeholder text inside canvas */
+body.inspection-form .if-layout-main .signature-container::before {
+  content: "Draw signature here";
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .78rem;
+  font-weight: 600;
+  color: rgba(210, 23, 37, .25);
+  pointer-events: none;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  transition: opacity .15s ease;
+}
+/* Hide watermark once a stroke has been drawn */
+body.inspection-form .if-layout-main .signature-container.has-signature::before,
+.signature-container.has-signature::before {
+  opacity: 0 !important;
+  content: none !important;
+}
+
+/* Canvas inside container */
+body.inspection-form .if-layout-main canvas.signature-pad {
+  border: none !important;
+  border-radius: 12px !important;
+  background: transparent !important;
+  height: 140px !important;
+  min-height: 140px !important;
+}
+
+/* Signature action buttons */
+body.inspection-form .if-layout-main .signature-actions {
+  margin-top: .65rem !important;
+  gap: .5rem !important;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* Clear button */
+body.inspection-form .if-layout-main #clearSupervisor,
+body.inspection-form .if-layout-main #clearOpMan,
+body.inspection-form .if-layout-main #clearBusinessDev,
+body.inspection-form .if-layout-main #clearProcurement,
+body.inspection-form .if-layout-main #clearGeneralManager,
+body.inspection-form .if-layout-main .signature-actions .btn-outline-secondary {
+  font-size: .75rem !important;
+  padding: 5px 14px !important;
+  border-radius: 999px !important;
+  border-color: #d1d5db !important;
+  color: #64748b !important;
+  background: #fff !important;
+  transition: all .15s ease;
+}
+body.inspection-form .if-layout-main .signature-actions .btn-outline-secondary:hover {
+  background: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
+  color: #334155 !important;
+}
+
+/* "Use Saved Signature" / "No Saved Signature" button */
+body.inspection-form .if-layout-main .add-default-signature {
+  font-size: .75rem !important;
+  padding: 5px 14px !important;
+  border-radius: 999px !important;
+  font-weight: 600 !important;
+  transition: all .15s ease;
+}
+body.inspection-form .if-layout-main .add-default-signature.has-signature {
+  background: linear-gradient(135deg, #a8121e 0%, var(--if-pri, #d21725) 55%, #e8323f 100%) !important;
+  color: #fff !important;
+  box-shadow: 0 2px 8px rgba(210, 23, 37, .22);
+}
+body.inspection-form .if-layout-main .add-default-signature.has-signature:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(210, 23, 37, .32) !important;
+}
+body.inspection-form .if-layout-main .add-default-signature.no-signature {
+  background: #f1f5f9 !important;
+  color: #94a3b8 !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: none;
+}
+
+/* "✓ Signed" hint badge */
+body.inspection-form .if-layout-main .signature-hint,
+body.inspection-form .if-layout-main #supervisorSignatureStatus,
+body.inspection-form .if-layout-main #supervisorSignatureHint {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+  font-size: .72rem !important;
+  font-weight: 700 !important;
+  color: #065f46 !important;
+  background: #d1fae5;
+  border: 1px solid #a7f3d0;
+  border-radius: 999px;
+  padding: 2px 8px;
+  letter-spacing: .03em;
+}
+
+/* Section separator between reviewer blocks */
+body.inspection-form .if-layout-main .tab-pane .row.g-3 > .col-12[style*="border-top"],
+body.inspection-form .if-layout-main .tab-pane .row.g-3 > .col-12.mb-2 {
+  border-top: none !important;
+  padding-top: 0 !important;
+}
+
+/* Read-only signature display boxes */
+body.inspection-form .if-layout-main div[id$="ReadOnly"],
+body.inspection-form .if-layout-main div[id*="SignatureReadOnly"] {
+  border: 1px solid #e8f0ec !important;
+  border-radius: 12px !important;
+  overflow: hidden;
+}
+
+/* Workflow status badge — person name line (matches timeline "By …" detail) */
+body.inspection-form .hr-signoff-wf-badge .if-wf-badge-main {
+  display: block;
+}
+body.inspection-form .hr-signoff-wf-badge .if-wf-badge-person {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #0369a1;
+  line-height: 1.35;
+}

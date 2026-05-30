@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+  {% include 'partials/caveat_font.html' ignore missing %}
+  <title>Inspection Notifications — Amaan</title>
+  <meta name="theme-color" content="#d21725">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <style>
+    :root {
+      --accent: #d21725;
+      --accent-2: #e8323f;
+      --accent-pale: #fde8ea;
+      --sidebar-w: 260px;
+      --nav-top: 73px;
+    }
+    body.has-main-nav {
+      background: #f7f8fa;
+      margin: 0;
+      padding-top: var(--nav-top);
+    }
+    .insp-root {
+      display: flex;
+      min-height: calc(100vh - var(--nav-top));
+      background: #f7f8fa;
+    }
+    /* sidebar */
+    .insp-sidebar { width: var(--sidebar-w); flex-shrink: 0; background: var(--accent); color: #fff; padding: 28px 0 24px; position: sticky; top: var(--nav-top); height: calc(100vh - var(--nav-top)); overflow-y: auto; }
+    .insp-sidebar-brand { padding: 0 24px 20px; border-bottom: 1px solid rgba(255,255,255,.2); margin-bottom: 16px; }
+    .insp-sidebar-brand .brand-title { font-size: 1.05rem; font-weight: 800; letter-spacing: .02em; }
+    .insp-sidebar-brand .brand-sub { font-size: .78rem; opacity: .75; margin-top: 2px; }
+    .insp-sidebar-nav a { display: flex; align-items: center; gap: 10px; padding: 10px 24px; font-size: .92rem; color: rgba(255,255,255,.85); text-decoration: none; border-radius: 0; transition: background .15s; }
+    .insp-sidebar-nav a:hover, .insp-sidebar-nav a.active { background: rgba(255,255,255,.15); color: #fff; }
+    .insp-sidebar-stats { margin: 20px 16px 0; background: rgba(255,255,255,.12); border-radius: 10px; padding: 14px 16px; }
+    .insp-sidebar-stats .stat-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; font-size: .82rem; border-bottom: 1px solid rgba(255,255,255,.1); }
+    .insp-sidebar-stats .stat-row:last-child { border-bottom: none; }
+    .insp-sidebar-stats .stat-val { font-weight: 700; font-size: 1rem; }
+    /* main */
+    .insp-main { flex: 1; padding: 32px 36px; overflow: auto; }
+    @media (max-width: 900px) {
+      .insp-sidebar { display: none; }
+      .insp-main { padding: 20px 16px; }
+    }
+    .insp-topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; flex-wrap: wrap; gap: 12px; }
+    .insp-topbar h1 { font-size: 1.5rem; font-weight: 800; color: #111; margin: 0; }
+    .btn-primary { display: inline-flex; align-items: center; gap: 8px; background: var(--accent); color: #fff; border: none; padding: 10px 20px; border-radius: 8px; font-size: .9rem; font-weight: 600; cursor: pointer; }
+    .btn-primary:hover { background: var(--accent-2); }
+    .btn-ghost { display: inline-flex; align-items: center; gap: 6px; background: none; border: 1px solid #d1d5db; color: #374151; padding: 8px 16px; border-radius: 8px; font-size: .85rem; font-weight: 600; cursor: pointer; }
+    .btn-ghost:hover { background: #f3f4f6; }
+    /* filter bar */
+    .filter-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+    .filter-chip { padding: 6px 14px; border-radius: 999px; border: 1.5px solid #e5e7eb; background: #fff; font-size: .8rem; font-weight: 600; cursor: pointer; transition: all .15s; }
+    .filter-chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    /* cards grid */
+    .notif-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
+    .notif-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; transition: box-shadow .15s; }
+    .notif-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.08); }
+    .notif-card-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 12px; gap: 8px; }
+    .notif-id { font-size: .72rem; font-weight: 700; color: #9ca3af; letter-spacing: .04em; }
+    .status-badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 999px; font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+    .sb-pending   { background: #dbeafe; color: #1d4ed8; }
+    .sb-scheduled { background: #d1fae5; color: #065f46; }
+    .sb-completed { background: #f3f4f6; color: #374151; }
+    .sb-overdue   { background: #fee2e2; color: #dc2626; }
+    .notif-site { font-size: 1.05rem; font-weight: 700; color: #111; margin-bottom: 4px; }
+    .notif-type { font-size: .8rem; color: #6b7280; margin-bottom: 14px; }
+    .notif-dates { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+    .notif-date-box { background: #f9fafb; border-radius: 8px; padding: 10px 12px; }
+    .notif-date-label { font-size: .68rem; font-weight: 600; color: #9ca3af; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 4px; }
+    .notif-date-val { font-size: .88rem; font-weight: 700; color: #374151; }
+    .notif-countdown { text-align: center; padding: 10px; border-radius: 8px; margin-bottom: 14px; font-weight: 700; font-size: .9rem; }
+    .countdown-ok     { background: #d1fae5; color: #065f46; }
+    .countdown-warn   { background: #fef3c7; color: #92400e; }
+    .countdown-urgent { background: #fee2e2; color: #dc2626; }
+    .notif-ref { font-size: .75rem; color: #9ca3af; }
+    .notif-actions { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+    .notif-actions button { font-size: .78rem; padding: 5px 12px; border-radius: 6px; font-weight: 600; cursor: pointer; border: 1px solid #d1d5db; background: #fff; color: #374151; }
+    .notif-actions button:hover { background: #f3f4f6; }
+    .notif-actions button.complete-btn { background: #d1fae5; border-color: #6ee7b7; color: #065f46; }
+    /* empty */
+    .empty-state { text-align: center; padding: 60px 20px; color: #9ca3af; }
+    .empty-state svg { width: 56px; height: 56px; margin-bottom: 16px; opacity: .4; }
+    .empty-state h3 { font-size: 1.1rem; font-weight: 700; color: #374151; margin-bottom: 6px; }
+    /* modal overlay */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
+    .modal-overlay.open { display: flex; }
+    .modal-box { background: #f1f3f6; border-radius: 16px; width: 100%; max-width: 980px; max-height: 92vh; overflow-y: auto; box-shadow: 0 24px 64px rgba(0,0,0,.22); }
+    .modal-header { padding: 18px 24px; display: flex; align-items: center; justify-content: space-between; }
+    .modal-header h2 { font-size: 1.05rem; font-weight: 800; margin: 0; color: #111; }
+    .modal-close { background: none; border: none; cursor: pointer; color: #9ca3af; font-size: 1.4rem; line-height: 1; }
+    .modal-body { padding: 0 20px 20px; }
+    .modal-cols { display: flex; gap: 16px; align-items: stretch; }
+    /* Individual panel cards */
+    .modal-panel { flex: 1; min-width: 0; background: #fff; border-radius: 12px; border: 1px solid #e5e7eb; padding: 22px; display: flex; flex-direction: column; box-shadow: 0 1px 4px rgba(0,0,0,.05); }
+    .modal-panel-header { display: flex; align-items: center; gap: 8px; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid #f0f0f0; }
+    .modal-panel-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .panel-icon-form  { background: #fde8ea; color: var(--accent); }
+    .panel-icon-email { background: #eff6ff; color: #2563eb; }
+    .modal-panel-title { font-size: .92rem; font-weight: 700; color: #111; }
+    .modal-panel-subtitle { font-size: .75rem; color: #9ca3af; margin-top: 1px; }
+    @media (max-width: 700px) { .modal-cols { flex-direction: column; } }
+    .form-row { margin-bottom: 14px; }
+    .form-label { display: block; font-size: .78rem; font-weight: 600; color: #6b7280; margin-bottom: 5px; text-transform: uppercase; letter-spacing: .03em; }
+    .form-input, .form-select, .form-textarea { width: 100%; border: 1.5px solid #e5e7eb; border-radius: 8px; padding: 9px 12px; font-size: .88rem; color: #111; outline: none; background: #fff; box-sizing: border-box; transition: border-color .15s; }
+    .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--accent); background: #fff; }
+    .form-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .modal-footer { padding: 14px 20px; display: flex; justify-content: flex-end; gap: 10px; }
+    .loading-row { display: flex; align-items: center; justify-content: center; padding: 48px; color: #9ca3af; gap: 12px; }
+    .spinner { width: 24px; height: 24px; border: 3px solid #e5e7eb; border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    /* Email panel internals */
+    .email-panel-actions { margin-left: auto; }
+    .btn-email-settings { background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 6px; padding: 5px 11px; font-size: .75rem; color: #6b7280; cursor: pointer; display: flex; align-items: center; gap: 4px; }
+    .btn-email-settings:hover { background: #e5e7eb; color: #374151; }
+    .email-settings-box { display: none; background: #f9fafb; border: 1.5px solid #e5e7eb; border-radius: 10px; padding: 14px; margin-bottom: 14px; }
+    .email-settings-box.open { display: block; }
+    .form-input-sm { width: 100%; border: 1.5px solid #e5e7eb; border-radius: 8px; padding: 8px 10px; font-size: .85rem; color: #111; outline: none; background: #fff; box-sizing: border-box; transition: border-color .15s; }
+    .form-input-sm:focus { border-color: #2563eb; }
+    .email-subject-row { font-size: .78rem; color: #6b7280; padding: 8px 10px; background: #f9fafb; border: 1.5px solid #e5e7eb; border-radius: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .email-body-area { width: 100%; border: 1.5px solid #e5e7eb; border-radius: 8px; padding: 10px 12px; font-size: .76rem; color: #374151; resize: vertical; flex: 1; min-height: 210px; background: #fff; box-sizing: border-box; font-family: 'Courier New', monospace; line-height: 1.65; transition: border-color .15s; }
+    .email-body-area:focus { outline: none; border-color: #2563eb; }
+    .save-settings-btn { background: var(--accent); color: #fff; border: none; padding: 7px 16px; border-radius: 6px; font-size: .82rem; font-weight: 600; cursor: pointer; margin-top: 8px; }
+    .save-settings-btn:hover { background: var(--accent-2); }
+  </style>
+</head>
+<body class="has-main-nav">
+  {% set active_page = 'inspection' %}
+  {% include 'partials/main_navbar.html' with context %}
+  <script>
+    !function(){
+      var nav = document.getElementById('nav');
+      function sync(){
+        if(!nav) return;
+        var h = nav.getBoundingClientRect().height;
+        document.documentElement.style.setProperty('--nav-top', h + 'px');
+      }
+      sync();
+      requestAnimationFrame(sync);
+      window.addEventListener('load', sync);
+      window.addEventListener('resize', sync);
+      if (window.ResizeObserver) {
+        new ResizeObserver(sync).observe(nav);
+      }
+    }();
+  </script>
+
+  <div class="insp-root">
+    <!-- Sidebar -->
+    <aside class="insp-sidebar">
+      <div class="insp-sidebar-brand">
+        <div class="brand-title">Inspection</div>
+        <div class="brand-sub">Notification Tracker</div>
+      </div>
+      <nav class="insp-sidebar-nav">
+        <a href="/inspection/"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>Inspection Forms</a>
+        <a href="/inspection/notifications" class="active"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>CD Notifications</a>
+      </nav>
+      <div class="insp-sidebar-stats" id="sidebarStats">
+        <div class="stat-row"><span>Total</span><span class="stat-val" id="st-total">—</span></div>
+        <div class="stat-row"><span>Pending</span><span class="stat-val" id="st-pending">—</span></div>
+        <div class="stat-row"><span>Upcoming (7d)</span><span class="stat-val" id="st-upcoming" style="color:#fbbf24;">—</span></div>
+        <div class="stat-row"><span>Overdue</span><span class="stat-val" id="st-overdue" style="color:#fca5a5;">—</span></div>
+        <div class="stat-row"><span>Completed</span><span class="stat-val" id="st-completed">—</span></div>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="insp-main">
+      <div class="insp-topbar">
+        <div>
+          <h1>Civil Defense Notifications</h1>
+          <p style="color:#6b7280;font-size:.85rem;margin:4px 0 0;">Track inspection dates received from the Civil Defense portal.</p>
+        </div>
+        <button class="btn-primary" onclick="openNewModal()">
+          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          Register Notification
+        </button>
+      </div>
+
+      <!-- Filters -->
+      <div class="filter-bar">
+        <button class="filter-chip active" data-filter="" onclick="setFilter(this, '')">All</button>
+        <button class="filter-chip" data-filter="pending" onclick="setFilter(this, 'pending')">Pending</button>
+        <button class="filter-chip" data-filter="scheduled" onclick="setFilter(this, 'scheduled')">Scheduled</button>
+        <button class="filter-chip" data-filter="overdue" onclick="setFilter(this, 'overdue')">Overdue</button>
+        <button class="filter-chip" data-filter="completed" onclick="setFilter(this, 'completed')">Completed</button>
+      </div>
+
+      <!-- Content -->
+      <div id="notifContent">
+        <div class="loading-row"><div class="spinner"></div><span>Loading notifications…</span></div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Register Modal -->
+  <div class="modal-overlay" id="newModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2>Register Inspection Notification</h2>
+        <button class="modal-close" onclick="closeNewModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-cols">
+
+          <!-- Left card: Inspection Details -->
+          <div class="modal-panel">
+            <div class="modal-panel-header">
+              <div class="modal-panel-icon panel-icon-form">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+              </div>
+              <div>
+                <div class="modal-panel-title">Inspection Details</div>
+                <div class="modal-panel-subtitle">Fill in the notification information</div>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <label class="form-label">Site / Property Name *</label>
+              <input type="text" class="form-input" id="f-site" placeholder="e.g. Al Barsha Tower Block A">
+            </div>
+            <div class="form-row">
+              <label class="form-label">Inspection Type</label>
+              <select class="form-select" id="f-type">
+                <option value="">— Select type —</option>
+                <option>Fire Safety</option>
+                <option>Civil Defense General</option>
+                <option>Electrical</option>
+                <option>HVAC / Mechanical</option>
+                <option>Health & Safety</option>
+                <option>Environmental</option>
+                <option>Other</option>
+              </select>
+            </div>
+            <div class="form-2col">
+              <div class="form-row">
+                <label class="form-label">Notification Date *</label>
+                <input type="date" class="form-input" id="f-notif-date">
+              </div>
+              <div class="form-row">
+                <label class="form-label">Inspection Date *</label>
+                <input type="date" class="form-input" id="f-insp-date">
+              </div>
+            </div>
+            <div class="form-row">
+              <label class="form-label">Civil Defense Reference No.</label>
+              <input type="text" class="form-input" id="f-ref" placeholder="CD portal reference number">
+            </div>
+            <div class="form-row" style="margin-bottom:0;">
+              <label class="form-label">Notes / Additional Details</label>
+              <textarea class="form-textarea" id="f-notes" rows="3" placeholder="Any additional context or preparation instructions…"></textarea>
+            </div>
+            <div id="f-preview" style="display:none;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px;margin-top:10px;font-size:.82rem;color:#065f46;"></div>
+          </div>
+
+          <!-- Right card: Email Notification -->
+          <div class="modal-panel">
+            <div class="modal-panel-header">
+              <div class="modal-panel-icon panel-icon-email">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+              </div>
+              <div>
+                <div class="modal-panel-title">Email Notification</div>
+                <div class="modal-panel-subtitle">Compose the ops team alert</div>
+              </div>
+              <div class="email-panel-actions">
+                <button class="btn-email-settings" onclick="toggleEmailSettings()">
+                  <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg>
+                  Settings
+                </button>
+              </div>
+            </div>
+
+            <!-- Settings drawer -->
+            <div class="email-settings-box" id="emailSettingsPanel">
+              <div style="font-size:.78rem;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.04em;margin-bottom:10px;">Default Recipients</div>
+              <div class="form-row">
+                <label class="form-label">Default To</label>
+                <input type="text" class="form-input-sm" id="es-default-to" placeholder="ops@company.com, manager@company.com">
+              </div>
+              <div class="form-row" style="margin-bottom:0;">
+                <label class="form-label">Default CC</label>
+                <input type="text" class="form-input-sm" id="es-default-cc" placeholder="admin@company.com">
+              </div>
+              <button class="save-settings-btn" onclick="saveEmailSettings()">Save Defaults</button>
+            </div>
+
+            <div class="form-row">
+              <label class="form-label">To *</label>
+              <input type="text" class="form-input-sm" id="f-email-to" placeholder="Comma-separated email addresses">
+            </div>
+            <div class="form-row">
+              <label class="form-label">CC</label>
+              <input type="text" class="form-input-sm" id="f-email-cc" placeholder="Comma-separated email addresses">
+            </div>
+            <div class="form-row">
+              <label class="form-label">Subject</label>
+              <div class="email-subject-row" id="f-email-subject">Fill in the form to generate subject…</div>
+            </div>
+            <div class="form-row" style="flex:1;display:flex;flex-direction:column;margin-bottom:0;">
+              <label class="form-label">Email Body</label>
+              <textarea class="email-body-area" id="f-email-body" placeholder="Auto-generated as you fill in the form…"></textarea>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-ghost" onclick="closeNewModal()">Cancel</button>
+        <button class="btn-primary" id="submitBtn" onclick="submitNotification()">Register &amp; Notify Ops Team</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='api-client.js') }}"></script>
+  <script>
+    // Wrapper: calls ApiClient and returns parsed JSON, throws on error
+    window.apiClient = {
+      _call: async function(method, url, data) {
+        let res;
+        if (method === 'GET')    res = await ApiClient.get(url);
+        else if (method === 'DELETE') res = await ApiClient.delete(url);
+        else res = await ApiClient.fetch(url, {
+          method: method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || res.statusText);
+        return json;
+      },
+      get:    function(url)       { return this._call('GET',    url); },
+      post:   function(url, data) { return this._call('POST',   url, data); },
+      patch:  function(url, data) { return this._call('PATCH',  url, data); },
+      delete: function(url)       { return this._call('DELETE', url); },
+    };
+  </script>
+  <script>
+    let currentFilter = '';
+    let allNotifs = [];
+
+    // ── Load stats
+    async function loadStats() {
+      try {
+        const res = await apiClient.get('/inspection/api/notifications/stats');
+        const s = res.stats;
+        document.getElementById('st-total').textContent     = s.total;
+        document.getElementById('st-pending').textContent   = s.pending;
+        document.getElementById('st-upcoming').textContent  = s.upcoming_7d;
+        document.getElementById('st-overdue').textContent   = s.overdue;
+        document.getElementById('st-completed').textContent = s.completed;
+      } catch(e) { /* silently fail */ }
+    }
+
+    // ── Load notifications
+    async function loadCDNotifications() {
+      try {
+        const url = '/inspection/api/notifications' + (currentFilter ? `?status=${currentFilter}` : '');
+        const res = await apiClient.get(url);
+        allNotifs = res.notifications || [];
+        renderCards(allNotifs);
+      } catch(e) {
+        document.getElementById('notifContent').innerHTML = `<div class="empty-state"><p>Could not load notifications.</p></div>`;
+      }
+    }
+
+    function setFilter(el, filter) {
+      currentFilter = filter;
+      document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+      el.classList.add('active');
+      loadCDNotifications();
+    }
+
+    function renderCards(notifs) {
+      const el = document.getElementById('notifContent');
+      if (!notifs.length) {
+        el.innerHTML = `<div class="empty-state">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+          <h3>No notifications found</h3>
+          <p>Register a Civil Defense notification to start tracking.</p>
+        </div>`;
+        return;
+      }
+      el.innerHTML = `<div class="notif-grid">${notifs.map(n => cardHTML(n)).join('')}</div>`;
+    }
+
+    function cardHTML(n) {
+      const dr = n.days_remaining;
+      let countdownClass = 'countdown-ok', countdownText = '';
+      if (dr === null) {
+        countdownText = 'Date unknown';
+        countdownClass = '';
+      } else if (dr < 0) {
+        countdownText = `${Math.abs(dr)} days overdue`;
+        countdownClass = 'countdown-urgent';
+      } else if (dr === 0) {
+        countdownText = 'Inspection TODAY';
+        countdownClass = 'countdown-urgent';
+      } else if (dr <= 3) {
+        countdownText = `${dr} day${dr===1?'':'s'} remaining — URGENT`;
+        countdownClass = 'countdown-urgent';
+      } else if (dr <= 7) {
+        countdownText = `${dr} days remaining — prepare now`;
+        countdownClass = 'countdown-warn';
+      } else {
+        countdownText = `${dr} days until inspection`;
+        countdownClass = 'countdown-ok';
+      }
+      const sbClass = {pending:'sb-pending',scheduled:'sb-scheduled',completed:'sb-completed',overdue:'sb-overdue'}[n.status]||'sb-pending';
+      const notifFmt = n.notification_date ? new Date(n.notification_date).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : '—';
+      const inspFmt  = n.inspection_date  ? new Date(n.inspection_date).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})  : '—';
+      const doneActions = n.status === 'completed' ? '' : `<button onclick="markComplete(${n.id})" class="complete-btn">✓ Mark Complete</button>`;
+      return `
+<div class="notif-card" id="ncard-${n.id}">
+  <div class="notif-card-top">
+    <span class="notif-id">${n.notif_id}</span>
+    <span class="status-badge ${sbClass}">${n.status}</span>
+  </div>
+  <div class="notif-site">${escHtml(n.site_name)}</div>
+  <div class="notif-type">${escHtml(n.inspection_type||'General Inspection')} ${n.civil_defense_ref ? '· Ref: '+escHtml(n.civil_defense_ref) : ''}</div>
+  <div class="notif-dates">
+    <div class="notif-date-box">
+      <div class="notif-date-label">Notified</div>
+      <div class="notif-date-val">${notifFmt}</div>
+    </div>
+    <div class="notif-date-box">
+      <div class="notif-date-label">Inspection</div>
+      <div class="notif-date-val">${inspFmt}</div>
+    </div>
+  </div>
+  ${countdownText ? `<div class="notif-countdown ${countdownClass}">${countdownText}</div>` : ''}
+  ${n.notes ? `<p style="font-size:.8rem;color:#6b7280;margin:0 0 10px;">${escHtml(n.notes)}</p>` : ''}
+  <div style="font-size:.75rem;color:#9ca3af;">${n.days_notice} days notice · Registered by ${escHtml(n.registered_by_name||'—')}</div>
+  <div class="notif-actions">
+    ${doneActions}
+    <button onclick="deleteNotif(${n.id})">Delete</button>
+  </div>
+</div>`;
+    }
+
+    async function markComplete(id) {
+      try {
+        await apiClient.patch(`/inspection/api/notifications/${id}`, { status: 'completed' });
+        loadCDNotifications();
+        loadStats();
+      } catch(e) { alert('Failed to update.'); }
+    }
+
+    async function deleteNotif(id) {
+      if (!confirm('Delete this notification?')) return;
+      try {
+        await apiClient.delete(`/inspection/api/notifications/${id}`);
+        loadCDNotifications();
+        loadStats();
+      } catch(e) { alert('Delete failed. Admin only.'); }
+    }
+
+    // ── Email settings (persisted in localStorage)
+    function loadEmailSettings() {
+      const defTo = localStorage.getItem('insp_email_default_to') || '';
+      const defCc = localStorage.getItem('insp_email_default_cc') || '';
+      document.getElementById('f-email-to').value = defTo;
+      document.getElementById('f-email-cc').value = defCc;
+      document.getElementById('es-default-to').value = defTo;
+      document.getElementById('es-default-cc').value = defCc;
+    }
+    function saveEmailSettings() {
+      const to = document.getElementById('es-default-to').value.trim();
+      const cc = document.getElementById('es-default-cc').value.trim();
+      localStorage.setItem('insp_email_default_to', to);
+      localStorage.setItem('insp_email_default_cc', cc);
+      document.getElementById('f-email-to').value = to;
+      document.getElementById('f-email-cc').value = cc;
+      document.getElementById('emailSettingsPanel').classList.remove('open');
+    }
+    function toggleEmailSettings() {
+      document.getElementById('emailSettingsPanel').classList.toggle('open');
+    }
+
+    // ── Auto-generate email subject + body from form fields
+    function updateEmailPreview() {
+      const site    = document.getElementById('f-site').value.trim() || '[Site Name]';
+      const type    = document.getElementById('f-type').value || 'General Inspection';
+      const nd      = document.getElementById('f-notif-date').value;
+      const id      = document.getElementById('f-insp-date').value;
+      const ref     = document.getElementById('f-ref').value.trim();
+      const notes   = document.getElementById('f-notes').value.trim();
+
+      const fmt = v => v ? new Date(v).toLocaleDateString('en-GB', {day:'2-digit',month:'long',year:'numeric'}) : '—';
+      const inspFmt  = fmt(id);
+      const notifFmt = fmt(nd);
+
+      let daysNotice = '—', daysRemaining = '—';
+      if (nd && id) {
+        const dn = Math.round((new Date(id) - new Date(nd)) / 86400000);
+        if (dn > 0) daysNotice = dn + ' day' + (dn === 1 ? '' : 's');
+        const dr = Math.round((new Date(id) - new Date()) / 86400000);
+        daysRemaining = dr >= 0 ? dr + ' day' + (dr === 1 ? '' : 's') : Math.abs(dr) + ' days overdue';
+      }
+
+      const subject = `[Amaan] Inspection Scheduled — ${site} (${inspFmt})`;
+      document.getElementById('f-email-subject').textContent = subject;
+
+      document.getElementById('f-email-body').value =
+`Dear Team,
+
+A Civil Defense inspection has been scheduled. Please review the details below and prepare accordingly.
+
+  Site / Property:    ${site}
+  Inspection Type:    ${type}${ref ? '\n  CD Reference:       ' + ref : ''}
+
+  Notification Date:  ${notifFmt}
+  Inspection Date:    ${inspFmt}
+  Days Notice:        ${daysNotice}
+  Days Remaining:     ${daysRemaining}${notes ? '\n\n  Notes: ' + notes : ''}
+
+Please assign the relevant team and ensure all preparation is completed before the inspection date.
+
+Regards,
+Amaan Application`;
+    }
+
+    // ── Register modal
+    function openNewModal() {
+      document.getElementById('newModal').classList.add('open');
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('f-notif-date').value = today;
+      document.getElementById('f-notif-date').min = today;
+      document.getElementById('f-insp-date').min = today;
+      loadEmailSettings();
+      updateEmailPreview();
+      document.getElementById('f-site').focus();
+    }
+    function closeNewModal() {
+      document.getElementById('newModal').classList.remove('open');
+      document.getElementById('emailSettingsPanel').classList.remove('open');
+    }
+
+    // preview days-notice + email on every change
+    ['f-notif-date','f-insp-date'].forEach(id => {
+      document.getElementById(id).addEventListener('change', updatePreview);
+      document.getElementById(id).addEventListener('change', updateEmailPreview);
+    });
+    ['f-site','f-type','f-ref','f-notes'].forEach(id => {
+      document.getElementById(id).addEventListener('input', updateEmailPreview);
+    });
+
+    function updatePreview() {
+      const nd = document.getElementById('f-notif-date').value;
+      const id = document.getElementById('f-insp-date').value;
+      const el = document.getElementById('f-preview');
+      if (nd && id) {
+        const days = Math.round((new Date(id) - new Date(nd)) / 86400000);
+        if (days > 0) {
+          el.style.display = ''; el.style.background = '#f0fdf4'; el.style.borderColor = '#bbf7d0'; el.style.color = '#065f46';
+          el.textContent = `ℹ️ ${days} day${days===1?'':'s'} of notice to prepare for this inspection.`;
+        } else {
+          el.style.display = '';
+          el.style.background = '#fef2f2'; el.style.borderColor = '#fca5a5'; el.style.color = '#dc2626';
+          el.textContent = 'Inspection date must be after notification date.';
+        }
+      } else { el.style.display = 'none'; }
+    }
+
+    async function submitNotification() {
+      const btn = document.getElementById('submitBtn');
+      const site = document.getElementById('f-site').value.trim();
+      const nd   = document.getElementById('f-notif-date').value;
+      const id   = document.getElementById('f-insp-date').value;
+      if (!site || !nd || !id) { alert('Please fill in all required fields.'); return; }
+      btn.disabled = true; btn.textContent = 'Registering…';
+      try {
+        await apiClient.post('/inspection/api/notifications', {
+          site_name: site,
+          inspection_type: document.getElementById('f-type').value,
+          notification_date: nd,
+          inspection_date: id,
+          civil_defense_ref: document.getElementById('f-ref').value.trim(),
+          notes: document.getElementById('f-notes').value.trim(),
+          email_to: document.getElementById('f-email-to').value.trim(),
+          email_cc: document.getElementById('f-email-cc').value.trim(),
+          email_subject: document.getElementById('f-email-subject').textContent.trim(),
+          email_body: document.getElementById('f-email-body').value.trim(),
+        });
+        closeNewModal();
+        loadCDNotifications();
+        loadStats();
+        ['f-site','f-type','f-notif-date','f-insp-date','f-ref','f-notes','f-email-to','f-email-cc','f-email-body'].forEach(i => document.getElementById(i).value = '');
+        document.getElementById('f-preview').style.display = 'none';
+        document.getElementById('f-email-subject').textContent = 'Fill in the form to generate subject…';
+      } catch(e) {
+        alert(e.message || 'Failed to register notification.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Register & Notify Ops Team';
+      }
+    }
+
+    function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+    // init
+    document.addEventListener('DOMContentLoaded', () => {
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('f-notif-date').min = today;
+      document.getElementById('f-insp-date').min = today;
+      loadStats();
+      loadCDNotifications();
+    });
+  </script>
+</body>
+</html>

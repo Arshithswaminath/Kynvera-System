@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -15,7 +15,7 @@
   <style>
     :root {
       --primary: #d21725;
-      --primary-light: #1a7a4c;
+      --primary-light: #e8323f;
       --secondary: #6366f1;
     }
     /* Inspection module: match HR module - green gradient at top */
@@ -33,6 +33,24 @@
     }
     .inspection-stats-widget .dashboard-stats-grid {
       margin-bottom: 0;
+    }
+    .inspection-stats-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+    /* Make stat cards behave as quick links */
+    a.dashboard-stat-card {
+      text-decoration: none;
+      color: inherit;
+      display: block;
+      transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
+      cursor: pointer;
+    }
+    a.dashboard-stat-card:hover,
+    a.dashboard-stat-card:focus-visible {
+      transform: translateY(-2px);
+      border-color: var(--primary-light);
+      box-shadow: 0 6px 18px rgba(210, 23, 37, 0.10);
+      outline: none;
     }
   </style>
 </head>
@@ -62,27 +80,35 @@
             <div class="dashboard-widget-bar"></div>
           </div>
           <div class="dashboard-widget-body">
-            <div class="dashboard-stats-grid" id="inspection-stats-grid">
-              <div class="dashboard-stat-card">
+            <div class="dashboard-stats-grid inspection-stats-grid" id="inspection-stats-grid">
+              <a class="dashboard-stat-card"
+                 href="/workflow/submitted-forms?scope=inspection"
+                 title="View inspection forms you submitted">
                 <div class="dashboard-stat-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div>
                 <span class="dashboard-stat-label" id="insp-stat-label-0">Forms submitted</span>
                 <span class="dashboard-stat-value" id="insp-stat-value-0">—</span>
-              </div>
-              <div class="dashboard-stat-card">
-                <div class="dashboard-stat-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg></div>
-                <span class="dashboard-stat-label" id="insp-stat-label-1">Pending review</span>
+              </a>
+              <a class="dashboard-stat-card"
+                 href="/workflow/submitted-forms?scope=inspection&workflow=pending"
+                 title="Your submitted inspection forms still in progress">
+                <div class="dashboard-stat-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
+                <span class="dashboard-stat-label" id="insp-stat-label-1">Pending inspections</span>
                 <span class="dashboard-stat-value" id="insp-stat-value-1">—</span>
-              </div>
-              <div class="dashboard-stat-card">
-                <div class="dashboard-stat-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg></div>
-                <span class="dashboard-stat-label" id="insp-stat-label-2">Unique submitters</span>
+              </a>
+              <a class="dashboard-stat-card"
+                 href="/workflow/submitted-forms?scope=inspection&workflow=approved"
+                 title="Your submitted inspection forms that are approved">
+                <div class="dashboard-stat-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
+                <span class="dashboard-stat-label" id="insp-stat-label-2">Approved inspections</span>
                 <span class="dashboard-stat-value" id="insp-stat-value-2">—</span>
-              </div>
-              <div class="dashboard-stat-card">
+              </a>
+              <a class="dashboard-stat-card"
+                 href="/workflow/submitted-forms?scope=inspection"
+                 title="Your inspection completion rate (approved ÷ forms you submitted)">
                 <div class="dashboard-stat-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg></div>
                 <span class="dashboard-stat-label" id="insp-stat-label-3">Completion rate</span>
                 <span class="dashboard-stat-value" id="insp-stat-value-3">—</span>
-              </div>
+              </a>
             </div>
           </div>
         </div>
@@ -95,6 +121,16 @@
     <div class="modules-inner">
       <h2 class="modules-section-label">Inspection Forms</h2>
       <div class="modules-grid" id="inspectionFormsGrid">
+        <!-- Civil Defense Notifications (Amaan-specific) -->
+        <a href="/inspection/notifications" class="module-card" id="inspection-cd-notif" style="display: none;">
+          <div class="card-body">
+            <span class="module-number">CD Tracker</span>
+            <div class="module-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0M3.124 7.5A8.969 8.969 0 0 1 5.292 3m13.416 0a8.969 8.969 0 0 1 2.168 4.5" /></svg></div>
+            <h2 class="module-title">CD Notifications</h2>
+            <p class="module-description">Log and track Civil Defense regulatory inspection notifications. Notify Operations on upcoming dates.</p>
+            <span class="module-arrow">Open CD Tracker <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
+          </div>
+        </a>
         <a href="/hvac-mep/form" class="module-card" id="inspection-hvac" style="display: none;">
           <div class="card-body">
             <span class="module-number">01 &mdash; Inspection</span>
@@ -128,7 +164,7 @@
 
   <footer class="footer">
     <div class="footer-inner">
-      <div class="footer-brand">Injaaz</div>
+      <div class="footer-brand">AMAAN</div>
       <p class="footer-copy">© {{ now().year }} Amaan Application / built by <span class="footer-built-by-name">Arshith Swaminath P</span></p>
     </div>
   </footer>
@@ -163,9 +199,16 @@
       const hvac = document.getElementById('inspection-hvac');
       const civil = document.getElementById('inspection-civil');
       const cleaning = document.getElementById('inspection-cleaning');
+      const cdNotif = document.getElementById('inspection-cd-notif');
       if (hvac) hvac.style.display = (isAdmin || user.access_hvac) ? 'flex' : 'none';
       if (civil) civil.style.display = (isAdmin || user.access_civil) ? 'flex' : 'none';
       if (cleaning) cleaning.style.display = (isAdmin || user.access_cleaning) ? 'flex' : 'none';
+      if (cdNotif) {
+        const showCd = isAdmin || user.access_business_development ||
+          user.access_hvac || user.access_civil || user.access_cleaning ||
+          ['business_development', 'operations_manager', 'general_manager'].includes(user.designation);
+        cdNotif.style.display = showCd ? 'flex' : 'none';
+      }
     }
   </script>
   <script src="{{ url_for('static', filename='pwa-install.js') }}" defer></script>
@@ -174,4 +217,3 @@
   <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 </body>
 </html>
-

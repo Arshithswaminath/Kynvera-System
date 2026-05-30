@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+  {% include 'partials/caveat_font.html' ignore missing %}
+  <title>Finance — Amaan</title>
+  <meta name="theme-color" content="#d21725">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
+  <style>
+    :root {
+      --fin-accent: #d21725;
+      --fin-accent-dark: #a8121e;
+      --fin-accent-light: #e8323f;
+      --fin-bg: #f5f6f8;
+      --fin-surface: #ffffff;
+      --fin-border: #e5e7eb;
+      --fin-border-soft: #f0f1f4;
+      --fin-text: #0f172a;
+      --fin-text-soft: #334155;
+      --fin-muted: #64748b;
+      --fin-success: #16a34a;
+      --fin-success-bg: #dcfce7;
+      --fin-warning: #d97706;
+      --fin-warning-bg: #fef3c7;
+      --fin-danger: #dc2626;
+      --fin-danger-bg: #fee2e2;
+      --fin-info: #0284c7;
+      --fin-info-bg: #e0f2fe;
+      --nav-top: 5.5rem;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body.has-main-nav {
+      padding-top: var(--nav-top);
+      background: var(--fin-bg) !important;
+      color: var(--fin-text) !important;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Inter", "Helvetica Neue", Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* ── Shared module container ─────────────────────────── */
+    .fin-container { max-width: 1180px; margin: 0 auto; }
+
+    /* ── Hero header ────────────────────────────────────── */
+    .fin-hero {
+      background: transparent;
+      padding: 28px 32px 4px;
+      position: relative;
+    }
+    .fin-hero-inner { position: relative; padding-left: 4px; max-width: 1180px; margin: 0 auto; }
+    .fin-breadcrumb {
+      display: inline-flex; align-items: center; gap: 6px;
+      color: var(--fin-accent); text-decoration: none;
+      font-size: .78rem; font-weight: 600;
+      padding: 4px 10px;
+      background: rgba(210,23,37,.08);
+      border: 1px solid rgba(210,23,37,.18);
+      border-radius: 999px; margin-bottom: 12px;
+    }
+    .fin-breadcrumb:hover { background: rgba(210,23,37,.14); }
+    .fin-title {
+      font-size: 1.85rem; font-weight: 800; letter-spacing: -.025em;
+      color: var(--fin-text); margin: 0 0 6px;
+      display: flex; align-items: center; gap: 14px;
+    }
+    .fin-title-icon {
+      width: 42px; height: 42px;
+      background: linear-gradient(135deg, var(--fin-accent) 0%, var(--fin-accent-light) 100%);
+      border-radius: 11px;
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; box-shadow: 0 6px 16px rgba(210,23,37,.28);
+    }
+    .fin-sub { color: var(--fin-muted); font-size: .9rem; margin: 0; max-width: 620px; }
+    .fin-nav {
+      display: inline-flex; gap: 3px; flex-wrap: wrap;
+      margin-top: 20px; padding: 4px;
+      background: #fff; border: 1px solid var(--fin-border);
+      border-radius: 11px; box-shadow: 0 2px 8px rgba(0,0,0,.04);
+    }
+    .fin-nav a {
+      padding: 8px 16px; border-radius: 8px;
+      font-size: .85rem; font-weight: 600; text-decoration: none;
+      color: var(--fin-muted);
+      display: inline-flex; align-items: center; gap: 7px;
+      transition: all .18s;
+    }
+    .fin-nav a:hover { color: var(--fin-text); background: #f3f4f6; }
+    .fin-nav a.active {
+      background: linear-gradient(135deg, var(--fin-accent) 0%, var(--fin-accent-light) 100%);
+      color: #fff; box-shadow: 0 4px 12px rgba(210,23,37,.3);
+    }
+    .fin-nav a svg { width: 15px; height: 15px; }
+
+    /* ── Main wrap ──────────────────────────────────────── */
+    .fin-wrap { padding: 24px 32px 60px; max-width: 1180px; margin: 0 auto; }
+    .section-title {
+      font-size: 1rem; font-weight: 700;
+      color: var(--fin-text);
+      margin: 0 0 14px;
+      display: flex; align-items: center; gap: 8px;
+      letter-spacing: -.01em;
+    }
+    .section-title .live-dot {
+      width: 7px; height: 7px;
+      background: var(--fin-success); border-radius: 50%;
+      box-shadow: 0 0 0 3px rgba(22,163,74,.18);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .55; } }
+
+    /* ── Stat cards ─────────────────────────────────────── */
+    .stat-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+    @media (max-width: 980px) { .stat-row { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 480px) { .stat-row { grid-template-columns: 1fr; } }
+    .stat-card {
+      background: var(--fin-surface);
+      border: 1px solid var(--fin-border);
+      border-radius: 13px;
+      padding: 18px;
+      position: relative; overflow: hidden;
+      transition: transform .15s, box-shadow .15s;
+    }
+    .stat-card:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(0,0,0,.07); }
+    .stat-card::before {
+      content: ""; position: absolute; top: 0; left: 0;
+      width: 3px; height: 100%;
+      background: var(--fin-accent);
+    }
+    .stat-card.green::before { background: var(--fin-success); }
+    .stat-card.amber::before { background: var(--fin-warning); }
+    .stat-card.blue::before  { background: var(--fin-info); }
+    .stat-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+    .stat-label { font-size: .7rem; font-weight: 700; color: var(--fin-muted); text-transform: uppercase; letter-spacing: .06em; }
+    .stat-ico {
+      width: 30px; height: 30px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(210,23,37,.08); color: var(--fin-accent);
+    }
+    .stat-ico.green { background: var(--fin-success-bg); color: var(--fin-success); }
+    .stat-ico.amber { background: var(--fin-warning-bg); color: var(--fin-warning); }
+    .stat-ico.blue  { background: var(--fin-info-bg);    color: var(--fin-info); }
+    .stat-ico svg { width: 17px; height: 17px; }
+    .stat-val { font-size: 1.7rem; font-weight: 800; color: var(--fin-text); line-height: 1.1; letter-spacing: -.025em; }
+    .stat-val.red { color: var(--fin-accent); }
+    .stat-val.green { color: var(--fin-success); }
+    .stat-trend { font-size: .72rem; color: var(--fin-muted); margin-top: 6px; font-weight: 500; }
+
+    /* ── Workflow tabs + queue ─────────────────────────── */
+    .queue-card {
+      background: var(--fin-surface);
+      border: 1px solid var(--fin-border);
+      border-radius: 14px;
+      overflow: hidden;
+      margin-bottom: 24px;
+    }
+    .queue-head {
+      display: flex; align-items: center;
+      padding: 16px 22px;
+      border-bottom: 1px solid var(--fin-border-soft);
+      gap: 12px; flex-wrap: wrap;
+    }
+    .queue-head h3 {
+      margin: 0; font-size: 1rem; font-weight: 700;
+      display: flex; align-items: center; gap: 9px;
+      letter-spacing: -.01em;
+    }
+    .queue-head h3 .h3-ico {
+      width: 26px; height: 26px; border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
+      background: linear-gradient(135deg, var(--fin-accent) 0%, var(--fin-accent-light) 100%);
+      color: #fff;
+    }
+    .queue-head h3 .h3-ico svg { width: 15px; height: 15px; }
+    .queue-tabs {
+      display: inline-flex; gap: 2px;
+      background: #f3f4f6; border-radius: 9px; padding: 3px;
+      margin-left: auto;
+    }
+    .queue-tab {
+      padding: 6px 14px; border: none; background: transparent;
+      font-size: .8rem; font-weight: 600; color: var(--fin-muted);
+      border-radius: 7px; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 6px;
+      transition: all .15s;
+    }
+    .queue-tab:hover { color: var(--fin-text); }
+    .queue-tab.active {
+      background: #fff; color: var(--fin-accent);
+      box-shadow: 0 1px 3px rgba(0,0,0,.08);
+    }
+    .queue-tab .count {
+      background: rgba(210,23,37,.1); color: var(--fin-accent);
+      padding: 1px 7px; border-radius: 999px;
+      font-size: .68rem; font-weight: 700;
+    }
+    .queue-tab.active .count { background: var(--fin-accent); color: #fff; }
+
+    /* ── Queue rows ─────────────────────────────────────── */
+    .queue-body { padding: 8px; }
+    .queue-row {
+      display: grid;
+      grid-template-columns: minmax(180px, 1.4fr) 1.2fr auto auto;
+      gap: 14px; align-items: center;
+      padding: 14px 14px;
+      border-radius: 10px;
+      transition: background .15s;
+      border: 1px solid transparent;
+    }
+    .queue-row:hover { background: #fafbfc; border-color: var(--fin-border-soft); }
+    .queue-row + .queue-row { margin-top: 4px; }
+    .qr-id {
+      font-size: .92rem; font-weight: 800; color: var(--fin-text);
+      text-decoration: none;
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .qr-id:hover { color: var(--fin-accent); }
+    .qr-id .qr-id-tag {
+      background: var(--fin-danger-bg); color: var(--fin-accent);
+      padding: 1.5px 7px; border-radius: 5px;
+      font-size: .7rem; font-weight: 700;
+    }
+    .qr-title { font-size: .82rem; color: var(--fin-text-soft); margin-top: 3px; line-height: 1.3; }
+    .qr-meta { font-size: .74rem; color: var(--fin-muted); margin-top: 4px; display: flex; gap: 10px; flex-wrap: wrap; }
+    .qr-meta span { display: inline-flex; align-items: center; gap: 4px; }
+    .qr-amount { font-size: .92rem; font-weight: 800; color: var(--fin-text); }
+    .qr-amount-label { font-size: .68rem; color: var(--fin-muted); margin-top: 1px; text-transform: uppercase; letter-spacing: .04em; font-weight: 600; }
+    .qr-docs { display: flex; gap: 6px; flex-wrap: wrap; }
+    .qr-doc-btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 5px 10px; border-radius: 7px;
+      background: #f1f5f9; color: var(--fin-text-soft);
+      font-size: .73rem; font-weight: 600;
+      text-decoration: none;
+      transition: all .15s;
+      border: 1px solid transparent;
+    }
+    .qr-doc-btn:hover { background: var(--fin-info-bg); color: var(--fin-info); border-color: rgba(2,132,199,.2); }
+    .qr-doc-btn svg { width: 13px; height: 13px; }
+    .qr-actions { display: flex; gap: 8px; align-items: center; }
+
+    /* ── Workflow status pipeline ──────────────────────── */
+    .qr-status {
+      display: flex; align-items: center; gap: 4px;
+      font-size: .68rem; font-weight: 600;
+      color: var(--fin-muted);
+      margin-top: 6px;
+    }
+    .qr-status-step {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 7px; border-radius: 999px;
+      background: var(--fin-border-soft);
+    }
+    .qr-status-step.done   { background: var(--fin-success-bg); color: #166534; }
+    .qr-status-step.active { background: var(--fin-warning-bg); color: #92400e; box-shadow: 0 0 0 2px rgba(217,119,6,.18); }
+    .qr-status-sep { color: #cbd5e1; }
+
+    /* ── Buttons ────────────────────────────────────────── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 14px; border-radius: 8px;
+      font-size: .82rem; font-weight: 600; cursor: pointer;
+      border: none; text-decoration: none; transition: all .15s;
+    }
+    .btn-sm { padding: 6.5px 11px; font-size: .76rem; }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--fin-accent) 0%, var(--fin-accent-light) 100%);
+      color: #fff; box-shadow: 0 3px 8px rgba(210,23,37,.25);
+    }
+    .btn-primary:hover { filter: brightness(1.05); transform: translateY(-1px); }
+    .btn-outline {
+      background: #fff; border: 1.5px solid var(--fin-border);
+      color: var(--fin-text-soft);
+    }
+    .btn-outline:hover { background: #fafbfc; border-color: var(--fin-accent); color: var(--fin-accent); }
+    .btn-green {
+      background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%);
+      color: #fff; box-shadow: 0 3px 8px rgba(22,163,74,.2);
+    }
+    .btn-green:hover { filter: brightness(1.05); transform: translateY(-1px); }
+
+    /* ── Badges ────────────────────────────────────────── */
+    .badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3.5px 9px; border-radius: 999px;
+      font-size: .68rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .03em;
+    }
+    .badge-warn    { background: var(--fin-warning-bg); color: #92400e; }
+    .badge-success { background: var(--fin-success-bg); color: #166534; }
+    .badge-danger  { background: var(--fin-danger-bg);  color: #991b1b; }
+    .badge-info    { background: var(--fin-info-bg);    color: #075985; }
+
+    /* ── Empty state ───────────────────────────────────── */
+    .empty-state {
+      text-align: center; padding: 40px 20px;
+      color: var(--fin-muted); font-size: .9rem;
+    }
+    .empty-state svg { width: 48px; height: 48px; margin: 0 auto 14px; display: block; color: #cbd5e1; }
+    .empty-state.success { color: var(--fin-success); }
+    .empty-state.success svg { color: var(--fin-success); }
+    .empty-state-hint { font-size: .8rem; margin-top: 6px; color: var(--fin-muted); }
+
+    /* ── Sample data banner ────────────────────────────── */
+    .sample-banner {
+      background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+      border: 1px solid #fbbf24;
+      border-radius: 11px; padding: 11px 18px; margin-bottom: 18px;
+      display: flex; align-items: center; gap: 10px;
+      font-size: .85rem; color: #78350f;
+    }
+    .sample-banner svg { width: 18px; height: 18px; flex-shrink: 0; color: #a16207; }
+
+    /* ── Modal ─────────────────────────────────────────── */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(15,23,42,.55);
+      backdrop-filter: blur(4px);
+      z-index: 9999;
+      display: none;
+      align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    .modal-overlay.show { display: flex; animation: fade .2s; }
+    @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+    .modal {
+      background: #fff; border-radius: 16px;
+      width: 100%; max-width: 540px;
+      max-height: 90vh; overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,.3);
+      animation: pop .25s cubic-bezier(.16,1,.3,1);
+    }
+    @keyframes pop { from { transform: scale(.92); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .modal-head {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--fin-border-soft);
+      display: flex; align-items: center; gap: 12px;
+    }
+    .modal-head h3 { margin: 0; font-size: 1.05rem; font-weight: 800; letter-spacing: -.01em; }
+    .modal-head .h3-ico {
+      width: 30px; height: 30px; border-radius: 8px;
+      background: linear-gradient(135deg, var(--fin-accent) 0%, var(--fin-accent-light) 100%);
+      color: #fff; display: flex; align-items: center; justify-content: center;
+    }
+    .modal-head .h3-ico svg { width: 16px; height: 16px; }
+    .modal-close {
+      margin-left: auto; background: transparent; border: none;
+      cursor: pointer; color: var(--fin-muted); padding: 4px;
+      border-radius: 6px;
+    }
+    .modal-close:hover { background: #f3f4f6; color: var(--fin-text); }
+    .modal-body { padding: 22px 24px; }
+    .modal-body .ticket-snapshot {
+      background: #fafbfc; border: 1px solid var(--fin-border-soft);
+      border-radius: 10px; padding: 14px 16px; margin-bottom: 16px;
+    }
+    .ts-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: .82rem; }
+    .ts-row span:first-child { color: var(--fin-muted); }
+    .ts-row span:last-child { color: var(--fin-text); font-weight: 600; }
+    .form-field { margin-bottom: 14px; }
+    .form-label {
+      display: block; font-size: .78rem; font-weight: 600;
+      color: var(--fin-text-soft); margin-bottom: 6px;
+    }
+    .form-input, .form-textarea {
+      width: 100%; padding: 10px 12px;
+      border: 1.5px solid var(--fin-border); border-radius: 9px;
+      font-size: .9rem; font-family: inherit;
+      background: #fff; color: var(--fin-text);
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .form-input:focus, .form-textarea:focus {
+      outline: none; border-color: var(--fin-accent);
+      box-shadow: 0 0 0 3px rgba(210,23,37,.1);
+    }
+    .form-textarea { resize: vertical; min-height: 70px; }
+    .form-hint { font-size: .72rem; color: var(--fin-muted); margin-top: 4px; }
+    .modal-foot {
+      padding: 16px 24px; border-top: 1px solid var(--fin-border-soft);
+      display: flex; justify-content: flex-end; gap: 10px;
+      background: #fafbfc; border-radius: 0 0 16px 16px;
+    }
+
+    /* ── Activity ──────────────────────────────────────── */
+    .activity { display: flex; flex-direction: column; gap: 14px; }
+    .activity-item { display: flex; gap: 12px; align-items: flex-start; }
+    .activity-dot {
+      width: 9px; height: 9px; border-radius: 50%; margin-top: 6px;
+      flex-shrink: 0;
+      box-shadow: 0 0 0 3px #fff, 0 0 0 4px var(--fin-border);
+    }
+    .activity-dot.red   { background: var(--fin-accent); }
+    .activity-dot.green { background: var(--fin-success); }
+    .activity-dot.amber { background: var(--fin-warning); }
+    .activity-dot.blue  { background: var(--fin-info); }
+    .activity-body { flex: 1; }
+    .activity-title { font-size: .86rem; font-weight: 600; color: var(--fin-text); line-height: 1.4; }
+    .activity-time { font-size: .72rem; color: var(--fin-muted); margin-top: 2px; }
+
+    .grid-2 { display: grid; grid-template-columns: 1.6fr 1fr; gap: 16px; }
+    @media (max-width: 1100px) { .grid-2 { grid-template-columns: 1fr; } }
+    .dash-card {
+      background: var(--fin-surface);
+      border: 1px solid var(--fin-border);
+      border-radius: 13px;
+      padding: 20px 22px;
+    }
+    .dash-card h3 {
+      font-size: .95rem; font-weight: 700; margin: 0 0 16px;
+      color: var(--fin-text);
+      display: flex; align-items: center; gap: 9px;
+      letter-spacing: -.01em;
+    }
+    .dash-card h3 .h3-ico {
+      width: 26px; height: 26px; border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
+      background: linear-gradient(135deg, var(--fin-accent) 0%, var(--fin-accent-light) 100%);
+      color: #fff;
+    }
+    .dash-card h3 .h3-ico svg { width: 15px; height: 15px; }
+
+    /* ── Toast notification ────────────────────────────── */
+    .toast {
+      position: fixed; bottom: 30px; right: 30px;
+      background: #0f172a; color: #fff;
+      padding: 13px 20px; border-radius: 11px;
+      font-size: .88rem; font-weight: 600;
+      display: flex; align-items: center; gap: 10px;
+      box-shadow: 0 15px 40px rgba(0,0,0,.2);
+      z-index: 10000;
+      opacity: 0; transform: translateY(20px);
+      transition: opacity .25s, transform .25s;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast.success { background: #16a34a; }
+    .toast svg { width: 18px; height: 18px; }
+
+    @media (max-width: 760px) {
+      .queue-row { grid-template-columns: 1fr; gap: 8px; }
+      .qr-actions { width: 100%; justify-content: flex-end; }
+      .fin-wrap, .fin-hero { padding-left: 18px; padding-right: 18px; }
+    }
+  </style>
+</head>
+<body class="has-main-nav">
+  {% set active_page = 'finance' %}
+  {% include 'partials/main_navbar.html' with context %}
+
+  <!-- Hero -->
+  <header class="fin-hero">
+    <div class="fin-hero-inner">
+      <a href="/dashboard" class="fin-breadcrumb">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" width="12" height="12"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18"/></svg>
+        Dashboard
+      </a>
+      <h1 class="fin-title">
+        <span class="fin-title-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="22" height="22"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25Z"/></svg>
+        </span>
+        Finance &amp; Invoicing
+      </h1>
+      <p class="fin-sub">Process completed service tickets — review service reports, log ERP invoice references, and trigger billing notifications to clients and operations.</p>
+
+      <nav class="fin-nav">
+        <a href="/finance/" class="active">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6Z"/></svg>
+          Invoice Queue
+        </a>
+        <a href="/finance/contracts">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664"/></svg>
+          Contracts
+        </a>
+        <a href="/finance/reports">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>
+          Monthly Reports
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="fin-wrap">
+    <div class="sample-banner" id="sampleBanner" style="display:none;">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z"/></svg>
+      <div><strong>Demo data shown</strong> — once supervisors close tickets through GM approval, real items will appear in the queue automatically.</div>
+    </div>
+
+    <h2 class="section-title">
+      <span class="live-dot"></span>
+      Invoice Processing Overview
+      <span style="margin-left:auto;font-size:.74rem;font-weight:500;color:var(--fin-muted);" id="lastUpdated">Live — auto-refresh every 30s</span>
+    </h2>
+
+    <!-- Stat cards -->
+    <div class="stat-row">
+      <div class="stat-card">
+        <div class="stat-top">
+          <span class="stat-label">Awaiting Invoice</span>
+          <span class="stat-ico">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+          </span>
+        </div>
+        <div class="stat-val red" id="s-pending">—</div>
+        <div class="stat-trend">Pending finance action</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-top">
+          <span class="stat-label">Completed Today</span>
+          <span class="stat-ico green">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+          </span>
+        </div>
+        <div class="stat-val green" id="s-today">—</div>
+        <div class="stat-trend">ERP invoices logged</div>
+      </div>
+      <div class="stat-card blue">
+        <div class="stat-top">
+          <span class="stat-label">This Month</span>
+          <span class="stat-ico blue">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25"/></svg>
+          </span>
+        </div>
+        <div class="stat-val" id="s-month">—</div>
+        <div class="stat-trend">Invoices processed</div>
+      </div>
+      <div class="stat-card amber">
+        <div class="stat-top">
+          <span class="stat-label">All-time Closed</span>
+          <span class="stat-ico amber">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25"/></svg>
+          </span>
+        </div>
+        <div class="stat-val" id="s-total">—</div>
+        <div class="stat-trend">Total ERP invoices created</div>
+      </div>
+    </div>
+
+    <!-- Main queue -->
+    <div class="queue-card">
+      <div class="queue-head">
+        <h3>
+          <span class="h3-ico">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664"/></svg>
+          </span>
+          Invoice Workflow Queue
+        </h3>
+        <div class="queue-tabs">
+          <button class="queue-tab active" data-tab="pending" onclick="switchTab('pending')">
+            Awaiting Action
+            <span class="count" id="tab-pending-count">0</span>
+          </button>
+          <button class="queue-tab" data-tab="completed" onclick="switchTab('completed')">
+            Completed
+            <span class="count" id="tab-completed-count">0</span>
+          </button>
+        </div>
+      </div>
+      <div class="queue-body" id="queueBody">
+        <div class="empty-state">
+          <div style="display:inline-block;width:30px;height:30px;border:3px solid #e5e7eb;border-top-color:var(--fin-accent);border-radius:50%;animation:spin .8s linear infinite;"></div>
+          <div style="margin-top:14px;">Loading queue…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Activity log -->
+    <div class="grid-2">
+      <div class="dash-card">
+        <h3>
+          <span class="h3-ico">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625Z"/></svg>
+          </span>
+          Workflow Pipeline
+        </h3>
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div style="display:flex;align-items:center;gap:14px;padding:12px;background:#fafbfc;border-radius:10px;">
+            <div style="width:34px;height:34px;border-radius:9px;background:var(--fin-success-bg);color:var(--fin-success);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+            </div>
+            <div style="flex:1;">
+              <div style="font-weight:700;font-size:.88rem;">1 · Service Ticket Closed</div>
+              <div style="font-size:.78rem;color:var(--fin-muted);margin-top:2px;">Supervisor completes work + uploads service report</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:14px;padding:12px;background:#fafbfc;border-radius:10px;">
+            <div style="width:34px;height:34px;border-radius:9px;background:var(--fin-success-bg);color:var(--fin-success);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-5.25h5.25M7.5 15h3M3.375 5.25c-.621 0-1.125.504-1.125 1.125v3.026a2.999 2.999 0 0 1 0 5.198v3.026c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125v-3.026a2.999 2.999 0 0 1 0-5.198V6.375c0-.621-.504-1.125-1.125-1.125H3.375Z"/></svg>
+            </div>
+            <div style="flex:1;">
+              <div style="font-weight:700;font-size:.88rem;">2 · Ticket Invoice Generated</div>
+              <div style="font-size:.78rem;color:var(--fin-muted);margin-top:2px;">System creates internal invoice PDF + auto-routes to Finance</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:14px;padding:12px;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;">
+            <div style="width:34px;height:34px;border-radius:9px;background:var(--fin-warning-bg);color:var(--fin-warning);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125"/></svg>
+            </div>
+            <div style="flex:1;">
+              <div style="font-weight:700;font-size:.88rem;color:#92400e;">3 · ERP Invoice Creation <span class="badge badge-warn" style="margin-left:6px;">Current Step</span></div>
+              <div style="font-size:.78rem;color:#92400e;margin-top:2px;">Finance creates invoice in ERP and logs the reference number here</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:14px;padding:12px;background:#fafbfc;border-radius:10px;opacity:.7;">
+            <div style="width:34px;height:34px;border-radius:9px;background:var(--fin-info-bg);color:var(--fin-info);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"/></svg>
+            </div>
+            <div style="flex:1;">
+              <div style="font-weight:700;font-size:.88rem;">4 · Auto-email Notifications</div>
+              <div style="font-size:.78rem;color:var(--fin-muted);margin-top:2px;">Supervisor + Reporter + Client notified, ticket fully closes</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="dash-card">
+        <h3>
+          <span class="h3-ico">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+          </span>
+          Recent Activity
+        </h3>
+        <div class="activity" id="activityList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Process ERP Invoice Modal ─────────────────────── -->
+  <div class="modal-overlay" id="processModal">
+    <div class="modal">
+      <div class="modal-head">
+        <span class="h3-ico">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z"/></svg>
+        </span>
+        <h3>Log ERP Invoice Reference</h3>
+        <button class="modal-close" onclick="closeModal()">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="ticket-snapshot" id="modalSnapshot"></div>
+        <form id="processForm" onsubmit="submitProcess(event)">
+          <div class="form-field">
+            <label class="form-label" for="erp_invoice_number">ERP Invoice Number <span style="color:var(--fin-danger);">*</span></label>
+            <input type="text" class="form-input" id="erp_invoice_number" placeholder="e.g. INV-2026-04532" required>
+            <div class="form-hint">Enter the invoice reference exactly as it appears in your ERP system (SAP / Oracle / Tally / Zoho etc.).</div>
+          </div>
+          <div class="form-field">
+            <label class="form-label" for="erp_invoice_notes">Notes (optional)</label>
+            <textarea class="form-textarea" id="erp_invoice_notes" placeholder="Any internal notes about this invoice — payment terms, special conditions, etc."></textarea>
+          </div>
+          <div style="background:#fef3c7;border:1px solid #fbbf24;border-radius:9px;padding:10px 12px;font-size:.78rem;color:#78350f;display:flex;gap:8px;align-items:flex-start;">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="16" height="16" style="flex-shrink:0;color:#a16207;margin-top:1px;"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <div>Confirming will mark the ticket fully closed and automatically email the supervisor, reporter, and finance team a copy of the closed report.</div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-green" onclick="submitProcess(event)">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.4" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+          Confirm &amp; Send Email
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Toast ─────────────────────────────────────────── -->
+  <div class="toast" id="toast">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.4" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+    <span id="toastMsg">Invoice confirmed</span>
+  </div>
+
+  <script src="{{ url_for('static', filename='api-client.js') }}"></script>
+  <script>
+    let currentTab = 'pending';
+    let usingSample = false;
+    let activeTicketId = null;
+
+    // ─── Sample / demo workflow data ─────────────────────
+    const SAMPLE_QUEUE = {
+      pending: [
+        { ticket_id: 'TKT-2426', title: 'HVAC Quarterly Maintenance — Tower B Roof Units', project: 'Al Reem Tower', property: 'Block B', selling_price: 8400, total_cost: 6850, margin_pct: 22.5, supervisor_name: 'Khalid Al Mansouri', reporter_name: 'Maintenance Desk', resolved_at: '2026-05-28T11:20:00', gm_approved_at: '2026-05-28T15:45:00' },
+        { ticket_id: 'TKT-2425', title: 'Emergency AC Repair — 4th Floor Conference Room', project: 'Marina Heights', property: 'Tower 2', selling_price: 3250, total_cost: 2620, margin_pct: 18.2, supervisor_name: 'Rashid Al Suwaidi', reporter_name: 'Building Manager', resolved_at: '2026-05-28T09:15:00', gm_approved_at: '2026-05-28T14:30:00' },
+        { ticket_id: 'TKT-2423', title: 'Annual Pest Control Service — Common Areas', project: 'Sky Gardens', property: 'Phase 1', selling_price: 4800, total_cost: 3680, margin_pct: 26.4, supervisor_name: 'Mohammed Khan', reporter_name: 'HOA Office', resolved_at: '2026-05-27T16:00:00', gm_approved_at: '2026-05-28T10:15:00' },
+        { ticket_id: 'TKT-2421', title: 'Fire Alarm System Annual Inspection', project: 'Galleria Mall', property: 'East Wing', selling_price: 6900, total_cost: 5400, margin_pct: 21.7, supervisor_name: 'Saeed Al Hosani', reporter_name: 'Operations Manager', resolved_at: '2026-05-27T13:45:00', gm_approved_at: '2026-05-27T17:20:00' },
+        { ticket_id: 'TKT-2420', title: 'Deep Cleaning — Lobby & Common Areas', project: 'Capital Heights', property: 'Lobby', selling_price: 5400, total_cost: 4200, margin_pct: 19.3, supervisor_name: 'Ali Hassan', reporter_name: 'Property Manager', resolved_at: '2026-05-27T10:30:00', gm_approved_at: '2026-05-27T15:00:00' },
+      ],
+      completed: [
+        { ticket_id: 'TKT-2418', title: 'Plumbing — Burst Pipe Repair Apt 1402', project: 'Marina Heights', property: 'Tower 1', selling_price: 1850, total_cost: 1480, margin_pct: 20.0, supervisor_name: 'Rashid Al Suwaidi', finance_confirmed_at: '2026-05-28T17:30:00', finance_invoice_ref: 'INV-2026-04501' },
+        { ticket_id: 'TKT-2417', title: 'Generator Monthly Service & Load Test', project: 'Corniche Plaza', property: 'Basement', selling_price: 4200, total_cost: 3200, margin_pct: 23.8, supervisor_name: 'Khalid Al Mansouri', finance_confirmed_at: '2026-05-28T16:15:00', finance_invoice_ref: 'INV-2026-04500' },
+        { ticket_id: 'TKT-2416', title: 'Electrical Panel Upgrade — Phase 2', project: 'Sky Gardens', property: 'Phase 2', selling_price: 9800, total_cost: 7600, margin_pct: 22.4, supervisor_name: 'Mohammed Khan', finance_confirmed_at: '2026-05-28T14:00:00', finance_invoice_ref: 'INV-2026-04498' },
+        { ticket_id: 'TKT-2415', title: 'CCTV Camera Installation — Parking Level', project: 'Galleria Mall', property: 'P2', selling_price: 7400, total_cost: 5900, margin_pct: 20.3, supervisor_name: 'Saeed Al Hosani', finance_confirmed_at: '2026-05-28T11:45:00', finance_invoice_ref: 'INV-2026-04495' },
+        { ticket_id: 'TKT-2414', title: 'Pool Filter Replacement & Chemical Balance', project: 'Al Reem Tower', property: 'Recreation', selling_price: 2200, total_cost: 1750, margin_pct: 20.5, supervisor_name: 'Khalid Al Mansouri', finance_confirmed_at: '2026-05-28T09:20:00', finance_invoice_ref: 'INV-2026-04492' },
+      ],
+      counts: { pending: 5, completed_today: 5, completed_month: 47, completed_total: 318 },
+    };
+
+    const SAMPLE_ACTIVITY = [
+      { color: 'green', title: 'INV-2026-04501 logged for TKT-2418 · email sent to supervisor + reporter', time: '12 min ago' },
+      { color: 'blue',  title: 'TKT-2426 escalated to Finance after GM approval',  time: '38 min ago' },
+      { color: 'green', title: 'INV-2026-04500 logged for TKT-2417',               time: '1 hour ago' },
+      { color: 'amber', title: 'New ticket TKT-2425 reached pending_finance queue',time: '2 hours ago' },
+      { color: 'green', title: 'INV-2026-04498 logged for TKT-2416',               time: '3 hours ago' },
+    ];
+
+    function isEmptyApi(counts, items) {
+      if (!counts) return true;
+      if ((counts.pending ?? 0) === 0 && (counts.completed_total ?? 0) === 0 && (!items || items.length === 0)) return true;
+      return false;
+    }
+
+    async function loadQueue() {
+      let pendingData = null, completedData = null;
+      try {
+        pendingData   = await apiClient.get('/finance/api/queue?bucket=pending&limit=25');
+        completedData = await apiClient.get('/finance/api/queue?bucket=completed&limit=25');
+
+        if (isEmptyApi(pendingData?.counts, pendingData?.items) && isEmptyApi(completedData?.counts, completedData?.items)) {
+          throw new Error('empty');
+        }
+      } catch(_) {
+        usingSample = true;
+        document.getElementById('sampleBanner').style.display = 'flex';
+        pendingData   = { items: SAMPLE_QUEUE.pending,   counts: SAMPLE_QUEUE.counts };
+        completedData = { items: SAMPLE_QUEUE.completed, counts: SAMPLE_QUEUE.counts };
+      }
+
+      window._fin_pending   = pendingData.items;
+      window._fin_completed = completedData.items;
+      const counts = (pendingData?.counts || completedData?.counts || {});
+
+      document.getElementById('s-pending').textContent = counts.pending ?? 0;
+      document.getElementById('s-today').textContent   = counts.completed_today ?? 0;
+      document.getElementById('s-month').textContent   = counts.completed_month ?? 0;
+      document.getElementById('s-total').textContent   = counts.completed_total ?? 0;
+
+      document.getElementById('tab-pending-count').textContent   = (pendingData.items || []).length;
+      document.getElementById('tab-completed-count').textContent = (completedData.items || []).length;
+
+      renderActivity(usingSample ? SAMPLE_ACTIVITY : SAMPLE_ACTIVITY);  // re-use sample feed; real activity feed can be wired later
+      renderQueue();
+    }
+
+    function switchTab(tab) {
+      currentTab = tab;
+      document.querySelectorAll('.queue-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+      renderQueue();
+    }
+
+    function renderQueue() {
+      const body = document.getElementById('queueBody');
+      const items = currentTab === 'pending' ? window._fin_pending : window._fin_completed;
+      if (!items || !items.length) {
+        if (currentTab === 'pending') {
+          body.innerHTML = `<div class="empty-state success">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+            <div><strong>All caught up.</strong></div>
+            <div class="empty-state-hint">No tickets are currently waiting for an ERP invoice.</div>
+          </div>`;
+        } else {
+          body.innerHTML = `<div class="empty-state">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5"/></svg>
+            <div>No completed invoices yet.</div>
+          </div>`;
+        }
+        return;
+      }
+      body.innerHTML = items.map(t => rowHtml(t, currentTab)).join('');
+    }
+
+    function rowHtml(t, tab) {
+      const completed = tab === 'completed';
+      const stepHtml = `
+        <div class="qr-status">
+          <span class="qr-status-step done">✓ Closed</span>
+          <span class="qr-status-sep">→</span>
+          <span class="qr-status-step done">✓ GM Approved</span>
+          <span class="qr-status-sep">→</span>
+          <span class="qr-status-step ${completed ? 'done' : 'active'}">${completed ? '✓' : '●'} ERP Invoice</span>
+          <span class="qr-status-sep">→</span>
+          <span class="qr-status-step ${completed ? 'done' : ''}">${completed ? '✓ Email Sent' : 'Auto-email'}</span>
+        </div>`;
+
+      const detailsAttr = usingSample
+        ? `href="javascript:void(0)" onclick="demoDoc()"`
+        : `href="/tickets/${t.ticket_id}"`;
+      const actions = completed
+        ? `<a ${detailsAttr} class="btn btn-outline btn-sm">View Details</a>`
+        : `<button class="btn btn-green btn-sm" onclick="openModal('${t.ticket_id}')">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.4" stroke="currentColor" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z"/></svg>
+            Log ERP Invoice
+          </button>`;
+
+      // Demo rows have no backing ticket — guard doc links so they don't 404.
+      const srAttr  = usingSample ? `href="javascript:void(0)" onclick="demoDoc()"` : `href="/tickets/${t.ticket_id}/service-report" target="_blank"`;
+      const invAttr = usingSample ? `href="javascript:void(0)" onclick="demoDoc()"` : `href="/tickets/${t.ticket_id}/invoice" target="_blank"`;
+      const idAttr  = usingSample ? `href="javascript:void(0)" onclick="demoDoc()"` : `href="/tickets/${t.ticket_id}"`;
+
+      return `<div class="queue-row">
+        <div style="min-width:0;">
+          <a ${idAttr} class="qr-id">
+            <span class="qr-id-tag">${t.ticket_id}</span>
+          </a>
+          <div class="qr-title">${escHtml(t.title)}</div>
+          <div class="qr-meta">
+            <span><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="11" height="11"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12 5.379 8.871a1.5 1.5 0 0 1 2.122 0L10.5 11.871m0 0 4.379-4.379a1.5 1.5 0 0 1 2.122 0L21 11.621"/></svg> ${escHtml(t.project)}${t.property ? ' · ' + escHtml(t.property) : ''}</span>
+            <span><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="11" height="11"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z"/></svg> ${escHtml(t.supervisor_name || '—')}</span>
+            ${completed ? `<span><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="11" height="11"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 6v.75m0 3v.75"/></svg> <strong>${escHtml(t.finance_invoice_ref || '—')}</strong></span>` : ''}
+          </div>
+          ${stepHtml}
+        </div>
+        <div class="qr-docs">
+          <a ${srAttr} class="qr-doc-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>
+            Service Report
+          </a>
+          <a ${invAttr} class="qr-doc-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664"/></svg>
+            Ticket Invoice
+          </a>
+        </div>
+        <div style="text-align:right;">
+          <div class="qr-amount">AED ${formatNum(t.selling_price || 0)}</div>
+          <div class="qr-amount-label">${t.margin_pct !== null ? t.margin_pct.toFixed(1) + '% margin' : 'unbilled'}</div>
+        </div>
+        <div class="qr-actions">${actions}</div>
+      </div>`;
+    }
+
+    function renderActivity(items) {
+      const el = document.getElementById('activityList');
+      el.innerHTML = items.map(a => `
+        <div class="activity-item">
+          <div class="activity-dot ${a.color}"></div>
+          <div class="activity-body">
+            <div class="activity-title">${escHtml(a.title)}</div>
+            <div class="activity-time">${escHtml(a.time)}</div>
+          </div>
+        </div>`).join('');
+    }
+
+    // ── Modal ─────────────────────────────────────────────
+    function openModal(ticketId) {
+      activeTicketId = ticketId;
+      const t = (window._fin_pending || []).find(x => x.ticket_id === ticketId);
+      if (!t) return;
+      const snap = document.getElementById('modalSnapshot');
+      snap.innerHTML = `
+        <div class="ts-row"><span>Ticket</span><span>${escHtml(t.ticket_id)}</span></div>
+        <div class="ts-row"><span>Title</span><span style="text-align:right;max-width:60%;">${escHtml(t.title)}</span></div>
+        <div class="ts-row"><span>Project</span><span>${escHtml(t.project)}${t.property ? ' · ' + escHtml(t.property) : ''}</span></div>
+        <div class="ts-row"><span>Supervisor</span><span>${escHtml(t.supervisor_name || '—')}</span></div>
+        <div class="ts-row"><span>Amount</span><span><strong>AED ${formatNum(t.selling_price)}</strong></span></div>`;
+      document.getElementById('erp_invoice_number').value = '';
+      document.getElementById('erp_invoice_notes').value = '';
+      document.getElementById('processModal').classList.add('show');
+      setTimeout(() => document.getElementById('erp_invoice_number').focus(), 80);
+    }
+    function closeModal() {
+      document.getElementById('processModal').classList.remove('show');
+      activeTicketId = null;
+    }
+
+    async function submitProcess(ev) {
+      if (ev) ev.preventDefault();
+      if (!activeTicketId) return;
+      const ref   = document.getElementById('erp_invoice_number').value.trim();
+      const notes = document.getElementById('erp_invoice_notes').value.trim();
+      if (!ref) { document.getElementById('erp_invoice_number').focus(); return; }
+
+      if (usingSample) {
+        // sample-only flow: move row to "completed" + toast
+        const t = window._fin_pending.find(x => x.ticket_id === activeTicketId);
+        if (t) {
+          t.finance_invoice_ref = ref;
+          t.finance_confirmed_at = new Date().toISOString();
+          window._fin_pending = window._fin_pending.filter(x => x.ticket_id !== activeTicketId);
+          window._fin_completed = [t, ...window._fin_completed];
+          SAMPLE_ACTIVITY.unshift({ color: 'green', title: `${ref} logged for ${activeTicketId} · email sent to supervisor + reporter`, time: 'just now' });
+        }
+        toast(`${ref} logged · email notifications sent`);
+        closeModal();
+        document.getElementById('tab-pending-count').textContent   = window._fin_pending.length;
+        document.getElementById('tab-completed-count').textContent = window._fin_completed.length;
+        renderActivity(SAMPLE_ACTIVITY.slice(0,5));
+        renderQueue();
+        return;
+      }
+
+      try {
+        const res = await apiClient.post(`/tickets/api/tickets/${activeTicketId}/finance-confirm`, {
+          invoice_ref: ref,
+          notes: notes
+        });
+        if (res?.success) {
+          toast(`${ref} logged · email notifications sent`);
+          closeModal();
+          await loadQueue();
+        } else {
+          toast(res?.error || 'Unable to confirm');
+        }
+      } catch(e) {
+        toast('Network error — please retry');
+      }
+    }
+
+    function demoDoc() {
+      toast('Demo data — documents open once real tickets reach this queue');
+    }
+
+    function toast(msg) {
+      const t = document.getElementById('toast');
+      document.getElementById('toastMsg').textContent = msg;
+      t.classList.add('show', 'success');
+      setTimeout(() => t.classList.remove('show'), 3200);
+    }
+
+    function formatNum(n) { return Number(n).toLocaleString('en-AE', {minimumFractionDigits:2,maximumFractionDigits:2}); }
+    function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+    // close modal with Esc
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+    document.getElementById('processModal').addEventListener('click', e => {
+      if (e.target.id === 'processModal') closeModal();
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadQueue();
+      // live refresh
+      setInterval(loadQueue, 30000);
+    });
+
+    // spin keyframes
+    const style = document.createElement('style');
+    style.textContent = '@keyframes spin { to { transform: rotate(360deg); } }';
+    document.head.appendChild(style);
+  </script>
+</body>
+</html>

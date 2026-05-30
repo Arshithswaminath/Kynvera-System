@@ -9,17 +9,18 @@
   <link rel="stylesheet" href="/static/css/hr-forms.css">
   <link rel="stylesheet" href="/static/css/dashboard.css">
   <link rel="stylesheet" href="/static/mobile_responsive.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-forms-unified.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/ticketing.css') }}">
   <style>
-    :root { --primary: #d21725; --primary-light: #1a7a4c; }
+    :root { --primary: #d21725; --primary-light: #e8323f; }
     .form-container { max-width: 900px; margin: 0 auto; }
     .form-card { background: white; border-radius: 16px; padding: 2rem; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
     .form-header { background: #0f766e; color: white; padding: 1.5rem 1.75rem; border-radius: 16px; margin-bottom: 1.5rem; box-shadow: 0 4px 14px rgba(13, 148, 136, 0.25); }
     .form-label { font-weight: 600; color: #374151; margin-bottom: 0.5rem; }
     .form-control, .form-select { border: 1px solid #d1d5db; border-radius: 8px; padding: 0.75rem; }
-    .form-control:focus, .form-select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(18,84,53,0.1); }
+    .form-control:focus, .form-select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(210,23,37,0.1); }
     .btn-submit { background: linear-gradient(135deg, var(--primary), var(--primary-light)); color: white; border: none; padding: 0.875rem 2rem; border-radius: 8px; font-weight: 600; }
-    .btn-submit:hover { color: white; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(18,84,53,0.3); }
+    .btn-submit:hover { color: white; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(210,23,37,0.3); }
     .back-link { color: var(--primary); text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; margin-bottom: 1.5rem; }
     .section-title { font-size: 1rem; font-weight: 600; color: #1e293b; margin: 1.5rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid #e5e7eb; }
     .asset-item { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1rem; margin-bottom: 1rem; }
@@ -184,15 +185,9 @@
           </div>
         </form>
       </div>
-      <aside class="leave-form-layout-aside">
-        <div class="tkt-card leave-sidebar-card leave-sidebar-inner">
-          {% include 'partials/hr_mgmt_chain_core.html' %}
-        </div>
-        <div class="tkt-card leave-sidebar-card leave-sidebar-inner">
-          {% include 'partials/hr_recorded_signatures_panel.html' %}
-        </div>
-        <script src="{{ url_for('static', filename='js/hr_mgmt_chain_submit.js') }}"></script>
-      </aside>
+
+      {% include 'partials/hr_form_approvals_sidebar.html' %}
+
     </div>
   </div>
 </div>

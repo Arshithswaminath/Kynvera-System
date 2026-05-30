@@ -68,15 +68,17 @@ def _tkt_datetime_filter(value, fmt='%d %b %Y, %H:%M'):
 
 _STATUS_LABELS = {
     # v2 canonical
-    'open':             'Open',
-    'assigned':         'Assigned',
-    'site_attended':    'Site Attended',
-    'work_started':     'Work Started',
-    'work_completed':   'Work Completed',
-    'verification':     'Verification',
-    'on_hold':          'On Hold',
-    'cancelled':        'Cancelled',
-    'closed':           'Closed',
+    'open':                 'Open',
+    'assigned':             'Assigned',
+    'site_attended':        'Site Attended',
+    'work_started':         'Work In Progress',
+    'work_completed':       'Work Completed',
+    'verification':         'Supervisor Review',
+    'pending_gm_approval':  'Pending GM Approval',
+    'pending_finance':      'Pending Finance',
+    'on_hold':              'On Hold',
+    'cancelled':            'Cancelled',
+    'closed':               'Closed',
     # legacy (v1) — display-only, no new tickets use these
     'pending_supervisor':   'Supervisor Queue',
     'in_progress':          'In Progress',
@@ -104,7 +106,8 @@ CANCEL_REASONS = {
 
 # Statuses that count as "active" (ticket is not done)
 _ACTIVE_STATUSES = frozenset({
-    'open', 'assigned', 'site_attended', 'work_started', 'work_completed', 'verification', 'on_hold',
+    'open', 'assigned', 'site_attended', 'work_started', 'work_completed',
+    'verification', 'pending_gm_approval', 'pending_finance', 'on_hold',
     # legacy
     'pending_supervisor', 'in_progress', 'pending_parts', 'pending_verification',
 })
@@ -145,6 +148,21 @@ def _migrate_ticket_columns(app):
         ('site_attended_at',               'TEXT'),
         ('work_started_at',                'TEXT'),
         ('work_completed_at',              'TEXT'),
+        # client sign-off
+        ('client_signature',               'TEXT'),
+        ('client_signed_by',               'TEXT'),
+        ('client_signed_at',               'TEXT'),
+        # finance approval gate
+        ('gm_approval_required',           'INTEGER DEFAULT 0'),
+        ('gm_approved_at',                 'TEXT'),
+        ('gm_approved_by_id',              'INTEGER'),
+        ('gm_approval_notes',              'TEXT'),
+        ('gm_rejected_at',                 'TEXT'),
+        ('gm_rejection_notes',             'TEXT'),
+        ('finance_confirmed_at',           'TEXT'),
+        ('finance_confirmed_by_id',        'INTEGER'),
+        ('finance_invoice_ref',            'TEXT'),
+        ('finance_contract_id',            'INTEGER'),
     ]
     with app.app_context():
         from app.models import db
@@ -492,17 +510,19 @@ def _get_sidebar_stats(user: User) -> dict:
     statuses = [t[0] for t in q.with_entities(Ticket.status).all()]
     active_ct = sum(1 for s in statuses if s in _ACTIVE_STATUSES)
     return {
-        'total':            len(statuses),
-        'active':           active_ct,
-        'open':             statuses.count('open'),
-        'assigned':         statuses.count('assigned'),
-        'site_attended':    statuses.count('site_attended'),
-        'work_started':     statuses.count('work_started'),
-        'work_completed':   statuses.count('work_completed'),
-        'verification':     statuses.count('verification'),
-        'on_hold':          statuses.count('on_hold'),
-        'cancelled':        statuses.count('cancelled'),
-        'closed':           statuses.count('closed'),
+        'total':                len(statuses),
+        'active':               active_ct,
+        'open':                 statuses.count('open'),
+        'assigned':             statuses.count('assigned'),
+        'site_attended':        statuses.count('site_attended'),
+        'work_started':         statuses.count('work_started'),
+        'work_completed':       statuses.count('work_completed'),
+        'verification':         statuses.count('verification'),
+        'pending_gm_approval':  statuses.count('pending_gm_approval'),
+        'pending_finance':      statuses.count('pending_finance'),
+        'on_hold':              statuses.count('on_hold'),
+        'cancelled':            statuses.count('cancelled'),
+        'closed':               statuses.count('closed'),
         # legacy
         'in_progress':          statuses.count('in_progress'),
         'pending_supervisor':   statuses.count('pending_supervisor'),
@@ -606,9 +626,22 @@ def dashboard():
     resolved_ct = sum(1 for t in tickets_q if t.status == 'resolved')
     completed_ct = closed_ct + resolved_ct  # work finished (may still await sign-off)
 
+    pending_gm_ct = sum(1 for t in tickets_q if t.status == 'pending_gm_approval')
+    pending_finance_ct = sum(1 for t in tickets_q if t.status == 'pending_finance')
+    work_active_ct = sum(1 for t in tickets_q if t.status in ('work_started', 'site_attended', 'assigned'))
+    verification_ct = sum(1 for t in tickets_q if t.status in ('verification', 'work_completed'))
+
     stats = {
         'total': total_ct,
         'open': sum(1 for t in tickets_q if t.status == 'open'),
+        'assigned': sum(1 for t in tickets_q if t.status == 'assigned'),
+        'work_started': sum(1 for t in tickets_q if t.status in ('work_started', 'site_attended')),
+        'work_completed': sum(1 for t in tickets_q if t.status == 'work_completed'),
+        'verification': verification_ct,
+        'pending_gm_approval': pending_gm_ct,
+        'pending_finance': pending_finance_ct,
+        'on_hold': sum(1 for t in tickets_q if t.status == 'on_hold'),
+        # legacy
         'pending_supervisor': sum(1 for t in tickets_q if t.status == 'pending_supervisor'),
         'in_progress': sum(1 for t in tickets_q if t.status == 'in_progress'),
         'pending_verification': sum(1 for t in tickets_q if t.status == 'pending_verification'),
@@ -617,9 +650,9 @@ def dashboard():
         'pending_parts': sum(1 for t in tickets_q if t.status == 'pending_parts'),
         'critical': sum(1 for t in tickets_q if t.priority == 'critical'),
         'high': sum(1 for t in tickets_q if t.priority == 'high'),
+        'active': work_active_ct,
         # Donut / headline: % fully closed vs all tickets in view
         'closed_pct': int(round(100.0 * closed_ct / total_ct)) if total_ct else 0,
-        # Optional: resolved + closed as % of total (work completed, not necessarily signed closed)
         'completed_pct': int(round(100.0 * completed_ct / total_ct)) if total_ct else 0,
     }
 
@@ -881,7 +914,7 @@ def update_status(ticket_id):
 
     valid = {
         'open', 'assigned', 'site_attended', 'work_started', 'work_completed',
-        'verification', 'on_hold', 'closed', 'cancelled',
+        'verification', 'pending_gm_approval', 'pending_finance', 'on_hold', 'closed', 'cancelled',
         # legacy passthrough
         'in_progress', 'pending_parts', 'pending_supervisor', 'pending_verification', 'resolved',
     }
@@ -1800,7 +1833,7 @@ def mark_completed(ticket_id):
 @ticketing_bp.route('/api/tickets/<string:ticket_id>/supervisor-close', methods=['POST'])
 @jwt_required()
 def supervisor_close(ticket_id):
-    """Supervisor verifies work, sets markup, and closes the ticket."""
+    """Supervisor completes verification, sets markup, and submits to GM for final approval."""
     user = _current_user()
     if not _has_access(user):
         return jsonify({'success': False, 'error': 'Access denied'}), 403
@@ -1810,10 +1843,10 @@ def supervisor_close(ticket_id):
     if deny:
         return deny
     if not _is_supervisor_of_ticket(user):
-        return jsonify({'success': False, 'error': 'Only supervisors can close tickets via this route'}), 403
+        return jsonify({'success': False, 'error': 'Only supervisors can submit tickets for GM approval'}), 403
 
     if ticket.status not in ('pending_verification', 'verification', 'work_completed'):
-        return jsonify({'success': False, 'error': f'Ticket must be in pending_verification to close. Current: {ticket.status}'}), 400
+        return jsonify({'success': False, 'error': f'Ticket must be in Supervisor Review to submit for GM approval. Current: {ticket.status}'}), 400
 
     data = request.get_json(silent=True) or {}
 
@@ -1832,32 +1865,47 @@ def supervisor_close(ticket_id):
     ver_notes   = (data.get('verification_notes') or '').strip() or None
 
     if not signature:
-        return jsonify({'success': False, 'error': 'Signature is required to close'}), 400
+        return jsonify({'success': False, 'error': 'Supervisor signature is required'}), 400
     if not signed_by:
         return jsonify({'success': False, 'error': 'Signer name is required'}), 400
 
     ticket.markup_pct = markup_pct
     ticket.supervisor_verification_notes = ver_notes
-    ticket.close_signature  = signature
-    ticket.close_signed_by  = signed_by
+    ticket.close_signature   = signature
+    ticket.close_signed_by   = signed_by
     ticket.close_signed_role = signed_role
     ticket.close_notes = ver_notes
-    ticket.status     = 'closed'
-    ticket.closed_at  = datetime.now(timezone.utc).replace(tzinfo=None)
+    ticket.status = 'pending_gm_approval'
+    ticket.gm_approval_required = True
+    # Clear any previous rejection so GM sees a fresh request
+    ticket.gm_rejected_at = None
+    ticket.gm_rejection_notes = None
 
     _recalc_total_cost(ticket)
 
     markup_label = f'{int(markup_pct)}%' if markup_pct else 'No markup'
     _add_note(ticket, user,
-              f'Ticket verified and closed by supervisor {user.full_name} ({signed_role}). '
-              f'Markup applied: {markup_label}. Selling price: AED {ticket.selling_price or 0:.2f}.',
+              f'Supervisor {user.full_name} completed review and submitted ticket for GM approval. '
+              f'Markup: {markup_label}. Selling price: AED {ticket.selling_price or 0:.2f}.',
               note_type='status_change')
 
+    # Notify all GM / admin users
+    gm_users = User.query.filter(
+        User.is_active == True,  # noqa: E712
+        db.or_(User.role == 'admin', User.designation == 'general_manager'),
+    ).all()
+    for gm in gm_users:
+        _notify_user(gm.id,
+                     f'GM Approval Required — {ticket.ticket_id}',
+                     f'Ticket "{ticket.title}" from project {ticket.project} is awaiting your approval. '
+                     f'Selling price: AED {ticket.selling_price or 0:.2f}.',
+                     ntype='warning',
+                     ticket_id=ticket.ticket_id)
+
     db.session.commit()
-    _send_completion_emails(ticket, user)
     return jsonify({
         'success': True,
-        'status': 'closed',
+        'status': 'pending_gm_approval',
         'actual_price': ticket.actual_price,
         'selling_price': ticket.selling_price,
         'markup_pct': ticket.markup_pct,
@@ -2013,7 +2061,7 @@ def _send_completion_emails(ticket: Ticket, closed_by: User):
         subject = f'[Amaan] Work Order Closed — {ticket.ticket_id}'
         body = f"""
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #1e3a5f;">Work Order Completed</h2>
+          <h2 style="color: #a8121e;">Work Order Completed</h2>
           <p>Ticket <strong>{ticket.ticket_id}</strong> has been closed.</p>
           <table style="width:100%; border-collapse:collapse; font-size:14px;">
             <tr><td style="padding:6px; font-weight:bold; width:140px;">Title</td><td style="padding:6px;">{ticket.title}</td></tr>
@@ -2235,25 +2283,71 @@ def _ticket_dropdown_tail():
 
 _LEGACY_CLASSIFICATION_OPTIONS = {
     'service_groups': [
-        'HVAC & MEP', 'Civil Works', 'Cleaning Services',
-        'Electrical', 'Plumbing', 'IT & Networking',
-        'Security Systems', 'Fire & Safety', 'Landscaping', 'General Maintenance',
+        'Fire Alarm & Detection',
+        'Fire Suppression',
+        'Fire Safety Equipment',
+        'Emergency & Evacuation',
     ],
     'categories': {
-        'HVAC & MEP': ['AC Unit', 'Chiller', 'AHU', 'FCU', 'Ductwork', 'Controls', 'Ventilation', 'Other'],
-        'Civil Works': ['Structural', 'Flooring', 'Roofing', 'Walls', 'Ceiling', 'Doors & Windows', 'Other'],
-        'Cleaning Services': ['Deep Clean', 'Routine Clean', 'Pest Control', 'Waste Management', 'Other'],
-        'Electrical': ['Power Outage', 'Wiring', 'Lighting', 'Panels', 'Generator', 'Other'],
-        'Plumbing': ['Leak', 'Blockage', 'Water Pressure', 'Fixtures', 'Drainage', 'Other'],
-        'IT & Networking': ['Network', 'Hardware', 'Software', 'CCTV', 'Access Control', 'Other'],
-        'Security Systems': ['CCTV', 'Access Control', 'Alarm', 'Intercom', 'Other'],
-        'Fire & Safety': ['Fire Alarm', 'Extinguisher', 'Sprinkler', 'Exit Signs', 'Other'],
-        'Landscaping': ['Irrigation', 'Lawn', 'Trees', 'Hardscape', 'Other'],
-        'General Maintenance': ['Carpentry', 'Painting', 'Locksmith', 'Glass', 'Furniture', 'Other'],
+        'Fire Alarm & Detection': [
+            'Fire Control Panel',
+            'Smoke Detectors',
+            'Heat Detectors',
+            'Manual Call Points',
+            'Alarm Sounders & Strobes',
+            'Addressable Devices',
+            'Fire Alarm Cabling',
+            'Beam Detectors',
+            'Gas Detectors',
+            'Other',
+        ],
+        'Fire Suppression': [
+            'Sprinkler System',
+            'FM200 Gas Suppression',
+            'CO2 Suppression System',
+            'Foam System',
+            'Deluge System',
+            'Water Mist System',
+            'Suppression Control Panel',
+            'Suppression Cylinders & Valves',
+            'Pipework & Fittings',
+            'Other',
+        ],
+        'Fire Safety Equipment': [
+            'Portable Fire Extinguishers',
+            'Hose Reels',
+            'Fire Blankets',
+            'Dry Risers',
+            'Fire Hydrants',
+            'Fire Cabinets',
+            'Sand Buckets',
+            'Firefighting Pumps',
+            'Other',
+        ],
+        'Emergency & Evacuation': [
+            'Emergency Lighting',
+            'Exit Signs & Wayfinding',
+            'Public Address System',
+            'Evacuation Alarm',
+            'Fire Escape Routes',
+            'Fire Doors & Barriers',
+            'Assembly Point Signage',
+            'Other',
+        ],
     },
     'fault_types': [
-        'Breakdown', 'Preventive Maintenance', 'Corrective Maintenance',
-        'Inspection', 'Installation', 'Upgrade', 'Complaint', 'Emergency', 'Other',
+        'Breakdown / Fault',
+        'Preventive Maintenance (PPM)',
+        'Corrective Maintenance',
+        'Annual Inspection',
+        'False Alarm Investigation',
+        'Installation',
+        'Commissioning',
+        'Testing & Certification',
+        'Upgrade / Modification',
+        'Emergency Response',
+        'Compliance Audit',
+        'Other',
     ],
 }
 
@@ -2978,3 +3072,217 @@ def description_template():
         text += '- Document findings, materials used, and work completed'
 
     return jsonify({'success': True, 'description': text})
+
+
+# ---------------------------------------------------------------------------
+# Service Report: digital form page
+# ---------------------------------------------------------------------------
+
+@ticketing_bp.route('/<string:ticket_id>/service-report', methods=['GET'])
+@jwt_required()
+def service_report_page(ticket_id):
+    """Render the digital service report form for a completed work order."""
+    user = _current_user()
+    if not _has_access(user):
+        abort(403)
+    ticket = Ticket.query.filter_by(ticket_id=ticket_id).first_or_404()
+    if not _can_user_view_ticket(user, ticket):
+        abort(403)
+    notes = ticket.notes.order_by(TicketNote.created_at.asc()).all()
+    images = ticket.images.all()
+    materials = ticket.materials.all()
+    manpower_entries = ticket.manpower.all()
+    return render_template(
+        'ticket_service_report.html',
+        ticket=ticket,
+        notes=notes,
+        images=images,
+        materials=materials,
+        manpower_entries=manpower_entries,
+        user=user,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Client sign-off
+# ---------------------------------------------------------------------------
+
+@ticketing_bp.route('/api/tickets/<string:ticket_id>/client-sign', methods=['POST'])
+@jwt_required()
+def client_sign_ticket(ticket_id):
+    """Record the client's digital signature on a completed service report."""
+    user = _current_user()
+    if not _has_access(user):
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+
+    ticket = Ticket.query.filter_by(ticket_id=ticket_id).first_or_404()
+    deny = _api_forbid_unless_ticket_visible(user, ticket)
+    if deny:
+        return deny
+
+    data = request.get_json(silent=True) or {}
+    signature = (data.get('signature') or '').strip()
+    signed_by = (data.get('signed_by') or '').strip()
+
+    if not signature:
+        return jsonify({'success': False, 'error': 'Client signature is required'}), 400
+    if not signed_by:
+        return jsonify({'success': False, 'error': 'Client name is required'}), 400
+
+    ticket.client_signature = signature
+    ticket.client_signed_by = signed_by
+    ticket.client_signed_at = datetime.now(timezone.utc).replace(tzinfo=None)
+
+    _add_note(ticket, user,
+              f'Service report signed by client: {signed_by}.',
+              note_type='status_change')
+    db.session.commit()
+    return jsonify({'success': True, 'client_signed_by': signed_by})
+
+
+# ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# GM approval / rejection + Finance confirmation (mandatory closing gates)
+# ---------------------------------------------------------------------------
+
+@ticketing_bp.route('/api/tickets/<string:ticket_id>/gm-approve', methods=['POST'])
+@jwt_required()
+def gm_approve_ticket(ticket_id):
+    """GM approves a ticket in pending_gm_approval → moves it to pending_finance and auto-generates invoice."""
+    user = _current_user()
+    if not _has_access(user):
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+
+    if user.role != 'admin' and getattr(user, 'designation', None) != 'general_manager':
+        return jsonify({'success': False, 'error': 'Only General Manager or Admin may approve tickets'}), 403
+
+    ticket = Ticket.query.filter_by(ticket_id=ticket_id).first_or_404()
+
+    if ticket.status != 'pending_gm_approval':
+        return jsonify({'success': False, 'error': f'Ticket is not awaiting GM approval. Current status: {ticket.status}'}), 400
+
+    data = request.get_json(silent=True) or {}
+    notes = (data.get('notes') or '').strip() or None
+
+    ticket.gm_approved_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    ticket.gm_approved_by_id = user.id
+    ticket.gm_approval_notes = notes
+    ticket.gm_rejected_at = None
+    ticket.gm_rejection_notes = None
+    ticket.status = 'pending_finance'
+
+    _add_note(ticket, user,
+              f'GM approval granted by {user.full_name}. Ticket approved and sent to Finance for invoicing. '
+              f'{("Notes: " + notes) if notes else ""}',
+              note_type='status_change')
+
+    # Notify Finance team (users with designation='finance' or role='admin')
+    finance_users = User.query.filter(
+        User.is_active == True,  # noqa: E712
+        db.or_(User.designation == 'finance', User.role == 'admin'),
+    ).all()
+    for fu in finance_users:
+        _notify_user(fu.id,
+                     f'Invoice Required — {ticket.ticket_id}',
+                     f'GM has approved ticket "{ticket.title}" (Project: {ticket.project}). '
+                     f'Selling price: AED {ticket.selling_price or 0:.2f}. Please create the invoice.',
+                     ntype='info',
+                     ticket_id=ticket.ticket_id)
+
+    # Also notify the supervisor
+    if ticket.supervisor_id:
+        _notify_user(ticket.supervisor_id,
+                     f'GM Approved — {ticket.ticket_id}',
+                     f'Your ticket "{ticket.title}" has been approved by the GM and sent to Finance.',
+                     ntype='success',
+                     ticket_id=ticket.ticket_id)
+
+    db.session.commit()
+    return jsonify({'success': True, 'status': 'pending_finance', 'approved_by': user.full_name})
+
+
+@ticketing_bp.route('/api/tickets/<string:ticket_id>/gm-reject', methods=['POST'])
+@jwt_required()
+def gm_reject_ticket(ticket_id):
+    """GM rejects a ticket in pending_gm_approval → sends it back to Supervisor Review."""
+    user = _current_user()
+    if not _has_access(user):
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+
+    if user.role != 'admin' and getattr(user, 'designation', None) != 'general_manager':
+        return jsonify({'success': False, 'error': 'Only General Manager or Admin may reject tickets'}), 403
+
+    ticket = Ticket.query.filter_by(ticket_id=ticket_id).first_or_404()
+
+    if ticket.status != 'pending_gm_approval':
+        return jsonify({'success': False, 'error': f'Ticket is not awaiting GM approval. Current status: {ticket.status}'}), 400
+
+    data = request.get_json(silent=True) or {}
+    rejection_notes = (data.get('notes') or '').strip()
+    if not rejection_notes:
+        return jsonify({'success': False, 'error': 'Rejection reason is required'}), 400
+
+    ticket.gm_rejected_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    ticket.gm_rejection_notes = rejection_notes
+    ticket.status = 'verification'
+
+    _add_note(ticket, user,
+              f'GM rejected by {user.full_name}. Ticket returned to Supervisor Review. '
+              f'Reason: {rejection_notes}',
+              note_type='status_change')
+
+    # Notify supervisor
+    if ticket.supervisor_id:
+        _notify_user(ticket.supervisor_id,
+                     f'GM Rejected — {ticket.ticket_id}',
+                     f'Your ticket "{ticket.title}" was rejected by the GM. '
+                     f'Reason: {rejection_notes}. Please review and resubmit.',
+                     ntype='error',
+                     ticket_id=ticket.ticket_id)
+
+    db.session.commit()
+    return jsonify({'success': True, 'status': 'verification', 'rejected_by': user.full_name})
+
+
+@ticketing_bp.route('/api/tickets/<string:ticket_id>/finance-confirm', methods=['POST'])
+@jwt_required()
+def finance_confirm_ticket(ticket_id):
+    """Finance team confirms invoice created → ticket is fully closed."""
+    user = _current_user()
+    if not _has_access(user):
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+
+    if user.role != 'admin' and getattr(user, 'designation', None) not in ('finance', 'general_manager'):
+        return jsonify({'success': False, 'error': 'Only Finance team or Admin may confirm invoices'}), 403
+
+    ticket = Ticket.query.filter_by(ticket_id=ticket_id).first_or_404()
+
+    if ticket.status != 'pending_finance':
+        return jsonify({'success': False, 'error': f'Ticket is not pending finance confirmation. Current status: {ticket.status}'}), 400
+
+    data = request.get_json(silent=True) or {}
+    invoice_ref = (data.get('invoice_ref') or '').strip() or None
+
+    ticket.finance_confirmed_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    ticket.finance_confirmed_by_id = user.id
+    ticket.finance_invoice_ref = invoice_ref
+    ticket.status = 'closed'
+    ticket.closed_at = datetime.now(timezone.utc).replace(tzinfo=None)
+
+    _add_note(ticket, user,
+              f'Invoice confirmed by Finance ({user.full_name}). '
+              f'{("Invoice ref: " + invoice_ref + ". ") if invoice_ref else ""}'
+              f'Ticket is now fully closed.',
+              note_type='status_change')
+
+    # Notify supervisor and reporter
+    for uid in filter(None, {ticket.supervisor_id, ticket.reporter_id}):
+        _notify_user(uid,
+                     f'Ticket Closed — {ticket.ticket_id}',
+                     f'Ticket "{ticket.title}" has been fully closed. Invoice processed by Finance.',
+                     ntype='success',
+                     ticket_id=ticket.ticket_id)
+
+    db.session.commit()
+    _send_completion_emails(ticket, user)
+    return jsonify({'success': True, 'status': 'closed', 'invoice_ref': invoice_ref})

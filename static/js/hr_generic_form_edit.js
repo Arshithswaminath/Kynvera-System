@@ -272,7 +272,19 @@
       box.className = 'sig-box';
       var img = document.createElement('img');
       img.alt = '';
-      img.src = e.url;
+      var strip =
+        window.InjaazSignatureDisplay &&
+        typeof window.InjaazSignatureDisplay.stripSignaturePaperBackground === 'function'
+          ? window.InjaazSignatureDisplay.stripSignaturePaperBackground
+          : stripSignaturePaperBackground;
+      strip(e.url, function (out) {
+        img.src = out || e.url;
+        if (window.InjaazSignatureDisplay && window.InjaazSignatureDisplay.applySignatureImageStyles) {
+          window.InjaazSignatureDisplay.applySignatureImageStyles(img);
+        } else {
+          img.setAttribute('data-signature-display', '1');
+        }
+      });
       box.appendChild(img);
       card.appendChild(box);
 
@@ -325,7 +337,7 @@
         badge.textContent = '';
       }
     }
-    if (liveNote) liveNote.hidden = !(activities && activities.length);
+    if (liveNote) liveNote.hidden = !(signoffPoll.iv !== null || (activities && activities.length));
 
     while (list.firstChild) list.removeChild(list.firstChild);
 
@@ -377,7 +389,7 @@
     });
   }
 
-  var signoffPoll = { iv: null, lastFp: null, sid: null, busy: false };
+  var signoffPoll = { iv: null, lastFp: null, sid: null, busy: false, onFingerprintChange: null };
 
   function stopSignoffActivityPoll() {
     if (signoffPoll.iv !== null) {
@@ -386,7 +398,68 @@
     }
     signoffPoll.lastFp = null;
     signoffPoll.sid = null;
+    signoffPoll.onFingerprintChange = null;
   }
+
+  function pollSignoffActivityOnce() {
+    if (document.visibilityState === 'hidden') return;
+    var token = localStorage.getItem('access_token');
+    var sid = signoffPoll.sid;
+    if (!token || !sid) return;
+    fetch('/hr/api/signoff-activity/' + encodeURIComponent(sid), {
+      headers: { Authorization: 'Bearer ' + token },
+    })
+      .then(function (r) {
+        return r.json().then(function (j) {
+          return { ok: r.ok, j: j };
+        });
+      })
+      .then(function (pack) {
+        var j = pack.j;
+        if (!pack.ok || !j || j.success === false || !j.fingerprint) return;
+        var label = j.workflow_status_label || '';
+        if (signoffPoll.lastFp === null) {
+          signoffPoll.lastFp = j.fingerprint;
+          renderSignoffActivityPanel(j.activities || [], label);
+          return;
+        }
+        if (j.fingerprint !== signoffPoll.lastFp) {
+          signoffPoll.lastFp = j.fingerprint;
+          renderSignoffActivityPanel(j.activities || [], label);
+          if (typeof signoffPoll.onFingerprintChange === 'function') {
+            signoffPoll.onFingerprintChange(sid);
+          }
+        }
+      })
+      .catch(function () {
+        /* ignore */
+      });
+  }
+
+  function startSignoffActivityPoll(sid, onFingerprintChange) {
+    if (!sid) return;
+    stopSignoffActivityPoll();
+    signoffPoll.sid = String(sid);
+    signoffPoll.onFingerprintChange = onFingerprintChange || null;
+    pollSignoffActivityOnce();
+    signoffPoll.iv = setInterval(pollSignoffActivityOnce, 14000);
+  }
+
+  function bootSignoffActivitySidebar() {
+    if (!document.getElementById('hrSignoffActivitySec')) return;
+    var editSid = new URLSearchParams(location.search).get('edit');
+    if (editSid) {
+      startSignoffActivityPoll(editSid);
+    } else {
+      renderSignoffActivityPanel([], null);
+    }
+  }
+
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible' && signoffPoll.iv !== null && signoffPoll.sid) {
+      pollSignoffActivityOnce();
+    }
+  });
 
   function showRevisionBanner(fd) {
     var el = document.getElementById('submissionRevisionBanner');
@@ -1173,52 +1246,16 @@
         });
     }
 
-    function pollSignoffActivityOnce(urlEditSid) {
-      if (document.visibilityState === 'hidden') return;
-      var token = localStorage.getItem('access_token');
-      var sid = ctx.hydrateId || urlEditSid;
-      if (!token || !sid) return;
-      fetch('/hr/api/signoff-activity/' + encodeURIComponent(sid), {
-        headers: { Authorization: 'Bearer ' + token },
-      })
-        .then(function (r) {
-          return r.json().then(function (j) {
-            return { ok: r.ok, j: j };
-          });
-        })
-        .then(function (pack) {
-          var j = pack.j;
-          if (!pack.ok || !j || j.success === false || !j.fingerprint) return;
-          var label = j.workflow_status_label || '';
-          if (signoffPoll.lastFp === null) {
-            signoffPoll.lastFp = j.fingerprint;
-            renderSignoffActivityPanel(j.activities || [], label);
-            return;
-          }
-          if (j.fingerprint !== signoffPoll.lastFp) {
-            signoffPoll.lastFp = j.fingerprint;
-            renderSignoffActivityPanel(j.activities || [], label);
-            refetchSubmissionAfterSignoffChange(urlEditSid);
-          }
-        })
-        .catch(function () {
-          /* ignore */
-        });
-    }
-
-    function startSignoffActivityPoll(urlEditSid) {
-      stopSignoffActivityPoll();
-      signoffPoll.sid = ctx.hydrateId || urlEditSid;
-      pollSignoffActivityOnce(urlEditSid);
-      signoffPoll.iv = setInterval(function () {
-        pollSignoffActivityOnce(urlEditSid);
-      }, 14000);
+    function startSignoffActivityPollForAttach(urlEditSid) {
+      startSignoffActivityPoll(ctx.hydrateId || urlEditSid, function () {
+        refetchSubmissionAfterSignoffChange(urlEditSid);
+      });
     }
 
     function runHydrate() {
       var sid = new URLSearchParams(location.search).get('edit');
       if (!sid) {
-        stopSignoffActivityPoll();
+        renderSignoffActivityPanel([], null);
         return;
       }
       var token = localStorage.getItem('access_token');
@@ -1231,19 +1268,13 @@
         })
         .then(function (payload) {
           ingestSubmissionPayload(payload, sid);
-          if (ctx.hydrateId) startSignoffActivityPoll(sid);
+          if (ctx.hydrateId) startSignoffActivityPollForAttach(sid);
         })
         .catch(function () {
           /* ignore */
         });
     }
 
-    document.addEventListener('visibilitychange', function () {
-      if (document.visibilityState === 'visible' && signoffPoll.iv !== null && signoffPoll.sid) {
-        var visSid = new URLSearchParams(location.search).get('edit');
-        if (visSid && ctx.hydrateId) pollSignoffActivityOnce(visSid);
-      }
-    });
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', runHydrate);
     else runHydrate();
   }
@@ -1253,6 +1284,10 @@
   api.showRevisionBanner = showRevisionBanner;
   api.defaultPopulate = defaultPopulate;
   api.renderRecordedSignaturesPanel = renderRecordedSignaturesPanel;
+  api.renderSignoffActivityPanel = renderSignoffActivityPanel;
+  api.startSignoffActivityPoll = startSignoffActivityPoll;
+  api.stopSignoffActivityPoll = stopSignoffActivityPoll;
+  api.bootSignoffActivitySidebar = bootSignoffActivitySidebar;
   api.canModifySig = function (formId, slotKey) {
     var f = document.getElementById(formId);
     if (!f) return true;

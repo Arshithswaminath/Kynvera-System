@@ -26,12 +26,12 @@ logger = logging.getLogger(__name__)
 
 # ── Palette ──────────────────────────────────────────────────────────────────
 INK        = colors.HexColor('#0f172a')        # near-black text
-BRAND      = colors.HexColor('#1e3a5f')        # dark navy (primary)
-ACCENT     = colors.HexColor('#2563eb')        # blue accent
+BRAND      = colors.HexColor('#a8121e')        # dark navy (primary)
+ACCENT     = colors.HexColor('#d21725')        # blue accent
 RULE       = colors.HexColor('#cbd5e1')        # light divider
-TABLE_HEAD = colors.HexColor('#1e3a5f')        # navy header row
+TABLE_HEAD = colors.HexColor('#a8121e')        # navy header row
 ROW_ALT    = colors.HexColor('#f1f5f9')        # alternate row tint
-TOTAL_BG   = colors.HexColor('#1e3a5f')        # grand total row bg
+TOTAL_BG   = colors.HexColor('#a8121e')        # grand total row bg
 MUTED      = colors.HexColor('#64748b')        # secondary text
 
 PAGE_W, PAGE_H = A4

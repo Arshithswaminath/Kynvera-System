@@ -1,4 +1,4 @@
-﻿"""
+"""
 Workflow Routes - New 5-Stage Approval System
 Stage 1: Supervisor/Inspector (creates form)
 Stage 2: Operations Manager (reviews, edits, approves)
@@ -8,16 +8,22 @@ Stage 4: General Manager (final approval)
 from flask import Blueprint, request, jsonify, current_app, render_template
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy import or_, and_, not_, func
-from sqlalchemy.orm import joinedload, noload
+from sqlalchemy.orm import joinedload, noload, aliased
 from sqlalchemy.orm.attributes import flag_modified
-from app.models import db, User, Submission, AuditLog, DocHubDocument, Device, BDProject
+from app.models import db, User, Submission, AuditLog, DocHubDocument, Device, BDProject, Job
 from common.error_responses import error_response, success_response
 from common.workflow_notifications import send_team_notification
+from common.inspection_inapp_notifications import (
+    is_inspection_submission,
+    notify_inspection_completed,
+    notify_inspection_rejected,
+    notify_inspection_stage,
+)
 from common.datetime_utils import utc_now_naive, naive_utc_isoformat_z
 from datetime import datetime, timedelta
 import copy
 
-from module_hr.hr_management_chain import WF_MGMT_HR
+from module_hr.hr_management_chain import WF_MGMT_HR, WF_MGMT_RM, WF_MGMT_GM
 
 workflow_bp = Blueprint('workflow_bp', __name__, url_prefix='/api/workflow')
 
@@ -376,6 +382,42 @@ def _ensure_items_photos(form_data):
                 item['photos'] = []
 
 
+def _preserve_submitter_signature_before_supervisor_signoff(form_data, submission) -> None:
+    """
+    Legacy inspection forms stored the submitter's first signature in supervisor_signature.
+    Before the supervisor's sign-off overwrites that field, copy it to tech_signature once.
+    """
+    if not isinstance(form_data, dict):
+        return
+    if _hr_signature_blob_non_empty(form_data.get('tech_signature')) or _hr_signature_blob_non_empty(
+        form_data.get('submitter_signature')
+    ):
+        return
+    old_sup = form_data.get('supervisor_signature')
+    if not _hr_signature_blob_non_empty(old_sup):
+        return
+    if getattr(submission, 'supervisor_reviewed_at', None):
+        return
+    preserved = copy.deepcopy(old_sup) if isinstance(old_sup, dict) else old_sup
+    form_data['tech_signature'] = preserved
+    if not form_data.get('submitter_signature'):
+        form_data['submitter_signature'] = preserved
+
+
+def _preserve_submitter_comments_before_supervisor_signoff(form_data, submission) -> None:
+    """Copy legacy submitter comment into submitter_comments before supervisor overwrites supervisor_comments."""
+    if not isinstance(form_data, dict):
+        return
+    existing = form_data.get('submitter_comments')
+    if existing is not None and str(existing).strip():
+        return
+    if getattr(submission, 'supervisor_reviewed_at', None):
+        return
+    legacy = form_data.get('supervisor_comments') or form_data.get('general_comments')
+    if legacy is not None and str(legacy).strip() and str(legacy).strip().lower() != 'none':
+        form_data['submitter_comments'] = str(legacy).strip()
+
+
 def _merge_items_with_photos(existing_list, payload_list, key='work_items'):
     """
     Merge existing items with payload items: combine photo_urls, prefer payload for other fields.
@@ -545,20 +587,104 @@ def get_user_pending_submissions(user):
             Submission.workflow_status == 'general_manager_review'
         ).order_by(Submission.created_at.desc()).all()
     
-    elif designation == 'supervisor':
-        # Supervisors see their own submissions or rejected ones
+    elif designation in ('supervisor', 'manager'):
+        # Supervisors / site managers: technician forms awaiting their review, plus own drafts/rejected.
         return Submission.query.filter(
             base_filter,
             or_(
-                Submission.supervisor_id == user.id,
                 and_(
-                    Submission.workflow_status == 'rejected',
-                    Submission.supervisor_id == user.id
-                )
-            )
+                    Submission.supervisor_id == user.id,
+                    Submission.workflow_status.in_([
+                        'supervisor_review', 'supervisor_notified', 'submitted'
+                    ]),
+                ),
+                and_(
+                    Submission.user_id == user.id,
+                    Submission.workflow_status.in_(['draft', 'rejected']),
+                ),
+            ),
         ).order_by(Submission.created_at.desc()).all()
     
     return []
+
+
+# Workflow stages strictly after each reviewer has completed sign-off (inspection chain).
+_INSP_PAST_SUPERVISOR = (
+    'operations_manager_review', 'operations_manager_approved',
+    'bd_procurement_review', 'general_manager_review', 'completed',
+)
+
+
+def _inspection_reviewed_clauses_for_user(user):
+    """SQLAlchemy OR clauses: inspection forms this user has signed off on."""
+    uid = user.id
+    d = (getattr(user, 'designation') or '').strip().lower()
+    clauses = []
+
+    if d in ('supervisor', 'manager'):
+        clauses.append(and_(
+            Submission.supervisor_id == uid,
+            or_(
+                Submission.supervisor_reviewed_at.isnot(None),
+                Submission.workflow_status.in_(_INSP_PAST_SUPERVISOR),
+            ),
+        ))
+
+    if d == 'operations_manager':
+        clauses.append(and_(
+            Submission.operations_manager_id == uid,
+            Submission.operations_manager_approved_at.isnot(None),
+        ))
+
+    try:
+        is_bd = user.is_bd_inspection_reviewer()
+    except Exception:
+        is_bd = d == 'business_development'
+    if is_bd:
+        clauses.append(and_(
+            Submission.business_dev_id == uid,
+            Submission.business_dev_approved_at.isnot(None),
+        ))
+
+    if d == 'procurement':
+        clauses.append(and_(
+            Submission.procurement_id == uid,
+            Submission.procurement_approved_at.isnot(None),
+        ))
+
+    if d == 'general_manager':
+        clauses.append(and_(
+            Submission.general_manager_id == uid,
+            Submission.general_manager_approved_at.isnot(None),
+        ))
+
+    return clauses
+
+
+def _query_inspection_reviewed_for_user(user, list_opts):
+    """All inspection submissions the user has signed off on (any applicable role)."""
+    if (getattr(user, 'role') or '').strip().lower() == 'admin':
+        return (
+            Submission.query.options(*list_opts)
+            .filter(
+                _filter_inspection(),
+                Submission.workflow_status.in_(['completed', 'closed_by_admin', 'rejected']),
+            )
+            .order_by(Submission.updated_at.desc())
+            .limit(200)
+            .all()
+        )
+
+    clauses = _inspection_reviewed_clauses_for_user(user)
+    if not clauses:
+        return []
+
+    return (
+        Submission.query.options(*list_opts)
+        .filter(_filter_inspection(), or_(*clauses))
+        .order_by(Submission.updated_at.desc())
+        .all()
+    )
 
 
 def can_edit_submission(user, submission):
@@ -595,17 +721,21 @@ def can_edit_submission(user, submission):
     # - Status is submitted/rejected (initial state)
     # - Status is operations_manager_review but not yet approved (allows updates before review)
     if designation == 'supervisor':
-        # Check if this is the supervisor's own submission
-        # Use supervisor_id if set, otherwise fall back to user_id (for older submissions)
-        is_own_submission = (
-            (hasattr(submission, 'supervisor_id') and submission.supervisor_id == user.id) or
-            (submission.user_id == user.id)
+        is_assigned_reviewer = (
+            hasattr(submission, 'supervisor_id') and submission.supervisor_id == user.id
         )
-        
+        is_own_submission = (
+            is_assigned_reviewer or (submission.user_id == user.id)
+        )
+
         if not is_own_submission:
             return False
-        
-        # Allow editing if status is draft, submitted, or rejected, or if in operations_manager_review but not yet approved
+
+        # Technician submission awaiting this supervisor's review
+        if is_assigned_reviewer and status in ('supervisor_review', 'supervisor_notified', 'submitted'):
+            return True
+
+        # Supervisor's own submission (submitter is also supervisor)
         if status in ['draft', 'submitted', 'rejected', None]:
             return True
         if status == 'operations_manager_review' and not submission.operations_manager_approved_at:
@@ -802,38 +932,66 @@ def _user_has_inspection_history_access(user) -> bool:
 
 
 def _inspection_history_query_for_user(base_query, user):
-    """Inspection-only history scope query for the current user."""
+    """Inspection history: pending at the user's stage plus forms they already reviewed."""
     if not user:
         return None
     if getattr(user, 'role', None) == 'admin':
         return base_query.filter(_filter_inspection())
 
     d = (getattr(user, 'designation', None) or '').strip().lower()
+    base = base_query.filter(_filter_inspection())
+
     if d == 'supervisor':
-        return base_query.filter(_filter_inspection(), Submission.supervisor_id == user.id)
+        return base.filter(or_(Submission.supervisor_id == user.id, Submission.user_id == user.id))
+
     if d == 'operations_manager':
-        return base_query.filter(_filter_inspection(), Submission.operations_manager_id == user.id)
+        # Pending OM queue is not scoped by operations_manager_id (set only after sign-off).
+        return base.filter(or_(
+            Submission.workflow_status == 'operations_manager_review',
+            Submission.operations_manager_id == user.id,
+        ))
+
     if d == 'procurement':
-        return base_query.filter(_filter_inspection(), Submission.procurement_id == user.id)
-    if d == 'general_manager':
-        return base_query.filter(
-            _filter_inspection(),
-            or_(
-                Submission.workflow_status == 'general_manager_review',
-                Submission.workflow_status == 'general_manager_approved',
-                Submission.workflow_status == 'completed',
-                Submission.general_manager_id == user.id,
+        return base.filter(or_(
+            and_(
+                Submission.workflow_status == 'bd_procurement_review',
+                Submission.procurement_approved_at.is_(None),
             ),
-        )
-    if bool(getattr(user, 'access_business_development', False)) or (hasattr(user, 'is_bd_inspection_reviewer') and user.is_bd_inspection_reviewer()):
-        return base_query.filter(_filter_inspection(), Submission.business_dev_id == user.id)
+            Submission.procurement_id == user.id,
+        ))
+
+    if d == 'general_manager':
+        return base.filter(or_(
+            Submission.workflow_status == 'general_manager_review',
+            Submission.workflow_status == 'general_manager_approved',
+            Submission.workflow_status == 'completed',
+            Submission.general_manager_id == user.id,
+        ))
+
+    is_bd = (
+        d == 'business_development'
+        or bool(getattr(user, 'access_business_development', False))
+        or (hasattr(user, 'is_bd_inspection_reviewer') and user.is_bd_inspection_reviewer())
+    )
+    if is_bd:
+        return base.filter(or_(
+            and_(
+                Submission.workflow_status == 'bd_procurement_review',
+                Submission.business_dev_approved_at.is_(None),
+            ),
+            Submission.business_dev_id == user.id,
+        ))
+
     return None
 
 
 def _my_submissions_filter(user_id):
-    """Submissions submitted by this user or owned as supervisor."""
-    uid = user_id if user_id is not None else -1
-    return or_(Submission.user_id == uid, Submission.supervisor_id == uid)
+    """Submissions created by this user (canonical submitter = user_id on the record)."""
+    try:
+        uid = int(user_id) if user_id is not None else -1
+    except (TypeError, ValueError):
+        uid = -1
+    return Submission.user_id == uid
 
 
 def _submission_successfully_finished():
@@ -889,8 +1047,56 @@ def _completion_rate_pct(global_scope=True, supervisor_id=None):
     return min(100, round(done / total * 100))
 
 
+def _inspection_my_submission_rows(user_id):
+    """Inspection forms this user submitted — shared by hero stats and my-submissions own rows."""
+    return Submission.query.filter(
+        _filter_inspection(),
+        _my_submissions_filter(user_id),
+    ).all()
+
+
+def _inspection_hero_metrics(user):
+    """Inspection hero widget: only forms this user submitted (not org-wide or reviewer queue)."""
+    rows = _inspection_my_submission_rows(user.id)
+    total = len(rows)
+    pending = sum(
+        1 for s in rows
+        if (s.workflow_status or '') not in ('completed', 'closed_by_admin', 'rejected')
+    )
+    approved = sum(1 for s in rows if (s.workflow_status or '') == 'completed')
+    rate = min(100, round(approved / total * 100)) if total else 0
+    return {
+        'forms_submitted': total,
+        'pending': pending,
+        'approved': approved,
+        'rate': rate,
+    }
+
+
 def _count_inspection_my(user_id):
-    return Submission.query.filter(_filter_inspection(), _my_submissions_filter(user_id)).count()
+    return len(_inspection_my_submission_rows(user_id))
+
+
+def _count_inspection_pending_my(user_id):
+    rows = _inspection_my_submission_rows(user_id)
+    return sum(
+        1 for s in rows
+        if (s.workflow_status or '') not in ('completed', 'closed_by_admin', 'rejected')
+    )
+
+
+def _count_inspection_approved_my(user_id):
+    rows = _inspection_my_submission_rows(user_id)
+    return sum(1 for s in rows if (s.workflow_status or '') == 'completed')
+
+
+def _inspection_completion_rate_my(user_id):
+    rows = _inspection_my_submission_rows(user_id)
+    total = len(rows)
+    if not total:
+        return 0
+    approved = sum(1 for s in rows if (s.workflow_status or '') == 'completed')
+    return min(100, round(approved / total * 100))
 
 
 def _count_hr_my(user_id):
@@ -925,20 +1131,85 @@ def _employment_tenure_days_user(user):
     return (today - d).days + 1
 
 
+def _dashboard_stat_href(label):
+    """Map dashboard stat label to the most relevant module URL."""
+    if not label:
+        return '/workflow/submitted-forms'
+    L = (label or '').strip().lower()
+    if 'inspection' in L:
+        return '/inspection/'
+    if 'hr form' in L or 'my hr' in L:
+        return '/hr/'
+    if 'document' in L:
+        return '/dochub'
+    if 'device' in L:
+        return '/admin/devices'
+    if 'active user' in L:
+        return '/admin/team-management'
+    if 'days with injaaz' in L:
+        return '/workflow/submitted-forms'
+    if 'annual leave' in L or 'sick leave' in L or 'leave left' in L:
+        return None  # opened via profile modal on dashboard
+    if 'material' in L or 'catalog' in L:
+        return '/procurement/'
+    if 'project' in L or 'rfp' in L or 'pipeline' in L:
+        return '/admin/bd'
+    if 'pending' in L and ('sign' in L or 'review' in L):
+        return '/workflow/pending-reviews'
+    if 'forms to complete' in L:
+        return '/workflow/pending-reviews'
+    if 'completed' in L or 'completion rate' in L:
+        return '/workflow/submitted-forms'
+    if 'form' in L:
+        return '/workflow/submitted-forms'
+    return '/workflow/submitted-forms'
+
+
+def _metric(label, value, **extra):
+    """Hero stat card payload with navigation href."""
+    payload = {'label': label, 'value': value, 'href': _dashboard_stat_href(label)}
+    payload.update(extra)
+    return payload
+
+
 def _days_with_injaaz_metric(user):
-    """Single hero card dict: days + optional since date; None if no employment_start_date."""
-    days = _employment_tenure_days_user(user)
-    if days is None:
-        return None
+    """Single hero card dict: tenure formatted as '1 year, 15 days'; None if no employment_start_date."""
+    from datetime import date as _date_cls, datetime as _dt_cls
     d = getattr(user, 'employment_start_date', None)
-    since = ''
-    if d is not None:
-        try:
-            since = f'{d.day} {d.strftime("%b %Y")}'
-        except Exception:
-            since = str(d)[:10]
-    value = f'{days} days, since {since}' if since else f'{days} days'
-    return {'label': 'Days with Amaan', 'value': value}
+    if d is None:
+        return None
+    if isinstance(d, _dt_cls):
+        d = d.date()
+    elif not isinstance(d, _date_cls):
+        return None
+    today = _date_cls.today()
+    if d > today:
+        return None
+    years = today.year - d.year - (1 if (today.month, today.day) < (d.month, d.day) else 0)
+    if years > 0:
+        anniversary = d.replace(year=d.year + years)
+        remaining = (today - anniversary).days
+        if remaining == 0:
+            value = f'{years} {"year" if years == 1 else "years"}'
+        else:
+            value = f'{years} {"year" if years == 1 else "years"}, {remaining} {"day" if remaining == 1 else "days"}'
+    else:
+        total = (today - d).days + 1
+        value = f'{total} {"day" if total == 1 else "days"}'
+    try:
+        joined_date = f'{d.day} {d.strftime("%b %Y")}'
+    except Exception:
+        joined_date = str(d)[:10]
+    annual = getattr(user, 'annual_leave_days', None)
+    other = getattr(user, 'other_leave_days', None)
+    return {
+        'label': 'Days with Injaaz',
+        'value': value,
+        'href': _dashboard_stat_href('Days with Injaaz'),
+        'joined_date': joined_date,
+        'annual_leave_days': annual,
+        'other_leave_days': other,
+    }
 
 
 def _inspection_stats_scope(user):
@@ -949,6 +1220,16 @@ def _inspection_stats_scope(user):
     if des == 'supervisor':
         return False, user.id
     return True, None
+
+
+def _count_inspection_approved(global_scope=True, supervisor_id=None):
+    q = Submission.query.filter(
+        _filter_inspection(),
+        Submission.workflow_status == 'completed',
+    )
+    if not global_scope and supervisor_id is not None:
+        q = q.filter(Submission.supervisor_id == supervisor_id)
+    return q.count()
 
 
 def _inspection_unique_submitters(global_scope=True, supervisor_id=None):
@@ -1048,50 +1329,58 @@ def _hero_metrics_for_user(user, persona):
         return _completion_rate_pct(global_scope=True)
 
     if persona == 'admin_gm':
+        tenure_card = _days_with_injaaz_metric(user)
+        fourth = tenure_card if tenure_card else _metric('Forms to complete', str(forms_to_complete))
         return [
-            {'label': 'Inspection forms submitted', 'value': str(insp_all)},
-            {'label': 'HR forms submitted', 'value': str(hr_all)},
-            {'label': 'Active users', 'value': str(active_users)},
-            {'label': 'Forms to complete', 'value': str(forms_to_complete)},
+            _metric('Inspection forms submitted', str(insp_all)),
+            _metric('HR forms submitted', str(hr_all)),
+            _metric('Active users', str(active_users)),
+            fourth,
         ]
     if persona == 'procurement_store':
+        tenure_card = _days_with_injaaz_metric(user)
+        fourth = tenure_card if tenure_card else _metric('Forms to complete', str(forms_to_complete))
         return [
-            {'label': 'Materials in catalog', 'value': str(materials_count)},
-            {'label': 'Inspection forms submitted', 'value': str(insp_all)},
-            {'label': 'HR forms submitted', 'value': str(hr_all)},
-            {'label': 'Forms to complete', 'value': str(forms_to_complete)},
+            _metric('Materials in catalog', str(materials_count)),
+            _metric('Inspection forms submitted', str(insp_all)),
+            _metric('HR forms submitted', str(hr_all)),
+            fourth,
         ]
     if persona == 'supervisor_ops':
         tenure_card = _days_with_injaaz_metric(user)
-        fourth = tenure_card if tenure_card else {'label': 'Completion rate', 'value': f'{rate_val()}%'}
+        fourth = tenure_card if tenure_card else _metric('Completion rate', f'{rate_val()}%')
         return [
-            {'label': 'Inspection forms submitted', 'value': str(insp_val())},
-            {'label': 'HR forms submitted', 'value': str(hr_val())},
-            {'label': 'Completed forms', 'value': str(completed_val())},
+            _metric('Inspection forms submitted', str(insp_val())),
+            _metric('HR forms submitted', str(hr_val())),
+            _metric('Completed forms', str(completed_val())),
             fourth,
         ]
     if persona == 'bd':
+        tenure_card = _days_with_injaaz_metric(user)
+        fourth = tenure_card if tenure_card else _metric('HR forms submitted', str(hr_all))
         return [
-            {'label': 'Total projects', 'value': str(total_projects)},
-            {'label': 'RFPs in pipeline', 'value': str(rfps_pipeline)},
-            {'label': 'Inspection forms submitted', 'value': str(insp_all)},
-            {'label': 'HR forms submitted', 'value': str(hr_all)},
+            _metric('Total projects', str(total_projects)),
+            _metric('RFPs in pipeline', str(rfps_pipeline)),
+            _metric('Inspection forms submitted', str(insp_all)),
+            fourth,
         ]
     if persona == 'hr':
+        tenure_card = _days_with_injaaz_metric(user)
+        fourth = tenure_card if tenure_card else _metric('Pending forms to sign', str(pending_hr_review))
         return [
-            {'label': 'HR forms submitted', 'value': str(hr_all)},
-            {'label': 'Documents submitted', 'value': str(docs_count)},
-            {'label': 'Total devices', 'value': str(devices_count)},
-            {'label': 'Pending forms to sign', 'value': str(pending_hr_review)},
+            _metric('HR forms submitted', str(hr_all)),
+            _metric('Documents submitted', str(docs_count)),
+            _metric('Total devices', str(devices_count)),
+            fourth,
         ]
     # default: personal stats (employees / users without org-wide dashboard role)
     uid = user.id
     tenure_card = _days_with_injaaz_metric(user)
-    fourth = tenure_card if tenure_card else {'label': 'My completion rate', 'value': f'{_completion_rate_pct_my(uid)}%'}
+    fourth = tenure_card if tenure_card else _metric('My completion rate', f'{_completion_rate_pct_my(uid)}%')
     return [
-        {'label': 'My inspection forms', 'value': str(_count_inspection_my(uid))},
-        {'label': 'My HR forms', 'value': str(_count_hr_my(uid))},
-        {'label': 'My forms completed', 'value': str(_count_completed_success_my(uid))},
+        _metric('My inspection forms', str(_count_inspection_my(uid))),
+        _metric('My HR forms', str(_count_hr_my(uid))),
+        _metric('My forms completed', str(_count_completed_success_my(uid))),
         fourth,
     ]
 
@@ -1099,7 +1388,7 @@ def _hero_metrics_for_user(user, persona):
 @workflow_bp.route('/dashboard-stats', methods=['GET'])
 @jwt_required()
 def get_dashboard_stats():
-    """Role-aware stats and recent activity for the dashboard hero widget."""
+    """Role-aware stats for the dashboard hero widget."""
     try:
         user_id = get_jwt_identity()
         user = db.session.get(User, user_id)
@@ -1140,38 +1429,16 @@ def get_dashboard_stats():
             completed_count = Submission.query.filter(_submission_successfully_finished()).count()
         completion_rate = round((completed_count / total_submissions * 100) if total_submissions else 0)
 
-        act_q = Submission.query.options(joinedload(Submission.user)).order_by(Submission.created_at.desc())
-        if persona in ('default', 'supervisor_ops'):
-            act_q = act_q.filter(_my_submissions_filter(user.id))
-        base_activity = act_q.limit(5).all()
-        module_labels = {'hvac_mep': 'HVAC', 'civil': 'Civil', 'cleaning': 'Cleaning', 'hr': 'HR'}
-        recent_activity = []
-        for sub in base_activity:
-            mt = sub.module_type or ''
-            label = module_labels.get(mt, 'HR' if mt.startswith('hr') else (mt or 'Form'))
-            name = (sub.user.full_name or sub.user.username or 'Someone') if sub.user else 'Someone'
-            name_parts = name.split()
-            if len(name) > 20 and len(name_parts) >= 2:
-                name = name_parts[0] + ' ' + (name_parts[-1][0] if name_parts[-1] else '') + '.'
-            status = sub.workflow_status or 'submitted'
-            if status == 'completed':
-                action = 'completed'
-            elif status == 'rejected':
-                action = 'rejected'
-            elif status == 'approved':
-                action = 'approved'
-            else:
-                action = 'submitted'
-            form_type = 'form' if mt.startswith('hr') else 'inspection'
-            if persona in ('default', 'supervisor_ops'):
-                text = f'Your {label} {form_type} was {action}'
-            else:
-                text = f'{label} {form_type} {action} by {name}'
-            recent_activity.append({
-                'text': text,
-                'time_ago': _time_ago(sub.created_at),
-                'submission_id': sub.submission_id,
-            })
+        start_date = getattr(user, 'employment_start_date', None)
+        start_date_str = None
+        if start_date is not None:
+            try:
+                from datetime import datetime as _dt_cls2
+                if isinstance(start_date, _dt_cls2):
+                    start_date = start_date.date()
+                start_date_str = f'{start_date.day} {start_date.strftime("%b %Y")}'
+            except Exception:
+                start_date_str = str(start_date)[:10]
 
         return success_response({
             'dashboard_role': persona,
@@ -1180,7 +1447,7 @@ def get_dashboard_stats():
             'pending_review': pending_count,
             'active_users': active_users,
             'completion_rate': min(100, completion_rate),
-            'recent_activity': recent_activity,
+            'employment_start_date': start_date_str,
         })
     except Exception as e:
         current_app.logger.error(f"Error getting dashboard stats: {str(e)}", exc_info=True)
@@ -1197,17 +1464,12 @@ def get_inspection_dashboard_stats():
         if not user:
             return error_response('User not found', status_code=404, error_code='NOT_FOUND')
 
-        global_scope, sup_id = _inspection_stats_scope(user)
-        forms_submitted = _count_inspection(global_scope, sup_id)
-        pending = _inspection_pending_count_for_user(user)
-        unique_submitters = _inspection_unique_submitters(global_scope, sup_id)
-        rate = _inspection_completion_rate_pct(global_scope, sup_id)
-
+        metrics = _inspection_hero_metrics(user)
         hero_metrics = [
-            {'label': 'Forms submitted', 'value': str(forms_submitted)},
-            {'label': 'Pending review', 'value': str(pending)},
-            {'label': 'Unique submitters', 'value': str(unique_submitters)},
-            {'label': 'Completion rate', 'value': f'{rate}%'},
+            {'label': 'Forms submitted', 'value': str(metrics['forms_submitted'])},
+            {'label': 'Pending inspections', 'value': str(metrics['pending'])},
+            {'label': 'Approved inspections', 'value': str(metrics['approved'])},
+            {'label': 'Completion rate', 'value': f"{metrics['rate']}%"},
         ]
         return success_response({'hero_metrics': hero_metrics})
     except Exception as e:
@@ -1215,26 +1477,6 @@ def get_inspection_dashboard_stats():
         return error_response(
             'Failed to get inspection dashboard stats', status_code=500, error_code='DATABASE_ERROR'
         )
-
-
-def _time_ago(dt):
-    if not dt:
-        return ''
-    from datetime import datetime, timezone
-    now = datetime.now(timezone.utc)
-    if dt.tzinfo is None:
-        from datetime import timezone as tz
-        dt = dt.replace(tzinfo=tz.utc)
-    delta = now - dt
-    if delta.total_seconds() < 60:
-        return 'Just now'
-    if delta.total_seconds() < 3600:
-        return f'{int(delta.total_seconds() / 60)}m ago'
-    if delta.total_seconds() < 86400:
-        return f'{int(delta.total_seconds() / 3600)}h ago'
-    if delta.days < 7:
-        return f'{delta.days}d ago'
-    return dt.strftime('%b %d')
 
 
 def _signature_url_from_field(form_data, key, alt_key=None):
@@ -1397,6 +1639,189 @@ def get_history_submissions():
         return error_response('Failed to get submission history', status_code=500, error_code='DATABASE_ERROR')
 
 
+def _attach_latest_job_ids(serialized, submission_rows):
+    """Batch-load latest completed report job_id for PDF/Excel download links."""
+    if not serialized or not submission_rows:
+        return
+    sub_ids = [s.id for s in submission_rows if getattr(s, 'id', None)]
+    if not sub_ids:
+        return
+    job_rows = (
+        Job.query.filter(Job.submission_id.in_(sub_ids), Job.status == 'completed')
+        .order_by(Job.submission_id, Job.completed_at.desc().nullslast(), Job.id.desc())
+        .with_entities(Job.submission_id, Job.job_id)
+        .all()
+    )
+    latest = {}
+    for sid, jid in job_rows:
+        if sid not in latest:
+            latest[sid] = jid
+    for item, sub in zip(serialized, submission_rows):
+        item['latest_job_id'] = latest.get(sub.id)
+
+
+@workflow_bp.route('/submissions/my-trail', methods=['GET'])
+@jwt_required()
+def get_my_trail():
+    """
+    Full live trail for the current user: every submission that has touched them,
+    split into 'pending' (needs their action) and 'reviewed' (already actioned).
+    Covers both inspection and HR forms.
+    """
+    try:
+        user_id = get_jwt_identity()
+        user = db.session.get(User, user_id)
+        if not user:
+            return error_response('User not found', status_code=404, error_code='NOT_FOUND')
+
+        list_opts = (joinedload(Submission.user), noload(Submission.jobs))
+        designation = (getattr(user, 'designation', None) or '').strip().lower()
+        is_admin = (getattr(user, 'role', None) or '').strip().lower() == 'admin'
+
+        # ── helpers ───────────────────────────────────────────────────────────
+        def _serial(submission):
+            sub_user = getattr(submission, 'user', None) or (
+                db.session.get(User, submission.user_id) if submission.user_id else None
+            )
+            d = submission.to_dict(include_form_data=False, include_latest_job=False)
+            d['user'] = sub_user.to_dict() if sub_user else None
+            return d
+
+        # ── pending (awaiting this user's action) ────────────────────────────
+        # Inspection pending — reuse existing designation logic
+        insp_pending_rows = get_user_pending_submissions(user) if not is_admin else (
+            Submission.query.options(*list_opts)
+            .filter(_filter_inspection(),
+                    Submission.workflow_status.notin_(['completed', 'closed_by_admin', 'rejected']))
+            .order_by(Submission.created_at.desc()).all()
+        )
+
+        # HR pending — by designation/role
+        SubmitterAlias = aliased(User)
+        hr_pending_rows = []
+
+        if is_admin:
+            hr_pending_rows = (
+                Submission.query.options(*list_opts)
+                .filter(_filter_hr(),
+                        Submission.workflow_status.notin_(['approved', 'completed', 'closed_by_admin', 'rejected']))
+                .order_by(Submission.created_at.desc()).all()
+            )
+        elif designation == 'general_manager':
+            # GM-role submissions (legacy gm_review + management-chain GM step)
+            _gm_rows = (
+                Submission.query.options(*list_opts)
+                .filter(_filter_hr(),
+                        Submission.workflow_status.in_(['gm_review', WF_MGMT_GM]))
+                .order_by(Submission.created_at.desc()).all()
+            )
+            # GM may also be the Reporting Manager for some employees
+            _rm_rows = (
+                Submission.query.options(*list_opts)
+                .join(SubmitterAlias, Submission.user_id == SubmitterAlias.id)
+                .filter(_filter_hr(),
+                        Submission.workflow_status == WF_MGMT_RM,
+                        SubmitterAlias.reporting_manager_id == user.id)
+                .order_by(Submission.created_at.desc()).all()
+            )
+            # Deduplicate while preserving order (GM rows first)
+            _seen_ids: set = set()
+            hr_pending_rows = []
+            for _s in _gm_rows + _rm_rows:
+                if _s.id not in _seen_ids:
+                    _seen_ids.add(_s.id)
+                    hr_pending_rows.append(_s)
+        elif designation in ('hr_manager',) or getattr(user, 'access_hr', False):
+            hr_pending_rows = (
+                Submission.query.options(*list_opts)
+                .filter(_filter_hr(),
+                        Submission.workflow_status.in_(['hr_review', WF_MGMT_HR]))
+                .order_by(Submission.created_at.desc()).all()
+            )
+        else:
+            # Reporting manager: submitter's reporting_manager_id == user.id
+            hr_pending_rows = (
+                Submission.query.options(*list_opts)
+                .join(SubmitterAlias, Submission.user_id == SubmitterAlias.id)
+                .filter(_filter_hr(),
+                        Submission.workflow_status == WF_MGMT_RM,
+                        SubmitterAlias.reporting_manager_id == user.id)
+                .order_by(Submission.created_at.desc()).all()
+            )
+
+        pending_ids = {s.id for s in insp_pending_rows + hr_pending_rows}
+        pending_rows = insp_pending_rows + hr_pending_rows
+        pending = [_serial(s) for s in pending_rows]
+        _attach_latest_job_ids(pending, pending_rows)
+
+        # ── reviewed (already actioned by this user) ─────────────────────────
+        insp_reviewed_rows = _query_inspection_reviewed_for_user(user, list_opts)
+        hr_reviewed_rows = []
+
+        # HR reviewed
+        if is_admin:
+            hr_reviewed_rows = (
+                Submission.query.options(*list_opts)
+                .filter(_filter_hr(),
+                        Submission.workflow_status.in_(['approved', 'completed', 'closed_by_admin', 'rejected']))
+                .order_by(Submission.updated_at.desc()).limit(200).all()
+            )
+        elif designation == 'general_manager':
+            # Only HR submissions this GM actually approved or rejected (not every org-wide HR row)
+            hr_reviewed_rows = (
+                Submission.query.options(*list_opts)
+                .filter(
+                    _filter_hr(),
+                    or_(
+                        and_(
+                            Submission.general_manager_id == user.id,
+                            Submission.general_manager_approved_at.isnot(None),
+                        ),
+                        and_(
+                            Submission.workflow_status == 'rejected',
+                            Submission.rejected_by_id == user.id,
+                        ),
+                    ),
+                )
+                .order_by(Submission.updated_at.desc())
+                .all()
+            )
+        elif designation in ('hr_manager',) or getattr(user, 'access_hr', False):
+            hr_reviewed_rows = (
+                Submission.query.options(*list_opts)
+                .filter(_filter_hr(),
+                        Submission.workflow_status.in_(['approved', 'completed', 'rejected']))
+                .order_by(Submission.updated_at.desc()).all()
+            )
+        else:
+            # RM: forms submitted by their direct reports, past the RM stage
+            hr_reviewed_rows = (
+                Submission.query.options(*list_opts)
+                .join(SubmitterAlias, Submission.user_id == SubmitterAlias.id)
+                .filter(_filter_hr(),
+                        SubmitterAlias.reporting_manager_id == user.id,
+                        Submission.workflow_status.notin_(
+                            [WF_MGMT_RM, 'submitted', 'draft']))
+                .order_by(Submission.updated_at.desc()).all()
+            )
+
+        # Deduplicate — exclude anything already listed as pending
+        reviewed_rows = [s for s in insp_reviewed_rows + hr_reviewed_rows if s.id not in pending_ids]
+        reviewed = [_serial(s) for s in reviewed_rows]
+        _attach_latest_job_ids(reviewed, reviewed_rows)
+
+        return success_response({
+            'pending':  pending,
+            'reviewed': reviewed,
+            'pending_count':  len(pending),
+            'reviewed_count': len(reviewed),
+        })
+
+    except Exception as e:
+        current_app.logger.error(f"Error building my-trail: {str(e)}", exc_info=True)
+        return error_response('Failed to build trail', status_code=500, error_code='DATABASE_ERROR')
+
+
 @workflow_bp.route('/submissions/my-submissions', methods=['GET'])
 @jwt_required()
 def get_my_submissions():
@@ -1407,19 +1832,8 @@ def get_my_submissions():
         
         if not user:
             return error_response('User not found', status_code=404, error_code='NOT_FOUND')
-        
-        has_hr_scope = (
-            user.role == 'admin'
-            or bool(getattr(user, 'access_submitted_forms', False))
-        )
-        has_inspection_scope = _user_has_inspection_history_access(user)
-        can_view = has_hr_scope or has_inspection_scope
-        if not can_view:
-            return error_response(
-                'You do not have access to submitted forms',
-                status_code=403,
-                error_code='FORBIDDEN',
-            )
+
+        # Any authenticated user may open Submitted forms; they always see forms they submitted.
         
         # Get filter parameter (all, submitted, draft)
         status_filter = request.args.get('status', 'all')
@@ -1448,44 +1862,39 @@ def get_my_submissions():
             return q
 
         submissions = []
-        include_hr = has_hr_scope and scope in ('all', 'hr')
-        include_inspection = has_inspection_scope and scope in ('all', 'inspection')
+        include_hr = scope in ('all', 'hr')
+        include_inspection = scope in ('all', 'inspection')
 
-        if user.role == 'admin':
-            if scope == 'hr':
-                admin_scope_filter = _filter_hr()
-            elif scope == 'inspection':
-                admin_scope_filter = _filter_inspection()
-            else:
-                admin_scope_filter = or_(_filter_hr(), _filter_inspection())
-            q = _apply_status(base_query.filter(admin_scope_filter))
-            submissions = q.order_by(Submission.created_at.desc()).all() if q is not None else []
-            list_scope = 'all'
-        else:
-            if include_hr:
-                hr_q = _apply_status(
-                    base_query.filter(
-                        _filter_hr(),
-                        or_(Submission.supervisor_id == user.id, Submission.user_id == user.id),
-                    )
+        # Always include forms this user submitted (HR + inspection). Reviewers also see their queue.
+        if include_hr:
+            hr_q = _apply_status(
+                base_query.filter(
+                    _filter_hr(),
+                    _my_submissions_filter(user.id),
                 )
-                if hr_q is not None:
-                    submissions.extend(hr_q.all())
-
-            if include_inspection:
-                ins_q = _apply_status(_inspection_history_query_for_user(base_query, user))
-                if ins_q is not None:
-                    submissions.extend(ins_q.all())
-
-            dedup = {}
-            for s in submissions:
-                dedup[s.submission_id] = s
-            submissions = sorted(
-                dedup.values(),
-                key=lambda s: s.created_at or datetime.min,
-                reverse=True,
             )
-            list_scope = 'mixed' if (include_hr and include_inspection) else ('hr' if include_hr else 'inspection')
+            if hr_q is not None:
+                submissions.extend(hr_q.all())
+
+        if include_inspection:
+            ins_own_q = _apply_status(
+                base_query.filter(
+                    _filter_inspection(),
+                    _my_submissions_filter(user.id),
+                )
+            )
+            if ins_own_q is not None:
+                submissions.extend(ins_own_q.all())
+
+        dedup = {}
+        for s in submissions:
+            dedup[s.submission_id] = s
+        submissions = sorted(
+            dedup.values(),
+            key=lambda s: s.created_at or datetime.min,
+            reverse=True,
+        )
+        list_scope = 'mixed' if (include_hr and include_inspection) else ('hr' if include_hr else 'inspection')
 
         inspections_map = {
             'hvac': 'HVAC & MEP',
@@ -1703,6 +2112,7 @@ def get_submission_detail(submission_id):
         # (not 'procurement') — see User.procurement_submissions backref in models.py.
         submission = Submission.query.options(
             joinedload(Submission.user),
+            joinedload(Submission.supervisor),
             joinedload(Submission.operations_manager),
             joinedload(Submission.business_dev),
             joinedload(Submission.procurement_user),
@@ -1720,6 +2130,12 @@ def get_submission_detail(submission_id):
             or (user.designation and user.designation in VALID_DESIGNATIONS)
             or (_is_hr_module_submission(submission) and _hr_anytime_line_editor(user, submission))
         )
+        if not has_access and _is_hr_module_submission(submission):
+            from module_hr.hr_management_chain import user_is_mgmt_chain_participant
+
+            fd = _submission_form_data_dict(submission)
+            if user_is_mgmt_chain_participant(user, fd):
+                has_access = True
         
         if not has_access:
             return error_response('Access denied', status_code=403, error_code='UNAUTHORIZED')
@@ -1731,6 +2147,7 @@ def get_submission_detail(submission_id):
         
         # Add user details (using eager-loaded relationships)
         sub_dict['user'] = submission.user.to_dict() if submission.user else None
+        sub_dict['supervisor'] = submission.supervisor.to_dict() if submission.supervisor else None
         sub_dict['operations_manager'] = submission.operations_manager.to_dict() if submission.operations_manager else None
         sub_dict['business_dev'] = submission.business_dev.to_dict() if submission.business_dev else None
         sub_dict['procurement'] = submission.procurement_user.to_dict() if submission.procurement_user else None
@@ -1920,8 +2337,11 @@ def approve_supervisor_resubmission(submission_id):
             return error_response('You can only resubmit your own submissions', 
                                 status_code=403, error_code='UNAUTHORIZED')
         
-        # Allow resubmission if status is submitted/rejected OR operations_manager_review (but not yet approved by OM)
-        if submission.workflow_status not in ['submitted', 'rejected', None] and not (
+        # Allow sign-off / resubmission at the supervisor or initial stages, or
+        # while still at operations_manager_review (so long as OM hasn't approved).
+        if submission.workflow_status not in [
+            'submitted', 'rejected', 'supervisor_review', 'supervisor_notified', None
+        ] and not (
             submission.workflow_status == 'operations_manager_review' and not submission.operations_manager_approved_at
         ):
             return error_response('Submission cannot be resubmitted at this stage', 
@@ -1982,11 +2402,14 @@ def approve_supervisor_resubmission(submission_id):
         _ensure_items_photos(form_data)
         
         # Update supervisor data
+        _preserve_submitter_comments_before_supervisor_signoff(form_data, submission)
         if comments:
             form_data['supervisor_comments'] = comments
             submission.supervisor_comments = comments
         
         if signature:
+            # Legacy: keep submitter signature in tech_signature before supervisor overwrites supervisor_signature
+            _preserve_submitter_signature_before_supervisor_signoff(form_data, submission)
             # Process and save supervisor signature
             save_signature_dataurl, get_paths_fn, _ = get_module_functions(submission.module_type)
             GENERATED_DIR, UPLOADS_DIR, JOBS_DIR, EXECUTOR = get_paths_fn()
@@ -2029,17 +2452,17 @@ def approve_supervisor_resubmission(submission_id):
         
         submission.form_data = form_data
         submission.supervisor_id = user.id
+        submission.supervisor_reviewed_at = utc_now_naive()
         
-        # Reset workflow status to submitted (or operations_manager_review if OM was already reviewing)
-        if submission.workflow_status == 'operations_manager_review' and not submission.operations_manager_approved_at:
-            # Keep at operations_manager_review if OM hasn't approved yet
-            submission.workflow_status = 'operations_manager_review'
-        else:
-            # Reset to submitted for fresh review
-            submission.workflow_status = 'submitted'
+        # After supervisor sign-off, advance the form to the Operations Manager stage.
+        submission.workflow_status = 'operations_manager_review'
         
         submission.updated_at = utc_now_naive()
         flag_modified(submission, 'form_data')
+        if is_inspection_submission(submission) and submission.workflow_status in (
+            'submitted', 'operations_manager_review'
+        ):
+            notify_inspection_stage(submission, submission.workflow_status)
         db.session.commit()
         
         # Regenerate PDF and Excel documents with updated data
@@ -2317,6 +2740,8 @@ def approve_operations_manager(submission_id):
         current_app.logger.info(f"  - form_data operations_manager_signature: {bool(form_data.get('operations_manager_signature'))}")
         current_app.logger.info(f"  - flag_modified called: True")
         
+        if is_inspection_submission(submission):
+            notify_inspection_stage(submission, 'bd_procurement_review')
         db.session.commit()
         
         # Verify after commit
@@ -2526,6 +2951,8 @@ def approve_business_development(submission_id):
             message = 'Approved successfully. Waiting for Procurement approval.'
         
         submission.updated_at = utc_now_naive()
+        if is_inspection_submission(submission) and submission.workflow_status == 'general_manager_review':
+            notify_inspection_stage(submission, 'general_manager_review')
         db.session.commit()
         
         # Regenerate documents for all modules (to include BD comments/signature)
@@ -2708,6 +3135,8 @@ def approve_procurement(submission_id):
             message = 'Approved successfully. Waiting for Business Development approval.'
         
         submission.updated_at = utc_now_naive()
+        if is_inspection_submission(submission) and submission.workflow_status == 'general_manager_review':
+            notify_inspection_stage(submission, 'general_manager_review')
         db.session.commit()
         
         # Regenerate documents for all modules (to include Procurement comments/signature)
@@ -2892,6 +3321,8 @@ def approve_general_manager(submission_id):
         submission.form_data = form_data
         flag_modified(submission, 'form_data')
         submission.updated_at = utc_now_naive()
+        if is_inspection_submission(submission):
+            notify_inspection_completed(submission)
         db.session.commit()
         
         # Regenerate documents for all modules (to include General Manager comments/signature and all previous reviewers)
@@ -2932,6 +3363,9 @@ def approve_general_manager(submission_id):
             'comments': comments,
             'has_signature': bool(signature)
         })
+
+        if is_inspection_submission(submission):
+            send_team_notification(submission, user, "General Manager signed — Form Completed")
         
         return success_response({
             'submission': submission.to_dict(),
@@ -2970,12 +3404,15 @@ def reject_submission(submission_id):
             return error_response('Submission not found', status_code=404, error_code='NOT_FOUND')
         
         # Record rejection details
+        previous_stage = submission.workflow_status
         submission.workflow_status = 'rejected'
-        submission.rejection_stage = submission.workflow_status  # Store previous stage
+        submission.rejection_stage = previous_stage
         submission.rejection_reason = reason
         submission.rejected_at = utc_now_naive()
         submission.rejected_by_id = user.id
         submission.updated_at = utc_now_naive()
+        if is_inspection_submission(submission):
+            notify_inspection_rejected(submission, reason)
         
         db.session.commit()
         
@@ -3240,6 +3677,14 @@ def update_submission(submission_id):
                 if existing_supervisor_signature and not form_data.get('supervisor_signature'):
                     form_data['supervisor_signature'] = existing_supervisor_signature
                     current_app.logger.info(f"✅ Preserved Supervisor signature in update_submission for {submission_id}")
+                existing_tech_signature = existing_form_data.get('tech_signature') or existing_form_data.get('submitter_signature')
+                if existing_tech_signature and not _hr_signature_blob_non_empty(form_data.get('tech_signature')):
+                    form_data['tech_signature'] = existing_tech_signature
+                    current_app.logger.info(f"✅ Preserved Submitter (tech) signature in update_submission for {submission_id}")
+                existing_submitter_comments = existing_form_data.get('submitter_comments') or existing_form_data.get('general_comments')
+                if existing_submitter_comments and not (form_data.get('submitter_comments') or '').strip():
+                    form_data['submitter_comments'] = existing_submitter_comments
+                    current_app.logger.info(f"✅ Preserved Submitter comments in update_submission for {submission_id}")
             
             _ensure_items_photos(form_data)
             
@@ -3252,6 +3697,8 @@ def update_submission(submission_id):
                     form_data['supervisor_comments'] = '[Form updated by supervisor with new details]'
                 
                 # Process supervisor signature - upload if it's a new data URL
+                _preserve_submitter_comments_before_supervisor_signoff(form_data, submission)
+                _preserve_submitter_signature_before_supervisor_signoff(form_data, submission)
                 supervisor_sig_data = form_data.get('supervisor_signature', '')
                 if supervisor_sig_data and isinstance(supervisor_sig_data, str) and supervisor_sig_data.startswith('data:image'):
                     # New signature provided as data URL - need to upload it
@@ -3352,6 +3799,11 @@ def update_submission(submission_id):
             current_app.logger.info(f"✅ Submission {submission_id} workflow_status changed to 'operations_manager_review'")
         
         submission.updated_at = utc_now_naive()
+        if (
+            is_inspection_submission(submission)
+            and (is_supervisor_own_update or is_own_draft_update)
+        ):
+            notify_inspection_stage(submission, 'operations_manager_review')
         db.session.commit()
         
         # Regenerate documents if this is a supervisor updating their own submission,
@@ -3446,6 +3898,8 @@ def resubmit_submission(submission_id):
         submission.rejected_at = None
         submission.rejected_by_id = None
         submission.updated_at = utc_now_naive()
+        if is_inspection_submission(submission):
+            notify_inspection_stage(submission, 'operations_manager_review')
         
         db.session.commit()
         
@@ -3484,9 +3938,15 @@ def legacy_approve_submission(submission_id):
             submission.supervisor_id == user.id
         )
         
-        # Allow supervisor to resubmit if status is submitted/rejected OR operations_manager_review (but not yet approved by OM)
-        if is_supervisor_own and (
-            submission.workflow_status in ['submitted', 'rejected', None] or
+        # Allow the supervisor to sign off / resubmit at the supervisor stage,
+        # initial drafts, or while still at OM review (before OM approval).
+        is_supervisor_review_stage = (
+            user.designation == 'supervisor'
+            and submission.workflow_status in ('supervisor_review', 'supervisor_notified')
+            and (not hasattr(submission, 'supervisor_id') or submission.supervisor_id in (None, user.id))
+        )
+        if (is_supervisor_own or is_supervisor_review_stage) and (
+            submission.workflow_status in ['submitted', 'rejected', 'supervisor_review', 'supervisor_notified', None] or
             (submission.workflow_status == 'operations_manager_review' and not submission.operations_manager_approved_at)
         ):
             return approve_supervisor_resubmission(submission_id)
@@ -3507,4 +3967,3 @@ def legacy_approve_submission(submission_id):
     except Exception as e:
         current_app.logger.error(f"Error in legacy approval: {str(e)}", exc_info=True)
         return error_response('Failed to process approval', status_code=500, error_code='DATABASE_ERROR')
-

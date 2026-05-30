@@ -1032,7 +1032,7 @@
   function docsForNavBucket(bucket) {
     const now = Math.floor(Date.now() / 1000);
     const recentCutoff = now - 30 * 24 * 60 * 60;
-    const catBuckets = ['onboarding', 'contracts', 'policies', 'manuals', 'reports'];
+    const catBuckets = ['onboarding', 'contracts', 'policies', 'manuals', 'reports', 'qhse', 'training', 'templates'];
     return docs.filter(d => {
       if (bucket === 'published' && d.status !== 'published') return false;
       if (bucket === 'draft' && d.status !== 'draft') return false;
@@ -1160,6 +1160,9 @@
     renderSbDocList('dhSbDocsPolicies', docsForNavBucket('policies'));
     renderSbDocList('dhSbDocsManuals', docsForNavBucket('manuals'));
     renderSbDocList('dhSbDocsReports', docsForNavBucket('reports'));
+    renderSbDocList('dhSbDocsQhse', docsForNavBucket('qhse'));
+    renderSbDocList('dhSbDocsTraining', docsForNavBucket('training'));
+    renderSbDocList('dhSbDocsTemplates', docsForNavBucket('templates'));
     renderSbDocList('dhSbDocsOther', visibleDocs());
 
     const setCount = (id, n) => {
@@ -1177,6 +1180,9 @@
     setCount('dhSbCountPolicies', docsForNavBucket('policies').length);
     setCount('dhSbCountManuals', docsForNavBucket('manuals').length);
     setCount('dhSbCountReports', docsForNavBucket('reports').length);
+    setCount('dhSbCountQhse', docsForNavBucket('qhse').length);
+    setCount('dhSbCountTraining', docsForNavBucket('training').length);
+    setCount('dhSbCountTemplates', docsForNavBucket('templates').length);
     setCount('dhSbOtherCount', visibleDocs().length);
 
     const osl = document.getElementById('dhSbOtherSectionLabel');

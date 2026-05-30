@@ -1776,7 +1776,7 @@ def format_per_tower_chargeable_html_for_email(df: pd.DataFrame) -> str:
 
         rows_html = []
         _pad = '2px 4px'
-        _cell = f'padding:{_pad};border:1px solid #0d3d24;font-size:10px;text-align:center'
+        _cell = f'padding:{_pad};border:1px solid #a8121e;font-size:10px;text-align:center'
         _hdr = f'background:#{ACCENT};font-weight:bold'
         for _, r in agg.iterrows():
             sg = (r['Service Group'] or '').strip()
@@ -1794,10 +1794,10 @@ def format_per_tower_chargeable_html_for_email(df: pd.DataFrame) -> str:
             )
 
         header_bg = f'#{PRIMARY}'
-        _sub = f'{_cell};border:1px solid #0d3d24;{_hdr}'
+        _sub = f'{_cell};border:1px solid #a8121e;{_hdr}'
         table = (
             f'<table cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:10px;width:100%;max-width:420px;margin:0 0 8px 0">'
-            f'<tr><td colspan="3" style="padding:4px 6px;background:{header_bg};color:#fff;font-weight:bold;text-align:center;border:1px solid #0d3d24;font-size:11px">{display_name}</td></tr>'
+            f'<tr><td colspan="3" style="padding:4px 6px;background:{header_bg};color:#fff;font-weight:bold;text-align:center;border:1px solid #a8121e;font-size:11px">{display_name}</td></tr>'
             f'<tr>'
             f'<td style="{_sub}">Service Name</td>'
             f'<td colspan="2" style="{_sub}">Chargeable</td>'
@@ -1813,7 +1813,7 @@ def format_per_tower_chargeable_html_for_email(df: pd.DataFrame) -> str:
             f'<td style="{_cell}">{resolved_total}</td>'
             f'<td style="{_cell}">{pending_total}</td>'
             f'</tr>'
-            f'<tr><td style="{_cell};border:1px solid #0d3d24"></td><td colspan="2" style="{_cell};{_hdr};border:1px solid #0d3d24">{grand_total}</td></tr>'
+            f'<tr><td style="{_cell};border:1px solid #a8121e"></td><td colspan="2" style="{_cell};{_hdr};border:1px solid #a8121e">{grand_total}</td></tr>'
             f'</table>'
         )
         tables_html.append(table)
@@ -1946,7 +1946,7 @@ def _write_logo_header(ws, title: str, span_cols: int) -> int:
     if span_cols > 2:
         ws.merge_cells(f'B1:{end}1')
 
-    sub_cell = ws.cell(row=2, column=2, value='Injaaz Application – Report Generation')
+    sub_cell = ws.cell(row=2, column=2, value='Amaan Application – Report Generation')
     sub_cell.font = Font(bold=True, size=9, color=SECONDARY, name='Calibri')
     sub_cell.alignment = Alignment(horizontal='left', vertical='center')
     if span_cols > 2:

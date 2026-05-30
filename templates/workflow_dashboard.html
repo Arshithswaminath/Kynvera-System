@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+  <meta name="theme-color" content="#d21725">
+  <title>Workflow Dashboard — Injaaz</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
+  <link rel="icon" href="{{ url_for('static', filename='logo.png') }}" type="image/png">
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", Roboto, sans-serif;
+      background: #f5f7fa; color: #1a1a1a; margin: 0;
+    }
+    .wf-wrap { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+    .wf-header {
+      background: linear-gradient(135deg, #d21725 0%, #e8323f 100%);
+      color: #fff; border-radius: 12px; padding: 1.75rem 1.5rem; margin-bottom: 1.5rem;
+      box-shadow: 0 6px 24px rgba(210, 23, 37, 0.18);
+    }
+    .wf-header h1 { font-size: 1.5rem; margin: 0 0 0.35rem; }
+    .wf-header .sub { opacity: 0.9; font-size: 0.95rem; }
+    .wf-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 1rem;
+    }
+    .wf-card {
+      background: #fff; border-radius: 10px; padding: 1.25rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      display: flex; flex-direction: column; min-height: 140px;
+    }
+    .wf-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.1); }
+    .wf-card .ico { font-size: 1.75rem; margin-bottom: 0.5rem; }
+    .wf-card h3 { font-size: 1.05rem; margin: 0 0 0.35rem; color: #d21725; }
+    .wf-card p { color: #6b6b6b; font-size: 0.9rem; margin: 0 0 0.85rem; line-height: 1.5; flex: 1; }
+    .wf-card a {
+      color: #d21725; text-decoration: none; font-weight: 600; font-size: 0.92rem;
+      min-height: 44px; display: inline-flex; align-items: center;
+    }
+    .wf-card a:hover { text-decoration: underline; }
+    .back {
+      display: inline-block; color: #fff; text-decoration: none; font-size: 0.9rem;
+      margin-top: 0.5rem; opacity: 0.9;
+    }
+    .back:hover { opacity: 1; }
+    @media (max-width: 480px) {
+      .wf-wrap { padding: 1rem 0.75rem 2rem; }
+      .wf-header { padding: 1.25rem 1rem; }
+      .wf-header h1 { font-size: 1.25rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wf-wrap">
+    <header class="wf-header">
+      <h1>Workflow Dashboard</h1>
+      <div class="sub">
+        Welcome, <strong>{{ user_name or 'User' }}</strong> &mdash;
+        {{ (user_designation or user_role or 'member')|replace('_', ' ')|title }}
+      </div>
+      <a class="back" href="/dashboard">&larr; Back to main dashboard</a>
+    </header>
+
+    <section class="wf-grid">
+      <article class="wf-card">
+        <div class="ico" aria-hidden="true">📥</div>
+        <h3>Pending Reviews</h3>
+        <p>Inspection submissions waiting on your sign-off.</p>
+        <a href="/workflow/pending-reviews">Open pending reviews &rarr;</a>
+      </article>
+
+      <article class="wf-card">
+        <div class="ico" aria-hidden="true">📤</div>
+        <h3>Submitted Forms</h3>
+        <p>Track the workflow status of forms you have submitted.</p>
+        <a href="/workflow/submitted-forms">View submitted forms &rarr;</a>
+      </article>
+
+      <article class="wf-card">
+        <div class="ico" aria-hidden="true">🧭</div>
+        <h3>Inspection Modules</h3>
+        <p>Start a new HVAC, Civil, or Cleaning inspection report.</p>
+        <a href="/inspection/">Choose module &rarr;</a>
+      </article>
+
+      <article class="wf-card">
+        <div class="ico" aria-hidden="true">🧾</div>
+        <h3>HR Forms</h3>
+        <p>HR requests, approvals, and document workflows.</p>
+        <a href="/hr/">Open HR module &rarr;</a>
+      </article>
+
+      <article class="wf-card">
+        <div class="ico" aria-hidden="true">🛠️</div>
+        <h3>Service Tickets</h3>
+        <p>Create and follow up on work-order tickets.</p>
+        <a href="/tickets/">Open ticketing &rarr;</a>
+      </article>
+
+      {% if user_role == 'admin' %}
+      <article class="wf-card">
+        <div class="ico" aria-hidden="true">⚙️</div>
+        <h3>Admin Console</h3>
+        <p>Users, devices, BD, and team management.</p>
+        <a href="/admin/dashboard">Open admin &rarr;</a>
+      </article>
+      {% endif %}
+    </section>
+  </div>
+</body>
+</html>

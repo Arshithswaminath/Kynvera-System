@@ -132,6 +132,15 @@ except Exception as e:
     logger.exception("Could not import module_ticketing.routes.ticketing_bp: %s", e)
     ticketing_bp = None
 
+# Finance & Invoicing Module
+finance_bp = None
+try:
+    from module_finance.routes import finance_bp  # noqa: F401
+    logger.info("Imported module_finance.routes.finance_bp")
+except Exception as e:
+    logger.exception("Could not import module_finance.routes.finance_bp: %s", e)
+    finance_bp = None
+
 # Ensure required directories exist at startup
 os.makedirs(GENERATED_DIR, exist_ok=True)
 os.makedirs(UPLOADS_DIR, exist_ok=True)
@@ -327,11 +336,33 @@ def create_app():
             if 'users' in inspector.get_table_names():
                 columns = [col['name'] for col in inspector.get_columns('users')]
                 missing_columns = []
-                
-                # Check for designation column
-                if 'designation' not in columns:
-                    missing_columns.append(('designation', 'VARCHAR(20) DEFAULT NULL'))
-                
+                # Keep in sync with app.models.User — db.create_all() does not alter existing tables.
+                user_optional_columns = [
+                    ('designation', 'VARCHAR(30) DEFAULT NULL'),
+                    ('password_changed', 'BOOLEAN DEFAULT FALSE'),
+                    ('default_signature', 'TEXT'),
+                    ('default_comment', 'TEXT'),
+                    ('access_hvac', 'BOOLEAN DEFAULT FALSE'),
+                    ('access_civil', 'BOOLEAN DEFAULT FALSE'),
+                    ('access_cleaning', 'BOOLEAN DEFAULT FALSE'),
+                    ('access_hr', 'BOOLEAN DEFAULT FALSE'),
+                    ('access_procurement_module', 'BOOLEAN DEFAULT FALSE'),
+                    ('access_business_development', 'BOOLEAN DEFAULT FALSE'),
+                    ('access_report_generation', 'BOOLEAN DEFAULT FALSE'),
+                    ('access_submitted_forms', 'BOOLEAN DEFAULT FALSE'),
+                    ('access_ticketing', 'BOOLEAN DEFAULT FALSE'),
+                    ('last_login', 'TIMESTAMP'),
+                    ('employment_start_date', 'DATE'),
+                    ('job_designation', 'VARCHAR(160)'),
+                    ('annual_leave_days', 'INTEGER'),
+                    ('other_leave_days', 'INTEGER'),
+                    ('reporting_manager_id', 'INTEGER'),
+                    ('operations_manager_id', 'INTEGER'),
+                ]
+                for col_name, col_def in user_optional_columns:
+                    if col_name not in columns:
+                        missing_columns.append((col_name, col_def))
+
                 if missing_columns:
                     logger.info(f"Adding missing columns to users table: {[col[0] for col in missing_columns]}")
                     try:
@@ -833,6 +864,15 @@ def create_app():
     else:
         logger.warning("⚠️  Ticketing blueprint not available - check imports")
 
+    # Register Finance blueprint
+    if finance_bp:
+        if hasattr(app, 'csrf') and app.csrf:
+            app.csrf.exempt(finance_bp)
+        app.register_blueprint(finance_bp)
+        logger.info("✅ Registered Finance blueprint at /finance")
+    else:
+        logger.warning("⚠️  Finance blueprint not available - check imports")
+
     # Register reports API blueprint for on-demand regeneration
     try:
         from app.reports_api import reports_bp
@@ -1014,4 +1054,4 @@ if __name__ == '__main__':
     print(f"\n  Running on branch: [{branch}]\n")
     app = create_app()
     # For local development use debug=True. Remove or set False in production.
-    app.run(debug=False, host='0.0.0.0', port=5002)
+    app.run(debug=False, host='0.0.0.0', port=5001)

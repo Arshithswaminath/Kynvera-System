@@ -906,3 +906,112 @@ def get_registered_properties():
         'success': True,
         'properties': properties
     })
+
+
+# ============================================
+# PUBLIC CATALOG API — accessible to ticketing users
+# ============================================
+
+@procurement_bp.route('/api/catalog', methods=['GET'])
+@jwt_required()
+def catalog_for_tickets():
+    """Return the material catalog to any authenticated user (used by ticketing material picker).
+    No full procurement access required — just a valid login."""
+    user = get_current_user()
+    if not user:
+        return jsonify({'error': 'Not found'}), 404
+
+    search = (request.args.get('q') or '').strip().lower()
+    category = (request.args.get('category') or '').strip()
+    limit = min(200, max(1, request.args.get('limit', 100, type=int)))
+
+    submissions = Submission.query.filter(
+        Submission.module_type == 'procurement_material'
+    ).order_by(Submission.site_name.asc()).all()
+
+    items = []
+    seen = set()
+    for sub in submissions:
+        if not sub.form_data:
+            continue
+        name = sub.form_data.get('material_name', '') or ''
+        cat  = sub.form_data.get('category', '') or ''
+        if search and search not in name.lower() and search not in cat.lower():
+            continue
+        if category and category.lower() not in cat.lower():
+            continue
+        key = name.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        items.append({
+            'id': sub.submission_id,
+            'name': name,
+            'category': cat,
+            'unit': sub.form_data.get('unit', 'pcs'),
+            'unit_price': float(sub.form_data.get('unit_price', 0)),
+            'supplier': sub.form_data.get('supplier', ''),
+            'description': sub.form_data.get('description', ''),
+        })
+        if len(items) >= limit:
+            break
+
+    # Also collect categories for the filter dropdown
+    all_cats = sorted(set(
+        (s.form_data or {}).get('category', '')
+        for s in Submission.query.filter(Submission.module_type == 'procurement_material').all()
+        if (s.form_data or {}).get('category')
+    ))
+
+    return jsonify({'success': True, 'materials': items, 'categories': all_cats, 'total': len(items)})
+
+
+@procurement_bp.route('/api/catalog', methods=['POST'])
+@jwt_required()
+def add_to_catalog():
+    """Add a custom material from the ticketing material picker and save it to the catalog.
+    Any authenticated user can add custom items — they are auto-saved for future reuse."""
+    user = get_current_user()
+    if not user:
+        return jsonify({'error': 'Not found'}), 404
+
+    data = request.get_json() or {}
+    name = (data.get('name') or data.get('material_name') or '').strip()
+    if not name:
+        return jsonify({'error': 'name is required'}), 400
+
+    # Check for duplicate
+    existing = Submission.query.filter(
+        Submission.module_type == 'procurement_material',
+        Submission.site_name == name,
+    ).first()
+    if existing:
+        return jsonify({'success': True, 'id': existing.submission_id, 'existing': True})
+
+    submission_id = f"PROC-MAT-{uuid.uuid4().hex[:8].upper()}"
+    sub = Submission(
+        submission_id=submission_id,
+        user_id=user.id,
+        module_type='procurement_material',
+        site_name=name,
+        visit_date=datetime.now().date(),
+        status='submitted',
+        workflow_status='submitted',
+        supervisor_id=user.id,
+        form_data={
+            'material_name': name,
+            'category': data.get('category', 'Custom'),
+            'unit': data.get('unit', 'pcs'),
+            'unit_price': float(data.get('unit_price', 0)),
+            'quantity': 0,
+            'total_price': 0,
+            'supplier': data.get('supplier', ''),
+            'description': data.get('description', ''),
+            'added_by': user.full_name or user.username,
+            'source': 'ticket_picker',
+        },
+    )
+    db.session.add(sub)
+    db.session.commit()
+    return jsonify({'success': True, 'id': submission_id, 'existing': False}), 201
+

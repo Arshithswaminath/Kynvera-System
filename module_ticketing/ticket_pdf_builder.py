@@ -21,8 +21,8 @@ from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_RIGHT
 logger = logging.getLogger(__name__)
 
 # Brand colours
-BRAND_DARK = colors.HexColor('#1e3a5f')
-BRAND_BLUE = colors.HexColor('#2563eb')
+BRAND_DARK = colors.HexColor('#a8121e')
+BRAND_BLUE = colors.HexColor('#d21725')
 BRAND_LIGHT = colors.HexColor('#eff6ff')
 BRAND_BORDER = colors.HexColor('#bfdbfe')
 PRIORITY_COLORS = {
@@ -32,7 +32,7 @@ PRIORITY_COLORS = {
     'low': colors.HexColor('#16a34a'),
 }
 STATUS_COLORS = {
-    'open': colors.HexColor('#2563eb'),
+    'open': colors.HexColor('#d21725'),
     'pending_supervisor': colors.HexColor('#7c3aed'),
     'in_progress': colors.HexColor('#7c3aed'),
     'pending_parts': colors.HexColor('#ca8a04'),
@@ -170,7 +170,7 @@ def build_ticket_pdf(ticket, notes, images, materials, manpower_entries, output_
     sta_color = STATUS_COLORS.get(ticket.status, BRAND_BLUE)
 
     title_data = [[
-        Paragraph(f'<font color="#1e3a5f"><b>{ticket.ticket_id}</b></font>', ParagraphStyle(
+        Paragraph(f'<font color="#a8121e"><b>{ticket.ticket_id}</b></font>', ParagraphStyle(
             'TID', parent=normal, fontSize=14)),
         Paragraph(f'<font color="{pri_color.hexval()}">'
                   f'<b>{ticket.priority.upper()}</b></font>', ParagraphStyle(
@@ -344,7 +344,7 @@ def build_ticket_pdf(ticket, notes, images, materials, manpower_entries, output_
         markup_tbl.setStyle(TableStyle(markup_banner_style + [
             ('SPAN',       (0, 0), (-1, 0)),
             ('FONTNAME',   (0, 3), (-1, 3), 'Helvetica-Bold'),
-            ('TEXTCOLOR',  (0, 3), (-1, 3), colors.HexColor('#1e3a5f')),
+            ('TEXTCOLOR',  (0, 3), (-1, 3), colors.HexColor('#a8121e')),
             ('FONTSIZE',   (0, 3), (-1, 3), 10),
             ('BACKGROUND', (0, 3), (-1, 3), colors.HexColor('#fde68a')),
         ]))
