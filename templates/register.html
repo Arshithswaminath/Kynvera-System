@@ -1,353 +1,884 @@
-﻿<!DOCTYPE html>
-<html lang="en">
+<!DOCTYPE html>
+<html lang="en" class="register-root">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
-    <title>Register - Amaan Application</title>
+    <meta name="theme-color" content="#d21725">
+    <title>Sign Up — Amaan Application</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
     <style>
-        body {
+        :root {
+            --lp-primary: #a8121e;
+            --lp-primary-container: #d21725;
+            --lp-on-primary: #ffffff;
+            --lp-on-primary-container: #fca5a5;
+            --lp-primary-fixed-dim: #fca5a5;
+            --lp-surface: #f7faf8;
+            --lp-surface-lowest: #ffffff;
+            --lp-surface-highest: #e0e3e1;
+            --lp-surface-high: #e6e9e7;
+            --lp-on-surface: #181c1b;
+            --lp-on-surface-variant: #404942;
+            --lp-outline: #707972;
+            --lp-outline-variant: #c0c9c0;
+            --lp-error: #ba1a1a;
+            --lp-error-bg: #ffdad6;
+            --lp-success-bg: #dcfce7;
+            --lp-success-text: #166534;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; }
+
+        html.register-root { height: 100%; }
+
+        body.register-page {
             margin: 0;
-            padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
-            background: linear-gradient(135deg, #d21725 0%, #e8323f 100%);
             min-height: 100vh;
+            min-height: 100dvh;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+            color: var(--lp-on-surface);
+            background: var(--lp-surface) !important;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 20px 0;
+            padding: max(1.25rem, env(safe-area-inset-top, 0))
+                     max(1.25rem, env(safe-area-inset-right, 0))
+                     max(1.25rem, env(safe-area-inset-bottom, 0))
+                     max(1.25rem, env(safe-area-inset-left, 0));
         }
-        
-        .register-container {
-            background: white;
-            padding: 40px;
-            border-radius: 12px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+
+        .register-page-wrap {
             width: 100%;
-            max-width: 450px;
-            margin: 20px;
+            max-width: 1080px;
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
         }
-        
-        @media (max-width: 768px) {
-            body {
-                padding: 1rem !important;
-            }
-            
-            .register-container {
-                padding: 2rem 1.5rem !important;
-                margin: 1rem !important;
-                max-width: 100% !important;
-            }
-            
-            .logo img {
-                width: 90px !important;
-                height: 90px !important;
-            }
-            
-            h1 {
-                font-size: 24px !important;
-            }
-            
-            .subtitle {
-                font-size: 13px !important;
-            }
-            
-            input[type="text"],
-            input[type="email"],
-            input[type="password"] {
-                font-size: 16px !important; /* Prevents zoom on iOS */
-                padding: 14px 16px !important;
-            }
-            
-            .btn-register {
-                padding: 16px !important;
-                font-size: 16px !important;
-                min-height: 48px !important;
-            }
+
+        .page-back-login {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            align-self: flex-start;
+            margin-bottom: 0.85rem;
+            padding: 0.45rem 0.65rem;
+            margin-left: 0.15rem;
+            border-radius: 0.45rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--lp-on-surface-variant);
+            text-decoration: none;
+            transition: background 0.18s, color 0.18s;
         }
-        
-        @media (max-width: 480px) {
-            .register-container {
-                padding: 1.5rem 1.25rem !important;
-            }
-            
-            .logo img {
-                width: 80px !important;
-                height: 80px !important;
-            }
-            
-            h1 {
-                font-size: 22px !important;
-            }
+
+        .page-back-login:hover {
+            background: var(--lp-surface-highest);
+            color: var(--lp-primary);
         }
-        
-        .logo {
-            text-align: center;
-            margin-bottom: 25px;
+
+        .page-back-login svg {
+            flex-shrink: 0;
+            width: 1.05rem;
+            height: 1.05rem;
         }
-        
-        .logo img {
-            width: 100px;
-            height: 100px;
-        }
-        
-        h1 {
-            color: #d21725;
-            text-align: center;
-            margin-bottom: 10px;
-            font-size: 28px;
-        }
-        
-        .subtitle {
-            text-align: center;
-            color: #666;
-            margin-bottom: 25px;
-            font-size: 14px;
-        }
-        
-        .form-group {
-            margin-bottom: 18px;
-        }
-        
-        label {
-            display: block;
-            margin-bottom: 6px;
-            color: #333;
-            font-weight: 500;
-            font-size: 14px;
-        }
-        
-        input[type="text"],
-        input[type="email"],
-        input[type="password"] {
+
+        .register-shell {
+            display: flex;
+            flex-direction: column;
             width: 100%;
-            padding: 12px 16px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            font-size: 16px;
-            transition: border-color 0.3s;
-            box-sizing: border-box;
+            min-height: 0;
+            border-radius: 0.875rem;
+            overflow: hidden;
+            background: var(--lp-surface-lowest);
+            box-shadow: 0 16px 56px rgba(168, 18, 30, 0.1);
+            border: 1px solid rgba(192, 201, 192, 0.45);
         }
-        
-        input:focus {
-            outline: none;
-            border-color: #d21725;
+
+        @media (min-width: 768px) {
+            .register-shell {
+                flex-direction: row;
+                min-height: 640px;
+                max-height: calc(100dvh - 2rem);
+            }
         }
-        
-        .password-requirements {
-            font-size: 12px;
-            color: #666;
-            margin-top: 6px;
+
+        /* ── Left progress panel (matches login hero) ── */
+        .register-progress {
+            position: relative;
+            overflow: hidden;
+            padding: 1.75rem 1.5rem 1.5rem;
+            background: linear-gradient(135deg, var(--lp-primary) 0%, var(--lp-primary-container) 100%);
+            flex: 0 0 auto;
+            color: var(--lp-on-primary);
+        }
+
+        @media (min-width: 768px) {
+            .register-progress {
+                flex: 0 0 380px;
+                width: 380px;
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+                padding: 2.75rem 2.25rem;
+            }
+        }
+
+        .register-progress::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image: radial-gradient(var(--lp-on-primary-container) 1px, transparent 1px);
+            background-size: 24px 24px;
+            opacity: 0.1;
+            pointer-events: none;
+        }
+
+        .register-progress::after {
+            content: '';
+            position: absolute;
+            bottom: -4rem;
+            left: -4rem;
+            width: 16rem;
+            height: 16rem;
+            border-radius: 50%;
+            background: var(--lp-primary-fixed-dim);
+            opacity: 0.06;
+            filter: blur(40px);
+            pointer-events: none;
+        }
+
+        .progress-brand,
+        .progress-copy,
+        .step-cards {
+            position: relative;
+            z-index: 1;
+        }
+
+        .progress-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .progress-brand img {
+            width: 44px;
+            height: 44px;
+            border-radius: 0;
+            object-fit: contain;
+            filter: brightness(0) invert(1);
+        }
+
+        .progress-brand span {
+            font-weight: 700;
+            font-size: 1.05rem;
+            letter-spacing: 0.02em;
+        }
+
+        .progress-kicker {
+            font-size: 0.7rem;
+            font-weight: 600;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--lp-on-primary-container);
+            margin: 0 0 0.65rem;
+        }
+
+        .progress-copy { margin-bottom: 1.25rem; }
+
+        @media (min-width: 768px) {
+            .progress-copy { margin-bottom: 0; }
+        }
+
+        .progress-copy h1 {
+            margin: 0 0 0.65rem;
+            font-size: clamp(1.65rem, 3vw, 2.1rem);
+            font-weight: 800;
+            line-height: 1.15;
+            letter-spacing: -0.02em;
+            color: var(--lp-on-primary);
+        }
+
+        .progress-copy h1 span {
+            color: var(--lp-primary-fixed-dim);
+        }
+
+        .progress-copy p {
+            margin: 0;
+            color: rgba(255, 255, 255, 0.88);
+            font-size: 0.95rem;
+            line-height: 1.55;
+            max-width: 20rem;
+        }
+
+        .step-cards {
+            display: flex;
+            flex-direction: column;
+            gap: 0.55rem;
+        }
+
+        @media (max-width: 767px) {
+            .step-cards {
+                flex-direction: row;
+                overflow-x: auto;
+                gap: 0.5rem;
+                padding-bottom: 0.25rem;
+                scrollbar-width: none;
+            }
+            .step-cards::-webkit-scrollbar { display: none; }
+        }
+
+        .step-card {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.85rem 1rem;
+            border-radius: 0.75rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            transition: background 0.25s, border-color 0.25s, transform 0.25s;
+            flex-shrink: 0;
+        }
+
+        @media (max-width: 767px) {
+            .step-card {
+                min-width: 168px;
+                padding: 0.55rem 0.75rem;
+            }
+        }
+
+        .step-card.active {
+            background: var(--lp-surface-lowest);
+            border-color: var(--lp-surface-lowest);
+            color: var(--lp-primary);
+            transform: translateX(4px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+        }
+
+        @media (max-width: 767px) {
+            .step-card.active { transform: translateY(-2px); }
+        }
+
+        .step-card.done {
+            background: rgba(255, 255, 255, 0.16);
+            border-color: rgba(255, 255, 255, 0.22);
+        }
+
+        .step-num {
+            flex-shrink: 0;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 0.875rem;
+            background: rgba(255, 255, 255, 0.18);
+            color: var(--lp-on-primary);
+        }
+
+        .step-card.active .step-num {
+            background: var(--lp-primary-container);
+            color: var(--lp-on-primary);
+        }
+
+        .step-card.done .step-num {
+            background: rgba(255, 255, 255, 0.28);
+        }
+
+        .step-label {
+            font-size: 0.875rem;
+            font-weight: 600;
+            line-height: 1.3;
+        }
+
+        .step-card:not(.active) .step-label {
+            color: rgba(255, 255, 255, 0.92);
+        }
+
+        /* ── Right form panel (matches login canvas + card) ── */
+        .register-form-panel {
+            flex: 1;
+            min-width: 0;
+            background: var(--lp-surface);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem 2rem 2.25rem;
+            overflow-y: auto;
+        }
+
+        @media (min-width: 768px) {
+            .register-form-panel {
+                padding: 2.5rem 3rem 2.75rem;
+            }
+        }
+
+        .form-column {
+            width: 100%;
+            max-width: 480px;
+        }
+
+        .form-inner {
+            width: 100%;
+        }
+
+        .form-header { margin-bottom: 1.75rem; }
+
+        .form-header h2 {
+            margin: 0 0 0.45rem;
+            font-size: 1.45rem;
+            font-weight: 700;
+            color: var(--lp-primary);
+            letter-spacing: -0.01em;
+        }
+
+        .form-header p {
+            margin: 0;
+            color: var(--lp-on-surface-variant);
+            font-size: 0.875rem;
             line-height: 1.5;
         }
-        
-        .password-requirements ul {
-            margin: 5px 0;
-            padding-left: 20px;
+
+        .wizard-step {
+            display: none;
+            animation: fadeSlide 0.35s ease;
         }
-        
-        .password-requirements li {
-            margin: 2px 0;
+
+        .wizard-step.active { display: block; }
+
+        @keyframes fadeSlide {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
         }
-        
-        .btn-register {
+
+        .field-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+        }
+
+        @media (max-width: 480px) {
+            .field-row { grid-template-columns: 1fr; }
+        }
+
+        .field { margin-bottom: 1rem; }
+
+        .field label {
+            display: block;
+            margin-bottom: 0.35rem;
+            font-size: 0.6875rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--lp-outline);
+        }
+
+        .field input,
+        .field select {
             width: 100%;
-            padding: 14px;
-            background: #d21725;
-            color: white;
-            border: none;
-            border-radius: 8px;
+            padding: 0.8rem 1rem;
+            min-height: 48px;
             font-size: 16px;
-            font-weight: 600;
+            font-family: inherit;
+            color: var(--lp-on-surface);
+            background: var(--lp-surface-highest);
+            border: none;
+            border-radius: 0.45rem;
+            outline: none;
+            transition: box-shadow 0.2s, background 0.2s;
+        }
+
+        .field input::placeholder {
+            color: rgba(112, 121, 114, 0.55);
+        }
+
+        .field input:focus,
+        .field select:focus {
+            background: var(--lp-surface-lowest);
+            box-shadow: 0 0 0 2px var(--lp-primary-fixed-dim);
+        }
+
+        .field-hint {
+            margin-top: 0.35rem;
+            font-size: 0.72rem;
+            color: var(--lp-on-surface-variant);
+            line-height: 1.45;
+        }
+
+        .alert {
+            display: none;
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            margin-bottom: 1rem;
+            line-height: 1.45;
+        }
+
+        .alert.error {
+            display: block;
+            background: var(--lp-error-bg);
+            color: #93000a;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 0.65rem;
+            margin-top: 0.35rem;
+        }
+
+        .btn {
+            flex: 1;
+            min-height: 48px;
+            padding: 0.8rem 1.35rem;
+            border: none;
+            border-radius: 0.5rem;
+            font-size: 0.9375rem;
+            font-weight: 700;
+            font-family: inherit;
             cursor: pointer;
-            transition: background 0.3s;
-            margin-top: 10px;
+            transition: opacity 0.2s, transform 0.15s;
         }
-        
-        .btn-register:hover {
-            background: #0f4329;
+
+        .btn:active { transform: scale(0.98); }
+        .btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+        .btn-primary {
+            background: var(--lp-primary-container);
+            color: var(--lp-on-primary);
+            box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.1);
         }
-        
-        .btn-register:disabled {
-            background: #ccc;
-            cursor: not-allowed;
+
+        .btn-primary:hover:not(:disabled) { opacity: 0.92; }
+
+        .btn-ghost {
+            flex: 0 0 auto;
+            background: var(--lp-surface-lowest);
+            color: var(--lp-on-surface-variant);
+            border: 1px solid var(--lp-outline-variant);
         }
-        
-        .error-message {
-            background: #ffebee;
-            color: #c62828;
-            padding: 12px 16px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            display: none;
-            font-size: 14px;
+
+        .btn-ghost:hover:not(:disabled) {
+            border-color: var(--lp-outline);
+            color: var(--lp-primary);
         }
-        
-        .success-message {
-            background: #fde8ea;
-            color: #2e7d32;
-            padding: 12px 16px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            display: none;
-            font-size: 14px;
-        }
-        
-        .login-link {
+
+        .form-footer {
+            margin-top: 1.25rem;
             text-align: center;
-            margin-top: 20px;
-            color: #666;
-            font-size: 14px;
+            font-size: 0.8125rem;
+            color: var(--lp-on-surface-variant);
         }
-        
-        .login-link a {
-            color: #d21725;
+
+        .form-footer a {
+            color: var(--lp-primary-container);
             text-decoration: none;
+            font-weight: 700;
+        }
+
+        .form-footer a:hover { text-decoration: underline; }
+
+        /* ── Success step ── */
+        .success-panel {
+            text-align: center;
+            padding: 0.25rem 0 0.5rem;
+        }
+
+        .success-icon {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 1rem;
+            border-radius: 50%;
+            background: var(--lp-success-bg);
+            color: var(--lp-success-text);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.75rem;
+            font-weight: 800;
+        }
+
+        .success-panel h2 {
+            margin: 0 0 0.4rem;
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--lp-primary);
+        }
+
+        .success-panel .lead {
+            color: var(--lp-on-surface-variant);
+            font-size: 0.8125rem;
+            line-height: 1.55;
+            margin: 0 0 1.25rem;
+        }
+
+        .credential-card {
+            text-align: left;
+            background: var(--lp-surface-lowest);
+            border: 1px solid var(--lp-outline-variant);
+            border-radius: 0.65rem;
+            padding: 1rem 1.1rem;
+            margin-bottom: 1rem;
+        }
+
+        .credential-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.45rem 0;
+            border-bottom: 1px solid var(--lp-surface-highest);
+        }
+
+        .credential-row:last-child { border-bottom: none; }
+
+        .credential-row span:first-child {
+            font-size: 0.625rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--lp-outline);
+            font-weight: 700;
+        }
+
+        .credential-row span:last-child,
+        .credential-row code {
+            font-size: 0.875rem;
             font-weight: 600;
+            color: var(--lp-on-surface);
+            word-break: break-all;
+            text-align: right;
         }
-        
-        .login-link a:hover {
-            text-decoration: underline;
+
+        .credential-row code {
+            background: var(--lp-surface-highest);
+            padding: 0.2rem 0.45rem;
+            border-radius: 0.35rem;
+            font-family: ui-monospace, monospace;
         }
-        
-        .loading {
+
+        .success-note {
+            font-size: 0.8125rem;
+            color: var(--lp-success-text);
+            line-height: 1.55;
+            margin-bottom: 1.25rem;
+            text-align: left;
+            background: var(--lp-success-bg);
+            border-radius: 0.5rem;
+            padding: 0.75rem 0.875rem;
+        }
+
+        .success-note strong {
+            color: var(--lp-primary-container);
+        }
+
+        .btn-login {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            text-decoration: none;
+        }
+
+        .loading-text {
             display: none;
             text-align: center;
-            margin-top: 10px;
-            color: #d21725;
-            font-size: 14px;
+            color: var(--lp-on-surface-variant);
+            font-size: 0.8125rem;
+            margin-top: 0.65rem;
+        }
+
+        .loading-text.show { display: block; }
+
+        @media (max-width: 767px) {
+            html.register-root,
+            body.register-page {
+                overflow-x: hidden !important;
+                overflow-y: auto !important;
+                height: auto !important;
+                min-height: 100dvh !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+            }
+
+            .register-shell {
+                max-width: 100%;
+                border-radius: 0.65rem;
+            }
         }
     </style>
 </head>
-<body>
-    <div class="register-container">
-        <div class="logo">
-            <img src="{{ url_for('static', filename='logo.png') }}" alt="Amaan Logo">
-        </div>
-        
-        <h1>Create Account</h1>
-        <p class="subtitle">Sign up to get started with Amaan Application</p>
-        
-        <div id="error-message" class="error-message"></div>
-        <div id="success-message" class="success-message"></div>
-        
-        <form id="register-form">
-            <div class="form-group">
-                <label for="full_name">Full Name</label>
-                <input type="text" id="full_name" name="full_name" required>
-            </div>
-            
-            <div class="form-group">
-                <label for="username">Username</label>
-                <input type="text" id="username" name="username" required autocomplete="username">
-            </div>
-            
-            <div class="form-group">
-                <label for="email">Email</label>
-                <input type="email" id="email" name="email" required autocomplete="email">
-            </div>
-            
-            <div class="form-group">
-                <label for="password">Password</label>
-                <input type="password" id="password" name="password" required autocomplete="off" data-1p-ignore="true" data-lpignore="true">
-                <div class="password-requirements">
-                    Password must contain:
-                    <ul>
-                        <li>At least 8 characters</li>
-                        <li>One uppercase letter</li>
-                        <li>One lowercase letter</li>
-                        <li>One number</li>
-                    </ul>
+<body class="register-page">
+    <div class="register-page-wrap">
+        <a href="{{ url_for('login_page') }}" class="page-back-login" aria-label="Back to login page">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            Back to login
+        </a>
+    <div class="register-shell">
+        <aside class="register-progress" aria-label="Registration progress">
+            <div>
+                <div class="progress-brand">
+                    <img src="{{ url_for('static', filename='logo.png') }}" alt="Amaan">
+                    <span>Amaan</span>
+                </div>
+                <div class="progress-copy">
+                    <p class="progress-kicker">Amaan Application</p>
+                    <h1>Get Started <span>with Us</span></h1>
+                    <p>Complete these easy steps to register your account and join the team.</p>
                 </div>
             </div>
-            
-            <div class="form-group">
-                <label for="confirm_password">Confirm Password</label>
-                <input type="password" id="confirm_password" name="confirm_password" required autocomplete="new-password">
+            <div class="step-cards" role="list">
+                <div class="step-card active" data-step-indicator="1" role="listitem">
+                    <div class="step-num">1</div>
+                    <div class="step-label">Your details</div>
+                </div>
+                <div class="step-card" data-step-indicator="2" role="listitem">
+                    <div class="step-num">2</div>
+                    <div class="step-label">Your project &amp; role</div>
+                </div>
+                <div class="step-card" data-step-indicator="3" role="listitem">
+                    <div class="step-num">3</div>
+                    <div class="step-label">Account ready</div>
+                </div>
             </div>
-            
-            <button type="submit" class="btn-register" id="register-btn">Create Account</button>
-            <div class="loading" id="loading">Creating account...</div>
-        </form>
-        
-        <div class="login-link">
-            Already have an account? <a href="{{ url_for('login_page') }}">Sign in</a>
-        </div>
+        </aside>
+
+        <main class="register-form-panel">
+            <div class="form-column">
+            <div class="form-inner">
+                <div id="error-message" class="alert" role="alert"></div>
+
+                <!-- Step 1: Personal -->
+                <section class="wizard-step active" data-step="1" aria-labelledby="step1-title">
+                    <header class="form-header">
+                        <h2 id="step1-title">Sign Up Account</h2>
+                        <p>Enter your personal details so we can identify you.</p>
+                    </header>
+                    <form id="step1-form" novalidate>
+                        <div class="field-row">
+                            <div class="field">
+                                <label for="first_name">First Name</label>
+                                <input type="text" id="first_name" name="first_name" placeholder="eg. John" required autocomplete="given-name">
+                            </div>
+                            <div class="field">
+                                <label for="last_name">Last Name</label>
+                                <input type="text" id="last_name" name="last_name" placeholder="eg. Franklin" required autocomplete="family-name">
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label for="email">Email Address</label>
+                            <input type="email" id="email" name="email" placeholder="company or personal email" required autocomplete="email">
+                            <p class="field-hint">Use your company email if you have one — otherwise your personal email works too.</p>
+                        </div>
+                        <div class="field">
+                            <label for="mobile_number">Mobile Number</label>
+                            <input type="tel" id="mobile_number" name="mobile_number" placeholder="eg. +971 50 123 4567" required autocomplete="tel">
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">Continue</button>
+                        </div>
+                    </form>
+                    <p class="form-footer">Already have an account? <a href="{{ url_for('login_page') }}">Log in</a></p>
+                </section>
+
+                <!-- Step 2: Work -->
+                <section class="wizard-step" data-step="2" aria-labelledby="step2-title">
+                    <header class="form-header">
+                        <h2 id="step2-title">Your Project &amp; Role</h2>
+                        <p>Tell us where you work and what you do.</p>
+                    </header>
+                    <form id="step2-form" novalidate>
+                        <div class="field">
+                            <label for="project_name">Project Name</label>
+                            <input type="text" id="project_name" name="project_name" placeholder="eg. Marina Tower FM" required>
+                        </div>
+                        <div class="field">
+                            <label for="job_designation">Designation</label>
+                            <input type="text" id="job_designation" name="job_designation" placeholder="eg. HVAC Technician" required>
+                        </div>
+                        <div class="field">
+                            <label for="employment_start_date">Date Joined Company</label>
+                            <input type="date" id="employment_start_date" name="employment_start_date" required>
+                        </div>
+                        <div class="form-actions">
+                            <button type="button" class="btn btn-ghost" id="back-to-1">Back</button>
+                            <button type="submit" class="btn btn-primary" id="submit-register">Create Account</button>
+                        </div>
+                        <p class="loading-text" id="loading">Creating your account…</p>
+                    </form>
+                    <p class="form-footer">Already have an account? <a href="{{ url_for('login_page') }}">Log in</a></p>
+                </section>
+
+                <!-- Step 3: Success -->
+                <section class="wizard-step" data-step="3" aria-labelledby="step3-title">
+                    <div class="success-panel">
+                        <div class="success-icon" aria-hidden="true">✓</div>
+                        <h2 id="step3-title">Your Account Is Ready!</h2>
+                        <p class="lead">Welcome aboard. You can sign in now with the credentials below.</p>
+
+                        <div class="credential-card">
+                            <div class="credential-row">
+                                <span>Sign in with</span>
+                                <span id="success-email">—</span>
+                            </div>
+                            <div class="credential-row">
+                                <span>Default password</span>
+                                <code id="success-password">{{ default_password }}</code>
+                            </div>
+                        </div>
+
+                        <p class="success-note">
+                            For your security, go to <strong>Profile</strong> after logging in and <strong>reset your password</strong> to something only you know.
+                        </p>
+
+                        <a href="{{ url_for('login_page') }}" class="btn btn-primary btn-login">Go to Log In</a>
+                    </div>
+                </section>
+            </div>
+            </div>
+        </main>
     </div>
-    
+    </div>
+
     <script>
-        const registerForm = document.getElementById('register-form');
-        const registerBtn = document.getElementById('register-btn');
-        const loading = document.getElementById('loading');
-        const errorMessage = document.getElementById('error-message');
-        const successMessage = document.getElementById('success-message');
-        
-        registerForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            // Clear previous messages
-            errorMessage.style.display = 'none';
-            successMessage.style.display = 'none';
-            
-            const fullName = document.getElementById('full_name').value.trim();
-            const username = document.getElementById('username').value.trim();
-            const email = document.getElementById('email').value.trim();
-            const password = document.getElementById('password').value;
-            const confirmPassword = document.getElementById('confirm_password').value;
-            
-            // Validate passwords match
-            if (password !== confirmPassword) {
-                errorMessage.textContent = 'Passwords do not match';
-                errorMessage.style.display = 'block';
-                return;
+        (function () {
+            const STEPS = 3;
+            let currentStep = 1;
+
+            const stepPanels = document.querySelectorAll('.wizard-step');
+            const stepIndicators = document.querySelectorAll('[data-step-indicator]');
+            const errorEl = document.getElementById('error-message');
+            const loadingEl = document.getElementById('loading');
+            const submitBtn = document.getElementById('submit-register');
+
+            const formData = {
+                first_name: '',
+                last_name: '',
+                email: '',
+                mobile_number: '',
+                project_name: '',
+                job_designation: '',
+                employment_start_date: ''
+            };
+
+            function showError(msg) {
+                errorEl.textContent = msg;
+                errorEl.className = 'alert error';
             }
-            
-            // Show loading
-            registerBtn.disabled = true;
-            loading.style.display = 'block';
-            
-            try {
-                const response = await fetch('/api/auth/register', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        full_name: fullName,
-                        username,
-                        email,
-                        password
-                    })
+
+            function clearError() {
+                errorEl.textContent = '';
+                errorEl.className = 'alert';
+            }
+
+            function goToStep(step) {
+                currentStep = step;
+                stepPanels.forEach(function (panel) {
+                    panel.classList.toggle('active', Number(panel.dataset.step) === step);
                 });
-                
-                const data = await response.json();
-                
-                if (response.ok) {
-                    // Show success
-                    successMessage.textContent = 'Account created successfully! Redirecting to login...';
-                    successMessage.style.display = 'block';
-                    
-                    // Redirect to login
-                    setTimeout(() => {
-                        window.location.href = '/login';
-                    }, 2000);
-                } else {
-                    errorMessage.textContent = data.error || 'Registration failed';
-                    errorMessage.style.display = 'block';
-                    registerBtn.disabled = false;
-                    loading.style.display = 'none';
-                }
-            } catch (error) {
-                console.error('Registration error:', error);
-                errorMessage.textContent = 'Network error. Please try again.';
-                errorMessage.style.display = 'block';
-                registerBtn.disabled = false;
-                loading.style.display = 'none';
+                stepIndicators.forEach(function (card) {
+                    const n = Number(card.dataset.stepIndicator);
+                    card.classList.remove('active', 'done');
+                    if (n === step) card.classList.add('active');
+                    else if (n < step) card.classList.add('done');
+                });
+                clearError();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
             }
-        });
+
+            document.getElementById('step1-form').addEventListener('submit', function (e) {
+                e.preventDefault();
+                clearError();
+
+                const first = document.getElementById('first_name').value.trim();
+                const last = document.getElementById('last_name').value.trim();
+                const email = document.getElementById('email').value.trim();
+                const mobile = document.getElementById('mobile_number').value.trim();
+
+                if (!first || !last) {
+                    showError('Please enter your first and last name.');
+                    return;
+                }
+                if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                    showError('Please enter a valid email address.');
+                    return;
+                }
+                const digits = mobile.replace(/[\s\-().+]/g, '');
+                if (!mobile || digits.length < 7 || !/^\d+$/.test(digits)) {
+                    showError('Please enter a valid mobile number.');
+                    return;
+                }
+
+                formData.first_name = first;
+                formData.last_name = last;
+                formData.email = email;
+                formData.mobile_number = mobile;
+                goToStep(2);
+            });
+
+            document.getElementById('back-to-1').addEventListener('click', function () {
+                goToStep(1);
+            });
+
+            document.getElementById('step2-form').addEventListener('submit', async function (e) {
+                e.preventDefault();
+                clearError();
+
+                const project = document.getElementById('project_name').value.trim();
+                const designation = document.getElementById('job_designation').value.trim();
+                const joinDate = document.getElementById('employment_start_date').value;
+
+                if (!project) {
+                    showError('Please enter your project name.');
+                    return;
+                }
+                if (!designation) {
+                    showError('Please enter your designation.');
+                    return;
+                }
+                if (!joinDate) {
+                    showError('Please select your join date.');
+                    return;
+                }
+
+                formData.project_name = project;
+                formData.job_designation = designation;
+                formData.employment_start_date = joinDate;
+
+                submitBtn.disabled = true;
+                loadingEl.classList.add('show');
+
+                try {
+                    const response = await fetch('/api/auth/register', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(formData)
+                    });
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        document.getElementById('success-email').textContent = data.login_hint || formData.email;
+                        if (data.default_password) {
+                            document.getElementById('success-password').textContent = data.default_password;
+                        }
+                        goToStep(3);
+                    } else {
+                        showError(data.error || 'Registration failed. Please try again.');
+                        submitBtn.disabled = false;
+                    }
+                } catch (err) {
+                    showError('Network error. Please check your connection and try again.');
+                    submitBtn.disabled = false;
+                } finally {
+                    loadingEl.classList.remove('show');
+                }
+            });
+        })();
     </script>
     <script src="{{ url_for('static', filename='mobile_utils.js') }}" defer></script>
 </body>
 </html>
-

@@ -50,6 +50,10 @@ class User(db.Model):
     employment_start_date = db.Column(db.Date, nullable=True)
     # HR / org fields (distinct from workflow `designation`; set by admin, visible on profile)
     job_designation = db.Column(db.String(160), nullable=True)
+    # Project the user is assigned to (collected at self-registration)
+    assigned_project = db.Column(db.String(160), nullable=True)
+    # Mobile number (collected at self-registration)
+    phone = db.Column(db.String(40), nullable=True)
     annual_leave_days = db.Column(db.Integer, nullable=True)
     other_leave_days = db.Column(db.Integer, nullable=True)
     reporting_manager_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
@@ -137,6 +141,8 @@ class User(db.Model):
             'last_login': self.last_login.isoformat() if self.last_login else None,
             'employment_start_date': self.employment_start_date.isoformat() if getattr(self, 'employment_start_date', None) else None,
             'job_designation': getattr(self, 'job_designation', None),
+            'assigned_project': getattr(self, 'assigned_project', None),
+            'phone': getattr(self, 'phone', None),
             'annual_leave_days': getattr(self, 'annual_leave_days', None),
             'other_leave_days': getattr(self, 'other_leave_days', None),
             'reporting_manager_id': getattr(self, 'reporting_manager_id', None),

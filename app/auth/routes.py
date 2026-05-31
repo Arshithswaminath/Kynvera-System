@@ -52,6 +52,30 @@ def validate_password(password):
     return True, "Password is strong"
 
 
+def validate_phone(phone):
+    """Basic mobile number validation (digits, spaces, + - ( ) allowed)."""
+    cleaned = re.sub(r'[\s\-().+]', '', phone or '')
+    if len(cleaned) < 7 or len(cleaned) > 15:
+        return False
+    return cleaned.isdigit()
+
+
+def generate_unique_username(email, first_name='', last_name=''):
+    """Derive a unique username from email or name."""
+    local = (email or '').split('@')[0].lower()
+    base = re.sub(r'[^a-z0-9._-]', '', local)
+    if not base:
+        combined = f"{first_name}{last_name}".lower()
+        base = re.sub(r'[^a-z0-9._-]', '', combined) or 'user'
+    base = base[:72]
+    candidate = base
+    suffix = 1
+    while User.query.filter_by(username=candidate).first():
+        suffix += 1
+        candidate = f"{base[:70]}{suffix}"
+    return candidate
+
+
 def log_audit(user_id, action, resource_type=None, resource_id=None, details=None):
     """Create audit log entry"""
     try:
@@ -73,60 +97,103 @@ def log_audit(user_id, action, resource_type=None, resource_id=None, details=Non
 @auth_bp.route('/register', methods=['POST'])
 @rate_limit_if_available('5 per minute')
 def register():
-    """Register a new user"""
+    """Register a new user (self-service wizard — default password assigned server-side)."""
     try:
+        from common.datetime_utils import parse_employment_start_date
+        from common.password_admin import get_default_registration_password
+
         data = request.get_json(force=True, silent=True)
-        
+
         if not data:
             return error_response('Invalid JSON or missing request body', 400, 'INVALID_REQUEST')
-        
-        # Validate required fields
-        required_fields = ['username', 'email', 'password', 'full_name']
-        for field in required_fields:
-            if not data.get(field):
-                return error_response(f'{field} is required', 400, 'VALIDATION_ERROR')
-        
-        username = data['username'].strip()
-        email = data['email'].strip().lower()
-        password = data['password']
-        full_name = data['full_name'].strip()
-        
-        # Validate email format
+
+        first_name = (data.get('first_name') or '').strip()
+        last_name = (data.get('last_name') or '').strip()
+        email = (data.get('email') or '').strip().lower()
+        phone = (data.get('mobile_number') or data.get('phone') or '').strip()
+        project_name = (data.get('project_name') or data.get('assigned_project') or '').strip()
+        job_designation = (data.get('job_designation') or data.get('designation') or '').strip()
+        employment_start_date_raw = data.get('employment_start_date') or data.get('join_date')
+
+        # Legacy API support (username/password/full_name)
+        legacy_full_name = (data.get('full_name') or '').strip()
+        legacy_username = (data.get('username') or '').strip()
+        legacy_password = data.get('password')
+
+        if not first_name and legacy_full_name:
+            parts = legacy_full_name.split(None, 1)
+            first_name = parts[0]
+            last_name = parts[1] if len(parts) > 1 else ''
+
+        if not first_name or not last_name:
+            return error_response('First name and last name are required', 400, 'VALIDATION_ERROR')
+        if not email:
+            return error_response('Email is required', 400, 'VALIDATION_ERROR')
+        if not phone:
+            return error_response('Mobile number is required', 400, 'VALIDATION_ERROR')
+        if not project_name:
+            return error_response('Project name is required', 400, 'VALIDATION_ERROR')
+        if not job_designation:
+            return error_response('Designation is required', 400, 'VALIDATION_ERROR')
+        if not employment_start_date_raw:
+            return error_response('Join date is required', 400, 'VALIDATION_ERROR')
+
         if not validate_email(email):
             return error_response('Invalid email format', 400, 'VALIDATION_ERROR')
-        
-        # Validate password strength
-        is_valid, message = validate_password(password)
-        if not is_valid:
-            return error_response(message, 400, 'WEAK_PASSWORD')
-        
-        # Check if user already exists
-        if User.query.filter_by(username=username).first():
-            return error_response('Username already exists', 409, 'DUPLICATE_USERNAME')
-        
+        if not validate_phone(phone):
+            return error_response('Invalid mobile number', 400, 'VALIDATION_ERROR')
+
+        try:
+            employment_start_date = parse_employment_start_date(employment_start_date_raw)
+        except ValueError as ve:
+            return error_response(str(ve), 400, 'VALIDATION_ERROR')
+
         if User.query.filter_by(email=email).first():
             return error_response('Email already registered', 409, 'DUPLICATE_EMAIL')
-        
+
+        username = legacy_username or generate_unique_username(email, first_name, last_name)
+        if User.query.filter_by(username=username).first():
+            return error_response('Username already exists', 409, 'DUPLICATE_USERNAME')
+
+        if legacy_password:
+            password = legacy_password
+            is_valid, message = validate_password(password)
+            if not is_valid:
+                return error_response(message, 400, 'WEAK_PASSWORD')
+            password_changed = True
+        else:
+            password = get_default_registration_password()
+            password_changed = False
+
+        full_name = f"{first_name} {last_name}".strip()
+
         # Create new user
         user = User(
             username=username,
             email=email,
             full_name=full_name,
-            role='user'  # Default role
+            role='user',  # Default role
+            phone=phone,
+            assigned_project=project_name,
+            job_designation=job_designation[:160],
+            employment_start_date=employment_start_date,
+            password_changed=password_changed,
         )
         user.set_password(password)
-        
+
         db.session.add(user)
         db.session.commit()
-        
+
         # Log registration
         log_audit(user.id, 'register', 'user', str(user.id))
-        
+
         return jsonify({
             'message': 'User registered successfully',
-            'user': user.to_client_dict()
+            'user': user.to_client_dict(),
+            'default_password': password if not password_changed else None,
+            'login_hint': email,
         }), 201
-        
+
     except IntegrityError:
         db.session.rollback()
         return error_response('User already exists', 409, 'DUPLICATE_USER')
