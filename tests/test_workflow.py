@@ -219,6 +219,37 @@ class TestMySubmissions:
             ids = [s['submission_id'] for s in data.get('submissions', [])]
             assert 'hr-pytest-submitter-own' in ids
 
+    def test_admin_sees_all_hr_submissions(
+        self, client, admin_auth_headers, standard_user, app
+    ):
+        """Admin on scope=hr sees every user's HR submissions, not only their own."""
+        from app.models import Submission, db
+
+        with app.app_context():
+            sub = Submission(
+                submission_id='hr-pytest-other-user',
+                user_id=standard_user.id,
+                module_type='hr_leave_application',
+                status='submitted',
+                workflow_status='hr_review',
+                form_data={'employee_name': 'Other User'},
+            )
+            db.session.add(sub)
+            db.session.commit()
+
+            response = client.get(
+                '/api/workflow/submissions/my-submissions?scope=hr',
+                headers=admin_auth_headers,
+            )
+            assert response.status_code == 200
+            data = response.get_json()
+            assert data['success'] is True
+            assert data.get('list_scope') == 'all'
+            assert data.get('org_wide') is True
+            ids = [s['submission_id'] for s in data.get('submissions', [])]
+            assert 'hr-pytest-other-user' in ids
+            assert isinstance(data.get('live_activity_feed'), list)
+
     def test_inspection_hero_count_matches_my_submissions(
         self, client, app, admin_user, supervisor_user
     ):

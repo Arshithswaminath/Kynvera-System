@@ -81,6 +81,83 @@
       transform: translateX(-2px);
       box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
     }
+
+    .sf-live-banner {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+      padding: 0.65rem 0.9rem;
+      border-radius: 10px;
+      background: linear-gradient(90deg, #ecfdf5 0%, #f0fdf4 100%);
+      border: 1px solid #a7f3d0;
+      color: #065f46;
+      font-size: 0.875rem;
+    }
+    .sf-live-banner.visible { display: flex; }
+    .sf-live-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.55);
+      animation: sfLivePulse 1.8s infinite;
+      flex-shrink: 0;
+    }
+    @keyframes sfLivePulse {
+      0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.55); }
+      70% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+    .sf-activity-panel {
+      display: none;
+      margin-bottom: 1.25rem;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+    .sf-activity-panel.visible { display: block; }
+    .sf-activity-panel-hd {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border);
+      font-weight: 700;
+      color: var(--primary);
+      font-size: 0.92rem;
+    }
+    .sf-activity-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      max-height: 220px;
+      overflow-y: auto;
+    }
+    .sf-activity-item {
+      padding: 0.65rem 1rem;
+      border-bottom: 1px solid #f1f5f9;
+      font-size: 0.84rem;
+      line-height: 1.45;
+    }
+    .sf-activity-item:last-child { border-bottom: none; }
+    .sf-activity-item time { color: var(--text-light); font-size: 0.78rem; }
+    .sf-activity-item a {
+      color: var(--primary);
+      font-weight: 600;
+      text-decoration: none;
+    }
+    .sf-activity-item a:hover { text-decoration: underline; }
+    .sf-card-activity {
+      margin: 0 0 0.85rem;
+      padding: 0.55rem 0.75rem;
+      border-radius: 8px;
+      background: #f8fafc;
+      border-left: 3px solid var(--primary);
+      font-size: 0.84rem;
+      color: #334155;
+    }
     
     .page-header h1 {
       font-size: 2.5rem;
@@ -535,6 +612,19 @@
       </select>
       <span id="filterCount" style="color: var(--text-light); font-size: 0.9rem;"></span>
     </div>
+
+    <div id="sfLiveBanner" class="sf-live-banner" aria-live="polite">
+      <div style="display:flex;align-items:center;gap:0.5rem;">
+        <span class="sf-live-dot" aria-hidden="true"></span>
+        <span id="sfLiveBannerText">Live — organization-wide submissions refresh automatically.</span>
+      </div>
+      <span id="sfLastRefreshed" style="color:#047857;font-size:0.8rem;font-weight:600;"></span>
+    </div>
+
+    <div id="sfActivityPanel" class="sf-activity-panel" aria-label="Recent submission activity">
+      <div class="sf-activity-panel-hd">Recent activity across all submissions</div>
+      <ul id="sfActivityList" class="sf-activity-list"></ul>
+    </div>
     
     <div class="submissions-container">
       <div id="loadingSpinner" class="loading-spinner">
@@ -598,6 +688,8 @@
     // Current filter value
     let currentFilter = 'all';
     let currentScope = 'all';
+    let pollIntervalMs = 30000;
+    let listScopeAll = false;
     // Workflow status filter from URL ?workflow=pending|approved|rejected (client-side narrow)
     let currentWorkflow = 'all';
     (function initSubmittedScopeFromUrl() {
@@ -909,6 +1001,60 @@
       } catch (e) { /* ignore */ }
     }
 
+    function renderLiveActivityFeed(feed) {
+      const panel = document.getElementById('sfActivityPanel');
+      const list = document.getElementById('sfActivityList');
+      if (!panel || !list) return;
+      if (!listScopeAll || !Array.isArray(feed) || feed.length === 0) {
+        panel.classList.remove('visible');
+        list.innerHTML = '';
+        return;
+      }
+      panel.classList.add('visible');
+      list.innerHTML = feed.map(row => {
+        const act = row.activity || {};
+        const sid = encodeURIComponent(row.submission_id || '');
+        const who = escapeHtml(row.submitted_by_display || act.actor || 'Someone');
+        const label = escapeHtml(act.label || 'Activity');
+        const mod = escapeHtml(row.module_name || 'Form');
+        const when = act.at ? formatDateTime(act.at) : '';
+        return `<li class="sf-activity-item">
+          <div><a href="#submission-${sid}" onclick="return sfScrollToSubmission('${sid}')">${mod}</a> · ${label}</div>
+          <div>${who}${when ? ` · <time>${when}</time>` : ''}</div>
+        </li>`;
+      }).join('');
+    }
+
+    function sfScrollToSubmission(sid) {
+      const el = document.querySelector(`[data-sf-submission-id="${CSS.escape(decodeURIComponent(sid))}"]`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('submission-card--highlight');
+        window.setTimeout(() => el.classList.remove('submission-card--highlight'), 4500);
+      }
+      return false;
+    }
+
+    function updateLiveBanner(orgWide, pollSeconds) {
+      const banner = document.getElementById('sfLiveBanner');
+      const refreshed = document.getElementById('sfLastRefreshed');
+      if (!banner) return;
+      if (orgWide) {
+        banner.classList.add('visible');
+        if (refreshed) {
+          refreshed.textContent = 'Updated ' + new Date().toLocaleTimeString('en-US', {
+            hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Asia/Dubai'
+          }) + ' GST';
+        }
+        const txt = document.getElementById('sfLiveBannerText');
+        if (txt) {
+          txt.textContent = `Live — all users' submissions refresh every ${pollSeconds || 15} seconds.`;
+        }
+      } else {
+        banner.classList.remove('visible');
+      }
+    }
+
     // Load submissions
     async function loadSubmissions() {
       const loadingSpinner = document.getElementById('loadingSpinner');
@@ -943,7 +1089,11 @@
         // Apply client-side workflow filter (pending / approved / rejected) coming from the
         // inspection hero stat cards via ?workflow=… deep-link.
         const submissions = allSubmissions.filter(matchesWorkflowFilter);
-        const listScopeAll = data.list_scope === 'all';
+        listScopeAll = data.list_scope === 'all' || data.org_wide === true;
+        const pollSeconds = Number(data.poll_interval_seconds) || (listScopeAll ? 15 : 30);
+        pollIntervalMs = pollSeconds * 1000;
+        renderLiveActivityFeed(data.live_activity_feed || []);
+        updateLiveBanner(listScopeAll, pollSeconds);
         const moduleFlags = (data && data.visible_modules) || {};
         const hasHrModule = moduleFlags.hr === true;
         const hasInspectionModule = moduleFlags.inspection === true;
@@ -963,8 +1113,8 @@
             ph1.textContent = `${wfHeading} ${scopeLabel} forms`;
             ph2.textContent = `${wfHeading} ${scopeLabel} submissions only. Click any card to open the form, status, and PDF/Excel reports.`;
           } else if (listScopeAll) {
-            ph1.textContent = 'All submitted forms';
-            ph2.textContent = `Organization-wide ${moduleLabel} submissions and drafts. Use the filter to refine the list.`;
+            ph1.textContent = currentScope === 'hr' ? 'All submitted HR forms' : (currentScope === 'inspection' ? 'All submitted inspection forms' : 'All submitted forms');
+            ph2.textContent = `Every user's ${moduleLabel} submissions and live workflow activity. List refreshes automatically.`;
           } else {
             ph1.textContent = 'My submitted forms';
             ph2.textContent = 'Forms you submitted appear here. Open a card to view status, PDFs, and details.';
@@ -1004,6 +1154,7 @@
         
         emptyState.style.display = 'none';
         submissionsList.style.display = 'block';
+        startPolling();
         
         // Show notification if there are updates
         if (hasUpdates && document.visibilityState === 'visible') {
@@ -1088,13 +1239,21 @@
                   <span>📝</span>
                   <span><strong>Form ID:</strong> ${submission.submission_id}</span>
                 </div>
-                ${submission.submitted_by_display ? `
+                ${listScopeAll && submission.submitted_by_display ? `
                 <div class="submission-detail-item">
                   <span>👤</span>
                   <span><strong>Submitted by:</strong> ${escapeHtml(submission.submitted_by_display)}${submission.submitted_by_username ? ` <span style="color:#64748b;font-weight:500;">(@${escapeHtml(submission.submitted_by_username)})</span>` : ''}</span>
                 </div>
                 ` : ''}
               </div>
+              
+              ${submission.latest_activity && submission.latest_activity.label ? `
+                <div class="sf-card-activity">
+                  <strong>Latest activity:</strong> ${escapeHtml(submission.latest_activity.label)}
+                  ${submission.latest_activity.actor ? ` · ${escapeHtml(submission.latest_activity.actor)}` : ''}
+                  ${submission.latest_activity.at ? ` · ${formatDateTime(submission.latest_activity.at)}` : ''}
+                </div>
+              ` : ''}
               
               ${submission.rejection_reason ? `
                 <div class="alert alert-danger" style="margin-bottom: 1rem; font-size: 0.9rem;">
@@ -1169,20 +1328,18 @@
       }
     }
     
-    // Start polling for updates every 30 seconds
+    // Start polling for updates (15s org-wide, 30s personal)
     function startPolling() {
       // Clear any existing interval
       if (pollingInterval) {
         clearInterval(pollingInterval);
       }
       
-      // Poll every 30 seconds
       pollingInterval = setInterval(() => {
-        // Only poll if page is visible
         if (document.visibilityState === 'visible') {
           loadSubmissions();
         }
-      }, 30000); // 30 seconds
+      }, pollIntervalMs);
     }
     
     // Stop polling when page is hidden, resume when visible
