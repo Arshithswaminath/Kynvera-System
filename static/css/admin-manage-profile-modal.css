@@ -1,3 +1,4 @@
+<<<<<<< ours
 ﻿/* Manage profile portal modals + user activity — extracted from admin_dashboard */
     .modal {
       display: none;
@@ -726,3 +727,935 @@
     }
 
 
+=======
+/* Manage profile portal modals + user activity — extracted from admin_dashboard */
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15,23,42,0.4);
+      backdrop-filter: blur(6px);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    .modal.active { display: flex; }
+    /* Full-viewport centered overlays (password reset): grid center beats body flex quirks; append to body in JS */
+    .modal.admin-portal-modal {
+      position: fixed !important;
+      inset: 0 !important;
+      left: 0 !important;
+      top: 0 !important;
+      right: 0 !important;
+      bottom: 0 !important;
+      width: 100vw !important;
+      max-width: none !important;
+      height: 100dvh !important;
+      min-height: 0 !important;
+      margin: 0 !important;
+      z-index: 12000;
+      box-sizing: border-box;
+      padding: max(0.75rem, env(safe-area-inset-top, 0px))
+               max(0.75rem, env(safe-area-inset-right, 0px))
+               max(0.75rem, env(safe-area-inset-bottom, 0px))
+               max(0.75rem, env(safe-area-inset-left, 0px)) !important;
+      overflow-x: hidden;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      align-items: center !important;
+      justify-content: center !important;
+      flex-direction: row !important;
+    }
+    .modal.admin-portal-modal.active {
+      display: flex !important;
+    }
+    .modal.admin-portal-modal .modal-content {
+      width: min(500px, calc(100vw - 2rem)) !important;
+      max-width: 500px !important;
+      margin: auto !important;
+      flex-shrink: 0 !important;
+      position: relative !important;
+      top: auto !important;
+      left: auto !important;
+      transform: none !important;
+      justify-self: center !important;
+      align-self: center !important;
+    }
+    .modal.admin-portal-modal.admin-profile-shell .modal-content {
+      width: min(800px, calc(100vw - 2rem)) !important;
+      max-width: 800px !important;
+      max-height: min(calc(100dvh - 1.5rem), 920px);
+      padding: 1.35rem 1.5rem 0 !important;
+      border-radius: 20px !important;
+      border: 1px solid rgba(148, 163, 184, 0.38);
+      background: linear-gradient(165deg, #ffffff 0%, #f8fafc 45%, #eef2f6 100%);
+      box-shadow:
+        0 28px 64px -24px rgba(15, 23, 42, 0.38),
+        0 0 0 1px rgba(255, 255, 255, 0.65) inset;
+    }
+    @media (max-height: 760px) {
+      .modal.admin-portal-modal.admin-profile-shell .modal-content {
+        max-height: calc(100dvh - 1.25rem);
+      }
+    }
+    @media (max-width: 640px) {
+      .modal.admin-portal-modal.admin-profile-shell .modal-content {
+        max-height: calc(100dvh - 1rem);
+      }
+    }
+    .admin-profile-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-bottom: 1.05rem;
+      padding-bottom: 1.05rem;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.28);
+    }
+    #userProfileSubtitle {
+      margin: 0;
+      font-size: 0.84rem;
+      color: #64748b;
+      font-weight: 500;
+      line-height: 1.4;
+    }
+    .admin-profile-status-pill {
+      flex-shrink: 0;
+      padding: 0.38rem 0.9rem !important;
+      border-radius: 999px !important;
+      font-size: 0.65rem !important;
+      font-weight: 750 !important;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      border: 1px solid transparent !important;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+    }
+    .admin-profile-status-pill--on {
+      background: linear-gradient(145deg, #d1fae5 0%, #a7f3d0 100%) !important;
+      color: #047857 !important;
+      border-color: rgba(16, 185, 129, 0.42) !important;
+    }
+    .admin-profile-status-pill--off {
+      background: linear-gradient(145deg, #f1f5f9 0%, #e2e8f0 100%) !important;
+      color: #64748b !important;
+      border-color: rgba(100, 116, 139, 0.35) !important;
+    }
+    .admin-profile-form .admin-profile-section {
+      margin-bottom: 0.85rem;
+      padding: 1rem 1.15rem 1.05rem;
+      border: 1px solid rgba(148, 163, 184, 0.28);
+      border-radius: 14px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(248, 250, 252, 0.88) 100%);
+      box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+    }
+    .admin-profile-form .admin-profile-section:last-of-type {
+      margin-bottom: 0.65rem;
+    }
+    .admin-profile-section h3 {
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.11em;
+      color: #64748b;
+      margin: 0 0 0.65rem;
+    }
+    .admin-profile-section h3::before {
+      content: '';
+      width: 4px;
+      height: 1.05rem;
+      border-radius: 99px;
+      flex-shrink: 0;
+      background: linear-gradient(180deg, var(--primary, #15803d), #0f5132);
+      box-shadow: 0 1px 4px rgba(21, 128, 61, 0.35);
+    }
+    .admin-profile-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.55rem 1.1rem;
+      align-items: start;
+    }
+    @media (max-width: 560px) {
+      .admin-profile-grid { grid-template-columns: 1fr; }
+    }
+    .admin-profile-form .form-group {
+      margin-bottom: 0;
+    }
+    .admin-profile-form .form-label {
+      font-size: 0.76rem;
+      font-weight: 600;
+      color: #475569;
+      margin-bottom: 0.35rem;
+      letter-spacing: 0.02em;
+    }
+    .admin-profile-form .form-control,
+    .admin-profile-form select.form-control {
+      border-radius: 10px;
+      border-color: #cbd5e1;
+      background: rgba(255, 255, 255, 0.95);
+      font-size: 0.9rem;
+      padding: 0.62rem 0.85rem;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .admin-profile-form .form-control:hover {
+      border-color: #94a3b8;
+    }
+    .admin-profile-module-grid {
+      display: grid !important;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.45rem 0.85rem !important;
+      align-items: stretch;
+    }
+    @media (max-width: 560px) {
+      .admin-profile-module-grid { grid-template-columns: 1fr; }
+    }
+    .admin-profile-module-grid .checkbox-item {
+      margin: 0;
+      padding: 0.55rem 0.7rem;
+      align-items: center;
+      gap: 0.55rem;
+      border-radius: 11px;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      background: linear-gradient(145deg, #fafbfc 0%, #f1f5f9 100%);
+      transition: border-color 0.18s, box-shadow 0.18s, background 0.18s;
+    }
+    .admin-profile-module-grid .checkbox-item:hover {
+      border-color: rgba(18, 84, 53, 0.28);
+      box-shadow: 0 3px 12px rgba(15, 23, 42, 0.06);
+    }
+    .admin-profile-module-grid .checkbox-item:has(input:checked) {
+      border-color: rgba(22, 163, 74, 0.45);
+      background: linear-gradient(145deg, #f0fdf4 0%, #dcfce7 100%);
+      box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset;
+    }
+    .admin-profile-module-grid .checkbox-item label {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: #334155;
+      line-height: 1.3;
+    }
+    .admin-profile-defaults-split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem 1rem;
+      align-items: start;
+    }
+    @media (max-width: 640px) {
+      .admin-profile-defaults-split { grid-template-columns: 1fr; }
+    }
+    .admin-profile-defaults-split > .form-group {
+      margin-bottom: 0 !important;
+      padding: 0.85rem 0.95rem;
+      border-radius: 12px;
+      border: 1px solid rgba(148, 163, 184, 0.28);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.95) 100%);
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+    }
+    .admin-profile-defaults-split textarea.form-control {
+      min-height: 4.5rem;
+      resize: vertical;
+    }
+    .admin-profile-sig-toolbar {
+      margin-top: 0.4rem;
+    }
+    .admin-profile-sig-toolbar .btn {
+      border-radius: 9px;
+      font-weight: 600;
+    }
+    .admin-profile-section--quick .admin-profile-quick {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.65rem;
+      margin-top: 0.35rem;
+    }
+    .admin-profile-section--quick .admin-quick-action {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.55rem;
+      flex: 1 1 10.5rem;
+      min-width: 0;
+      width: auto !important;
+      min-height: 44px !important;
+      padding: 0.55rem 1rem;
+      border-radius: 12px;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      line-height: 1.2;
+      border: 1px solid transparent;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+      transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.12s ease;
+    }
+    .admin-profile-section--quick .admin-quick-action:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 18px rgba(15, 23, 42, 0.1);
+    }
+    .admin-profile-section--quick .admin-quick-action:active {
+      transform: translateY(0);
+    }
+    .admin-profile-section--quick .admin-quick-action-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.75rem;
+      height: 1.75rem;
+      border-radius: 8px;
+      flex-shrink: 0;
+    }
+    .admin-profile-section--quick .admin-quick-action-icon svg {
+      width: 1rem;
+      height: 1rem;
+    }
+    .admin-profile-section--quick .admin-quick-action-label {
+      white-space: nowrap;
+    }
+    .admin-profile-section--quick .admin-quick-action.btn-reset {
+      background: #fff7ed;
+      border-color: #fdba74;
+      color: #9a3412;
+    }
+    .admin-profile-section--quick .admin-quick-action.btn-reset .admin-quick-action-icon {
+      background: #ffedd5;
+      color: #ea580c;
+    }
+    .admin-profile-section--quick .admin-quick-action.btn-reset:hover {
+      background: #ffedd5;
+      border-color: #fb923c;
+      color: #7c2d12;
+    }
+    .admin-profile-section--quick .admin-quick-action.btn-activity {
+      background: #eff6ff;
+      border-color: #93c5fd;
+      color: #1e40af;
+    }
+    .admin-profile-section--quick .admin-quick-action.btn-activity .admin-quick-action-icon {
+      background: #dbeafe;
+      color: #2563eb;
+    }
+    .admin-profile-section--quick .admin-quick-action.btn-activity:hover {
+      background: #dbeafe;
+      border-color: #60a5fa;
+      color: #1e3a8a;
+    }
+    .admin-profile-section--quick .admin-quick-action.btn-toggle {
+      background: #f8fafc;
+      border-color: #cbd5e1;
+      color: #334155;
+    }
+    .admin-profile-section--quick .admin-quick-action.btn-toggle .admin-quick-action-icon {
+      background: #e2e8f0;
+      color: #475569;
+    }
+    .admin-profile-section--quick .admin-quick-action.btn-toggle:hover {
+      background: #f1f5f9;
+      border-color: #94a3b8;
+      color: #1e293b;
+    }
+    .admin-profile-section--quick .admin-quick-action.btn-toggle.is-deactivate {
+      background: #fef2f2;
+      border-color: #fca5a5;
+      color: #991b1b;
+    }
+    .admin-profile-section--quick .admin-quick-action.btn-toggle.is-deactivate .admin-quick-action-icon {
+      background: #fee2e2;
+      color: #dc2626;
+    }
+    .admin-profile-section--quick .admin-quick-action.btn-toggle.is-deactivate:hover {
+      background: #fee2e2;
+      border-color: #f87171;
+      color: #7f1d1d;
+    }
+    .admin-profile-section--quick .admin-quick-action.btn-toggle.is-activate {
+      background: #ecfdf5;
+      border-color: #6ee7b7;
+      color: #065f46;
+    }
+    .admin-profile-section--quick .admin-quick-action.btn-toggle.is-activate .admin-quick-action-icon {
+      background: #d1fae5;
+      color: #059669;
+    }
+    .admin-profile-section--quick .admin-quick-action.btn-toggle.is-activate:hover {
+      background: #d1fae5;
+      border-color: #34d399;
+      color: #064e3b;
+    }
+    .admin-profile-hint {
+      font-size: 0.74rem;
+      color: var(--text-muted);
+      margin: 0.3rem 0 0;
+      line-height: 1.4;
+    }
+    .admin-profile-modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      gap: 0.65rem;
+      margin: 1rem -1.5rem 0;
+      padding: 1rem 1.5rem 1.2rem;
+      background: linear-gradient(180deg, rgba(241, 245, 249, 0.55) 0%, #e2e8f0 100%);
+      border-top: 1px solid rgba(148, 163, 184, 0.35);
+      border-radius: 0 0 18px 18px;
+    }
+    .admin-profile-modal-actions .btn-primary {
+      font-weight: 650;
+      padding: 0.55rem 1.35rem;
+      border-radius: 10px;
+      box-shadow: 0 2px 12px rgba(21, 128, 61, 0.25);
+    }
+    .admin-profile-modal-actions .btn-cancel {
+      border-radius: 10px;
+      font-weight: 600;
+    }
+    .admin-profile-sig-preview {
+      display: block;
+      max-height: 76px;
+      max-width: 100%;
+      margin-top: 0.4rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.35rem;
+      background: transparent;
+      mix-blend-mode: multiply;
+    }
+    .admin-profile-sig-preview[hidden] { display: none !important; }
+
+    .admin-profile-password-wrap .admin-profile-password-hint {
+      margin-top: 0.5rem;
+    }
+
+    .admin-profile-form .admin-profile-password-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto auto;
+      align-items: stretch;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      background: #fff;
+      overflow: hidden;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .admin-profile-form .admin-profile-password-row:hover {
+      border-color: #94a3b8;
+    }
+    .admin-profile-form .admin-profile-password-row:focus-within {
+      border-color: var(--injz-pm-green, #125435);
+      box-shadow: 0 0 0 3px rgba(18, 84, 53, 0.1);
+    }
+    .admin-profile-form .admin-profile-password-row .admin-profile-password-input {
+      grid-column: 1;
+      width: 100%;
+      min-width: 0;
+      height: 40px;
+      min-height: 40px;
+      padding: 0 0.85rem;
+      margin: 0;
+      border: none !important;
+      border-radius: 0 !important;
+      background: transparent !important;
+      box-shadow: none !important;
+      font-size: 0.875rem;
+      line-height: 1.25;
+    }
+    .admin-profile-form .admin-profile-password-row .admin-profile-password-input:hover,
+    .admin-profile-form .admin-profile-password-row .admin-profile-password-input:focus {
+      border: none !important;
+      box-shadow: none !important;
+      outline: none;
+      background: transparent !important;
+    }
+    .admin-profile-form .admin-profile-password-row .admin-profile-password-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: auto !important;
+      min-width: 0 !important;
+      height: 40px !important;
+      min-height: 40px !important;
+      max-height: 40px !important;
+      padding: 0 0.8rem !important;
+      margin: 0;
+      border: none !important;
+      border-left: 1px solid #e2e8f0 !important;
+      border-radius: 0 !important;
+      background: #f8fafc !important;
+      box-shadow: none !important;
+      font-size: 0.75rem !important;
+      font-weight: 600;
+      line-height: 1;
+      letter-spacing: 0.01em;
+      color: #64748b !important;
+      white-space: nowrap;
+    }
+    .admin-profile-form .admin-profile-password-row .admin-profile-password-btn:hover {
+      background: #f1f5f9 !important;
+      color: var(--injz-pm-green, #125435) !important;
+    }
+    .admin-profile-form .admin-profile-password-row .admin-profile-password-btn:focus,
+    .admin-profile-form .admin-profile-password-row .admin-profile-password-btn:focus-visible {
+      outline: none;
+      box-shadow: inset 0 0 0 2px rgba(18, 84, 53, 0.22) !important;
+      z-index: 1;
+      color: var(--injz-pm-green, #125435) !important;
+    }
+    .admin-profile-module-note {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin: 0 0 0.55rem;
+      line-height: 1.35;
+    }
+    .admin-profile-module-note:not([hidden]) {
+      display: block !important;
+      margin: 0 0 0.65rem;
+      padding: 0.55rem 0.8rem;
+      border-radius: 10px;
+      font-weight: 500;
+      color: #1e40af;
+      background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+      border: 1px solid rgba(59, 130, 246, 0.35);
+      line-height: 1.4;
+    }
+
+    /* ── Manage profile: “Line” layout (second version) — toggled via header control ── */
+    .admin-profile-header-actions {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .admin-profile-layout-toggle {
+      flex-shrink: 0;
+      padding: 0.35rem 0.8rem;
+      font-size: 0.7rem;
+      font-weight: 650;
+      letter-spacing: 0.02em;
+      border-radius: 8px;
+      border: 1px solid #cbd5e1;
+      background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+      color: #475569;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+    }
+    .admin-profile-layout-toggle:hover {
+      background: #f1f5f9;
+      border-color: #94a3b8;
+    }
+    .modal.admin-portal-modal.admin-profile-shell.admin-profile-shell--v2 .modal-content {
+      width: min(760px, calc(100vw - 2rem)) !important;
+      max-width: 760px !important;
+      padding: 0 !important;
+      border-radius: 16px !important;
+      background: #eef1f5 !important;
+      border: 1px solid #cfd8e3 !important;
+      box-shadow: 0 22px 56px -20px rgba(15, 23, 42, 0.3) !important;
+      overflow: hidden;
+    }
+    .modal.admin-portal-modal.admin-profile-shell.admin-profile-shell--v2 .admin-profile-header {
+      margin: 0 0 0;
+      padding: 1.2rem 1.5rem 1.15rem;
+      border-bottom: 1px solid #d8dee6;
+      background: linear-gradient(180deg, #ffffff 0%, #f6f8fa 100%);
+    }
+    .modal.admin-portal-modal.admin-profile-shell.admin-profile-shell--v2 #userProfileSubtitle {
+      color: #64748b;
+    }
+    .modal.admin-portal-modal.admin-profile-shell.admin-profile-shell--v2 .admin-profile-form {
+      padding: 0 1.5rem 0.25rem;
+    }
+    .modal.admin-portal-modal.admin-profile-shell.admin-profile-shell--v2 .admin-profile-form .admin-profile-section {
+      margin-bottom: 1rem;
+      padding: 1.1rem 1.2rem;
+      border: 1px solid #dce3eb;
+      border-radius: 12px;
+      background: #ffffff;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.045);
+    }
+    .modal.admin-portal-modal.admin-profile-shell.admin-profile-shell--v2 .admin-profile-form .admin-profile-section:last-of-type {
+      margin-bottom: 0.85rem;
+    }
+    .modal.admin-portal-modal.admin-profile-shell.admin-profile-shell--v2 .admin-profile-section h3 {
+      display: block;
+      font-size: 0.92rem;
+      font-weight: 750;
+      text-transform: none;
+      letter-spacing: -0.015em;
+      color: #0f172a;
+      margin: 0 0 0.75rem;
+      padding-bottom: 0.45rem;
+      border-bottom: 2px solid var(--primary, #15803d);
+    }
+    .modal.admin-portal-modal.admin-profile-shell.admin-profile-shell--v2 .admin-profile-section h3::before {
+      display: none;
+    }
+    .modal.admin-portal-modal.admin-profile-shell.admin-profile-shell--v2 .admin-profile-module-grid {
+      grid-template-columns: 1fr !important;
+      gap: 0.32rem !important;
+    }
+    .modal.admin-portal-modal.admin-profile-shell.admin-profile-shell--v2 .admin-profile-module-grid .checkbox-item {
+      padding: 0.4rem 0.65rem;
+      border-radius: 8px;
+      border-color: #e2e8f0;
+      background: #f8fafc;
+    }
+    .modal.admin-portal-modal.admin-profile-shell.admin-profile-shell--v2 .admin-profile-module-grid .checkbox-item:has(input:checked) {
+      border-color: #34d399;
+      background: linear-gradient(90deg, #ecfdf5 0%, #f0fdf4 100%);
+    }
+    .modal.admin-portal-modal.admin-profile-shell.admin-profile-shell--v2 .admin-profile-defaults-split > .form-group {
+      background: #fafbfc;
+      border-color: #e2e8f0;
+      box-shadow: none;
+    }
+    .modal.admin-portal-modal.admin-profile-shell.admin-profile-shell--v2 .admin-profile-section--quick .admin-quick-action {
+      border-radius: 10px;
+      padding: 0.52rem 0.95rem;
+    }
+    .modal.admin-portal-modal.admin-profile-shell.admin-profile-shell--v2 .admin-profile-section--quick .admin-quick-action:hover {
+      transform: none;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+    }
+    .modal.admin-portal-modal.admin-profile-shell.admin-profile-shell--v2 .admin-profile-modal-actions {
+      margin: 0;
+      padding: 1rem 1.5rem 1.2rem;
+      border-radius: 0;
+      background: #ffffff;
+      border-top: 1px solid #d8dee6;
+    }
+    .admin-profile-layout-toggle[aria-pressed="true"] {
+      border-color: rgba(21, 128, 61, 0.45);
+      background: linear-gradient(180deg, #ecfdf5 0%, #d1fae5 100%);
+      color: #065f46;
+    }
+
+    .modal-content {
+      background: var(--bg-card);
+      border-radius: var(--radius);
+      padding: 1.75rem;
+      max-width: 500px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: var(--shadow-lg);
+      border: 1px solid var(--border);
+      animation: modalIn 0.25s ease;
+    }
+    @keyframes modalIn {
+      from { opacity: 0; transform: scale(0.98) translateY(-10px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    
+    .modal-header {
+      margin-bottom: 1.5rem;
+    }
+    .modal-header.admin-profile-header {
+      margin-bottom: 1.05rem;
+    }
+    
+    .modal-title {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: var(--text-dark);
+    }
+    .admin-profile-header .modal-title {
+      margin-bottom: 0.2rem !important;
+      font-size: 1.38rem;
+      font-weight: 750;
+      letter-spacing: -0.025em;
+      color: #0f172a;
+    }
+    
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+    
+    .form-label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+      color: var(--text-dark);
+    }
+    
+    .form-control {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 0.9375rem;
+      transition: all 0.2s ease;
+    }
+    .form-control:hover {
+      border-color: #cbd5e1;
+    }
+    
+    .form-control:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px var(--primary-muted);
+    }
+    
+    .checkbox-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    
+    .checkbox-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .checkbox-item input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+    
+    .modal-actions {
+      display: flex;
+      gap: 0.75rem;
+      justify-content: flex-end;
+      margin-top: 2rem;
+    }
+    
+    .modal .btn-primary {
+      background: var(--primary);
+      color: white;
+      border: none;
+    }
+    .modal .btn-primary:hover {
+      background: var(--primary-hover);
+    }
+    
+    .btn-cancel {
+      background: var(--secondary);
+      color: var(--text-dark);
+    }
+    
+    .btn-cancel:hover {
+      background: #d1d5db;
+    }
+
+    .modal .btn-secondary {
+      background: #475569;
+      color: #fff;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: var(--radius-sm, 10px);
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .modal .btn-secondary:hover {
+      background: #334155;
+    }
+
+    /* User Activity Modal Styles */
+    .activity-section {
+      margin-bottom: 1.5rem;
+      background: #f8fafc;
+      border-radius: 10px;
+      padding: 1rem;
+      border: 1px solid #e2e8f0;
+    }
+    .activity-section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 2px solid #e2e8f0;
+    }
+    .activity-section-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #1e293b;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .activity-badge {
+      background: var(--primary);
+      color: white;
+      padding: 2px 10px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+    .activity-badge.reviewed {
+      background: #3b82f6;
+    }
+    .activity-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+    }
+    .activity-table th {
+      text-align: left;
+      padding: 0.625rem 0.75rem;
+      background: #f1f5f9;
+      color: #475569;
+      font-weight: 600;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .activity-table td {
+      padding: 0.625rem 0.75rem;
+      border-bottom: 1px solid #e2e8f0;
+      color: #334155;
+    }
+    .activity-table tr:last-child td {
+      border-bottom: none;
+    }
+    .activity-table tr:hover td {
+      background: #f8fafc;
+    }
+    .activity-table tr.clickable-row {
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .activity-table tr.clickable-row:hover td {
+      background: #e0f2fe;
+    }
+    /* High-contrast View-Form action button (eye icon).
+       !important on color/background so global .btn or table styles can't dim it. */
+    .activity-table .btn-view-form,
+    .btn-view-form {
+      display: inline-flex !important;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      padding: 0;
+      border: 1px solid #1d4ed8 !important;
+      border-radius: 8px;
+      background: #2563eb !important;
+      color: #ffffff !important;
+      cursor: pointer;
+      transition: background-color .15s ease, transform .15s ease, box-shadow .15s ease;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, .08);
+    }
+    .activity-table .btn-view-form svg,
+    .btn-view-form svg {
+      width: 17px;
+      height: 17px;
+      stroke: #ffffff !important;
+      stroke-width: 2.2;
+    }
+    .activity-table .btn-view-form:hover,
+    .btn-view-form:hover {
+      background: #1d4ed8 !important;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 10px rgba(37, 99, 235, .35);
+    }
+    .activity-table .btn-view-form:active,
+    .btn-view-form:active {
+      transform: translateY(0);
+      box-shadow: 0 1px 2px rgba(15, 23, 42, .12);
+    }
+    .activity-table .btn-view-form:focus-visible,
+    .btn-view-form:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, .35);
+    }
+    /* Touch-friendly on small screens */
+    @media (max-width: 640px) {
+      .activity-table .btn-view-form,
+      .btn-view-form {
+        width: 38px;
+        height: 38px;
+      }
+      .activity-table .btn-view-form svg,
+      .btn-view-form svg {
+        width: 18px;
+        height: 18px;
+      }
+    }
+    .status-badge {
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .status-badge.completed { background: #dcfce7; color: #166534; }
+    .status-badge.pending { background: #fef3c7; color: #92400e; }
+    .status-badge.submitted { background: #dbeafe; color: #1e40af; }
+    .status-badge.rejected { background: #fee2e2; color: #991b1b; }
+    .module-badge-sm {
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 500;
+    }
+    .module-badge-sm.hvac { background: #dbeafe; color: #1e40af; }
+    .module-badge-sm.civil { background: #f3e8ff; color: #6b21a8; }
+    .module-badge-sm.cleaning { background: #dcfce7; color: #166534; }
+    .user-info-card {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem;
+      background: var(--primary);
+      border-radius: var(--radius);
+      margin-bottom: 1.5rem;
+      color: white;
+    }
+    .user-info-avatar {
+      width: 56px;
+      height: 56px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      font-weight: 700;
+    }
+    .user-info-details h3 {
+      margin: 0 0 0.25rem;
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+    .user-info-details p {
+      margin: 0;
+      font-size: 0.85rem;
+      opacity: 0.9;
+    }
+    .user-stats {
+      display: flex;
+      gap: 1.5rem;
+      margin-left: auto;
+    }
+    .user-stat {
+      text-align: center;
+    }
+    .user-stat-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+    .user-stat-label {
+      font-size: 0.7rem;
+      opacity: 0.8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .empty-state {
+      text-align: center;
+      padding: 2rem;
+      color: #64748b;
+    }
+    .empty-state-icon {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+      opacity: 0.5;
+    }
+    .btn-activity {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+>>>>>>> theirs

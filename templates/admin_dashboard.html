@@ -7756,7 +7756,12 @@
 
       const tbtn = document.getElementById('profileQuickToggleBtn');
       if (tbtn) {
-        tbtn.textContent = user.is_active ? 'Deactivate account' : 'Activate account';
+        const label = tbtn.querySelector('.admin-quick-action-label');
+        const text = user.is_active ? 'Deactivate account' : 'Activate account';
+        if (label) label.textContent = text;
+        else tbtn.textContent = text;
+        tbtn.classList.toggle('is-deactivate', !!user.is_active);
+        tbtn.classList.toggle('is-activate', !user.is_active);
       }
 
       modal.classList.add('active');
