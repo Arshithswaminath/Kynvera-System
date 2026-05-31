@@ -2342,6 +2342,45 @@
         padding-bottom: calc(64px + max(0.75rem, env(safe-area-inset-bottom))) !important;
       }
     }
+<<<<<<< ours
+=======
+    @media (max-width: 768px) {
+      body.admin-dh-page.has-main-nav {
+        --main-nav-h: 56px;
+      }
+    }
+    /* Main nav drawer must sit above admin sidebar overlay and escape flex scroll roots */
+    body.admin-dh-page .mobile-menu-drawer {
+      z-index: 2147482000 !important;
+    }
+    body.admin-dh-page .mobile-overlay {
+      z-index: 2147481500 !important;
+    }
+    body.admin-dh-page.has-main-nav .nav {
+      z-index: 2147482500 !important;
+    }
+    body.admin-dh-page.mobile-menu-open > #adminDhSidebarToggle,
+    body.admin-dh-page:has(.mobile-menu-drawer.active) > #adminDhSidebarToggle {
+      filter: none !important;
+    }
+    @media (max-width: 768px) {
+      body.admin-dh-page .mobile-menu-drawer {
+        left: 0 !important;
+        right: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        border-left: none !important;
+      }
+      body.admin-dh-page .mobile-menu-drawer.active {
+        transform: translateX(0) !important;
+      }
+    }
+    @media (max-width: 600px) {
+      body.admin-dh-page.has-main-nav {
+        --main-nav-h: 64px;
+      }
+    }
+>>>>>>> theirs
 
     /* Mobile sidebar override */
     @media (max-width: 900px) {

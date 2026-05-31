@@ -994,6 +994,93 @@ def _my_submissions_filter(user_id):
     return Submission.user_id == uid
 
 
+def _user_sees_org_wide_submissions(user, scope: str) -> bool:
+    """Organization-wide Submitted forms list (all users' rows)."""
+    if not user:
+        return False
+    if _user_role_lower(user) == 'admin':
+        return True
+    if scope in ('all', 'hr'):
+        if _user_desig_lower(user) == 'hr_manager':
+            return True
+        if _user_desig_lower(user) == 'general_manager':
+            return True
+        if getattr(user, 'access_hr', False):
+            return True
+    return False
+
+
+def _hr_submissions_list_query_for_user(base_query, user, scope: str = 'hr'):
+    """HR rows on Submitted forms: privileged viewers see all; others see only what they submitted."""
+    if not user:
+        return None
+    q = base_query.filter(_filter_hr())
+    if _user_sees_org_wide_submissions(user, scope):
+        return q
+    return q.filter(_my_submissions_filter(user.id))
+
+
+def _inspection_submissions_list_query_for_user(base_query, user, scope: str = 'inspection'):
+    """Inspection rows on Submitted forms: admin sees all; others see only what they submitted."""
+    if not user:
+        return None
+    q = base_query.filter(_filter_inspection())
+    if _user_sees_org_wide_submissions(user, scope):
+        return q
+    return q.filter(_my_submissions_filter(user.id))
+
+
+def _hr_latest_activity_from_form_data(form_data, workflow_status, submission_status):
+    """Most recent HR sign-off / revision event for submitted-forms cards."""
+    try:
+        from module_hr.hr_signoff_activity import compute_hr_signoff_activity, _event_sort_ts
+    except Exception:
+        return None
+    if isinstance(form_data, str):
+        try:
+            import json as _json
+            form_data = _json.loads(form_data)
+        except Exception:
+            form_data = {}
+    if not isinstance(form_data, dict):
+        form_data = {}
+    activities, _fp = compute_hr_signoff_activity(form_data, workflow_status, submission_status)
+    if not activities:
+        return None
+    latest = max(activities, key=lambda e: _event_sort_ts((e or {}).get('at')))
+    return {
+        'label': latest.get('label'),
+        'actor': latest.get('actor'),
+        'at': latest.get('at'),
+        'detail': (latest.get('detail') or '').strip() or None,
+        'kind': latest.get('kind'),
+    }
+
+
+def _build_live_activity_feed(submissions_list, limit=30):
+    """Cross-form activity stream for org-wide submitted-forms view."""
+    feed = []
+    for sub in submissions_list or []:
+        la = sub.get('latest_activity')
+        if not la or not la.get('at'):
+            continue
+        try:
+            from module_hr.hr_signoff_activity import _event_sort_ts
+            at_ts = _event_sort_ts(la.get('at'))
+        except Exception:
+            at_ts = 0.0
+        feed.append({
+            'submission_id': sub.get('submission_id'),
+            'module_name': sub.get('module_name') or sub.get('module'),
+            'submitted_by_display': sub.get('submitted_by_display'),
+            'workflow_status': sub.get('workflow_status'),
+            'activity': la,
+            'at_ts': at_ts,
+        })
+    feed.sort(key=lambda row: row.get('at_ts') or 0.0, reverse=True)
+    return feed[:limit]
+
+
 def _submission_successfully_finished():
     """Terminal success states (inspection: completed; HR: approved; other modules: completed/approved)."""
     return or_(
@@ -1833,8 +1920,6 @@ def get_my_submissions():
         if not user:
             return error_response('User not found', status_code=404, error_code='NOT_FOUND')
 
-        # Any authenticated user may open Submitted forms; they always see forms they submitted.
-        
         # Get filter parameter (all, submitted, draft)
         status_filter = request.args.get('status', 'all')
         scope = str(request.args.get('scope', 'all') or 'all').strip().lower()
@@ -1865,24 +1950,15 @@ def get_my_submissions():
         include_hr = scope in ('all', 'hr')
         include_inspection = scope in ('all', 'inspection')
 
-        # Always include forms this user submitted (HR + inspection). Reviewers also see their queue.
+        org_wide = _user_sees_org_wide_submissions(user, scope)
+
         if include_hr:
-            hr_q = _apply_status(
-                base_query.filter(
-                    _filter_hr(),
-                    _my_submissions_filter(user.id),
-                )
-            )
+            hr_q = _apply_status(_hr_submissions_list_query_for_user(base_query, user, scope))
             if hr_q is not None:
                 submissions.extend(hr_q.all())
 
         if include_inspection:
-            ins_own_q = _apply_status(
-                base_query.filter(
-                    _filter_inspection(),
-                    _my_submissions_filter(user.id),
-                )
-            )
+            ins_own_q = _apply_status(_inspection_submissions_list_query_for_user(base_query, user, scope))
             if ins_own_q is not None:
                 submissions.extend(ins_own_q.all())
 
@@ -1891,10 +1967,13 @@ def get_my_submissions():
             dedup[s.submission_id] = s
         submissions = sorted(
             dedup.values(),
-            key=lambda s: s.created_at or datetime.min,
+            key=lambda s: s.updated_at or s.created_at or datetime.min,
             reverse=True,
         )
-        list_scope = 'mixed' if (include_hr and include_inspection) else ('hr' if include_hr else 'inspection')
+        if org_wide:
+            list_scope = 'all'
+        else:
+            list_scope = 'mixed' if (include_hr and include_inspection) else ('hr' if include_hr else 'inspection')
 
         inspections_map = {
             'hvac': 'HVAC & MEP',
@@ -2076,15 +2155,24 @@ def get_my_submissions():
                     and submission.status != 'draft'
                     and not _hr_submission_record_finalized_locked(submission)
                 )
+                sub_dict['latest_activity'] = _hr_latest_activity_from_form_data(
+                    form_data, submission.workflow_status, submission.status
+                )
             else:
                 sub_dict['can_withdraw_hr'] = False
+                sub_dict['latest_activity'] = None
 
             submissions_list.append(sub_dict)
+
+        live_activity_feed = _build_live_activity_feed(submissions_list) if org_wide else []
         
         return success_response({
             'submissions': submissions_list,
             'count': len(submissions_list),
             'list_scope': list_scope,
+            'org_wide': org_wide,
+            'live_activity_feed': live_activity_feed,
+            'poll_interval_seconds': 15 if org_wide else 30,
             'visible_modules': {
                 'hr': bool(include_hr),
                 'inspection': bool(include_inspection),
