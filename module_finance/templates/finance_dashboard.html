@@ -889,7 +889,7 @@
         : `href="/tickets/${t.ticket_id}"`;
       const actions = completed
         ? `<a ${detailsAttr} class="btn btn-outline btn-sm">View Details</a>`
-        : `<button type="button" class="btn btn-green btn-sm" onclick="openModal('${t.ticket_id}')">
+        : `<button type="button" class="btn btn-green btn-sm" data-open-modal="${t.ticket_id}">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.4" stroke="currentColor" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z"/></svg>
             Log ERP Invoice
           </button>`;
@@ -1025,13 +1025,17 @@
     function formatNum(n) { return Number(n).toLocaleString('en-AE', {minimumFractionDigits:2,maximumFractionDigits:2}); }
     function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-    // Close modal on Esc
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
-    // Close modal only when clicking the dark backdrop directly (not content inside)
-    document.addEventListener('click', e => {
+    // ── Event delegation for queue buttons ────────────────
+    document.addEventListener('click', function(e) {
+      // Log ERP Invoice button (data attribute — works on innerHTML-rendered buttons)
+      const btn = e.target.closest('[data-open-modal]');
+      if (btn) { openModal(btn.getAttribute('data-open-modal')); return; }
+      // Backdrop close — only when clicking the dark overlay itself
       const overlay = document.getElementById('processModal');
       if (overlay && overlay.classList.contains('show') && e.target === overlay) closeModal();
     });
+    // Close modal on Esc
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
     // Kick off immediately — DOM elements above this script are already parsed
     loadQueue().catch(() => {});
