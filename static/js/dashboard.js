@@ -216,7 +216,11 @@ function userHasDocHubNavAccess(user) {
   return true;
 }
 
+// Amaan does not surface Report Generation. The module code/route stays intact;
+// flip AMAAN_REPORT_GENERATION_ENABLED to true to restore it in the UI.
+var AMAAN_REPORT_GENERATION_ENABLED = false;
 function userHasReportGenerationNavAccess(user) {
+  if (!AMAAN_REPORT_GENERATION_ENABLED) return false;
   if (!user) return false;
   if (user.role === 'admin') return true;
   return user.access_report_generation === true;
@@ -948,7 +952,7 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
         position: relative;
         flex-shrink: 0;
         padding: 0.85rem 3.5rem 1rem 1.25rem;
-        background: linear-gradient(135deg, #0f4a2a 0%, #1a6b3d 50%, #22885a 100%);
+        background: linear-gradient(135deg, #7a0d15 0%, #b01320 50%, #d21725 100%);
         border-radius: 0;
         margin: 0;
         overflow: hidden;
