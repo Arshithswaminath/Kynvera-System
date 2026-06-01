@@ -889,7 +889,7 @@
         : `href="/tickets/${t.ticket_id}"`;
       const actions = completed
         ? `<a ${detailsAttr} class="btn btn-outline btn-sm">View Details</a>`
-        : `<button type="button" class="btn btn-green btn-sm" onclick="event.stopPropagation(); openModal('${t.ticket_id}')">
+        : `<button type="button" class="btn btn-green btn-sm" onclick="openModal('${t.ticket_id}')">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.4" stroke="currentColor" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z"/></svg>
             Log ERP Invoice
           </button>`;
@@ -945,19 +945,23 @@
     // ── Modal ─────────────────────────────────────────────
     function openModal(ticketId) {
       activeTicketId = ticketId;
-      const t = (window._fin_pending || []).find(x => x.ticket_id === ticketId);
-      if (!t) return;
+      // Search both pending and completed lists
+      const allTickets = (window._fin_pending || []).concat(window._fin_completed || []);
+      const t = allTickets.find(x => x.ticket_id === ticketId);
+      if (!t) { console.warn('[Finance] ticket not found:', ticketId); return; }
       const snap = document.getElementById('modalSnapshot');
-      snap.innerHTML = `
+      if (snap) snap.innerHTML = `
         <div class="ts-row"><span>Ticket</span><span>${escHtml(t.ticket_id)}</span></div>
         <div class="ts-row"><span>Title</span><span style="text-align:right;max-width:60%;">${escHtml(t.title)}</span></div>
         <div class="ts-row"><span>Project</span><span>${escHtml(t.project)}${t.property ? ' · ' + escHtml(t.property) : ''}</span></div>
         <div class="ts-row"><span>Supervisor</span><span>${escHtml(t.supervisor_name || '—')}</span></div>
         <div class="ts-row"><span>Amount</span><span><strong>AED ${formatNum(t.selling_price)}</strong></span></div>`;
-      document.getElementById('erp_invoice_number').value = '';
-      document.getElementById('erp_invoice_notes').value = '';
-      document.getElementById('processModal').classList.add('show');
-      setTimeout(() => document.getElementById('erp_invoice_number').focus(), 80);
+      const inpNum   = document.getElementById('erp_invoice_number');
+      const inpNotes = document.getElementById('erp_invoice_notes');
+      if (inpNum)   inpNum.value   = '';
+      if (inpNotes) inpNotes.value = '';
+      const overlay = document.getElementById('processModal');
+      if (overlay) { overlay.classList.add('show'); setTimeout(() => inpNum && inpNum.focus(), 80); }
     }
     function closeModal() {
       document.getElementById('processModal').classList.remove('show');
