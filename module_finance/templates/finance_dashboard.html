@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}">
   {% include 'partials/caveat_font.html' ignore missing %}
   <title>Finance — Amaan</title>
   <meta name="theme-color" content="#d21725">
@@ -454,6 +455,68 @@
 <body class="has-main-nav">
   {% set active_page = 'finance' %}
   {% include 'partials/main_navbar.html' with context %}
+
+  <button type="button" class="dh-sidebar-toggle" id="finSidebarToggle" onclick="document.getElementById('finSidebar').classList.toggle('open')" aria-label="Open Finance menu" title="Menu">☰</button>
+
+  <div class="dh-page-root">
+    <aside class="dh-sidebar" id="finSidebar">
+      <div class="sb-brand">
+        <div class="sb-brand-text">
+          <span class="name">Finance</span>
+          <span class="tagline">Finance &amp; Invoicing</span>
+        </div>
+      </div>
+
+      <nav class="sb-nav">
+        <div class="dh-sb-section">
+          <div class="sb-section-label">Overview</div>
+          <a href="/finance/" class="sb-nav-item {% if request.path == '/finance/' or request.path == '/finance' %}active{% endif %}">
+            Invoice Queue
+          </a>
+          <a href="/finance/contracts" class="sb-nav-item {% if '/contracts' in request.path %}active{% endif %}">
+            Contracts
+          </a>
+          <a href="/finance/reports" class="sb-nav-item {% if '/reports' in request.path %}active{% endif %}">
+            Monthly Reports
+          </a>
+        </div>
+
+        <div class="dh-sb-section">
+          <div class="sb-section-label">Finance</div>
+          <a href="/finance/" class="sb-nav-item">
+            Invoice Processing
+          </a>
+          <a href="/finance/contracts" class="sb-nav-item">
+            Contract Management
+          </a>
+          <a href="/tickets/" class="sb-nav-item">
+            Service Tickets
+          </a>
+        </div>
+
+        <div class="dh-sb-section">
+          <div class="sb-section-label">Reports</div>
+          <a href="/finance/reports" class="sb-nav-item">
+            Billing Reports
+          </a>
+          <a href="/admin/dashboard" class="sb-nav-item">
+            Settings
+          </a>
+        </div>
+      </nav>
+
+      <div class="sb-footer">
+        <div class="sb-user-row" onclick="if(typeof openProfileModal==='function'){openProfileModal();}" role="button" tabindex="0">
+          <div class="sb-avatar" id="finUserAv">{{ user.full_name[0]|upper if user and user.full_name else 'U' }}</div>
+          <div class="sb-user-text">
+            <div class="sb-user-name">{{ user.full_name if user else 'User' }}</div>
+            <div class="sb-user-role">{{ user.role|capitalize if user else 'User' }}</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <div class="dh-main">
 
   <!-- Hero -->
   <header class="fin-hero">
@@ -943,6 +1006,8 @@
     style.textContent = '@keyframes spin { to { transform: rotate(360deg); } }';
     document.head.appendChild(style);
   </script>
+    </div>{# /dh-main #}
+  </div>{# /dh-page-root #}
   <script src="{{ url_for('static', filename='mobile_utils.js') }}" defer></script>
   <script src="{{ url_for('static', filename='js/dashboard.js') }}" defer></script>
 </body>
