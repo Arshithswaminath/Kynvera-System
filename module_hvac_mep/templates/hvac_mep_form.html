@@ -1339,7 +1339,10 @@
   {% set show_inspection_save_draft = (not is_edit_mode or (submission_data and submission_data.workflow_status == 'draft')) %}
   {% include 'partials/main_navbar.html' with context %}
 
-  <div class="container">
+  <div class="container has-if-layout">
+    {% include 'partials/inspection_form_back.html' %}
+    <div class="if-layout">
+    <main class="if-layout-main">
 
     {% if is_edit_mode and can_edit == False %}
     <!-- Read-Only Mode Banner -->
@@ -2358,7 +2361,14 @@
         </div>
       </div>
     </form>
+    </main>
+    {% set report_download_submission_id = edit_submission_id or (submission_data.submission_id if (is_edit_mode and submission_data) else none) %}
+    {% set report_download_job_id = latest_job_id or (submission_data.get('latest_job_id') if (is_edit_mode and submission_data) else none) %}
+    {% set report_download_base = url_for('hvac_mep_bp.index')|replace('/form', '') %}
+    {% include 'partials/inspection_sidebar.html' %}
+    </div>{# /if-layout #}
   </div>
+  <script src="{{ url_for('static', filename='js/inspection_sidebar.js') }}" defer></script>
 
   <!-- Upload Progress Modal -->
   <div id="uploadModal" class="upload-modal">
