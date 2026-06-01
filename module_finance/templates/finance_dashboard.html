@@ -107,12 +107,14 @@
     .bento-grid {
       display: grid;
       grid-template-columns: 3fr 2fr;
+      grid-template-rows: 1fr;   /* single row — both cells same height */
       gap: 14px;
-      align-items: stretch;   /* both columns stretch to same height */
+      align-items: stretch;
       width: 100%;
     }
     .bento-main {
       grid-column: 1;
+      grid-row: 1;
       display: flex;
       flex-direction: column;
       gap: 14px;
@@ -120,27 +122,36 @@
     }
     .bento-rail {
       grid-column: 2;
-      grid-row: 1;            /* single grid row — same height as bento-main */
+      grid-row: 1;
+      height: 100%;              /* fill the grid cell fully */
       display: flex;
       flex-direction: column;
       gap: 14px;
       min-width: 0;
     }
-    /* Rail cards share the height equally */
+    /* Rail cards split height 50/50 */
     .bento-rail .dash-card {
       flex: 1;
+      min-height: 0;            /* allow flex shrink below content height */
       display: flex;
       flex-direction: column;
       overflow: hidden;
     }
     .bento-rail .dash-card .activity {
       flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+    }
+    /* pipeline steps list should also scroll if needed */
+    .bento-rail .dash-card > div:last-child {
+      flex: 1;
+      min-height: 0;
       overflow-y: auto;
     }
     @media (max-width: 900px) {
-      .bento-grid { grid-template-columns: 1fr; }
-      .bento-rail { grid-column: 1; grid-row: auto; }
-      .bento-rail .dash-card { flex: none; }
+      .bento-grid { grid-template-columns: 1fr; grid-template-rows: auto; }
+      .bento-rail { grid-column: 1; grid-row: auto; height: auto; }
+      .bento-rail .dash-card { flex: none; min-height: 0; }
     }
 
     .section-title {
