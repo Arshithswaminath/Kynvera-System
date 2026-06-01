@@ -354,6 +354,8 @@ def create_app():
                     ('last_login', 'TIMESTAMP'),
                     ('employment_start_date', 'DATE'),
                     ('job_designation', 'VARCHAR(160)'),
+                    ('assigned_project', 'VARCHAR(160)'),
+                    ('phone', 'VARCHAR(40)'),
                     ('annual_leave_days', 'INTEGER'),
                     ('other_leave_days', 'INTEGER'),
                     ('reporting_manager_id', 'INTEGER'),
@@ -911,8 +913,12 @@ def create_app():
     
     @app.route('/register')
     def register_page():
-        """Render register page"""
-        return render_template('register.html')
+        """Render register page (self-service wizard; default password assigned server-side)."""
+        from common.password_admin import get_default_registration_password
+        return render_template(
+            'register.html',
+            default_password=get_default_registration_password(),
+        )
     
     @app.route('/logout')
     def logout_page():
