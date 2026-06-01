@@ -365,8 +365,8 @@
       align-items: center; justify-content: center;
       padding: 20px;
     }
-    .modal-overlay.show { display: flex; animation: fade .2s; }
-    @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+    .modal-overlay.show { display: flex; animation: fade .18s ease forwards; }
+    @keyframes fade { from { opacity: 0; transform: scale(.97); } to { opacity: 1; transform: scale(1); } }
     .modal {
       background: #fff; border-radius: 16px;
       width: 100%; max-width: 540px;
@@ -890,7 +890,7 @@
         : `href="/tickets/${t.ticket_id}"`;
       const actions = completed
         ? `<a ${detailsAttr} class="btn btn-outline btn-sm">View Details</a>`
-        : `<button class="btn btn-green btn-sm" onclick="openModal('${t.ticket_id}')">
+        : `<button type="button" class="btn btn-green btn-sm" onclick="event.stopPropagation(); openModal('${t.ticket_id}')">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.4" stroke="currentColor" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z"/></svg>
             Log ERP Invoice
           </button>`;
@@ -1022,10 +1022,12 @@
     function formatNum(n) { return Number(n).toLocaleString('en-AE', {minimumFractionDigits:2,maximumFractionDigits:2}); }
     function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-    // close modal with Esc or clicking backdrop (event delegation — modal is after this script)
+    // Close modal on Esc
     document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+    // Close modal only when clicking the dark backdrop directly (not content inside)
     document.addEventListener('click', e => {
-      if (e.target && e.target.id === 'processModal') closeModal();
+      const overlay = document.getElementById('processModal');
+      if (overlay && overlay.classList.contains('show') && e.target === overlay) closeModal();
     });
 
     // Kick off immediately — DOM elements above this script are already parsed
