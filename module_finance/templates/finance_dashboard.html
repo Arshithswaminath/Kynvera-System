@@ -450,9 +450,23 @@
       .qr-actions { width: 100%; justify-content: flex-end; }
       .fin-wrap, .fin-hero { padding-left: 18px; padding-right: 18px; }
     }
-  </style>
+  
+    /* Finance sidebar: ensure red bg visible on dochub layout */
+    body.has-main-nav.dochub-page-v2 {
+      height: auto !important;
+      min-height: 100dvh !important;
+      overflow-y: auto !important;
+      --sb-bg: #d21725 !important;
+    }
+    body.has-main-nav.dochub-page-v2 .dh-sidebar {
+      background: #d21725 !important;
+    }
+    body.has-main-nav.dochub-page-v2 .dh-main {
+      overflow-y: auto;
+    }
+</style>
 </head>
-<body class="has-main-nav">
+<body class="has-main-nav dochub-page-v2">
   {% set active_page = 'finance' %}
   {% include 'partials/main_navbar.html' with context %}
 

@@ -46,9 +46,23 @@
     .dj-table td { padding: 6px 8px; border-bottom: 1px solid #f3f4f6; }
     .sent-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; font-size: .7rem; font-weight: 700; background: #d1fae5; color: #065f46; }
     .empty-state { text-align: center; padding: 60px 20px; color: #9ca3af; }
-  </style>
+  
+    /* Finance sidebar: ensure red bg visible on dochub layout */
+    body.has-main-nav.dochub-page-v2 {
+      height: auto !important;
+      min-height: 100dvh !important;
+      overflow-y: auto !important;
+      --sb-bg: #d21725 !important;
+    }
+    body.has-main-nav.dochub-page-v2 .dh-sidebar {
+      background: #d21725 !important;
+    }
+    body.has-main-nav.dochub-page-v2 .dh-main {
+      overflow-y: auto;
+    }
+</style>
 </head>
-<body class="has-main-nav">
+<body class="has-main-nav dochub-page-v2">
   {% set active_page = 'finance' %}
   {% include 'partials/main_navbar.html' with context %}
 
