@@ -129,10 +129,19 @@
       gap: 14px;
       min-width: 0;
     }
-    /* Rail cards split height 50/50 */
-    .bento-rail .dash-card {
+    /* Workflow Pipeline — takes remaining space */
+    .bento-rail .dash-card:first-child {
       flex: 1;
-      min-height: 0;            /* allow flex shrink below content height */
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    /* Recent Activity — shrinks to content, max capped */
+    .bento-rail .dash-card:last-child {
+      flex: 0 0 auto;
+      max-height: 280px;
+      min-height: 0;
       display: flex;
       flex-direction: column;
       overflow: hidden;
