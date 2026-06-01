@@ -795,17 +795,20 @@
       return false;
     }
 
-    async function fetchWithTimeout(url, ms = 6000) {
+    async function fetchWithTimeout(url, ms = 3000) {
       const ctrl = new AbortController();
       const tid  = setTimeout(() => ctrl.abort(), ms);
       try {
+        const token = localStorage.getItem('access_token') || '';
         const res = await fetch(url, {
-          headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('access_token') || '') },
+          headers: token ? { 'Authorization': 'Bearer ' + token } : {},
           signal: ctrl.signal
         });
         clearTimeout(tid);
         if (!res.ok) throw new Error('HTTP ' + res.status);
-        return await res.json();
+        const data = await res.json();
+        if (!data || !data.success) throw new Error('bad response');
+        return data;
       } catch(e) { clearTimeout(tid); throw e; }
     }
 
@@ -1019,17 +1022,15 @@
     function formatNum(n) { return Number(n).toLocaleString('en-AE', {minimumFractionDigits:2,maximumFractionDigits:2}); }
     function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-    // close modal with Esc
+    // close modal with Esc or clicking backdrop (event delegation — modal is after this script)
     document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
-    document.getElementById('processModal').addEventListener('click', e => {
-      if (e.target.id === 'processModal') closeModal();
+    document.addEventListener('click', e => {
+      if (e.target && e.target.id === 'processModal') closeModal();
     });
 
-    document.addEventListener('DOMContentLoaded', () => {
-      loadQueue();
-      // live refresh
-      setInterval(loadQueue, 30000);
-    });
+    // Kick off immediately — DOM elements above this script are already parsed
+    loadQueue().catch(() => {});
+    setInterval(() => loadQueue().catch(() => {}), 30000);
 
     // spin keyframes
     const style = document.createElement('style');
