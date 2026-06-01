@@ -365,16 +365,15 @@
       align-items: center; justify-content: center;
       padding: 20px;
     }
-    .modal-overlay.show { display: flex; animation: fade .18s ease forwards; }
-    @keyframes fade { from { opacity: 0; transform: scale(.97); } to { opacity: 1; transform: scale(1); } }
+    .modal-overlay.show { display: flex; }
     .modal {
       background: #fff; border-radius: 16px;
       width: 100%; max-width: 540px;
       max-height: 90vh; overflow-y: auto;
       box-shadow: 0 20px 60px rgba(0,0,0,.3);
-      animation: pop .25s cubic-bezier(.16,1,.3,1);
+      position: relative;
+      pointer-events: all;
     }
-    @keyframes pop { from { transform: scale(.92); opacity: 0; } to { transform: scale(1); opacity: 1; } }
     .modal-head {
       padding: 20px 24px;
       border-bottom: 1px solid var(--fin-border-soft);
@@ -1053,7 +1052,7 @@
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z"/></svg>
         </span>
         <h3>Log ERP Invoice Reference</h3>
-        <button class="modal-close" onclick="closeModal()">
+        <button type="button" class="modal-close" onclick="closeModal()">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
         </button>
       </div>
@@ -1076,8 +1075,8 @@
         </form>
       </div>
       <div class="modal-foot">
-        <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
-        <button class="btn btn-green" onclick="submitProcess(event)">
+        <button type="button" class="btn btn-outline" onclick="closeModal()">Cancel</button>
+        <button type="button" class="btn btn-green" onclick="submitProcess(null)">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.4" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
           Confirm &amp; Send Email
         </button>
