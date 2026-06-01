@@ -795,14 +795,29 @@
       return false;
     }
 
+    async function fetchWithTimeout(url, ms = 6000) {
+      const ctrl = new AbortController();
+      const tid  = setTimeout(() => ctrl.abort(), ms);
+      try {
+        const res = await fetch(url, {
+          headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('access_token') || '') },
+          signal: ctrl.signal
+        });
+        clearTimeout(tid);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return await res.json();
+      } catch(e) { clearTimeout(tid); throw e; }
+    }
+
     async function loadQueue() {
       let pendingData = null, completedData = null;
       try {
-        pendingData   = await apiClient.get('/finance/api/queue?bucket=pending&limit=25');
-        completedData = await apiClient.get('/finance/api/queue?bucket=completed&limit=25');
-
-        if (isEmptyApi(pendingData?.counts, pendingData?.items) && isEmptyApi(completedData?.counts, completedData?.items)) {
-          throw new Error('empty');
+        [pendingData, completedData] = await Promise.all([
+          fetchWithTimeout('/finance/api/queue?bucket=pending&limit=25'),
+          fetchWithTimeout('/finance/api/queue?bucket=completed&limit=25')
+        ]);
+        if (!pendingData?.success || (isEmptyApi(pendingData?.counts, pendingData?.items) && isEmptyApi(completedData?.counts, completedData?.items))) {
+          throw new Error('empty or error');
         }
       } catch(_) {
         usingSample = true;
