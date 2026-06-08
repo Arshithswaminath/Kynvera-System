@@ -250,6 +250,7 @@ def get_form_type_display(module_type):
         'hr_staff_appraisal': 'Staff Appraisal',
         'hr_station_clearance': 'Station Clearance',
         'hr_visa_renewal': 'Visa Renewal',
+        'hr_asset_handover': 'Asset Handover & Takeover',
     }
     return type_map.get(module_type, 'HR Form')
 
@@ -463,6 +464,17 @@ def visa_renewal_form():
         return jsonify({'error': 'User not found'}), 404
     ctx = _hr_form_context(user)
     return render_template('hr_visa_renewal_form.html', user=user, **ctx)
+
+
+@hr_bp.route('/asset-handover-form')
+@jwt_required()
+def asset_handover_form():
+    """Asset Handover & Takeover Form - INJ_AHT_001"""
+    user = get_current_user()
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    ctx = _hr_form_context(user)
+    return render_template('hr_asset_handover_form.html', user=user, **ctx)
 
 
 # ============================================

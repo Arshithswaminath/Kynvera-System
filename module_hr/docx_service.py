@@ -964,8 +964,8 @@ _SIGNATURE_PAIRS = {
 def generate_hr_docx(submission, output_path_or_stream):
     """
     Generate HR DOCX from submission.
-    Uses actual Word templates from HR Documents — exact template layout, sections, styling.
-    Word and PDF outputs follow the HR Documents templates for consistent document format.
+    Tries Word templates from HR Documents first; falls back to the programmatic
+    builder (docx_builder) when no template file is available.
     Returns (True, filled=True) if generated, (False, False) if not supported.
     """
     form_type = (submission.module_type or '').replace('hr_', '')
@@ -973,26 +973,44 @@ def generate_hr_docx(submission, output_path_or_stream):
     submission_id = getattr(submission, 'submission_id', None)
 
     template_path = _get_template_path(form_type)
-    if not template_path:
-        return False, False
+    if template_path:
+        try:
+            _generate_filled_docx_generic(
+                form_type,
+                form_data,
+                output_path_or_stream,
+                submission_id=submission_id,
+                signature_pairs=_SIGNATURE_PAIRS.get(form_type),
+            )
+            return True, True
+        except Exception as e:
+            logger.exception(
+                "Failed to generate DOCX for %s (submission %s): %s",
+                form_type, submission_id, e
+            )
+            raise
 
+    # Fallback: programmatic builder (no Word template required)
     try:
-        _generate_filled_docx_generic(
-            form_type,
-            form_data,
-            output_path_or_stream,
-            submission_id=submission_id,
-            signature_pairs=_SIGNATURE_PAIRS.get(form_type),
-        )
-        return True, True
+        from module_hr.docx_builder import build_professional_docx, supports_builder
+        if not supports_builder(form_type):
+            return False, False
+        normalized = _normalize_form_data_for_docx(form_data, form_type)
+        ok = build_professional_docx(form_type, normalized, output_path_or_stream,
+                                     submission_id=submission_id)
+        if ok:
+            return True, True
+        return False, False
     except Exception as e:
         logger.exception(
-            "Failed to generate DOCX for %s (submission %s): %s",
+            "Programmatic DOCX fallback failed for %s (submission %s): %s",
             form_type, submission_id, e
         )
         raise
 
 
 def get_supported_docx_forms():
-    """Return list of form types that support DOCX download (via HR Documents templates)."""
-    return list(_SIGNATURE_PAIRS.keys())
+    """Return list of form types that support DOCX download (template or programmatic builder)."""
+    from module_hr.docx_builder import _BUILDERS as _PROG_BUILDERS
+    combined = set(_SIGNATURE_PAIRS.keys()) | set(_PROG_BUILDERS.keys())
+    return list(combined)

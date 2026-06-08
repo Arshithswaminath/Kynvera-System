@@ -79,6 +79,10 @@ html {
 html:not([data-theme="dark"]) body.page-dashboard,
 html:not([data-theme="dark"]) body.hr-dashboard,
 html:not([data-theme="dark"]) body.inspection-dashboard,
+html:not([data-theme="dark"]) body.qhsi-dashboard,
+html:not([data-theme="dark"]) body.qhse-hub-page,
+html:not([data-theme="dark"]) body.qhse-module-page,
+html:not([data-theme="dark"]) body.qhsi-form-unified,
 html:not([data-theme="dark"]) body.dm-device-mgmt-page,
 html:not([data-theme="dark"]) body.review-dashboard,
 html:not([data-theme="dark"]) body.admin-dh-page {
@@ -99,6 +103,10 @@ html:not([data-theme="dark"]) body.admin-dh-page {
 body.page-dashboard,
 body.hr-dashboard,
 body.inspection-dashboard,
+body.qhsi-dashboard,
+body.qhse-hub-page,
+body.qhse-module-page,
+body.qhsi-form-unified,
 body.dm-device-mgmt-page,
 body.review-dashboard,
 body.admin-dh-page {
@@ -533,6 +541,7 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
 /* Background extends to merge seamlessly with content below - no hard line */
 .hero.hr-hero,
 .hero.inspection-hero,
+.hero.qhsi-hero,
 .hero.proc-hero,
 .hero.review-hero {
   background:
@@ -551,6 +560,7 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
 }
 .hero.hr-hero .back-btn,
 .hero.inspection-hero .back-btn,
+.hero.qhsi-hero .back-btn,
 .hero.proc-hero .back-btn,
 .hero.review-hero .back-btn,
 body:not(.page-dashboard) .hero-left .back-btn {
@@ -568,6 +578,7 @@ body:not(.page-dashboard) .hero-left .back-btn {
 
 .hero.hr-hero .back-btn svg,
 .hero.inspection-hero .back-btn svg,
+.hero.qhsi-hero .back-btn svg,
 .hero.proc-hero .back-btn svg,
 .hero.review-hero .back-btn svg,
 body:not(.page-dashboard) .hero-left .back-btn svg {
@@ -578,26 +589,32 @@ body:not(.page-dashboard) .hero-left .back-btn svg {
 
 .hero.hr-hero .back-btn:hover,
 .hero.inspection-hero .back-btn:hover,
+.hero.qhsi-hero .back-btn:hover,
 .hero.proc-hero .back-btn:hover,
 .hero.review-hero .back-btn:hover,
 body:not(.page-dashboard) .hero-left .back-btn:hover {
   color: var(--primary-light);
 }
 
-/* Inspection hero: same green gradient at top as HR module, no grid */
-.hero.inspection-hero {
+/* Inspection / QHSI hero: same green gradient at top as HR module, no grid */
+.hero.inspection-hero,
+.hero.qhsi-hero {
   background: linear-gradient(180deg, #eef4f0 0%, #f2f7f4 45%, #F8FAF8 100%);
 }
 .hero.inspection-hero::before,
-.hero.inspection-hero::after {
+.hero.inspection-hero::after,
+.hero.qhsi-hero::before,
+.hero.qhsi-hero::after {
   display: none;
 }
 
-/* Inspection hero: one left edge for back link, title, and subtitle */
-.hero.inspection-hero .hero-left .back-btn + .hero-title {
+/* Inspection / QHSI hero: one left edge for back link, title, and subtitle */
+.hero.inspection-hero .hero-left .back-btn + .hero-title,
+.hero.qhsi-hero .hero-left .back-btn + .hero-title {
   padding-left: 0;
 }
-.hero.inspection-hero .hero-left .hero-subtitle {
+.hero.inspection-hero .hero-left .hero-subtitle,
+.hero.qhsi-hero .hero-left .hero-subtitle {
   padding-left: 0;
   margin-left: 0;
   margin-top: 1rem;
@@ -1487,7 +1504,7 @@ body.procurement-page .proc-hero-inner > .back-btn + .hero-title {
   display: inline-block;
   vertical-align: middle;
   font-family: var(--font-footer-author);
-  font-size: 1.15em; /* scales with .footer-copy — Caveat reads large */
+  font-size: 1.35em; /* scales with .footer-copy — Caveat reads large */
   font-weight: 600;
   color: var(--text-footer-author);
   margin-left: 0.35rem;
@@ -1958,7 +1975,27 @@ body.procurement-page .proc-hero-inner > .back-btn + .hero-title {
     height: 18px !important;
   }
 
-  /* Icon rail: hide labels so text does not spill out of 36×36 buttons */
+  /* Icon rail: compact assistant pill + hide other labels */
+  .nav-right .nav-assistant-btn {
+    width: 36px !important;
+    min-width: 36px !important;
+    height: 36px !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+    background: var(--primary, #125435) !important;
+    color: #fff !important;
+    box-shadow: none !important;
+  }
+
+  .nav-right .nav-assistant-btn:hover {
+    background: var(--primary-light, #1a7a4c) !important;
+    color: #fff !important;
+  }
+
+  .nav-right .nav-assistant-btn-label {
+    display: none !important;
+  }
+
   .nav-right .logout-btn span,
   .nav-right .nav-save-draft-btn span {
     display: none !important;
@@ -2262,6 +2299,7 @@ body.procurement-page .proc-hero-inner > .back-btn + .hero-title {
   /* Module dashboards (HR, Inspection, Procurement, Ticketing, etc.) */
   body.hr-dashboard,
   body.inspection-dashboard,
+  body.qhsi-dashboard,
   body.review-dashboard,
   body.procurement-page,
   body.tkt-dh-page {
@@ -2319,7 +2357,9 @@ body.procurement-page .proc-hero-inner > .back-btn + .hero-title {
   }
 
   body.inspection-dashboard .hero-left .back-btn + .hero-title,
-  body.inspection-dashboard .hero-left .hero-subtitle {
+  body.inspection-dashboard .hero-left .hero-subtitle,
+  body.qhsi-dashboard .hero-left .back-btn + .hero-title,
+  body.qhsi-dashboard .hero-left .hero-subtitle {
     padding-left: 0 !important;
     margin-left: 0 !important;
     text-align: left !important;
@@ -2340,6 +2380,7 @@ body.procurement-page .proc-hero-inner > .back-btn + .hero-title {
 
   body.hr-dashboard .modules-inner,
   body.inspection-dashboard .modules-inner,
+  body.qhsi-dashboard .modules-inner,
   body.review-dashboard .modules-inner,
   body.tkt-dh-page .tkt-body {
     padding-left: var(--module-gutter) !important;
@@ -2892,7 +2933,6 @@ body.procurement-page .proc-hero-inner > .back-btn + .hero-title {
     min-width: 0 !important;
     align-items: center !important;
     gap: 0.45rem !important;
-    grid-column: 1 !important;
     margin-right: 0 !important;
   }
 
@@ -3004,6 +3044,7 @@ body.procurement-page .proc-hero-inner > .back-btn + .hero-title {
 
   body.hr-dashboard,
   body.inspection-dashboard,
+  body.qhsi-dashboard,
   body.review-dashboard,
   body.procurement-page,
   body.tkt-dh-page {
@@ -3025,6 +3066,7 @@ body.procurement-page .proc-hero-inner > .back-btn + .hero-title {
 
   body.hr-dashboard .modules-inner,
   body.inspection-dashboard .modules-inner,
+  body.qhsi-dashboard .modules-inner,
   body.review-dashboard .modules-inner,
   body.tkt-dh-page .tkt-body {
     padding-left: var(--module-gutter) !important;

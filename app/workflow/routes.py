@@ -508,6 +508,9 @@ def get_module_functions(module_type):
         
         from module_cleaning.routes import process_job
         return save_signature_dataurl_cleaning, get_paths_cleaning, process_job
+    elif module_type == 'qhsi_inspection':
+        from module_qhsi.routes import save_signature_dataurl, get_paths, process_job
+        return save_signature_dataurl, get_paths, process_job
     else:
         raise ValueError(f"Unknown module type: {module_type}")
 
@@ -897,7 +900,7 @@ def get_pending_submissions():
         return error_response('Failed to get pending submissions', status_code=500, error_code='DATABASE_ERROR')
 
 
-INSPECTION_MODULE_TYPES = ('hvac_mep', 'civil', 'cleaning')
+INSPECTION_MODULE_TYPES = ('hvac_mep', 'civil', 'cleaning', 'qhsi_inspection', 'qhsi_staff_compliance')
 INSPECTION_HISTORY_DESIGNATIONS = (
     'supervisor',
     'operations_manager',
@@ -1980,6 +1983,8 @@ def get_my_submissions():
             'hvac_mep': 'HVAC & MEP',
             'civil': 'Civil Works',
             'cleaning': 'Cleaning Services',
+            'qhsi_inspection': 'QHSA Site Inspection',
+            'qhsi_staff_compliance': 'Staff Compliance (QHSI)',
         }
 
         submissions_list = []

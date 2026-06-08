@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  {% set qhsi_page_title = 'Site Inspection' %}
+  {% include 'partials/qhsi_head.html' %}
+</head>
+{% include 'partials/qhse_shell_open.html' with context %}
+  <div class="page qhsi-form-unified">
+    <div class="page-inner">
+      <form id="qhsaInspectionForm">
+        <div class="qhsi-bento">
+          <div class="bento-tile bento-tile--hero span-12">
+            <div class="bento-tile__hd">
+              <span class="bento-tile__hd-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg></span>
+              <div class="bento-tile__hd-text">
+                <h1 class="bento-tile__hd-title">QHSE Site Inspection</h1>
+                <p class="bento-tile__hd-sub">HVAC · Civil · Cleaning — unified</p>
+              </div>
+              <img src="{{ url_for('static', filename='logo.png') }}" alt="" class="bento-hero-logo">
+            </div>
+          </div>
+
+          <div class="bento-col span-8">
+            <section class="bento-tile">
+              <div class="bento-tile__hd">
+                <span class="bento-tile__hd-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75"/></svg></span>
+                <div class="bento-tile__hd-text"><h2 class="bento-tile__hd-title">Visit details</h2></div>
+              </div>
+              <div class="bento-tile__body">
+                <div class="grid-2">
+                  <div class="fld">
+                    <label class="fld-lbl">Project <span class="req">*</span></label>
+                    <select class="fld-inp" id="project_name" required>
+                      <option value="">Select project…</option>
+                    </select>
+                  </div>
+                  <div class="fld">
+                    <label class="fld-lbl">Visit date <span class="req">*</span></label>
+                    <input type="date" class="fld-inp" id="visit_date" required>
+                  </div>
+                  <div class="fld">
+                    <label class="fld-lbl">Location / block</label>
+                    <input class="fld-inp" id="location" placeholder="Building, floor, zone…">
+                  </div>
+                  <div class="fld">
+                    <label class="fld-lbl">Inspector</label>
+                    <input class="fld-inp" id="inspector_name">
+                  </div>
+                  <div class="fld fw">
+                    <label class="fld-lbl">Department <span class="req">*</span></label>
+                    <div class="qhsi-dept-pills" id="deptPills">
+                      <label class="qhsi-dept-pill"><input type="radio" name="dept" value="hvac"> HVAC &amp; MEP</label>
+                      <label class="qhsi-dept-pill"><input type="radio" name="dept" value="civil"> Civil Works</label>
+                      <label class="qhsi-dept-pill"><input type="radio" name="dept" value="cleaning"> Cleaning</label>
+                    </div>
+                    <input type="hidden" id="department" required>
+                  </div>
+                  <div class="fld fw">
+                    <label class="fld-lbl">Inspection summary</label>
+                    <textarea class="fld-inp" id="summary" rows="2" placeholder="Purpose and scope of this visit…"></textarea>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section class="bento-tile" id="addFindingSec">
+              <div class="bento-tile__hd">
+                <span class="bento-tile__hd-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="m21 21-5.197-5.197M10.5 7.5v6m3-3h-6m9.697-2.303A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg></span>
+                <div class="bento-tile__hd-text"><h2 class="bento-tile__hd-title">Add finding</h2></div>
+              </div>
+              <div class="bento-tile__body">
+                <p id="deptHint" style="font-size:0.85rem;color:#636366;margin:-0.15rem 0 0.85rem">Select a department above to load area checklists.</p>
+
+                <div id="hvac-selects" class="grid-3" style="display:none;margin-bottom:0.85rem">
+                  <div class="fld"><label class="fld-lbl">Trade</label><select class="fld-inp" id="sel_trade"></select></div>
+                  <div class="fld"><label class="fld-lbl">System</label><select class="fld-inp" id="sel_system"></select></div>
+                  <div class="fld"><label class="fld-lbl">Equipment</label><select class="fld-inp" id="sel_equipment"></select></div>
+                </div>
+                <div id="civil-cleaning-selects" class="grid-2" style="display:none;margin-bottom:0.85rem">
+                  <div class="fld"><label class="fld-lbl">Area category</label><select class="fld-inp" id="sel_area"></select></div>
+                  <div class="fld"><label class="fld-lbl">Specific area</label><select class="fld-inp" id="sel_zone"></select></div>
+                </div>
+
+                <div class="grid-2">
+                  <div class="fld fw">
+                    <label class="fld-lbl">Description</label>
+                    <textarea class="fld-inp" id="item_description" rows="2" placeholder="What was observed…"></textarea>
+                  </div>
+                  <div class="fld">
+                    <label class="fld-lbl">Severity</label>
+                    <div class="qhsi-severity-row" id="severityRow">
+                      <button type="button" class="qhsi-sev is-active" data-v="observation">Observation</button>
+                      <button type="button" class="qhsi-sev" data-v="minor">Minor</button>
+                      <button type="button" class="qhsi-sev" data-v="major">Major</button>
+                      <button type="button" class="qhsi-sev" data-v="critical">Critical</button>
+                    </div>
+                    <input type="hidden" id="item_severity" value="observation">
+                  </div>
+                </div>
+
+                <div class="fld" style="margin-top:0.85rem">
+                  <label class="fld-lbl">Photos <span class="req">*</span></label>
+                  <div class="qhsi-photo-zone" id="findingPhotoZone">
+                    <span class="qhsi-photo-zone-label">Add inspection photos</span>
+                    <p class="qhsi-photo-zone-hint">Required for each finding — capture on site</p>
+                    <input type="file" id="item_photos" accept="image/*" multiple capture="environment">
+                  </div>
+                  <div class="qhsi-photo-previews" id="findingPhotoPreview"></div>
+                </div>
+
+                <button type="button" class="btn-add" id="btnAddItem" style="margin-top:1rem">+ Add finding to inspection</button>
+              </div>
+            </section>
+          </div>
+
+          <div class="bento-col span-4 bento-sticky">
+            <section class="bento-tile">
+              <div class="bento-tile__hd">
+                <span class="bento-tile__hd-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/></svg></span>
+                <div class="bento-tile__hd-text"><h2 class="bento-tile__hd-title">Findings (<span id="itemCount">0</span>)</h2></div>
+              </div>
+              <div class="bento-tile__body">
+                <div id="itemsList">
+                  <div class="qhsi-findings-empty" id="findingsEmpty">No findings yet. Add at least one area with photos.</div>
+                </div>
+              </div>
+            </section>
+
+            <section class="bento-tile">
+              <div class="bento-tile__hd">
+                <span class="bento-tile__hd-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Z"/></svg></span>
+                <div class="bento-tile__hd-text"><h2 class="bento-tile__hd-title" style="font-size:0.95rem">Inspector signature</h2><p class="bento-tile__hd-sub">Optional</p></div>
+              </div>
+              <div class="bento-tile__body">
+                <div class="qhsi-sig-wrap"><canvas id="techSigPad"></canvas></div>
+                <button type="button" class="btn-secondary" id="clearSig" style="margin-top:0.5rem">Clear signature</button>
+              </div>
+            </section>
+          </div>
+
+          <div class="span-12 qhsi-actions" style="border-top:none;padding-top:0">
+            <button type="submit" class="btn-primary" id="btnSubmit">
+              <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              Submit to Operations Manager
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  {% include 'partials/qhsi_success_modal.html' %}
+  <script src="{{ url_for('static', filename='js/qhsi-ui.js') }}"></script>
+  <script>
+    (function () {
+      var canvas = document.getElementById('techSigPad');
+      var ctx = canvas && canvas.getContext('2d');
+      var drawing = false;
+      function resize() {
+        if (!canvas) return;
+        var r = canvas.parentElement.getBoundingClientRect();
+        canvas.width = Math.floor(r.width) || 300;
+        canvas.height = 140;
+      }
+      if (canvas && ctx) {
+        resize();
+        window.addEventListener('resize', resize);
+        function pos(e) {
+          var rect = canvas.getBoundingClientRect();
+          var t = e.touches ? e.touches[0] : e;
+          return { x: t.clientX - rect.left, y: t.clientY - rect.top };
+        }
+        function start(e) { drawing = true; var p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); e.preventDefault(); }
+        function move(e) {
+          if (!drawing) return;
+          var p = pos(e);
+          ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.strokeStyle = '#125435';
+          ctx.lineTo(p.x, p.y); ctx.stroke(); e.preventDefault();
+        }
+        function end() { drawing = false; }
+        canvas.addEventListener('mousedown', start);
+        canvas.addEventListener('mousemove', move);
+        canvas.addEventListener('mouseup', end);
+        canvas.addEventListener('touchstart', start, { passive: false });
+        canvas.addEventListener('touchmove', move, { passive: false });
+        canvas.addEventListener('touchend', end);
+        document.getElementById('clearSig').onclick = function () {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+        };
+      }
+      window.getTechSignatureDataUrl = function () {
+        if (!canvas || !ctx) return '';
+        var blank = document.createElement('canvas');
+        blank.width = canvas.width;
+        blank.height = canvas.height;
+        if (canvas.toDataURL() === blank.toDataURL()) return '';
+        return canvas.toDataURL('image/png');
+      };
+    })();
+  </script>
+  <script src="{{ url_for('static', filename='js/qhsi-inspection.js') }}?v=2"></script>
+{% include 'partials/qhse_shell_close.html' with context %}
+</html>

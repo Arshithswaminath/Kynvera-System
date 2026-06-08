@@ -278,6 +278,10 @@ function applyProfileBasedNavVisibility(user) {
   if (tktEl) {
     tktEl.style.display = (user && (isAppAdmin(user) || accessFlagOn(user, 'access_ticketing'))) ? 'list-item' : 'none';
   }
+  const qhsiEl = document.getElementById('qhsi-menu-item');
+  if (qhsiEl) {
+    qhsiEl.style.display = (user && (isAppAdmin(user) || accessFlagOn(user, 'access_qhsi'))) ? 'list-item' : 'none';
+  }
   const reportEl = document.getElementById('report-gen-menu-item');
   if (reportEl) {
     reportEl.style.display = userHasReportGenerationNavAccess(user) ? 'list-item' : 'none';
@@ -476,6 +480,17 @@ function updateModuleVisibility(user) {
     const showTicketing = isAdmin || accessFlagOn(user, 'access_ticketing');
     ticketingCard.style.display = showTicketing ? 'block' : 'none';
     ticketingCard.style.visibility = showTicketing ? 'visible' : 'hidden';
+  }
+
+  const qhsiCard = document.getElementById('module-qhsi');
+  const qhsiMenuItem = document.getElementById('qhsi-menu-item');
+  const showQhsi = isAdmin || accessFlagOn(user, 'access_qhsi');
+  if (qhsiCard) {
+    qhsiCard.style.display = showQhsi ? 'block' : 'none';
+    qhsiCard.style.visibility = showQhsi ? 'visible' : 'hidden';
+  }
+  if (qhsiMenuItem) {
+    qhsiMenuItem.style.display = showQhsi ? 'list-item' : 'none';
   }
 
   // Check Report Generation / MMR hub

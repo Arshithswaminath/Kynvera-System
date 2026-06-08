@@ -104,6 +104,20 @@ MAILJET_SECRET_KEY = os.getenv("MAILJET_SECRET_KEY")
 # Application
 APP_BASE_URL = os.getenv("APP_BASE_URL", "http://localhost:5002")
 
+# Injaaz Assistant — optional LLM for natural chat (RAG over knowledge base)
+# Provider: "claude" (default, Anthropic) or "openai"
+ASSISTANT_LLM_PROVIDER = (os.getenv("ASSISTANT_LLM_PROVIDER") or "claude").strip().lower()
+ANTHROPIC_API_KEY = (os.getenv("ANTHROPIC_API_KEY") or "").strip()
+OPENAI_API_KEY = (os.getenv("OPENAI_API_KEY") or os.getenv("ASSISTANT_OPENAI_API_KEY") or "").strip()
+ASSISTANT_LLM_BASE_URL = (os.getenv("ASSISTANT_LLM_BASE_URL") or "").strip()  # optional OpenAI-compatible endpoint
+_default_llm_model = "claude-haiku-4-5" if ASSISTANT_LLM_PROVIDER == "claude" else "gpt-4o-mini"
+ASSISTANT_LLM_MODEL = os.getenv("ASSISTANT_LLM_MODEL", _default_llm_model)
+_llm_has_key = ANTHROPIC_API_KEY if ASSISTANT_LLM_PROVIDER == "claude" else OPENAI_API_KEY
+ASSISTANT_LLM_ENABLED = (
+    os.getenv("ASSISTANT_LLM_ENABLED", "true").lower() in ("1", "true", "yes")
+    and bool(_llm_has_key)
+)
+
 # Security
 SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "false").lower() == "true"
 SESSION_COOKIE_HTTPONLY = True

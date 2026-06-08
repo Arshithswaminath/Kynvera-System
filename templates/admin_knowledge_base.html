@@ -1,0 +1,643 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+  <meta name="color-scheme" content="light">
+  <title>Knowledge Base - Injaaz Admin</title>
+  <meta name="theme-color" content="#125435">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <style>
+    :root {
+      --kb-brand: #125435;
+      --kb-brand-light: #1a7a4d;
+      --kb-brand-dark: #0d3d24;
+      --kb-canvas: #f5faf7;
+      --kb-ink: #1f2937;
+      --kb-ink-soft: #64748b;
+      --kb-border: #e5eae7;
+      --kb-nav-h: calc(var(--nav-inner-h, 72px) + 1px);
+    }
+    body.kb-page.has-main-nav {
+      background: var(--kb-canvas);
+      color: var(--kb-ink);
+      min-height: 100vh;
+      padding-top: var(--kb-nav-h);
+    }
+
+    /* Layout */
+    .kb-root { display: flex; align-items: stretch; min-height: calc(100vh - var(--kb-nav-h)); }
+
+    /* Sidebar */
+    .kb-sidebar {
+      width: 264px;
+      flex-shrink: 0;
+      background: linear-gradient(180deg, var(--kb-brand) 0%, var(--kb-brand-dark) 100%);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      padding: 1.25rem 0.85rem;
+      position: sticky;
+      top: var(--kb-nav-h);
+      align-self: flex-start;
+      height: calc(100vh - var(--kb-nav-h));
+      overflow-y: auto;
+    }
+    .kb-brand { padding: 0.25rem 0.65rem 1.1rem; }
+    .kb-brand .name { display: block; font-size: 1.05rem; font-weight: 700; letter-spacing: -0.01em; }
+    .kb-brand .tagline { display: block; font-size: 0.72rem; opacity: 0.7; margin-top: 0.1rem; }
+    .kb-sb-section { margin-bottom: 1.25rem; }
+    .kb-sb-label { font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.55; padding: 0 0.65rem; margin-bottom: 0.45rem; font-weight: 600; }
+    .kb-nav-item {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 0.5rem; min-height: 42px; padding: 0.55rem 0.65rem;
+      border-radius: 10px; color: rgba(255,255,255,0.86);
+      text-decoration: none; font-size: 0.875rem; font-weight: 500;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+    .kb-nav-item:hover { background: rgba(255,255,255,0.1); color: #fff; }
+    .kb-nav-item.active { background: rgba(255,255,255,0.16); color: #fff; font-weight: 600; }
+    .kb-nav-badge { min-width: 22px; text-align: center; font-size: 0.7rem; font-weight: 700; padding: 1px 7px; border-radius: 999px; background: rgba(255,255,255,0.2); }
+    .kb-sb-footer { margin-top: auto; }
+    .kb-user-row { display: flex; align-items: center; gap: 0.6rem; padding: 0.6rem 0.65rem; border-radius: 10px; cursor: pointer; background: rgba(255,255,255,0.08); }
+    .kb-user-row:hover { background: rgba(255,255,255,0.14); }
+    .kb-avatar { width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,0.22); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem; }
+    .kb-user-name { font-size: 0.82rem; font-weight: 600; }
+    .kb-user-role { font-size: 0.7rem; opacity: 0.65; }
+
+    /* Main */
+    .kb-main { flex: 1; min-width: 0; padding: 1.75rem 2rem; }
+    .kb-topbar { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+    .kb-title { font-size: 1.5rem; font-weight: 700; color: var(--kb-brand); letter-spacing: -0.02em; }
+    .kb-subtitle { font-size: 0.85rem; color: var(--kb-ink-soft); margin-top: 0.3rem; max-width: 56ch; }
+    .kb-actions-row { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+
+    .kb-card { background: #fff; border: 1px solid var(--kb-border); border-radius: 16px; box-shadow: 0 1px 3px rgba(16,40,28,0.05); overflow: hidden; }
+    .kb-toolbar { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; padding: 1rem 1.1rem; border-bottom: 1px solid var(--kb-border); }
+    .kb-search-wrap { position: relative; flex: 1; min-width: 200px; }
+    .kb-search-wrap svg { position: absolute; left: 0.8rem; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: #94a3b8; pointer-events: none; }
+    .kb-input, .kb-select { min-height: 44px; padding: 0.55rem 0.85rem; font-size: 0.9rem; border: 1px solid #d8e0db; border-radius: 10px; background: #fff; color: var(--kb-ink); outline: none; transition: border-color 0.15s, box-shadow 0.15s; }
+    .kb-input:focus, .kb-select:focus, .kb-field input:focus, .kb-field select:focus, .kb-field textarea:focus { border-color: var(--kb-brand); box-shadow: 0 0 0 3px rgba(18,84,53,0.12); }
+    .kb-search { width: 100%; padding-left: 2.4rem; }
+
+    .kb-btn { min-height: 44px; padding: 0.6rem 1.1rem; font-size: 0.85rem; font-weight: 600; border-radius: 10px; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 0.45rem; transition: background 0.15s, transform 0.05s; }
+    .kb-btn:active { transform: translateY(1px); }
+    .kb-btn--primary { background: var(--kb-brand); color: #fff; }
+    .kb-btn--primary:hover { background: var(--kb-brand-light); }
+    .kb-btn--outline { background: #fff; color: var(--kb-brand); border: 1px solid var(--kb-brand); }
+    .kb-btn--outline:hover { background: var(--kb-brand); color: #fff; }
+    .kb-btn svg { width: 17px; height: 17px; }
+
+    .kb-table { width: 100%; border-collapse: collapse; }
+    .kb-table th, .kb-table td { text-align: left; padding: 0.85rem 1.1rem; font-size: 0.875rem; border-bottom: 1px solid #f1f5f3; vertical-align: top; }
+    .kb-table tbody tr:last-child td { border-bottom: none; }
+    .kb-table tbody tr { transition: background 0.12s; }
+    .kb-table tbody tr:hover { background: #f8fbf9; }
+    .kb-table th { background: #f3f8f5; font-weight: 600; color: #4b5d54; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; }
+    .kb-rec-title { font-weight: 600; color: var(--kb-ink); }
+    .kb-rec-excerpt { color: #94a3b8; font-size: 0.78rem; margin-top: 0.15rem; max-width: 52ch; }
+    .kb-tag { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 999px; font-size: 0.7rem; font-weight: 600; background: #e8f5ec; color: var(--kb-brand); }
+    .kb-pill { display: inline-block; font-size: 0.68rem; font-weight: 600; padding: 0.18rem 0.5rem; border-radius: 6px; background: #eef2f0; color: #64748b; }
+    .kb-row-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+    .kb-mini-btn { min-height: 34px; padding: 0.3rem 0.7rem; font-size: 0.74rem; font-weight: 600; border-radius: 8px; border: 1px solid #e2e8f0; background: #fff; color: #475569; cursor: pointer; transition: background 0.12s, border-color 0.12s; }
+    .kb-mini-btn:hover { background: #f1f5f9; }
+    .kb-mini-btn--danger { color: #b91c1c; border-color: #fecaca; }
+    .kb-mini-btn--danger:hover { background: #fef2f2; }
+    .kb-toggle { display: inline-flex; align-items: center; gap: 0.3rem; cursor: pointer; font-size: 0.74rem; font-weight: 600; padding: 0.25rem 0.5rem; border-radius: 8px; }
+    .kb-toggle--on { color: #16a34a; background: #f0fdf4; }
+    .kb-toggle--off { color: #94a3b8; background: #f8fafc; }
+    .kb-empty { text-align: center; padding: 3.5rem 1rem; color: #94a3b8; }
+    .kb-empty svg { width: 46px; height: 46px; margin-bottom: 0.75rem; opacity: 0.5; }
+    .kb-empty-title { font-size: 0.95rem; font-weight: 600; color: #64748b; margin-bottom: 0.25rem; }
+
+    /* Modals */
+    .kb-modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.55); display: none; align-items: center; justify-content: center; z-index: 1050; padding: 1rem; backdrop-filter: blur(2px); }
+    .kb-modal-overlay.open { display: flex; }
+    .kb-modal { background: #fff; border-radius: 16px; width: min(560px, 100%); max-height: 92vh; overflow-y: auto; box-shadow: 0 24px 60px rgba(15,23,42,0.25); }
+    .kb-modal-header { padding: 1.1rem 1.35rem; border-bottom: 1px solid var(--kb-border); font-weight: 700; font-size: 1.05rem; color: var(--kb-brand); }
+    .kb-modal-body { padding: 1.25rem 1.35rem; }
+    .kb-field { margin-bottom: 1rem; }
+    .kb-field label { display: block; font-size: 0.78rem; font-weight: 600; color: #475569; margin-bottom: 0.35rem; }
+    .kb-field input, .kb-field select, .kb-field textarea { width: 100%; min-height: 44px; padding: 0.6rem 0.85rem; font-size: 0.9rem; border: 1px solid #d8e0db; border-radius: 10px; outline: none; transition: border-color 0.15s, box-shadow 0.15s; }
+    .kb-field textarea { min-height: 150px; resize: vertical; font-family: inherit; line-height: 1.5; }
+    .kb-hint { font-size: 0.72rem; color: #94a3b8; margin-top: 0.3rem; }
+    .kb-modal-footer { padding: 1rem 1.35rem 1.35rem; display: flex; gap: 0.6rem; justify-content: flex-end; }
+    .kb-feedback { font-size: 0.8rem; margin-top: 0.5rem; min-height: 1rem; }
+    .kb-feedback--error { color: #b91c1c; }
+    .kb-feedback--ok { color: #16a34a; }
+
+    /* Mobile */
+    .kb-sidebar-toggle { display: none; }
+    @media (max-width: 900px) {
+      .kb-sidebar { position: fixed; top: 0; left: 0; height: 100vh; padding-top: 1.25rem; z-index: 1060; transform: translateX(-100%); transition: transform 0.25s ease; box-shadow: 0 0 40px rgba(0,0,0,0.3); }
+      .kb-sidebar.open { transform: translateX(0); }
+      .kb-sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 1055; }
+      .kb-sidebar-backdrop.open { display: block; }
+      .kb-sidebar-toggle { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; border-radius: 10px; border: 1px solid var(--kb-border); background: #fff; cursor: pointer; margin-right: 0.5rem; }
+      .kb-main { padding: 1.1rem; }
+      .kb-topbar-left { display: flex; align-items: flex-start; gap: 0.5rem; }
+    }
+    @media (max-width: 768px) {
+      .kb-table thead { display: none; }
+      .kb-table, .kb-table tbody, .kb-table tr, .kb-table td { display: block; width: 100%; }
+      .kb-table tbody tr { border: 1px solid var(--kb-border); border-radius: 12px; margin-bottom: 0.75rem; padding: 0.4rem 0; }
+      .kb-table td { border: none; padding: 0.4rem 1rem; }
+      .kb-table td::before { content: attr(data-label); display: block; font-size: 0.66rem; text-transform: uppercase; color: #94a3b8; font-weight: 600; margin-bottom: 0.15rem; }
+    }
+  </style>
+</head>
+<body class="has-main-nav kb-page">
+  {% set active_page = 'knowledge-base' %}
+  {% include 'partials/main_navbar.html' with context %}
+
+  <div class="kb-root">
+    <div class="kb-sidebar-backdrop" id="kbSidebarBackdrop" onclick="kbToggleSidebar(false)"></div>
+    <aside class="kb-sidebar" id="kbSidebar" aria-label="Knowledge base menu">
+      <div class="kb-brand">
+        <span class="name">Knowledge Base</span>
+        <span class="tagline">Assistant brain</span>
+      </div>
+      <nav>
+        <div class="kb-sb-section">
+          <div class="kb-sb-label">Knowledge</div>
+          <a href="/admin/knowledge-base" class="kb-nav-item active">All records <span class="kb-nav-badge" id="kbCount">0</span></a>
+          <a href="#" class="kb-nav-item" onclick="kbOpenLinkModal();return false;">Add link</a>
+          <a href="#" class="kb-nav-item" onclick="kbOpenTextModal();return false;">Add text record</a>
+          <a href="#" class="kb-nav-item" onclick="kbOpenUploadModal();return false;">Upload document</a>
+        </div>
+        <div class="kb-sb-section">
+          <div class="kb-sb-label">System</div>
+          <a href="/admin/dashboard" class="kb-nav-item">Admin Dashboard</a>
+          <a href="/dashboard" class="kb-nav-item">App Home</a>
+        </div>
+      </nav>
+      <div class="kb-sb-footer">
+        <div class="kb-user-row" onclick="if(typeof openProfileModal==='function'){openProfileModal();}" role="button" tabindex="0">
+          <div class="kb-avatar" id="kbUserAvatar">—</div>
+          <div>
+            <div class="kb-user-name" id="kbUserName">Loading…</div>
+            <div class="kb-user-role">Administrator</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="kb-main">
+      <div class="kb-topbar">
+        <div class="kb-topbar-left">
+          <button class="kb-sidebar-toggle" onclick="kbToggleSidebar(true)" aria-label="Open menu">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5" /></svg>
+          </button>
+          <div>
+            <div class="kb-title">Knowledge Base</div>
+            <div class="kb-subtitle">Records here power the Injaaz assistant. Add text or upload documents (PDF, DOCX, TXT, MD) and the assistant will use them to answer questions.</div>
+          </div>
+        </div>
+        <div class="kb-actions-row">
+          <button class="kb-btn kb-btn--outline" id="kbRefreshAppBtn" onclick="kbRefreshAppData()" title="Auto-generate KB entries from live app data">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
+            Refresh App Data
+          </button>
+          <button class="kb-btn kb-btn--outline" onclick="kbOpenLinkModal()">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244" /></svg>
+            Add link
+          </button>
+          <button class="kb-btn kb-btn--outline" onclick="kbOpenUploadModal()">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 7.5 12 3m0 0L7.5 7.5M12 3v13.5" /></svg>
+            Upload document
+          </button>
+          <button class="kb-btn kb-btn--primary" onclick="kbOpenTextModal()">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+            Add text record
+          </button>
+        </div>
+      </div>
+
+      <div class="kb-card">
+        <div class="kb-toolbar">
+          <div class="kb-search-wrap">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" /></svg>
+            <input type="text" id="kbSearch" class="kb-input kb-search" placeholder="Search knowledge…" oninput="kbDebouncedLoad()">
+          </div>
+          <select id="kbCategoryFilter" class="kb-select" onchange="kbLoad()">
+            <option value="">All categories</option>
+          </select>
+        </div>
+
+        <div id="kbTableWrap">
+          <div class="kb-empty">Loading knowledge records…</div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Text / edit modal -->
+  <div class="kb-modal-overlay" id="kbTextModal">
+    <div class="kb-modal" role="dialog" aria-modal="true">
+      <div class="kb-modal-header" id="kbTextModalTitle">Add text record</div>
+      <div class="kb-modal-body">
+        <input type="hidden" id="kbEditId">
+        <div class="kb-field">
+          <label for="kbTitle">Title</label>
+          <input type="text" id="kbTitle" maxlength="255" placeholder="e.g. How to request equipment">
+        </div>
+        <div class="kb-field">
+          <label for="kbContent">Content</label>
+          <textarea id="kbContent" placeholder="The answer or knowledge the assistant should use…"></textarea>
+        </div>
+        <div class="kb-field">
+          <label for="kbKeywords">Keywords (comma-separated)</label>
+          <input type="text" id="kbKeywords" placeholder="equipment, request, asset">
+        </div>
+        <div class="kb-field">
+          <label for="kbCategory">Category</label>
+          <select id="kbCategory"></select>
+        </div>
+        <div class="kb-field">
+          <label for="kbLink">Answer link (optional)</label>
+          <input type="text" id="kbLink" placeholder="/hr/ or https://…">
+          <div class="kb-hint">If set, the assistant shows an "Open in app" button.</div>
+        </div>
+        <div class="kb-feedback" id="kbTextFeedback"></div>
+      </div>
+      <div class="kb-modal-footer">
+        <button class="kb-btn kb-btn--outline" onclick="kbCloseModal('kbTextModal')">Cancel</button>
+        <button class="kb-btn kb-btn--primary" id="kbTextSaveBtn" onclick="kbSaveText()">Save record</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Upload modal -->
+  <div class="kb-modal-overlay" id="kbUploadModal">
+    <div class="kb-modal" role="dialog" aria-modal="true">
+      <div class="kb-modal-header">Upload document</div>
+      <div class="kb-modal-body">
+        <div class="kb-field">
+          <label for="kbFile">File (PDF, DOCX, TXT, MD)</label>
+          <input type="file" id="kbFile" accept=".pdf,.docx,.txt,.md">
+          <div class="kb-hint">Text is extracted automatically so the assistant can read it.</div>
+        </div>
+        <div class="kb-field">
+          <label for="kbUploadTitle">Title (optional)</label>
+          <input type="text" id="kbUploadTitle" maxlength="255" placeholder="Defaults to the file name">
+        </div>
+        <div class="kb-field">
+          <label for="kbUploadKeywords">Keywords (comma-separated)</label>
+          <input type="text" id="kbUploadKeywords" placeholder="policy, safety">
+        </div>
+        <div class="kb-field">
+          <label for="kbUploadCategory">Category</label>
+          <select id="kbUploadCategory"></select>
+        </div>
+        <div class="kb-feedback" id="kbUploadFeedback"></div>
+      </div>
+      <div class="kb-modal-footer">
+        <button class="kb-btn kb-btn--outline" onclick="kbCloseModal('kbUploadModal')">Cancel</button>
+        <button class="kb-btn kb-btn--primary" id="kbUploadBtn" onclick="kbUpload()">Upload &amp; index</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Link modal -->
+  <div class="kb-modal-overlay" id="kbLinkModal">
+    <div class="kb-modal" role="dialog" aria-modal="true">
+      <div class="kb-modal-header">Add link</div>
+      <div class="kb-modal-body">
+        <div class="kb-field">
+          <label for="kbLinkUrl">URL</label>
+          <input type="url" id="kbLinkUrl" placeholder="https://example.com/page">
+          <div class="kb-hint">We fetch the page, summarize it, and store the text so the assistant can answer questions about it.</div>
+        </div>
+        <div class="kb-field">
+          <label for="kbLinkTitle">Title (optional)</label>
+          <input type="text" id="kbLinkTitle" maxlength="255" placeholder="Defaults to the page title">
+        </div>
+        <div class="kb-field">
+          <label for="kbLinkKeywords">Keywords (comma-separated)</label>
+          <input type="text" id="kbLinkKeywords" placeholder="policy, safety">
+        </div>
+        <div class="kb-field">
+          <label for="kbLinkCategory">Category</label>
+          <select id="kbLinkCategory"></select>
+        </div>
+        <div class="kb-feedback" id="kbLinkFeedback"></div>
+      </div>
+      <div class="kb-modal-footer">
+        <button class="kb-btn kb-btn--outline" onclick="kbCloseModal('kbLinkModal')">Cancel</button>
+        <button class="kb-btn kb-btn--primary" id="kbLinkBtn" onclick="kbSaveLink()">Fetch &amp; summarize</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='api-client.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}?v=16"></script>
+  <script>
+    if (!localStorage.getItem('access_token')) { window.location.href = '/login'; }
+
+    var KB_CATEGORIES = [];
+    var kbDebTimer = null;
+
+    function kbDebouncedLoad() {
+      clearTimeout(kbDebTimer);
+      kbDebTimer = setTimeout(kbLoad, 300);
+    }
+
+    function kbEsc(s) {
+      if (s == null) return '';
+      var d = document.createElement('div');
+      d.textContent = String(s);
+      return d.innerHTML;
+    }
+
+    function kbFillCategorySelects() {
+      var opts = KB_CATEGORIES.map(function (c) { return '<option value="' + kbEsc(c) + '">' + kbEsc(c) + '</option>'; }).join('');
+      document.getElementById('kbCategory').innerHTML = opts;
+      document.getElementById('kbUploadCategory').innerHTML = opts;
+      document.getElementById('kbLinkCategory').innerHTML = opts;
+      var filter = document.getElementById('kbCategoryFilter');
+      filter.innerHTML = '<option value="">All categories</option>' + opts;
+    }
+
+    async function kbLoad() {
+      var q = document.getElementById('kbSearch').value.trim();
+      var cat = document.getElementById('kbCategoryFilter').value;
+      var url = '/api/admin/knowledge-base?q=' + encodeURIComponent(q) + '&category=' + encodeURIComponent(cat);
+      try {
+        var res = await authenticatedFetch(url);
+        if (!res.ok) { kbRenderEmpty('Failed to load knowledge records.', true); return; }
+        var data = await res.json();
+        if (data.categories && !KB_CATEGORIES.length) { KB_CATEGORIES = data.categories; kbFillCategorySelects(); }
+        kbRenderTable(data.entries || []);
+        document.getElementById('kbCount').textContent = (data.entries || []).length;
+      } catch (e) {
+        kbRenderEmpty('Unable to reach the server.', true);
+      }
+    }
+
+    function kbRenderEmpty(msg, isError) {
+      var icon = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" /></svg>';
+      document.getElementById('kbTableWrap').innerHTML =
+        '<div class="kb-empty">' + icon + '<div class="kb-empty-title">' + (isError ? 'Something went wrong' : 'No records found') + '</div><div>' + kbEsc(msg) + '</div></div>';
+    }
+
+    function kbRenderTable(entries) {
+      if (!entries.length) { kbRenderEmpty('Add a text record or upload a document to start building the assistant\u2019s knowledge.'); return; }
+      var rows = entries.map(function (e) {
+        var toggleCls = e.is_active ? 'kb-toggle kb-toggle--on' : 'kb-toggle kb-toggle--off';
+        var toggleTxt = e.is_active ? 'Active' : 'Hidden';
+        var src;
+        if (e.source_type === 'upload') {
+          src = '<span class="kb-pill">' + kbEsc(e.file_type || 'FILE') + '</span>';
+        } else if (e.source_type === 'link') {
+          src = '<span class="kb-pill">Link</span>';
+        } else if (e.source_type === 'auto') {
+          src = '<span class="kb-pill" style="background:#dbeafe;color:#1d4ed8;">Auto</span>';
+        } else {
+          src = '<span class="kb-pill">Text</span>';
+        }
+        var titleHtml = kbEsc(e.title);
+        if (e.source_type === 'link' && e.source_url) {
+          titleHtml = '<a href="' + kbEsc(e.source_url) + '" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;">' + kbEsc(e.title) + '</a>';
+        }
+        var safeTitle = kbEsc(e.title).replace(/'/g, "\\'");
+        return '<tr>' +
+          '<td data-label="Title"><div class="kb-rec-title">' + titleHtml + '</div><div class="kb-rec-excerpt">' + kbEsc(e.excerpt || '') + '</div></td>' +
+          '<td data-label="Category"><span class="kb-tag">' + kbEsc(e.category) + '</span></td>' +
+          '<td data-label="Type">' + src + '</td>' +
+          '<td data-label="Status"><span class="' + toggleCls + '" onclick="kbToggle(' + e.id + ',' + (e.is_active ? 'false' : 'true') + ')">' + toggleTxt + '</span></td>' +
+          '<td data-label="Actions"><div class="kb-row-actions">' +
+            (e.source_type === 'text' || e.source_type === 'auto' ? '<button class="kb-mini-btn" onclick="kbEdit(' + e.id + ')">Edit</button>' : '') +
+            (e.source_type === 'link' ? '<button class="kb-mini-btn" onclick="kbRefetch(' + e.id + ')">Re-fetch</button>' : '') +
+            '<button class="kb-mini-btn kb-mini-btn--danger" onclick="kbDelete(' + e.id + ',\'' + safeTitle + '\')">Delete</button>' +
+          '</div></td>' +
+        '</tr>';
+      }).join('');
+      document.getElementById('kbTableWrap').innerHTML =
+        '<table class="kb-table"><thead><tr><th>Title</th><th>Category</th><th>Type</th><th>Status</th><th>Actions</th></tr></thead><tbody>' + rows + '</tbody></table>';
+    }
+
+    function kbToggleSidebar(open) {
+      var sb = document.getElementById('kbSidebar');
+      var bd = document.getElementById('kbSidebarBackdrop');
+      if (!sb) return;
+      sb.classList.toggle('open', open);
+      bd.classList.toggle('open', open);
+    }
+
+    function kbOpenModal(id) { document.getElementById(id).classList.add('open'); }
+    function kbCloseModal(id) { document.getElementById(id).classList.remove('open'); }
+
+    function kbOpenTextModal() {
+      document.getElementById('kbEditId').value = '';
+      document.getElementById('kbTitle').value = '';
+      document.getElementById('kbContent').value = '';
+      document.getElementById('kbKeywords').value = '';
+      document.getElementById('kbLink').value = '';
+      document.getElementById('kbTextFeedback').textContent = '';
+      document.getElementById('kbTextModalTitle').textContent = 'Add text record';
+      kbOpenModal('kbTextModal');
+    }
+
+    function kbOpenUploadModal() {
+      document.getElementById('kbFile').value = '';
+      document.getElementById('kbUploadTitle').value = '';
+      document.getElementById('kbUploadKeywords').value = '';
+      document.getElementById('kbUploadFeedback').textContent = '';
+      kbOpenModal('kbUploadModal');
+    }
+
+    async function kbEdit(id) {
+      try {
+        var res = await authenticatedFetch('/api/admin/knowledge-base/' + id);
+        if (!res.ok) return;
+        var data = await res.json();
+        var e = data.entry;
+        document.getElementById('kbEditId').value = e.id;
+        document.getElementById('kbTitle').value = e.title || '';
+        document.getElementById('kbContent').value = e.content || '';
+        document.getElementById('kbKeywords').value = (e.keywords || []).join(', ');
+        document.getElementById('kbCategory').value = e.category || 'General';
+        document.getElementById('kbLink').value = e.answer_link || '';
+        document.getElementById('kbTextFeedback').textContent = '';
+        document.getElementById('kbTextModalTitle').textContent = 'Edit record';
+        kbOpenModal('kbTextModal');
+      } catch (err) { /* ignore */ }
+    }
+
+    async function kbSaveText() {
+      var id = document.getElementById('kbEditId').value;
+      var fb = document.getElementById('kbTextFeedback');
+      var btn = document.getElementById('kbTextSaveBtn');
+      var payload = {
+        title: document.getElementById('kbTitle').value.trim(),
+        content: document.getElementById('kbContent').value.trim(),
+        keywords: document.getElementById('kbKeywords').value.trim(),
+        category: document.getElementById('kbCategory').value,
+        answer_link: document.getElementById('kbLink').value.trim()
+      };
+      if (!payload.title || !payload.content) {
+        fb.className = 'kb-feedback kb-feedback--error';
+        fb.textContent = 'Title and content are required.';
+        return;
+      }
+      btn.disabled = true;
+      try {
+        var url = id ? '/api/admin/knowledge-base/' + id : '/api/admin/knowledge-base';
+        var method = id ? 'PUT' : 'POST';
+        var res = await authenticatedFetch(url, { method: method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        var data = await res.json();
+        if (!res.ok) { throw new Error(data.error || 'Save failed'); }
+        kbCloseModal('kbTextModal');
+        kbLoad();
+      } catch (err) {
+        fb.className = 'kb-feedback kb-feedback--error';
+        fb.textContent = err.message;
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function kbUpload() {
+      var fileInput = document.getElementById('kbFile');
+      var fb = document.getElementById('kbUploadFeedback');
+      var btn = document.getElementById('kbUploadBtn');
+      if (!fileInput.files.length) {
+        fb.className = 'kb-feedback kb-feedback--error';
+        fb.textContent = 'Please choose a file.';
+        return;
+      }
+      var fd = new FormData();
+      fd.append('file', fileInput.files[0]);
+      fd.append('title', document.getElementById('kbUploadTitle').value.trim());
+      fd.append('keywords', document.getElementById('kbUploadKeywords').value.trim());
+      fd.append('category', document.getElementById('kbUploadCategory').value);
+      btn.disabled = true;
+      fb.className = 'kb-feedback';
+      fb.textContent = 'Uploading and extracting text…';
+      try {
+        var res = await authenticatedFetch('/api/admin/knowledge-base/upload', { method: 'POST', body: fd });
+        var data = await res.json();
+        if (!res.ok) { throw new Error(data.error || 'Upload failed'); }
+        fb.className = 'kb-feedback kb-feedback--ok';
+        fb.textContent = data.message || 'Uploaded.';
+        setTimeout(function () { kbCloseModal('kbUploadModal'); kbLoad(); }, 800);
+      } catch (err) {
+        fb.className = 'kb-feedback kb-feedback--error';
+        fb.textContent = err.message;
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    function kbOpenLinkModal() {
+      document.getElementById('kbLinkUrl').value = '';
+      document.getElementById('kbLinkTitle').value = '';
+      document.getElementById('kbLinkKeywords').value = '';
+      document.getElementById('kbLinkFeedback').textContent = '';
+      kbOpenModal('kbLinkModal');
+    }
+
+    async function kbSaveLink() {
+      var fb = document.getElementById('kbLinkFeedback');
+      var btn = document.getElementById('kbLinkBtn');
+      var url = document.getElementById('kbLinkUrl').value.trim();
+      if (!url) {
+        fb.className = 'kb-feedback kb-feedback--error';
+        fb.textContent = 'Please enter a URL.';
+        return;
+      }
+      var payload = {
+        url: url,
+        title: document.getElementById('kbLinkTitle').value.trim(),
+        keywords: document.getElementById('kbLinkKeywords').value.trim(),
+        category: document.getElementById('kbLinkCategory').value
+      };
+      btn.disabled = true;
+      fb.className = 'kb-feedback';
+      fb.textContent = 'Fetching and summarizing…';
+      try {
+        var res = await authenticatedFetch('/api/admin/knowledge-base/link', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        var data = await res.json();
+        if (!res.ok) { throw new Error(data.error || 'Could not fetch that link'); }
+        fb.className = 'kb-feedback kb-feedback--ok';
+        fb.textContent = data.message || 'Link indexed.';
+        setTimeout(function () { kbCloseModal('kbLinkModal'); kbLoad(); }, 800);
+      } catch (err) {
+        fb.className = 'kb-feedback kb-feedback--error';
+        fb.textContent = err.message;
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function kbRefetch(id) {
+      try {
+        var res = await authenticatedFetch('/api/admin/knowledge-base/' + id + '/refetch', { method: 'POST' });
+        var data = await res.json();
+        if (!res.ok) { alert(data.error || 'Could not refresh this link.'); return; }
+        kbLoad();
+      } catch (e) { alert('Could not refresh this link.'); }
+    }
+
+    async function kbRefreshAppData() {
+      var btn = document.getElementById('kbRefreshAppBtn');
+      if (!btn) return;
+      var origHtml = btn.innerHTML;
+      btn.disabled = true;
+      btn.textContent = 'Refreshing…';
+      try {
+        var res = await authenticatedFetch('/api/admin/knowledge-base/refresh-app', { method: 'POST' });
+        var data = await res.json();
+        if (!res.ok) {
+          alert(data.error || 'Could not refresh app data.');
+          return;
+        }
+        var msg = data.message || ('App data refreshed: ' + (data.created || 0) + ' created, ' + (data.updated || 0) + ' updated.');
+        var toast = document.createElement('div');
+        toast.textContent = msg;
+        toast.style.cssText = 'position:fixed;bottom:1.5rem;right:1.5rem;background:#125435;color:#fff;padding:0.75rem 1.25rem;border-radius:12px;font-size:0.875rem;font-weight:600;box-shadow:0 8px 24px rgba(18,84,53,0.35);z-index:9999;';
+        document.body.appendChild(toast);
+        setTimeout(function () { toast.remove(); }, 4000);
+        kbLoad();
+      } catch (e) {
+        alert('Could not refresh app data. Check your connection.');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = origHtml;
+      }
+    }
+
+    async function kbToggle(id, makeActive) {
+      try {
+        await authenticatedFetch('/api/admin/knowledge-base/' + id, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ is_active: makeActive })
+        });
+        kbLoad();
+      } catch (e) { /* ignore */ }
+    }
+
+    async function kbDelete(id, title) {
+      if (!confirm('Delete "' + title + '"? This cannot be undone.')) return;
+      try {
+        await authenticatedFetch('/api/admin/knowledge-base/' + id, { method: 'DELETE' });
+        kbLoad();
+      } catch (e) { /* ignore */ }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+      kbLoad();
+      try {
+        var u = JSON.parse(localStorage.getItem('user') || '{}');
+        if (u.full_name || u.username) {
+          document.getElementById('kbUserName').textContent = u.full_name || u.username;
+          document.getElementById('kbUserAvatar').textContent = (u.full_name || u.username || '?').charAt(0).toUpperCase();
+        }
+      } catch (e) { /* ignore */ }
+    });
+  </script>
+</body>
+</html>

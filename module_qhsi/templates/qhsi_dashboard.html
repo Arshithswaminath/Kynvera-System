@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+  {% include 'partials/caveat_font.html' %}
+  <title>QHSE — Injaaz Application</title>
+  <meta name="theme-color" content="#125435">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/qhsi-module.css') }}?v=13">
+  <style>
+    :root {
+      --primary: #125435;
+      --primary-light: #1a7a4c;
+      --secondary: #6366f1;
+    }
+    .qhsi-dashboard { background: #F8FAF8; }
+    .qhsi-dashboard .modules-section { background: #F8FAF8 !important; }
+    .qhsi-hero { padding: 9rem 0 5rem; }
+    .qhsi-modules-section::before { display: none; }
+    /* Stat tiles sit inside the hero widget shell — keep a comfy 2-up grid there */
+    .qhsi-hero .qhsi-bento { gap: 0.85rem; }
+    .qhsi-hero .qhsi-bento .span-3 { grid-column: span 6; }
+  </style>
+</head>
+<body class="qhsi-dashboard">
+  {% set active_page = 'qhsi' %}
+  {% include 'partials/main_navbar.html' with context %}
+  {% set ss = sidebar_stats if sidebar_stats is defined else {
+    'total': 0, 'pending': 0, 'approved': 0, 'training_upcoming': 0,
+    'staff_compliance': 0, 'inspections': 0, 'has_import': false
+  } %}
+
+  <header class="hero hero-split qhsi-hero">
+    <div class="hero-content hero-split-inner">
+      <div class="hero-left">
+        <a href="/dashboard" class="back-btn">
+          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+          </svg>
+          Back to Dashboard
+        </a>
+        <h1 class="hero-title">Quality, Health <span class="hero-title-accent">&amp; Safety</span></h1>
+        <p class="hero-subtitle">Staff compliance, training bookings, and unified site inspections — one module for your quality team across every project.</p>
+      </div>
+      <div class="hero-right">
+        <div class="dashboard-widget qhsi-stats-widget">
+          <div class="dashboard-widget-header">
+            <div class="dashboard-widget-dots">
+              <span></span><span></span><span></span>
+            </div>
+            <div class="dashboard-widget-bar"></div>
+          </div>
+          <div class="dashboard-widget-body">
+            <div class="qhsi-bento" id="qhsi-stats-grid">
+              <a class="bento-tile bento-stat span-3" href="/workflow/submitted-forms?scope=inspection">
+                <span class="bento-stat__icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></span>
+                <span class="bento-stat__value" id="qhsi-stat-forms">{{ ss.total }}</span>
+                <span class="bento-stat__label" id="qhsi-stat-forms-label">Records submitted</span>
+              </a>
+              <a class="bento-tile bento-stat span-3 bento--warn" href="/workflow/submitted-forms?scope=inspection&workflow=pending" id="qhsi-stat-pending-card">
+                <span class="bento-stat__icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></span>
+                <span class="bento-stat__value" id="qhsi-stat-pending">{{ ss.pending }}</span>
+                <span class="bento-stat__label" id="qhsi-stat-pending-label">Workflow pending</span>
+              </a>
+              <div class="bento-tile bento-stat span-3 bento--danger" id="qhsi-stat-kit-issues-card" style="display:none">
+                <span class="bento-stat__icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/></svg></span>
+                <span class="bento-stat__value" id="qhsi-stat-kit-issues">0</span>
+                <span class="bento-stat__label">Kit issues (import)</span>
+              </div>
+              <a class="bento-tile bento-stat span-3 bento--info" href="{{ url_for('qhsi.training_page') }}">
+                <span class="bento-stat__icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/></svg></span>
+                <span class="bento-stat__value" id="qhsi-stat-training">{{ ss.training_upcoming }}</span>
+                <span class="bento-stat__label">Upcoming trainings</span>
+              </a>
+              <a class="bento-tile bento-stat span-3 bento--success" href="/workflow/submitted-forms?scope=inspection&workflow=approved" id="qhsi-stat-approved-card">
+                <span class="bento-stat__icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></span>
+                <span class="bento-stat__value" id="qhsi-stat-approved">{{ ss.approved }}</span>
+                <span class="bento-stat__label" id="qhsi-stat-approved-label">Approved</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <section class="modules-section qhsi-modules-section" id="modules">
+    <div class="modules-inner">
+      <h2 class="modules-section-label">QHSE Activities</h2>
+      <div class="modules-grid" id="qhsiActivitiesGrid">
+        <a href="{{ url_for('qhsi.staff_compliance_form') }}" class="module-card">
+          <div class="card-body">
+            <span class="module-number">Compliance</span>
+            <div class="module-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" /></svg>
+            </div>
+            <h2 class="module-title">Staff Kit &amp; PPE</h2>
+            <p class="module-description">Record uniforms, company-issued safety equipment, and dress standards per employee and project.</p>
+            <span class="module-arrow">Open form <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
+          </div>
+        </a>
+        <a href="{{ url_for('qhsi.training_page') }}" class="module-card">
+          <div class="card-body">
+            <span class="module-number">Training</span>
+            <div class="module-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.26 10.147a60.438 60.438 0 0 0-.491 6.347A48.62 48.62 0 0 1 12 20.904a48.62 48.62 0 0 1 8.232-4.41 60.46 60.46 0 0 0-.491-6.347m-15.482 0a50.636 50.636 0 0 0-2.658-.813A59.906 59.906 0 0 1 12 3.493a59.903 59.903 0 0 1 10.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.717 50.717 0 0 1 12 13.489a50.702 50.702 0 0 1 7.74-3.342" /></svg>
+            </div>
+            <h2 class="module-title">Training &amp; Meetings</h2>
+            <p class="module-description">Schedule quality-team trainings, inductions, and project meetings with attendees and locations.</p>
+            <span class="module-arrow">Book session <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
+          </div>
+        </a>
+        <a href="{{ url_for('qhsi.inspection_form') }}" class="module-card">
+          <div class="card-body">
+            <span class="module-number">Inspection</span>
+            <div class="module-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" /></svg>
+            </div>
+            <h2 class="module-title">Site Inspection</h2>
+            <p class="module-description">One form for HVAC, Civil, or Cleaning — photos per finding, routed to Operations Manager.</p>
+            <span class="module-arrow">Start inspection <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
+          </div>
+        </a>
+      </div>
+      <div class="qhsi-import-banner" id="qhseDashImportBanner" style="display:none">
+        <p id="qhseDashImportText">Excel import active — compliance metrics loaded from your file.</p>
+        <a href="{{ url_for('qhsi.staff_compliance_form') }}">Manage import →</a>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-brand">Injaaz</div>
+      <p class="footer-copy">© {{ now().year }} Injaaz Application / built by <span class="footer-built-by-name">Arshith Swaminath P</span></p>
+    </div>
+  </footer>
+
+  <script src="{{ url_for('static', filename='js/qhsi-import.js') }}?v=1"></script>
+  <script>
+    window.qhseRefreshDashboardStats = function () {
+      var token = localStorage.getItem('access_token');
+      if (!token) return;
+      fetch('/qhsi/api/stats', { headers: { 'Authorization': 'Bearer ' + token } })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+          if (!d || !d.success) return;
+          var set = function (id, v) { var n = document.getElementById(id); if (n) n.textContent = v; };
+          var imp = d.import || {};
+          var hasImport = imp.has_import;
+          set('qhsi-stat-forms', d.forms_submitted);
+          set('qhsi-stat-pending', d.pending);
+          set('qhsi-stat-approved', d.approved);
+          set('qhsi-stat-training', d.training_upcoming);
+          var banner = document.getElementById('qhseDashImportBanner');
+          var bannerText = document.getElementById('qhseDashImportText');
+          if (banner) banner.style.display = hasImport ? 'block' : 'none';
+          if (bannerText && hasImport) {
+            bannerText.textContent = 'Excel import: ' + (imp.employees || 0) + ' employees, ' +
+              (imp.compliance_rate || 0) + '% kit compliance (' + (imp.kit_lines || 0) + ' lines).';
+          }
+          var formsLbl = document.getElementById('qhsi-stat-forms-label');
+          if (formsLbl) formsLbl.textContent = hasImport ? 'Employees tracked' : 'Records submitted';
+          var kitCard = document.getElementById('qhsi-stat-kit-issues-card');
+          if (kitCard) {
+            kitCard.style.display = hasImport ? 'block' : 'none';
+            set('qhsi-stat-kit-issues', d.staff_kit_non_compliant || 0);
+          }
+          if (hasImport) {
+            var pendLbl = document.getElementById('qhsi-stat-pending-label');
+            if (pendLbl) pendLbl.textContent = 'Compliant kits';
+            set('qhsi-stat-pending', d.staff_kit_compliant || 0);
+            var apprLbl = document.getElementById('qhsi-stat-approved-label');
+            if (apprLbl) apprLbl.textContent = 'Compliance rate';
+            set('qhsi-stat-approved', (d.compliance_rate || 0) + '%');
+            var apprCard = document.getElementById('qhsi-stat-approved-card');
+            if (apprCard) apprCard.removeAttribute('href');
+          } else {
+            var apprCard2 = document.getElementById('qhsi-stat-approved-card');
+            if (apprCard2) apprCard2.setAttribute('href', '/workflow/submitted-forms?scope=inspection&workflow=approved');
+          }
+        });
+    };
+    window.qhseRefreshDashboardStats();
+  </script>
+  <script src="{{ url_for('static', filename='pwa-install.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='mobile_utils.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='api-client.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}?v=16"></script>
+</body>
+</html>

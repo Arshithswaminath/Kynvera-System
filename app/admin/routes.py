@@ -7,7 +7,7 @@ from sqlalchemy.orm import joinedload
 from app.models import (
     db, User, AuditLog, Device, BDProject, BDFollowUp, BDContact, BDActivity,
     DocHubAccess, MmrChargeableConfig, NotificationConfig, AdminPersonalProject, AdminPersonalProgressStep,
-    Technician,
+    Technician, KnowledgeBaseEntry,
 )
 from app.middleware import admin_required
 from common.error_responses import error_response, success_response
@@ -560,6 +560,7 @@ def create_user_admin():
             user.access_report_generation = bool(data.get('access_report_generation', False))
             user.access_submitted_forms = bool(data.get('access_submitted_forms', False))
             user.access_ticketing = bool(data.get('access_ticketing', False))
+            user.access_qhsi = bool(data.get('access_qhsi', False))
 
         db.session.add(user)
         db.session.flush()
@@ -1003,6 +1004,7 @@ def update_user(user_id):
                 ('access_report_generation', 'access_report_generation'),
                 ('access_submitted_forms', 'access_submitted_forms'),
                 ('access_ticketing', 'access_ticketing'),
+                ('access_qhsi', 'access_qhsi'),
             ):
                 if key in data:
                     setattr(user, col, bool(data[key]))
@@ -3603,3 +3605,553 @@ def export_technicians_template():
         download_name='technicians_import_template.xlsx',
         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     )
+
+
+# ---------------------------------------------------------------------------
+# Knowledge Base (feeds the Injaaz assistant)
+# ---------------------------------------------------------------------------
+
+KB_ALLOWED_EXTENSIONS = {'pdf', 'docx', 'txt', 'md'}
+KB_CATEGORIES = ['General', 'HR', 'Inspection', 'Procurement', 'Ticketing',
+                 'QHSI', 'Reports', 'Business Development', 'Policy', 'IT', 'Workflow']
+
+
+def _kb_invalidate_cache():
+    try:
+        from module_assistant.knowledge import invalidate_cache
+        invalidate_cache()
+    except Exception as e:
+        current_app.logger.warning(f"KB cache invalidate failed: {e}")
+
+
+def _kb_clean_category(value):
+    val = (value or 'General').strip()
+    return val if val in KB_CATEGORIES else 'General'
+
+
+@admin_bp.route('/knowledge-base', methods=['GET'])
+@jwt_required()
+@admin_required
+def kb_list_entries():
+    """List knowledge base entries with optional search and category filter."""
+    try:
+        q = (request.args.get('q') or '').strip().lower()
+        category = (request.args.get('category') or '').strip()
+
+        query = KnowledgeBaseEntry.query
+        if category and category in KB_CATEGORIES:
+            query = query.filter(KnowledgeBaseEntry.category == category)
+        entries = query.order_by(KnowledgeBaseEntry.updated_at.desc()).all()
+
+        if q:
+            entries = [
+                e for e in entries
+                if q in (e.title or '').lower()
+                or q in (e.content or '').lower()
+                or q in (e.keywords or '').lower()
+            ]
+
+        data = [e.to_dict(include_content=False) for e in entries]
+        return success_response({
+            'entries': data,
+            'count': len(data),
+            'categories': KB_CATEGORIES,
+        })
+    except Exception as e:
+        current_app.logger.error(f"Error listing knowledge base: {str(e)}", exc_info=True)
+        return error_response('Failed to fetch knowledge base', status_code=500, error_code='DATABASE_ERROR')
+
+
+@admin_bp.route('/knowledge-base/<int:entry_id>', methods=['GET'])
+@jwt_required()
+@admin_required
+def kb_get_entry(entry_id):
+    """Get a single knowledge base entry with full content."""
+    try:
+        entry = KnowledgeBaseEntry.query.get_or_404(entry_id)
+        return success_response({'entry': entry.to_dict(include_content=True)})
+    except Exception as e:
+        current_app.logger.error(f"Error getting KB entry: {str(e)}", exc_info=True)
+        return error_response('Failed to fetch entry', status_code=500, error_code='DATABASE_ERROR')
+
+
+@admin_bp.route('/knowledge-base', methods=['POST'])
+@jwt_required()
+@admin_required
+def kb_create_entry():
+    """Create a text knowledge record."""
+    try:
+        data = request.get_json() or {}
+        title = (data.get('title') or '').strip()
+        content = (data.get('content') or '').strip()
+        if not title:
+            return error_response('Title is required', status_code=400, error_code='VALIDATION_ERROR')
+        if not content:
+            return error_response('Content is required for a text record', status_code=400, error_code='VALIDATION_ERROR')
+
+        keywords = (data.get('keywords') or '').strip()
+        if isinstance(data.get('keywords'), list):
+            keywords = ', '.join(str(k).strip() for k in data['keywords'] if str(k).strip())
+
+        entry = KnowledgeBaseEntry(
+            title=title[:255],
+            content=content,
+            keywords=keywords or None,
+            category=_kb_clean_category(data.get('category')),
+            answer_link=(data.get('answer_link') or '').strip() or None,
+            source_type='text',
+            is_active=bool(data.get('is_active', True)),
+            created_by=get_jwt_identity(),
+        )
+        db.session.add(entry)
+        db.session.commit()
+        _kb_invalidate_cache()
+        return success_response({'entry': entry.to_dict()}, message='Knowledge record created', status_code=201)
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error creating KB entry: {str(e)}", exc_info=True)
+        return error_response('Failed to create knowledge record', status_code=500, error_code='DATABASE_ERROR')
+
+
+@admin_bp.route('/knowledge-base/upload', methods=['POST'])
+@jwt_required()
+@admin_required
+def kb_upload_document():
+    """Upload a document; extract its text into a knowledge record."""
+    try:
+        from werkzeug.utils import secure_filename
+        from module_assistant.extract import extract_text
+
+        f = request.files.get('file')
+        if not f or not f.filename:
+            return error_response('No file selected', status_code=400, error_code='VALIDATION_ERROR')
+
+        ext = (f.filename.rsplit('.', 1)[1].lower() if '.' in f.filename else '')
+        if ext not in KB_ALLOWED_EXTENSIONS:
+            return error_response(
+                'Unsupported file type. Allowed: PDF, DOCX, TXT, MD',
+                status_code=400, error_code='VALIDATION_ERROR'
+            )
+
+        generated_root = current_app.config.get('GENERATED_DIR')
+        if not generated_root:
+            return error_response('Generated directory not configured', status_code=500, error_code='CONFIG_ERROR')
+
+        kb_dir = os.path.join(generated_root, 'knowledge')
+        os.makedirs(kb_dir, exist_ok=True)
+
+        original_name = secure_filename(f.filename)
+        import uuid
+        unique_name = f"{uuid.uuid4().hex[:12]}_{original_name}"
+        stored_path = os.path.join(kb_dir, unique_name)
+        f.save(stored_path)
+
+        extracted = extract_text(stored_path, ext)
+
+        title = (request.form.get('title') or '').strip()
+        if not title:
+            title = os.path.splitext(original_name)[0].replace('_', ' ').strip() or 'Untitled Document'
+
+        keywords = (request.form.get('keywords') or '').strip()
+
+        entry = KnowledgeBaseEntry(
+            title=title[:255],
+            content=extracted,
+            keywords=keywords or None,
+            category=_kb_clean_category(request.form.get('category')),
+            answer_link=(request.form.get('answer_link') or '').strip() or None,
+            source_type='upload',
+            file_name=original_name,
+            stored_path=stored_path,
+            file_type=ext.upper(),
+            is_active=str(request.form.get('is_active', 'true')).lower() != 'false',
+            created_by=get_jwt_identity(),
+        )
+        db.session.add(entry)
+        db.session.commit()
+        _kb_invalidate_cache()
+
+        msg = 'Document uploaded and indexed'
+        if not extracted:
+            msg = 'Document uploaded, but no text could be extracted. You can add content manually.'
+        return success_response({'entry': entry.to_dict(include_content=False)}, message=msg, status_code=201)
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error uploading KB document: {str(e)}", exc_info=True)
+        return error_response('Failed to upload document', status_code=500, error_code='DATABASE_ERROR')
+
+
+@admin_bp.route('/knowledge-base/<int:entry_id>', methods=['PUT'])
+@jwt_required()
+@admin_required
+def kb_update_entry(entry_id):
+    """Update a knowledge record or toggle its active state."""
+    try:
+        entry = KnowledgeBaseEntry.query.get_or_404(entry_id)
+        data = request.get_json() or {}
+
+        if 'title' in data:
+            t = (data.get('title') or '').strip()
+            if not t:
+                return error_response('Title cannot be empty', status_code=400, error_code='VALIDATION_ERROR')
+            entry.title = t[:255]
+        if 'content' in data:
+            entry.content = (data.get('content') or '').strip()
+        if 'keywords' in data:
+            kw = data.get('keywords')
+            if isinstance(kw, list):
+                kw = ', '.join(str(k).strip() for k in kw if str(k).strip())
+            entry.keywords = (kw or '').strip() or None
+        if 'category' in data:
+            entry.category = _kb_clean_category(data.get('category'))
+        if 'answer_link' in data:
+            entry.answer_link = (data.get('answer_link') or '').strip() or None
+        if 'is_active' in data:
+            entry.is_active = bool(data.get('is_active'))
+
+        db.session.commit()
+        _kb_invalidate_cache()
+        return success_response({'entry': entry.to_dict()}, message='Knowledge record updated')
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error updating KB entry: {str(e)}", exc_info=True)
+        return error_response('Failed to update knowledge record', status_code=500, error_code='DATABASE_ERROR')
+
+
+@admin_bp.route('/knowledge-base/<int:entry_id>', methods=['DELETE'])
+@jwt_required()
+@admin_required
+def kb_delete_entry(entry_id):
+    """Delete a knowledge record (and its stored file if any)."""
+    try:
+        entry = KnowledgeBaseEntry.query.get_or_404(entry_id)
+        title = entry.title
+        stored_path = entry.stored_path
+
+        db.session.delete(entry)
+        db.session.commit()
+        _kb_invalidate_cache()
+
+        if stored_path and os.path.isfile(stored_path):
+            try:
+                os.remove(stored_path)
+            except OSError:
+                pass
+
+        return success_response({'message': f'Knowledge record "{title}" deleted'})
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error deleting KB entry: {str(e)}", exc_info=True)
+        return error_response('Failed to delete knowledge record', status_code=500, error_code='DATABASE_ERROR')
+
+
+# Marks the start of the full page text within a 'link' record's content,
+# so the assistant excerpt surfaces the summary while search covers everything.
+_KB_LINK_SEPARATOR = '\n\n--- Full page content ---\n\n'
+
+
+def _kb_build_link_content(summary, full_text):
+    """Store summary first (for excerpts) + full text (for keyword search)."""
+    summary = (summary or '').strip()
+    full_text = (full_text or '').strip()
+    if summary and full_text:
+        return f"{summary}{_KB_LINK_SEPARATOR}{full_text}"
+    return summary or full_text
+
+
+@admin_bp.route('/knowledge-base/link', methods=['POST'])
+@jwt_required()
+@admin_required
+def kb_add_link():
+    """Fetch a URL, summarize it, and store it as a knowledge record."""
+    try:
+        from module_assistant.fetch_url import fetch_url_text, summarize_extractive, FetchError
+
+        data = request.get_json() or {}
+        url = (data.get('url') or '').strip()
+        if not url:
+            return error_response('A URL is required', status_code=400, error_code='VALIDATION_ERROR')
+
+        try:
+            page_title, full_text = fetch_url_text(url)
+        except FetchError as fe:
+            return error_response(str(fe), status_code=400, error_code='FETCH_ERROR')
+
+        summary = summarize_extractive(full_text)
+
+        title = (data.get('title') or '').strip() or (page_title or '').strip() or url
+        keywords = (data.get('keywords') or '').strip()
+        if isinstance(data.get('keywords'), list):
+            keywords = ', '.join(str(k).strip() for k in data['keywords'] if str(k).strip())
+
+        entry = KnowledgeBaseEntry(
+            title=title[:255],
+            content=_kb_build_link_content(summary, full_text),
+            keywords=keywords or None,
+            category=_kb_clean_category(data.get('category')),
+            answer_link=(data.get('answer_link') or '').strip() or url,
+            source_type='link',
+            source_url=url[:1000],
+            fetched_at=utc_now_naive(),
+            is_active=bool(data.get('is_active', True)),
+            created_by=get_jwt_identity(),
+        )
+        db.session.add(entry)
+        db.session.commit()
+        _kb_invalidate_cache()
+        return success_response(
+            {'entry': entry.to_dict(include_content=False), 'summary': summary},
+            message='Link fetched, summarized and indexed',
+            status_code=201,
+        )
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error adding KB link: {str(e)}", exc_info=True)
+        return error_response('Failed to add link', status_code=500, error_code='DATABASE_ERROR')
+
+
+@admin_bp.route('/knowledge-base/<int:entry_id>/refetch', methods=['POST'])
+@jwt_required()
+@admin_required
+def kb_refetch_link(entry_id):
+    """Re-fetch and re-summarize an existing link record."""
+    try:
+        from module_assistant.fetch_url import fetch_url_text, summarize_extractive, FetchError
+
+        entry = KnowledgeBaseEntry.query.get_or_404(entry_id)
+        if entry.source_type != 'link' or not entry.source_url:
+            return error_response('This record is not a link', status_code=400, error_code='VALIDATION_ERROR')
+
+        try:
+            page_title, full_text = fetch_url_text(entry.source_url)
+        except FetchError as fe:
+            return error_response(str(fe), status_code=400, error_code='FETCH_ERROR')
+
+        summary = summarize_extractive(full_text)
+        entry.content = _kb_build_link_content(summary, full_text)
+        entry.fetched_at = utc_now_naive()
+        db.session.commit()
+        _kb_invalidate_cache()
+        return success_response(
+            {'entry': entry.to_dict(include_content=False), 'summary': summary},
+            message='Link content refreshed',
+        )
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error refetching KB link: {str(e)}", exc_info=True)
+        return error_response('Failed to refresh link', status_code=500, error_code='DATABASE_ERROR')
+
+
+@admin_bp.route('/knowledge-base/refresh-app', methods=['POST'])
+@jwt_required()
+@admin_required
+def kb_refresh_app_data():
+    """Auto-generate / update KB entries from live application data."""
+    from datetime import datetime, timezone
+    from app.models import Submission, Ticket, QhsiTraining
+
+    def _utcnow_naive():
+        return datetime.now(timezone.utc).replace(tzinfo=None)
+
+    def _upsert(title, content, keywords, category, answer_link=None):
+        entry = KnowledgeBaseEntry.query.filter_by(title=title, source_type='auto').first()
+        if entry:
+            entry.content = content
+            entry.keywords = keywords
+            entry.updated_at = _utcnow_naive()
+            return 'updated'
+        else:
+            entry = KnowledgeBaseEntry(
+                title=title,
+                content=content,
+                keywords=keywords,
+                category=category,
+                answer_link=answer_link,
+                source_type='auto',
+                is_active=True,
+                created_by=get_jwt_identity(),
+            )
+            db.session.add(entry)
+            return 'created'
+
+    try:
+        results = {}
+
+        # ── Procurement snapshot ─────────────────────────────────────────────
+        try:
+            proc_materials = Submission.query.filter(
+                Submission.module_type.in_(['procurement_material', 'catalog_material'])
+            ).all()
+            proc_props = Submission.query.filter_by(module_type='procurement_property').all()
+
+            import json as _json
+            mat_names = []
+            for s in proc_materials[:10]:
+                fd = s.form_data
+                if isinstance(fd, str):
+                    try:
+                        fd = _json.loads(fd)
+                    except Exception:
+                        fd = {}
+                name = (fd or {}).get('material_name') or (fd or {}).get('name') or ''
+                if name:
+                    mat_names.append(name)
+
+            prop_names = []
+            for s in proc_props[:10]:
+                fd = s.form_data
+                if isinstance(fd, str):
+                    try:
+                        fd = _json.loads(fd)
+                    except Exception:
+                        fd = {}
+                pn = (fd or {}).get('property_name') or s.site_name or ''
+                if pn and pn not in prop_names:
+                    prop_names.append(pn)
+
+            mat_line = f"There are {len(proc_materials)} material record(s) in the catalog."
+            if mat_names:
+                mat_line += f" Examples: {', '.join(mat_names[:8])}."
+            prop_line = f"There are {len(proc_props)} registered property/properties."
+            if prop_names:
+                prop_line += f" Properties: {', '.join(prop_names[:8])}."
+
+            results['procurement'] = _upsert(
+                title='[Auto] Procurement — Live Snapshot',
+                content=(
+                    f"Procurement module live data snapshot (refreshed {_utcnow_naive().strftime('%d %b %Y')}).\n\n"
+                    f"{mat_line}\n{prop_line}\n\n"
+                    "The Procurement module manages material catalogs, registered properties, and pricing lists. "
+                    "Users with procurement access can add materials, assign them to properties, and export reports."
+                ),
+                keywords='procurement, materials, catalog, properties, pricing, material list',
+                category='Procurement',
+                answer_link='/procurement/',
+            )
+        except Exception as e:
+            current_app.logger.warning(f"KB refresh: procurement error: {e}")
+            results['procurement'] = 'error'
+
+        # ── Ticketing snapshot ───────────────────────────────────────────────
+        try:
+            OPEN_S = {'open', 'pending_supervisor'}
+            IN_PROG_S = {'in_progress', 'pending_parts', 'pending_verification'}
+            all_tickets = Ticket.query.all()
+            open_c = sum(1 for t in all_tickets if t.status in OPEN_S)
+            in_prog_c = sum(1 for t in all_tickets if t.status in IN_PROG_S)
+            closed_c = sum(1 for t in all_tickets if t.status == 'closed')
+
+            recent_titles = [t.title for t in sorted(all_tickets, key=lambda x: x.created_at or _utcnow_naive(), reverse=True)[:5]]
+
+            results['ticketing'] = _upsert(
+                title='[Auto] Ticketing — Live Snapshot',
+                content=(
+                    f"Ticketing module live data snapshot (refreshed {_utcnow_naive().strftime('%d %b %Y')}).\n\n"
+                    f"Total tickets: {len(all_tickets)}. Open: {open_c}. In progress: {in_prog_c}. Closed: {closed_c}.\n"
+                    + (f"Recent ticket titles: {', '.join(recent_titles)}.\n" if recent_titles else '')
+                    + "\nThe Ticketing module handles work orders and service requests. "
+                    "Ticket statuses flow: open → pending_supervisor → in_progress → pending_parts → "
+                    "pending_verification → closed. Reporters can track status; supervisors assign technicians."
+                ),
+                keywords='tickets, work orders, open tickets, service requests, ticketing, status',
+                category='Ticketing',
+                answer_link='/tickets/',
+            )
+        except Exception as e:
+            current_app.logger.warning(f"KB refresh: ticketing error: {e}")
+            results['ticketing'] = 'error'
+
+        # ── Inspection snapshot ──────────────────────────────────────────────
+        try:
+            INSP_TYPES = ('hvac_mep', 'civil', 'cleaning')
+            from datetime import date
+            from sqlalchemy import extract
+            now = _utcnow_naive()
+            insp_all = Submission.query.filter(
+                Submission.module_type.in_(INSP_TYPES)
+            ).all()
+            by_type = {t: sum(1 for s in insp_all if s.module_type == t) for t in INSP_TYPES}
+            this_month = sum(
+                1 for s in insp_all
+                if (s.created_at or now).month == now.month and (s.created_at or now).year == now.year
+            )
+            results['inspection'] = _upsert(
+                title='[Auto] Inspection — Live Snapshot',
+                content=(
+                    f"Inspection module live data snapshot (refreshed {now.strftime('%d %b %Y')}).\n\n"
+                    f"Total inspections submitted: {len(insp_all)}. This month: {this_month}.\n"
+                    f"HVAC & MEP: {by_type['hvac_mep']}. Civil Works: {by_type['civil']}. Cleaning: {by_type['cleaning']}.\n\n"
+                    "Inspection forms cover HVAC & MEP, Civil Works, and Cleaning Services. "
+                    "Each form includes site details, checklist items, photos, and signatures. "
+                    "Submitted forms go through supervisor → operations manager → GM approval workflow."
+                ),
+                keywords='inspection, hvac, mep, civil, cleaning, site visit, inspection form, checklist',
+                category='Inspection',
+                answer_link='/inspection/',
+            )
+        except Exception as e:
+            current_app.logger.warning(f"KB refresh: inspection error: {e}")
+            results['inspection'] = 'error'
+
+        # ── QHSI snapshot ────────────────────────────────────────────────────
+        try:
+            trainings = QhsiTraining.query.order_by(QhsiTraining.created_at.desc()).all()
+            upcoming = [t for t in trainings if getattr(t, 'status', '') not in ('completed', 'cancelled')]
+            compliance_subs = Submission.query.filter(
+                Submission.module_type == 'qhsi_staff_compliance'
+            ).count()
+
+            results['qhsi'] = _upsert(
+                title='[Auto] QHSI — Live Snapshot',
+                content=(
+                    f"QHSI module live data snapshot (refreshed {_utcnow_naive().strftime('%d %b %Y')}).\n\n"
+                    f"Total training/meeting sessions: {len(trainings)}. Upcoming/active: {len(upcoming)}.\n"
+                    f"Staff compliance records submitted: {compliance_subs}.\n\n"
+                    "The QHSI module covers Quality, Health, Safety and Inspections. "
+                    "It includes staff PPE/uniform compliance tracking (import via Excel), "
+                    "QHSI inspection forms, and training/meeting bookings for safety sessions."
+                ),
+                keywords='qhsi, qhse, safety, compliance, training, ppe, uniform, quality, health',
+                category='QHSI',
+                answer_link='/qhsi/',
+            )
+        except Exception as e:
+            current_app.logger.warning(f"KB refresh: qhsi error: {e}")
+            results['qhsi'] = 'error'
+
+        # ── Modules overview ─────────────────────────────────────────────────
+        results['overview'] = _upsert(
+            title='[Auto] Injaaz Modules — Overview',
+            content=(
+                "Injaaz Application modules overview (auto-generated).\n\n"
+                "Available modules:\n"
+                "- Inspection Hub: HVAC & MEP, Civil Works, and Cleaning Services inspection forms with photo capture, signatures, and PDF reports.\n"
+                "- Procurement: Material catalog management, registered properties, pricing and Excel import/export.\n"
+                "- Ticketing: Work order and service request management with supervisor/technician workflow.\n"
+                "- HR: Leave applications, commencement, duty resumption, termination, asset tracking, visa/passport processing, grievances, appraisals.\n"
+                "- QHSI: Quality/Health/Safety inspections, staff PPE compliance, and training bookings.\n"
+                "- DocHub: Company document library with policies, manuals and downloadable files.\n"
+                "- MMR: Monthly Maintenance Reports with chargeable configuration and automated scheduling.\n"
+                "- Business Development: BD email module for project pipeline and client communications.\n"
+                "- Workflow Hub: Central dashboard for pending reviews and submitted forms.\n"
+                "- Dashboard: Quick stats, recent activity, and navigation to all modules."
+            ),
+            keywords='modules, features, hvac, procurement, ticketing, hr, qhsi, dochub, mmr, bd, workflow, inspection',
+            category='General',
+            answer_link='/dashboard',
+        )
+
+        db.session.commit()
+        _kb_invalidate_cache()
+
+        created = sum(1 for v in results.values() if v == 'created')
+        updated = sum(1 for v in results.values() if v == 'updated')
+        return success_response(
+            {'results': results, 'created': created, 'updated': updated},
+            message=f'App data refreshed: {created} created, {updated} updated.',
+        )
+
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"KB refresh-app error: {e}", exc_info=True)
+        return error_response('Failed to refresh app data', status_code=500, error_code='INTERNAL_ERROR')

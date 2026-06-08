@@ -154,6 +154,24 @@ except Exception as e:
     logger.exception("Could not import module_ticketing.routes.ticketing_bp: %s", e)
     ticketing_bp = None
 
+# QHSI Module (Quality, Hospitality, Safety & Inspection)
+qhsi_bp = None
+try:
+    from module_qhsi.routes import qhsi_bp  # noqa: F401
+    logger.info("Imported module_qhsi.routes.qhsi_bp")
+except Exception as e:
+    logger.exception("Could not import module_qhsi.routes.qhsi_bp: %s", e)
+    qhsi_bp = None
+
+# Live Assistant (no-LLM v1)
+assistant_bp = None
+try:
+    from module_assistant.routes import assistant_bp  # noqa: F401
+    logger.info("Imported module_assistant.routes.assistant_bp")
+except Exception as e:
+    logger.exception("Could not import module_assistant.routes.assistant_bp: %s", e)
+    assistant_bp = None
+
 # Ensure required directories exist at startup
 os.makedirs(GENERATED_DIR, exist_ok=True)
 os.makedirs(UPLOADS_DIR, exist_ok=True)
@@ -368,6 +386,7 @@ def create_app():
                     ('access_report_generation', 'BOOLEAN DEFAULT FALSE'),
                     ('access_submitted_forms', 'BOOLEAN DEFAULT FALSE'),
                     ('access_ticketing', 'BOOLEAN DEFAULT FALSE'),
+                    ('access_qhsi', 'BOOLEAN DEFAULT FALSE'),
                     ('last_login', 'TIMESTAMP'),
                     ('employment_start_date', 'DATE'),
                     ('job_designation', 'VARCHAR(160)'),
@@ -449,6 +468,31 @@ def create_app():
                                         logger.warning(f"Could not add {col_name}: {col_error}")
                     except Exception as e:
                         logger.warning(f"Could not add missing workflow columns (non-critical): {e}")
+
+            if 'knowledge_base_entries' in inspector.get_table_names():
+                columns = [col['name'] for col in inspector.get_columns('knowledge_base_entries')]
+                # Keep in sync with app.models.KnowledgeBaseEntry — create_all does not alter existing tables.
+                kb_optional_columns = [
+                    ('source_url', 'VARCHAR(1000)'),
+                    ('fetched_at', 'TIMESTAMP'),
+                ]
+                missing_columns = [(c, d) for c, d in kb_optional_columns if c not in columns]
+                if missing_columns:
+                    logger.info(f"Adding missing columns to knowledge_base_entries: {[c[0] for c in missing_columns]}")
+                    try:
+                        with db.engine.begin() as conn:
+                            for col_name, col_def in missing_columns:
+                                try:
+                                    conn.execute(text(f"ALTER TABLE knowledge_base_entries ADD COLUMN {col_name} {col_def}"))
+                                    logger.info(f"✅ Added {col_name} column to knowledge_base_entries table")
+                                except Exception as col_error:
+                                    error_str = str(col_error).lower()
+                                    if 'already exists' in error_str or 'duplicate' in error_str:
+                                        logger.info(f"Column {col_name} already exists, skipping")
+                                    else:
+                                        logger.warning(f"Could not add {col_name}: {col_error}")
+                    except Exception as e:
+                        logger.warning(f"Could not add missing knowledge_base columns (non-critical): {e}")
 
             if 'dochub_documents' in inspector.get_table_names():
                 columns = [col['name'] for col in inspector.get_columns('dochub_documents')]
@@ -924,6 +968,27 @@ def create_app():
     else:
         logger.warning("⚠️  Ticketing blueprint not available - check imports")
 
+    # Register QHSI blueprint
+    if qhsi_bp:
+        if hasattr(app, 'csrf') and app.csrf:
+            app.csrf.exempt(qhsi_bp)
+        app.register_blueprint(qhsi_bp)
+        @app.route('/qhsi')
+        def redirect_qhsi_to_slash():
+            return redirect('/qhsi/', code=302)
+        logger.info("✅ Registered QHSI blueprint at /qhsi")
+    else:
+        logger.warning("⚠️  QHSI blueprint not available - check imports")
+
+    # Register Live Assistant blueprint
+    if assistant_bp:
+        if hasattr(app, 'csrf') and app.csrf:
+            app.csrf.exempt(assistant_bp)
+        app.register_blueprint(assistant_bp)
+        logger.info("✅ Registered Live Assistant blueprint at /api/assistant")
+    else:
+        logger.warning("⚠️  Live Assistant blueprint not available - check imports")
+
     # Register reports API blueprint for on-demand regeneration
     try:
         from app.reports_api import reports_bp
@@ -1094,6 +1159,11 @@ def create_app():
     def admin_team_management():
         """Team & technician management — admin only"""
         return render_template('admin_team_management.html', active_page='team-management')
+
+    @app.route('/admin/knowledge-base')
+    def admin_knowledge_base():
+        """Knowledge Base — admin-managed records that feed the assistant."""
+        return render_template('admin_knowledge_base.html', active_page='knowledge-base')
 
     @app.route('/dochub')
     def dochub():

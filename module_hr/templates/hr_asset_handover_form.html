@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+  <title>Asset Handover &amp; Takeover — INJAAZ</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-forms-unified.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/ticketing.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+  <style>
+    .hr-form-unified .page { padding-top: 5.5rem; }
+    body.hr-embed-mode .hr-form-unified .page { padding-top: 0 !important; }
+    body.hr-embed-mode .hr-form-unified .page-inner { padding-top: 0.75rem !important; }
+    body.hr-embed-mode .page-inner > a.back-btn { display: none !important; }
+  </style>
+  <style>
+    .leave-form-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+      gap: 1.5rem;
+      align-items: start;
+      width: 100%;
+    }
+    .leave-form-layout-main { min-width: 0; }
+    .leave-form-layout-aside {
+      position: sticky;
+      top: 5.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      min-width: 0;
+    }
+    body.hr-embed-mode .leave-form-layout-aside { top: 1rem; }
+    .leave-sidebar-card.tkt-card { border-radius: 12px; }
+    .leave-sidebar-card .tkt-card-header { padding: 14px 18px; }
+    .leave-sidebar-card .tkt-card-header h3 { font-size: 1rem; }
+    .leave-sidebar-inner .tkt-card-body { padding: 0 !important; }
+    .leave-sidebar-inner .hr-mgmt-chain-sec,
+    .leave-sidebar-inner .hr-signoff-activity-sec,
+    .leave-sidebar-inner .hr-recorded-sigs-sec {
+      margin: 0 !important; padding: 1rem 18px 1.15rem !important;
+      border: none !important; border-radius: 0 !important;
+      box-shadow: none !important; background: transparent !important;
+    }
+    .leave-sidebar-inner .hr-mgmt-chain-sec > .sec-hd,
+    .leave-sidebar-inner .hr-signoff-activity-sec > .sec-hd { display: none !important; }
+    .leave-sidebar-inner #hrMgmtChainWrap { background: #f8fafc !important; border: 1px solid #e2e8f0 !important; }
+    .leave-sidebar-inner .hr-signoff-activity-scroll { max-height: clamp(15rem, 44vh, 30rem); }
+    .leave-sidebar-inner .hr-recorded-sigs-sec {
+      margin-top: .85rem !important; padding-top: 1rem !important;
+      border-top: 1px solid #e2e8f0 !important;
+    }
+    @media (max-width: 900px) {
+      .leave-form-layout { grid-template-columns: 1fr; }
+      .leave-form-layout-aside { position: static; }
+    }
+    /* Dynamic item rows */
+    .aht-item-row { background: var(--sf, #f8fafc); border: 1px solid var(--bd, #e2e8f0); border-radius: 12px; padding: 1rem; margin-bottom: 1rem; }
+    .btn-add-item { display: flex; align-items: center; justify-content: center; gap: .4rem; width: 100%; padding: .7rem; border: 1.5px dashed var(--pri-sm, #c2dece); border-radius: 10px; background: var(--pri-xs, #f0faf4); color: var(--pri, #125435); font-weight: 600; font-size: .9rem; cursor: pointer; font-family: inherit; transition: background .15s; }
+    .btn-add-item:hover { background: #d1fae5; }
+    .btn-remove-item { border: none; border-radius: 6px; background: #fee2e2; color: #dc2626; padding: .35rem .8rem; font-size: .8rem; font-weight: 600; cursor: pointer; font-family: inherit; }
+  </style>
+</head>
+<body class="hr-form-unified{% if hr_embed %} hr-embed-mode{% endif %}">
+  {% set active_page = 'hr' %}
+  {% include 'partials/hr_embed_optional_navbar.html' %}
+
+  <div class="success-bg" id="successModal">
+    <div class="success-box">
+      <button type="button" class="success-back-btn" onclick="hrGoToSubmittedRequest()" title="View submitted request">
+        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+      </button>
+      <div class="success-icon"><svg width="30" height="30" fill="none" stroke="#fff" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg></div>
+      <h2>Form Submitted!</h2>
+      <p>Your asset handover form has been sent to HR for review.</p>
+      <div class="sub-id" id="submissionId"></div>
+      <button class="btn-submit" style="width:100%;justify-content:center" onclick="hrGoToSubmittedRequest()">View My Requests</button>
+    </div>
+  </div>
+
+  <div class="sig-modal-bg" id="sigBg">
+    <div class="sig-modal">
+      <div class="sig-modal-hd"><h3 id="sigTitle">Signature</h3><button class="sig-modal-x" onclick="closeSig()">&times;</button></div>
+      <div class="sig-modal-body">
+        <p class="sig-modal-hint">Draw your signature using your mouse or finger.</p>
+        <div class="sig-canvas-box"><canvas id="sigCanvas" height="180"></canvas><span class="sig-canvas-guide">Sign here</span></div>
+        <div class="sig-modal-ft"><button class="btn-m-clear" onclick="clearModalPad()">Clear</button><button class="btn-m-apply" onclick="applySig()">Apply Signature</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page">
+    <div class="page-inner">
+      <a href="/hr/" class="back-btn">
+        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        Back to HR
+      </a>
+
+      {% include 'partials/hr_submitted_edit_banners.html' %}
+
+      <div class="step-bar">
+        <div class="step-item active" id="step1Badge" onclick="goToStep1()" role="button" tabindex="0"><span class="num">1</span><span>Employee Details</span></div>
+        <div class="step-connector" id="connector1"></div>
+        <div class="step-item locked" id="step2Badge" onclick="goToStep2()" role="button" tabindex="0"><span class="num">2</span><span>Assets &amp; Signatures</span></div>
+      </div>
+
+      <div class="leave-form-layout">
+      <div class="leave-form-layout-main">
+      <div class="card">
+        <div class="hd">
+          <div class="hd-left">
+            <h1>Asset Handover &amp; Takeover</h1>
+            <p class="hd-sub">INJAAZ FACILITY MANAGEMENT</p>
+          </div>
+          <img src="{{ url_for('static', filename='logo.png') }}" alt="INJAAZ" class="hd-logo">
+        </div>
+
+        <form id="ahtForm">
+          <div class="form-body">
+
+            <!-- ===== STEP 1: Employee Details ===== -->
+            <div class="step-panel active" id="step1Panel">
+              <div class="step-hint">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span><strong>Step 1 of 2</strong> — Fill in the transaction type and both party details, then click <strong>Continue to Step 2</strong> to list the assets and sign.</span>
+              </div>
+
+              <section class="sec">
+                <h2 class="sec-hd">Transaction Details</h2>
+                <div class="grid-2">
+                  <div class="fld">
+                    <label class="fld-lbl">Transaction Type <span class="req">*</span></label>
+                    <select class="fld-inp" name="transaction_type" required>
+                      <option value="">Select Type</option>
+                      <option value="handover">Handover (Employee Departing / Transferring)</option>
+                      <option value="takeover">Takeover (Employee Joining / Receiving)</option>
+                      <option value="both">Handover &amp; Takeover (Simultaneous)</option>
+                    </select>
+                  </div>
+                  <div class="fld">
+                    <label class="fld-lbl">Date <span class="req">*</span></label>
+                    <input class="fld-inp" type="date" name="handover_date" id="handoverDate" required>
+                  </div>
+                </div>
+              </section>
+
+              <section class="sec">
+                <h2 class="sec-hd">Handing Over Party</h2>
+                <div class="grid-2">
+                  <div class="fld fw">
+                    <label class="fld-lbl">Employee Name <span class="req">*</span></label>
+                    <input class="fld-inp" type="text" name="handover_employee_name" placeholder="Full name of employee handing over" required>
+                  </div>
+                  <div class="fld">
+                    <label class="fld-lbl">Employee ID</label>
+                    <input class="fld-inp" type="text" name="handover_employee_id" placeholder="e.g. INJ-0042">
+                  </div>
+                  <div class="fld">
+                    <label class="fld-lbl">Department <span class="req">*</span></label>
+                    <select class="fld-inp" name="handover_department" required>
+                      <option value="">Select Department</option>
+                      <option value="operations">Operations</option>
+                      <option value="hr">Human Resources</option>
+                      <option value="finance">Finance</option>
+                      <option value="procurement">Procurement</option>
+                      <option value="business_development">Business Development</option>
+                      <option value="maintenance">Maintenance</option>
+                      <option value="cleaning">Cleaning</option>
+                      <option value="it">IT</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                  <div class="fld">
+                    <label class="fld-lbl">Designation / Job Title</label>
+                    <input class="fld-inp" type="text" name="handover_designation" placeholder="e.g. Operations Supervisor">
+                  </div>
+                  <div class="fld">
+                    <label class="fld-lbl">Last Working Day / Transfer Date</label>
+                    <input class="fld-inp" type="date" name="handover_last_day">
+                  </div>
+                </div>
+              </section>
+
+              <section class="sec">
+                <h2 class="sec-hd">Taking Over Party</h2>
+                <div class="grid-2">
+                  <div class="fld fw">
+                    <label class="fld-lbl">Employee Name <span class="req">*</span></label>
+                    <input class="fld-inp" type="text" name="takeover_employee_name" placeholder="Full name of employee taking over" required>
+                  </div>
+                  <div class="fld">
+                    <label class="fld-lbl">Employee ID</label>
+                    <input class="fld-inp" type="text" name="takeover_employee_id" placeholder="e.g. INJ-0055">
+                  </div>
+                  <div class="fld">
+                    <label class="fld-lbl">Department <span class="req">*</span></label>
+                    <select class="fld-inp" name="takeover_department" required>
+                      <option value="">Select Department</option>
+                      <option value="operations">Operations</option>
+                      <option value="hr">Human Resources</option>
+                      <option value="finance">Finance</option>
+                      <option value="procurement">Procurement</option>
+                      <option value="business_development">Business Development</option>
+                      <option value="maintenance">Maintenance</option>
+                      <option value="cleaning">Cleaning</option>
+                      <option value="it">IT</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                  <div class="fld">
+                    <label class="fld-lbl">Designation / Job Title</label>
+                    <input class="fld-inp" type="text" name="takeover_designation" placeholder="e.g. Operations Supervisor">
+                  </div>
+                </div>
+              </section>
+
+              <div class="step-nav">
+                <span></span>
+                <button type="button" class="btn-next" onclick="goToStep2()">Continue to Step 2 <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg></button>
+              </div>
+            </div>
+
+            <!-- ===== STEP 2: Assets & Signatures ===== -->
+            <div class="step-panel" id="step2Panel">
+              <div class="step-hint">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span><strong>Step 2 of 2</strong> — List all assets, add signatures, then submit. You can go back to Step 1 to make changes.</span>
+              </div>
+
+              <section class="sec">
+                <h2 class="sec-hd">Asset Items</h2>
+                <div id="itemsContainer"></div>
+                <button type="button" class="btn-add-item" onclick="addItem()">
+                  <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                  Add Another Asset Item
+                </button>
+              </section>
+
+              <section class="sec">
+                <h2 class="sec-hd">Additional Information</h2>
+                <div class="fld">
+                  <label class="fld-lbl">Additional Remarks / Notes</label>
+                  <textarea class="fld-inp" name="additional_remarks" rows="3" placeholder="Any additional comments, special instructions, or outstanding matters"></textarea>
+                </div>
+              </section>
+
+              <section class="sec">
+                <h2 class="sec-hd">Signatures</h2>
+                <div class="grid-2">
+                  <div class="fld">
+                    <label class="fld-lbl">Handing Over — Employee Signature <span class="req">*</span></label>
+                    <div class="sig-wrap">
+                      <div class="sig-box" id="empSigPrev"><span class="sig-ph">No signature yet</span><img id="empSigImg" src="" alt="" style="display:none;max-width:100%;max-height:96px"></div>
+                      <div class="sig-actions">
+                        <button type="button" class="btn-plus" onclick="openSig('employee')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 4v16m8-8H4"/></svg> Sign</button>
+                        <button type="button" class="btn-rm" id="empSigRm" onclick="rmSig('employee')" style="display:none">Remove</button>
+                      </div>
+                      <input type="hidden" name="employee_signature" id="empSigData">
+                    </div>
+                    <em class="fld-indicator">Signature of the employee handing over the assets. Required before submit.</em>
+                  </div>
+                  <div class="fld">
+                    <label class="fld-lbl">Taking Over — Employee Signature</label>
+                    <div class="sig-wrap">
+                      <div class="sig-box" id="takeoverSigPrev"><span class="sig-ph">No signature yet</span><img id="takeoverSigImg" src="" alt="" style="display:none;max-width:100%;max-height:96px"></div>
+                      <div class="sig-actions">
+                        <button type="button" class="btn-plus" onclick="openSig('takeover')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 4v16m8-8H4"/></svg> Sign</button>
+                        <button type="button" class="btn-rm" id="takeoverSigRm" onclick="rmSig('takeover')" style="display:none">Remove</button>
+                      </div>
+                      <input type="hidden" name="takeover_signature" id="takeoverSigData">
+                    </div>
+                    <em class="fld-indicator">Signature of the employee taking over the assets.</em>
+                  </div>
+                  <div class="fld">
+                    <label class="fld-lbl">HR Signature</label>
+                    {% if is_hr %}
+                    <div class="sig-wrap">
+                      <div class="sig-box" id="hrSigPrev"><span class="sig-ph">No signature yet</span><img id="hrSigImg" src="" alt="" style="display:none;max-width:100%;max-height:96px"></div>
+                      <div class="sig-actions">
+                        <button type="button" class="btn-plus" onclick="openSig('hr')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 4v16m8-8H4"/></svg> Sign</button>
+                        <button type="button" class="btn-rm" id="hrSigRm" onclick="rmSig('hr')" style="display:none">Remove</button>
+                      </div>
+                      <input type="hidden" name="hr_signature" id="hrSigData">
+                    </div>
+                    {% else %}
+                    <em style="font-size:.85rem;color:var(--muted)">For HR approval workflow</em>
+                    <input type="hidden" name="hr_signature" id="hrSigData">
+                    {% endif %}
+                  </div>
+                </div>
+              </section>
+
+              <!-- HR-only review section (locked for non-HR) -->
+              <div class="hr-staff-zone{% if not is_hr %} hr-staff-zone--locked{% endif %}">
+                {% if not is_hr %}
+                <p class="hr-preview-banner" role="note">The section below is completed by HR staff after intake — it is <strong>read-only</strong> for you.</p>
+                {% endif %}
+                <section class="sec sec-hr">
+                  <h2 class="sec-hd">For Human Resources Only</h2>
+                  <div class="grid-2">
+                    <div class="fld">
+                      <label class="fld-lbl">Checked by HR</label>
+                      <div class="yn-row">
+                        {% if is_hr %}
+                        <label><input type="radio" name="hr_checked" value="YES"> YES</label>
+                        <label><input type="radio" name="hr_checked" value="NO"> NO</label>
+                        {% else %}
+                        <label><input type="radio" name="hr_checked_ro" value="YES" tabindex="-1" disabled> YES</label>
+                        <label><input type="radio" name="hr_checked_ro" value="NO" tabindex="-1" disabled> NO</label>
+                        {% endif %}
+                      </div>
+                    </div>
+                    <div class="fld fw">
+                      <label class="fld-lbl">HR Comments</label>
+                      <textarea class="fld-inp" name="hr_comments" rows="2"
+                        placeholder="{% if is_hr %}Enter HR comments…{% else %}Entered by HR after review{% endif %}"
+                        {% if not is_hr %}readonly tabindex="-1"{% endif %}></textarea>
+                    </div>
+                    <div class="fld">
+                      <label class="fld-lbl">Date</label>
+                      <input class="fld-inp" type="date" name="hr_date" {% if not is_hr %}readonly tabindex="-1"{% endif %}>
+                    </div>
+                  </div>
+                </section>
+              </div>
+
+              <div class="step-nav">
+                <button type="button" class="btn-back" onclick="goToStep1()"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12"/></svg> Back to Step 1</button>
+                <span></span>
+              </div>
+            </div>
+
+          </div><!-- /form-body -->
+
+          <div class="doc-ft">
+            <div class="doc-ft-meta"><span>DOC NO: INJ-AHT-001</span><span>DATE: <span id="docDate"></span></span><span>ISSUE: 00</span><span>REVISION: 00</span></div>
+            P.O Box: 3456 Ajman, UAE · Tel 067116815 · www.injaaz.ae<br>Registered under trade license name INJAAZ LLC
+          </div>
+
+          <div class="submit-bar" id="submitBar" style="display:none">
+            <button type="button" class="btn-reset" onclick="if(confirm('Reset the form?')){document.getElementById('ahtForm').reset();clearAllSigs();renderInitialItem();goToStep1();}">Reset</button>
+            <button type="submit" class="btn-submit">Submit Form</button>
+          </div>
+        </form>
+      </div>
+      </div>{# leave-form-layout-main #}
+
+      {% include 'partials/hr_form_approvals_sidebar.html' %}
+
+      </div>{# leave-form-layout #}
+    </div>
+  </div>
+
+<script>
+const today = new Date().toISOString().split('T')[0];
+let itemIndex = 0;
+
+document.addEventListener('DOMContentLoaded', () => {
+  const docDateEl = document.getElementById('docDate');
+  if (docDateEl)
+    docDateEl.textContent = new Date().toLocaleDateString('en-GB', {
+      day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Asia/Dubai',
+    });
+  const hd = document.getElementById('handoverDate');
+  if (hd && !hd.value) hd.value = today;
+  renderInitialItem();
+});
+
+/* ---- Step navigation ---- */
+function goToStep2() {
+  document.getElementById('step1Panel').classList.remove('active');
+  document.getElementById('step2Panel').classList.add('active');
+  const sb = document.getElementById('submitBar');
+  if (sb) sb.style.display = 'flex';
+  document.getElementById('step1Badge').className = 'step-item done';
+  document.getElementById('step1Badge').querySelector('.num').innerHTML = '✓';
+  document.getElementById('step2Badge').className = 'step-item active';
+  document.getElementById('step2Badge').classList.remove('locked');
+  document.getElementById('connector1').classList.add('done');
+  document.getElementById('step2Panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function goToStep1() {
+  document.getElementById('step2Panel').classList.remove('active');
+  document.getElementById('step1Panel').classList.add('active');
+  document.getElementById('submitBar').style.display = 'none';
+  document.getElementById('step1Badge').className = 'step-item active';
+  document.getElementById('step1Badge').querySelector('.num').textContent = '1';
+  document.getElementById('step2Badge').className = 'step-item locked';
+  document.getElementById('connector1').classList.remove('done');
+  document.getElementById('step1Panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/* ---- Signature pad ---- */
+let pad = null, sigTarget = null;
+const sigBg = document.getElementById('sigBg');
+const sigCanvas = document.getElementById('sigCanvas');
+
+const sigCfg = {
+  employee:  { prev: 'empSigPrev',      img: 'empSigImg',      data: 'empSigData',      rm: 'empSigRm',      title: 'Handing Over — Employee Signature' },
+  takeover:  { prev: 'takeoverSigPrev', img: 'takeoverSigImg', data: 'takeoverSigData', rm: 'takeoverSigRm', title: 'Taking Over — Employee Signature' },
+  hr:        { prev: 'hrSigPrev',       img: 'hrSigImg',       data: 'hrSigData',       rm: 'hrSigRm',       title: 'HR Signature' },
+};
+
+function openSig(t) {
+  const c = sigCfg[t]; if (!c) return;
+  sigTarget = t;
+  document.getElementById('sigTitle').textContent = c.title;
+  sigBg.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  requestAnimationFrame(() => {
+    const r = window.devicePixelRatio || 1, w = sigCanvas.offsetWidth;
+    sigCanvas.width = w * r; sigCanvas.height = 180 * r;
+    sigCanvas.getContext('2d').scale(r, r); sigCanvas.style.height = '180px';
+    if (pad) pad.off();
+    pad = new SignaturePad(sigCanvas, { backgroundColor: 'rgb(250,250,250)', penColor: '#0d1f14', minWidth: 1.2, maxWidth: 2.8 });
+  });
+}
+function closeSig() { sigBg.classList.remove('open'); document.body.style.overflow = ''; sigTarget = null; }
+function clearModalPad() { if (pad) pad.clear(); }
+function applySig() {
+  if (!pad || pad.isEmpty()) { alert('Please draw your signature first.'); return; }
+  const url = pad.toDataURL('image/png'), c = sigCfg[sigTarget]; if (!c) return;
+  const img = document.getElementById(c.img), ph = document.querySelector('#' + c.prev + ' .sig-ph'),
+    inp = document.getElementById(c.data), rm = document.getElementById(c.rm);
+  if (img) { img.src = url; img.style.display = 'block'; }
+  if (ph) ph.style.display = 'none';
+  if (inp) inp.value = url;
+  if (rm) rm.style.display = 'inline-flex';
+  closeSig();
+}
+function rmSig(t) {
+  const c = sigCfg[t]; if (!c) return;
+  const img = document.getElementById(c.img), ph = document.querySelector('#' + c.prev + ' .sig-ph'),
+    inp = document.getElementById(c.data), rm = document.getElementById(c.rm);
+  if (img) { img.src = ''; img.style.display = 'none'; }
+  if (ph) ph.style.display = 'block';
+  if (inp) inp.value = '';
+  if (rm) rm.style.display = 'none';
+}
+function clearAllSigs() { Object.keys(sigCfg).forEach(t => { if (document.getElementById(sigCfg[t].data)) rmSig(t); }); }
+
+sigBg.addEventListener('click', e => { if (e.target === sigBg) closeSig(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && sigBg.classList.contains('open')) closeSig(); });
+
+/* Guard openSig/rmSig with HrGenericFormEdit lock when available */
+(function () {
+  var fid = 'ahtForm'; if (!window.HrGenericFormEdit) return;
+  var _o = openSig, _r = rmSig;
+  openSig = function (t) { if (!HrGenericFormEdit.canModifySig(fid, t)) return; return _o(t); };
+  rmSig   = function (t) { if (!HrGenericFormEdit.canModifySig(fid, t)) return; return _r(t); };
+})();
+
+/* ---- Dynamic asset rows ---- */
+function buildItemRow(idx) {
+  const div = document.createElement('div');
+  div.className = 'aht-item-row';
+  div.dataset.index = idx;
+  div.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.65rem">
+      <strong style="font-size:.9rem;color:var(--ink,#1e293b)">Item #${idx + 1}</strong>
+      ${idx > 0 ? `<button type="button" class="btn-remove-item" onclick="removeItem(this)">Remove</button>` : ''}
+    </div>
+    <div class="grid-2">
+      <div class="fld fw">
+        <label class="fld-lbl">Description of Asset <span class="req">*</span></label>
+        <input class="fld-inp" type="text" name="items[${idx}][description]" required placeholder="e.g. Laptop Dell Latitude 5520">
+      </div>
+      <div class="fld">
+        <label class="fld-lbl">Asset Tag / Serial No.</label>
+        <input class="fld-inp" type="text" name="items[${idx}][asset_tag]" placeholder="e.g. INJ-LAP-001">
+      </div>
+      <div class="fld">
+        <label class="fld-lbl">Quantity <span class="req">*</span></label>
+        <input class="fld-inp" type="number" name="items[${idx}][quantity]" min="1" value="1" required>
+      </div>
+      <div class="fld">
+        <label class="fld-lbl">Condition <span class="req">*</span></label>
+        <select class="fld-inp" name="items[${idx}][condition]" required>
+          <option value="good">Good</option>
+          <option value="fair">Fair</option>
+          <option value="poor">Poor</option>
+          <option value="damaged">Damaged</option>
+        </select>
+      </div>
+      <div class="fld fw">
+        <label class="fld-lbl">Remarks</label>
+        <input class="fld-inp" type="text" name="items[${idx}][remarks]" placeholder="Any notes about this item">
+      </div>
+    </div>
+  `;
+  return div;
+}
+
+function renderInitialItem() {
+  const container = document.getElementById('itemsContainer');
+  container.innerHTML = '';
+  itemIndex = 0;
+  container.appendChild(buildItemRow(itemIndex));
+  itemIndex = 1;
+}
+
+function addItem() {
+  const container = document.getElementById('itemsContainer');
+  container.appendChild(buildItemRow(itemIndex));
+  itemIndex++;
+}
+
+function removeItem(btn) { btn.closest('.aht-item-row').remove(); }
+
+/* ---- Serialization ---- */
+function serializeAhtForm(formEl) {
+  const fd = new FormData(formEl);
+  const data = {};
+  for (const [key, value] of fd.entries()) {
+    if (key.startsWith('items[')) {
+      if (!data.items) data.items = [];
+      const m = key.match(/items\[(\d+)\]\[(\w+)\]/);
+      if (m) {
+        const idx = parseInt(m[1]);
+        const field = m[2];
+        if (!data.items[idx]) data.items[idx] = {};
+        data.items[idx][field] = value;
+      }
+    } else {
+      data[key] = value;
+    }
+  }
+  if (data.items) data.items = data.items.filter(i => i && i.description);
+  return data;
+}
+
+function hydrateItemRows(items) {
+  const rows = Array.isArray(items) ? items.filter(i => i && i.description) : [];
+  const container = document.getElementById('itemsContainer');
+  if (!container) return;
+  container.innerHTML = '';
+  itemIndex = 0;
+  if (!rows.length) { renderInitialItem(); return; }
+  rows.forEach((row) => {
+    const box = buildItemRow(itemIndex);
+    container.appendChild(box);
+    ['description', 'asset_tag', 'quantity', 'condition', 'remarks'].forEach((f) => {
+      const el = box.querySelector(`[name="items[${itemIndex}][${f}]"]`);
+      if (el && row[f] != null) el.value = row[f];
+    });
+    itemIndex++;
+  });
+}
+
+function applySigPreview(key, raw) {
+  const c = sigCfg[key]; if (!c) return;
+  const src = (typeof raw === 'string' && raw.trim()) ? raw.trim()
+    : (raw && typeof raw === 'object' && raw.url ? raw.url : null);
+  if (!src) return;
+  const img = document.getElementById(c.img), ph = document.querySelector('#' + c.prev + ' .sig-ph'),
+    inp = document.getElementById(c.data), rm = document.getElementById(c.rm);
+  if (inp) inp.value = src;
+  if (img) { img.src = src; img.style.display = 'block'; }
+  if (ph) ph.style.display = 'none';
+  if (rm) rm.style.display = 'inline-flex';
+}
+
+/* ---- Submit ---- */
+document.getElementById('ahtForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = e.target.querySelector('.btn-submit');
+  const data = serializeAhtForm(e.target);
+  data.form_type = 'asset_handover';
+  data.employee_name = data.handover_employee_name || data.takeover_employee_name || '';
+  if (btn) { btn.disabled = true; btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="spin"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Submitting…'; }
+  try {
+    const res = await fetch('/hr/api/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('access_token') },
+      body: JSON.stringify(data),
+    });
+    const r = await res.json();
+    if (r.success) {
+      window.__hrLastHrSubmissionId = r.submission_id;
+      document.getElementById('submissionId').textContent = r.submission_id;
+      document.getElementById('successModal').classList.add('show');
+    } else {
+      alert('Error: ' + (r.error || 'Unknown'));
+      if (btn) { btn.disabled = false; btn.textContent = 'Submit Form'; }
+    }
+  } catch (err) {
+    alert('Unable to submit: ' + (err && err.message ? err.message : String(err)));
+    if (btn) { btn.disabled = false; btn.textContent = 'Submit Form'; }
+  }
+});
+
+function hrGoToSubmittedRequest() {
+  const id = String(window.__hrLastHrSubmissionId || '').trim()
+    || String(document.getElementById('submissionId').textContent || '').trim();
+  window.location.href = id ? '/hr/my-requests?submission=' + encodeURIComponent(id) : '/hr/my-requests';
+}
+</script>
+
+  <script src="{{ url_for('static', filename='js/hr_generic_form_edit.js') }}"></script>
+  <script>
+    HrGenericFormEdit.attach({
+      formId: 'ahtForm',
+      moduleTypes: ['hr_asset_handover'],
+      submitBarSelector: '#submitBar',
+      privilegedFieldNames: ['hr_signature', 'hr_checked', 'hr_comments', 'hr_date'],
+      onEnterEditUi: function () { goToStep2(); },
+      populateFromSubmission: function (_payload, fd, form) {
+        const copy = {};
+        Object.keys(fd || {}).forEach((k) => { if (k !== 'items') copy[k] = fd[k]; });
+        HrGenericFormEdit.defaultPopulate(form, copy, {});
+        hydrateItemRows(fd.items);
+        applySigPreview('employee', fd.employee_signature);
+        applySigPreview('takeover', fd.takeover_signature);
+        applySigPreview('hr', fd.hr_signature);
+        if (form.elements['hr_checked'] && fd.hr_checked) {
+          Array.from(form.querySelectorAll('input[name="hr_checked"]')).forEach(r => {
+            r.checked = String(r.value).trim().toLowerCase() === String(fd.hr_checked).trim().toLowerCase();
+          });
+        }
+      },
+      serializeUpdates: function (form) {
+        const d = serializeAhtForm(form);
+        delete d.form_type;
+        return d;
+      },
+    });
+  </script>
+  <script src="{{ url_for('static', filename='api-client.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>

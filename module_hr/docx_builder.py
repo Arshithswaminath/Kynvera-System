@@ -1503,6 +1503,101 @@ def _build_contract_renewal(fd):
 # ═════════════════════════════════════════════════════════════════════════════
 # Public dispatch
 # ═════════════════════════════════════════════════════════════════════════════
+def _build_asset_handover(fd):
+    """Asset Handover & Takeover Form — INJ-AHT-001."""
+    doc = _new_doc()
+    _add_header_pdf_style(doc, "Asset Handover & Takeover Form")
+
+    tx_map = {
+        "handover": "Handover (Employee Departing / Transferring)",
+        "takeover": "Takeover (Employee Joining / Receiving)",
+        "both": "Handover & Takeover (Simultaneous)",
+    }
+    tx_type = tx_map.get(_fd(fd, "transaction_type", ""), _fd(fd, "transaction_type"))
+
+    _section_bar_numbered(doc, "01", "Transaction Details")
+    _data_table_pdf_style(doc, [
+        ("Transaction Type", tx_type),
+        ("Date",             _fmt(fd.get("handover_date"))),
+    ], cols=4)
+
+    _section_bar_numbered(doc, "02", "Handing Over Party")
+    _data_table_pdf_style(doc, [
+        ("Employee Name",  _fd(fd, "handover_employee_name")),
+        ("Employee ID",    _fd(fd, "handover_employee_id")),
+        ("Department",     _fd(fd, "handover_department", "").replace("_", " ").title()),
+        ("Designation",    _fd(fd, "handover_designation")),
+        ("Last Working Day", _fmt(fd.get("handover_last_day"))),
+    ], cols=4)
+
+    _section_bar_numbered(doc, "03", "Taking Over Party")
+    _data_table_pdf_style(doc, [
+        ("Employee Name", _fd(fd, "takeover_employee_name")),
+        ("Employee ID",   _fd(fd, "takeover_employee_id")),
+        ("Department",    _fd(fd, "takeover_department", "").replace("_", " ").title()),
+        ("Designation",   _fd(fd, "takeover_designation")),
+    ], cols=4)
+
+    # Asset Items table
+    items = fd.get("items") or []
+    if items:
+        _section_bar_numbered(doc, "04", "Asset Items")
+        t = doc.add_table(rows=0, cols=5)
+        _no_table_borders(t)
+        widths = [Cm(5.5), Cm(3.5), Cm(1.8), Cm(2.5), Cm(3.7)]
+        for i, w in enumerate(widths):
+            t.columns[i].width = w
+        hrow = t.add_row()
+        _set_row_height(hrow, 0.55)
+        for ci, hdr in enumerate(["Description", "Asset Tag / Serial", "Qty", "Condition", "Remarks"]):
+            _cell_text(hrow.cells[ci], hdr, bold=True, size=9, color=C_BW_BLACK,
+                       align=WD_ALIGN_PARAGRAPH.CENTER)
+            _set_borders(hrow.cells[ci], bottom=C_BW_BLACK)
+        for item in items:
+            if not item or not item.get("description"):
+                continue
+            row = t.add_row()
+            _set_row_height(row, 0.62)
+            vals = [
+                _fd(item, "description"),
+                _fd(item, "asset_tag"),
+                _fd(item, "quantity"),
+                _fd(item, "condition", "").title(),
+                _fd(item, "remarks"),
+            ]
+            for ci, v in enumerate(vals):
+                _cell_text(row.cells[ci], v, size=10, color=C_BW_BLACK)
+                _set_borders(row.cells[ci], bottom=C_BW_LIGHT)
+        _gap(doc, 6)
+
+    if fd.get("additional_remarks"):
+        _long_field_pdf_style(doc, "Additional Remarks", fd.get("additional_remarks"))
+
+    _section_bar_numbered(doc, "05", "Signatures")
+    sigs = [
+        ("Handing Over — Employee", fd.get("employee_signature"), fd.get("handover_date")),
+        ("Taking Over — Employee",  fd.get("takeover_signature"), None),
+    ]
+    if fd.get("hr_signature"):
+        sigs.append(("HR", fd.get("hr_signature"), fd.get("hr_date")))
+    _sig_block_pdf_style(doc, sigs)
+
+    if fd.get("hr_comments") or fd.get("hr_checked"):
+        _section_bar_numbered(doc, "06", "For Human Resources Only")
+        pairs = []
+        if fd.get("hr_checked"):
+            pairs.append(("Checked by HR", _fd(fd, "hr_checked")))
+        if fd.get("hr_date"):
+            pairs.append(("Date", _fmt(fd.get("hr_date"))))
+        if pairs:
+            _data_table_pdf_style(doc, pairs, cols=4)
+        if fd.get("hr_comments"):
+            _long_field_pdf_style(doc, "HR Comments", fd.get("hr_comments"))
+
+    _footer_pdf_style(doc)
+    return doc
+
+
 _BUILDERS = {
     "leave_application": _build_leave_application,
     "leave":             _build_leave_application,
@@ -1516,6 +1611,7 @@ _BUILDERS = {
     "station_clearance":     _build_station_clearance,
     "performance_evaluation":_build_performance_evaluation,
     "contract_renewal":      _build_contract_renewal,
+    "asset_handover":        _build_asset_handover,
 }
 
 

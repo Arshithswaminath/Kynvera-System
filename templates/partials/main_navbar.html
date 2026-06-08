@@ -63,11 +63,20 @@
         <li id="ticketing-menu-item" style="display: none;">
           <a href="/tickets/"{% if active_page == 'ticketing' %} class="nav-current"{% endif %}>Service tickets</a>
         </li>
+        <li id="qhsi-menu-item" style="display: none;">
+          <a href="/qhsi/"{% if active_page == 'qhsi' %} class="nav-current"{% endif %}>QHSE</a>
+        </li>
       </ul>
     </div>
     <div class="nav-right">
       <button type="button" class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle menu" aria-expanded="false">
         <span class="hamburger-bar" aria-hidden="true"></span>
+      </button>
+      <button type="button" class="nav-assistant-btn" id="navAssistantBtn" aria-label="Ask Injaaz assistant" title="Ask Injaaz — help with forms, leave, documents" aria-expanded="false" aria-controls="assistantPanel">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="18" height="18" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a49.255 49.255 0 0 0 4.365-1.238C20.864 15.052 22 13.714 22 12.015c0-4.746-4.03-8.511-9-8.511S4 7.269 4 12.015v.745Z" />
+        </svg>
+        <span class="nav-assistant-btn-label">Ask Injaaz</span>
       </button>
       <div class="notification-wrapper" id="notificationWrapper">
         <button class="notification-btn" id="notificationBtn" type="button" title="Notifications" aria-label="Notifications">
@@ -108,3 +117,4 @@
 </div>
 <div class="mobile-overlay" id="mobileOverlay"></div>
 {% include 'partials/profile_modal.html' %}
+{% include 'partials/assistant_widget.html' %}

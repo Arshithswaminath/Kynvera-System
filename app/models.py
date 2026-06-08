@@ -46,6 +46,7 @@ class User(db.Model):
     access_report_generation = db.Column(db.Boolean, default=False)  # MMR / Report Generation hub
     access_submitted_forms = db.Column(db.Boolean, default=False)  # "My submitted forms" workflow hub
     access_ticketing = db.Column(db.Boolean, default=False)  # Ticketing / Work Order module
+    access_qhsi = db.Column(db.Boolean, default=False)  # QHSI — quality, hospitality, safety & inspections
     created_at = db.Column(db.DateTime, default=_utcnow)
     last_login = db.Column(db.DateTime)
     # First day with the company (for tenure on dashboard); editable in Profile / admin Manage profile
@@ -105,6 +106,7 @@ class User(db.Model):
             'mmr': bool(getattr(self, 'access_report_generation', False)),
             'submitted_forms': bool(getattr(self, 'access_submitted_forms', False)),
             'ticketing': bool(getattr(self, 'access_ticketing', False)),
+            'qhsi': bool(getattr(self, 'access_qhsi', False)),
         }
         return module_map.get(module, False)
 
@@ -141,6 +143,7 @@ class User(db.Model):
             'access_report_generation': getattr(self, 'access_report_generation', False) if self.role != 'admin' else True,
             'access_submitted_forms': getattr(self, 'access_submitted_forms', False) if self.role != 'admin' else True,
             'access_ticketing': getattr(self, 'access_ticketing', False) if self.role != 'admin' else True,
+            'access_qhsi': getattr(self, 'access_qhsi', False) if self.role != 'admin' else True,
             'password_changed': self.password_changed if hasattr(self, 'password_changed') else True,
             'designation': self.designation if hasattr(self, 'designation') else None,
             'default_signature': self.default_signature if hasattr(self, 'default_signature') else None,
@@ -839,6 +842,71 @@ class DocHubAccess(db.Model):
         return f'<DocHubAccess user={self.user_id} access={self.can_access}>'
 
 
+class KnowledgeBaseEntry(db.Model):
+    """Admin-managed knowledge records that feed the Injaaz assistant brain."""
+    __tablename__ = 'knowledge_base_entries'
+
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(255), nullable=False, index=True)
+    content = db.Column(db.Text, nullable=True)  # typed text and/or extracted document text
+    keywords = db.Column(db.Text, nullable=True)  # comma-separated search boosters
+    category = db.Column(db.String(50), default='General', index=True)
+    answer_link = db.Column(db.String(500), nullable=True)  # optional deep link the assistant surfaces
+    source_type = db.Column(db.String(20), default='text', index=True)  # 'text' | 'upload' | 'link'
+    file_name = db.Column(db.String(255), nullable=True)
+    stored_path = db.Column(db.String(500), nullable=True)
+    file_type = db.Column(db.String(20), nullable=True)  # PDF, DOCX, TXT, MD
+    source_url = db.Column(db.String(1000), nullable=True)  # original URL for 'link' records
+    fetched_at = db.Column(db.DateTime, nullable=True)  # when the link was last fetched
+    is_active = db.Column(db.Boolean, default=True, index=True)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=_utcnow, index=True)
+    updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow, index=True)
+
+    author = db.relationship('User', foreign_keys=[created_by], backref=db.backref('knowledge_entries', lazy='dynamic'))
+
+    def excerpt(self, length=200):
+        text = (self.content or '').strip()
+        if len(text) <= length:
+            return text
+        return text[:length].rsplit(' ', 1)[0] + '…'
+
+    def keyword_list(self):
+        if not self.keywords:
+            return []
+        return [k.strip() for k in self.keywords.split(',') if k.strip()]
+
+    def to_dict(self, include_content=True):
+        author_name = None
+        if self.author:
+            author_name = self.author.full_name or self.author.username
+        data = {
+            'id': self.id,
+            'title': self.title,
+            'keywords': self.keyword_list(),
+            'category': self.category or 'General',
+            'answer_link': self.answer_link or '',
+            'source_type': self.source_type or 'text',
+            'file_name': self.file_name,
+            'file_type': self.file_type,
+            'source_url': self.source_url or '',
+            'fetched_at': self.fetched_at.isoformat() if self.fetched_at else None,
+            'is_active': bool(self.is_active),
+            'created_by': self.created_by,
+            'author_name': author_name,
+            'excerpt': self.excerpt(),
+            'content_length': len(self.content or ''),
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+        if include_content:
+            data['content'] = self.content or ''
+        return data
+
+    def __repr__(self):
+        return f'<KnowledgeBaseEntry {self.id} - {self.title}>'
+
+
 class MmrChargeableConfig(db.Model):
     """Single-row JSON settings for MMR chargeable rules (admin-editable)."""
     __tablename__ = 'mmr_chargeable_config'
@@ -1374,3 +1442,123 @@ class Technician(db.Model):
 
     def __repr__(self):
         return f'<Technician {self.employee_id} — {self.full_name}>'
+
+
+class QhsiTraining(db.Model):
+    """Quality team training sessions and meetings booked per project."""
+    __tablename__ = 'qhsi_trainings'
+
+    id = db.Column(db.Integer, primary_key=True)
+    training_id = db.Column(db.String(40), unique=True, nullable=False, index=True)
+    project_name = db.Column(db.String(255), nullable=False, index=True)
+    bd_project_id = db.Column(db.Integer, db.ForeignKey('bd_projects.id'), nullable=True)
+    title = db.Column(db.String(255), nullable=False)
+    training_type = db.Column(db.String(30), default='training')  # training, meeting, audit, induction
+    scheduled_at = db.Column(db.DateTime, nullable=False, index=True)
+    duration_minutes = db.Column(db.Integer, default=60)
+    location = db.Column(db.String(255))
+    facilitator_name = db.Column(db.String(120))
+    facilitator_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    attendees = db.Column(JSON, default=list)  # [{name, role, user_id?}]
+    status = db.Column(db.String(20), default='scheduled', index=True)  # scheduled, completed, cancelled
+    notes = db.Column(db.Text)
+    created_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=_utcnow)
+    updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
+
+    bd_project = db.relationship('BDProject', foreign_keys=[bd_project_id])
+    facilitator = db.relationship('User', foreign_keys=[facilitator_id])
+    created_by = db.relationship('User', foreign_keys=[created_by_id])
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'training_id': self.training_id,
+            'project_name': self.project_name,
+            'bd_project_id': self.bd_project_id,
+            'title': self.title,
+            'training_type': self.training_type,
+            'scheduled_at': self.scheduled_at.isoformat() if self.scheduled_at else None,
+            'duration_minutes': self.duration_minutes,
+            'location': self.location,
+            'facilitator_name': self.facilitator_name,
+            'facilitator_id': self.facilitator_id,
+            'attendees': self.attendees or [],
+            'status': self.status,
+            'notes': self.notes,
+            'created_by_id': self.created_by_id,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+class QhseComplianceImport(db.Model):
+    """Batch metadata for Excel-imported staff compliance data."""
+    __tablename__ = 'qhse_compliance_imports'
+
+    id = db.Column(db.Integer, primary_key=True)
+    import_id = db.Column(db.String(40), unique=True, nullable=False, index=True)
+    filename = db.Column(db.String(255))
+    row_count = db.Column(db.Integer, default=0)
+    employee_count = db.Column(db.Integer, default=0)
+    stats_json = db.Column(JSON, default=dict)
+    imported_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True, index=True)
+    created_at = db.Column(db.DateTime, default=_utcnow, index=True)
+
+    imported_by = db.relationship('User', foreign_keys=[imported_by_id])
+    rows = db.relationship(
+        'QhseStaffComplianceRow',
+        back_populates='import_batch',
+        cascade='all, delete-orphan',
+    )
+
+    def to_dict(self):
+        return {
+            'import_id': self.import_id,
+            'filename': self.filename,
+            'row_count': self.row_count,
+            'employee_count': self.employee_count,
+            'stats': self.stats_json or {},
+            'imported_by_id': self.imported_by_id,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class QhseStaffComplianceRow(db.Model):
+    """One kit line from Excel import (drives QHSE dashboard compliance metrics)."""
+    __tablename__ = 'qhse_staff_compliance_rows'
+
+    id = db.Column(db.Integer, primary_key=True)
+    import_batch_id = db.Column(
+        db.Integer,
+        db.ForeignKey('qhse_compliance_imports.id', ondelete='CASCADE'),
+        nullable=False,
+        index=True,
+    )
+    employee_name = db.Column(db.String(200), nullable=False, index=True)
+    employee_id = db.Column(db.String(80))
+    project_name = db.Column(db.String(255), nullable=False, index=True)
+    record_date = db.Column(db.String(20))
+    department = db.Column(db.String(120))
+    supervisor_name = db.Column(db.String(120))
+    notes = db.Column(db.Text)
+    item_type = db.Column(db.String(80))
+    item_label = db.Column(db.String(160))
+    condition = db.Column(db.String(20), nullable=False, index=True)  # ok, issue, missing
+    created_at = db.Column(db.DateTime, default=_utcnow)
+
+    import_batch = db.relationship('QhseComplianceImport', back_populates='rows')
+
+    def to_dict(self):
+        return {
+            'employee_name': self.employee_name,
+            'employee_id': self.employee_id,
+            'project_name': self.project_name,
+            'record_date': self.record_date,
+            'department': self.department,
+            'supervisor_name': self.supervisor_name,
+            'notes': self.notes,
+            'item_type': self.item_type,
+            'item_label': self.item_label,
+            'condition': self.condition,
+        }
