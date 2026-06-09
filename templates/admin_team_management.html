@@ -240,7 +240,7 @@
   }
   .tm-mod-chip {
     font-size: .62rem; font-weight: 700; padding: .18rem .42rem;
-    border-radius: 5px; background: #edf7f2; color: var(--tm-green);
+    border-radius: 5px; background: #f1f5f9; color: #475569;
     text-transform: uppercase; letter-spacing: .04em;
   }
   .tm-staff-meta { font-size: .78rem; color: var(--tm-muted); display: flex; flex-direction: column; gap: .2rem; margin-bottom: .85rem; }
@@ -248,6 +248,30 @@
   .tm-status-dot { width: 8px; height: 8px; border-radius: 99px; background: #22c55e; display: inline-block; }
   .tm-status-dot.inactive { background: #9ca3af; }
   .tm-staff-actions { display: flex; gap: .4rem; flex-wrap: wrap; }
+
+  /* ── Password field with Show/Copy (matches staff Manage profile) ──────── */
+  .tm-pw-row {
+    display: grid; grid-template-columns: minmax(0,1fr) auto auto;
+    align-items: stretch; border: 1px solid #e2e8f0; border-radius: 10px;
+    background: #fff; overflow: hidden; transition: border-color .15s, box-shadow .15s;
+  }
+  .tm-pw-row:hover { border-color: #94a3b8; }
+  .tm-pw-row:focus-within { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.1); }
+  .tm-pw-input {
+    grid-column: 1; width: 100%; min-width: 0; height: 42px; padding: 0 .85rem;
+    border: none !important; border-radius: 0 !important; background: transparent !important;
+    box-shadow: none !important; font-size: .875rem; color: #1e293b;
+  }
+  .tm-pw-input:hover, .tm-pw-input:focus { border: none !important; box-shadow: none !important; outline: none; background: transparent !important; }
+  .tm-pw-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    height: 42px; padding: 0 1rem; border: none; border-left: 1px solid #f1f5f9;
+    background: #f8fafc; font-size: .72rem; font-weight: 600; letter-spacing: .03em;
+    color: #64748b; text-transform: uppercase; white-space: nowrap; cursor: pointer;
+    transition: background .12s, color .12s;
+  }
+  .tm-pw-btn:hover { background: #f1f5f9; color: #334155; }
+  .tm-pw-btn:focus-visible { outline: none; box-shadow: inset 0 0 0 2px rgba(99,102,241,.2); color: #4f46e5; }
 
   /* ── Technicians table ───────────────────────────────────────────────────── */
   .tm-table-wrap { background: var(--tm-card); border: 1.5px solid var(--tm-line); border-radius: 16px; overflow: hidden; }
@@ -607,11 +631,24 @@
         <div class="tm-section-label">Identity</div>
         <div class="tm-form-grid">
           <div class="tm-fld required"><label for="techEmpId">Employee ID</label><input type="text" id="techEmpId" placeholder="EMP-001" autocomplete="off"></div>
-          <div class="tm-fld required col-span-2"><label for="techFullName">Full Name</label><input type="text" id="techFullName" placeholder="e.g. Ahmed Al Rashidi" autocomplete="off"></div>
+          <div class="tm-fld required col-span-2"><label for="techFullName">Full Name</label><input type="text" id="techFullName" placeholder="e.g. Ahmed Al Rashidi" autocomplete="off" oninput="techAutoUsername(this.value)"></div>
           <div class="tm-fld"><label for="techDesig">Designation</label><input type="text" id="techDesig" placeholder="e.g. HVAC Technician" autocomplete="off"></div>
           <div class="tm-fld"><label for="techDept">Department</label><input type="text" id="techDept" placeholder="e.g. MEP" autocomplete="off"></div>
           <div class="tm-fld col-span-2"><label for="techSpec">Specialization</label><input type="text" id="techSpec" placeholder="e.g. Air Conditioning, Electrical" autocomplete="off"></div>
         </div>
+        <div class="tm-section-label">Login Credentials</div>
+        <div class="tm-form-grid">
+          <div class="tm-fld"><label for="techUsername">Username <span style="font-weight:400;color:var(--tm-muted);font-size:.75rem;">(auto-generated)</span></label><input type="text" id="techUsername" placeholder="Auto-filled from name" autocomplete="off" spellcheck="false"></div>
+          <div class="tm-fld">
+            <label for="techPassword">Password</label>
+            <div class="tm-pw-row">
+              <input type="password" id="techPassword" class="tm-pw-input" placeholder="No password on file" autocomplete="new-password" spellcheck="false">
+              <button type="button" class="tm-pw-btn" id="techPasswordToggle" aria-label="Show password" onclick="toggleTechPasswordVisibility()">Show</button>
+              <button type="button" class="tm-pw-btn" id="techPasswordCopy" aria-label="Copy password" onclick="copyTechPassword()">Copy</button>
+            </div>
+          </div>
+        </div>
+        <p class="tm-pw-hint" id="techPasswordHint" style="margin:.4rem 0 0;font-size:.78rem;color:var(--tm-muted);line-height:1.35;">Visible to administrators only. Saved when you change this field and click Save Technician.</p>
         <div class="tm-section-label">Contact</div>
         <div class="tm-form-grid">
           <div class="tm-fld"><label for="techPhone">Phone</label><input type="tel" id="techPhone" placeholder="+971-50-000-0000" autocomplete="off"></div>
@@ -640,6 +677,12 @@
               <option value="on_leave">On Leave</option>
             </select>
           </div>
+        </div>
+        <div class="tm-section-label">HR Profile</div>
+        <div class="tm-form-grid">
+          <div class="tm-fld col-span-2"><label for="techJobTitle">Job title (HR)</label><input type="text" id="techJobTitle" maxlength="160" placeholder="e.g. Senior Engineer" autocomplete="off"></div>
+          <div class="tm-fld"><label for="techAnnualLeave">Annual leave (days)</label><input type="number" id="techAnnualLeave" min="0" max="366" step="1" placeholder="—" autocomplete="off"></div>
+          <div class="tm-fld"><label for="techOtherLeave">Other leave (days)</label><input type="number" id="techOtherLeave" min="0" max="366" step="1" placeholder="—" autocomplete="off"></div>
         </div>
         <div class="tm-section-label">Notes</div>
         <div class="tm-form-grid">
@@ -802,6 +845,7 @@
     access_hr: 'HR', access_procurement_module: 'Procurement',
     access_business_development: 'BD', access_report_generation: 'Reports',
     access_submitted_forms: 'Submitted', access_ticketing: 'Ticketing',
+    access_operations: 'Operations',
   };
 
   function _isStaffRosterRow(u) {
@@ -957,11 +1001,11 @@
     }
     wrap.style.display = '';
     empty.style.display = 'none';
-    tbody.innerHTML = list.map(t => `
+    tbody.innerHTML = list.map((t, idx) => `
       <tr>
         <td>
           <div style="display:flex;align-items:center;gap:.65rem;">
-            <div class="tm-avatar blue" style="width:36px;height:36px;border-radius:10px;font-size:.82rem;">${initials(t.full_name)}</div>
+            <div class="tm-avatar ${avatarColor(idx)}" style="width:36px;height:36px;border-radius:10px;font-size:.82rem;">${initials(t.full_name)}</div>
             <div><div class="td-name">${t.full_name}</div>${t.specialization ? `<div style="font-size:.72rem;color:var(--tm-muted)">${t.specialization}</div>` : ''}</div>
           </div>
         </td>
@@ -971,7 +1015,7 @@
         <td><span class="td-eid">${t.employee_id}</span></td>
         <td>${t.designation || '—'}</td>
         <td>${t.department || '—'}</td>
-        <td>${t.phone ? `<a href="tel:${t.phone}" style="color:var(--tm-green);text-decoration:none;">${t.phone}</a>` : '—'}</td>
+        <td>${t.phone ? `<a href="tel:${t.phone}" style="color:#475569;text-decoration:none;font-weight:500;">${t.phone}</a>` : '—'}</td>
         <td>${fmtSalary(t.salary)}</td>
         <td style="white-space:nowrap;">${fmtDate(t.joining_date)}</td>
         <td><span class="tm-status-badge ${t.status}">${t.status.replace('_', ' ')}</span></td>
@@ -993,7 +1037,8 @@
   function openTechModal() {
     document.getElementById('techModalTitle').textContent = 'Add Technician';
     document.getElementById('techEditId').value = '';
-    ['techEmpId','techFullName','techDesig','techDept','techSpec','techPhone','techEmail','techNotes'].forEach(id => document.getElementById(id).value = '');
+    ['techEmpId','techFullName','techUsername','techDesig','techDept','techSpec','techPhone','techEmail','techNotes','techJobTitle','techAnnualLeave','techOtherLeave'].forEach(id => document.getElementById(id).value = '');
+    fillTechPasswordField('');
     document.getElementById('techSalary').value = '';
     document.getElementById('techJoining').value = '';
     document.getElementById('techStatus').value = 'active';
@@ -1009,6 +1054,8 @@
     document.getElementById('techEditId').value = t.id;
     document.getElementById('techEmpId').value = t.employee_id || '';
     document.getElementById('techFullName').value = t.full_name || '';
+    document.getElementById('techUsername').value = t.username || _techBuildUsername(t.full_name || '');
+    fillTechPasswordField(t.admin_visible_password || '');
     document.getElementById('techDesig').value = t.designation || '';
     document.getElementById('techDept').value = t.department || '';
     document.getElementById('techSpec').value = t.specialization || '';
@@ -1018,9 +1065,79 @@
     document.getElementById('techJoining').value = t.joining_date || '';
     document.getElementById('techStatus').value = t.status || 'active';
     document.getElementById('techNotes').value = t.notes || '';
+    document.getElementById('techJobTitle').value = t.job_title || '';
+    document.getElementById('techAnnualLeave').value = (t.annual_leave_days !== null && t.annual_leave_days !== undefined) ? t.annual_leave_days : '';
+    document.getElementById('techOtherLeave').value = (t.other_leave_days !== null && t.other_leave_days !== undefined) ? t.other_leave_days : '';
     document.getElementById('techSupervisorUser').value = t.supervisor_user_id ? String(t.supervisor_user_id) : '';
     openModal('techModal');
     setTimeout(() => document.getElementById('techFullName').focus(), 200);
+  }
+
+  function _techBuildUsername(fullName) {
+    var words = (fullName || '').toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '')
+      .trim()
+      .split(/\s+/)
+      .filter(function(w) { return w.length > 0; });
+    if (!words.length) return '';
+    return words.length === 1 ? words[0] : words[0] + '.' + words[words.length - 1];
+  }
+
+  function techAutoUsername(fullName) {
+    if (!!document.getElementById('techEditId').value) return;
+    var unameEl = document.getElementById('techUsername');
+    if (unameEl) unameEl.value = _techBuildUsername(fullName);
+  }
+
+  function fillTechPasswordField(stored) {
+    var el = document.getElementById('techPassword');
+    var hint = document.getElementById('techPasswordHint');
+    var toggle = document.getElementById('techPasswordToggle');
+    if (!el) return;
+    el.value = stored || '';
+    el.placeholder = stored ? '' : 'Default: Amaan@123';
+    el.dataset.storedPassword = stored || '';
+    el.type = 'password';
+    if (toggle) toggle.textContent = 'Show';
+    if (hint) {
+      hint.textContent = stored
+        ? 'Stored for admin reference. Edit and save to change.'
+        : 'Leave blank to use the default password (Amaan@123). Visible to administrators only.';
+    }
+  }
+
+  function techPasswordPayloadValue() {
+    var el = document.getElementById('techPassword');
+    if (!el) return undefined;
+    var v = el.value.trim();
+    var stored = (el.dataset.storedPassword || '').trim();
+    if (v && v !== stored) return v;
+    return undefined;
+  }
+
+  function toggleTechPasswordVisibility() {
+    var el = document.getElementById('techPassword');
+    var btn = document.getElementById('techPasswordToggle');
+    if (!el || !btn) return;
+    var show = el.type === 'password';
+    el.type = show ? 'text' : 'password';
+    btn.textContent = show ? 'Hide' : 'Show';
+    btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+  }
+
+  function copyTechPassword() {
+    var el = document.getElementById('techPassword');
+    if (!el || !el.value.trim()) { tmToast('No password to copy.', 'error'); return; }
+    var v = el.value;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(v).then(function () { tmToast('Password copied.', 'success'); })
+        .catch(function () { el.select(); document.execCommand('copy'); tmToast('Password copied.', 'success'); });
+    } else {
+      var wasHidden = el.type === 'password';
+      el.type = 'text'; el.select(); document.execCommand('copy');
+      if (wasHidden) el.type = 'password';
+      tmToast('Password copied.', 'success');
+    }
   }
 
   document.getElementById('techModalSave').addEventListener('click', async () => {
@@ -1029,6 +1146,8 @@
     const payload = {
       employee_id: document.getElementById('techEmpId').value.trim(),
       full_name: document.getElementById('techFullName').value.trim(),
+      username: document.getElementById('techUsername').value.trim() || null,
+      password: techPasswordPayloadValue(),
       designation: document.getElementById('techDesig').value.trim(),
       department: document.getElementById('techDept').value.trim(),
       specialization: document.getElementById('techSpec').value.trim(),
@@ -1038,6 +1157,9 @@
       joining_date: document.getElementById('techJoining').value || null,
       status: document.getElementById('techStatus').value,
       notes: document.getElementById('techNotes').value.trim(),
+      job_title: document.getElementById('techJobTitle').value.trim(),
+      annual_leave_days: document.getElementById('techAnnualLeave').value || null,
+      other_leave_days: document.getElementById('techOtherLeave').value || null,
     };
     const isEdit = !!editId;
     if (isEdit) {

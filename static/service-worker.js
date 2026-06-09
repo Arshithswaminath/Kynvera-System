@@ -1,7 +1,7 @@
 // Service Worker for Injaaz PWA
 // Version 1.0.0
 
-const CACHE_NAME = 'injaaz-v1.0.2';
+const CACHE_NAME = 'injaaz-v1.0.4';
 const OFFLINE_URL = '/offline';
 
 // Assets to cache immediately on install

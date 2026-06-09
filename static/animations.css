@@ -128,14 +128,12 @@ tr,
 .animate-in-delay-4 { animation-delay: 0.24s; }
 
 @keyframes pageFade {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  /* Opacity-only on purpose: NEVER animate transform on <body>. With
+     animation-fill-mode: forwards, any transform (even a transient one) makes
+     <body> the containing block for every position:fixed element, which breaks
+     fixed pinning (fixed widgets like #tktCdWidget scroll with the page). */
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 @keyframes fadeInUp {

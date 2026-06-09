@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+  {% include 'partials/caveat_font.html' %}
+  <title>Operations - Amaan Application</title>
+  <meta name="theme-color" content="#d21725">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <style>
+    :root { --primary: #d21725; --primary-light: #e8323f; }
+    .operations-dashboard { background: #F8FAF8; }
+    .operations-dashboard .modules-section { background: #F8FAF8 !important; }
+    .operations-hero { padding: 9rem 0 5rem; }
+  </style>
+</head>
+<body class="operations-dashboard">
+  {% set active_page = 'operations' %}
+  {% include 'partials/main_navbar.html' with context %}
+
+  <header class="hero hero-split operations-hero">
+    <div class="hero-content hero-split-inner">
+      <div class="hero-left">
+        <a href="/dashboard" class="back-btn">
+          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+          </svg>
+          Back to Dashboard
+        </a>
+        <h1 class="hero-title">Operations <span class="hero-title-accent">Hub</span></h1>
+        <p class="hero-subtitle">Staff overtime records and trading invoices for material sales.</p>
+      </div>
+    </div>
+  </header>
+
+  <section class="modules-section" id="modules">
+    <div class="modules-inner">
+      <h2 class="modules-section-label">Operations</h2>
+      <div class="modules-grid">
+
+        <a href="/operations/overtime" class="module-card">
+          <div class="card-body">
+            <span class="module-number">Operations</span>
+            <div class="module-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>
+            </div>
+            <h2 class="module-title">Over Time</h2>
+            <p class="module-description">Record staff overtime hours manually or by Excel import, with automatic cost calculation.</p>
+            <span class="module-arrow">Open Over Time <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
+          </div>
+        </a>
+
+        <a href="/operations/invoices" class="module-card">
+          <div class="card-body">
+            <span class="module-number">Operations</span>
+            <div class="module-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2Z" /></svg>
+            </div>
+            <h2 class="module-title">Trading Invoices</h2>
+            <p class="module-description">Create invoices for materials sourced and sold to clients, with branded PDF output.</p>
+            <span class="module-arrow">Open Invoices <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
+          </div>
+        </a>
+
+        <a href="/operations/clients" class="module-card">
+          <div class="card-body">
+            <span class="module-number">Operations</span>
+            <div class="module-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" /></svg>
+            </div>
+            <h2 class="module-title">Clients</h2>
+            <p class="module-description">Manage the customer master used when creating trading invoices.</p>
+            <span class="module-arrow">Open Clients <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
+          </div>
+        </a>
+
+        <!-- Email Automation (moved under Operations; shown only with Email-Automation access) -->
+        <a href="/admin/mmr/" class="module-card" id="ops-tile-email" style="display: none;">
+          <div class="card-body">
+            <span class="module-number">Operations</span>
+            <div class="module-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" /></svg>
+            </div>
+            <h2 class="module-title">Email Automation</h2>
+            <p class="module-description">Create scheduled emails with recipients, message, and attachments — sent automatically daily, weekly, monthly, or on a custom interval.</p>
+            <span class="module-arrow">Open Automations <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
+          </div>
+        </a>
+
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-brand">Amaan</div>
+      <p class="footer-copy">© {{ now().year }} Amaan Application / built by <span class="footer-built-by-name">Arshith Swaminath P</span></p>
+    </div>
+  </footer>
+
+  <script src="{{ url_for('static', filename='pwa-install.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='mobile_utils.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='api-client.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+  <script>
+    // Reveal the Email Automation tile only for users with Email-Automation access.
+    (function () {
+      function applyEmailTile(user) {
+        var tile = document.getElementById('ops-tile-email');
+        if (!tile || !user) return;
+        var show = (typeof userHasReportGenerationNavAccess === 'function')
+          ? userHasReportGenerationNavAccess(user)
+          : (user.role === 'admin' || user.access_report_generation === true);
+        tile.style.display = show ? 'block' : 'none';
+      }
+      var userStr = localStorage.getItem('user');
+      if (userStr) {
+        try { applyEmailTile(JSON.parse(userStr)); return; } catch (e) {}
+      }
+      fetch('/api/auth/me', { headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('access_token') || '') } })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (data) { if (data && data.user) applyEmailTile(data.user); })
+        .catch(function () {});
+    })();
+  </script>
+</body>
+</html>

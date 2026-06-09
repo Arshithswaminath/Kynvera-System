@@ -16,8 +16,10 @@
       --accent-pale: #fde8ea;
       --sidebar-w: 260px;
       --nav-top: 73px;
+      --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", "Helvetica Neue", sans-serif;
     }
     body.has-main-nav {
+      font-family: var(--font-sans);
       background: #f7f8fa;
       margin: 0;
       padding-top: var(--nav-top);
@@ -64,7 +66,19 @@
     .sb-pending   { background: #dbeafe; color: #1d4ed8; }
     .sb-scheduled { background: #d1fae5; color: #065f46; }
     .sb-completed { background: #f3f4f6; color: #374151; }
+    .sb-closed    { background: #f3f4f6; color: #374151; }
     .sb-overdue   { background: #fee2e2; color: #dc2626; }
+    /* outcome badges */
+    .outcome-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 999px; font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; margin-top: 8px; }
+    .ob-pass { background: #d1fae5; color: #065f46; }
+    .ob-fail { background: #fee2e2; color: #dc2626; }
+    .notif-actions button.outcome-btn { background: #fef3c7; border-color: #fcd34d; color: #92400e; }
+    .notif-actions button.convert-btn { background: #dbeafe; border-color: #93c5fd; color: #1d4ed8; }
+    /* outcome modal */
+    .oc-choice { display: flex; gap: 10px; margin-bottom: 14px; }
+    .oc-choice button { flex: 1; padding: 12px; border-radius: 10px; border: 2px solid #e5e7eb; background: #fff; font-weight: 700; font-size: .9rem; cursor: pointer; transition: all .15s; }
+    .oc-choice button.sel-pass { border-color: #6ee7b7; background: #d1fae5; color: #065f46; }
+    .oc-choice button.sel-fail { border-color: #fca5a5; background: #fee2e2; color: #dc2626; }
     .notif-site { font-size: 1.05rem; font-weight: 700; color: #111; margin-bottom: 4px; }
     .notif-type { font-size: .8rem; color: #6b7280; margin-bottom: 14px; }
     .notif-dates { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
@@ -315,6 +329,48 @@
     </div>
   </div>
 
+  <!-- Record Inspection Outcome modal -->
+  <div class="modal-overlay" id="outcomeModal">
+    <div class="modal-box" style="max-width: 460px;">
+      <div class="modal-header">
+        <h2>Record Inspection Result</h2>
+        <button class="modal-close" onclick="closeOutcomeModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div style="font-size:.82rem;color:#6b7280;margin-bottom:14px;" id="oc-site">—</div>
+
+        <label class="form-label">Outcome</label>
+        <div class="oc-choice">
+          <button type="button" id="oc-pass-btn" onclick="setOutcome('pass')">✓ Pass</button>
+          <button type="button" id="oc-fail-btn" onclick="setOutcome('fail')">✗ Fail</button>
+        </div>
+
+        <div id="oc-fail-fields" style="display:none;">
+          <div class="form-row">
+            <label class="form-label">Who rectifies?</label>
+            <div class="oc-choice">
+              <button type="button" id="oc-amaan-btn" onclick="setRectify('amaan')" style="font-size:.82rem;">Amaan side</button>
+              <button type="button" id="oc-cd-btn" onclick="setRectify('civil_defense')" style="font-size:.82rem;">Civil Defense</button>
+            </div>
+          </div>
+          <div class="form-row">
+            <label class="form-label">Findings / basis</label>
+            <textarea class="form-textarea" id="oc-notes" rows="3" placeholder="What failed? (used as the service-ticket basis)"></textarea>
+          </div>
+          <div class="form-row" id="oc-reinspect-row" style="display:none;">
+            <label class="form-label">New inspection date</label>
+            <input type="date" class="form-input" id="oc-new-date">
+            <div style="font-size:.72rem;color:#9ca3af;margin-top:4px;">Civil Defense will rectify, then re-inspect. No service ticket is created.</div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-ghost" onclick="closeOutcomeModal()">Cancel</button>
+        <button class="btn-primary" id="ocSubmitBtn" onclick="submitOutcome()">Save Result</button>
+      </div>
+    </div>
+  </div>
+
   <script src="{{ url_for('static', filename='js/dashboard.js') }}" defer></script>
   <script src="{{ url_for('static', filename='api-client.js') }}"></script>
   <script>
@@ -410,10 +466,35 @@
         countdownText = `${dr} days until inspection`;
         countdownClass = 'countdown-ok';
       }
-      const sbClass = {pending:'sb-pending',scheduled:'sb-scheduled',completed:'sb-completed',overdue:'sb-overdue'}[n.status]||'sb-pending';
+      const sbClass = {pending:'sb-pending',scheduled:'sb-scheduled',completed:'sb-completed',closed:'sb-closed',overdue:'sb-overdue'}[n.status]||'sb-pending';
       const notifFmt = n.notification_date ? new Date(n.notification_date).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : '—';
       const inspFmt  = n.inspection_date  ? new Date(n.inspection_date).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})  : '—';
-      const doneActions = n.status === 'completed' ? '' : `<button onclick="markComplete(${n.id})" class="complete-btn">✓ Mark Complete</button>`;
+
+      // Outcome badge + outcome-aware actions
+      let outcomeBadge = '';
+      if (n.outcome === 'pass') {
+        outcomeBadge = `<span class="outcome-badge ob-pass">✓ Passed — Closed</span>`;
+      } else if (n.outcome === 'fail') {
+        const who = n.rectify_by === 'civil_defense'
+          ? `CD rectifies${n.reinspection_count ? ' · re-inspection #'+n.reinspection_count : ''}`
+          : 'Amaan rectifies';
+        outcomeBadge = `<span class="outcome-badge ob-fail">✗ Failed — ${who}</span>`;
+      }
+
+      const actions = [];
+      if (!n.outcome) {
+        // No outcome yet → let the user record the inspection result.
+        actions.push(`<button onclick='openOutcomeModal(${JSON.stringify(n)})' class="outcome-btn">Record Result</button>`);
+      } else if (n.can_convert) {
+        // Failed + Amaan rectifies → allow conversion into a service ticket.
+        actions.push(`<button onclick="window.location.href='/tickets/new?from_cd=${n.id}'" class="convert-btn">Create Service Ticket</button>`);
+        actions.push(`<button onclick='openOutcomeModal(${JSON.stringify(n)})'>Re-record</button>`);
+      } else if (n.outcome === 'fail') {
+        // Failed + CD rectifies → re-inspection scheduled; allow re-recording the next result.
+        actions.push(`<button onclick='openOutcomeModal(${JSON.stringify(n)})' class="outcome-btn">Record Result</button>`);
+      }
+      actions.push(`<button onclick="deleteNotif(${n.id})">Delete</button>`);
+
       return `
 <div class="notif-card" id="ncard-${n.id}">
   <div class="notif-card-top">
@@ -422,7 +503,8 @@
   </div>
   <div class="notif-site">${escHtml(n.site_name)}</div>
   <div class="notif-type">${escHtml(n.inspection_type||'General Inspection')} ${n.civil_defense_ref ? '· Ref: '+escHtml(n.civil_defense_ref) : ''}</div>
-  <div class="notif-dates">
+  ${outcomeBadge}
+  <div class="notif-dates" style="margin-top:12px;">
     <div class="notif-date-box">
       <div class="notif-date-label">Notified</div>
       <div class="notif-date-val">${notifFmt}</div>
@@ -433,21 +515,81 @@
     </div>
   </div>
   ${countdownText ? `<div class="notif-countdown ${countdownClass}">${countdownText}</div>` : ''}
-  ${n.notes ? `<p style="font-size:.8rem;color:#6b7280;margin:0 0 10px;">${escHtml(n.notes)}</p>` : ''}
+  ${n.outcome_notes ? `<p style="font-size:.8rem;color:#b91c1c;margin:0 0 8px;"><strong>Findings:</strong> ${escHtml(n.outcome_notes)}</p>` : ''}
+  ${n.notes ? `<p style="font-size:.8rem;color:#6b7280;margin:0 0 10px;white-space:pre-line;">${escHtml(n.notes)}</p>` : ''}
   <div style="font-size:.75rem;color:#9ca3af;">${n.days_notice} days notice · Registered by ${escHtml(n.registered_by_name||'—')}</div>
   <div class="notif-actions">
-    ${doneActions}
-    <button onclick="deleteNotif(${n.id})">Delete</button>
+    ${actions.join('')}
   </div>
 </div>`;
     }
 
-    async function markComplete(id) {
+    // ── Record inspection outcome ──────────────────────────────────────
+    let _ocNotifId = null, _ocOutcome = null, _ocRectify = null;
+
+    function openOutcomeModal(n) {
+      _ocNotifId = n.id;
+      _ocOutcome = n.outcome || null;
+      _ocRectify = n.rectify_by || null;
+      document.getElementById('oc-site').textContent =
+        `${n.site_name} · ${n.inspection_type || 'General Inspection'}`;
+      document.getElementById('oc-notes').value = n.outcome_notes || '';
+      document.getElementById('oc-new-date').value = '';
+      _syncOutcomeUI();
+      document.getElementById('outcomeModal').classList.add('open');
+    }
+
+    function closeOutcomeModal() {
+      document.getElementById('outcomeModal').classList.remove('open');
+      _ocNotifId = _ocOutcome = _ocRectify = null;
+    }
+
+    function setOutcome(v) {
+      _ocOutcome = v;
+      if (v === 'pass') _ocRectify = null;
+      _syncOutcomeUI();
+    }
+
+    function setRectify(v) {
+      _ocRectify = v;
+      _syncOutcomeUI();
+    }
+
+    function _syncOutcomeUI() {
+      document.getElementById('oc-pass-btn').className = _ocOutcome === 'pass' ? 'sel-pass' : '';
+      document.getElementById('oc-fail-btn').className = _ocOutcome === 'fail' ? 'sel-fail' : '';
+      document.getElementById('oc-fail-fields').style.display = _ocOutcome === 'fail' ? 'block' : 'none';
+      document.getElementById('oc-amaan-btn').className = _ocRectify === 'amaan' ? 'sel-pass' : '';
+      document.getElementById('oc-cd-btn').className = _ocRectify === 'civil_defense' ? 'sel-fail' : '';
+      document.getElementById('oc-reinspect-row').style.display =
+        (_ocOutcome === 'fail' && _ocRectify === 'civil_defense') ? 'block' : 'none';
+    }
+
+    async function submitOutcome() {
+      if (!_ocOutcome) { alert('Choose Pass or Fail.'); return; }
+      const payload = { outcome: _ocOutcome };
+      if (_ocOutcome === 'fail') {
+        if (!_ocRectify) { alert('Choose who rectifies.'); return; }
+        payload.rectify_by = _ocRectify;
+        payload.outcome_notes = document.getElementById('oc-notes').value.trim();
+        if (_ocRectify === 'civil_defense') {
+          const nd = document.getElementById('oc-new-date').value;
+          if (!nd) { alert('A new inspection date is required for a Civil Defense re-inspection.'); return; }
+          payload.inspection_date = nd;
+        }
+      }
+      const btn = document.getElementById('ocSubmitBtn');
+      btn.disabled = true; btn.textContent = 'Saving…';
       try {
-        await apiClient.patch(`/inspection/api/notifications/${id}`, { status: 'completed' });
+        await apiClient.post(`/inspection/api/notifications/${_ocNotifId}/outcome`, payload);
+        closeOutcomeModal();
         loadCDNotifications();
         loadStats();
-      } catch(e) { alert('Failed to update.'); }
+      } catch(e) {
+        alert(e.message || 'Failed to save result.');
+      } finally {
+        btn.disabled = false; btn.textContent = 'Save Result';
+      }
     }
 
     async function deleteNotif(id) {

@@ -56,6 +56,36 @@ def _is_remote_stored_path(path):
     return bool(path) and (path.startswith('http://') or path.startswith('https://'))
 
 
+def _path_basename_any_os(path):
+    """Basename that handles both POSIX (/) and Windows (\\) separators."""
+    return re.split(r'[\\/]', str(path).strip())[-1] if path else ''
+
+
+def _resolve_local_stored_path(stored_path):
+    """
+    Return a usable local filesystem path for a DocHub upload, or None.
+
+    Falls back to ``GENERATED_DIR/dochub/<basename>`` when the recorded path
+    does not exist locally. This makes DocHub resilient to a database copied
+    from another machine/OS that stored absolute foreign paths (e.g. a Windows
+    path like ``D:\\Work\\Injaaz-App\\generated\\dochub\\<hash>_Name.pdf``):
+    once the file itself is present in the local dochub folder, it resolves.
+    Returns None for remote (HTTP) paths — those are handled separately.
+    """
+    if not stored_path or _is_remote_stored_path(stored_path):
+        return None
+    if os.path.isfile(stored_path):
+        return stored_path
+    base = _path_basename_any_os(stored_path)
+    if not base:
+        return None
+    generated_root = current_app.config.get('GENERATED_DIR')
+    if not generated_root:
+        return None
+    candidate = os.path.join(generated_root, 'dochub', base)
+    return candidate if os.path.isfile(candidate) else None
+
+
 def _stream_remote_as_download(url, filename):
     """Proxy remote file so the browser still calls same-origin /api/docs/.../download (avoids CORS)."""
     fn = secure_filename(filename or 'document') or 'document'
@@ -571,11 +601,12 @@ def download_document(doc_id):
         return error_response('Document file not found', status_code=404, error_code='NOT_FOUND')
     if _is_remote_stored_path(doc.stored_path):
         return _stream_remote_as_download(doc.stored_path, doc.filename)
-    if not os.path.isfile(doc.stored_path):
+    local_path = _resolve_local_stored_path(doc.stored_path)
+    if not local_path:
         return error_response('Document file not found', status_code=404, error_code='NOT_FOUND')
     mime, _ = mimetypes.guess_type(doc.filename or '')
     return send_file(
-        doc.stored_path,
+        local_path,
         as_attachment=True,
         download_name=doc.filename or 'document',
         mimetype=mime or 'application/octet-stream',
@@ -610,8 +641,11 @@ def preview_upload_as_pdf(doc_id):
         except Exception as e:
             current_app.logger.warning('DocHub preview: could not fetch remote docx: %s', e)
             return error_response('Document file not found', status_code=404, error_code='NOT_FOUND')
-    elif not os.path.isfile(doc.stored_path):
-        return error_response('Document file not found', status_code=404, error_code='NOT_FOUND')
+    else:
+        local_path = _resolve_local_stored_path(doc.stored_path)
+        if not local_path:
+            return error_response('Document file not found', status_code=404, error_code='NOT_FOUND')
+        docx_path = local_path
 
     generated_root = current_app.config.get('GENERATED_DIR')
     if not generated_root:

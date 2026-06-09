@@ -31,7 +31,7 @@
       --fin-danger-bg: #fee2e2;
       --fin-info: #0284c7;
       --fin-info-bg: #e0f2fe;
-      --nav-top: 5.5rem;
+      --nav-top: 73px;
     }
     * { box-sizing: border-box; }
     html, body { margin: 0; padding: 0; }
@@ -150,45 +150,50 @@
     @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .55; } }
 
     /* ── Stat cards ─────────────────────────────────────── */
-    .stat-row {
+    /* ── Metrics strip ──────────────────────────────────── */
+    .stat-strip {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 12px;
-    }
-    @media (max-width: 700px) { .stat-row { grid-template-columns: repeat(2, 1fr); } }
-    @media (max-width: 420px) { .stat-row { grid-template-columns: 1fr; } }
-    .stat-card {
       background: var(--fin-surface);
       border: 1px solid var(--fin-border);
-      border-radius: 13px;
-      padding: 18px;
-      position: relative; overflow: hidden;
-      transition: transform .15s, box-shadow .15s;
+      border-radius: 14px;
+      overflow: hidden;
+      margin-bottom: 0;
     }
-    .stat-card:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(0,0,0,.07); }
-    .stat-card::before {
-      content: ""; position: absolute; top: 0; left: 0;
-      width: 3px; height: 100%;
-      background: var(--fin-accent);
+    .stat-strip-item {
+      padding: 18px 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      position: relative;
     }
-    .stat-card.green::before { background: var(--fin-success); }
-    .stat-card.amber::before { background: var(--fin-warning); }
-    .stat-card.blue::before  { background: var(--fin-info); }
-    .stat-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
-    .stat-label { font-size: .7rem; font-weight: 700; color: var(--fin-muted); text-transform: uppercase; letter-spacing: .06em; }
-    .stat-ico {
-      width: 30px; height: 30px; border-radius: 8px;
+    .stat-strip-item + .stat-strip-item { border-left: 1px solid var(--fin-border-soft); }
+    .stat-strip-ico {
+      width: 42px; height: 42px; border-radius: 11px;
       display: flex; align-items: center; justify-content: center;
-      background: rgba(210,23,37,.08); color: var(--fin-accent);
+      flex-shrink: 0;
     }
-    .stat-ico.green { background: var(--fin-success-bg); color: var(--fin-success); }
-    .stat-ico.amber { background: var(--fin-warning-bg); color: var(--fin-warning); }
-    .stat-ico.blue  { background: var(--fin-info-bg);    color: var(--fin-info); }
-    .stat-ico svg { width: 17px; height: 17px; }
-    .stat-val { font-size: 1.7rem; font-weight: 800; color: var(--fin-text); line-height: 1.1; letter-spacing: -.025em; }
-    .stat-val.red { color: var(--fin-accent); }
-    .stat-val.green { color: var(--fin-success); }
-    .stat-trend { font-size: .72rem; color: var(--fin-muted); margin-top: 6px; font-weight: 500; }
+    .stat-strip-ico svg { width: 20px; height: 20px; }
+    .stat-strip-ico.red   { background: rgba(210,23,37,.09);  color: var(--fin-accent); }
+    .stat-strip-ico.green { background: var(--fin-success-bg); color: var(--fin-success); }
+    .stat-strip-ico.blue  { background: var(--fin-info-bg);    color: var(--fin-info); }
+    .stat-strip-ico.amber { background: var(--fin-warning-bg); color: var(--fin-warning); }
+    .stat-strip-body { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+    .stat-strip-val {
+      font-size: 1.65rem; font-weight: 800; line-height: 1; letter-spacing: -.03em;
+      color: var(--fin-text);
+    }
+    .stat-strip-val.red   { color: var(--fin-accent); }
+    .stat-strip-val.green { color: var(--fin-success); }
+    .stat-strip-label {
+      font-size: .7rem; font-weight: 700; color: var(--fin-muted);
+      text-transform: uppercase; letter-spacing: .06em; margin-top: 3px;
+    }
+    .stat-strip-sub {
+      font-size: .7rem; color: var(--fin-muted); font-weight: 400; margin-top: 1px;
+    }
+    @media (max-width: 700px) { .stat-strip { grid-template-columns: repeat(2, 1fr); } .stat-strip-item + .stat-strip-item:nth-child(odd) { border-left: none; } .stat-strip-item:nth-child(3), .stat-strip-item:nth-child(4) { border-top: 1px solid var(--fin-border-soft); } }
+    @media (max-width: 420px) { .stat-strip { grid-template-columns: 1fr; } .stat-strip-item + .stat-strip-item { border-left: none; border-top: 1px solid var(--fin-border-soft); } }
 
     /* ── Workflow tabs + queue ─────────────────────────── */
     .queue-card {
@@ -241,15 +246,16 @@
     .queue-tab.active .count { background: var(--fin-accent); color: #fff; }
 
     /* ── Queue rows ─────────────────────────────────────── */
-    .queue-body { padding: 8px; }
+    .queue-body { padding: 8px; overflow-x: auto; }
     .queue-row {
       display: grid;
-      grid-template-columns: minmax(180px, 1.4fr) 1.2fr auto auto;
+      grid-template-columns: minmax(220px, 1.4fr) minmax(180px, 1.2fr) minmax(80px, auto) minmax(140px, auto);
       gap: 14px; align-items: center;
       padding: 14px 14px;
       border-radius: 10px;
       transition: background .15s;
       border: 1px solid transparent;
+      min-width: 640px;
     }
     .queue-row:hover { background: #fafbfc; border-color: var(--fin-border-soft); }
     .queue-row + .queue-row { margin-top: 4px; }
@@ -285,7 +291,7 @@
 
     /* ── Workflow status pipeline ──────────────────────── */
     .qr-status {
-      display: flex; align-items: center; gap: 4px;
+      display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
       font-size: .68rem; font-weight: 600;
       color: var(--fin-muted);
       margin-top: 6px;
@@ -356,7 +362,7 @@
     .sample-banner svg { width: 18px; height: 18px; flex-shrink: 0; color: #a16207; }
 
     /* ── Modal ─────────────────────────────────────────── */
-    .modal-overlay {
+    #processModal {
       position: fixed; inset: 0;
       background: rgba(15,23,42,.55);
       backdrop-filter: blur(4px);
@@ -365,15 +371,128 @@
       align-items: center; justify-content: center;
       padding: 20px;
     }
-    .modal-overlay.show { display: flex; }
+    #processModal.open { display: flex; opacity: 1; pointer-events: all; }
     .modal {
       background: #fff; border-radius: 16px;
-      width: 100%; max-width: 540px;
+      width: 100%; max-width: 900px;
       max-height: 90vh; overflow-y: auto;
       box-shadow: 0 20px 60px rgba(0,0,0,.3);
       position: relative;
       pointer-events: all;
     }
+    .modal-cols {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+    }
+    .modal-col-left {
+      padding-right: 20px;
+      border-right: 1px solid var(--fin-border-soft);
+    }
+    .modal-col-right {
+      padding-left: 20px;
+    }
+    /* ── Email section inside modal ── */
+    .email-sec-head {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .email-sec-title {
+      font-size: .82rem; font-weight: 700; color: #374151;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .email-settings-btn {
+      background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 6px;
+      padding: 4px 10px; font-size: .72rem; color: #6b7280;
+      cursor: pointer; display: flex; align-items: center; gap: 4px;
+    }
+    .email-settings-panel {
+      background: #f9fafb; border: 1.5px solid #e5e7eb; border-radius: 10px;
+      padding: 12px; margin-bottom: 10px;
+    }
+    .email-settings-title {
+      font-size: .75rem; font-weight: 700; color: #374151;
+      text-transform: uppercase; letter-spacing: .04em; margin-bottom: 8px;
+    }
+    .email-settings-row { margin-bottom: 6px; }
+    .email-settings-row:last-of-type { margin-bottom: 8px; }
+    .email-field-label {
+      font-size: .78rem; font-weight: 600; color: #374151;
+      display: block; margin-bottom: 3px;
+    }
+    .email-field-label-sub {
+      font-size: .72rem; font-weight: 400; color: #9ca3af;
+    }
+    .email-text-input {
+      width: 100%; box-sizing: border-box;
+      padding: 7px 10px; border: 1px solid #e5e7eb; border-radius: 6px;
+      font-size: .82rem; font-family: inherit;
+    }
+    .email-text-input-sm {
+      width: 100%; box-sizing: border-box;
+      padding: 6px 10px; border: 1px solid #e5e7eb; border-radius: 6px;
+      font-size: .8rem; font-family: inherit;
+    }
+    .email-to-cc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+    .email-body-area {
+      width: 100%; box-sizing: border-box;
+      padding: 7px 10px; border: 1px solid #e5e7eb; border-radius: 6px;
+      font-size: .82rem; font-family: inherit; resize: vertical;
+    }
+    .email-save-btn {
+      background: #d21725; color: #fff; border: none; border-radius: 6px;
+      padding: 5px 14px; font-size: .78rem; font-weight: 600; cursor: pointer;
+    }
+    .modal-warning {
+      background: #fef3c7; border: 1px solid #fbbf24; border-radius: 9px;
+      padding: 10px 12px; font-size: .78rem; color: #78350f;
+      display: flex; gap: 8px; align-items: flex-start; margin-top: 16px;
+    }
+    .modal-warning svg { flex-shrink: 0; color: #a16207; margin-top: 1px; }
+    /* ── Modal success state ── */
+    .modal-success {
+      display: none;
+      flex-direction: column; align-items: center; justify-content: center;
+      padding: 40px 32px; text-align: center; gap: 0;
+    }
+    .modal-success.visible { display: flex; }
+    .ms-ring {
+      width: 72px; height: 72px; border-radius: 50%;
+      background: #f0fdf4; border: 2.5px solid #86efac;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 20px;
+      animation: msRingIn .4s cubic-bezier(.16,1,.3,1) both;
+    }
+    .ms-ring svg { color: #16a34a; animation: msCheckIn .35s ease both .15s; opacity: 0; }
+    @keyframes msRingIn { from { transform: scale(.7); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    @keyframes msCheckIn { from { transform: scale(.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .ms-title { font-size: 1.1rem; font-weight: 800; color: #15803d; margin-bottom: 6px; }
+    .ms-pills { display: flex; gap: 8px; margin: 14px 0 20px; flex-wrap: wrap; justify-content: center; }
+    .ms-pill {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 5px 12px; border-radius: 999px; font-size: .75rem; font-weight: 600;
+    }
+    .ms-pill.green { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+    .ms-pill.blue  { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+    .ms-sub { font-size: .78rem; color: var(--fin-muted); margin-bottom: 24px; max-width: 320px; line-height: 1.5; }
+    .ms-progress {
+      width: 200px; height: 3px; background: #e2e8f0; border-radius: 999px; overflow: hidden;
+    }
+    .ms-progress-bar {
+      height: 100%; width: 100%; background: #16a34a; border-radius: 999px;
+      transform-origin: left;
+      animation: msBar 3s linear both;
+    }
+    @keyframes msBar { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+    .ms-done-btn {
+      margin-top: 16px; padding: 8px 24px; border-radius: 8px;
+      background: #16a34a; color: #fff; font-size: .82rem; font-weight: 600;
+      border: none; cursor: pointer; transition: background .15s;
+    }
+    .ms-done-btn:hover { background: #15803d; }
+    .form-required { color: var(--fin-danger); }
+    .form-field-last { margin-bottom: 0; }
+    .form-textarea-tall { min-height: 90px; }
     .modal-head {
       padding: 20px 24px;
       border-bottom: 1px solid var(--fin-border-soft);
@@ -479,7 +598,7 @@
     .toast svg { width: 18px; height: 18px; }
 
     @media (max-width: 760px) {
-      .queue-row { grid-template-columns: 1fr; gap: 8px; }
+      .queue-row { grid-template-columns: 1fr; gap: 8px; min-width: 0; }
       .qr-actions { width: 100%; justify-content: flex-end; }
       .fin-wrap, .fin-hero { padding-left: 16px; padding-right: 16px; }
     }
@@ -615,47 +734,47 @@
     <div class="bento-grid">
     <div class="bento-main">
 
-    <!-- Stat cards -->
-    <div class="stat-row">
-      <div class="stat-card">
-        <div class="stat-top">
-          <span class="stat-label">Awaiting Invoice</span>
-          <span class="stat-ico">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
-          </span>
+    <!-- Stat strip -->
+    <div class="stat-strip">
+      <div class="stat-strip-item">
+        <span class="stat-strip-ico red">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+        </span>
+        <div class="stat-strip-body">
+          <div class="stat-strip-val red" id="s-pending">—</div>
+          <div class="stat-strip-label">Awaiting Invoice</div>
+          <div class="stat-strip-sub">Pending finance action</div>
         </div>
-        <div class="stat-val red" id="s-pending">—</div>
-        <div class="stat-trend">Pending finance action</div>
       </div>
-      <div class="stat-card green">
-        <div class="stat-top">
-          <span class="stat-label">Completed Today</span>
-          <span class="stat-ico green">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
-          </span>
+      <div class="stat-strip-item">
+        <span class="stat-strip-ico green">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+        </span>
+        <div class="stat-strip-body">
+          <div class="stat-strip-val green" id="s-today">—</div>
+          <div class="stat-strip-label">Completed Today</div>
+          <div class="stat-strip-sub">ERP invoices logged</div>
         </div>
-        <div class="stat-val green" id="s-today">—</div>
-        <div class="stat-trend">ERP invoices logged</div>
       </div>
-      <div class="stat-card blue">
-        <div class="stat-top">
-          <span class="stat-label">This Month</span>
-          <span class="stat-ico blue">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25"/></svg>
-          </span>
+      <div class="stat-strip-item">
+        <span class="stat-strip-ico blue">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25"/></svg>
+        </span>
+        <div class="stat-strip-body">
+          <div class="stat-strip-val" id="s-month">—</div>
+          <div class="stat-strip-label">This Month</div>
+          <div class="stat-strip-sub">Invoices processed</div>
         </div>
-        <div class="stat-val" id="s-month">—</div>
-        <div class="stat-trend">Invoices processed</div>
       </div>
-      <div class="stat-card amber">
-        <div class="stat-top">
-          <span class="stat-label">All-time Closed</span>
-          <span class="stat-ico amber">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25"/></svg>
-          </span>
+      <div class="stat-strip-item">
+        <span class="stat-strip-ico amber">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25"/></svg>
+        </span>
+        <div class="stat-strip-body">
+          <div class="stat-strip-val" id="s-total">—</div>
+          <div class="stat-strip-label">All-time Closed</div>
+          <div class="stat-strip-sub">Total ERP invoices created</div>
         </div>
-        <div class="stat-val" id="s-total">—</div>
-        <div class="stat-trend">Total ERP invoices created</div>
       </div>
     </div>
 
@@ -889,7 +1008,7 @@
         : `href="/tickets/${t.ticket_id}"`;
       const actions = completed
         ? `<a ${detailsAttr} class="btn btn-outline btn-sm">View Details</a>`
-        : `<button type="button" class="btn btn-green btn-sm" data-open-modal="${t.ticket_id}">
+        : `<button type="button" class="btn btn-green btn-sm" onclick="openModal('${t.ticket_id}')" data-open-modal="${t.ticket_id}">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.4" stroke="currentColor" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z"/></svg>
             Log ERP Invoice
           </button>`;
@@ -944,11 +1063,12 @@
 
     // ── Modal ─────────────────────────────────────────────
     function openModal(ticketId) {
+      if (!ticketId) { console.warn('[Finance] openModal called without ticketId'); return; }
       activeTicketId = ticketId;
-      // Search both pending and completed lists
+      // Search both pending and completed lists; fall back to a minimal object so the modal still opens.
       const allTickets = (window._fin_pending || []).concat(window._fin_completed || []);
-      const t = allTickets.find(x => x.ticket_id === ticketId);
-      if (!t) { console.warn('[Finance] ticket not found:', ticketId); return; }
+      const t = allTickets.find(x => x.ticket_id === ticketId)
+        || { ticket_id: ticketId, title: '', project: '', property: '', supervisor_name: '', selling_price: 0 };
       const snap = document.getElementById('modalSnapshot');
       if (snap) snap.innerHTML = `
         <div class="ts-row"><span>Ticket</span><span>${escHtml(t.ticket_id)}</span></div>
@@ -961,19 +1081,46 @@
       if (inpNum)   inpNum.value   = '';
       if (inpNotes) inpNotes.value = '';
       const overlay = document.getElementById('processModal');
-      if (overlay) { overlay.classList.add('show'); setTimeout(() => inpNum && inpNum.focus(), 80); }
+      if (overlay) {
+        overlay.classList.add('open');
+        loadFinEmailDefaults();
+        document.getElementById('fin-email-body').value = '';
+        document.getElementById('finEmailSettingsPanel').style.display = 'none';
+        setTimeout(() => inpNum && inpNum.focus(), 80);
+      }
     }
     function closeModal() {
-      document.getElementById('processModal').classList.remove('show');
+      document.getElementById('processModal').classList.remove('open');
       activeTicketId = null;
+      // reset success state for next open
+      document.getElementById('modalSuccess').classList.remove('visible');
+      document.getElementById('modalFoot').style.display = '';
+      document.getElementById('processForm').style.display = '';
+    }
+
+    function showModalSuccess(ref, emailTo) {
+      const sub = document.getElementById('msSubText');
+      if (sub) sub.textContent = emailTo
+        ? `ERP ref ${ref} logged · notification sent to ${emailTo}.`
+        : `ERP ref ${ref} logged · notification sent to the team.`;
+      // swap form → success panel
+      document.getElementById('processForm').style.display = 'none';
+      document.getElementById('modalFoot').style.display = 'none';
+      // restart the progress bar animation by cloning the element
+      const bar = document.getElementById('msProgressBar');
+      const newBar = bar.cloneNode(true);
+      bar.parentNode.replaceChild(newBar, bar);
+      document.getElementById('modalSuccess').classList.add('visible');
+      // auto-close after progress bar completes (3 s)
+      setTimeout(() => { closeModal(); }, 3200);
     }
 
     async function submitProcess(ev) {
       if (ev) ev.preventDefault();
-      if (!activeTicketId) return;
+      if (!activeTicketId) { toast('No ticket selected — reopen the dialog.'); return; }
       const ref   = document.getElementById('erp_invoice_number').value.trim();
       const notes = document.getElementById('erp_invoice_notes').value.trim();
-      if (!ref) { document.getElementById('erp_invoice_number').focus(); return; }
+      if (!ref) { toast('Enter the ERP invoice number first.'); document.getElementById('erp_invoice_number').focus(); return; }
 
       if (usingSample) {
         // sample-only flow: move row to "completed" + toast
@@ -985,8 +1132,7 @@
           window._fin_completed = [t, ...window._fin_completed];
           SAMPLE_ACTIVITY.unshift({ color: 'green', title: `${ref} logged for ${activeTicketId} · email sent to supervisor + reporter`, time: 'just now' });
         }
-        toast(`${ref} logged · email notifications sent`);
-        closeModal();
+        showModalSuccess(ref, document.getElementById('fin-email-to')?.value.trim());
         document.getElementById('tab-pending-count').textContent   = window._fin_pending.length;
         document.getElementById('tab-completed-count').textContent = window._fin_completed.length;
         renderActivity(SAMPLE_ACTIVITY.slice(0,5));
@@ -995,16 +1141,22 @@
       }
 
       try {
+        const emailTo   = (document.getElementById('fin-email-to')?.value || '').trim();
+        const emailCc   = (document.getElementById('fin-email-cc')?.value || '').trim();
+        const emailBody = (document.getElementById('fin-email-body')?.value || '').trim();
         const res = await apiClient.post(`/tickets/api/tickets/${activeTicketId}/finance-confirm`, {
           invoice_ref: ref,
-          notes: notes
+          notes: notes,
+          email_to: emailTo || undefined,
+          email_cc: emailCc || undefined,
+          email_body: emailBody || undefined,
         });
-        if (res?.success) {
-          toast(`${ref} logged · email notifications sent`);
-          closeModal();
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.success) {
+          showModalSuccess(ref, emailTo);
           await loadQueue();
         } else {
-          toast(res?.error || 'Unable to confirm');
+          toast(data.error || 'Unable to confirm');
         }
       } catch(e) {
         toast('Network error — please retry');
@@ -1025,6 +1177,47 @@
     function formatNum(n) { return Number(n).toLocaleString('en-AE', {minimumFractionDigits:2,maximumFractionDigits:2}); }
     function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
+    // ── Finance email settings ────────────────────────────
+    const FIN_EMAIL_KEY = 'fin_email_defaults';
+
+    function loadFinEmailDefaults() {
+      try {
+        const d = JSON.parse(localStorage.getItem(FIN_EMAIL_KEY) || '{}');
+        const toEl = document.getElementById('fin-email-to');
+        const ccEl = document.getElementById('fin-email-cc');
+        const defToEl = document.getElementById('fin-es-default-to');
+        const defCcEl = document.getElementById('fin-es-default-cc');
+        if (toEl && d.to) toEl.value = d.to;
+        if (ccEl && d.cc) ccEl.value = d.cc;
+        if (defToEl && d.to) defToEl.value = d.to;
+        if (defCcEl && d.cc) defCcEl.value = d.cc;
+      } catch(_) {}
+    }
+
+    function saveFinEmailSettings() {
+      const to = (document.getElementById('fin-es-default-to').value || '').trim();
+      const cc = (document.getElementById('fin-es-default-cc').value || '').trim();
+      localStorage.setItem(FIN_EMAIL_KEY, JSON.stringify({ to, cc }));
+      document.getElementById('fin-email-to').value = to;
+      document.getElementById('fin-email-cc').value = cc;
+      document.getElementById('finEmailSettingsPanel').style.display = 'none';
+      toast('Default recipients saved.');
+    }
+
+    function toggleFinEmailSettings() {
+      const p = document.getElementById('finEmailSettingsPanel');
+      p.style.display = p.style.display === 'none' ? 'block' : 'none';
+    }
+
+    // Expose handlers used by inline onclick attributes (guarantees they resolve from the global scope).
+    window.openModal = openModal;
+    window.closeModal = closeModal;
+    window.submitProcess = submitProcess;
+    window.switchTab = switchTab;
+    window.demoDoc = demoDoc;
+    window.toggleFinEmailSettings = toggleFinEmailSettings;
+    window.saveFinEmailSettings = saveFinEmailSettings;
+
     // ── Event delegation for queue buttons ────────────────
     document.addEventListener('click', function(e) {
       // Log ERP Invoice button (data attribute — works on innerHTML-rendered buttons)
@@ -1032,7 +1225,7 @@
       if (btn) { openModal(btn.getAttribute('data-open-modal')); return; }
       // Backdrop close — only when clicking the dark overlay itself
       const overlay = document.getElementById('processModal');
-      if (overlay && overlay.classList.contains('show') && e.target === overlay) closeModal();
+      if (overlay && overlay.classList.contains('open') && e.target === overlay) closeModal();
     });
     // Close modal on Esc
     document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
@@ -1065,24 +1258,96 @@
         </button>
       </div>
       <div class="modal-body">
-        <div class="ticket-snapshot" id="modalSnapshot"></div>
         <form id="processForm" onsubmit="submitProcess(event)">
-          <div class="form-field">
-            <label class="form-label" for="erp_invoice_number">ERP Invoice Number <span style="color:var(--fin-danger);">*</span></label>
-            <input type="text" class="form-input" id="erp_invoice_number" placeholder="e.g. INV-2026-04532" required>
-            <div class="form-hint">Enter the invoice reference exactly as it appears in your ERP system (SAP / Oracle / Tally / Zoho etc.).</div>
-          </div>
-          <div class="form-field">
-            <label class="form-label" for="erp_invoice_notes">Notes (optional)</label>
-            <textarea class="form-textarea" id="erp_invoice_notes" placeholder="Any internal notes about this invoice — payment terms, special conditions, etc."></textarea>
-          </div>
-          <div style="background:#fef3c7;border:1px solid #fbbf24;border-radius:9px;padding:10px 12px;font-size:.78rem;color:#78350f;display:flex;gap:8px;align-items:flex-start;">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="16" height="16" style="flex-shrink:0;color:#a16207;margin-top:1px;"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-            <div>Confirming will mark the ticket fully closed and automatically email the supervisor, reporter, and finance team a copy of the closed report.</div>
+          <div class="modal-cols">
+
+            <!-- ── Left: ticket info + invoice fields ── -->
+            <div class="modal-col-left">
+              <div class="ticket-snapshot" id="modalSnapshot"></div>
+              <div class="form-field">
+                <label class="form-label" for="erp_invoice_number">ERP Invoice Number <span class="form-required">*</span></label>
+                <input type="text" class="form-input" id="erp_invoice_number" placeholder="e.g. INV-2026-04532" required>
+                <div class="form-hint">Enter the invoice reference exactly as it appears in your ERP system (SAP / Oracle / Tally / Zoho etc.).</div>
+              </div>
+              <div class="form-field form-field-last">
+                <label class="form-label" for="erp_invoice_notes">Notes (optional)</label>
+                <textarea class="form-textarea form-textarea-tall" id="erp_invoice_notes" placeholder="Any internal notes about this invoice — payment terms, special conditions, etc."></textarea>
+              </div>
+            </div>
+
+            <!-- ── Right: notification email ── -->
+            <div class="modal-col-right">
+              <div class="email-sec-head">
+                <span class="email-sec-title">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"/></svg>
+                  Notification Email
+                </span>
+                <button type="button" class="email-settings-btn" onclick="toggleFinEmailSettings()">
+                  <svg width="11" height="11" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg>
+                  Settings
+                </button>
+              </div>
+
+              <!-- Default recipients settings drawer -->
+              <div id="finEmailSettingsPanel" class="email-settings-panel" style="display:none;">
+                <div class="email-settings-title">Default Recipients</div>
+                <div class="email-settings-row">
+                  <label class="email-field-label">Default To</label>
+                  <input type="text" id="fin-es-default-to" class="email-text-input-sm" placeholder="ops@company.com, finance@company.com">
+                </div>
+                <div class="email-settings-row">
+                  <label class="email-field-label">Default CC</label>
+                  <input type="text" id="fin-es-default-cc" class="email-text-input-sm" placeholder="admin@company.com">
+                </div>
+                <button type="button" class="email-save-btn" onclick="saveFinEmailSettings()">Save Defaults</button>
+              </div>
+
+              <div class="email-to-cc-grid">
+                <div>
+                  <label class="email-field-label">To <span class="form-required">*</span></label>
+                  <input type="text" id="fin-email-to" class="email-text-input" placeholder="e.g. ops@company.com">
+                </div>
+                <div>
+                  <label class="email-field-label">CC</label>
+                  <input type="text" id="fin-email-cc" class="email-text-input" placeholder="e.g. admin@company.com">
+                </div>
+              </div>
+              <div>
+                <label class="email-field-label">Email Body <span class="email-field-label-sub">(optional — leave blank to use auto-generated)</span></label>
+                <textarea id="fin-email-body" rows="4" class="email-body-area" placeholder="Auto-generated from ticket details if left blank…"></textarea>
+              </div>
+            </div>
+
+          </div><!-- /modal-cols -->
+
+          <div class="modal-warning">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <div>Confirming will mark the ticket fully closed and send an email notification to the addresses above.</div>
           </div>
         </form>
       </div>
-      <div class="modal-foot">
+      <!-- ── Success state (shown after confirm) ── -->
+      <div class="modal-success" id="modalSuccess">
+        <div class="ms-ring">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" width="34" height="34"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+        </div>
+        <div class="ms-title">All done!</div>
+        <div class="ms-pills">
+          <span class="ms-pill green">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" width="12" height="12"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+            Ticket Closed
+          </span>
+          <span class="ms-pill blue">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" width="12" height="12"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"/></svg>
+            Email Circulated
+          </span>
+        </div>
+        <p class="ms-sub" id="msSubText">ERP invoice reference logged and notification sent to the team.</p>
+        <div class="ms-progress"><div class="ms-progress-bar" id="msProgressBar"></div></div>
+        <button type="button" class="ms-done-btn" onclick="closeModal()">Done</button>
+      </div>
+
+      <div class="modal-foot" id="modalFoot">
         <button type="button" class="btn btn-outline" onclick="closeModal()">Cancel</button>
         <button type="button" class="btn btn-green" onclick="submitProcess(null)">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.4" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>

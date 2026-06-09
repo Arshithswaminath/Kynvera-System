@@ -44,6 +44,8 @@ class User(db.Model):
     access_report_generation = db.Column(db.Boolean, default=False)  # MMR / Report Generation hub
     access_submitted_forms = db.Column(db.Boolean, default=False)  # "My submitted forms" workflow hub
     access_ticketing = db.Column(db.Boolean, default=False)  # Ticketing / Work Order module
+    access_operations = db.Column(db.Boolean, default=False)  # Operations module (Over Time + Trading Invoices)
+    access_operations_manage = db.Column(db.Boolean, default=False)  # Operations: full access (create/edit) vs view-only
     created_at = db.Column(db.DateTime, default=_utcnow)
     last_login = db.Column(db.DateTime)
     # First day with the company (for tenure on dashboard); editable in Profile / admin Manage profile
@@ -97,6 +99,7 @@ class User(db.Model):
             'mmr': bool(getattr(self, 'access_report_generation', False)),
             'submitted_forms': bool(getattr(self, 'access_submitted_forms', False)),
             'ticketing': bool(getattr(self, 'access_ticketing', False)),
+            'operations': bool(getattr(self, 'access_operations', False)),
         }
         return module_map.get(module, False)
 
@@ -133,6 +136,8 @@ class User(db.Model):
             'access_report_generation': getattr(self, 'access_report_generation', False) if self.role != 'admin' else True,
             'access_submitted_forms': getattr(self, 'access_submitted_forms', False) if self.role != 'admin' else True,
             'access_ticketing': getattr(self, 'access_ticketing', False) if self.role != 'admin' else True,
+            'access_operations': getattr(self, 'access_operations', False) if self.role != 'admin' else True,
+            'access_operations_manage': getattr(self, 'access_operations_manage', False) if self.role != 'admin' else True,
             'password_changed': self.password_changed if hasattr(self, 'password_changed') else True,
             'designation': self.designation if hasattr(self, 'designation') else None,
             'default_signature': self.default_signature if hasattr(self, 'default_signature') else None,
@@ -817,15 +822,113 @@ class DocHubAccess(db.Model):
         return f'<DocHubAccess user={self.user_id} access={self.can_access}>'
 
 
-class MmrChargeableConfig(db.Model):
-    """Single-row JSON settings for MMR chargeable rules (admin-editable)."""
-    __tablename__ = 'mmr_chargeable_config'
+class EmailAutomation(db.Model):
+    """A user-created recurring email automation (free-form email on a schedule)."""
+    __tablename__ = 'email_automation'
 
     id = db.Column(db.Integer, primary_key=True)
-    config_json = db.Column(JSON, nullable=False)
+    name = db.Column(db.String(160), nullable=False)
+    enabled = db.Column(db.Boolean, default=True)
+
+    # recipients (comma-separated @injaaz.ae addresses)
+    to_emails = db.Column(db.Text, default='')
+    cc_emails = db.Column(db.Text, default='')
+
+    # content
+    subject = db.Column(db.String(300), default='')
+    body = db.Column(db.Text, default='')  # plain text; rendered to simple HTML on send
+
+    # schedule — daily | weekly | monthly | quarterly | interval
+    schedule_type = db.Column(db.String(20), default='daily')
+    hour = db.Column(db.Integer, default=10)   # Dubai tz
+    minute = db.Column(db.Integer, default=0)
+    weekday = db.Column(db.Integer, default=0)        # 0=Mon (weekly)
+    day_of_month = db.Column(db.Integer, default=1)   # monthly | quarterly
+    quarter_start_month = db.Column(db.Integer, default=1)  # quarterly anchor (1 => 1,4,7,10)
+    interval_unit = db.Column(db.String(10), default='days')  # interval: days | weeks | months
+    interval_n = db.Column(db.Integer, default=1)
+
+    # runtime status
+    last_run_at = db.Column(db.DateTime)
+    last_run_status = db.Column(db.String(20))   # success | failed
+    last_run_detail = db.Column(db.Text)
+
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+    created_at = db.Column(db.DateTime, default=_utcnow)
+    updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
+
+    attachments = db.relationship(
+        'EmailAutomationAttachment', backref='automation',
+        cascade='all, delete-orphan', lazy='selectin',
+    )
+
+    def schedule_summary(self):
+        """Human-readable one-line schedule description."""
+        t = f"{self.hour:02d}:{self.minute:02d}"
+        st = self.schedule_type
+        if st == 'daily':
+            return f"Daily at {t}"
+        if st == 'weekly':
+            days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+            wd = days[self.weekday] if 0 <= (self.weekday or 0) < 7 else '?'
+            return f"Weekly on {wd} at {t}"
+        if st == 'monthly':
+            return f"Monthly on day {self.day_of_month} at {t}"
+        if st == 'quarterly':
+            return f"Quarterly (from month {self.quarter_start_month}) on day {self.day_of_month} at {t}"
+        if st == 'interval':
+            return f"Every {self.interval_n} {self.interval_unit} at {t}"
+        return st or 'Unknown'
+
+    def to_dict(self, include_body=False):
+        d = {
+            'id': self.id,
+            'name': self.name,
+            'enabled': bool(self.enabled),
+            'to_emails': self.to_emails or '',
+            'cc_emails': self.cc_emails or '',
+            'subject': self.subject or '',
+            'schedule_type': self.schedule_type,
+            'hour': self.hour,
+            'minute': self.minute,
+            'weekday': self.weekday,
+            'day_of_month': self.day_of_month,
+            'quarter_start_month': self.quarter_start_month,
+            'interval_unit': self.interval_unit,
+            'interval_n': self.interval_n,
+            'schedule_summary': self.schedule_summary(),
+            'last_run_at': self.last_run_at.isoformat() if self.last_run_at else None,
+            'last_run_status': self.last_run_status,
+            'last_run_detail': self.last_run_detail,
+            'recipient_count': len([e for e in (self.to_emails or '').split(',') if e.strip()]),
+            'attachments': [
+                {'id': a.id, 'filename': a.filename, 'mime_type': a.mime_type}
+                for a in self.attachments
+            ],
+        }
+        if include_body:
+            d['body'] = self.body or ''
+        return d
 
     def __repr__(self):
-        return f'<MmrChargeableConfig id={self.id}>'
+        return f'<EmailAutomation id={self.id} name={self.name!r}>'
+
+
+class EmailAutomationAttachment(db.Model):
+    """A file attachment stored in the DB for an email automation."""
+    __tablename__ = 'email_automation_attachment'
+
+    id = db.Column(db.Integer, primary_key=True)
+    automation_id = db.Column(
+        db.Integer, db.ForeignKey('email_automation.id'), nullable=False, index=True,
+    )
+    filename = db.Column(db.String(255), nullable=False)
+    mime_type = db.Column(db.String(120))
+    content = db.Column(db.LargeBinary, nullable=False)
+    created_at = db.Column(db.DateTime, default=_utcnow)
+
+    def __repr__(self):
+        return f'<EmailAutomationAttachment id={self.id} file={self.filename!r}>'
 
 
 class NotificationConfig(db.Model):
@@ -1103,6 +1206,9 @@ class Ticket(db.Model):
     # Linked finance contract
     finance_contract_id = db.Column(db.Integer, db.ForeignKey('finance_contracts.id'), nullable=True)
 
+    # Origin: Civil Defense (CD) inspection notification this ticket was converted from
+    source_inspection_notif_id = db.Column(db.Integer, db.ForeignKey('inspection_notifications.id'), nullable=True, index=True)
+
     # Timestamps
     created_at = db.Column(db.DateTime, default=_utcnow, index=True)
     updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
@@ -1124,6 +1230,8 @@ class Ticket(db.Model):
                                            backref=db.backref('finance_confirmed_tickets', lazy='dynamic'))
     finance_contract = db.relationship('FinanceContract', foreign_keys=[finance_contract_id],
                                        backref=db.backref('tickets', lazy='dynamic'))
+    source_inspection_notif = db.relationship('InspectionNotification', foreign_keys=[source_inspection_notif_id],
+                                              backref=db.backref('converted_tickets', lazy='dynamic'))
     notes = db.relationship('TicketNote', backref='ticket',
                             lazy='dynamic', cascade='all, delete-orphan',
                             order_by='TicketNote.created_at')
@@ -1168,6 +1276,9 @@ class Ticket(db.Model):
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
             'closed_at': self.closed_at.isoformat() if self.closed_at else None,
+            'source_inspection_notif_id': self.source_inspection_notif_id,
+            'source_cd_ref': (self.source_inspection_notif.civil_defense_ref or self.source_inspection_notif.notif_id)
+                             if self.source_inspection_notif else None,
         }
 
     def __repr__(self):
@@ -1336,6 +1447,9 @@ class Technician(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     employee_id = db.Column(db.String(40), unique=True, nullable=False, index=True)
     full_name = db.Column(db.String(160), nullable=False)
+    username = db.Column(db.String(80), unique=True, nullable=True, index=True)
+    password_hash = db.Column(db.String(255), nullable=True)
+    admin_visible_password = db.Column(db.String(255), nullable=True)  # plaintext for admin reference
     designation = db.Column(db.String(160), nullable=True)
     department = db.Column(db.String(120), nullable=True)
     specialization = db.Column(db.String(120), nullable=True)
@@ -1345,6 +1459,13 @@ class Technician(db.Model):
     joining_date = db.Column(db.Date, nullable=True)
     status = db.Column(db.String(20), default='active', index=True)  # active, inactive, on_leave
     notes = db.Column(db.Text, nullable=True)
+    # HR profile (mirrors User HR fields)
+    job_title = db.Column(db.String(160), nullable=True)
+    annual_leave_days = db.Column(db.Integer, nullable=True)
+    other_leave_days = db.Column(db.Integer, nullable=True)
+
+    def set_password(self, password):
+        self.password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
     # Optional link to supervisor user account (for roster reporting; ticketing team uses TicketSupervisorTeam).
     supervisor_user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True, index=True)
     created_at = db.Column(db.DateTime, default=_utcnow)
@@ -1361,6 +1482,8 @@ class Technician(db.Model):
             'id': self.id,
             'employee_id': self.employee_id,
             'full_name': self.full_name,
+            'username': self.username,
+            'admin_visible_password': self.admin_visible_password,
             'designation': self.designation,
             'department': self.department,
             'specialization': self.specialization,
@@ -1370,6 +1493,9 @@ class Technician(db.Model):
             'joining_date': self.joining_date.isoformat() if self.joining_date else None,
             'status': self.status,
             'notes': self.notes,
+            'job_title': self.job_title,
+            'annual_leave_days': self.annual_leave_days,
+            'other_leave_days': self.other_leave_days,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'supervisor_user_id': self.supervisor_user_id,
             'supervisor_name': self.supervisor_user.full_name if self.supervisor_user else None,
@@ -1392,14 +1518,27 @@ class InspectionNotification(db.Model):
     inspection_date = db.Column(db.Date, nullable=False)            # scheduled inspection date
     inspection_type = db.Column(db.String(80), nullable=True)       # Fire Safety / Civil / Electrical…
     notes = db.Column(db.Text, nullable=True)
-    status = db.Column(db.String(30), default='pending', index=True)  # pending, scheduled, completed, overdue
+    status = db.Column(db.String(30), default='pending', index=True)  # pending, scheduled, completed, closed, overdue
     registered_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     ops_notified_at = db.Column(db.DateTime, nullable=True)
+    # Inspection outcome (recorded after the inspection happens)
+    outcome = db.Column(db.String(10), nullable=True)               # None (not inspected) / pass / fail
+    rectify_by = db.Column(db.String(20), nullable=True)           # amaan / civil_defense (only when outcome=fail)
+    outcome_notes = db.Column(db.Text, nullable=True)              # failure findings / basis for the ST
+    outcome_recorded_at = db.Column(db.DateTime, nullable=True)
+    outcome_recorded_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    reinspection_count = db.Column(db.Integer, default=0)          # increments each CD-side restart
     created_at = db.Column(db.DateTime, default=_utcnow, index=True)
     updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
 
     registered_by = db.relationship('User', foreign_keys=[registered_by_id],
                                     backref=db.backref('registered_inspection_notifs', lazy='dynamic'))
+    outcome_recorded_by = db.relationship('User', foreign_keys=[outcome_recorded_by_id])
+
+    @property
+    def can_convert(self):
+        """True when this failed inspection is Amaan's to rectify, so an ST may be created."""
+        return self.outcome == 'fail' and self.rectify_by == 'amaan'
 
     def days_notice(self):
         """Days between notification date and inspection date."""
@@ -1425,6 +1564,13 @@ class InspectionNotification(db.Model):
             'inspection_type': self.inspection_type,
             'notes': self.notes,
             'status': self.status,
+            'outcome': self.outcome,
+            'rectify_by': self.rectify_by,
+            'outcome_notes': self.outcome_notes,
+            'outcome_recorded_at': self.outcome_recorded_at.isoformat() if self.outcome_recorded_at else None,
+            'outcome_recorded_by_name': self.outcome_recorded_by.full_name if self.outcome_recorded_by else None,
+            'reinspection_count': self.reinspection_count or 0,
+            'can_convert': self.can_convert,
             'days_notice': self.days_notice(),
             'days_remaining': self.days_remaining(),
             'registered_by_id': self.registered_by_id,
@@ -1517,3 +1663,187 @@ class FinanceMonthlyReport(db.Model):
 
     def __repr__(self):
         return f'<FinanceMonthlyReport {self.report_id}>'
+
+
+# ---------------------------------------------------------------------------
+# Operations module: Over Time records + Trading Invoices (with Client master)
+# ---------------------------------------------------------------------------
+
+class OvertimeRecord(db.Model):
+    """A single staff overtime entry (manual or Excel import).
+
+    Staff are stored as free text (name + employee id) rather than a strict FK
+    so any staff member can be recorded and bulk-imported from Excel.
+    """
+    __tablename__ = 'overtime_records'
+
+    id = db.Column(db.Integer, primary_key=True)
+    record_id = db.Column(db.String(50), unique=True, nullable=False, index=True)  # OT-XXXXXXXX
+    staff_name = db.Column(db.String(160), nullable=False)
+    employee_id = db.Column(db.String(60), nullable=True)
+    department = db.Column(db.String(120), nullable=True)
+    date = db.Column(db.Date, nullable=False)
+    hours = db.Column(db.Float, nullable=False, default=0.0)
+    rate_per_hour = db.Column(db.Float, nullable=True)
+    total_amount = db.Column(db.Float, nullable=True)  # hours * rate_per_hour when rate present
+    reason = db.Column(db.Text, nullable=True)
+    status = db.Column(db.String(30), default='recorded')  # recorded / approved / paid
+    imported_from_excel = db.Column(db.Boolean, default=False)
+    created_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=_utcnow)
+    updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
+
+    created_by = db.relationship('User', foreign_keys=[created_by_id],
+                                 backref=db.backref('overtime_records', lazy='dynamic'))
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'record_id': self.record_id,
+            'staff_name': self.staff_name,
+            'employee_id': self.employee_id,
+            'department': self.department,
+            'date': self.date.isoformat() if self.date else None,
+            'hours': self.hours,
+            'rate_per_hour': self.rate_per_hour,
+            'total_amount': self.total_amount,
+            'reason': self.reason,
+            'status': self.status,
+            'imported_from_excel': self.imported_from_excel,
+            'created_by_id': self.created_by_id,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+    def __repr__(self):
+        return f'<OvertimeRecord {self.record_id} {self.staff_name}>'
+
+
+class Client(db.Model):
+    """Customer master for trading invoices (sourced materials sold to clients)."""
+    __tablename__ = 'clients'
+
+    id = db.Column(db.Integer, primary_key=True)
+    client_id = db.Column(db.String(50), unique=True, nullable=False, index=True)  # CLI-XXXXXXXX
+    client_name = db.Column(db.String(200), nullable=False)
+    contact_person = db.Column(db.String(160), nullable=True)
+    email = db.Column(db.String(160), nullable=True)
+    phone = db.Column(db.String(60), nullable=True)
+    billing_address = db.Column(db.Text, nullable=True)
+    city = db.Column(db.String(120), nullable=True)
+    country = db.Column(db.String(120), nullable=True)
+    tax_id = db.Column(db.String(80), nullable=True)
+    status = db.Column(db.String(30), default='active')  # active / inactive
+    notes = db.Column(db.Text, nullable=True)
+    created_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=_utcnow)
+    updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
+
+    created_by = db.relationship('User', foreign_keys=[created_by_id],
+                                 backref=db.backref('clients', lazy='dynamic'))
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'client_id': self.client_id,
+            'client_name': self.client_name,
+            'contact_person': self.contact_person,
+            'email': self.email,
+            'phone': self.phone,
+            'billing_address': self.billing_address,
+            'city': self.city,
+            'country': self.country,
+            'tax_id': self.tax_id,
+            'status': self.status,
+            'notes': self.notes,
+            'created_by_id': self.created_by_id,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+    def __repr__(self):
+        return f'<Client {self.client_id} {self.client_name}>'
+
+
+class TradingInvoice(db.Model):
+    """Invoice header for materials sourced and sold to a client."""
+    __tablename__ = 'trading_invoices'
+
+    id = db.Column(db.Integer, primary_key=True)
+    invoice_no = db.Column(db.String(50), unique=True, nullable=False, index=True)  # TRD-INV-XXXXXXXX
+    client_id = db.Column(db.Integer, db.ForeignKey('clients.id'), nullable=False)
+    invoice_date = db.Column(db.Date, nullable=False, default=lambda: _utcnow().date())
+    due_date = db.Column(db.Date, nullable=True)
+    subtotal = db.Column(db.Float, default=0.0)
+    tax_pct = db.Column(db.Float, default=0.0)
+    tax_amount = db.Column(db.Float, default=0.0)
+    grand_total = db.Column(db.Float, default=0.0)
+    status = db.Column(db.String(30), default='draft')  # draft / issued / paid
+    notes = db.Column(db.Text, nullable=True)
+    created_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=_utcnow)
+    updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
+
+    client = db.relationship('Client', foreign_keys=[client_id],
+                             backref=db.backref('trading_invoices', lazy='dynamic'))
+    created_by = db.relationship('User', foreign_keys=[created_by_id],
+                                 backref=db.backref('trading_invoices', lazy='dynamic'))
+    items = db.relationship('TradingInvoiceItem', backref='invoice',
+                            cascade='all, delete-orphan', lazy='select',
+                            order_by='TradingInvoiceItem.id')
+
+    def to_dict(self, include_items=True):
+        data = {
+            'id': self.id,
+            'invoice_no': self.invoice_no,
+            'client_id': self.client_id,
+            'client_name': self.client.client_name if self.client else None,
+            'invoice_date': self.invoice_date.isoformat() if self.invoice_date else None,
+            'due_date': self.due_date.isoformat() if self.due_date else None,
+            'subtotal': self.subtotal,
+            'tax_pct': self.tax_pct,
+            'tax_amount': self.tax_amount,
+            'grand_total': self.grand_total,
+            'status': self.status,
+            'notes': self.notes,
+            'created_by_id': self.created_by_id,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+        if include_items:
+            data['items'] = [it.to_dict() for it in self.items]
+            data['client'] = self.client.to_dict() if self.client else None
+        return data
+
+    def __repr__(self):
+        return f'<TradingInvoice {self.invoice_no}>'
+
+
+class TradingInvoiceItem(db.Model):
+    """A line item (material) on a trading invoice."""
+    __tablename__ = 'trading_invoice_items'
+
+    id = db.Column(db.Integer, primary_key=True)
+    invoice_id = db.Column(db.Integer, db.ForeignKey('trading_invoices.id', ondelete='CASCADE'),
+                           nullable=False, index=True)
+    material_name = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    quantity = db.Column(db.Float, default=0.0)
+    unit = db.Column(db.String(40), nullable=True)
+    unit_price = db.Column(db.Float, default=0.0)
+    total_price = db.Column(db.Float, default=0.0)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'invoice_id': self.invoice_id,
+            'material_name': self.material_name,
+            'description': self.description,
+            'quantity': self.quantity,
+            'unit': self.unit,
+            'unit_price': self.unit_price,
+            'total_price': self.total_price,
+        }
+
+    def __repr__(self):
+        return f'<TradingInvoiceItem {self.material_name}>'

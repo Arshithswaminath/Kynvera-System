@@ -26,7 +26,7 @@ from app.models import (
     TicketMaterial, TicketManpower, Notification,
     TicketProject, TicketProperty, TicketZone, TicketSubZone,
     TicketBaseUnit, TicketTitleTemplate, TicketSupervisorTeam,
-    BDProject,
+    BDProject, InspectionNotification,
 )
 
 logger = logging.getLogger(__name__)
@@ -310,6 +310,29 @@ def _can_user_view_ticket(user: User, ticket: Ticket) -> bool:
         if ticket.assigned_to_id is None or ticket.assigned_to_id == user.id:
             return True
         return False
+    return False
+
+
+def _is_finance_user(user: User) -> bool:
+    """Finance team (or admin) — needs the service report + team's invoice to raise the ERP invoice."""
+    if user is None:
+        return False
+    return bool(user.role == 'admin' or (getattr(user, 'designation', None) or '').strip().lower() == 'finance')
+
+
+def _can_access_ticket_docs(user: User, ticket: Ticket) -> bool:
+    """Who may pull the Service Report / Team's Invoice for a ticket.
+    Finance + management always; involved users always; and once the ticket reaches the
+    finance pipeline (GM-approved/closed) any user with ticketing access can download it.
+    """
+    if user is None:
+        return False
+    if _is_finance_user(user) or _ticketing_sees_all_tickets(user):
+        return True
+    if _can_user_view_ticket(user, ticket):
+        return True
+    if ticket.status in ('pending_finance', 'closed') and _has_access(user):
+        return True
     return False
 
 
@@ -606,6 +629,46 @@ def _send_ticket_email(subject: str, recipients: list, body_html: str):
         logger.warning("Ticket email send failed: %s", exc)
 
 
+def _send_work_order_created_email(ticket: Ticket, creator: 'User', supervisor: 'User | None'):
+    """Send work order creation confirmation to the creator and assigned supervisor."""
+    priority_colour = {'low': '#16a34a', 'medium': '#d97706', 'high': '#dc2626', 'critical': '#7c3aed'}.get(
+        (ticket.priority or '').lower(), '#6b7280'
+    )
+    location_parts = [ticket.property_name, ticket.zone, ticket.sub_zone, ticket.base_unit]
+    location_str = ' / '.join(p for p in location_parts if p) or '—'
+    html = f"""
+<html><body style="font-family:sans-serif;color:#1a1a1a;">
+<div style="max-width:620px;margin:0 auto;padding:24px;">
+  <div style="background:#d21725;padding:20px 24px;border-radius:10px 10px 0 0;">
+    <h2 style="color:#fff;margin:0;">Work Order Created</h2>
+    <p style="color:rgba(255,255,255,.85);margin:6px 0 0;">{ticket.ticket_id}</p>
+  </div>
+  <div style="background:#fff;border:1px solid #e5e7eb;border-top:none;padding:24px;border-radius:0 0 10px 10px;">
+    <table style="width:100%;border-collapse:collapse;">
+      <tr><td style="padding:8px 0;font-weight:600;width:160px;">Title</td><td style="padding:8px 0;"><strong>{ticket.title}</strong></td></tr>
+      <tr style="background:#f9fafb;"><td style="padding:8px 4px;font-weight:600;">Project</td><td style="padding:8px 4px;">{ticket.project}</td></tr>
+      <tr><td style="padding:8px 0;font-weight:600;">Location</td><td style="padding:8px 0;">{location_str}</td></tr>
+      <tr style="background:#f9fafb;"><td style="padding:8px 4px;font-weight:600;">Service Group</td><td style="padding:8px 4px;">{ticket.service_group}</td></tr>
+      <tr><td style="padding:8px 0;font-weight:600;">Category</td><td style="padding:8px 0;">{ticket.category}</td></tr>
+      <tr style="background:#f9fafb;"><td style="padding:8px 4px;font-weight:600;">Fault Type</td><td style="padding:8px 4px;">{ticket.fault_type}</td></tr>
+      <tr><td style="padding:8px 0;font-weight:600;">Priority</td><td style="padding:8px 0;"><strong style="color:{priority_colour};">{ticket.priority.upper() if ticket.priority else '—'}</strong></td></tr>
+      <tr style="background:#f9fafb;"><td style="padding:8px 4px;font-weight:600;">Created by</td><td style="padding:8px 4px;">{creator.full_name or creator.username}</td></tr>
+      <tr><td style="padding:8px 0;font-weight:600;">Assigned to</td><td style="padding:8px 0;">{supervisor.full_name or supervisor.username if supervisor else 'Supervisor pool'}</td></tr>
+    </table>
+    {'<p style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:12px;margin-top:16px;">' + ticket.work_description + '</p>' if ticket.work_description else ''}
+    <p style="margin-top:24px;">Log in to the Amaan platform to view and manage this work order.</p>
+    <p style="color:#6b7280;font-size:.85rem;margin-top:16px;">This is an automated notification from Amaan Application.</p>
+  </div>
+</div>
+</body></html>"""
+    recipients = list({u.email for u in [creator, supervisor] if u and u.email})
+    _send_ticket_email(
+        subject=f"[Amaan] Work Order Created — {ticket.ticket_id}: {ticket.title}",
+        recipients=recipients,
+        body_html=html,
+    )
+
+
 # ---------------------------------------------------------------------------
 # Dashboard
 # ---------------------------------------------------------------------------
@@ -668,6 +731,63 @@ def dashboard():
         all_users=all_users,
         active_page='ticketing',
     )
+
+
+# ---------------------------------------------------------------------------
+# Civil Defense (CD) notification feed — surfaces inspection notifications
+# registered by Sales so ops can convert them into service tickets.
+# ---------------------------------------------------------------------------
+
+@ticketing_bp.route('/api/cd-notifications', methods=['GET'])
+@jwt_required()
+def cd_notifications_feed():
+    """JSON feed of Civil Defense inspection notifications for the ticketing hero popup.
+
+    Each row carries the source narrative plus a `converted` flag (and the list of
+    ticket ids it has already spawned) so the popup can show a 'Converted ✓' badge
+    while still allowing another conversion.
+    """
+    user = _current_user()
+    if not _has_access(user):
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+
+    today = date.today()
+    notifs = (InspectionNotification.query
+              .order_by(InspectionNotification.inspection_date.asc())
+              .all())
+
+    # Refresh overdue status in passing (mirrors the inspection module behaviour).
+    changed = False
+    for n in notifs:
+        if n.status == 'pending' and n.inspection_date and n.inspection_date < today:
+            n.status = 'overdue'
+            changed = True
+    if changed:
+        db.session.commit()
+
+    rows = []
+    open_ct = 0
+    overdue_ct = 0
+    for n in notifs:
+        converted_tickets = [
+            {'ticket_id': t.ticket_id, 'status': t.status}
+            for t in n.converted_tickets.order_by(Ticket.created_at.asc()).all()
+        ]
+        data = n.to_dict()
+        data['converted'] = bool(converted_tickets)
+        data['converted_tickets'] = converted_tickets
+        rows.append(data)
+        if n.status not in ('completed', 'closed', 'cancelled'):
+            open_ct += 1
+        if n.status == 'overdue' or (n.inspection_date and n.inspection_date < today
+                                     and n.status not in ('completed', 'closed', 'cancelled')):
+            overdue_ct += 1
+
+    return jsonify({
+        'success': True,
+        'notifications': rows,
+        'summary': {'open': open_ct, 'overdue': overdue_ct, 'total': len(rows)},
+    })
 
 
 # ---------------------------------------------------------------------------
@@ -745,6 +865,9 @@ def new_ticket_form():
     # Fetch procurement catalog materials for autocomplete
     procurement_materials = _get_procurement_materials()
 
+    # Optional pre-fill when converting a Civil Defense (CD) inspection notification.
+    cd_prefill = _build_cd_prefill(request.args.get('from_cd'))
+
     return render_template(
         'ticket_new.html',
         user=user,
@@ -752,7 +875,47 @@ def new_ticket_form():
         procurement_materials=procurement_materials,
         sidebar_stats=_get_sidebar_stats(user),
         active_page='ticketing',
+        cd_prefill=cd_prefill,
     )
+
+
+def _build_cd_prefill(from_cd):
+    """Return a {title, work_description, source_inspection_notif_id} dict for the
+    new-ticket form when arriving from a CD notification, else None.
+
+    Only the narrative (title + description) is pre-filled — classification,
+    project and priority are left for the user to choose.
+    """
+    if not from_cd:
+        return None
+    try:
+        notif = InspectionNotification.query.get(int(from_cd))
+    except (TypeError, ValueError):
+        return None
+    if not notif:
+        return None
+
+    cd_ref = notif.civil_defense_ref or notif.notif_id
+    title = f"Civil Defense — {notif.site_name} ({cd_ref})"
+
+    lines = [f"Civil Defense inspection notification {cd_ref}."]
+    if notif.inspection_type:
+        lines.append(f"Type: {notif.inspection_type}.")
+    if notif.notification_date:
+        lines.append(f"Notified: {notif.notification_date.strftime('%d %b %Y')}.")
+    if notif.inspection_date:
+        lines.append(f"Inspection due: {notif.inspection_date.strftime('%d %b %Y')}.")
+    if notif.notes:
+        lines.append("")
+        lines.append(notif.notes)
+
+    return {
+        'source_inspection_notif_id': notif.id,
+        'cd_ref': cd_ref,
+        'site_name': notif.site_name,
+        'title': title,
+        'work_description': "\n".join(lines),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -775,6 +938,24 @@ def create_ticket():
 
     proj_supervisor_id = _resolve_project_supervisor_id(data['project'].strip())
 
+    # Optional link back to the Civil Defense notification this ticket was converted from.
+    # Conversion is gated: only a failed inspection that Amaan must rectify may spawn an ST.
+    source_cd_id = None
+    raw_cd = data.get('source_inspection_notif_id')
+    if raw_cd:
+        try:
+            cd_notif = InspectionNotification.query.get(int(raw_cd))
+        except (TypeError, ValueError):
+            cd_notif = None
+        if cd_notif:
+            if not cd_notif.can_convert:
+                return jsonify({
+                    'success': False,
+                    'error': 'This Civil Defense notification cannot be converted: a service '
+                             'ticket is only allowed for a failed inspection that Amaan must rectify.',
+                }), 400
+            source_cd_id = cd_notif.id
+
     ticket = Ticket(
         ticket_id=_generate_ticket_id(),
         reporter_id=user.id,
@@ -793,6 +974,7 @@ def create_ticket():
         base_unit=data.get('base_unit', '').strip() or None,
         is_chargeable=bool(data.get('is_chargeable', False)),
         projected_cost=float(data['projected_cost']) if data.get('projected_cost') else None,
+        source_inspection_notif_id=source_cd_id,
         status='pending_supervisor',
     )
     db.session.add(ticket)
@@ -817,6 +999,7 @@ def create_ticket():
     )
 
     db.session.commit()
+    _send_work_order_created_email(ticket, user, route_sup)
     return jsonify({'success': True, 'ticket_id': ticket.ticket_id, 'id': ticket.id}), 201
 
 
@@ -2046,17 +2229,21 @@ def pricing_preview(ticket_id):
 # Email on completion
 # ---------------------------------------------------------------------------
 
-def _send_completion_emails(ticket: Ticket, closed_by: User):
+def _send_completion_emails(ticket: Ticket, closed_by: User,
+                            custom_to=None, custom_cc=None, custom_body=None):
     """Send email notification to admin, assignee, reporter on ticket close."""
     try:
-        admin_emails = [
-            u.email for u in User.query.filter_by(role='admin', is_active=True).all()
-            if u.email
-        ]
-        recipients = list(set(filter(None, [
-            ticket.reporter.email if ticket.reporter else None,
-            ticket.assigned_to.email if ticket.assigned_to else None,
-        ] + admin_emails)))
+        if custom_to:
+            recipients = custom_to
+        else:
+            admin_emails = [
+                u.email for u in User.query.filter_by(role='admin', is_active=True).all()
+                if u.email
+            ]
+            recipients = list(set(filter(None, [
+                ticket.reporter.email if ticket.reporter else None,
+                ticket.assigned_to.email if ticket.assigned_to else None,
+            ] + admin_emails)))
 
         subject = f'[Amaan] Work Order Closed — {ticket.ticket_id}'
         body = f"""
@@ -2082,7 +2269,10 @@ def _send_completion_emails(ticket: Ticket, closed_by: User):
           <p style="font-size:12px; color:#888;">This is an automated notification from Amaan Application.</p>
         </div>
         """
-        _send_ticket_email(subject, recipients, body)
+        final_body = custom_body or body
+        from common.email_service import send_email
+        for r in recipients:
+            send_email(r, subject=subject, html_body=final_body, cc=custom_cc or [])
     except Exception as exc:
         logger.warning("Failed to send completion emails: %s", exc)
 
@@ -2095,12 +2285,9 @@ def _send_completion_emails(ticket: Ticket, closed_by: User):
 @jwt_required()
 def download_pdf(ticket_id):
     user = _current_user()
-    if not _has_access(user):
-        abort(403)
-
     ticket = Ticket.query.filter_by(ticket_id=ticket_id).first_or_404()
 
-    if not _can_user_view_ticket(user, ticket):
+    if not _can_access_ticket_docs(user, ticket):
         abort(403)
 
     notes = ticket.notes.order_by(TicketNote.created_at.asc()).all()
@@ -2130,12 +2317,9 @@ def download_pdf(ticket_id):
 def download_invoice(ticket_id):
     """Generate and return a service invoice PDF for a closed work order."""
     user = _current_user()
-    if not _has_access(user):
-        abort(403)
-
     ticket = Ticket.query.filter_by(ticket_id=ticket_id).first_or_404()
 
-    if not _can_user_view_ticket(user, ticket):
+    if not _can_access_ticket_docs(user, ticket):
         abort(403)
 
     materials        = ticket.materials.all()
@@ -3083,10 +3267,8 @@ def description_template():
 def service_report_page(ticket_id):
     """Render the digital service report form for a completed work order."""
     user = _current_user()
-    if not _has_access(user):
-        abort(403)
     ticket = Ticket.query.filter_by(ticket_id=ticket_id).first_or_404()
-    if not _can_user_view_ticket(user, ticket):
+    if not _can_access_ticket_docs(user, ticket):
         abort(403)
     notes = ticket.notes.order_by(TicketNote.created_at.asc()).all()
     images = ticket.images.all()
@@ -3249,11 +3431,15 @@ def gm_reject_ticket(ticket_id):
 def finance_confirm_ticket(ticket_id):
     """Finance team confirms invoice created → ticket is fully closed."""
     user = _current_user()
-    if not _has_access(user):
-        return jsonify({'success': False, 'error': 'Access denied'}), 403
-
-    if user.role != 'admin' and getattr(user, 'designation', None) not in ('finance', 'general_manager'):
-        return jsonify({'success': False, 'error': 'Only Finance team or Admin may confirm invoices'}), 403
+    # Mirror the Finance dashboard's access (admin / GM / Ops Manager / finance / ticketing access).
+    _desig = (getattr(user, 'designation', None) or '').strip().lower()
+    _may_confirm = bool(user and (
+        user.role == 'admin'
+        or _desig in ('finance', 'general_manager', 'operations_manager')
+        or getattr(user, 'access_ticketing', False)
+    ))
+    if not _may_confirm:
+        return jsonify({'success': False, 'error': 'You do not have permission to confirm invoices'}), 403
 
     ticket = Ticket.query.filter_by(ticket_id=ticket_id).first_or_404()
 
@@ -3261,7 +3447,10 @@ def finance_confirm_ticket(ticket_id):
         return jsonify({'success': False, 'error': f'Ticket is not pending finance confirmation. Current status: {ticket.status}'}), 400
 
     data = request.get_json(silent=True) or {}
-    invoice_ref = (data.get('invoice_ref') or '').strip() or None
+    invoice_ref  = (data.get('invoice_ref') or '').strip() or None
+    custom_to    = [e.strip() for e in (data.get('email_to') or '').split(',') if e.strip()] or None
+    custom_cc    = [e.strip() for e in (data.get('email_cc') or '').split(',') if e.strip()] or None
+    custom_body  = (data.get('email_body') or '').strip() or None
 
     ticket.finance_confirmed_at = datetime.now(timezone.utc).replace(tzinfo=None)
     ticket.finance_confirmed_by_id = user.id
@@ -3275,7 +3464,6 @@ def finance_confirm_ticket(ticket_id):
               f'Ticket is now fully closed.',
               note_type='status_change')
 
-    # Notify supervisor and reporter
     for uid in filter(None, {ticket.supervisor_id, ticket.reporter_id}):
         _notify_user(uid,
                      f'Ticket Closed — {ticket.ticket_id}',
@@ -3284,5 +3472,5 @@ def finance_confirm_ticket(ticket_id):
                      ticket_id=ticket.ticket_id)
 
     db.session.commit()
-    _send_completion_emails(ticket, user)
+    _send_completion_emails(ticket, user, custom_to=custom_to, custom_cc=custom_cc, custom_body=custom_body)
     return jsonify({'success': True, 'status': 'closed', 'invoice_ref': invoice_ref})

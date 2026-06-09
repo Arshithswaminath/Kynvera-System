@@ -546,6 +546,16 @@
 
         .lp-input-wrap {
             position: relative;
+            display: flex;
+            align-items: center;
+            background: var(--lp-surface-highest);
+            border-radius: 0.45rem;
+            transition: box-shadow 0.2s, background 0.2s;
+        }
+
+        .lp-input-wrap:focus-within {
+            background: var(--lp-surface-lowest);
+            box-shadow: 0 0 0 2px var(--lp-primary-fixed-dim);
         }
 
         .lp-input-wrap:focus-within .lp-input-icon {
@@ -562,18 +572,45 @@
             transition: color 0.2s;
         }
 
+        .lp-pw-toggle {
+            position: absolute;
+            right: 0.5rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            padding: 0.25rem;
+            cursor: pointer;
+            color: var(--lp-outline);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 0.25rem;
+            transition: color 0.2s;
+            z-index: 1;
+        }
+        .lp-pw-toggle:hover,
+        .lp-pw-toggle:focus,
+        .lp-pw-toggle:active {
+            color: var(--lp-outline) !important;
+            transform: translateY(-50%) !important;
+            background: transparent !important;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+        .lp-pw-toggle .material-symbols-outlined { font-size: 1.15rem; }
+
         input.lp-input[type="text"],
         input.lp-input[type="password"] {
             width: 100%;
-            padding: 0.65rem 0.875rem 0.65rem 2.5rem;
+            padding: 0.65rem 2.5rem 0.65rem 2.5rem;
             border: none;
             border-radius: 0.45rem;
             font-size: 0.875rem;
             font-family: inherit;
-            background: var(--lp-surface-highest);
+            background: transparent;
             color: var(--lp-on-surface);
             box-sizing: border-box;
-            transition: box-shadow 0.2s, background 0.2s;
         }
 
         input.lp-input::placeholder {
@@ -582,8 +619,6 @@
 
         input.lp-input:focus {
             outline: none;
-            background: var(--lp-surface-lowest);
-            box-shadow: 0 0 0 2px var(--lp-primary-fixed-dim);
         }
 
         .btn-login {
@@ -701,25 +736,33 @@
          * Re-assert login chrome with higher specificity.
          */
         @media (max-width: 768px) {
-            body.login-page .login-card .lp-input-wrap input.lp-input[type="text"],
-            body.login-page .login-card .lp-input-wrap input.lp-input[type="password"] {
-                width: 100% !important;
-                padding: 0.95rem 1.125rem 0.95rem 3.5rem !important;
-                min-height: 52px !important;
-                height: auto !important;
+            body.login-page .login-card .lp-input-wrap {
                 background-color: var(--lp-surface-highest) !important;
                 border: 1.5px solid rgba(192, 201, 192, 0.7) !important;
                 border-radius: 0.65rem !important;
+                min-height: 52px !important;
+            }
+            body.login-page .login-card .lp-input-wrap:focus-within {
+                background-color: var(--lp-surface-lowest) !important;
+                border-color: var(--lp-primary-container) !important;
+                box-shadow: 0 0 0 2px var(--lp-primary-fixed-dim) !important;
+            }
+            body.login-page .login-card .lp-input-wrap input.lp-input[type="text"],
+            body.login-page .login-card .lp-input-wrap input.lp-input[type="password"] {
+                width: 100% !important;
+                padding: 0.95rem 3rem 0.95rem 3.5rem !important;
+                height: auto !important;
+                min-height: 52px !important;
+                background: transparent !important;
+                border: none !important;
+                border-radius: 0 !important;
                 box-shadow: none !important;
                 line-height: 1.45 !important;
                 color: var(--lp-on-surface) !important;
             }
-            body.login-page .login-card .lp-input-wrap input.lp-input[type="text"]:focus,
-            body.login-page .login-card .lp-input-wrap input.lp-input[type="password"]:focus {
+            body.login-page .login-card .lp-input-wrap input.lp-input:focus {
                 outline: none !important;
-                background-color: var(--lp-surface-lowest) !important;
-                border-color: var(--lp-primary-container) !important;
-                box-shadow: 0 0 0 2px var(--lp-primary-fixed-dim) !important;
+                box-shadow: none !important;
             }
             body.login-page .login-card .lp-input-icon {
                 left: 1rem !important;
@@ -738,7 +781,6 @@
     <main class="login-main">
         <section class="login-hero" aria-hidden="false">
             <div class="login-hero-inner">
-                <p class="login-hero-kicker">Amaan Application</p>
                 <h2 class="login-hero-title">All Operations.<br><span>One Platform.</span></h2>
                 <p class="login-hero-lede">The hub for your teams to run logistics, facilities, and day-to-day operations in one place.</p>
 
@@ -796,6 +838,9 @@
                         <div class="lp-input-wrap">
                             <span class="material-symbols-outlined lp-input-icon" aria-hidden="true">lock</span>
                             <input class="lp-input" type="password" id="password" name="password" required autocomplete="off" data-1p-ignore="true" data-lpignore="true" placeholder="••••••••">
+                            <button type="button" class="lp-pw-toggle" id="pw-toggle" aria-label="Show password">
+                                <span class="material-symbols-outlined" id="pw-toggle-icon">visibility_off</span>
+                            </button>
                         </div>
                     </div>
 
@@ -880,6 +925,19 @@
                 if (err && err.textContent.trim()) openSheet();
             }
         });
+
+        /* ── Password visibility toggle ─────────────────────────────────── */
+        const pwInput  = document.getElementById('password');
+        const pwToggle = document.getElementById('pw-toggle');
+        const pwIcon   = document.getElementById('pw-toggle-icon');
+        if (pwToggle) {
+            pwToggle.addEventListener('click', () => {
+                const isHidden = pwInput.type === 'password';
+                pwInput.type = isHidden ? 'text' : 'password';
+                pwIcon.textContent = isHidden ? 'visibility' : 'visibility_off';
+                pwToggle.setAttribute('aria-label', isHidden ? 'Hide password' : 'Show password');
+            });
+        }
 
         /* ── Login form logic ───────────────────────────────────────────── */
         const loginForm = document.getElementById('login-form');

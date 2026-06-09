@@ -521,7 +521,7 @@
       if (isAdminTarget) {
         modNote.hidden = false;
         modNote.textContent = 'Administrators have full access to all modules by policy.';
-        ['accessHvac', 'accessCivil', 'accessCleaning', 'accessHr', 'accessProcurement', 'accessBusinessDev', 'accessDocHub', 'accessReportGen', 'accessSubmittedForms', 'accessTicketing'].forEach(function (id) {
+        ['accessHvac', 'accessCivil', 'accessCleaning', 'accessHr', 'accessProcurement', 'accessBusinessDev', 'accessDocHub', 'accessReportGen', 'accessSubmittedForms', 'accessTicketing', 'accessOperations', 'accessOperationsManage'].forEach(function (id) {
           const cb = document.getElementById(id);
           if (cb) {
             cb.checked = true;
@@ -546,9 +546,29 @@
         if (sf) sf.checked = !!user.access_submitted_forms;
         const tkt = document.getElementById('accessTicketing');
         if (tkt) tkt.checked = !!user.access_ticketing;
+        const ops = document.getElementById('accessOperations');
+        if (ops) ops.checked = !!user.access_operations;
+        const opsManage = document.getElementById('accessOperationsManage');
+        if (opsManage) opsManage.checked = !!user.access_operations_manage;
         modWrap.querySelectorAll('input[type="checkbox"]').forEach(function (cb) {
           cb.disabled = false;
         });
+        // Reset manage flag when Operations access is unchecked.
+        function syncOperationsManage() {
+          if (!ops || !opsManage) return;
+          if (!ops.checked) { opsManage.checked = false; }
+        }
+        if (ops && !ops.dataset.opsManageBound) {
+          ops.dataset.opsManageBound = '1';
+          ops.addEventListener('change', syncOperationsManage);
+        }
+        // "View only" pill click → uncheck manage so CSS switches active pill
+        const opsLevelView = document.getElementById('opsLevelView');
+        if (opsLevelView && !opsLevelView.dataset.bound) {
+          opsLevelView.dataset.bound = '1';
+          opsLevelView.addEventListener('click', () => { if (opsManage) opsManage.checked = false; });
+        }
+        syncOperationsManage();
       }
     }
 
@@ -831,6 +851,10 @@
           payload.access_submitted_forms = document.getElementById('accessSubmittedForms').checked;
           const tgx = document.getElementById('accessTicketing');
           payload.access_ticketing = !!(tgx && tgx.checked);
+          const opx = document.getElementById('accessOperations');
+          payload.access_operations = !!(opx && opx.checked);
+          const opmx = document.getElementById('accessOperationsManage');
+          payload.access_operations_manage = !!(opx && opx.checked) && !!(opmx && opmx.checked);
         }
 
         try {

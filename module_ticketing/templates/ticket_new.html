@@ -15,6 +15,7 @@
       max-width: min(1260px, calc(100vw - 3rem));
       margin-left: auto;
       margin-right: auto;
+      padding-top: 1.5rem;
       width: 100%;
       box-sizing: border-box;
     }
@@ -623,13 +624,22 @@
             </div>
             <div class="tkt-card-body">
 
+              {% if cd_prefill %}
+              <!-- Converting from a Civil Defense notification -->
+              <input type="hidden" id="sourceInspectionNotifId" value="{{ cd_prefill.source_inspection_notif_id }}">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;padding:11px 14px;background:#fff1f2;border:1px solid #fecdd3;border-left:3px solid #d21725;border-radius:10px;">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="#d21725" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2.25 4.5 5.25v5.25c0 4.4 3.2 8.5 7.5 9.75 4.3-1.25 7.5-5.35 7.5-9.75V5.25L12 2.25Z"/></svg>
+                <span style="font-size:.84rem;color:#9f1239;">Converting Civil Defense notification <strong>{{ cd_prefill.cd_ref }}</strong> ({{ cd_prefill.site_name }}). Title and description are pre-filled — review and complete the remaining fields.</span>
+              </div>
+              {% endif %}
+
               <!-- Smart title -->
               <div class="tkt-field" style="margin-bottom:16px;">
                 <label>Title / Summary <span class="req">*</span></label>
                 <div class="tkt-ac-wrap">
                   <input class="tkt-input" id="title" name="title" type="text"
                          placeholder="Start typing or select service/category to see suggestions…"
-                         autocomplete="off" required>
+                         autocomplete="off" required{% if cd_prefill %} value="{{ cd_prefill.title }}"{% endif %}>
                   <div class="tkt-ac-dropdown" id="titleDropdown"></div>
                 </div>
                 <span style="font-size:.72rem;color:#94a3b8;margin-top:2px;">Suggestions from templates and recent tickets</span>
@@ -647,7 +657,7 @@
                 <label>Work Description <span class="req">*</span></label>
                 <textarea class="tkt-textarea" id="workDescription" name="work_description"
                           placeholder="Select service group, category and fault type above to auto-generate…"
-                          rows="6" required></textarea>
+                          rows="6" required>{% if cd_prefill %}{{ cd_prefill.work_description }}{% endif %}</textarea>
               </div>
             </div>
           </div>
@@ -1155,7 +1165,9 @@ function rebuildPropertySearchIndex() {
 
 function filterProjectSearchHits(qRaw) {
   const q = tktNormQTicketNew(qRaw);
-  if (!q.length) return [];
+  if (!q.length) {
+    return [..._projSearchHits].sort((a, b) => String(a.primary).localeCompare(String(b.primary))).slice(0, 42);
+  }
   const hits = _projSearchHits.filter((h) => h.hay.includes(q));
   hits.sort((a, b) => {
     const aStart = a.hay.startsWith(q) ? 0 : 1;
@@ -1168,7 +1180,7 @@ function filterProjectSearchHits(qRaw) {
 
 function filterPropertySearchHits(qRaw) {
   const q = tktNormQTicketNew(qRaw);
-  if (!q.length || q.length < 3) return [];
+  if (q.length > 0 && q.length < 3) return [];
   const projGate = (document.getElementById('project')?.value || '').trim();
   let hits = _propSearchHits.filter((h) => h.hay.includes(q));
   if (projGate) {
@@ -1228,7 +1240,9 @@ function rebuildComplaintSearchIndex() {
 
 function filterComplaintSearchHits(qRaw) {
   const q = tktNormQTicketNew(qRaw);
-  if (!q.length) return [];
+  if (!q.length) {
+    return [..._complaintHits].sort((a, b) => String(a.primary).localeCompare(String(b.primary))).slice(0, 64);
+  }
   const hits = _complaintHits.filter((h) => h.hay.includes(q));
   hits.sort((a, b) => {
     const aStart = a.hay.startsWith(q) ? 0 : 1;
@@ -2103,6 +2117,11 @@ document.getElementById('tktNewForm').addEventListener('submit', async (e) => {
     base_unit: document.getElementById('baseUnitSelect').value.trim(),
     is_chargeable: document.getElementById('isChargeable').checked,
   };
+
+  const cdSourceEl = document.getElementById('sourceInspectionNotifId');
+  if (cdSourceEl && cdSourceEl.value) {
+    payload.source_inspection_notif_id = cdSourceEl.value;
+  }
 
   const locCascade = validateLocationCascade();
   if (!locCascade.ok) {

@@ -6,7 +6,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy.orm import joinedload
 from app.models import (
     db, User, AuditLog, Device, BDProject, BDFollowUp, BDContact, BDActivity,
-    DocHubAccess, MmrChargeableConfig, NotificationConfig, AdminPersonalProject, AdminPersonalProgressStep,
+    DocHubAccess, NotificationConfig, AdminPersonalProject, AdminPersonalProgressStep,
     Technician,
 )
 from app.middleware import admin_required
@@ -116,96 +116,6 @@ def _resolve_reporting_manager_id(raw_mid, exclude_user_id):
     return mid
 
 
-@admin_bp.route('/mmr/chargeable-config', methods=['GET', 'PUT'])
-@jwt_required()
-@admin_required
-def mmr_chargeable_config():
-    """Load or save MMR chargeable rules (BaseUnit defaults + substring overrides)."""
-    from module_mmr.mmr_service import (
-        DEFAULT_MMR_CHARGEABLE_CONFIG,
-        merge_builtin_rules_payload,
-        _merge_mmr_chargeable_config,
-        invalidate_mmr_chargeable_config_cache,
-    )
-    if request.method == 'GET':
-        try:
-            row = MmrChargeableConfig.query.first()
-            stored = row.config_json if row else None
-            return success_response({'config': _merge_mmr_chargeable_config(stored)})
-        except Exception as e:
-            current_app.logger.error(f"MMR chargeable config GET: {e}", exc_info=True)
-            return error_response('Failed to load MMR chargeable settings', status_code=500, error_code='DATABASE_ERROR')
-
-    try:
-        admin_id = get_jwt_identity()
-        data = request.get_json()
-        if data is None:
-            return error_response('JSON body required', status_code=400, error_code='VALIDATION_ERROR')
-
-        flag = data.get('non_apartment_baseunit_non_chargeable')
-        overrides = data.get('baseunit_overrides')
-        if flag is None or not isinstance(flag, bool):
-            return error_response(
-                'non_apartment_baseunit_non_chargeable (boolean) is required',
-                status_code=400,
-                error_code='VALIDATION_ERROR',
-            )
-        if overrides is None:
-            overrides = []
-        if not isinstance(overrides, list):
-            return error_response('baseunit_overrides must be a list', status_code=400, error_code='VALIDATION_ERROR')
-
-        cleaned = []
-        for item in overrides:
-            if not isinstance(item, dict):
-                continue
-            pat = (item.get('pattern') or '').strip()
-            if not pat:
-                continue
-            cleaned.append({'pattern': pat, 'chargeable': bool(item.get('chargeable'))})
-
-        row = MmrChargeableConfig.query.first()
-        prev = _merge_mmr_chargeable_config(row.config_json if row else None)
-        br_in = data.get('builtin_rules')
-        if br_in is not None and not isinstance(br_in, dict):
-            return error_response(
-                'builtin_rules must be an object',
-                status_code=400,
-                error_code='VALIDATION_ERROR',
-            )
-        br_merged = merge_builtin_rules_payload(br_in) if isinstance(br_in, dict) else prev['builtin_rules']
-
-        raw_update = {
-            **prev,
-            'non_apartment_baseunit_non_chargeable': flag,
-            'baseunit_overrides': cleaned,
-            'builtin_rules': br_merged,
-        }
-        if 'location_register_state' in data:
-            raw_update['location_register_state'] = data.get('location_register_state')
-        merged = _merge_mmr_chargeable_config(raw_update)
-
-        if row:
-            row.config_json = merged
-        else:
-            db.session.add(MmrChargeableConfig(config_json=merged))
-
-        db.session.commit()
-        invalidate_mmr_chargeable_config_cache()
-
-        log_audit(admin_id, 'mmr_chargeable_config', 'settings', 'mmr', {
-            'non_apartment_baseunit_non_chargeable': flag,
-            'override_count': len(cleaned),
-            'builtin_rules': br_merged,
-        })
-
-        return success_response({'config': merged}, message='MMR chargeable settings saved')
-    except Exception as e:
-        db.session.rollback()
-        current_app.logger.error(f"MMR chargeable config PUT: {e}", exc_info=True)
-        return error_response('Failed to save MMR chargeable settings', status_code=500, error_code='DATABASE_ERROR')
-
-
 @admin_bp.route('/notification-config', methods=['GET', 'PUT'])
 @jwt_required()
 @admin_required
@@ -283,117 +193,7 @@ def notification_config():
         return error_response('Failed to save notification settings', status_code=500, error_code='DATABASE_ERROR')
 
 
-@admin_bp.route('/mmr/location-register/parse', methods=['POST'])
-@jwt_required()
-@admin_required
-def mmr_location_register_parse():
-    """Parse Location Register Excel (or CAFM HTML export): Base Unit, BU Funct Type, Property, Zone."""
-    from module_mmr.mmr_service import parse_location_register_bytes
-
-    _MAX_LOC_BYTES = 5 * 1024 * 1024
-
-    try:
-        if 'file' not in request.files:
-            return error_response('No file provided', status_code=400, error_code='VALIDATION_ERROR')
-        f = request.files['file']
-        if not f or not f.filename:
-            return error_response('No file selected', status_code=400, error_code='VALIDATION_ERROR')
-        fn = (f.filename or '').lower()
-        if not (fn.endswith('.xlsx') or fn.endswith('.xls')):
-            return error_response(
-                'Upload a .xlsx or .xls file (CAFM “Export to Excel”; HTML exports often use a .xls name).',
-                status_code=400,
-                error_code='VALIDATION_ERROR',
-            )
-        data = f.read()
-        if len(data) > _MAX_LOC_BYTES:
-            return error_response('File too large (max 5 MB)', status_code=400, error_code='VALIDATION_ERROR')
-        result = parse_location_register_bytes(data, f.filename or 'register.xlsx')
-        result['source_filename'] = (f.filename or '')[:255]
-        gen = current_app.config.get('GENERATED_DIR')
-        if gen:
-
-            def _write_last_copy():
-                try:
-                    os.makedirs(gen, exist_ok=True)
-                    ext = os.path.splitext(f.filename or '')[1] or '.xlsx'
-                    if ext.lower() not in ('.xlsx', '.xls', '.xlsm'):
-                        ext = '.xlsx'
-                    safe_ext = ext[:8]
-                    path = os.path.join(gen, f'mmr_location_register_last{safe_ext}')
-                    with open(path, 'wb') as out:
-                        out.write(data)
-                except Exception as e:
-                    current_app.logger.warning('MMR location register copy not saved: %s', e)
-
-            threading.Thread(target=_write_last_copy, daemon=True).start()
-        return success_response(result)
-    except ValueError as e:
-        return error_response(str(e), status_code=400, error_code='VALIDATION_ERROR')
-    except Exception as e:
-        current_app.logger.error(f'MMR location register parse: {e}', exc_info=True)
-        return error_response('Failed to parse file', status_code=500, error_code='DATABASE_ERROR')
-
-
-@admin_bp.route('/mmr/chargeable-preview', methods=['POST'])
-@jwt_required()
-@admin_required
-def mmr_chargeable_preview():
-    """Batch-resolve Chargeable/Non-Chargeable for BaseUnit strings using current form rules (preview)."""
-    from module_mmr.mmr_service import (
-        _merge_mmr_chargeable_config,
-        merge_builtin_rules_payload,
-        preview_chargeable_for_base_units,
-    )
-
-    try:
-        data = request.get_json(silent=True) or {}
-        units = data.get('base_units')
-        if not isinstance(units, list):
-            return error_response('base_units must be a list', status_code=400, error_code='VALIDATION_ERROR')
-        if len(units) > 4000:
-            return error_response('Too many base_units (max 4000)', status_code=400, error_code='VALIDATION_ERROR')
-
-        raw: dict = {}
-        if 'non_apartment_baseunit_non_chargeable' in data:
-            raw['non_apartment_baseunit_non_chargeable'] = bool(
-                data.get('non_apartment_baseunit_non_chargeable')
-            )
-        br_in = data.get('builtin_rules')
-        if br_in is not None:
-            if not isinstance(br_in, dict):
-                return error_response('builtin_rules must be an object', status_code=400, error_code='VALIDATION_ERROR')
-            raw['builtin_rules'] = merge_builtin_rules_payload(br_in)
-        ov = data.get('baseunit_overrides')
-        if ov is not None:
-            if not isinstance(ov, list):
-                return error_response('baseunit_overrides must be a list', status_code=400, error_code='VALIDATION_ERROR')
-            cleaned = []
-            for item in ov:
-                if not isinstance(item, dict):
-                    continue
-                pat = (item.get('pattern') or '').strip()
-                if not pat:
-                    continue
-                cleaned.append({'pattern': pat, 'chargeable': bool(item.get('chargeable'))})
-            raw['baseunit_overrides'] = cleaned
-
-        merged = _merge_mmr_chargeable_config(raw if raw else None)
-        strings: list[str] = []
-        for u in units:
-            if u is None:
-                continue
-            s = u if isinstance(u, str) else str(u)
-            strings.append(s.strip())
-
-        results = preview_chargeable_for_base_units(strings, merged)
-        return success_response({'results': results})
-    except Exception as e:
-        current_app.logger.error(f'MMR chargeable preview: {e}', exc_info=True)
-        return error_response('Failed to resolve chargeable preview', status_code=500, error_code='DATABASE_ERROR')
-
-
-DEFAULT_ADMIN_RESET_PASSWORD = 'Injaaz@123'
+DEFAULT_ADMIN_RESET_PASSWORD = 'Amaan@123'
 
 
 @admin_bp.route('/users', methods=['GET'])
@@ -506,6 +306,9 @@ def create_user_admin():
             user.access_report_generation = bool(data.get('access_report_generation', False))
             user.access_submitted_forms = bool(data.get('access_submitted_forms', False))
             user.access_ticketing = bool(data.get('access_ticketing', False))
+            user.access_operations = bool(data.get('access_operations', False))
+            # Operations full access only applies when they have operations access at all
+            user.access_operations_manage = bool(data.get('access_operations', False)) and bool(data.get('access_operations_manage', False))
 
         db.session.add(user)
         db.session.flush()
@@ -933,10 +736,15 @@ def update_user(user_id):
                 ('access_report_generation', 'access_report_generation'),
                 ('access_submitted_forms', 'access_submitted_forms'),
                 ('access_ticketing', 'access_ticketing'),
+                ('access_operations', 'access_operations'),
+                ('access_operations_manage', 'access_operations_manage'),
             ):
                 if key in data:
                     setattr(user, col, bool(data[key]))
-        
+            # Full operations access requires operations access in the first place
+            if not getattr(user, 'access_operations', False):
+                user.access_operations_manage = False
+
         db.session.commit()
         
         # Log the action
@@ -3160,6 +2968,29 @@ def _tech_parse_date(raw):
     return None
 
 
+def _sync_technician_user(tech: 'Technician', username: str, raw_pw: str):
+    """Create or update a User account linked to this technician so they can log in."""
+    linked = User.query.filter_by(username=username).first()
+    if not linked:
+        email = tech.email or f"{username}@amaan.local"
+        linked = User(
+            username=username,
+            email=email,
+            full_name=tech.full_name,
+            role='user',
+            designation='technician',  # keeps it out of the staff roster (staff excludes technicians)
+            access_ticketing=True,
+            password_changed=True,
+            is_active=True,
+        )
+        db.session.add(linked)
+    else:
+        linked.full_name = tech.full_name
+        linked.designation = 'technician'
+        linked.is_active = True
+    linked.set_password(raw_pw)
+
+
 @admin_bp.route('/technicians', methods=['GET'])
 @jwt_required()
 @admin_required
@@ -3189,10 +3020,14 @@ def create_technician():
         return error_response('employee_id and full_name are required', status_code=400, error_code='VALIDATION_ERROR')
     if Technician.query.filter_by(employee_id=emp_id).first():
         return error_response(f'Employee ID "{emp_id}" already exists', status_code=409, error_code='DUPLICATE')
+    username = (data.get('username') or '').strip() or None
+    if username and Technician.query.filter_by(username=username).first():
+        return error_response(f'Username "{username}" already in use', status_code=409, error_code='DUPLICATE')
     try:
         t = Technician(
             employee_id=emp_id,
             full_name=name,
+            username=username,
             designation=(data.get('designation') or '').strip() or None,
             department=(data.get('department') or '').strip() or None,
             specialization=(data.get('specialization') or '').strip() or None,
@@ -3202,9 +3037,19 @@ def create_technician():
             joining_date=_tech_parse_date(data.get('joining_date')),
             status=(data.get('status') or 'active').strip().lower(),
             notes=(data.get('notes') or '').strip() or None,
+            job_title=(data.get('job_title') or '').strip() or None,
+            annual_leave_days=int(data['annual_leave_days']) if str(data.get('annual_leave_days') or '').strip() else None,
+            other_leave_days=int(data['other_leave_days']) if str(data.get('other_leave_days') or '').strip() else None,
             supervisor_user_id=(sup_coerced if sup_coerced != '__unset__' else None),
         )
+        # Default any technician without an explicit password to the standard default.
+        raw_pw = (data.get('password') or '').strip() or DEFAULT_ADMIN_RESET_PASSWORD
+        t.set_password(raw_pw)
+        t.admin_visible_password = raw_pw
         db.session.add(t)
+        db.session.flush()
+        if username:
+            _sync_technician_user(t, username, raw_pw)
         db.session.commit()
         return success_response({'technician': t.to_dict()}, message='Technician created', status_code=201)
     except Exception as e:
@@ -3239,9 +3084,23 @@ def update_technician(tech_id):
         if not n:
             return error_response('full_name cannot be empty', status_code=400, error_code='VALIDATION_ERROR')
         t.full_name = n
-    for field in ('designation', 'department', 'specialization', 'phone', 'email', 'notes'):
+    if 'username' in data:
+        new_username = (data['username'] or '').strip() or None
+        if new_username and Technician.query.filter(Technician.username == new_username, Technician.id != tech_id).first():
+            return error_response(f'Username "{new_username}" already in use', status_code=409, error_code='DUPLICATE')
+        t.username = new_username
+    raw_pw_update = ''
+    if 'password' in data:
+        raw_pw_update = (data['password'] or '').strip()
+        if raw_pw_update:
+            t.set_password(raw_pw_update)
+            t.admin_visible_password = raw_pw_update
+    for field in ('designation', 'department', 'specialization', 'phone', 'email', 'notes', 'job_title'):
         if field in data:
             setattr(t, field, (data[field] or '').strip() or None)
+    for lv in ('annual_leave_days', 'other_leave_days'):
+        if lv in data:
+            setattr(t, lv, int(data[lv]) if str(data[lv] or '').strip() else None)
     if 'salary' in data:
         t.salary = float(data['salary']) if data['salary'] not in (None, '') else None
     if 'joining_date' in data:
@@ -3251,6 +3110,9 @@ def update_technician(tech_id):
         if s in ('active', 'inactive', 'on_leave'):
             t.status = s
     try:
+        sync_pw = raw_pw_update or (t.admin_visible_password or '')
+        if t.username and sync_pw:
+            _sync_technician_user(t, t.username, sync_pw)
         db.session.commit()
         return success_response({'technician': t.to_dict()})
     except Exception as e:

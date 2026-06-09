@@ -44,7 +44,7 @@ def _utcnow():
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
-def _send_inspection_email(notif: InspectionNotification, app=None,
+def _send_inspection_email(notif: InspectionNotification,
                            custom_to=None, custom_cc=None,
                            custom_subject=None, custom_body=None):
     """Send email notifying the ops team of a new inspection date."""
@@ -213,20 +213,9 @@ def api_create_notification():
     custom_subject = data.get('email_subject') or None
     custom_body    = data.get('email_body')    or None
 
-    # Fire email in background thread so request returns immediately
-    try:
-        from flask import current_app
-        import threading
-        app = current_app._get_current_object()
-        threading.Thread(
-            target=_send_inspection_email,
-            args=(notif, app),
-            kwargs=dict(custom_to=custom_to, custom_cc=custom_cc,
-                        custom_subject=custom_subject, custom_body=custom_body),
-            daemon=True
-        ).start()
-    except Exception:
-        pass
+    _send_inspection_email(notif,
+                           custom_to=custom_to, custom_cc=custom_cc,
+                           custom_subject=custom_subject, custom_body=custom_body)
 
     return jsonify({'success': True, 'notification': notif.to_dict()}), 201
 
@@ -246,6 +235,72 @@ def api_update_notification(notif_id_int):
         notif.notes = data['notes']
     if 'civil_defense_ref' in data:
         notif.civil_defense_ref = data['civil_defense_ref']
+    db.session.commit()
+    return jsonify({'success': True, 'notification': notif.to_dict()})
+
+
+@inspection_bp.route('/api/notifications/<int:notif_id_int>/outcome', methods=['POST'])
+@jwt_required()
+def api_record_outcome(notif_id_int):
+    """Record the inspection outcome and branch:
+
+    - pass                  → close the notification, no ST.
+    - fail + amaan          → keep open; UI then offers 'Create Service Ticket'.
+    - fail + civil_defense  → restart the cycle: bump reinspection_count, reschedule
+                              with a new inspection_date, log the failed cycle. No ST.
+    """
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'error': 'Not found'}), 404
+    if not _has_notif_write_access(user) and not _has_inspection_access(user):
+        return jsonify({'error': 'Access denied'}), 403
+
+    notif = InspectionNotification.query.get_or_404(notif_id_int)
+    data = request.get_json() or {}
+
+    outcome = (data.get('outcome') or '').strip().lower()
+    if outcome not in ('pass', 'fail'):
+        return jsonify({'error': "outcome must be 'pass' or 'fail'"}), 400
+
+    notif.outcome = outcome
+    notif.outcome_notes = (data.get('outcome_notes') or '').strip() or None
+    notif.outcome_recorded_at = _utcnow()
+    notif.outcome_recorded_by_id = user.id
+
+    if outcome == 'pass':
+        notif.rectify_by = None
+        notif.status = 'closed'
+    else:
+        rectify_by = (data.get('rectify_by') or '').strip().lower()
+        if rectify_by not in ('amaan', 'civil_defense'):
+            return jsonify({'error': "rectify_by must be 'amaan' or 'civil_defense' for a failed inspection"}), 400
+        notif.rectify_by = rectify_by
+
+        if rectify_by == 'amaan':
+            # Keep the notification open so ops can convert it into a service ticket.
+            if notif.status in ('completed', 'closed'):
+                notif.status = 'scheduled'
+        else:
+            # Civil Defense rectifies → the inspection cycle restarts.
+            if not data.get('inspection_date'):
+                return jsonify({'error': 'inspection_date is required for a Civil Defense re-inspection'}), 400
+            try:
+                new_date = date.fromisoformat(data['inspection_date'])
+            except ValueError:
+                return jsonify({'error': 'Invalid date format; use YYYY-MM-DD'}), 400
+            if new_date <= date.today():
+                return jsonify({'error': 'Re-inspection date must be in the future'}), 400
+
+            prior_date = notif.inspection_date.strftime('%d %b %Y') if notif.inspection_date else '—'
+            log_line = (f"[{date.today().isoformat()}] Failed inspection ({prior_date}); "
+                        f"Civil Defense to rectify. Re-inspection scheduled for "
+                        f"{new_date.strftime('%d %b %Y')}.")
+            notif.notes = (notif.notes + "\n" + log_line) if notif.notes else log_line
+            notif.reinspection_count = (notif.reinspection_count or 0) + 1
+            notif.inspection_date = new_date
+            notif.status = 'scheduled'
+
     db.session.commit()
     return jsonify({'success': True, 'notification': notif.to_dict()})
 
@@ -280,6 +335,6 @@ def api_notification_stats():
             'scheduled': sum(1 for n in all_notifs if n.status == 'scheduled'),
             'completed': sum(1 for n in all_notifs if n.status == 'completed'),
             'overdue': sum(1 for n in all_notifs if n.status == 'overdue' or (n.status == 'pending' and n.inspection_date and n.inspection_date < today)),
-            'upcoming_7d': sum(1 for n in all_notifs if n.inspection_date and 0 <= (n.inspection_date - today).days <= 7 and n.status not in ('completed', 'cancelled')),
+            'upcoming_7d': sum(1 for n in all_notifs if n.inspection_date and 0 <= (n.inspection_date - today).days <= 7 and n.status not in ('completed', 'closed', 'cancelled')),
         }
     })

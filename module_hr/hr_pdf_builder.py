@@ -2561,6 +2561,124 @@ def _build_contract_renewal(story, fd, styles):
     story.append(t_rec)
 
 
+def _build_asset_handover(story, fd, styles):
+    """Asset Handover & Takeover Form — INJ-AHT-001."""
+    CW = CONTENT_W
+    _, VAL, _, SML, _ = _fstyles()
+
+    tx_map = {
+        "handover": "Handover (Employee Departing / Transferring)",
+        "takeover": "Takeover (Employee Joining / Receiving)",
+        "both": "Handover & Takeover (Simultaneous)",
+    }
+    tx_type = tx_map.get(_fd(fd, "transaction_type", ""), _fd(fd, "transaction_type"))
+
+    story.append(_header_table("Asset Handover & Takeover Form", styles, show_bottom_line=False))
+    story.append(Spacer(1, 4))
+
+    story.append(_section_bar_numbered("01", "Transaction Details", styles))
+    story.append(_data_table([
+        ("Transaction Type", tx_type),
+        ("Date",             _fmt(fd.get("handover_date"))),
+    ], cols=4, styles=styles))
+    story.append(Spacer(1, 3))
+
+    story.append(_section_bar_numbered("02", "Handing Over Party", styles))
+    story.append(_data_table([
+        ("Employee Name",    _fd(fd, "handover_employee_name")),
+        ("Employee ID",      _fd(fd, "handover_employee_id")),
+        ("Department",       _fd(fd, "handover_department", "").replace("_", " ").title()),
+        ("Designation",      _fd(fd, "handover_designation")),
+        ("Last Working Day", _fmt(fd.get("handover_last_day"))),
+    ], cols=4, styles=styles))
+    story.append(Spacer(1, 3))
+
+    story.append(_section_bar_numbered("03", "Taking Over Party", styles))
+    story.append(_data_table([
+        ("Employee Name", _fd(fd, "takeover_employee_name")),
+        ("Employee ID",   _fd(fd, "takeover_employee_id")),
+        ("Department",    _fd(fd, "takeover_department", "").replace("_", " ").title()),
+        ("Designation",   _fd(fd, "takeover_designation")),
+    ], cols=4, styles=styles))
+    story.append(Spacer(1, 3))
+
+    # Asset items table
+    items = [i for i in (fd.get("items") or []) if i and i.get("description")]
+    if items:
+        story.append(_section_bar_numbered("04", "Asset Items", styles))
+        LBL = ParagraphStyle("ahtH", fontSize=8, fontName="Helvetica-Bold",
+                             textColor=C_BLACK, alignment=TA_CENTER)
+        hdr = [Paragraph(h, LBL) for h in
+               ["Description", "Asset Tag / Serial", "Qty", "Condition", "Remarks"]]
+        widths_i = [CW * 0.30, CW * 0.22, CW * 0.08, CW * 0.15, CW * 0.25]
+        item_rows = [hdr]
+        for item in items:
+            item_rows.append([
+                Paragraph(_fd(item, "description"), VAL),
+                Paragraph(_fd(item, "asset_tag"), VAL),
+                Paragraph(_fd(item, "quantity"), VAL),
+                Paragraph(_fd(item, "condition", "").title() or "—", VAL),
+                Paragraph(_fd(item, "remarks"), SML),
+            ])
+        t_items = Table(item_rows, colWidths=widths_i)
+        t_items.setStyle(TableStyle([
+            ("FONTNAME",      (0, 0), (-1, -1), "Helvetica"),
+            ("FONTSIZE",      (0, 0), (-1, -1), 9),
+            ("ALIGN",         (0, 0), (-1, -1), "LEFT"),
+            ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
+            ("LEFTPADDING",   (0, 0), (-1, -1), 5),
+            ("RIGHTPADDING",  (0, 0), (-1, -1), 5),
+            ("TOPPADDING",    (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ("BOX",           (0, 0), (-1, -1), 0.5, C_BLACK),
+            ("INNERGRID",     (0, 0), (-1, -1), 0.3, C_LIGHT),
+            ("BACKGROUND",    (0, 0), (-1, 0),  _C_SEC_BG),
+            ("LINEBELOW",     (0, 0), (-1, 0),  0.5, C_BLACK),
+        ]))
+        story.append(t_items)
+        story.append(Spacer(1, 3))
+
+    if fd.get("additional_remarks"):
+        story.append(_long_field("Additional Remarks", fd.get("additional_remarks"), styles))
+        story.append(Spacer(1, 3))
+
+    story.append(_section_bar_numbered("05", "Signatures", styles))
+    sigs = [
+        (_fsig("Handing Over — Employee", fd.get("employee_signature")),),
+        (_fsig("Taking Over — Employee",  fd.get("takeover_signature")),),
+    ]
+    if fd.get("hr_signature"):
+        sigs.append((_fsig("HR", fd.get("hr_signature")),))
+    n = len(sigs)
+    sig_cw = [CW / n] * n
+    t_sig = Table([[row[0] for row in sigs]], colWidths=sig_cw)
+    t_sig.setStyle(TableStyle([
+        ("BOX",           (0, 0), (-1, -1), 0.5, C_BLACK),
+        ("INNERGRID",     (0, 0), (-1, -1), 0.3, C_LIGHT),
+        ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
+        ("LEFTPADDING",   (0, 0), (-1, -1), 6),
+        ("RIGHTPADDING",  (0, 0), (-1, -1), 6),
+        ("TOPPADDING",    (0, 0), (-1, -1), 8),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+        ("MINROWHEIGHT",  (0, 0), (-1, -1), 40),
+    ]))
+    story.append(t_sig)
+    story.append(Spacer(1, 3))
+
+    if fd.get("hr_checked") or fd.get("hr_comments") or fd.get("hr_date"):
+        story.append(_section_bar_numbered("06", "For Human Resources Only", styles))
+        hr_pairs = []
+        if fd.get("hr_checked"):
+            hr_pairs.append(("Checked by HR", _fd(fd, "hr_checked")))
+        if fd.get("hr_date"):
+            hr_pairs.append(("Date", _fmt(fd.get("hr_date"))))
+        if hr_pairs:
+            story.append(_data_table(hr_pairs, cols=4, styles=styles))
+            story.append(Spacer(1, 3))
+        if fd.get("hr_comments"):
+            story.append(_long_field("HR Comments", fd.get("hr_comments"), styles))
+            story.append(Spacer(1, 3))
+
 
 _BUILDERS = {
     "leave_application": (_build_leave, "Leave Application"),
@@ -2575,6 +2693,7 @@ _BUILDERS = {
     "station_clearance": (_build_station_clearance, "Station Clearance"),
     "performance_evaluation": (_build_performance_evaluation, "Performance Evaluation"),
     "contract_renewal": (_build_contract_renewal, "Contract Renewal"),
+    "asset_handover": (_build_asset_handover, "Asset Handover & Takeover"),
 }
 
 

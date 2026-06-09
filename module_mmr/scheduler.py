@@ -1,9 +1,9 @@
 """
-APScheduler wrapper for the MMR daily email.
-Runs a cron job at the configured time (default 10:00 AM).
+APScheduler wrapper for the Email Automation engine.
 
-Schedule hour/minute are interpreted in Dubai time (Asia/Dubai), not server UTC.
-Override with env MMR_SCHEDULE_TIMEZONE (e.g. UTC for debugging).
+Each enabled EmailAutomation row gets its own job (id = email_auto_<id>).
+Schedule times (hour/minute) are interpreted in Dubai time (Asia/Dubai), not
+server UTC. Override with env MMR_SCHEDULE_TIMEZONE (e.g. UTC for debugging).
 """
 import logging
 import os
@@ -11,167 +11,161 @@ from zoneinfo import ZoneInfo
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
+from apscheduler.triggers.interval import IntervalTrigger
 
 logger = logging.getLogger(__name__)
 
 
 def _cron_timezone():
-    """IANA zone for cron triggers; default Asia/Dubai (UAE)."""
+    """IANA zone for triggers; default Asia/Dubai (UAE)."""
     name = (os.environ.get('MMR_SCHEDULE_TIMEZONE') or 'Asia/Dubai').strip() or 'Asia/Dubai'
     try:
         return ZoneInfo(name)
     except Exception:
         logger.warning(
-            'MMR scheduler: invalid MMR_SCHEDULE_TIMEZONE=%r, using Asia/Dubai',
+            'Automation scheduler: invalid MMR_SCHEDULE_TIMEZONE=%r, using Asia/Dubai',
             name,
         )
         return ZoneInfo('Asia/Dubai')
 
+
 _scheduler: BackgroundScheduler | None = None
-_JOB_ID = 'mmr_daily_report'
-# Legacy id from pre-removal upload reminder job — still unregistered in update_schedule.
-_LEGACY_REMINDER_JOB_ID = 'mmr_upload_reminder'
+
+
+def _job_id(automation_id: int) -> str:
+    return f'email_auto_{automation_id}'
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Trigger construction
+# ──────────────────────────────────────────────────────────────────────────────
+
+def _trigger_for(automation):
+    """Build an APScheduler trigger from an EmailAutomation row (Dubai tz)."""
+    tz = _cron_timezone()
+    hour = int(automation.hour or 0)
+    minute = int(automation.minute or 0)
+    st = (automation.schedule_type or 'daily').strip().lower()
+
+    if st == 'weekly':
+        wd = int(automation.weekday or 0)  # 0=Mon .. 6=Sun (matches APScheduler)
+        return CronTrigger(day_of_week=wd, hour=hour, minute=minute, timezone=tz)
+
+    if st == 'monthly':
+        dom = max(1, min(28, int(automation.day_of_month or 1)))
+        return CronTrigger(day=dom, hour=hour, minute=minute, timezone=tz)
+
+    if st == 'quarterly':
+        start = max(1, min(12, int(automation.quarter_start_month or 1)))
+        months = sorted({((start - 1 + 3 * i) % 12) + 1 for i in range(4)})
+        dom = max(1, min(28, int(automation.day_of_month or 1)))
+        return CronTrigger(
+            month=','.join(str(m) for m in months),
+            day=dom, hour=hour, minute=minute, timezone=tz,
+        )
+
+    if st == 'interval':
+        n = max(1, int(automation.interval_n or 1))
+        unit = (automation.interval_unit or 'days').strip().lower()
+        if unit == 'weeks':
+            return IntervalTrigger(weeks=n, timezone=tz)
+        if unit == 'months':
+            # APScheduler has no month interval; approximate with cron month='*/N'
+            # at the configured day/time. N=12 => yearly.
+            dom = max(1, min(28, int(automation.day_of_month or 1)))
+            return CronTrigger(
+                month=f'*/{n}', day=dom, hour=hour, minute=minute, timezone=tz,
+            )
+        return IntervalTrigger(days=n, timezone=tz)
+
+    # default: daily
+    return CronTrigger(hour=hour, minute=minute, timezone=tz)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Job function (runs outside request context – needs its own app context)
 # ──────────────────────────────────────────────────────────────────────────────
 
-def _run_scheduled_report(app):
+def _run_automation(automation_id, app, force=False):
+    """Send the email for one automation. Records last-run status on the row.
+
+    force=True (manual "Run now") sends even when the automation is disabled;
+    the scheduled path uses force=False so disabled automations stay dormant.
+    """
     with app.app_context():
+        from datetime import datetime, timezone as _tz
+        from app.models import db, EmailAutomation
+        from common.email_service import send_email
+
+        automation = EmailAutomation.query.get(automation_id)
+        if not automation:
+            logger.info('Automation %s no longer exists; skipping', automation_id)
+            return
+        if not automation.enabled and not force:
+            logger.info('Automation %s disabled; skipping', automation_id)
+            return
+
+        to_list = [e.strip() for e in (automation.to_emails or '').split(',') if e.strip()]
+        cc_list = [e.strip() for e in (automation.cc_emails or '').split(',') if e.strip()] or None
+
+        def _finish(status, detail):
+            try:
+                automation.last_run_at = datetime.now(_tz.utc).replace(tzinfo=None)
+                automation.last_run_status = status
+                automation.last_run_detail = (detail or '')[:1000]
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+                logger.exception('Automation %s: failed to record last run', automation_id)
+
+        if not to_list:
+            logger.warning('Automation %s: no recipients; skipping', automation_id)
+            _finish('failed', 'No recipients configured')
+            return
+
         try:
-            from datetime import datetime, timedelta
-            from .routes import (_upload_path, _load_config, _save_config, _save_last_run,
-                                  append_automation_activity,
-                                  _save_report_to_folder, _save_email_report_to_network,
-                                  _format_report_date, _format_report_date_range_str,
-                                  _REPORT_DATE_PLACEHOLDER, _report_filename, _complete_current_cycle)
-            from .mmr_service import parse_excel, generate_report_excel, get_report_date_range_from_df, get_report_date_from_excel, format_chargeable_summary_for_email, format_per_tower_chargeable_html_for_email
-            from common.email_service import send_email
+            subject = automation.subject or '(no subject)'
+            # Body must be non-empty — some providers (e.g. Brevo) reject blank text content.
+            body = automation.body if (automation.body and automation.body.strip()) else subject
+            body_escaped = (
+                body.replace('&', '&amp;').replace('<', '&lt;')
+                .replace('>', '&gt;').replace('\n', '<br>')
+            )
+            html_body = (
+                '<!DOCTYPE html><html><head><meta charset="utf-8"></head>'
+                '<body style="font-family:Arial,sans-serif;font-size:13px;color:#333">'
+                f'<p style="margin:0;line-height:1.5">{body_escaped}</p>'
+                '</body></html>'
+            )
 
-            config = _load_config()
-            if not config.get('schedule_enabled'):
-                return
-            if config.get('schedule_paused'):
-                logger.info('MMR scheduler: paused (upload new Excel to resume)')
-                return
+            attachments = [
+                {
+                    'content': a.content,
+                    'filename': a.filename,
+                    'mime_type': a.mime_type or 'application/octet-stream',
+                }
+                for a in automation.attachments
+            ] or None
 
-            path = _upload_path()
-            if not os.path.exists(path):
-                logger.info('MMR scheduler: no Excel file found, skipping')
-                append_automation_activity(
-                    'run_skipped',
-                    'Scheduled run skipped: no Excel file on the server',
-                    None,
-                    meta={'reason': 'no_file'},
-                )
-                return
-
-            last_mt = config.get('last_sent_source_mtime')
-            if last_mt is not None:
-                try:
-                    if os.path.getmtime(path) <= float(last_mt) + 0.001:
-                        logger.warning(
-                            'MMR scheduler: Excel unchanged since last send; skipping (upload required)'
-                        )
-                        cfg2 = _load_config()
-                        cfg2['schedule_paused'] = True
-                        _save_config(cfg2)
-                        append_automation_activity(
-                            'run_skipped',
-                            'Scheduled run skipped: Excel file unchanged since last send',
-                            'Upload a fresh CAFM export before the next run.',
-                            meta={'reason': 'stale_file'},
-                        )
-                        return
-                except (TypeError, ValueError):
-                    pass
-
-            to_raw = config.get('to', '').strip()
-            if not to_raw:
-                logger.warning('MMR scheduler: no recipient configured, skipping')
-                append_automation_activity(
-                    'run_skipped',
-                    'Scheduled run skipped: no recipients configured',
-                    None,
-                    meta={'reason': 'no_recipients'},
-                )
-                return
-
-            to_list = [e.strip() for e in to_raw.split(',') if e.strip()]
-            cc_raw  = config.get('cc', '').strip()
-            cc_list = [e.strip() for e in cc_raw.split(',') if e.strip()] if cc_raw else None
-
-            df = parse_excel(path)
-            report_bytes = generate_report_excel(df)
-            date_range = get_report_date_range_from_df(df)
-            rf = config.get('report_format', 'daily')
-            rf = str(rf).strip().lower() if rf is not None else 'daily'
-            if rf not in ('daily', 'monthly'):
-                rf = 'daily'
-            filename = _report_filename(report_date_range=date_range, upload_path=path, report_format=rf)
-
-            body = config.get('body', '')
-            report_date = _format_report_date_range_str(date_range)
-            if report_date is None:
-                report_dt = get_report_date_from_excel(path) or (datetime.now() - timedelta(days=1))
-                report_date = _format_report_date(report_dt)
-            subject = config.get('subject', 'Daily Report on Resolved and Pending Complaints for {{REPORT_DATE}}').replace(_REPORT_DATE_PLACEHOLDER, report_date)
-            body = body.replace(_REPORT_DATE_PLACEHOLDER, report_date)
-            intro_for_html = body.rstrip()
-            chargeable_summary = format_chargeable_summary_for_email(df)
-            if chargeable_summary:
-                body = (body.rstrip() + '\n\n' + chargeable_summary).rstrip()
-            body = (body.rstrip() + '\n\nFor full information, please refer to the attached Excel file.').rstrip()
-
-            html_tables = format_per_tower_chargeable_html_for_email(df)
-            html_body = None
-            if html_tables:
-                intro_escaped = intro_for_html.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('\n', '<br>')
-                html_body = f'''<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="font-family:Arial,sans-serif;font-size:12px;color:#333">
-<p style="margin:0 0 12px 0;line-height:1.5">{intro_escaped}</p>
-{html_tables}
-<p style="margin:12px 0 8px 0;font-size:10px;color:#666;font-style:italic">* This is computer generated, please cross check at least once.</p>
-<p style="margin:0">For full information, please refer to the attached Excel file.</p>
-</body></html>'''
-
-            send_email(
+            ok = send_email(
                 recipient=to_list,
                 subject=subject,
                 body=body,
                 html_body=html_body,
                 cc=cc_list,
-                attachments=[{
-                    'content': report_bytes,
-                    'filename': filename,
-                    'mime_type': ('application/vnd.openxmlformats-'
-                                  'officedocument.spreadsheetml.sheet'),
-                }]
+                attachments=attachments,
             )
-            recipient_count = len(to_list) + (len(cc_list) if cc_list else 0)
-            cid = _complete_current_cycle('scheduler', subject, recipient_count, filename)
-            _save_last_run(
-                'success', to_list, cc_list, subject, recipient_count,
-                activity_source='scheduler', cycle_id=cid,
-            )
-            _save_report_to_folder(report_bytes, filename, 'email')
-            _save_email_report_to_network(report_bytes, filename)
-            logger.info('MMR scheduled report sent successfully')
-        except Exception:
-            logger.exception('MMR scheduled report failed')
-            try:
-                from .routes import _load_config, _save_last_run
-                config = _load_config()
-                to_raw = config.get('to', '').strip()
-                to_list = [e.strip() for e in to_raw.split(',') if e.strip()] if to_raw else []
-                cc_raw = config.get('cc', '').strip()
-                cc_list = [e.strip() for e in cc_raw.split(',') if e.strip()] if cc_raw else None
-                _save_last_run(
-                    'failed', to_list or [], cc_list or [], '', 0,
-                    activity_source='scheduler',
-                )
-            except Exception:
-                pass
+            if not ok:
+                _finish('failed', 'Email service rejected the send (check mail configuration)')
+                logger.warning('Automation %s (%s): send_email returned False', automation_id, automation.name)
+                return
+            n_att = len(attachments) if attachments else 0
+            n_rcpt = len(to_list) + (len(cc_list) if cc_list else 0)
+            _finish('success', f'Sent to {n_rcpt} recipient(s) with {n_att} attachment(s)')
+            logger.info('Automation %s (%s) sent successfully', automation_id, automation.name)
+        except Exception as exc:
+            logger.exception('Automation %s failed', automation_id)
+            _finish('failed', str(exc))
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -179,68 +173,86 @@ def _run_scheduled_report(app):
 # ──────────────────────────────────────────────────────────────────────────────
 
 def init_scheduler(app):
-    """Start the background scheduler and register a job if scheduling is enabled."""
+    """Start the background scheduler and register a job for each enabled automation."""
     global _scheduler
 
     if _scheduler and _scheduler.running:
         return
 
     _scheduler = BackgroundScheduler(daemon=True)
+    _scheduler.start()
+    logger.info('Email Automation APScheduler started')
 
     try:
-        from .routes import _load_config
-        with app.app_context():
-            config = _load_config()
-        if config.get('schedule_enabled'):
-            _add_job(config, app)
-            tz = _cron_timezone()
-            sh = int(config.get('schedule_hour', 10))
-            sm = int(config.get('schedule_minute', 0))
-            logger.info(
-                'MMR scheduler: report %02d:%02d %s (startup)',
-                sh, sm, getattr(tz, 'key', str(tz)),
-            )
+        _sync_all_jobs(app)
     except Exception:
-        logger.exception('MMR scheduler: error reading config during init')
-
-    _scheduler.start()
-    logger.info('MMR APScheduler started')
+        logger.exception('Automation scheduler: error registering jobs during init')
 
 
-def update_schedule(config: dict, app):
-    """Called after the admin saves email config – refreshes the cron job."""
+def _sync_all_jobs(app):
+    """Reload every enabled automation and (re)register its job. Removes stale jobs."""
     global _scheduler
-
     if not _scheduler:
         init_scheduler(app)
         return
 
-    for jid in (_JOB_ID, _LEGACY_REMINDER_JOB_ID):
-        if _scheduler.get_job(jid):
-            _scheduler.remove_job(jid)
+    from app.models import EmailAutomation
+    with app.app_context():
+        automations = EmailAutomation.query.all()
 
-    if config.get('schedule_enabled'):
-        _add_job(config, app)
-        tz = _cron_timezone()
-        logger.info(
-            'MMR scheduler: report %02d:%02d %s',
-            int(config.get('schedule_hour', 10)),
-            int(config.get('schedule_minute', 0)),
-            getattr(tz, 'key', str(tz)),
-        )
-    else:
-        logger.info('MMR scheduler: jobs disabled')
+    valid_ids = set()
+    for automation in automations:
+        valid_ids.add(_job_id(automation.id))
+        _register_one(automation, app)
+
+    # Drop jobs whose automation was deleted/disabled
+    for job in list(_scheduler.get_jobs()):
+        if job.id.startswith('email_auto_') and job.id not in valid_ids:
+            _scheduler.remove_job(job.id)
 
 
-def _add_job(config: dict, app):
+def _register_one(automation, app):
+    """Add/replace the job for one automation; remove it when disabled."""
     global _scheduler
-    tz = _cron_timezone()
-    sh = int(config.get('schedule_hour', 10))
-    sm = int(config.get('schedule_minute', 0))
+    if not _scheduler:
+        return
+    jid = _job_id(automation.id)
+    if _scheduler.get_job(jid):
+        _scheduler.remove_job(jid)
+    if not automation.enabled:
+        return
     _scheduler.add_job(
-        _run_scheduled_report,
-        CronTrigger(hour=sh, minute=sm, timezone=tz),
-        args=[app],
-        id=_JOB_ID,
+        _run_automation,
+        _trigger_for(automation),
+        args=[automation.id, app],
+        id=jid,
         replace_existing=True,
+        misfire_grace_time=3600,
     )
+    logger.info(
+        'Automation scheduler: registered %s (%s)',
+        jid, automation.schedule_summary(),
+    )
+
+
+def sync_automation_job(automation, app):
+    """Public hook for CRUD routes: refresh one automation's job after save/toggle."""
+    if not _scheduler:
+        init_scheduler(app)
+    _register_one(automation, app)
+
+
+def remove_automation_job(automation_id, app):
+    """Public hook for CRUD routes: drop a job when an automation is deleted."""
+    global _scheduler
+    if not _scheduler:
+        return
+    jid = _job_id(automation_id)
+    if _scheduler.get_job(jid):
+        _scheduler.remove_job(jid)
+        logger.info('Automation scheduler: removed %s', jid)
+
+
+def run_automation_now(automation_id, app):
+    """Fire an automation immediately (manual test from the UI), even if disabled."""
+    _run_automation(automation_id, app, force=True)

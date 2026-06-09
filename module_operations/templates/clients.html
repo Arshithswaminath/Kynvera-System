@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+  {% include 'partials/caveat_font.html' %}
+  <title>Clients - Operations</title>
+  <meta name="theme-color" content="#d21725">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <style>
+    :root { --primary: #d21725; --primary-light: #e8323f; --ops-ink:#0f172a; --ops-muted:#64748b; --ops-rule:#e2e8f0; }
+    body.ops-page { background:#F8FAF8; }
+    .ops-wrap { max-width: 1180px; margin: 7rem auto 3rem; padding: 0 1.25rem; }
+    .ops-head { display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; margin-bottom:1.5rem; }
+    .ops-title { font-size:1.85rem; font-weight:800; color:var(--ops-ink); margin:0; }
+    .ops-sub { color:var(--ops-muted); margin:.35rem 0 0; font-size:.95rem; }
+    .ops-actions { display:flex; gap:.6rem; flex-wrap:wrap; }
+    .ops-btn { display:inline-flex; align-items:center; gap:.45rem; border:none; border-radius:10px; padding:.62rem 1.05rem; font-weight:600; font-size:.9rem; cursor:pointer; text-decoration:none; transition:transform .12s ease, box-shadow .12s ease; }
+    .ops-btn-primary { background:var(--primary); color:#fff; }
+    .ops-btn-primary:hover { transform:translateY(-1px); box-shadow:0 6px 16px rgba(210,23,37,.22); }
+    .ops-btn-ghost { background:#fff; color:var(--ops-ink); border:1px solid var(--ops-rule); }
+    .ops-btn-ghost:hover { border-color:var(--primary-light); }
+    .ops-btn-sm { padding:.36rem .6rem; font-size:.8rem; border-radius:8px; }
+    .ops-card { background:#fff; border:1px solid var(--ops-rule); border-radius:16px; box-shadow:0 1px 3px rgba(15,23,42,.05); overflow:hidden; }
+    .ops-table { width:100%; border-collapse:collapse; font-size:.88rem; }
+    .ops-table th { text-align:left; background:#faf5f6; color:#7a1019; font-weight:700; padding:.8rem 1rem; border-bottom:1px solid var(--ops-rule); white-space:nowrap; }
+    .ops-table td { padding:.75rem 1rem; border-bottom:1px solid #f1f5f9; color:var(--ops-ink); vertical-align:middle; }
+    .ops-table tr:last-child td { border-bottom:none; }
+    .ops-table tbody tr:hover { background:#fcfcfd; }
+    .ops-empty { padding:3rem 1rem; text-align:center; color:var(--ops-muted); }
+    .ops-pill { display:inline-block; padding:.18rem .55rem; border-radius:999px; font-size:.74rem; font-weight:700; background:#eef2f7; color:#475569; text-transform:capitalize; }
+    .row-actions { display:flex; gap:.4rem; justify-content:flex-end; }
+    .ops-modal-backdrop { position:fixed; inset:0; background:rgba(15,23,42,.45); display:none; align-items:center; justify-content:center; z-index:1000; padding:1rem; }
+    .ops-modal-backdrop.open { display:flex; }
+    .ops-modal { background:#fff; border-radius:16px; width:100%; max-width:560px; max-height:92vh; overflow:auto; box-shadow:0 20px 50px rgba(15,23,42,.25); }
+    .ops-modal-head { padding:1.1rem 1.35rem; border-bottom:1px solid var(--ops-rule); display:flex; align-items:center; justify-content:space-between; }
+    .ops-modal-head h3 { margin:0; font-size:1.15rem; color:var(--ops-ink); }
+    .ops-modal-body { padding:1.35rem; }
+    .ops-modal-foot { padding:1rem 1.35rem; border-top:1px solid var(--ops-rule); display:flex; justify-content:flex-end; gap:.6rem; }
+    .ops-field { margin-bottom:1rem; }
+    .ops-field label { display:block; font-size:.82rem; font-weight:600; color:#334155; margin-bottom:.35rem; }
+    .ops-field input, .ops-field select, .ops-field textarea { width:100%; border:1px solid #cbd5e1; border-radius:9px; padding:.6rem .7rem; font-size:.9rem; font-family:inherit; box-sizing:border-box; }
+    .ops-field input:focus, .ops-field select:focus, .ops-field textarea:focus { outline:none; border-color:var(--primary-light); box-shadow:0 0 0 3px rgba(210,23,37,.12); }
+    .ops-grid2 { display:grid; grid-template-columns:1fr 1fr; gap:.85rem; }
+    .ops-close { background:none; border:none; font-size:1.5rem; line-height:1; cursor:pointer; color:#94a3b8; }
+    .ops-toast { position:fixed; bottom:1.5rem; left:50%; transform:translateX(-50%); background:var(--ops-ink); color:#fff; padding:.7rem 1.2rem; border-radius:10px; font-size:.9rem; z-index:2000; opacity:0; transition:opacity .2s; pointer-events:none; }
+    .ops-toast.show { opacity:1; }
+    .ops-toast.err { background:#b91c1c; }
+    @media (max-width:640px){ .ops-grid2{grid-template-columns:1fr;} .ops-table{font-size:.8rem;} }
+  </style>
+</head>
+<body class="ops-page">
+  {% set active_page = 'operations' %}
+  {% include 'partials/main_navbar.html' with context %}
+
+  <div class="ops-wrap">
+    <div class="ops-head">
+      <div>
+        <a href="/operations/" class="back-btn">
+          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+          Operations
+        </a>
+        <h1 class="ops-title">Clients</h1>
+        <p class="ops-sub">Customer master used when creating trading invoices.</p>
+      </div>
+      <div class="ops-actions">
+        <button class="ops-btn ops-btn-primary" id="addBtn">
+          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v14M5 12h14"/></svg>
+          Add Client
+        </button>
+      </div>
+    </div>
+
+    <div class="ops-card">
+      <table class="ops-table">
+        <thead>
+          <tr><th>Client</th><th>Contact</th><th>Email</th><th>Phone</th><th>City</th><th>Status</th><th></th></tr>
+        </thead>
+        <tbody id="clBody"><tr><td colspan="7" class="ops-empty">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="ops-modal-backdrop" id="clModal">
+    <div class="ops-modal">
+      <div class="ops-modal-head">
+        <h3 id="clModalTitle">Add Client</h3>
+        <button class="ops-close" data-close>&times;</button>
+      </div>
+      <div class="ops-modal-body">
+        <input type="hidden" id="f_id">
+        <div class="ops-field"><label>Client Name *</label><input type="text" id="f_client_name" placeholder="Acme Trading LLC"></div>
+        <div class="ops-grid2">
+          <div class="ops-field"><label>Contact Person</label><input type="text" id="f_contact_person"></div>
+          <div class="ops-field"><label>Tax ID / TRN</label><input type="text" id="f_tax_id"></div>
+        </div>
+        <div class="ops-grid2">
+          <div class="ops-field"><label>Email</label><input type="email" id="f_email"></div>
+          <div class="ops-field"><label>Phone</label><input type="text" id="f_phone"></div>
+        </div>
+        <div class="ops-field"><label>Billing Address</label><textarea id="f_billing_address" rows="2"></textarea></div>
+        <div class="ops-grid2">
+          <div class="ops-field"><label>City</label><input type="text" id="f_city"></div>
+          <div class="ops-field"><label>Country</label><input type="text" id="f_country"></div>
+        </div>
+        <div class="ops-grid2">
+          <div class="ops-field"><label>Status</label>
+            <select id="f_status"><option value="active">Active</option><option value="inactive">Inactive</option></select>
+          </div>
+        </div>
+        <div class="ops-field"><label>Notes</label><textarea id="f_notes" rows="2"></textarea></div>
+      </div>
+      <div class="ops-modal-foot">
+        <button class="ops-btn ops-btn-ghost" data-close>Cancel</button>
+        <button class="ops-btn ops-btn-primary" id="saveBtn">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="ops-toast" id="toast"></div>
+
+  <script src="{{ url_for('static', filename='pwa-install.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='mobile_utils.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='api-client.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+  <script>
+  (function(){
+    const body = document.getElementById('clBody');
+    const modal = document.getElementById('clModal');
+    let clients = [];
+    function toast(msg, isErr){ const t=document.getElementById('toast'); t.textContent=msg; t.className='ops-toast show'+(isErr?' err':''); setTimeout(()=>t.className='ops-toast',2600); }
+    function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+    async function load(){
+      try{
+        const res = await ApiClient.fetch('/operations/api/clients', { method:'GET' });
+        const data = await res.json();
+        if(!res.ok || !data.success){ throw new Error(data.error||'Failed to load'); }
+        clients = data.clients || []; render();
+      }catch(e){ body.innerHTML='<tr><td colspan="7" class="ops-empty">'+esc(e.message)+'</td></tr>'; }
+    }
+    function render(){
+      if(!clients.length){ body.innerHTML='<tr><td colspan="7" class="ops-empty">No clients yet. Add your first client.</td></tr>'; return; }
+      body.innerHTML = clients.map(c=>`
+        <tr>
+          <td><strong>${esc(c.client_name)}</strong></td>
+          <td>${esc(c.contact_person)||'—'}</td>
+          <td>${esc(c.email)||'—'}</td>
+          <td>${esc(c.phone)||'—'}</td>
+          <td>${esc(c.city)||'—'}</td>
+          <td><span class="ops-pill">${esc(c.status)}</span></td>
+          <td><div class="row-actions">
+            <button class="ops-btn ops-btn-ghost ops-btn-sm" data-edit="${c.id}">Edit</button>
+            <button class="ops-btn ops-btn-ghost ops-btn-sm" data-del="${c.id}">Delete</button>
+          </div></td>
+        </tr>`).join('');
+    }
+    function openModal(c){
+      document.getElementById('clModalTitle').textContent = c ? 'Edit Client' : 'Add Client';
+      const f = id=>document.getElementById(id);
+      f('f_id').value = c?c.id:''; f('f_client_name').value=c?(c.client_name||''):'';
+      f('f_contact_person').value=c?(c.contact_person||''):''; f('f_tax_id').value=c?(c.tax_id||''):'';
+      f('f_email').value=c?(c.email||''):''; f('f_phone').value=c?(c.phone||''):'';
+      f('f_billing_address').value=c?(c.billing_address||''):''; f('f_city').value=c?(c.city||''):'';
+      f('f_country').value=c?(c.country||''):''; f('f_status').value=c?(c.status||'active'):'active';
+      f('f_notes').value=c?(c.notes||''):'';
+      modal.classList.add('open');
+    }
+    function closeModal(){ modal.classList.remove('open'); }
+    async function save(){
+      const f = id=>document.getElementById(id).value;
+      const id = f('f_id');
+      const payload = { client_name:f('f_client_name').trim(), contact_person:f('f_contact_person').trim(),
+        tax_id:f('f_tax_id').trim(), email:f('f_email').trim(), phone:f('f_phone').trim(),
+        billing_address:f('f_billing_address').trim(), city:f('f_city').trim(), country:f('f_country').trim(),
+        status:f('f_status'), notes:f('f_notes').trim() };
+      if(!payload.client_name){ toast('Client name is required', true); return; }
+      const url = id ? '/operations/api/clients/'+id : '/operations/api/clients';
+      try{
+        const res = await ApiClient.fetch(url, { method: id?'PUT':'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+        const data = await res.json();
+        if(!res.ok || !data.success){ throw new Error(data.error||'Save failed'); }
+        toast(id?'Client updated':'Client added'); closeModal(); load();
+      }catch(e){ toast(e.message, true); }
+    }
+    async function del(id){
+      if(!confirm('Delete this client?')) return;
+      try{
+        const res = await ApiClient.fetch('/operations/api/clients/'+id, { method:'DELETE' });
+        const data = await res.json();
+        if(!res.ok || !data.success){ throw new Error(data.error||'Delete failed'); }
+        toast('Client deleted'); load();
+      }catch(e){ toast(e.message, true); }
+    }
+    document.getElementById('addBtn').addEventListener('click', ()=>openModal(null));
+    document.getElementById('saveBtn').addEventListener('click', save);
+    modal.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click', closeModal));
+    modal.addEventListener('click', e=>{ if(e.target===modal) closeModal(); });
+    body.addEventListener('click', e=>{
+      const ed=e.target.closest('[data-edit]'); const dl=e.target.closest('[data-del]');
+      if(ed){ openModal(clients.find(x=>x.id==ed.getAttribute('data-edit'))); }
+      if(dl){ del(dl.getAttribute('data-del')); }
+    });
+    load();
+  })();
+  </script>
+</body>
+</html>

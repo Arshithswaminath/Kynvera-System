@@ -149,12 +149,28 @@
       text-decoration: none;
     }
     .sf-activity-item a:hover { text-decoration: underline; }
+
+    /* Two-column layout: submissions (left) + live activity sidebar (right) */
+    .sf-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(300px, 350px);
+      gap: 1.5rem;
+      align-items: start;
+    }
+    .sf-side { position: sticky; top: 1rem; }
+    .sf-side .sf-activity-panel { margin-bottom: 0; }
+    .sf-side .sf-activity-list { max-height: calc(100vh - 9rem); }
+    @media (max-width: 992px) {
+      .sf-layout { grid-template-columns: 1fr; }
+      .sf-side { position: static; }
+      .sf-side .sf-activity-list { max-height: 220px; }
+    }
+
     .sf-card-activity {
       margin: 0 0 0.85rem;
       padding: 0.55rem 0.75rem;
       border-radius: 8px;
       background: #f8fafc;
-      border-left: 3px solid var(--primary);
       font-size: 0.84rem;
       color: #334155;
     }
@@ -621,11 +637,8 @@
       <span id="sfLastRefreshed" style="color:#047857;font-size:0.8rem;font-weight:600;"></span>
     </div>
 
-    <div id="sfActivityPanel" class="sf-activity-panel" aria-label="Recent submission activity">
-      <div class="sf-activity-panel-hd">Recent activity across all submissions</div>
-      <ul id="sfActivityList" class="sf-activity-list"></ul>
-    </div>
-    
+    <div class="sf-layout">
+      <div class="sf-main">
     <div class="submissions-container">
       <div id="loadingSpinner" class="loading-spinner">
         <div class="spinner"></div>
@@ -639,8 +652,16 @@
         <p>You don't have submissions in this module yet.</p>
       </div>
     </div>
+      </div><!-- /.sf-main -->
+      <aside class="sf-side">
+        <div id="sfActivityPanel" class="sf-activity-panel" aria-label="Recent submission activity">
+          <div class="sf-activity-panel-hd">Recent activity across all submissions</div>
+          <ul id="sfActivityList" class="sf-activity-list"></ul>
+        </div>
+      </aside>
+    </div><!-- /.sf-layout -->
   </div>
-  
+
   <div id="sfConfirmModal" class="sf-modal-veil" role="presentation" aria-hidden="true">
     <div class="sf-modal" role="dialog" aria-modal="true" aria-labelledby="sfConfirmTitle" onclick="event.stopPropagation()">
       <h2 id="sfConfirmTitle" class="sf-modal-title"></h2>

@@ -132,6 +132,15 @@ except Exception as e:
     logger.exception("Could not import module_ticketing.routes.ticketing_bp: %s", e)
     ticketing_bp = None
 
+# Operations Module (Over Time + Trading Invoices)
+operations_bp = None
+try:
+    from module_operations.routes import operations_bp  # noqa: F401
+    logger.info("Imported module_operations.routes.operations_bp")
+except Exception as e:
+    logger.exception("Could not import module_operations.routes.operations_bp: %s", e)
+    operations_bp = None
+
 # Ensure required directories exist at startup
 os.makedirs(GENERATED_DIR, exist_ok=True)
 os.makedirs(UPLOADS_DIR, exist_ok=True)
@@ -160,7 +169,19 @@ def create_app():
     # Inject `now` into every Jinja template so {{ now().year }} works everywhere,
     # including standalone templates that don't extend base.html.
     app.jinja_env.globals['now'] = lambda: datetime.now(timezone.utc)
-    
+
+    # Cache-bust static assets: append ?v=<file-mtime> to every url_for('static', ...)
+    # so CSS/JS edits are picked up immediately without a hard refresh. The query
+    # changes only when the file changes, so unchanged assets stay cacheable.
+    @app.url_defaults
+    def _static_cache_bust(endpoint, values):
+        if endpoint == 'static' and values.get('filename') and 'v' not in values:
+            try:
+                fpath = os.path.join(app.static_folder, values['filename'])
+                values['v'] = int(os.path.getmtime(fpath))
+            except OSError:
+                pass
+
     # Enable template auto-reload for development
     app.config['TEMPLATES_AUTO_RELOAD'] = True
 
@@ -331,7 +352,15 @@ def create_app():
                 # Check for designation column
                 if 'designation' not in columns:
                     missing_columns.append(('designation', 'VARCHAR(20) DEFAULT NULL'))
-                
+
+                # Operations module access flag
+                if 'access_operations' not in columns:
+                    missing_columns.append(('access_operations', 'BOOLEAN DEFAULT 0'))
+
+                # Operations: full (create/edit) vs view-only
+                if 'access_operations_manage' not in columns:
+                    missing_columns.append(('access_operations_manage', 'BOOLEAN DEFAULT 0'))
+
                 if missing_columns:
                     logger.info(f"Adding missing columns to users table: {[col[0] for col in missing_columns]}")
                     try:
@@ -404,6 +433,46 @@ def create_app():
                             with db.engine.begin() as conn:
                                 conn.execute(text(f"ALTER TABLE dochub_documents ADD COLUMN {col_name} {col_def}"))
                             logger.info(f"✅ Added {col_name} to dochub_documents")
+                        except Exception as col_error:
+                            err = str(col_error).lower()
+                            if 'already exists' in err or 'duplicate' in err:
+                                logger.info(f"Column {col_name} already exists")
+                            else:
+                                logger.warning(f"Could not add {col_name}: {col_error}")
+
+            if 'tickets' in inspector.get_table_names():
+                columns = [col['name'] for col in inspector.get_columns('tickets')]
+                if 'source_inspection_notif_id' not in columns:
+                    logger.info("Adding source_inspection_notif_id column to tickets table")
+                    try:
+                        with db.engine.begin() as conn:
+                            conn.execute(text("ALTER TABLE tickets ADD COLUMN source_inspection_notif_id INTEGER"))
+                        logger.info("✅ Added source_inspection_notif_id to tickets")
+                    except Exception as col_error:
+                        err = str(col_error).lower()
+                        if 'already exists' in err or 'duplicate' in err:
+                            logger.info("Column source_inspection_notif_id already exists")
+                        else:
+                            logger.warning(f"Could not add source_inspection_notif_id: {col_error}")
+
+            # Inspection outcome columns on inspection_notifications (CD pass/fail branching)
+            if 'inspection_notifications' in inspector.get_table_names():
+                columns = [col['name'] for col in inspector.get_columns('inspection_notifications')]
+                outcome_cols = {
+                    'outcome': 'VARCHAR(10)',
+                    'rectify_by': 'VARCHAR(20)',
+                    'outcome_notes': 'TEXT',
+                    'outcome_recorded_at': 'DATETIME',
+                    'outcome_recorded_by_id': 'INTEGER',
+                    'reinspection_count': 'INTEGER DEFAULT 0',
+                }
+                for col_name, col_def in outcome_cols.items():
+                    if col_name not in columns:
+                        logger.info(f"Adding {col_name} column to inspection_notifications table")
+                        try:
+                            with db.engine.begin() as conn:
+                                conn.execute(text(f"ALTER TABLE inspection_notifications ADD COLUMN {col_name} {col_def}"))
+                            logger.info(f"✅ Added {col_name} to inspection_notifications")
                         except Exception as col_error:
                             err = str(col_error).lower()
                             if 'already exists' in err or 'duplicate' in err:
@@ -809,20 +878,20 @@ def create_app():
     else:
         logger.warning("⚠️  Inspection blueprint not available - check imports")
 
-    # Register MMR blueprint
+    # Register Email Automation blueprint
     if mmr_bp:
         if hasattr(app, 'csrf') and app.csrf:
             app.csrf.exempt(mmr_bp)
         app.register_blueprint(mmr_bp)
-        logger.info("✅ Registered MMR blueprint at /admin/mmr")
-        # Start APScheduler for daily report emails
+        logger.info("✅ Registered Email Automation blueprint at /admin/mmr")
+        # Start APScheduler for email automations
         try:
             from module_mmr.scheduler import init_scheduler as init_mmr_scheduler
             init_mmr_scheduler(app)
         except Exception as sched_err:
-            logger.warning(f"⚠️  MMR scheduler not started: {sched_err}")
+            logger.warning(f"⚠️  Email Automation scheduler not started: {sched_err}")
     else:
-        logger.warning("⚠️  MMR blueprint not available")
+        logger.warning("⚠️  Email Automation blueprint not available")
 
     # Register Ticketing blueprint
     if ticketing_bp:
@@ -832,6 +901,15 @@ def create_app():
         logger.info("✅ Registered Ticketing blueprint at /tickets")
     else:
         logger.warning("⚠️  Ticketing blueprint not available - check imports")
+
+    # Register Operations blueprint (Over Time + Trading Invoices)
+    if operations_bp:
+        if hasattr(app, 'csrf') and app.csrf:
+            app.csrf.exempt(operations_bp)
+        app.register_blueprint(operations_bp)
+        logger.info("✅ Registered Operations blueprint at /operations")
+    else:
+        logger.warning("⚠️  Operations blueprint not available - check imports")
 
     # Register reports API blueprint for on-demand regeneration
     try:
@@ -914,11 +992,6 @@ def create_app():
     def admin_email_notifications():
         """Deep-link to the workflow email settings card (query param survives redirects reliably)."""
         return redirect('/admin/dashboard?focus=email-notifications')
-
-    @app.route('/admin/mmr-chargeable')
-    def mmr_chargeable_settings_page():
-        """Report setting: chargeable / BaseUnit rules (admin UI)."""
-        return render_template('mmr_chargeable_settings.html', active_page='mmr-chargeable')
 
     @app.route('/admin/devices')
     def admin_devices():

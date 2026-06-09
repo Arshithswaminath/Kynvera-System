@@ -617,60 +617,78 @@
 }
 
 /* â”€â”€ Timeline / notes â”€â”€ */
+/* ── Activity timeline — clean card style ── */
 .tkt-timeline { position: relative; }
 .tkt-timeline::before {
   content: '';
   position: absolute;
-  left: 15px; top: 0; bottom: 0;
+  left: 13px; top: 4px; bottom: 4px;
   width: 2px;
-  background: #e2e8f0;
+  background: #eceef2;
   border-radius: 2px;
 }
 .tkt-note {
   position: relative;
-  padding: 0 0 14px 42px;
+  padding: 0 0 16px 40px;
+  --act: #d21725;
 }
+.tkt-note:last-child { padding-bottom: 0; }
+/* Hollow ring dot — fills on hover */
 .tkt-note-dot {
   position: absolute;
-  left: 8px; top: 3px;
-  width: 14px; height: 14px;
+  left: 7px; top: 5px;
+  width: 13px; height: 13px;
   border-radius: 50%;
-  background: var(--tkt-blue);
-  border: 2px solid #fff;
-  box-shadow: 0 0 0 2px var(--tkt-border);
+  background: #fff;
+  border: 2.5px solid var(--act);
+  box-shadow: 0 0 0 3px #fff;
+  transition: background .15s;
 }
-.tkt-note-dot.status_change { background: var(--tkt-brand); }
-.tkt-note-dot.assignment    { background: #7c3aed; }
-.tkt-note-dot.image         { background: #0891b2; }
+.tkt-note:hover .tkt-note-dot { background: var(--act); }
 .tkt-note-meta {
   font-size: 0.8rem;
   color: var(--tkt-muted);
-  margin-bottom: 4px;
+  margin-bottom: 6px;
   display: flex;
-  gap: 6px;
+  align-items: center;
+  gap: 8px;
   flex-wrap: wrap;
 }
 .tkt-note-meta strong {
-  color: var(--tkt-text);
-  font-size: 0.86rem;
-  font-weight: 600;
+  color: #1e293b;
+  font-size: 0.85rem;
+  font-weight: 650;
+}
+.tkt-note-time { color: #a0aab8; font-size: 0.74rem; font-weight: 500; }
+.tkt-note-chip {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #fdecee;
+  color: #b91c1c;
+  line-height: 1.4;
 }
 .tkt-note-body {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 9px;
-  padding: 8px 12px;
+  background: #fff;
+  border: 1px solid #eceef2;
+  border-radius: 10px;
+  padding: 11px 14px;
   font-size: 0.875rem;
-  line-height: 1.45;
-  color: var(--tkt-text);
+  line-height: 1.55;
+  color: #374151;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
   white-space: pre-wrap;
   word-break: break-word;
+  transition: border-color .15s, box-shadow .15s;
 }
-.tkt-note-body.system {
-  background: var(--tkt-blue-lt);
-  border-color: var(--tkt-border);
-  font-style: italic;
-  color: var(--tkt-muted);
+.tkt-note:hover .tkt-note-body {
+  border-color: #e2e6ec;
+  box-shadow: 0 2px 8px rgba(16, 24, 40, 0.06);
 }
 
 /* â”€â”€ Note input â”€â”€ */
@@ -959,6 +977,20 @@
    Ticketing Module â€” Sidebar Layout  (Amaan red theme)
    Mirrors the admin-dashboard layout but with Amaan red tokens.
    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+
+/* Ensure ticketing uses exact same nav height as dashboard */
+body.tkt-dh-page .nav,
+body.tkt-dh-page .nav-container {
+  min-height: 60px !important;
+  padding: 0.5rem 2rem 0.5rem 2.5rem !important;
+}
+body.tkt-dh-page .logo img {
+  height: 36px !important;
+}
+body.tkt-dh-page .logo img.logo-img-official {
+  transform: scale(1.6) !important;
+  transform-origin: left center !important;
+}
 
 body.tkt-dh-page {
   /* `.nav-container` total height (dashboard.css) + `.nav` 1px bottom border — must match for zero gap */

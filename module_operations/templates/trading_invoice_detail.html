@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+  {% include 'partials/caveat_font.html' %}
+  <title>{{ invoice.invoice_no }} - Trading Invoice</title>
+  <meta name="theme-color" content="#d21725">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <style>
+    :root { --primary:#d21725; --primary-light:#e8323f; --ink:#0f172a; --muted:#64748b; --rule:#e6e8ec; --paper-rule:#eef1f5; }
+    body.ops-page { background:#eef1f4; }
+    .ops-wrap { max-width: 880px; margin: 6.5rem auto 3rem; padding: 0 1.25rem; }
+
+    /* Action bar (screen only) */
+    .inv-bar { display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; margin-bottom:1.1rem; }
+    .inv-bar-left .back-btn { margin-bottom:.35rem; }
+    .inv-bar-title { font-size:1.15rem; font-weight:800; color:var(--ink); margin:0; }
+    .inv-bar-sub { color:var(--muted); margin:.15rem 0 0; font-size:.85rem; }
+    .inv-actions { display:flex; gap:.55rem; flex-wrap:wrap; align-items:center; }
+    .ops-btn { display:inline-flex; align-items:center; gap:.45rem; border:none; border-radius:10px; padding:.6rem 1.05rem; font-weight:600; font-size:.88rem; cursor:pointer; text-decoration:none; transition:transform .12s ease, box-shadow .12s ease, border-color .12s ease; }
+    .ops-btn-primary { background:var(--primary); color:#fff; }
+    .ops-btn-primary:hover { transform:translateY(-1px); box-shadow:0 6px 16px rgba(210,23,37,.22); }
+    .ops-btn-ghost { background:#fff; color:var(--ink); border:1px solid var(--rule); }
+    .ops-btn-ghost:hover { border-color:var(--primary-light); }
+    .ops-btn-danger { background:#fff; color:#b91c1c; border:1px solid #f1c4c4; }
+    .ops-btn-danger:hover { background:#fef2f2; border-color:#e89a9a; }
+    .status-sel { border:1px solid #cbd5e1; border-radius:10px; padding:.55rem .7rem; font-size:.86rem; font-family:inherit; background:#fff; color:var(--ink); }
+    .status-sel:focus { outline:none; border-color:var(--primary-light); box-shadow:0 0 0 3px rgba(210,23,37,.12); }
+    .view-tag { display:inline-flex; align-items:center; gap:.4rem; font-size:.78rem; font-weight:700; color:var(--muted); background:#fff; border:1px solid var(--rule); border-radius:999px; padding:.4rem .8rem; }
+
+    /* The invoice "paper" document */
+    .inv-paper { background:#fff; border-radius:16px; box-shadow:0 14px 40px rgba(15,23,42,.10); overflow:hidden; }
+    .inv-accent { height:6px; background:linear-gradient(90deg, var(--primary) 0%, var(--primary-light) 100%); }
+    .inv-inner { padding:1.4rem 2.8rem; }
+
+    /* Letterhead */
+    .inv-head { display:flex; justify-content:space-between; align-items:center; gap:2rem; padding-bottom:1.2rem; border-bottom:1px solid var(--paper-rule); }
+    .inv-brand img { width:110px; height:auto; object-fit:contain; display:block; }
+    .inv-doc { text-align:right; }
+    .inv-doc-title { font-size:1.05rem; font-weight:800; letter-spacing:.16em; color:var(--primary); text-transform:uppercase; }
+    .inv-doc-no { font-size:1.45rem; font-weight:800; color:var(--ink); margin-top:.2rem; }
+    .inv-pill { display:inline-block; margin-top:.55rem; padding:.26rem .7rem; border-radius:999px; font-size:.74rem; font-weight:700; text-transform:capitalize; }
+    .pill-draft { background:#eef2f7; color:#475569; }
+    .pill-issued { background:#fef3c7; color:#92400e; }
+    .pill-paid { background:#dcfce7; color:#166534; }
+
+    /* Parties / meta */
+    .inv-parties { display:grid; grid-template-columns:1.4fr 1fr; gap:2rem; padding:1.6rem 0; }
+    .party h4 { margin:0 0 .55rem; font-size:.72rem; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); font-weight:700; }
+    .party p { margin:.12rem 0; color:var(--ink); font-size:.9rem; line-height:1.45; }
+    .party .name { font-weight:700; font-size:.98rem; }
+    .meta-rows { display:grid; grid-template-columns:auto auto; gap:.3rem 1rem; justify-content:end; }
+    .meta-rows .k { color:var(--muted); font-size:.84rem; text-align:right; }
+    .meta-rows .v { color:var(--ink); font-size:.9rem; font-weight:600; text-align:right; }
+
+    /* Items table */
+    .inv-table { width:100%; border-collapse:collapse; font-size:.88rem; margin-top:.2rem; }
+    .inv-table thead th { text-align:left; font-size:.7rem; text-transform:uppercase; letter-spacing:.05em; color:#7a1019; background:#faf5f6; font-weight:700; padding:.7rem .85rem; }
+    .inv-table thead th:first-child { border-top-left-radius:9px; }
+    .inv-table thead th:last-child { border-top-right-radius:9px; }
+    .inv-table tbody td { padding:.7rem .85rem; border-bottom:1px solid var(--paper-rule); color:var(--ink); vertical-align:top; }
+    .inv-table tbody tr:last-child td { border-bottom:1px solid var(--rule); }
+    .inv-table .idx { color:var(--muted); width:34px; }
+    .inv-table .mat { font-weight:700; }
+    .inv-table .desc { color:var(--muted); }
+    .num { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+
+    /* Totals */
+    .inv-foot { display:flex; justify-content:space-between; gap:2rem; margin-top:1.4rem; flex-wrap:wrap; }
+    .inv-notes { flex:1 1 300px; min-width:240px; }
+    .inv-notes h4 { margin:0 0 .35rem; font-size:.72rem; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); font-weight:700; }
+    .inv-notes p { margin:0; color:var(--ink); font-size:.88rem; line-height:1.5; white-space:pre-line; }
+    .inv-totals { width:300px; max-width:100%; margin-left:auto; }
+    .inv-totals .row { display:flex; justify-content:space-between; padding:.4rem 0; color:var(--ink); font-size:.9rem; }
+    .inv-totals .row .lbl { color:var(--muted); }
+    .inv-totals .grand { margin-top:.4rem; padding:.7rem .9rem; background:linear-gradient(90deg, rgba(210,23,37,.06), rgba(232,50,63,.04)); border-radius:10px; font-size:1.1rem; font-weight:800; color:var(--primary); }
+
+    .inv-thanks { margin-top:2rem; padding-top:1.3rem; border-top:1px solid var(--paper-rule); text-align:center; color:var(--muted); font-size:.8rem; }
+
+    .ops-toast { position:fixed; bottom:1.5rem; left:50%; transform:translateX(-50%); background:var(--ink); color:#fff; padding:.7rem 1.2rem; border-radius:10px; font-size:.9rem; z-index:2000; opacity:0; transition:opacity .2s; pointer-events:none; }
+    .ops-toast.show { opacity:1; } .ops-toast.err { background:#b91c1c; }
+
+    @media (max-width:680px){
+      .inv-inner { padding:1.6rem 1.25rem; }
+      .inv-head { flex-direction:column; }
+      .inv-doc { text-align:left; }
+      .meta-rows { justify-content:start; }
+      .meta-rows .k, .meta-rows .v { text-align:left; }
+      .inv-parties { grid-template-columns:1fr; gap:1.2rem; }
+      .inv-table { font-size:.82rem; }
+    }
+
+    /* Print: show only the document */
+    @media print {
+      body.ops-page { background:#fff; }
+      .nav, .mobile-menu-drawer, .mobile-overlay, .inv-bar, .ops-toast, .back-btn { display:none !important; }
+      .ops-wrap { margin:0; max-width:100%; padding:0; }
+      .inv-paper { box-shadow:none; border-radius:0; }
+      .inv-accent { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    }
+  </style>
+</head>
+<body class="ops-page">
+  {% set active_page = 'operations' %}
+  {% include 'partials/main_navbar.html' with context %}
+
+  {% set can_edit = can_manage %}
+
+  <div class="ops-wrap" data-invoice-id="{{ invoice.id }}" data-invoice-no="{{ invoice.invoice_no }}">
+
+    <!-- Action bar (not part of the printed document) -->
+    <div class="inv-bar">
+      <div class="inv-bar-left">
+        <a href="/operations/invoices" class="back-btn">
+          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+          All Invoices
+        </a>
+        <h2 class="inv-bar-title">{{ invoice.invoice_no }}</h2>
+        <p class="inv-bar-sub">Trading invoice for {{ invoice.client.client_name if invoice.client else '—' }}</p>
+      </div>
+      <div class="inv-actions">
+        {% if can_edit %}
+        <select class="status-sel" id="statusSel" title="Change status">
+          {% for s in ['draft','issued','paid'] %}
+          <option value="{{ s }}" {{ 'selected' if invoice.status == s else '' }}>{{ s|capitalize }}</option>
+          {% endfor %}
+        </select>
+        {% else %}
+        <span class="view-tag">
+          <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.46 12a10 10 0 0119.08 0 10 10 0 01-19.08 0z"/></svg>
+          View only
+        </span>
+        {% endif %}
+        <button class="ops-btn ops-btn-ghost" id="printBtn" type="button" title="Print">
+          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6v-8z"/></svg>
+          Print
+        </button>
+        <button class="ops-btn ops-btn-primary" id="pdfBtn" type="button">
+          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"/></svg>
+          Download PDF
+        </button>
+        {% if can_edit %}
+        <button class="ops-btn ops-btn-danger" id="delBtn" type="button">Delete</button>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- The invoice document -->
+    <div class="inv-paper">
+      <div class="inv-accent"></div>
+      <div class="inv-inner">
+
+        <div class="inv-head">
+          <div class="inv-brand">
+            <img src="{{ url_for('static', filename='icons/Amaan.png') }}" alt="Amaan">
+          </div>
+          <div class="inv-doc">
+            <div class="inv-doc-title">Trading Invoice</div>
+            <div class="inv-doc-no">{{ invoice.invoice_no }}</div>
+            <span class="inv-pill pill-{{ invoice.status }}">{{ invoice.status }}</span>
+          </div>
+        </div>
+
+        <div class="inv-parties">
+          <div class="party">
+            <h4>Bill To</h4>
+            <p class="name">{{ invoice.client.client_name if invoice.client else '—' }}</p>
+            {% if invoice.client and invoice.client.contact_person %}<p>{{ invoice.client.contact_person }}</p>{% endif %}
+            {% if invoice.client and invoice.client.billing_address %}<p>{{ invoice.client.billing_address }}</p>{% endif %}
+            {% if invoice.client %}{% set loc = [invoice.client.city, invoice.client.country]|select|join(', ') %}{% if loc %}<p>{{ loc }}</p>{% endif %}{% endif %}
+            {% if invoice.client and invoice.client.phone %}<p>{{ invoice.client.phone }}</p>{% endif %}
+            {% if invoice.client and invoice.client.email %}<p>{{ invoice.client.email }}</p>{% endif %}
+          </div>
+          <div class="party">
+            <h4>Invoice Details</h4>
+            <div class="meta-rows">
+              <div class="k">Invoice No</div><div class="v">{{ invoice.invoice_no }}</div>
+              <div class="k">Date</div><div class="v">{{ invoice.invoice_date.strftime('%d %b %Y') if invoice.invoice_date else '—' }}</div>
+              <div class="k">Due Date</div><div class="v">{{ invoice.due_date.strftime('%d %b %Y') if invoice.due_date else '—' }}</div>
+            </div>
+          </div>
+        </div>
+
+        <table class="inv-table">
+          <thead>
+            <tr>
+              <th class="idx">#</th>
+              <th>Material</th>
+              <th>Description</th>
+              <th class="num">Qty</th>
+              <th>Unit</th>
+              <th class="num">Unit Price</th>
+              <th class="num">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for it in invoice.items %}
+            <tr>
+              <td class="idx">{{ loop.index }}</td>
+              <td class="mat">{{ it.material_name }}</td>
+              <td class="desc">{{ it.description or '—' }}</td>
+              <td class="num">{{ it.quantity|round(2) }}</td>
+              <td>{{ it.unit or '—' }}</td>
+              <td class="num">AED {{ '%.2f'|format(it.unit_price or 0) }}</td>
+              <td class="num">AED {{ '%.2f'|format(it.total_price or 0) }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="7" style="text-align:center; color:var(--muted); padding:1.4rem;">No line items.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+
+        <div class="inv-foot">
+          {% if invoice.notes %}
+          <div class="inv-notes">
+            <h4>Notes</h4>
+            <p>{{ invoice.notes }}</p>
+          </div>
+          {% else %}<div class="inv-notes"></div>{% endif %}
+
+          <div class="inv-totals">
+            <div class="row"><span class="lbl">Subtotal</span><span>AED {{ '%.2f'|format(invoice.subtotal or 0) }}</span></div>
+            <div class="row"><span class="lbl">Tax{% if invoice.tax_pct %} ({{ invoice.tax_pct }}%){% endif %}</span><span>AED {{ '%.2f'|format(invoice.tax_amount or 0) }}</span></div>
+            <div class="row grand"><span>Grand Total</span><span>AED {{ '%.2f'|format(invoice.grand_total or 0) }}</span></div>
+          </div>
+        </div>
+
+        <div class="inv-thanks">Thank you for your business · Amaan Facilities Management</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ops-toast" id="toast"></div>
+
+  <script src="{{ url_for('static', filename='pwa-install.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='mobile_utils.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='api-client.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+  <script>
+  (function(){
+    const wrap = document.querySelector('.ops-wrap');
+    const invId = wrap.getAttribute('data-invoice-id');
+    const invNo = wrap.getAttribute('data-invoice-no');
+    function toast(msg, isErr){ const t=document.getElementById('toast'); t.textContent=msg; t.className='ops-toast show'+(isErr?' err':''); setTimeout(()=>t.className='ops-toast',2600); }
+
+    const statusSel = document.getElementById('statusSel');
+    if (statusSel) {
+      statusSel.addEventListener('change', async function(){
+        try{
+          const res = await ApiClient.fetch('/operations/api/invoices/'+invId, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ status:this.value }) });
+          const data = await res.json();
+          if(!res.ok || !data.success){ throw new Error(data.error||'Update failed'); }
+          toast('Status updated to '+this.value);
+        }catch(e){ toast(e.message, true); }
+      });
+    }
+
+    const printBtn = document.getElementById('printBtn');
+    if (printBtn) { printBtn.addEventListener('click', ()=> window.print()); }
+
+    const pdfBtn = document.getElementById('pdfBtn');
+    if (pdfBtn) {
+      pdfBtn.addEventListener('click', async function(){
+        try{
+          const res = await ApiClient.fetch('/operations/invoices/'+invNo+'/pdf', { method:'GET' });
+          if(!res.ok){ throw new Error('Could not generate PDF'); }
+          const blob = await res.blob();
+          const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = invNo+'.pdf';
+          document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
+        }catch(e){ toast(e.message, true); }
+      });
+    }
+
+    const delBtn = document.getElementById('delBtn');
+    if (delBtn) {
+      delBtn.addEventListener('click', async function(){
+        if(!confirm('Delete this invoice? This cannot be undone.')) return;
+        try{
+          const res = await ApiClient.fetch('/operations/api/invoices/'+invId, { method:'DELETE' });
+          const data = await res.json();
+          if(!res.ok || !data.success){ throw new Error(data.error||'Delete failed'); }
+          window.location.href='/operations/invoices';
+        }catch(e){ toast(e.message, true); }
+      });
+    }
+  })();
+  </script>
+</body>
+</html>

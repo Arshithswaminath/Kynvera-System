@@ -216,9 +216,9 @@ function userHasDocHubNavAccess(user) {
   return true;
 }
 
-// Amaan does not surface Report Generation. The module code/route stays intact;
-// flip AMAAN_REPORT_GENERATION_ENABLED to true to restore it in the UI.
-var AMAAN_REPORT_GENERATION_ENABLED = false;
+// Email Automation (formerly Report Generation / MMR) surfaced in Amaan.
+// Set AMAAN_REPORT_GENERATION_ENABLED to false to hide it from the UI again.
+var AMAAN_REPORT_GENERATION_ENABLED = true;
 function userHasReportGenerationNavAccess(user) {
   if (!AMAAN_REPORT_GENERATION_ENABLED) return false;
   if (!user) return false;
@@ -243,6 +243,10 @@ function applyProfileBasedNavVisibility(user) {
   const tktEl = document.getElementById('ticketing-menu-item');
   if (tktEl) {
     tktEl.style.display = (user && (user.role === 'admin' || user.access_ticketing === true)) ? 'list-item' : 'none';
+  }
+  const opsEl = document.getElementById('operations-menu-item');
+  if (opsEl) {
+    opsEl.style.display = (user && (user.role === 'admin' || user.access_operations === true)) ? 'list-item' : 'none';
   }
   const reportEl = document.getElementById('report-gen-menu-item');
   if (reportEl) {
@@ -473,6 +477,14 @@ function updateModuleVisibility(user) {
     ticketingCard.style.visibility = showTicketing ? 'visible' : 'hidden';
   }
 
+  // Operations (Over Time + Trading Invoices)
+  const operationsCard = document.getElementById('module-operations');
+  if (operationsCard) {
+    const showOperations = shouldShowModule(user.access_operations === true);
+    operationsCard.style.display = showOperations ? 'block' : 'none';
+    operationsCard.style.visibility = showOperations ? 'visible' : 'hidden';
+  }
+
   // Check Report Generation / MMR hub
   const reportGenCard = document.getElementById('module-report-generation');
   if (reportGenCard) {
@@ -518,7 +530,7 @@ function updateModuleVisibility(user) {
         }).length
       : 0;
     const existingMsg = modulesSection.querySelector('.no-access-message');
-    if (visibleCount === 0) {
+    if (visibleCount === 0 && !isAdmin) {
       if (!existingMsg) {
         const noAccessMsg = document.createElement('div');
         noAccessMsg.className = 'no-access-message';
@@ -2765,6 +2777,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Check immediately if user data exists
     const userStr = localStorage.getItem('user');
+    const token = localStorage.getItem('access_token');
     if (userStr) {
       try {
         const user = JSON.parse(userStr);
@@ -2773,32 +2786,45 @@ document.addEventListener('DOMContentLoaded', function() {
         if (typeof loadPendingCount === 'function') {
           loadPendingCount(user);
         }
+        // Always re-fetch from server to pick up role/access changes and refresh stale cache
+        if (token) {
+          fetch('/api/auth/me', { headers: { 'Authorization': `Bearer ${token}` } })
+            .then(function(r) { return r.ok ? r.json() : null; })
+            .then(function(data) {
+              if (data && data.user) {
+                localStorage.setItem('user', JSON.stringify(data.user));
+                checkAndShowAdminMenu(data.user);
+                updateModuleVisibility(data.user);
+                if (typeof loadPendingCount === 'function') {
+                  loadPendingCount(data.user);
+                }
+              }
+            })
+            .catch(function() {});
+        }
       } catch (e) {
         console.error('Error parsing user from localStorage:', e);
       }
-    } else {
-      const token = localStorage.getItem('access_token');
-      if (token) {
-        fetch('/api/auth/me', {
-          headers: {
-            'Authorization': `Bearer ${token}`
+    } else if (token) {
+      fetch('/api/auth/me', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.user) {
+          localStorage.setItem('user', JSON.stringify(data.user));
+          checkAndShowAdminMenu(data.user);
+          updateModuleVisibility(data.user);
+          if (typeof loadPendingCount === 'function') {
+            loadPendingCount(data.user);
           }
-        })
-        .then(response => response.json())
-        .then(data => {
-          if (data.user) {
-            localStorage.setItem('user', JSON.stringify(data.user));
-            checkAndShowAdminMenu(data.user);
-            updateModuleVisibility(data.user);
-            if (typeof loadPendingCount === 'function') {
-              loadPendingCount(data.user);
-            }
-          }
-        })
-        .catch(error => {
-          console.error('Failed to fetch user data:', error);
-        });
-      }
+        }
+      })
+      .catch(error => {
+        console.error('Failed to fetch user data:', error);
+      });
     }
   } else if (isReviewHistoryPage || hasMainNav) {
     loadUserWelcome();

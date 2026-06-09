@@ -16,9 +16,6 @@
       <ul class="nav-menu">
         <li><a href="/dashboard"{% if active_page == 'home' %} class="nav-current"{% endif %}>Home</a></li>
         <li><a href="/about"{% if active_page == 'about' %} class="nav-current"{% endif %}>About</a></li>
-        {% if active_page == 'about' %}
-        <li class="about-details-nav-item"><a href="#details">Details</a></li>
-        {% endif %}
         <li><a href="javascript:void(0)" id="profileLink" role="button" onclick="if(typeof openProfileModal==='function'){openProfileModal();}">Profile</a></li>
         <li id="inspection-forms-menu-item" style="display: none;">
           <a href="/inspection/"{% if active_page == 'inspection' %} class="nav-current"{% endif %}>Inspection Form</a>
@@ -45,9 +42,6 @@
             <span id="navPendingBadge" style="display: none; background: #ef4444; color: white; font-size: 0.65rem; padding: 2px 6px; border-radius: 10px; margin-left: 4px; font-weight: 600;">0</span>
           </a>
         </li>
-        <li id="report-gen-menu-item" style="display: none;">
-          <a href="/admin/mmr/"{% if active_page == 'report' or active_page == 'mmr-chargeable' %} class="nav-current"{% endif %}>Report Generation</a>
-        </li>
         <li id="admin-menu-item" style="display: none;">
           <a href="/admin/dashboard"{% if active_page == 'admin' or active_page == 'personal-progress' or active_page == 'team-management' %} class="nav-current"{% endif %}>Administrative</a>
         </li>
@@ -63,6 +57,9 @@
         <li id="ticketing-menu-item" style="display: none;">
           <a href="/tickets/"{% if active_page == 'ticketing' %} class="nav-current"{% endif %}>Service tickets</a>
         </li>
+        <li id="operations-menu-item" style="display: none;">
+          <a href="/operations/"{% if active_page == 'operations' %} class="nav-current"{% endif %}>Operations</a>
+        </li>
         <li id="finance-menu-item" style="display: none;">
           <a href="/finance/"{% if active_page == 'finance' %} class="nav-current"{% endif %}>Finance</a>
         </li>
@@ -72,7 +69,7 @@
       <button type="button" class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle menu" aria-expanded="false">
         <span></span>
       </button>
-      <div class="todo-nav-wrapper">
+      <div class="todo-nav-wrapper" style="display: none;">
         <button type="button" class="notification-btn todo-nav-btn" id="todoNavBtn" title="To-do list" aria-label="To-do list" aria-expanded="false" aria-controls="todoPanel">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="22" height="22" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
@@ -97,7 +94,7 @@
           </div>
         </div>
       </div>
-      <div id="pwa-install-slot" class="pwa-install-slot"></div>
+      <div id="pwa-install-slot" class="pwa-install-slot" style="display: none;"></div>
       {% if show_inspection_save_draft %}
       <button type="button" id="saveDraftBtn" class="nav-save-draft-btn" title="Save Draft">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="22" height="22" aria-hidden="true">

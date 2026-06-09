@@ -158,7 +158,7 @@ body.review-dashboard {
 }
 
 .logo img {
-  height: 56px;
+  height: 36px;
   width: auto;
   max-width: min(260px, 52vw);
   flex-shrink: 0;
@@ -167,9 +167,12 @@ body.review-dashboard {
   filter: none;
 }
 
-/* Official nav mark (square icon, non–About routes) — slight rounding reads as intentional */
+/* Official nav mark — scaled up visually; transform keeps layout box at 36px so nav height is unchanged */
 .logo img.logo-img-official {
   border-radius: 12px;
+  transform: scale(1.8);
+  transform-origin: left center;
+  margin-left: -0.75rem;
 }
 
 .logo-text {
@@ -180,9 +183,11 @@ body.review-dashboard {
   gap: 0.1rem;
   min-width: 0;
   text-align: left;
+  margin-left: 0.5rem;
 }
 
 .logo-brand {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Helvetica, Arial, sans-serif;
   font-size: 0.6rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -494,8 +499,10 @@ body.review-dashboard {
 .hero.hr-hero::after {
   display: none;
 }
-.hero.hr-hero .back-btn,
-.hero.inspection-hero .back-btn {
+/* Canonical "Back to Dashboard" link — shared by every module hero
+   (HR, Inspection, Procurement, Operations, Review History, …).
+   Define once here so all modules render an identical nav link. */
+.back-btn {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
@@ -505,8 +512,7 @@ body.review-dashboard {
   margin-bottom: 1.25rem;
   transition: color 0.2s;
 }
-.hero.hr-hero .back-btn:hover,
-.hero.inspection-hero .back-btn:hover {
+.back-btn:hover {
   color: var(--primary-light);
 }
 
@@ -537,19 +543,7 @@ body.review-dashboard {
 .hero.proc-hero::after {
   display: none;
 }
-.hero.proc-hero .back-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: var(--primary);
-  text-decoration: none;
-  font-weight: 500;
-  margin-bottom: 1.25rem;
-  transition: color 0.2s;
-}
-.hero.proc-hero .back-btn:hover {
-  color: var(--primary-light);
-}
+/* .back-btn styling is now global (see canonical rule above) */
 
 /* Review History dashboard: match HR/Inspection background */
 .review-dashboard {
@@ -1811,7 +1805,7 @@ body.review-dashboard {
   }
 
   .logo-brand {
-    font-size: 0.55rem !important;
+    font-size: 0.8rem !important;
   }
 
   /* Keep welcome text full size - do not shrink */

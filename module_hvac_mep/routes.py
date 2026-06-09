@@ -478,8 +478,8 @@ def index():
             can_edit_form = True
         
         bd_inspection_reviewer = user.is_bd_inspection_reviewer() or (user_designation == 'business_development')
-        return render_template("hvac_mep_form.html", 
-                             submission_data=submission_data, 
+        return render_template("fire_inspection_form.html",
+                             submission_data=submission_data,
                              is_edit_mode=is_edit_mode,
                              user_designation=user_designation,
                              bd_inspection_reviewer=bd_inspection_reviewer,

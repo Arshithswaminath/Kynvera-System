@@ -829,19 +829,13 @@
       }
     }
     .adm-dash-tk-lead-card {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 0.75rem 1rem;
-      align-items: center;
+      display: block;
       padding: 0.82rem 0.92rem;
       border-radius: 12px;
       border: 1.5px solid #c9e9d9;
       background: linear-gradient(135deg, #fff5f5 0%, #fde8ea 120%);
       box-shadow: inset 0 1px 0 rgba(255,255,255,0.85);
       min-width: 0;
-    }
-    @media (max-width: 520px) {
-      .adm-dash-tk-lead-card { grid-template-columns: 1fr; }
     }
     .adm-dash-tk-lead-val-wrap { min-width: 0; }
     .adm-dash-tk-lead-val {
@@ -877,6 +871,9 @@
       border-radius: 99px;
       background: linear-gradient(90deg, #d21725, #e8323f);
       transition: width 0.45s cubic-bezier(.4,.14,.22,.99);
+    }
+    .adm-dash-tk-lead-note {
+      margin-top: 0.5rem;
     }
     .adm-dash-tk-stat-card {
       display: block;
@@ -1847,7 +1844,7 @@
       letter-spacing: -0.02em;
     }
     /* Unique avatar colors per initial */
-    .admv2-uc-avatar { background: rgba(210, 23, 37, 0.1); color: #d21725; }
+    .admv2-uc-avatar { background: #e0e7ff; color: #3730a3; }
     .admv2-uc-avatar--inactive { background: #f1f5f1; color: #94a3b8; }
     .admv2-uc-badge {
       font-size: 0.58rem; font-weight: 700;
@@ -1857,7 +1854,7 @@
       letter-spacing: 0.05em;
       flex-shrink: 0;
     }
-    .admv2-uc-badge--active  { background: #fde8ea; color: #a8121e; }
+    .admv2-uc-badge--active  { background: #f0fdf4; color: #15803d; }
     .admv2-uc-badge--inactive { background: #f1f5f9; color: #64748b; }
     .admv2-uc-badge--admin   { background: #dbeafe; color: #1d4ed8; }
 
@@ -3741,29 +3738,31 @@
       overflow-wrap: normal;
     }
     #section-documents .documents-table .doc-actions.doc-actions--balanced {
-      display: grid;
-      grid-template-columns: repeat(4, max-content);
-      align-items: stretch;
-      gap: 0.22rem 0.38rem;
+      display: flex;
+      flex-wrap: nowrap;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 0.3rem;
       max-width: none;
       width: max-content;
-      white-space: normal;
+      white-space: nowrap;
     }
     #section-documents .documents-table col.doc-col-cb { width: 40px; }
-    #section-documents .documents-table col.doc-col-id { width: 19%; }
-    #section-documents .documents-table col.doc-col-site { width: 17%; }
+    #section-documents .documents-table col.doc-col-id { width: 15%; }
+    #section-documents .documents-table col.doc-col-type { width: 13%; }
+    #section-documents .documents-table col.doc-col-site { width: 15%; }
     #section-documents .documents-table col.doc-col-visit { width: 78px; }
-    #section-documents .documents-table col.doc-col-user { width: 16%; }
+    #section-documents .documents-table col.doc-col-user { width: 15%; }
     #section-documents .documents-table col.doc-col-status { width: 110px; }
     #section-documents .documents-table col.doc-col-at { width: 100px; }
     #section-documents .documents-table col.doc-col-act { width: auto; }
     #section-documents .documents-table th,
     #section-documents .documents-table td {
-      padding: 0.32rem 0.42rem;
+      padding: 0.62rem 0.5rem;
       vertical-align: middle;
     }
-    #section-documents .documents-table th:nth-child(6),
-    #section-documents .documents-table th:nth-child(7) {
+    #section-documents .documents-table th:nth-child(7),
+    #section-documents .documents-table th:nth-child(8) {
       white-space: normal;
       line-height: 1.2;
     }
@@ -3802,9 +3801,10 @@
       text-transform: none;
     }
     #section-documents .documents-table .doc-action-slot {
-      display: flex;
+      display: inline-flex;
       align-items: center;
       justify-content: center;
+      min-width: 2.3rem;
       min-height: 1.5rem;
       font-size: 0.58rem;
       color: var(--text-muted);
@@ -3813,6 +3813,7 @@
       border: 1px dashed #e2e8f0;
       box-sizing: border-box;
       user-select: none;
+      flex: 0 0 auto;
     }
     #section-documents .documents-table .doc-status-stack {
       display: flex;
@@ -3820,14 +3821,17 @@
       align-items: flex-start;
       gap: 0.22rem;
     }
-    #section-documents .documents-table .doc-id-cell {
-      vertical-align: top;
+    #section-documents .documents-table .doc-id-cell,
+    #section-documents .documents-table .doc-type-cell {
+      vertical-align: middle;
     }
-    #section-documents .documents-table .doc-module-line {
+    #section-documents .documents-table .doc-type-text {
       display: inline-block;
-      margin-top: 0.12rem;
-      max-width: none;
-      line-height: 1.2;
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: var(--text, #374151);
+      line-height: 1.25;
+      white-space: normal;
     }
     #section-documents .documents-table .doc-created-split {
       display: flex;
@@ -3842,7 +3846,7 @@
       font-size: 0.61rem;
       color: var(--text-muted);
     }
-    #section-documents .documents-table td:nth-child(3) strong {
+    #section-documents .documents-table td:nth-child(4) strong {
       display: -webkit-box;
       -webkit-line-clamp: 2;
       -webkit-box-orient: vertical;
@@ -3885,7 +3889,7 @@
       border-radius: 4px;
       background: #f1f5f9;
       color: #475569;
-      font-family: ui-monospace, monospace;
+      font-family: var(--font-sans);
       font-size: 0.72rem;
       line-height: 1.2;
       cursor: pointer;
@@ -5038,8 +5042,7 @@
         <hr class="sb-nav-divider" aria-hidden="true">
         <div class="dh-sb-section">
           <div class="sb-section-label">Automation</div>
-          <a href="/admin/mmr/" class="sb-nav-item">Report Generation</a>
-          <a href="/admin/mmr-chargeable" class="sb-nav-item">Chargeable Rules</a>
+          <a href="/admin/mmr/" class="sb-nav-item">Email Automation</a>
         </div>
         <hr class="sb-nav-divider" aria-hidden="true">
         <div class="dh-sb-section">
@@ -5084,7 +5087,7 @@
           <p class="neat-hero-desc">Spot-check headcount below, tune workflow and notifications. Day-to-day people management lives under <strong>Users & Teams</strong>.</p>
           <div class="neat-hero-time" id="admLiveTime"></div>
           <div class="neat-hero-actions">
-            <a href="/admin/mmr/" class="neat-hero-btn neat-hero-btn--solid">Open MMR Hub</a>
+            <a href="/admin/mmr/" class="neat-hero-btn neat-hero-btn--solid">Open Email Automation</a>
             <a href="/admin/team-management" class="neat-hero-btn neat-hero-btn--ghost">People &amp; Teams</a>
           </div>
         </div>
@@ -5119,17 +5122,10 @@
 
     <div class="admin-v4-quick-grid admv3-anim" style="animation-delay:0.08s;">
       <a href="/admin/mmr/" class="admin-v4-quick">
-        <span class="admin-v4-quick-ico">📊</span>
+        <span class="admin-v4-quick-ico">📧</span>
         <span>
-          <span class="admin-v4-quick-title">MMR Dashboard</span>
-          <span class="admin-v4-quick-sub">Reports, schedule, and generation controls</span>
-        </span>
-      </a>
-      <a href="/admin/mmr-chargeable" class="admin-v4-quick">
-        <span class="admin-v4-quick-ico">⚙</span>
-        <span>
-          <span class="admin-v4-quick-title">Chargeable Rules</span>
-          <span class="admin-v4-quick-sub">Configure billable units and logic</span>
+          <span class="admin-v4-quick-title">Email Automation</span>
+          <span class="admin-v4-quick-sub">Scheduled emails, recipients, and attachments</span>
         </span>
       </a>
       <a href="/admin/devices" class="admin-v4-quick">
@@ -5230,7 +5226,6 @@
               <h3>Recent activity</h3>
               <p>Latest audit events</p>
             </div>
-            <span class="neat-activity-live"><span aria-hidden="true">●</span> Live</span>
           </div>
           <ul class="neat-activity-list" id="neatActivityList">
             <li class="neat-activity-row"><span class="neat-activity-t" style="color:var(--neat-muted)">Loading…</span></li>
@@ -5306,13 +5301,12 @@
 
           <div class="admv2-rp-divider"></div>
 
-          <!-- Report Generation dark card -->
+          <!-- Email Automation dark card -->
           <div class="admv2-dark-inset">
-            <div class="admv2-dark-inset-title">📊 Report Generation</div>
-            <div class="admv2-dark-inset-sub">MMR daily reports &amp; automation scheduling</div>
+            <div class="admv2-dark-inset-title">📧 Email Automation</div>
+            <div class="admv2-dark-inset-sub">Scheduled emails with recipients &amp; attachments</div>
             <div class="admv2-dark-actions">
-              <a href="/admin/mmr/" class="admv2-dark-btn-primary">Open MMR Dashboard →</a>
-              <button type="button" class="admv2-dark-btn-ghost" onclick="openReportFolderModal()">📁 Browse Report Folder</button>
+              <a href="/admin/mmr/" class="admv2-dark-btn-primary">Open Email Automation →</a>
             </div>
           </div>
 
@@ -7010,9 +7004,7 @@
             '<div class="adm-dash-tk-lead-lbl">Active pipeline</div>' +
             '<div class="adm-dash-tk-lead-meta">Not closed, resolved, or cancelled · ' + String(total) + ' lifetime tickets in the system</div>' +
             '<div class="adm-dash-tk-bar-wrap" aria-hidden="true"><div class="adm-dash-tk-bar-fill" style="width:' + pct + '%"></div></div>' +
-          '</div>' +
-          '<div class="adm-dash-tk-lead-meta" style="text-align:right;max-width:14rem;justify-self:end">' +
-            'Rough load: <strong>' + pct + '%</strong> of all tickets are still in motion.' +
+            '<div class="adm-dash-tk-lead-meta adm-dash-tk-lead-note">Rough load: <strong>' + pct + '%</strong> of all tickets are still in motion.</div>' +
           '</div>' +
         '</div>';
 
@@ -8340,6 +8332,7 @@
           <colgroup>
             <col class="doc-col-cb">
             <col class="doc-col-id">
+            <col class="doc-col-type">
             <col class="doc-col-site">
             <col class="doc-col-visit">
             <col class="doc-col-user">
@@ -8350,7 +8343,8 @@
           <thead>
             <tr>
               <th><input type="checkbox" id="selectAllHeader" onchange="toggleSelectAllDocuments()" aria-label="Select all"></th>
-              <th title="Document ID and module">Document</th>
+              <th title="Document ID">Document</th>
+              <th title="Form type / module">Type</th>
               <th>Site</th>
               <th>Visit</th>
               <th>Created by</th>
@@ -8467,7 +8461,9 @@
             <td data-label="Select"><input type="checkbox" class="document-checkbox" value="${doc.submission_id}" onchange="updateDocumentCloseButton()"></td>
             <td class="doc-id-cell" data-label="Document">
               <button type="button" class="doc-id-btn" onclick="viewAdminDocument('${sidJs}', '${mtJs}')" title="View (${escapeHtml(String(doc.submission_id || ''))})">${escapeHtml(String(doc.submission_id || ''))}</button>
-              <span class="${moduleBadgeClass} doc-module-line">${escapeHtml(moduleLabel)}</span>
+            </td>
+            <td class="doc-type-cell" data-label="Type">
+              <span class="doc-type-text">${escapeHtml(moduleLabel)}</span>
             </td>
             <td data-label="Site" title="${escapeHtml(siteName)}"><strong>${escapeHtml(siteName)}</strong></td>
             <td data-label="Visit">${visitDate}</td>
@@ -9658,7 +9654,6 @@
       loadAdminDashboardOverview();
       loadUsers();
       loadDocuments();
-      loadAutomationStatus();
     });
   </script>
   <!-- ═══════════════════════════════════════════════════════
@@ -9698,7 +9693,7 @@
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
         <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z"/>
       </svg>
-      Reports
+      Automation
     </a>
 
     <!-- More -->
@@ -9804,15 +9799,15 @@
         </span>
       </a>
 
-      <a href="/admin/mmr-chargeable" class="adm-more-link">
+      <a href="/admin/mmr/" class="adm-more-link">
         <span class="adm-more-link-ico">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 14.25l6-6m4.5-3.493V21.75l-3.75-1.5-3.75 1.5-3.75-1.5-3.75 1.5V4.757c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0c1.1.128 1.907 1.077 1.907 2.185Z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"/>
           </svg>
         </span>
         <span class="adm-more-link-text">
-          <span class="adm-more-link-name">Chargeable Rules</span>
-          <span class="adm-more-link-sub">Configure MMR billing logic</span>
+          <span class="adm-more-link-name">Email Automation</span>
+          <span class="adm-more-link-sub">Scheduled emails &amp; attachments</span>
         </span>
         <span class="adm-more-link-arrow">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>

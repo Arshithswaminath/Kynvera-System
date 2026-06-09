@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+  {% include 'partials/caveat_font.html' %}
+  <title>Over Time - Operations</title>
+  <meta name="theme-color" content="#d21725">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <style>
+    :root { --primary: #d21725; --primary-light: #e8323f; --ops-ink:#0f172a; --ops-muted:#64748b; --ops-rule:#e2e8f0; }
+    body.ops-page { background:#F8FAF8; }
+    .ops-wrap { max-width: 1180px; margin: 7rem auto 3rem; padding: 0 1.25rem; }
+    .ops-head { display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; margin-bottom:1.5rem; }
+    .ops-title { font-size:1.85rem; font-weight:800; color:var(--ops-ink); margin:0; }
+    .ops-sub { color:var(--ops-muted); margin:.35rem 0 0; font-size:.95rem; }
+    .ops-actions { display:flex; gap:.6rem; flex-wrap:wrap; }
+    .ops-btn { display:inline-flex; align-items:center; gap:.45rem; border:none; border-radius:10px; padding:.62rem 1.05rem; font-weight:600; font-size:.9rem; cursor:pointer; text-decoration:none; transition:transform .12s ease, box-shadow .12s ease; }
+    .ops-btn-primary { background:var(--primary); color:#fff; }
+    .ops-btn-primary:hover { transform:translateY(-1px); box-shadow:0 6px 16px rgba(210,23,37,.22); }
+    .ops-btn-ghost { background:#fff; color:var(--ops-ink); border:1px solid var(--ops-rule); }
+    .ops-btn-ghost:hover { border-color:var(--primary-light); }
+    .ops-btn-sm { padding:.36rem .6rem; font-size:.8rem; border-radius:8px; }
+    .ops-card { background:#fff; border:1px solid var(--ops-rule); border-radius:16px; box-shadow:0 1px 3px rgba(15,23,42,.05); overflow:hidden; }
+    .ops-table { width:100%; border-collapse:collapse; font-size:.88rem; }
+    .ops-table th { text-align:left; background:#faf5f6; color:#7a1019; font-weight:700; padding:.8rem 1rem; border-bottom:1px solid var(--ops-rule); white-space:nowrap; }
+    .ops-table td { padding:.75rem 1rem; border-bottom:1px solid #f1f5f9; color:var(--ops-ink); vertical-align:middle; }
+    .ops-table tr:last-child td { border-bottom:none; }
+    .ops-table tbody tr:hover { background:#fcfcfd; }
+    .ops-num { text-align:right; font-variant-numeric:tabular-nums; }
+    .ops-empty { padding:3rem 1rem; text-align:center; color:var(--ops-muted); }
+    .ops-pill { display:inline-block; padding:.18rem .55rem; border-radius:999px; font-size:.74rem; font-weight:700; background:#eef2f7; color:#475569; text-transform:capitalize; }
+    .row-actions { display:flex; gap:.4rem; justify-content:flex-end; }
+    /* Modal */
+    .ops-modal-backdrop { position:fixed; inset:0; background:rgba(15,23,42,.45); display:none; align-items:center; justify-content:center; z-index:1000; padding:1rem; }
+    .ops-modal-backdrop.open { display:flex; }
+    .ops-modal { background:#fff; border-radius:16px; width:100%; max-width:560px; max-height:92vh; overflow:auto; box-shadow:0 20px 50px rgba(15,23,42,.25); }
+    .ops-modal-head { padding:1.1rem 1.35rem; border-bottom:1px solid var(--ops-rule); display:flex; align-items:center; justify-content:space-between; }
+    .ops-modal-head h3 { margin:0; font-size:1.15rem; color:var(--ops-ink); }
+    .ops-modal-body { padding:1.35rem; }
+    .ops-modal-foot { padding:1rem 1.35rem; border-top:1px solid var(--ops-rule); display:flex; justify-content:flex-end; gap:.6rem; }
+    .ops-field { margin-bottom:1rem; }
+    .ops-field label { display:block; font-size:.82rem; font-weight:600; color:#334155; margin-bottom:.35rem; }
+    .ops-field input, .ops-field select, .ops-field textarea { width:100%; border:1px solid #cbd5e1; border-radius:9px; padding:.6rem .7rem; font-size:.9rem; font-family:inherit; box-sizing:border-box; }
+    .ops-field input:focus, .ops-field select:focus, .ops-field textarea:focus { outline:none; border-color:var(--primary-light); box-shadow:0 0 0 3px rgba(210,23,37,.12); }
+    .ops-grid2 { display:grid; grid-template-columns:1fr 1fr; gap:.85rem; }
+    .ops-close { background:none; border:none; font-size:1.5rem; line-height:1; cursor:pointer; color:#94a3b8; }
+    .ops-toast { position:fixed; bottom:1.5rem; left:50%; transform:translateX(-50%); background:var(--ops-ink); color:#fff; padding:.7rem 1.2rem; border-radius:10px; font-size:.9rem; z-index:2000; opacity:0; transition:opacity .2s; pointer-events:none; }
+    .ops-toast.show { opacity:1; }
+    .ops-toast.err { background:#b91c1c; }
+    @media (max-width:640px){ .ops-grid2{grid-template-columns:1fr;} .ops-table{font-size:.8rem;} }
+  </style>
+</head>
+<body class="ops-page">
+  {% set active_page = 'operations' %}
+  {% include 'partials/main_navbar.html' with context %}
+
+  <div class="ops-wrap">
+    <div class="ops-head">
+      <div>
+        <a href="/operations/" class="back-btn">
+          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+          Operations
+        </a>
+        <h1 class="ops-title">Over Time</h1>
+        <p class="ops-sub">Record and track staff overtime. Import in bulk from Excel.</p>
+      </div>
+      <div class="ops-actions">
+        <a class="ops-btn ops-btn-ghost" href="/operations/api/overtime/template" id="tplBtn">
+          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"/></svg>
+          Template
+        </a>
+        <button class="ops-btn ops-btn-ghost" id="importBtn">
+          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 4v12m0-12l-4 4m4-4l4 4"/></svg>
+          Import Excel
+        </button>
+        <input type="file" id="importFile" accept=".xlsx,.xls" style="display:none;">
+        <button class="ops-btn ops-btn-ghost" id="exportBtn">
+          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"/></svg>
+          Export Excel
+        </button>
+        <button class="ops-btn ops-btn-primary" id="addBtn">
+          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v14M5 12h14"/></svg>
+          Add Record
+        </button>
+      </div>
+    </div>
+
+    <div class="ops-card">
+      <table class="ops-table">
+        <thead>
+          <tr>
+            <th>Staff</th><th>Employee ID</th><th>Department</th><th>Date</th>
+            <th class="ops-num">Hours</th><th class="ops-num">Rate</th><th class="ops-num">Total</th>
+            <th>Status</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="otBody">
+          <tr><td colspan="9" class="ops-empty">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Add / Edit modal -->
+  <div class="ops-modal-backdrop" id="otModal">
+    <div class="ops-modal">
+      <div class="ops-modal-head">
+        <h3 id="otModalTitle">Add Overtime Record</h3>
+        <button class="ops-close" data-close>&times;</button>
+      </div>
+      <div class="ops-modal-body">
+        <input type="hidden" id="f_id">
+        <div class="ops-field">
+          <label>Staff Name *</label>
+          <input type="text" id="f_staff_name" placeholder="e.g. John Smith">
+        </div>
+        <div class="ops-grid2">
+          <div class="ops-field"><label>Employee ID</label><input type="text" id="f_employee_id" placeholder="EMP-001"></div>
+          <div class="ops-field"><label>Department</label><input type="text" id="f_department" placeholder="MEP"></div>
+        </div>
+        <div class="ops-grid2">
+          <div class="ops-field"><label>Date *</label><input type="date" id="f_date"></div>
+          <div class="ops-field"><label>Hours *</label><input type="number" step="0.25" min="0" id="f_hours" placeholder="3"></div>
+        </div>
+        <div class="ops-grid2">
+          <div class="ops-field"><label>Rate Per Hour (AED)</label><input type="number" step="0.01" min="0" id="f_rate" placeholder="25"></div>
+          <div class="ops-field"><label>Status</label>
+            <select id="f_status"><option value="recorded">Recorded</option><option value="approved">Approved</option><option value="paid">Paid</option></select>
+          </div>
+        </div>
+        <div class="ops-field"><label>Reason</label><textarea id="f_reason" rows="2" placeholder="Reason / notes"></textarea></div>
+      </div>
+      <div class="ops-modal-foot">
+        <button class="ops-btn ops-btn-ghost" data-close>Cancel</button>
+        <button class="ops-btn ops-btn-primary" id="saveBtn">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="ops-toast" id="toast"></div>
+
+  <script src="{{ url_for('static', filename='pwa-install.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='mobile_utils.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='api-client.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+  <script>
+  (function(){
+    const body = document.getElementById('otBody');
+    const modal = document.getElementById('otModal');
+    let records = [];
+
+    function toast(msg, isErr){ const t=document.getElementById('toast'); t.textContent=msg; t.className='ops-toast show'+(isErr?' err':''); setTimeout(()=>t.className='ops-toast',2600); }
+    function fmtNum(v){ if(v===null||v===undefined||v==='') return '—'; const n=Number(v); return Number.isInteger(n)? n.toString() : n.toFixed(2); }
+    function fmtAED(v){ if(v===null||v===undefined||v==='') return '—'; return 'AED '+Number(v).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); }
+    function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+    async function load(){
+      try{
+        const res = await ApiClient.fetch('/operations/api/overtime', { method:'GET' });
+        const data = await res.json();
+        if(!res.ok || !data.success){ throw new Error(data.error||'Failed to load'); }
+        records = data.records || [];
+        render();
+      }catch(e){ body.innerHTML='<tr><td colspan="9" class="ops-empty">'+esc(e.message)+'</td></tr>'; }
+    }
+
+    function render(){
+      if(!records.length){ body.innerHTML='<tr><td colspan="9" class="ops-empty">No overtime records yet. Add one or import from Excel.</td></tr>'; return; }
+      body.innerHTML = records.map(r=>`
+        <tr>
+          <td><strong>${esc(r.staff_name)}</strong></td>
+          <td>${esc(r.employee_id)||'—'}</td>
+          <td>${esc(r.department)||'—'}</td>
+          <td>${esc(r.date)||'—'}</td>
+          <td class="ops-num">${fmtNum(r.hours)}</td>
+          <td class="ops-num">${r.rate_per_hour!=null?fmtAED(r.rate_per_hour):'—'}</td>
+          <td class="ops-num"><strong>${r.total_amount!=null?fmtAED(r.total_amount):'—'}</strong></td>
+          <td><span class="ops-pill">${esc(r.status)}</span></td>
+          <td><div class="row-actions">
+            <button class="ops-btn ops-btn-ghost ops-btn-sm" data-edit="${r.id}">Edit</button>
+            <button class="ops-btn ops-btn-ghost ops-btn-sm" data-del="${r.id}">Delete</button>
+          </div></td>
+        </tr>`).join('');
+    }
+
+    function openModal(rec){
+      document.getElementById('otModalTitle').textContent = rec ? 'Edit Overtime Record' : 'Add Overtime Record';
+      document.getElementById('f_id').value = rec ? rec.id : '';
+      document.getElementById('f_staff_name').value = rec ? (rec.staff_name||'') : '';
+      document.getElementById('f_employee_id').value = rec ? (rec.employee_id||'') : '';
+      document.getElementById('f_department').value = rec ? (rec.department||'') : '';
+      document.getElementById('f_date').value = rec ? (rec.date||'') : new Date().toISOString().slice(0,10);
+      document.getElementById('f_hours').value = rec ? (rec.hours!=null?rec.hours:'') : '';
+      document.getElementById('f_rate').value = rec && rec.rate_per_hour!=null ? rec.rate_per_hour : '';
+      document.getElementById('f_status').value = rec ? (rec.status||'recorded') : 'recorded';
+      document.getElementById('f_reason').value = rec ? (rec.reason||'') : '';
+      modal.classList.add('open');
+    }
+    function closeModal(){ modal.classList.remove('open'); }
+
+    async function save(){
+      const id = document.getElementById('f_id').value;
+      const payload = {
+        staff_name: document.getElementById('f_staff_name').value.trim(),
+        employee_id: document.getElementById('f_employee_id').value.trim(),
+        department: document.getElementById('f_department').value.trim(),
+        date: document.getElementById('f_date').value,
+        hours: document.getElementById('f_hours').value,
+        rate_per_hour: document.getElementById('f_rate').value,
+        status: document.getElementById('f_status').value,
+        reason: document.getElementById('f_reason').value.trim(),
+      };
+      if(!payload.staff_name){ toast('Staff name is required', true); return; }
+      if(!payload.date){ toast('Date is required', true); return; }
+      if(payload.hours===''){ toast('Hours is required', true); return; }
+      const url = id ? '/operations/api/overtime/'+id : '/operations/api/overtime';
+      const method = id ? 'PUT' : 'POST';
+      try{
+        const res = await ApiClient.fetch(url, { method, headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+        const data = await res.json();
+        if(!res.ok || !data.success){ throw new Error(data.error||'Save failed'); }
+        toast(id?'Record updated':'Record added'); closeModal(); load();
+      }catch(e){ toast(e.message, true); }
+    }
+
+    async function del(id){
+      if(!confirm('Delete this overtime record?')) return;
+      try{
+        const res = await ApiClient.fetch('/operations/api/overtime/'+id, { method:'DELETE' });
+        const data = await res.json();
+        if(!res.ok || !data.success){ throw new Error(data.error||'Delete failed'); }
+        toast('Record deleted'); load();
+      }catch(e){ toast(e.message, true); }
+    }
+
+    async function importExcel(file){
+      const fd = new FormData(); fd.append('file', file);
+      try{
+        const res = await ApiClient.fetch('/operations/api/overtime/import-excel', { method:'POST', body: fd });
+        const data = await res.json();
+        if(!res.ok || !data.success){ throw new Error(data.error||'Import failed'); }
+        let msg = (data.created||0)+' imported';
+        if(data.errors && data.errors.length){ msg += ', '+data.errors.length+' skipped'; }
+        toast(msg);
+        if(data.errors && data.errors.length){ console.warn('Import issues:', data.errors); alert('Some rows were skipped:\n\n'+data.errors.join('\n')); }
+        load();
+      }catch(e){ toast(e.message, true); }
+    }
+
+    document.getElementById('addBtn').addEventListener('click', ()=>openModal(null));
+    document.getElementById('saveBtn').addEventListener('click', save);
+    modal.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click', closeModal));
+    modal.addEventListener('click', e=>{ if(e.target===modal) closeModal(); });
+    document.getElementById('importBtn').addEventListener('click', ()=>document.getElementById('importFile').click());
+    document.getElementById('importFile').addEventListener('change', e=>{ if(e.target.files[0]){ importExcel(e.target.files[0]); e.target.value=''; } });
+    document.getElementById('exportBtn').addEventListener('click', async function(){
+      try{
+        const res = await ApiClient.fetch('/operations/api/overtime/export', { method:'GET' });
+        if(!res.ok){ throw new Error('Export failed'); }
+        const blob = await res.blob();
+        const today = new Date().toISOString().slice(0,10);
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download='overtime_export_'+today+'.xlsx';
+        document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
+        toast('Export downloaded');
+      }catch(err){ toast(err.message, true); }
+    });
+    body.addEventListener('click', e=>{
+      const ed = e.target.closest('[data-edit]'); const dl = e.target.closest('[data-del]');
+      if(ed){ const r=records.find(x=>x.id==ed.getAttribute('data-edit')); openModal(r); }
+      if(dl){ del(dl.getAttribute('data-del')); }
+    });
+
+    // Template link needs auth — fetch as blob
+    document.getElementById('tplBtn').addEventListener('click', async function(e){
+      e.preventDefault();
+      try{
+        const res = await ApiClient.fetch('/operations/api/overtime/template', { method:'GET' });
+        if(!res.ok){ throw new Error('Could not download template'); }
+        const blob = await res.blob();
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download='overtime_import_template.xlsx';
+        document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
+      }catch(err){ toast(err.message, true); }
+    });
+
+    load();
+  })();
+  </script>
+</body>
+</html>
