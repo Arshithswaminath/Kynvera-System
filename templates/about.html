@@ -12,11 +12,9 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/about-v2.css') }}?v=15">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/about-v2.css') }}?v=20">
 </head>
 <body class="about-page">
-
-  <div class="cursor" id="cursor" aria-hidden="true"></div>
 
   {% set active_page = 'about' %}
   {% include 'partials/main_navbar.html' with context %}
@@ -146,6 +144,22 @@
             <div class="module-tile"><div class="mt-dot"></div><span class="mt-label">DocHub</span></div>
             <div class="module-tile"><div class="mt-dot"></div><span class="mt-label">Business Dev</span></div>
             <div class="module-tile"><div class="mt-dot"></div><span class="mt-label">Submitted Forms</span></div>
+          </div>
+
+          <div class="creator-card reveal-r delay-3">
+            <div class="creator-photo">
+              <img src="{{ url_for('static', filename='images/creator-arshith.png') }}" alt="Arshith Swaminath P" loading="lazy">
+            </div>
+            <div class="creator-body">
+              <div class="creator-name-row">
+                <h3 class="creator-name">Arshith Swaminath P</h3>
+              </div>
+              <p class="creator-desc">Full-stack developer who designed and built the entire Injaaz platform end-to-end&mdash;inspections, HR, procurement, DocHub, and workflows.</p>
+              <div class="creator-contact-row">
+                <img class="creator-logo" src="{{ url_for('static', filename='icons/INJAAZ Logo - Edited.png') }}" alt="Injaaz">
+                <a class="creator-contact" href="mailto:arshithswaminathp@gmail.com" title="Email arshithswaminathp@gmail.com">Get in touch</a>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -281,18 +295,6 @@
 
   <script>
     (function () {
-      const cursor = document.getElementById('cursor');
-      if (cursor) {
-        document.addEventListener('mousemove', function (e) {
-          cursor.style.left = e.clientX + 'px';
-          cursor.style.top = e.clientY + 'px';
-        });
-        document.querySelectorAll('a, button, .svc, .val-card, .module-tile, .feat-row, .sector-card').forEach(function (el) {
-          el.addEventListener('mouseenter', function () { cursor.classList.add('big'); });
-          el.addEventListener('mouseleave', function () { cursor.classList.remove('big'); });
-        });
-      }
-
       const revealSelector = '.reveal, .reveal-l, .reveal-r';
       function ensureRevealsVisible() {
         document.querySelectorAll(revealSelector).forEach(function (el) {
