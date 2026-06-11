@@ -84,13 +84,25 @@ def _inspection_form_data(module_type: str, visit: str, label: str) -> dict:
 
 @pytest.mark.parametrize("form_type", HR_FORM_TYPES, ids=HR_FORM_TYPES)
 def test_hr_form_full_approval_chain(app, client, auth_headers, admin_auth_headers, form_type):
-    """Each HR form_type: submit → HR approve (sign) → GM approve (sign)."""
+    """Each HR form_type: submit → HR approve (sign) → GM approve (sign).
+
+    Commencement additionally requires a "Reporting To" signatory at submit time
+    (resolve_commencement_reporting_to); that signer must complete a
+    replacement-signoff signature before the form reaches hr_review.
+    """
     body = {
         "form_type": form_type,
         "employee_name": f"Pytest Employee ({form_type})",
         "employee_signature": SIG_DATA_URL,
         "reason": "pytest workflow coverage",
     }
+    if form_type == "commencement":
+        with app.app_context():
+            from app.models import User
+
+            admin = User.query.filter_by(username="testadmin").first()
+            assert admin is not None
+            body["reporting_to_signer_id"] = admin.id
     r0 = client.post(
         "/hr/api/submit",
         json=body,
@@ -104,6 +116,24 @@ def test_hr_form_full_approval_chain(app, client, auth_headers, admin_auth_heade
 
     expected_module = f"hr_{form_type}"
     try:
+        if form_type == "commencement":
+            # Reporting To signer (admin) must sign first; then the form advances
+            # to hr_review (management chain is monkeypatched off in these tests).
+            with app.app_context():
+                from app.models import Submission
+
+                sub = Submission.query.filter_by(submission_id=sid).first()
+                assert sub is not None
+                assert sub.workflow_status == "replacement_signoff"
+
+            r_rt = client.post(
+                f"/hr/api/replacement-signoff/{sid}/sign",
+                json={"signature": SIG_DATA_URL, "comments": "Reporting To ok (pytest)"},
+                headers={**admin_auth_headers, "Content-Type": "application/json"},
+            )
+            assert r_rt.status_code == 200, r_rt.get_data(as_text=True)
+            assert r_rt.get_json().get("success") is True
+
         with app.app_context():
             from app.models import Submission
 

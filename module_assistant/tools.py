@@ -426,6 +426,116 @@ def get_my_inspections_summary(user):
     }
 
 
+MODULE_ACCESS_LABELS = {
+    'access_hvac': 'HVAC & MEP Inspections',
+    'access_civil': 'Civil Works Inspections',
+    'access_cleaning': 'Cleaning Inspections',
+    'access_hr': 'HR (leave, forms, requests)',
+    'access_procurement_module': 'Procurement',
+    'access_business_development': 'Business Development',
+    'access_report_generation': 'Report Generation (MMR)',
+    'access_submitted_forms': 'Submitted Forms hub',
+    'access_ticketing': 'Ticketing / Work Orders',
+    'access_qhsi': 'QHSI (Quality, Hospitality, Safety & Inspections)',
+}
+
+
+def get_account_context(user) -> str:
+    """
+    Compact plain-text snapshot of the current user's account for the LLM:
+    profile, module access, submissions, leave, and tickets. Scoped strictly
+    to the authenticated user — safe to inject into the assistant prompt.
+    """
+    lines = []
+
+    # Profile
+    profile = _profile_data_for(user)
+    lines.append(f"Name: {profile['full_name']}")
+    role = getattr(user, 'role', '') or 'user'
+    lines.append(f"Role: {role}")
+    if profile.get('job_designation'):
+        lines.append(f"Job title: {profile['job_designation']}")
+    if profile.get('designation'):
+        lines.append(f"Designation: {profile['designation'].replace('_', ' ').title()}")
+    if profile.get('assigned_project'):
+        lines.append(f"Assigned project: {profile['assigned_project']}")
+    if profile.get('manager'):
+        lines.append(f"Reporting manager: {profile['manager']}")
+    if profile.get('employment_start_date'):
+        tenure = f" ({profile['tenure']} with the company)" if profile.get('tenure') else ''
+        lines.append(f"Join date: {profile['employment_start_date']}{tenure}")
+    if profile.get('annual_leave_days') is not None:
+        lines.append(f"Annual leave entitlement: {profile['annual_leave_days']} days")
+
+    # Module access
+    if role == 'admin':
+        lines.append("Module access: ALL modules (administrator).")
+    else:
+        granted = [
+            label for attr, label in MODULE_ACCESS_LABELS.items()
+            if bool(getattr(user, attr, False))
+        ]
+        try:
+            if _has_dochub_access(user):
+                granted.append('DocHub (documents)')
+        except Exception:
+            pass
+        if granted:
+            lines.append("Modules this user has access to: " + ", ".join(granted) + ".")
+        else:
+            lines.append("Modules this user has access to: none granted yet.")
+        not_granted = [
+            label for attr, label in MODULE_ACCESS_LABELS.items()
+            if not bool(getattr(user, attr, False))
+        ]
+        if not_granted:
+            lines.append("Modules NOT granted: " + ", ".join(not_granted) + ".")
+
+    # Submissions
+    try:
+        subs = get_my_submissions_summary(user)
+        lines.append(
+            f"Forms: {subs['total']} total ({subs['drafts']} drafts, "
+            f"{subs['in_progress']} in progress, {subs['completed']} completed, "
+            f"{subs['rejected']} rejected)."
+        )
+    except Exception:
+        pass
+
+    # Pending reviews
+    try:
+        pending = get_pending_summary(user)
+        if pending.get('can_review'):
+            lines.append(f"Forms awaiting this user's review: {pending['total']}.")
+    except Exception:
+        pass
+
+    # Last leave
+    try:
+        leave = get_my_leave_history(user, limit=1)
+        if leave.get('has_leave'):
+            last = leave['entries'][0]
+            lines.append(
+                f"Most recent leave: {last['leave_type_label']} from {last['start_date']} "
+                f"to {last['end_date']} ({last['workflow_status'].replace('_', ' ')})."
+            )
+    except Exception:
+        pass
+
+    # Tickets
+    try:
+        tickets = get_ticket_summary(user)
+        if tickets.get('allowed') and tickets.get('total'):
+            lines.append(
+                f"Tickets: {tickets['total']} total ({tickets['open']} open, "
+                f"{tickets['in_progress']} in progress, {tickets['closed']} closed)."
+            )
+    except Exception:
+        pass
+
+    return "\n".join(lines)
+
+
 def search_documents(user, query: str, limit=5):
     """Search published DocHub documents the user can access."""
     if not _has_dochub_access(user):

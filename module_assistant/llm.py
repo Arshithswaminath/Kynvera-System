@@ -17,14 +17,16 @@ SYSTEM_PROMPT = """You are the Injaaz Assistant — a helpful, natural chat guid
 Rules:
 - Answer in a friendly, conversational tone (2–5 short paragraphs max unless listing steps).
 - Use ONLY facts from the provided Context for company info, policies, locations, and services.
+- "User account data" contains live, accurate facts about the signed-in user (their profile, module access, forms, leave, tickets). Use it confidently to answer personal questions like "what modules do I have access to?", "how many forms have I submitted?", or "when was my last leave?" — never say you lack visibility into their account.
 - For Injaaz Application how-to (forms, modules, workflow), use Context first; you may add brief general guidance if Context is thin.
-- If Context does not contain the answer, say honestly that you do not have that information yet and suggest raising a ticket or asking an administrator to add it to the knowledge base.
+- If neither Context nor the account data contains the answer, say honestly that you do not have that information yet and suggest raising a ticket or asking an administrator.
 - Never invent addresses, phone numbers, policies, or URLs not supported by Context.
-- Do not mention "Context", "knowledge base", or "LLM" to the user.
+- Do not mention "Context", "knowledge base", "account data", or "LLM" to the user.
+- Write in plain text only — no markdown symbols like ** or ##. Use simple dashes for lists.
 - Keep answers concise and practical."""
 
 
-def _build_user_content(message: str, context_chunks: list, user_name: str) -> str:
+def _build_user_content(message: str, context_chunks: list, user_name: str, account_context: str = '') -> str:
     if context_chunks:
         parts = []
         for i, c in enumerate(context_chunks, 1):
@@ -40,8 +42,14 @@ def _build_user_content(message: str, context_chunks: list, user_name: str) -> s
             'modules or say you need more info.)'
         )
 
+    account_block = (
+        f"User account data (live, accurate — scoped to the signed-in user):\n{account_context}\n\n"
+        if account_context else ''
+    )
+
     return (
         f"User name: {user_name}\n\n"
+        f"{account_block}"
         f"Context:\n{context_block}\n\n"
         f"User message: {message}"
     )
@@ -86,7 +94,7 @@ def _generate_claude(user_content: str) -> str:
     model = current_app.config.get('ASSISTANT_LLM_MODEL', 'claude-haiku-4-5')
     response = client.messages.create(
         model=model,
-        max_tokens=400,
+        max_tokens=600,
         system=SYSTEM_PROMPT,
         messages=[{'role': 'user', 'content': user_content}],
         temperature=0.3,
@@ -129,15 +137,15 @@ def _generate_openai(user_content: str) -> str:
             {'role': 'system', 'content': SYSTEM_PROMPT},
             {'role': 'user', 'content': user_content},
         ],
-        max_tokens=400,
+        max_tokens=600,
         temperature=0.3,
     )
     return (response.choices[0].message.content or '').strip()
 
 
-def generate_reply(message: str, context_chunks: list, user_name: str = 'there') -> str:
+def generate_reply(message: str, context_chunks: list, user_name: str = 'there', account_context: str = '') -> str:
     """Return a natural-language reply, or '' if the LLM is unavailable."""
-    user_content = _build_user_content(message, context_chunks, user_name)
+    user_content = _build_user_content(message, context_chunks, user_name, account_context)
     try:
         if _provider() == 'openai':
             return _generate_openai(user_content)

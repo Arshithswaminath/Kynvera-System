@@ -83,7 +83,7 @@ class TestLlmNaturalChat:
         monkeypatch.setattr('module_assistant.routes.is_llm_enabled', lambda: True)
         monkeypatch.setattr(
             'module_assistant.llm.generate_reply',
-            lambda message, chunks, user_name='': 'Injaaz is based in Ajman, United Arab Emirates.',
+            lambda message, chunks, user_name='', account_context='': 'Injaaz is based in Ajman, United Arab Emirates.',
         )
 
         with app.app_context():

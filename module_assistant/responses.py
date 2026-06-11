@@ -437,10 +437,15 @@ def compose_llm_chat(message: str, user, intent: str = 'llm_chat'):
     """Natural-language reply using LLM + knowledge-base context. Falls back if LLM call fails."""
     from module_assistant.llm import generate_reply
     from module_assistant.rag import retrieve_context
+    from module_assistant.tools import get_account_context
 
     name = (getattr(user, 'full_name', None) or getattr(user, 'username', None) or 'there').split()[0]
-    chunks = retrieve_context(message, limit=3)
-    reply = generate_reply(message, chunks, user_name=name)
+    chunks = retrieve_context(message, limit=4, user=user)
+    try:
+        account_context = get_account_context(user)
+    except Exception:
+        account_context = ''
+    reply = generate_reply(message, chunks, user_name=name, account_context=account_context)
 
     if not reply:
         if intent == 'greeting':
