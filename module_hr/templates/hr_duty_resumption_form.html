@@ -10,8 +10,8 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/ticketing.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-signoff-activity.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-forms-unified.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-forms-unified.css') }}">
   <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -33,13 +33,11 @@
       background:#fafafa;
     }
 
-    .page{width:100%;min-height:100vh;padding:5.5rem 0 3rem}
-    .page-inner{max-width:1480px;margin:0 auto;padding:1.5rem 2rem 2rem}
+    .hr-form-unified .page-inner{max-width:1480px}
     .back-btn{
-      display:inline-flex;align-items:center;gap:.5rem;padding:.55rem 1.1rem;font-size:.875rem;font-weight:600;
-      color:var(--pri);background:rgba(255,255,255,.95);border:1px solid rgba(221,232,226,.8);
-      border-radius:999px;text-decoration:none;box-shadow:0 2px 12px rgba(18,84,53,.06);
-      transition:all var(--t);margin-bottom:1.5rem;backdrop-filter:blur(8px);
+      /* Layout-only overrides; sizing from hr-forms-unified.css */
+      color:var(--pri);background:rgba(255,255,255,.95);border-color:rgba(221,232,226,.8);
+      box-shadow:0 2px 12px rgba(18,84,53,.06);margin-bottom:1.5rem;backdrop-filter:blur(8px);
     }
     .back-btn:hover{background:#fff;border-color:var(--pri-sm);color:var(--pri-d);box-shadow:0 4px 16px rgba(18,84,53,.1)}
 
@@ -68,7 +66,7 @@
       display:flex;align-items:center;justify-content:center;gap:0;
       padding:1.35rem 2rem;width:100%;
     }
-    .step-item{display:flex;align-items:center;gap:.65rem;padding:.65rem 1.6rem;border-radius:999px;font-size:.9rem;font-weight:600;transition:all var(--t);cursor:pointer}
+    .step-item{display:flex;align-items:center;gap:.65rem;padding:.55rem 1.25rem;border-radius:8px;font-size:.875rem;font-weight:600;transition:all var(--t);cursor:pointer}
     .step-item .num{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;flex-shrink:0}
     .step-item.active{background:linear-gradient(135deg,var(--pri-xs),#e0f2e8);color:var(--pri-d);box-shadow:0 2px 8px rgba(18,84,53,.08)}
     .step-item.active .num{background:linear-gradient(135deg,var(--pri),var(--pri-l));color:#fff;box-shadow:0 2px 6px rgba(18,84,53,.25)}
@@ -93,10 +91,6 @@
     .step-panel.active{display:block}
     @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
     .step-nav{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid var(--bd-l)}
-    .btn-next{display:inline-flex;align-items:center;gap:.5rem;padding:.8rem 1.85rem;font-size:.95rem;font-weight:700;color:#fff;background:linear-gradient(135deg, #0f4a2e 0%, var(--pri) 45%, var(--pri-l) 100%);border:none;border-radius:999px;cursor:pointer;box-shadow:0 4px 18px rgba(18,84,53,.35);transition:all var(--t);font-family:inherit}
-    .btn-next:hover{transform:translateY(-2px);box-shadow:0 6px 24px rgba(18,84,53,.4)}
-    .btn-back{display:inline-flex;align-items:center;gap:.4rem;padding:.75rem 1.25rem;font-size:.9rem;font-weight:600;color:var(--ink3);background:var(--sf);border:1.5px solid var(--bd);border-radius:999px;cursor:pointer;transition:all var(--t);font-family:inherit}
-    .btn-back:hover{border-color:var(--pri-sm);color:var(--pri);background:var(--pri-xs)}
 
     .sec{
       background:linear-gradient(180deg, rgba(255,255,255,.95) 0%, rgba(248,252,249,.98) 100%);
@@ -146,8 +140,6 @@
       border:1px solid rgba(221,232,226,.95);touch-action:none;cursor:crosshair
     }
     .sig-editor-bar{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.5rem;align-items:center}
-    .btn-sig-cancel{padding:.4rem .9rem;font-size:.82rem;font-weight:600;color:var(--ink3);background:var(--sf);border:1.5px solid var(--bd);border-radius:999px;cursor:pointer;font-family:inherit;transition:all var(--t)}
-    .btn-sig-cancel:hover{border-color:var(--pri-sm);color:var(--pri)}
     .sig-slot-muted{border-style:dashed;background:linear-gradient(180deg,#fafafa 0%,#f4f7f5 100%);cursor:default}
     .sig-slot-muted:hover{border-color:var(--bd)}
     .sig-slot-muted .sig-ph{font-style:normal;text-align:left;line-height:1.35;align-self:flex-end;padding-bottom:2px;color:var(--muted)}
@@ -169,10 +161,6 @@
       word-break:break-word;
     }
     .duty-sig-signer-comment.is-visible{display:block}
-    .btn-plus{display:inline-flex;align-items:center;gap:.35rem;padding:.35rem .8rem;font-size:.8rem;font-weight:600;color:var(--pri);background:var(--pri-xs);border:1.5px solid var(--pri-sm);border-radius:999px;cursor:pointer;transition:all var(--t);font-family:inherit}
-    .btn-plus:hover{background:var(--pri-sm);border-color:var(--pri);color:var(--pri-d)}
-    .btn-rm{display:none;align-items:center;gap:.35rem;padding:.35rem .8rem;font-size:.8rem;font-weight:600;color:#b91c1c;background:#fef2f2;border:1.5px solid #fecaca;border-radius:999px;cursor:pointer;transition:all var(--t);font-family:inherit}
-    .btn-rm:hover{background:#fee2e2}
 
     .sec-hr{background:linear-gradient(135deg,#fffbeb,#fef3c7);border-color:#fde68a}
     .sec-hr .sec-hd{color:var(--warn-txt);border-bottom-color:#fcd34d}
@@ -285,16 +273,6 @@
       top:50%;
       transform:translateY(-50%);
     }
-    .btn-submit{display:inline-flex;align-items:center;gap:.5rem;padding:.85rem 2.1rem;font-size:.95rem;font-weight:700;color:#fff;background:linear-gradient(135deg, #0f4a2e 0%, var(--pri) 40%, var(--pri-l) 100%);border:none;border-radius:999px;cursor:pointer;box-shadow:0 4px 20px rgba(18,84,53,.35), 0 1px 3px rgba(0,0,0,.08);transition:all var(--t);font-family:inherit}
-    .btn-submit:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(18,84,53,.4), 0 2px 6px rgba(0,0,0,.06)}
-    .btn-submit:active{transform:translateY(0)}
-    .btn-reset{padding:.8rem 1.4rem;font-size:.88rem;font-weight:600;color:var(--ink3);background:var(--sf);border:1.5px solid var(--bd);border-radius:999px;cursor:pointer;transition:all var(--t);font-family:inherit}
-    .btn-reset:hover{border-color:var(--pri-sm);color:var(--pri);background:var(--pri-xs)}
-
-    .btn-m-clear{padding:.45rem 1rem;font-size:.85rem;font-weight:600;color:var(--ink3);background:var(--bg);border:1.5px solid var(--bd);border-radius:999px;cursor:pointer;transition:all var(--t);font-family:inherit}
-    .btn-m-clear:hover{border-color:#fca5a5;color:#b91c1c;background:#fef2f2}
-    .btn-m-apply{padding:.45rem 1.5rem;font-size:.9rem;font-weight:700;color:#fff;background:linear-gradient(135deg,var(--pri),var(--pri-l));border:none;border-radius:999px;cursor:pointer;box-shadow:0 4px 12px rgba(18,84,53,.3);transition:all var(--t);font-family:inherit}
-    .btn-m-apply:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(18,84,53,.38)}
 
     .success-bg{position:fixed;inset:0;background:transparent;z-index:9999;display:flex;align-items:center;justify-content:center;pointer-events:none;opacity:0;visibility:hidden;transition:opacity .3s,visibility .3s}
     .success-bg.show{opacity:1;visibility:visible;pointer-events:auto}
@@ -389,7 +367,9 @@
     body.duty-submitted-single-page .step-panel{display:block!important}
     body.duty-submitted-single-page .step-panel .step-hint{display:none!important}
     body.duty-submitted-single-page .step-nav{display:none!important}
-    body.hr-embed-mode .page{padding-top:1rem!important;padding-bottom:1.5rem}
+    body.hr-embed-mode .hr-form-unified .page{padding-top:1rem!important;padding-bottom:1.5rem!important}
+    body.hr-embed-mode .hr-form-unified .page-inner{padding-top:.75rem!important}
+    body.hr-embed-mode .page-inner>a.back-btn{display:none!important}
     body.hr-embed-mode .duty-form-layout-aside{top:1rem}
 
     /* Browser print (Ctrl+P): A4 landscape, ISO-style margins, proportional scale — same layout as screen (form + sidebar) */
@@ -549,7 +529,7 @@
     }
   </style>
 </head>
-<body{% if hr_embed|default(false) %} class="hr-embed-mode"{% endif %}>
+<body class="hr-form-unified{% if hr_embed|default(false) %} hr-embed-mode{% endif %}">
   {% set active_page = 'hr' %}
   {% include 'partials/hr_embed_optional_navbar.html' %}
 

@@ -777,24 +777,32 @@ function loadProfileData() {
   const profileContent = document.getElementById('profileContent');
   const token = localStorage.getItem('access_token');
   const cachedUser = localStorage.getItem('user');
-  
-  if (!token) {
-    if (cachedUser) {
-      try {
-        const user = JSON.parse(cachedUser);
-        displayProfileData(user);
-        checkAndShowAdminMenu(user);
-        updateModuleVisibility(user);
-        return;
-      } catch (e) {
-        console.warn('Failed to parse cached user data');
-      }
+
+  let cachedParsed = null;
+  if (cachedUser) {
+    try {
+      cachedParsed = JSON.parse(cachedUser);
+    } catch (e) {
+      console.warn('Failed to parse cached user data');
     }
-    profileContent.innerHTML = '<div style="text-align: center; padding: 2rem;"><p style="color: var(--text-light);">Please log in to view your profile.</p></div>';
+  }
+
+  if (cachedParsed) {
+    displayProfileData(cachedParsed);
+    checkAndShowAdminMenu(cachedParsed);
+    updateModuleVisibility(cachedParsed);
+  }
+
+  if (!token) {
+    if (!cachedParsed) {
+      profileContent.innerHTML = '<div style="text-align: center; padding: 2rem;"><p style="color: var(--text-light);">Please log in to view your profile.</p></div>';
+    }
     return;
   }
 
-  profileContent.innerHTML = '<div style="text-align: center; padding: 2rem;"><div class="spinner" style="border: 4px solid rgba(18, 84, 53, 0.1); border-top: 4px solid var(--primary); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto;"></div><p style="margin-top: 1rem; color: var(--text-light);">Loading profile...</p></div>';
+  if (!cachedParsed) {
+    profileContent.innerHTML = '<div style="text-align: center; padding: 2rem;"><div class="spinner" style="border: 4px solid rgba(18, 84, 53, 0.1); border-top: 4px solid var(--primary); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto;"></div><p style="margin-top: 1rem; color: var(--text-light);">Loading profile...</p></div>';
+  }
 
   fetch('/api/auth/me', {
     headers: {
@@ -924,19 +932,52 @@ function displayProfileData(user) {
   initManagedProfileFields();
 }
 
+const PROFILE_ICONS = {
+  user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+  mail: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>',
+  briefcase: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M3 12h18"/></svg>',
+  manager: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m16 11 2 2 4-4"/></svg>',
+  leave: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>',
+  clipboard: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="3" width="8" height="4" rx="1"/><path d="M9 5H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-3"/><path d="M9 12h6M9 16h4"/></svg>',
+  shield: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
+  role: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 9.5 8.5 3 9l5 4.5L6.5 21 12 17l5.5 4L16 13.5 21 9l-6.5-.5z"/></svg>',
+  check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11-5-5"/></svg>',
+  warn: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a1.8 1.8 0 0 0 1.5 2.7h17.4a1.8 1.8 0 0 0 1.5-2.7L13.7 3.9a1.8 1.8 0 0 0-3.1 0z"/><path d="M12 9v4M12 17h.01"/></svg>',
+  pen: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>',
+  grid: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg>',
+  hvac: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 8a4 4 0 0 0-4 4"/><path d="M20 9a8 8 0 0 0-13.6-5.7"/><path d="M4.2 11A8 8 0 0 0 12 20a8 8 0 0 0 8-7"/><circle cx="12" cy="12" r="2"/></svg>',
+  civil: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5 12 4l9 5.5V20H3z"/><path d="M9 20V12h6v8"/></svg>',
+  cleaning: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 22V12c0-1.1.9-2 2-2h1V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v6h1a2 2 0 0 1 2 2v10"/><path d="M3 22h18"/><path d="M9 22V16h6v6"/></svg>',
+  hr_mod: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+  procurement: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>',
+  biz_dev: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>',
+  reports: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 16 4-4 4 4 5-5"/></svg>',
+  phone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>',
+  close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>'
+};
+
 function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDisplay, getModuleAccess, formatDate) {
+  const I = PROFILE_ICONS;
   const modules = [];
-  if (isAppAdmin(user) || user.access_hvac) modules.push({ name: 'HVAC & MEP', icon: '🔧', color: '#3b82f6' });
-  if (isAppAdmin(user) || user.access_civil) modules.push({ name: 'Civil Works', icon: '🏢', color: '#8b5cf6' });
-  if (isAppAdmin(user) || user.access_cleaning) modules.push({ name: 'Cleaning', icon: '🧹', color: '#10b981' });
-  if (userHasHrNavAccess(user)) modules.push({ name: 'HR', icon: '👤', color: '#f59e0b' });
-  if (isAppAdmin(user) || user.access_procurement_module) modules.push({ name: 'Procurement', icon: '📦', color: '#7c3aed' });
-  if (isAppAdmin(user) || user.designation === 'business_development' || user.access_business_development) modules.push({ name: 'Business Development', icon: '📧', color: '#0d9488' });
-  if (userHasReportGenerationNavAccess(user)) modules.push({ name: 'Report Generation', icon: '📊', color: '#0369a1' });
+  if (isAppAdmin(user) || user.access_hvac) modules.push({ name: 'HVAC & MEP', desc: 'Mechanical, electrical & plumbing', icon: 'hvac', color: '#3b82f6', bg: '#eff6ff' });
+  if (isAppAdmin(user) || user.access_civil) modules.push({ name: 'Civil Works', desc: 'Construction & site management', icon: 'civil', color: '#8b5cf6', bg: '#f5f3ff' });
+  if (isAppAdmin(user) || user.access_cleaning) modules.push({ name: 'Cleaning', desc: 'Facility hygiene & maintenance', icon: 'cleaning', color: '#10b981', bg: '#ecfdf5' });
+  if (userHasHrNavAccess(user)) modules.push({ name: 'HR', desc: 'People & workforce management', icon: 'hr_mod', color: '#f59e0b', bg: '#fffbeb' });
+  if (isAppAdmin(user) || user.access_procurement_module) modules.push({ name: 'Procurement', desc: 'Purchasing & vendor tracking', icon: 'procurement', color: '#7c3aed', bg: '#faf5ff' });
+  if (isAppAdmin(user) || user.designation === 'business_development' || user.access_business_development) modules.push({ name: 'Business Development', desc: 'Proposals & client pipeline', icon: 'biz_dev', color: '#0d9488', bg: '#f0fdfa' });
+  if (userHasReportGenerationNavAccess(user)) modules.push({ name: 'Report Generation', desc: 'Analytics & export tools', icon: 'reports', color: '#0369a1', bg: '#eff6ff' });
   
   const moduleBadges = modules.length > 0 
-    ? modules.map(m => `<span class="pro-module-badge" style="--badge-color: ${m.color}">${m.icon} ${m.name}</span>`).join('')
-    : '<span class="pro-no-access">No modules assigned</span>';
+    ? modules.map(m => `
+      <div class="pro-mod-card">
+        <div class="pro-mod-icon" style="background:${m.bg};color:${m.color};">${I[m.icon]}</div>
+        <div class="pro-mod-body">
+          <div class="pro-mod-name">${escapeHtml(m.name)}</div>
+          <div class="pro-mod-desc">${escapeHtml(m.desc)}</div>
+        </div>
+        <div class="pro-mod-check" style="color:${m.color}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="m20 6-11 11-5-5"/></svg></div>
+      </div>`).join('')
+    : '<p class="pro-no-access">No modules assigned</p>';
 
   const hrJobTitle = escapeHtml(user.job_designation || '—');
   const annualLeavesDisp = user.annual_leave_days != null ? escapeHtml(String(user.annual_leave_days)) : '—';
@@ -948,28 +989,400 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
 
   return `
     <style>
-      /* Modern Profile Modal Styles - Enhanced */
+      /* Profile Modal - iOS inspired two-pane */
       .pro-container {
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', 'Segoe UI', sans-serif;
         width: 100%;
         max-width: 100%;
         padding: 0;
         box-sizing: border-box;
+        background: #ffffff;
+        height: 100%;
+      }
+
+      .pro-shell {
+        display: flex;
+        align-items: stretch;
+        height: min(620px, 78vh);
+        max-height: 78vh;
+        background: #ffffff;
+      }
+
+      /* The redesigned header carries its own close button */
+      #profileModal .contact-modal-close {
+        display: none !important;
+      }
+
+      /* Left rail */
+      .pro-rail {
+        width: 232px;
+        flex-shrink: 0;
         display: flex;
         flex-direction: column;
+        background: #f7f7fa;
+        border-right: 1px solid #e5e5ea;
+        padding: 1.25rem 0.85rem 1rem;
+        box-sizing: border-box;
+      }
+
+      .pro-rail-head {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 0.5rem;
+        padding: 0 0.4rem 1rem;
+        border-bottom: 1px solid #e9e9ee;
+      }
+
+      .pro-rail-avatar {
+        width: 76px;
+        height: 76px;
+        font-size: 1.6rem;
+        margin: 0;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        color: #ffffff;
+        background: linear-gradient(160deg, #1b8a56 0%, #147347 100%);
+        border: 3px solid #ffffff;
+        box-shadow: 0 6px 18px rgba(20, 115, 71, 0.25);
+        position: relative;
+        flex-shrink: 0;
+      }
+
+      .pro-rail-avatar::after {
+        content: '';
+        position: absolute;
+        width: 16px;
+        height: 16px;
+        bottom: 3px;
+        right: 3px;
+        background: ${user.is_active ? '#22c55e' : '#ef4444'};
+        border: 2px solid white;
+        border-radius: 50%;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      }
+
+      .pro-rail-name {
+        font-size: 0.98rem;
+        font-weight: 650;
+        color: #1c1c1e;
+        line-height: 1.25;
+        letter-spacing: -0.01em;
+        word-break: break-word;
+      }
+
+      .pro-rail-role {
+        font-size: 0.74rem;
+        font-weight: 500;
+        color: #8e8e93;
+        line-height: 1.3;
+        word-break: break-word;
+      }
+
+      .pro-nav {
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+        padding: 0.75rem 0 0;
         flex: 1;
         min-height: 0;
-        overflow: hidden;
+        overflow-y: auto;
+      }
+
+      .pro-nav-item {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        width: 100%;
+        padding: 0.62rem 0.75rem;
+        border: none;
+        background: transparent;
+        border-radius: 8px;
+        font-size: 0.8rem;
+        font-weight: 500;
+        color: #636366;
+        cursor: pointer;
+        text-align: left;
+        outline: none;
+        -webkit-tap-highlight-color: transparent;
+        transition: background-color 0.18s ease, color 0.18s ease;
+      }
+
+      .pro-nav-item:hover:not(.active) {
+        background: rgba(0, 0, 0, 0.04);
+        color: #1c1c1e;
+      }
+
+      .pro-nav-item.active {
+        background: rgba(20, 115, 71, 0.1);
+        color: #0f5132;
+        font-weight: 600;
+        box-shadow: none;
+      }
+
+      .pro-nav-ico {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 22px;
+        height: 22px;
+        flex-shrink: 0;
+        color: #aeaeb2;
+        transition: color 0.18s ease;
+      }
+
+      .pro-nav-item:hover:not(.active) .pro-nav-ico {
+        color: #636366;
+      }
+
+      .pro-nav-item.active .pro-nav-ico {
+        color: #147347;
+      }
+
+      .pro-nav-ico svg {
+        width: 18px;
+        height: 18px;
+      }
+
+      .pro-rail-foot {
+        padding-top: 0.85rem;
+        margin-top: 0.5rem;
+        border-top: 1px solid #e9e9ee;
+      }
+
+      .pro-rail-status {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.55rem 0.7rem;
+        border-radius: 10px;
+        font-size: 0.74rem;
+        font-weight: 650;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+      }
+
+      .pro-rail-status svg {
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+      }
+
+      .pro-rail-status.is-active {
+        background: #e7f7ee;
+        color: #15803d;
+      }
+
+      .pro-rail-status.is-inactive {
+        background: #fdecec;
+        color: #c62828;
+      }
+
+      /* Right main panel */
+      .pro-main {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .pro-main-header {
+        flex-shrink: 0;
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 1.3rem 1.5rem 1rem;
+        border-bottom: 1px solid #ececf1;
+      }
+
+      .pro-main-heading {
+        min-width: 0;
+      }
+
+      .pro-main-title {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: #1c1c1e;
+        margin: 0 0 0.2rem;
+        letter-spacing: -0.02em;
+        line-height: 1.2;
+      }
+
+      .pro-main-sub {
+        font-size: 0.8rem;
+        color: #8e8e93;
+        margin: 0;
+        line-height: 1.35;
+      }
+
+      .pro-main-close {
+        flex-shrink: 0;
+        width: 34px;
+        height: 34px;
+        border-radius: 9px;
+        border: 1px solid transparent;
+        background: transparent;
+        color: #636366;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+      }
+
+      .pro-main-close:hover {
+        background: #f2f2f7;
+        color: #1c1c1e;
+        border-color: #e5e5ea;
+      }
+
+      .pro-main-close svg {
+        width: 19px;
+        height: 19px;
+      }
+
+      .pro-main-body {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        padding: 1.25rem 1.5rem;
+      }
+
+      .pro-main-footer {
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        padding: 0.85rem 1.5rem;
+        border-top: 1px solid #ececf1;
+        background: #fbfbfd;
+      }
+
+      .pro-main-footer-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        margin-left: auto;
+      }
+
+      .pro-main-footer .pro-save-hint {
+        margin: 0;
+      }
+
+      /* General Info form fields */
+      .pro-field-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.95rem 1.1rem;
+      }
+
+      .pro-field {
+        display: block;
+        min-width: 0;
+      }
+
+      .pro-field-input--readonly {
+        background: #f2f2f7;
+        color: #636366;
+        cursor: default;
+      }
+
+      .pro-field-input--readonly:focus {
+        border-color: #d1d1d6;
+        box-shadow: none;
+        background: #f2f2f7;
+      }
+
+      /* Organization details */
+      .pro-org {
+        margin-top: 1.5rem;
+      }
+
+      .pro-org-title {
+        font-size: 1.02rem;
+        font-weight: 700;
+        color: #1c1c1e;
+        letter-spacing: -0.01em;
+        margin-bottom: 0.7rem;
+      }
+
+      .pro-org-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.7rem;
+      }
+
+      .pro-org-card {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.65rem;
+        padding: 0.75rem 0.8rem;
+        background: #f7f7fa;
+        border: 1px solid #ececf1;
+        border-radius: 12px;
+      }
+
+      .pro-org-ico {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        flex-shrink: 0;
+        background: color-mix(in srgb, var(--icon-color, #147347) 14%, #ffffff);
+        color: var(--icon-color, #147347);
+      }
+
+      .pro-org-ico svg {
+        width: 18px;
+        height: 18px;
+      }
+
+      .pro-org-text {
+        min-width: 0;
+      }
+
+      .pro-org-label {
+        font-size: 0.68rem;
+        font-weight: 600;
+        color: #8e8e93;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        margin-bottom: 0.15rem;
+      }
+
+      .pro-org-value {
+        font-size: 0.88rem;
+        font-weight: 650;
+        color: #1c1c1e;
+        line-height: 1.3;
+        word-break: break-word;
+      }
+
+      .pro-org-hint {
+        font-size: 0.7rem;
+        color: #8e8e93;
+        margin: 0.7rem 0 0;
+        line-height: 1.4;
       }
       
-      /* Hero Section — fixed strip at top, left-aligned row */
+      /* Hero Section */
       .pro-hero {
         position: relative;
         flex-shrink: 0;
-        padding: 0.85rem 3.5rem 1rem 1.25rem;
-        background: linear-gradient(135deg, #0f4a2a 0%, #1a6b3d 50%, #22885a 100%);
+        padding: 0.9rem 3.25rem 0.85rem 1.15rem;
+        background: linear-gradient(180deg, #1a7a4d 0%, #145c3a 100%);
         border-radius: 0;
-        margin: 0;
+        margin: 0 -1rem;
         overflow: hidden;
       }
       
@@ -991,7 +1404,7 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
         text-align: left;
         gap: 0;
       }
-      
+
       .pro-hero-main {
         display: flex;
         flex-direction: row;
@@ -1000,73 +1413,60 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
         min-width: 0;
         flex: 1;
       }
-      
+
       .pro-hero-text {
         display: flex;
         flex-direction: column;
         align-items: flex-start;
         justify-content: center;
-        gap: 0.35rem;
+        gap: 0.3rem;
         min-width: 0;
         flex: 1;
       }
       
-      .pro-avatar {
-        width: 64px;
-        height: 64px;
-        border-radius: 50%;
-        background: rgba(255,255,255,0.15);
-        backdrop-filter: blur(10px);
-        border: 3px solid rgba(255,255,255,0.3);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.35rem;
-        font-weight: 700;
-        color: white;
-        margin-bottom: 0;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.2);
-        position: relative;
-        flex-shrink: 0;
+      /* Rail avatar wins over legacy .pro-avatar hero styles */
+      .pro-avatar.pro-rail-avatar {
+        width: 76px;
+        height: 76px;
+        font-size: 1.6rem;
+        margin: 0;
+        background: linear-gradient(160deg, #1b8a56 0%, #147347 100%) !important;
+        backdrop-filter: none;
+        border: 3px solid #ffffff;
+        box-shadow: 0 6px 18px rgba(20, 115, 71, 0.25);
+        color: #ffffff;
       }
-      
-      .pro-avatar::after {
-        content: '';
-        position: absolute;
-        bottom: 2px;
-        right: 2px;
-        width: 14px;
-        height: 14px;
-        background: ${user.is_active ? '#22c55e' : '#ef4444'};
-        border: 2px solid white;
-        border-radius: 50%;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+
+      .pro-avatar.pro-rail-avatar::after {
+        width: 16px;
+        height: 16px;
+        bottom: 3px;
+        right: 3px;
       }
       
       .pro-name {
-        font-size: 1.15rem;
-        font-weight: 700;
+        font-size: 1.08rem;
+        font-weight: 650;
         color: white;
         margin: 0;
-        letter-spacing: -0.03em;
+        letter-spacing: -0.02em;
         line-height: 1.2;
         text-align: left;
-        align-self: stretch;
         word-break: break-word;
       }
       
       .pro-role-badge {
         display: inline-flex;
         align-items: center;
-        gap: 0.4rem;
-        background: rgba(255,255,255,0.15);
+        gap: 0.35rem;
+        background: rgba(255,255,255,0.18);
         backdrop-filter: blur(10px);
-        padding: 0.35rem 0.75rem;
+        padding: 0.34rem 0.72rem;
         border-radius: 100px;
-        font-size: 0.72rem;
+        font-size: 0.69rem;
         font-weight: 500;
         color: rgba(255,255,255,0.95);
-        border: 1px solid rgba(255,255,255,0.2);
+        border: 1px solid rgba(255,255,255,0.22);
         max-width: 100%;
         flex-wrap: wrap;
         justify-content: flex-start;
@@ -1083,44 +1483,28 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
       /* Tabs — fixed under hero */
       .pro-tabs {
         display: flex;
-        gap: 0.375rem;
-        padding: 0.65rem 1rem;
-        background: #f8fafc;
-        border-bottom: 1px solid #e2e8f0;
-        margin: 0;
+        gap: 0.35rem;
+        padding: 0.4rem 0.7rem;
+        background: #ececf1;
+        border-bottom: 1px solid #d8d8de;
+        margin: 0 -1rem;
         flex-shrink: 0;
       }
       
-      /* Only tab bodies scroll */
       .pro-tab-panels {
-        flex: 1;
-        min-height: 0;
-        overflow-x: hidden;
-        overflow-y: auto;
-        overscroll-behavior: contain;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-width: none;
-        -ms-overflow-style: none;
-        padding: 0 1.25rem calc(1rem + env(safe-area-inset-bottom, 0px));
-        box-sizing: border-box;
-      }
-      
-      .pro-tab-panels::-webkit-scrollbar {
-        width: 0;
-        height: 0;
-        background: transparent;
+        padding: 0;
       }
       
       .pro-tab {
         flex: 1;
-        padding: 0.6rem 0.75rem;
+        padding: 0.5rem 0.72rem;
         border: none;
         background: transparent;
-        font-size: 0.8rem;
+        font-size: 0.77rem;
         font-weight: 600;
-        color: #64748b;
+        color: #636366;
         cursor: pointer;
-        border-radius: 8px;
+        border-radius: 10px;
         transition: all 0.2s ease;
         display: flex;
         align-items: center;
@@ -1129,14 +1513,14 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
       }
       
       .pro-tab:hover {
-        background: #e2e8f0;
-        color: #334155;
+        background: rgba(255,255,255,0.55);
+        color: #1c1c1e;
       }
       
       .pro-tab.active {
-        background: white;
-        color: #125435;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        background: #ffffff;
+        color: #1c1c1e;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.03);
       }
       
       .pro-tab svg {
@@ -1147,7 +1531,7 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
       /* Tab Content */
       .pro-tab-content {
         display: none;
-        padding: 0.55rem 0 0.5rem;
+        padding: 0;
         animation: fadeIn 0.3s ease;
       }
       
@@ -1160,45 +1544,83 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
         to { opacity: 1; transform: translateY(0); }
       }
       
-      /* Info List — two columns on wide profile sheet */
+      /* Info grids — two columns on wide profile sheet */
       .pro-info-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+
+      .pro-info-list--grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 0.65rem;
+        gap: 0.5rem;
+      }
+
+      .pro-profile-bottom {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.5rem;
+        align-items: start;
+        margin-top: 0.65rem;
+      }
+
+      .pro-hr-record {
+        margin-top: 0.65rem;
+        padding-top: 0.65rem;
+        border-top: 1px solid #d8d8de;
+      }
+
+      .pro-info-section-label {
+        font-size: 0.63rem;
+        font-weight: 700;
+        color: #8e8e93;
+        text-transform: uppercase;
+        letter-spacing: 0.09em;
+        margin-bottom: 0.2rem;
+      }
+
+      .pro-info-section-hint {
+        font-size: 0.67rem;
+        color: #8e8e93;
+        margin: 0 0 0.5rem;
+        line-height: 1.3;
       }
       
       .pro-info-item {
         display: flex;
         align-items: center;
-        gap: 0.75rem;
-        padding: 0.65rem 0.75rem;
-        background: #f8fafc;
+        gap: 0.6rem;
+        padding: 0.58rem 0.65rem;
+        background: #ffffff;
         border-radius: 12px;
-        border: 1px solid #e2e8f0;
-        transition: all 0.2s ease;
+        border: 1px solid #e5e5ea;
+        box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        min-height: 0;
       }
       
       .pro-info-item:hover {
-        background: #f1f5f9;
-        border-color: #cbd5e1;
-      }
-      
-      .pro-info-item--span {
-        grid-column: 1 / -1;
-        align-items: flex-start;
+        border-color: #d1d1d6;
+        box-shadow: 0 2px 6px rgba(16, 24, 40, 0.08);
       }
       
       .pro-info-icon {
-        width: 36px;
-        height: 36px;
-        border-radius: 10px;
+        width: 30px;
+        height: 30px;
+        border-radius: 9px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1rem;
-        background: linear-gradient(135deg, #125435 0%, #1a7a4d 100%);
+        background: var(--icon-color, #147347);
         color: white;
         flex-shrink: 0;
+        box-shadow: 0 2px 6px color-mix(in srgb, var(--icon-color, #147347) 35%, transparent);
+      }
+
+      .pro-info-icon svg {
+        width: 17px;
+        height: 17px;
       }
       
       .pro-info-content {
@@ -1207,97 +1629,185 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
       }
       
       .pro-info-label {
-        font-size: 0.7rem;
+        font-size: 0.66rem;
         font-weight: 600;
-        color: #94a3b8;
+        color: #8e8e93;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
-        margin-bottom: 0.125rem;
+        letter-spacing: 0.06em;
+        margin-bottom: 0.12rem;
       }
       
       .pro-info-value {
-        font-size: 0.95rem;
+        font-size: 0.84rem;
         font-weight: 600;
-        color: #1e293b;
+        color: #1c1c1e;
         word-break: break-word;
       }
       
-      .pro-profile-edit-grid {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 0.65rem;
-      }
-      
       @media (max-width: 540px) {
-        .pro-info-list {
-          grid-template-columns: 1fr;
-        }
+        .pro-info-list--grid,
+        .pro-profile-bottom,
         .pro-profile-edit-grid {
           grid-template-columns: 1fr;
         }
       }
       
-      /* Module Badges */
-      .pro-modules-wrap {
-        margin-top: 1rem;
-        padding: 0.875rem;
-        background: #f8fafc;
-        border-radius: 12px;
-        border: 1px solid #e2e8f0;
+      .pro-profile-edit-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.45rem;
       }
       
-      .pro-modules-title {
-        font-size: 0.7rem;
-        font-weight: 600;
-        color: #94a3b8;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        margin-bottom: 0.625rem;
+      /* Module Access cards */
+      .pro-mod-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.65rem;
       }
-      
-      .pro-modules-list {
+
+      .pro-mod-card {
         display: flex;
-        flex-wrap: wrap;
-        gap: 0.5rem;
-      }
-      
-      .pro-module-badge {
-        display: inline-flex;
         align-items: center;
-        gap: 0.3rem;
-        padding: 0.45rem 0.75rem;
-        background: white;
-        border: 1px solid #e2e8f0;
-        border-radius: 100px;
-        font-size: 0.8rem;
-        font-weight: 500;
-        color: #334155;
-        transition: all 0.2s ease;
+        gap: 0.75rem;
+        padding: 0.8rem 0.9rem;
+        background: #ffffff;
+        border: 1px solid #e5e5ea;
+        border-radius: 14px;
+        box-shadow: 0 1px 3px rgba(16,24,40,0.05);
+        transition: box-shadow 0.18s ease, border-color 0.18s ease, transform 0.15s ease;
+        cursor: default;
+        min-width: 0;
       }
-      
-      .pro-module-badge:hover {
-        border-color: var(--badge-color, #125435);
-        background: color-mix(in srgb, var(--badge-color, #125435) 8%, white);
+
+      .pro-mod-card:hover {
+        box-shadow: 0 4px 12px rgba(16,24,40,0.1);
+        border-color: #d1d1d6;
+        transform: translateY(-1px);
       }
-      
+
+      .pro-mod-icon {
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+
+      .pro-mod-icon svg {
+        width: 20px;
+        height: 20px;
+      }
+
+      .pro-mod-body {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .pro-mod-name {
+        font-size: 0.82rem;
+        font-weight: 650;
+        color: #1c1c1e;
+        line-height: 1.2;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .pro-mod-desc {
+        font-size: 0.68rem;
+        color: #8e8e93;
+        margin-top: 0.15rem;
+        line-height: 1.3;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .pro-mod-check {
+        flex-shrink: 0;
+        opacity: 0.85;
+      }
+
       .pro-no-access {
         color: #94a3b8;
-        font-size: 0.8rem;
+        font-size: 0.82rem;
         font-style: italic;
+        margin: 0;
       }
       
       /* Footer / Member Since */
       .pro-footer, .pro-member-since {
         text-align: center;
-        padding: 0.875rem 0 0.5rem;
-        margin-top: 0.875rem;
-        font-size: 0.8rem;
-        color: #94a3b8;
-        border-top: 1px solid #e2e8f0;
+        padding: 0.62rem 0 0.22rem;
+        margin-top: 0.58rem;
+        font-size: 0.74rem;
+        color: #8e8e93;
+        border-top: 1px solid #d8d8de;
       }
       
       .pro-member-since strong {
-        color: #64748b;
+        color: #1c1c1e;
+      }
+
+      .pro-profile-edit {
+        margin: 0;
+        padding: 0.7rem;
+        background: #ffffff;
+        border-radius: 12px;
+        border: 1px solid #e5e5ea;
+        box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+      }
+
+      .pro-section-title {
+        font-size: 0.78rem;
+        font-weight: 650;
+        color: #1c1c1e;
+        margin-bottom: 0.3rem;
+      }
+
+      .pro-section-desc {
+        font-size: 0.68rem;
+        color: #8e8e93;
+        margin: 0 0 0.48rem;
+      }
+
+      .pro-field-label {
+        display: block;
+        margin-bottom: 0.22rem;
+        font-size: 0.68rem;
+        color: #8e8e93;
+      }
+
+      .pro-field-input {
+        width: 100%;
+        padding: 0.5rem 0.58rem;
+        border: 1px solid #d1d1d6;
+        border-radius: 9px;
+        font-size: 0.84rem;
+        box-sizing: border-box;
+        background: #fbfbfd;
+        color: #1c1c1e;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      .pro-field-input:focus {
+        outline: none;
+        border-color: #18794e;
+        box-shadow: 0 0 0 3px rgba(24, 121, 78, 0.14);
+        background: #ffffff;
+      }
+
+      .pro-save-btn {
+        margin-top: 0.48rem;
+        border-radius: 999px;
+      }
+
+      .pro-save-hint {
+        font-size: 0.68rem;
+        color: #8e8e93;
+        margin: 0.38rem 0 0;
       }
       
       .pro-footer-text {
@@ -1336,6 +1846,11 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
         font-size: 1.1rem;
         flex-shrink: 0;
       }
+
+      .pro-security-icon svg {
+        width: 20px;
+        height: 20px;
+      }
       
       .pro-security-card.success .pro-security-icon {
         background: #22c55e;
@@ -1373,34 +1888,34 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
         align-items: center;
         justify-content: center;
         gap: 0.375rem;
-        padding: 0.5rem 1rem;
-        font-size: 0.8rem;
+        padding: 0.5rem 0.95rem;
+        font-size: 0.78rem;
         font-weight: 600;
-        border-radius: 8px;
+        border-radius: 10px;
         border: none;
         cursor: pointer;
-        transition: all 0.2s ease;
+        transition: transform 0.15s ease, box-shadow 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
       }
       
       .pro-btn-primary {
-        background: linear-gradient(135deg, #125435 0%, #1a7a4d 100%);
+        background: linear-gradient(160deg, #1b8a56 0%, #147347 100%);
         color: white;
-        box-shadow: 0 2px 8px rgba(18,84,53,0.25);
+        box-shadow: 0 3px 8px rgba(20, 115, 71, 0.26);
       }
       
       .pro-btn-primary:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(18,84,53,0.35);
+        transform: translateY(-0.5px);
+        box-shadow: 0 5px 12px rgba(20, 115, 71, 0.3);
       }
       
       .pro-btn-outline {
         background: white;
-        color: #125435;
-        border: 1.5px solid #125435;
+        color: #167d4f;
+        border: 1px solid #a6d8bf;
       }
       
       .pro-btn-outline:hover {
-        background: #f0fdf4;
+        background: #f4fbf7;
       }
       
       .pro-btn-sm {
@@ -1409,25 +1924,25 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
       }
       
       .pro-btn-danger {
-        background: white;
-        color: #dc2626;
-        border: 1.5px solid #fecaca;
+        background: #fff5f5;
+        color: #c62828;
+        border: 1px solid #fecaca;
       }
       
       .pro-btn-danger:hover {
-        background: #fef2f2;
+        background: #feeaea;
         border-color: #dc2626;
       }
       
       .pro-btn-success {
-        background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%);
+        background: linear-gradient(160deg, #27ae60 0%, #1e9f58 100%);
         color: white;
-        box-shadow: 0 2px 8px rgba(22,163,74,0.25);
+        box-shadow: 0 3px 8px rgba(30, 159, 88, 0.28);
       }
       
       .pro-btn-success:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(22,163,74,0.35);
+        transform: translateY(-0.5px);
+        box-shadow: 0 5px 12px rgba(30, 159, 88, 0.32);
       }
       
       /* Signature Section */
@@ -1457,6 +1972,11 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
         color: white;
         font-size: 0.9rem;
       }
+
+      .pro-sig-header-icon svg {
+        width: 17px;
+        height: 17px;
+      }
       
       .pro-sig-header-text h4 {
         margin: 0;
@@ -1481,62 +2001,113 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
         gap: 0.75rem;
       }
       
+      /* Two-pane stacks below this width */
+      @media (max-width: 720px) {
+        .pro-shell {
+          flex-direction: column;
+        }
+        .pro-rail {
+          width: 100%;
+          flex-shrink: 0;
+          border-right: none;
+          border-bottom: 1px solid #e5e5ea;
+          padding: 1rem 1rem 0.75rem;
+        }
+        .pro-rail-head {
+          flex-direction: row;
+          align-items: center;
+          text-align: left;
+          gap: 0.75rem;
+          padding: 0 0 0.75rem;
+        }
+        .pro-rail-avatar {
+          width: 52px;
+          height: 52px;
+          font-size: 1.15rem;
+          border-width: 2px;
+        }
+        .pro-rail-avatar::after {
+          width: 13px;
+          height: 13px;
+        }
+        .pro-nav {
+          flex-direction: row;
+          flex-wrap: nowrap;
+          overflow-x: auto;
+          gap: 0.35rem;
+          padding: 0.6rem 0 0.1rem;
+          -webkit-overflow-scrolling: touch;
+          scrollbar-width: none;
+        }
+        .pro-nav::-webkit-scrollbar { display: none; }
+        .pro-nav-item {
+          width: auto;
+          white-space: nowrap;
+          padding: 0.5rem 0.75rem;
+        }
+
+        .pro-rail-foot { display: none; }
+        .pro-main-body {
+          padding: 1.1rem 1.15rem;
+        }
+        .pro-main-header { padding: 1.1rem 1.15rem 0.85rem; }
+        .pro-main-title { font-size: 1.15rem; }
+        .pro-main-footer { padding: 0.75rem 1.15rem; }
+        .pro-field-grid,
+        .pro-org-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
       /* Mobile Responsive - Profile Modal (phones) */
       @media (max-width: 480px) {
+        .pro-container { height: 100%; }
+        .pro-shell {
+          height: 100%;
+          max-height: none;
+        }
         .pro-sig-grid {
           grid-template-columns: 1fr;
         }
         
         .pro-tab-panels {
-          padding: 0 0.875rem calc(1rem + env(safe-area-inset-bottom, 0px));
-          box-sizing: border-box;
-        }
-        
-        .pro-hero {
-          margin: 0;
-          padding: 0.85rem 3.25rem 0.95rem 0.75rem;
-        }
-        
-        .pro-hero-main {
-          gap: 0.65rem;
-        }
-        
-        .pro-avatar {
-          width: 56px;
-          height: 56px;
-          font-size: 1.2rem;
-        }
-        
-        .pro-avatar::after {
-          width: 12px;
-          height: 12px;
-        }
-        
-        .pro-name {
-          font-size: 1rem;
-          line-height: 1.25;
-          max-width: 100%;
           padding: 0;
         }
         
+        .pro-hero {
+          margin: 0 -0.875rem;
+          padding: 0.85rem 3rem 0.8rem 0.9rem;
+        }
+
+        .pro-hero-main {
+          gap: 0.7rem;
+        }
+        
+        .pro-avatar.pro-rail-avatar {
+          width: 52px;
+          height: 52px;
+          font-size: 1.15rem;
+        }
+        
+        .pro-avatar.pro-rail-avatar::after {
+          width: 13px;
+          height: 13px;
+        }
+        
+        .pro-name {
+          font-size: 1.15rem;
+          line-height: 1.25;
+        }
+        
         .pro-role-badge {
-          font-size: 0.65rem;
-          padding: 0.3rem 0.6rem;
-          max-width: 100%;
-          flex-wrap: wrap;
-          justify-content: flex-start;
-          text-align: left;
-          line-height: 1.35;
+          font-size: 0.68rem;
+          padding: 0.35rem 0.75rem;
         }
         
         .pro-tabs {
-          margin: 0;
+          margin: 0 -0.875rem;
           padding: 0.55rem 0.45rem;
           gap: 0.35rem;
-          width: 100%;
-          max-width: none;
-          box-sizing: border-box;
-          justify-content: stretch;
         }
         
         .pro-tab {
@@ -1592,29 +2163,18 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
           line-height: 1.35;
         }
         
-        .pro-modules-wrap {
-          padding: 0.625rem 0.625rem;
-          margin-top: 0.75rem;
-        }
-        
-        .pro-modules-title {
-          font-size: 0.625rem;
-          margin-bottom: 0.5rem;
-        }
-        
-        .pro-modules-list {
-          display: grid;
+        .pro-mod-grid {
           grid-template-columns: 1fr;
-          gap: 0.45rem;
+          gap: 0.5rem;
         }
-        
-        .pro-module-badge {
-          width: 100%;
-          max-width: 100%;
-          box-sizing: border-box;
-          justify-content: flex-start;
-          padding: 0.5rem 0.7rem;
-          font-size: 0.8125rem;
+
+        .pro-mod-card {
+          padding: 0.7rem 0.75rem;
+        }
+
+        .pro-mod-icon {
+          width: 34px;
+          height: 34px;
         }
         
         .pro-security-card {
@@ -1717,6 +2277,13 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
         font-size: 1.5rem;
         margin-bottom: 0.375rem;
         opacity: 0.5;
+        display: flex;
+        justify-content: center;
+      }
+
+      .pro-sig-empty-icon svg {
+        width: 26px;
+        height: 26px;
       }
       
       .pro-sig-empty-text {
@@ -1861,196 +2428,211 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
       
       /* Member Since */
       .pro-member-since {
-        text-align: center;
-        padding: 1.25rem;
-        margin-top: 0.5rem;
-        color: #64748b;
-        font-size: 0.9rem;
-        border-top: 1px solid #e2e8f0;
+        text-align: left;
+        padding: 0.85rem 0 0;
+        margin-top: 1rem;
+        color: #8e8e93;
+        font-size: 0.75rem;
+        border-top: 1px solid #ececf1;
       }
       
       .pro-member-since strong {
-        color: #334155;
+        color: #3a3a3c;
+        font-weight: 650;
       }
       
     </style>
     
     <div class="pro-container">
-      <!-- Hero Section -->
-      <div class="pro-hero">
-        <div class="pro-hero-content">
-          <div class="pro-hero-main">
-            <div class="pro-avatar">${getInitials()}</div>
-            <div class="pro-hero-text">
-              <h2 class="pro-name">${escapeHtml(user.full_name || user.username)}</h2>
-              <div class="pro-role-badge">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
-                ${escapeHtml(getDesignationDisplay())} • ${escapeHtml(getRoleDisplay())}
-              </div>
-            </div>
+      <div class="pro-shell">
+        <!-- LEFT RAIL -->
+        <aside class="pro-rail">
+          <div class="pro-rail-head">
+            <div class="pro-avatar pro-rail-avatar">${getInitials()}</div>
+            <div class="pro-rail-name">${escapeHtml(user.full_name || user.username)}</div>
+            <div class="pro-rail-role">${escapeHtml(user.job_designation || getRoleDisplay())}</div>
           </div>
-        </div>
-      </div>
-      
-      <!-- Tabs -->
-      <div class="pro-tabs">
-        <button class="pro-tab active" data-tab="profile" onclick="switchProfileTab('profile')">
-          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-          <span>Profile</span>
-        </button>
-        <button class="pro-tab" data-tab="security" onclick="switchProfileTab('security')">
-          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-          <span>Security</span>
-        </button>
-        <button class="pro-tab" data-tab="signature" onclick="switchProfileTab('signature')">
-          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
-          <span>Signature</span>
-        </button>
-      </div>
-      
-      <div class="pro-tab-panels">
-      <!-- Profile Tab -->
-      <div class="pro-tab-content active" data-content="profile">
-        <div class="pro-info-list">
-          <div class="pro-info-item">
-            <div class="pro-info-icon">👤</div>
-            <div class="pro-info-content">
-              <div class="pro-info-label">Username</div>
-              <div class="pro-info-value">${escapeHtml(user.username)}</div>
-            </div>
-          </div>
-          <div class="pro-info-item">
-            <div class="pro-info-icon">✉️</div>
-            <div class="pro-info-content">
-              <div class="pro-info-label">Email Address</div>
-              <div class="pro-info-value">${escapeHtml(user.email || 'Not provided')}</div>
-            </div>
-          </div>
-          <div class="pro-info-item">
-            <div class="pro-info-icon">💼</div>
-            <div class="pro-info-content">
-              <div class="pro-info-label">Job title (HR)</div>
-              <div class="pro-info-value">${hrJobTitle}</div>
-            </div>
-          </div>
-          <div class="pro-info-item">
-            <div class="pro-info-icon">🏖️</div>
-            <div class="pro-info-content">
-              <div class="pro-info-label">Annual leave (days)</div>
-              <div class="pro-info-value">${annualLeavesDisp}</div>
-            </div>
-          </div>
-          <div class="pro-info-item">
-            <div class="pro-info-icon">📋</div>
-            <div class="pro-info-content">
-              <div class="pro-info-label">Other leave (days)</div>
-              <div class="pro-info-value">${otherLeavesDisp}</div>
-            </div>
-          </div>
-          <div class="pro-info-item pro-info-item--span">
-            <div class="pro-info-icon">👔</div>
-            <div class="pro-info-content">
-              <div class="pro-info-label">Reporting manager</div>
-              <div class="pro-info-value">${reportingMgrDisp}</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="pro-profile-edit" style="margin: 0.85rem 0 0; padding: 1rem 1rem; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">
-          <div style="font-size: 0.82rem; font-weight: 700; color: #334155; margin-bottom: 0.5rem;">Your details</div>
-          <p style="font-size: 0.72rem; color: #64748b; margin: 0 0 0.55rem;">Used for your name on documents and tenure on the home dashboard. Job title, leave balances, and reporting manager are maintained by an administrator.</p>
-          <div class="pro-profile-edit-grid">
-            <label class="pro-mini-lbl"><span style="display:block;margin-bottom:.25rem;font-size:.74rem;color:#64748b;">Full name</span>
-              <input type="text" id="profileManagedFullName" style="width:100%;padding:0.5rem 0.65rem;border:1px solid #cbd5e1;border-radius:8px;font-size:0.9rem;box-sizing:border-box;" value="${escapeHtml(user.full_name || '')}" maxlength="120" autocomplete="name" /></label>
-            <label class="pro-mini-lbl"><span style="display:block;margin-bottom:.25rem;font-size:.74rem;color:#64748b;">Joined company</span>
-              <input type="date" id="profileManagedJoined" style="width:100%;padding:0.5rem 0.65rem;border:1px solid #cbd5e1;border-radius:8px;font-size:0.9rem;box-sizing:border-box;" value="${user.employment_start_date ? escapeHtml(String(user.employment_start_date).slice(0, 10)) : ''}" /></label>
-          </div>
-          <button type="button" class="pro-btn pro-btn-primary pro-btn-sm" id="profileManagedSaveBtn" style="margin-top: 0.65rem;">Save profile details</button>
-          <p id="profileManagedSaveHint" style="font-size: 0.74rem; color: #64748b; margin: 0.5rem 0 0;"></p>
-        </div>
-        
-        <div class="pro-modules-wrap">
-          <div class="pro-modules-title">Module Access</div>
-          <div class="pro-modules-list">
-            ${moduleBadges}
-          </div>
-        </div>
-        
-        <div class="pro-member-since">
-          Member since <strong>${formatDate(user.created_at).replace(' (GST)', '').split(',')[0]}</strong>
-        </div>
-      </div>
-      
-      <!-- Security Tab -->
-      <div class="pro-tab-content" data-content="security">
-        <div class="pro-security-card ${user.password_changed ? 'success' : 'warning'}">
-          <div class="pro-security-icon">${user.password_changed ? '✓' : '⚠️'}</div>
-          <div class="pro-security-content">
-            <div class="pro-security-title">${user.password_changed ? 'Password is secure' : 'Password change required'}</div>
-            <div class="pro-security-desc">${user.password_changed ? 'Your password meets security requirements' : 'Please update your password for security'}</div>
-          </div>
-          <div class="pro-security-action">
-            <button class="pro-btn ${user.password_changed ? 'pro-btn-outline' : 'pro-btn-primary'} pro-btn-sm" onclick="showChangePasswordForm()">
-              ${user.password_changed ? 'Change' : 'Update Now'}
+          <nav class="pro-nav">
+            <button class="pro-nav-item active" data-tab="profile" onclick="switchProfileTab('profile')">
+              <span class="pro-nav-ico">${I.user}</span><span>General Info</span>
             </button>
+            <button class="pro-nav-item" data-tab="security" onclick="switchProfileTab('security')">
+              <span class="pro-nav-ico">${I.shield}</span><span>Security Settings</span>
+            </button>
+            <button class="pro-nav-item" data-tab="modules" onclick="switchProfileTab('modules')">
+              <span class="pro-nav-ico">${I.grid}</span><span>Module Access</span>
+            </button>
+            <button class="pro-nav-item" data-tab="signature" onclick="switchProfileTab('signature')">
+              <span class="pro-nav-ico">${I.pen}</span><span>Signature</span>
+            </button>
+          </nav>
+          <div class="pro-rail-foot">
+            <div class="pro-rail-status ${user.is_active ? 'is-active' : 'is-inactive'}">
+              ${user.is_active ? I.check : I.warn}
+              <span>${user.is_active ? 'Active Account' : 'Inactive Account'}</span>
+            </div>
           </div>
-        </div>
-        
-        <div class="pro-info-list">
-          <div class="pro-info-item">
-            <div class="pro-info-icon">🛡️</div>
-            <div class="pro-info-content">
-              <div class="pro-info-label">Account Status</div>
-              <div class="pro-info-value" style="color: ${user.is_active ? '#16a34a' : '#dc2626'}">
-                ${user.is_active ? '● Active' : '● Inactive'}
+        </aside>
+
+        <!-- RIGHT MAIN -->
+        <section class="pro-main">
+          <header class="pro-main-header">
+            <div class="pro-main-heading">
+              <h2 class="pro-main-title" id="proMainTitle">General Information</h2>
+              <p class="pro-main-sub" id="proMainSub">Manage your personal profile details and contact preferences.</p>
+            </div>
+            <button class="pro-main-close" onclick="closeProfileModal()" aria-label="Close">${I.close}</button>
+          </header>
+
+          <div class="pro-main-body">
+            <!-- General Info Panel -->
+            <div class="pro-tab-content active" data-content="profile">
+              <div class="pro-field-grid">
+                <label class="pro-field">
+                  <span class="pro-field-label">Full Legal Name</span>
+                  <input type="text" class="pro-field-input" id="profileManagedFullName" value="${escapeHtml(user.full_name || '')}" maxlength="120" autocomplete="name" />
+                </label>
+                <label class="pro-field">
+                  <span class="pro-field-label">Joining Date</span>
+                  <input type="date" class="pro-field-input" id="profileManagedJoined" value="${user.employment_start_date ? escapeHtml(String(user.employment_start_date).slice(0, 10)) : ''}" />
+                </label>
+                <label class="pro-field">
+                  <span class="pro-field-label">Email Address</span>
+                  <input type="text" class="pro-field-input pro-field-input--readonly" value="${escapeHtml(user.email || 'Not provided')}" readonly />
+                </label>
+                <label class="pro-field">
+                  <span class="pro-field-label">Phone Number</span>
+                  <input type="text" class="pro-field-input pro-field-input--readonly" value="${escapeHtml(user.phone || 'Not provided')}" readonly />
+                </label>
               </div>
-            </div>
-          </div>
-          <div class="pro-info-item">
-            <div class="pro-info-icon">👑</div>
-            <div class="pro-info-content">
-              <div class="pro-info-label">Role</div>
-              <div class="pro-info-value">${escapeHtml(getRoleDisplay())}</div>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <!-- Signature Tab -->
-      <div class="pro-tab-content" data-content="signature">
-        <div class="pro-sig-section">
-          <div class="pro-sig-header">
-            <div class="pro-sig-header-icon">✍️</div>
-            <div class="pro-sig-header-text">
-              <h4>Default Signature</h4>
-              <p>Used for automatic form signing</p>
-            </div>
-          </div>
-          <div class="pro-sig-body">
-            <div class="pro-sig-grid">
-              <div class="pro-sig-preview" id="profileSigPreview" title="Click to draw signature">
-                <div class="pro-sig-empty" id="profileSigEmpty">
-                  <div class="pro-sig-empty-icon">✍️</div>
-                  <div class="pro-sig-empty-text">Tap to sign</div>
+
+              <div class="pro-org">
+                <div class="pro-org-title">Organization Details</div>
+                <div class="pro-org-grid">
+                  <div class="pro-org-card">
+                    <span class="pro-org-ico" style="--icon-color:#6366f1">${I.briefcase}</span>
+                    <div class="pro-org-text">
+                      <div class="pro-org-label">Job Title</div>
+                      <div class="pro-org-value">${hrJobTitle}</div>
+                    </div>
+                  </div>
+                  <div class="pro-org-card">
+                    <span class="pro-org-ico" style="--icon-color:#8b5cf6">${I.manager}</span>
+                    <div class="pro-org-text">
+                      <div class="pro-org-label">Reporting Manager</div>
+                      <div class="pro-org-value">${reportingMgrDisp}</div>
+                    </div>
+                  </div>
+                  <div class="pro-org-card">
+                    <span class="pro-org-ico" style="--icon-color:#f59e0b">${I.leave}</span>
+                    <div class="pro-org-text">
+                      <div class="pro-org-label">Annual Leave (days)</div>
+                      <div class="pro-org-value">${annualLeavesDisp}</div>
+                    </div>
+                  </div>
+                  <div class="pro-org-card">
+                    <span class="pro-org-ico" style="--icon-color:#f43f5e">${I.clipboard}</span>
+                    <div class="pro-org-text">
+                      <div class="pro-org-label">Other Leave (days)</div>
+                      <div class="pro-org-value">${otherLeavesDisp}</div>
+                    </div>
+                  </div>
                 </div>
-                <img id="profileSigImage" style="display: none;" alt="Signature">
+                <p class="pro-org-hint">Job title, leave balances, and reporting manager are maintained by an administrator.</p>
               </div>
-              <textarea class="pro-sig-comment" id="profileDefaultComment" placeholder="Enter default comment for reviews..."></textarea>
+
+              <div class="pro-member-since">
+                Member since <strong>${formatDate(user.created_at).replace(' (GST)', '').split(',')[0]}</strong>
+              </div>
             </div>
-          </div>
-          <div class="pro-sig-footer">
-            <button type="button" class="pro-btn pro-btn-danger pro-btn-sm" id="profileRemoveSignature">Remove</button>
-            <button type="button" class="pro-btn pro-btn-success pro-btn-sm" id="profileSaveSignature">Save Defaults</button>
-          </div>
-        </div>
-      </div>
-      </div><!-- /.pro-tab-panels -->
+
+            <!-- Security Panel -->
+            <div class="pro-tab-content" data-content="security">
+              <div class="pro-security-card ${user.password_changed ? 'success' : 'warning'}">
+                <div class="pro-security-icon">${user.password_changed ? I.check : I.warn}</div>
+                <div class="pro-security-content">
+                  <div class="pro-security-title">${user.password_changed ? 'Password is secure' : 'Password change required'}</div>
+                  <div class="pro-security-desc">${user.password_changed ? 'Your password meets security requirements' : 'Please update your password for security'}</div>
+                </div>
+                <div class="pro-security-action">
+                  <button class="pro-btn ${user.password_changed ? 'pro-btn-outline' : 'pro-btn-primary'} pro-btn-sm" onclick="showChangePasswordForm()">
+                    ${user.password_changed ? 'Change' : 'Update Now'}
+                  </button>
+                </div>
+              </div>
+
+              <div class="pro-info-list pro-info-list--grid">
+                <div class="pro-info-item">
+                  <div class="pro-info-icon" style="--icon-color:${user.is_active ? '#16a34a' : '#dc2626'}">${I.shield}</div>
+                  <div class="pro-info-content">
+                    <div class="pro-info-label">Account Status</div>
+                    <div class="pro-info-value" style="color: ${user.is_active ? '#16a34a' : '#dc2626'}">
+                      ${user.is_active ? 'Active' : 'Inactive'}
+                    </div>
+                  </div>
+                </div>
+                <div class="pro-info-item">
+                  <div class="pro-info-icon" style="--icon-color:#f59e0b">${I.role}</div>
+                  <div class="pro-info-content">
+                    <div class="pro-info-label">Role</div>
+                    <div class="pro-info-value">${escapeHtml(getRoleDisplay())}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Module Access Panel -->
+            <div class="pro-tab-content" data-content="modules">
+              <div class="pro-mod-grid">
+                ${moduleBadges}
+              </div>
+            </div>
+
+            <!-- Signature Panel -->
+            <div class="pro-tab-content" data-content="signature">
+              <div class="pro-sig-section">
+                <div class="pro-sig-header">
+                  <div class="pro-sig-header-icon">${I.pen}</div>
+                  <div class="pro-sig-header-text">
+                    <h4>Default Signature</h4>
+                    <p>Used for automatic form signing</p>
+                  </div>
+                </div>
+                <div class="pro-sig-body">
+                  <div class="pro-sig-grid">
+                    <div class="pro-sig-preview" id="profileSigPreview" title="Click to draw signature">
+                      <div class="pro-sig-empty" id="profileSigEmpty">
+                        <div class="pro-sig-empty-icon">${I.pen}</div>
+                        <div class="pro-sig-empty-text">Tap to sign</div>
+                      </div>
+                      <img id="profileSigImage" style="display: none;" alt="Signature">
+                    </div>
+                    <textarea class="pro-sig-comment" id="profileDefaultComment" placeholder="Enter default comment for reviews..."></textarea>
+                  </div>
+                </div>
+                <div class="pro-sig-footer">
+                  <button type="button" class="pro-btn pro-btn-danger pro-btn-sm" id="profileRemoveSignature">Remove</button>
+                  <button type="button" class="pro-btn pro-btn-success pro-btn-sm" id="profileSaveSignature">Save Defaults</button>
+                </div>
+              </div>
+            </div>
+          </div><!-- /.pro-main-body -->
+
+          <footer class="pro-main-footer" id="proMainFooter">
+            <span id="profileManagedSaveHint" class="pro-save-hint"></span>
+            <div class="pro-main-footer-actions">
+              <button type="button" class="pro-btn pro-btn-outline" onclick="closeProfileModal()">Cancel</button>
+              <button type="button" class="pro-btn pro-btn-primary" id="profileManagedSaveBtn">Save Changes</button>
+            </div>
+          </footer>
+        </section>
+      </div><!-- /.pro-shell -->
       
       <!-- Signature Popup -->
       <div class="pro-popup-overlay" id="sigPopupOverlay">
         <div class="pro-popup">
           <div class="pro-popup-header">
-            <h3 class="pro-popup-title">✍️ Draw Signature</h3>
+            <h3 class="pro-popup-title">Draw Signature</h3>
             <button class="pro-popup-close" id="sigPopupClose">×</button>
           </div>
           <div class="pro-popup-body">
@@ -2070,13 +2652,37 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
 }
 
 // Tab switching function
+const PROFILE_PANEL_META = {
+  profile: { title: 'General Information', sub: 'Manage your personal profile details and contact preferences.' },
+  security: { title: 'Security Settings', sub: 'Review your account status and keep your password up to date.' },
+  modules: { title: 'Module Access', sub: 'Workspaces and tools available to your account.' },
+  signature: { title: 'Signature', sub: 'Set the default signature used to sign forms automatically.' }
+};
+
 window.switchProfileTab = function(tabName) {
-  document.querySelectorAll('.pro-tab').forEach(tab => {
+  document.querySelectorAll('.pro-nav-item, .pro-tab').forEach(tab => {
     tab.classList.toggle('active', tab.dataset.tab === tabName);
   });
   document.querySelectorAll('.pro-tab-content').forEach(content => {
     content.classList.toggle('active', content.dataset.content === tabName);
   });
+
+  const meta = PROFILE_PANEL_META[tabName];
+  if (meta) {
+    const titleEl = document.getElementById('proMainTitle');
+    const subEl = document.getElementById('proMainSub');
+    if (titleEl) titleEl.textContent = meta.title;
+    if (subEl) subEl.textContent = meta.sub;
+  }
+
+  // Footer (Save Changes) only applies to the editable General Info panel
+  const footer = document.getElementById('proMainFooter');
+  if (footer) footer.style.display = (tabName === 'profile') ? '' : 'none';
+
+  // Ensure the signature pad lays out correctly once its panel is visible
+  if (tabName === 'signature') {
+    setTimeout(() => { try { window.dispatchEvent(new Event('resize')); } catch (e) {} }, 60);
+  }
 }
 
 // ===========================================

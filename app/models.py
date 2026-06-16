@@ -204,6 +204,7 @@ class Submission(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     submission_id = db.Column(db.String(50), unique=True, nullable=False, index=True)
+    doc_number = db.Column(db.String(20), nullable=True, index=True)  # Human-facing series number, e.g. 'HR-0001', 'INSP-0042'
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     module_type = db.Column(db.String(20), nullable=False, index=True)  # 'hvac_mep', 'civil', 'cleaning'
     site_name = db.Column(db.String(255))

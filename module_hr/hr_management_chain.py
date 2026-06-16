@@ -45,11 +45,13 @@ WF_MGMT_OM = "hr_mgmt_operations_manager"
 WF_MGMT_RM = "hr_mgmt_reporting_manager"
 WF_MGMT_GM = "hr_mgmt_gm"
 WF_MGMT_HR = "hr_mgmt_hr_head_office"
+WF_MGMT_ROUTING = "hr_mgmt_routing_approver"
 
 ALL_MGMT_WF_STATUSES = (
     WF_MGMT_SUP,
     WF_MGMT_OM,
     WF_MGMT_RM,
+    WF_MGMT_ROUTING,
     WF_MGMT_GM,
     WF_MGMT_HR,
 )
@@ -172,7 +174,7 @@ def _step(
 
 
 def _supervisor_for(submitter: User) -> User | None:
-    """Return the active Supervisor user assigned on the technician's profile, or None."""
+    """Return the active user assigned as reporting manager on the profile, or None."""
     rid = getattr(submitter, "reporting_manager_id", None)
     if not rid:
         return None
@@ -180,6 +182,20 @@ def _supervisor_for(submitter: User) -> User | None:
     if not u or not u.is_active:
         return None
     return u
+
+
+def _default_reporting_to_prefill(submitter: User) -> dict[str, Any] | None:
+    """Reporting To block defaults from the submitter's profile reporting manager."""
+    mgr = _supervisor_for(submitter)
+    if not mgr:
+        return None
+    return {
+        "id": mgr.id,
+        "full_name": mgr.full_name or mgr.username,
+        "designation": mgr.designation or "",
+        "job_designation": mgr.job_designation or "",
+        "phone": mgr.phone or "",
+    }
 
 
 def _active_users_with_designation(designation: str) -> list[User]:
@@ -320,6 +336,102 @@ def _build_chain_for_submitter(submitter: User) -> tuple[list[dict[str, Any]], s
         )
     )
     return steps, None
+
+
+def build_interview_chain_after_interviewer(
+    next_approver_id: int,
+    *,
+    submitter_id: int | None,
+    interviewer_id: int,
+) -> tuple[list[dict[str, Any]], str | None]:
+    """
+    Interview assessment: interviewer picks the next approver at sign time.
+    Chain is always: chosen colleague → GM (pool) → HR head office (pool).
+    """
+    try:
+        na_id = int(next_approver_id)
+        iv_id = int(interviewer_id)
+    except (TypeError, ValueError):
+        return [], "Invalid next approver."
+
+    if na_id == iv_id:
+        return [], "You cannot forward the form to yourself."
+    if submitter_id is not None and na_id == int(submitter_id):
+        return [], "You cannot forward the form back to the person who submitted it."
+
+    approver = db.session.get(User, na_id)
+    if not approver or not approver.is_active:
+        return [], "Selected next approver is not an active user."
+
+    steps = [
+        _step(
+            "routing_approver",
+            WF_MGMT_ROUTING,
+            approver.full_name or approver.username or "Next approver",
+            signer_mode="fixed_user",
+            signer_id=approver.id,
+        ),
+        _step(
+            "general_manager",
+            WF_MGMT_GM,
+            "General manager",
+            signer_mode="designation",
+            designation_gate="general_manager",
+        ),
+        _step(
+            "hr_head_office",
+            WF_MGMT_HR,
+            "HR (head office)",
+            signer_mode="designation",
+            designation_gate="hr_head_office",
+        ),
+    ]
+    return steps, None
+
+
+def apply_interview_chain_after_interviewer(
+    form_data: dict[str, Any],
+    next_approver_id: int,
+    *,
+    submitter_id: int | None,
+    interviewer_id: int,
+) -> str | None:
+    """Write hr_mgmt_chain after interviewer sign. Returns error message or None."""
+    steps, err = build_interview_chain_after_interviewer(
+        next_approver_id,
+        submitter_id=submitter_id,
+        interviewer_id=interviewer_id,
+    )
+    if err:
+        return err
+
+    approver = db.session.get(User, int(next_approver_id))
+    approver_name = (approver.full_name or approver.username) if approver else "Next approver"
+
+    form_data["next_approver_signer_id"] = int(next_approver_id)
+    form_data["next_approver_name"] = approver_name
+    form_data[MGMT_CHAIN_KEY] = {
+        "v": 1,
+        "lane": "interview_routing",
+        "current_index": 0,
+        "steps": steps,
+        "reporting_contact_id": int(next_approver_id),
+        "reporting_contact_name": approver_name,
+        "pdf_hints": [],
+    }
+    form_data["interview_routing"] = {
+        "v": 1,
+        "deferred": False,
+        "resolved_at": naive_utc_isoformat_z(utc_now_naive()),
+        "next_approver_signer_id": int(next_approver_id),
+        "next_approver_name": approver_name,
+    }
+    return None
+
+
+def interview_routing_deferred_at_submit() -> dict[str, Any]:
+    """Marker stored on interview submit until the interviewer signs and picks routing."""
+    return {"v": 1, "deferred": True}
 
 
 # Kept for backward compatibility with older call sites (lane, rc_id, om_id).
@@ -763,7 +875,61 @@ _LANE_FLOW = {
     "technician": "Immediate supervisor -> Operations manager -> General manager -> HR",
     "supervisor": "Operations manager -> General manager -> HR",
     "office_staff": "General manager -> HR",
+    "interview_routing": "Interviewer sign -> Next approver (chosen at sign) -> General manager -> HR",
 }
+
+
+def get_interview_routing_ui_context() -> dict[str, Any]:
+    """Sidebar preview for interview assessment (chain deferred until interviewer signs)."""
+    return {
+        "success": True,
+        "lane": "interview_routing",
+        "lane_intro": (
+            "Interview assessment: the assigned interviewer signs first and chooses who "
+            "receives the form next. It then goes to the General Manager and HR head office."
+        ),
+        "lane_flow": _LANE_FLOW["interview_routing"],
+        "chain": [
+            {
+                "key": "interviewer",
+                "role_label": "Interviewer",
+                "who_label": "Assigned at submit",
+                "who_detail": "Signs digitally before management approval begins.",
+                "signer_mode": "routed",
+                "missing": False,
+            },
+            {
+                "key": "routing_approver",
+                "role_label": "Next approver",
+                "who_label": "Chosen by interviewer",
+                "who_detail": "Selected when the interviewer signs.",
+                "signer_mode": "fixed_user",
+                "missing": False,
+            },
+            {
+                "key": "general_manager",
+                "role_label": "General manager",
+                "who_label": "Any active GM",
+                "who_detail": "Designation pool sign-off.",
+                "signer_mode": "designation",
+                "missing": False,
+            },
+            {
+                "key": "hr_head_office",
+                "role_label": "HR (head office)",
+                "who_label": "HR head office",
+                "who_detail": "Final sign-off.",
+                "signer_mode": "designation",
+                "missing": False,
+            },
+        ],
+        "supervisor": None,
+        "default_reporting_to": None,
+        "missing_pools": [],
+        "setup_error": None,
+        "admin_profile_bypass": False,
+        "interview_routing_preview": True,
+    }
 
 
 def _chain_descriptor(submitter: User, steps: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -827,6 +993,19 @@ def _chain_descriptor(submitter: User, steps: list[dict[str, Any]]) -> list[dict
                 "signer_id": hr_display.id if hr_display else None,
                 "missing": missing,
             })
+        elif key == "routing_approver":
+            uid = s.get("signer_id")
+            u = db.session.get(User, int(uid)) if uid else None
+            who_label = (u.full_name or u.username) if u else "Not assigned"
+            out.append({
+                "key": key,
+                "role_label": "Next approver",
+                "who_label": who_label,
+                "who_detail": "Chosen by the interviewer when signing.",
+                "signer_mode": "fixed_user",
+                "signer_id": uid,
+                "missing": u is None,
+            })
         else:
             out.append({
                 "key": key,
@@ -847,6 +1026,8 @@ def get_mgmt_chain_ui_context(submitter: User | None) -> dict[str, Any]:
     lane = lane_for_user(submitter)
 
     # Admin shortcut — bypasses the chain.
+    default_reporting_to = _default_reporting_to_prefill(submitter)
+
     if getattr(submitter, "role", None) == "admin" and _supervisor_for(submitter) is None:
         return {
             "success": True,
@@ -858,6 +1039,7 @@ def get_mgmt_chain_ui_context(submitter: User | None) -> dict[str, Any]:
             "lane_flow": "Direct to HR review",
             "chain": [],
             "supervisor": None,
+            "default_reporting_to": default_reporting_to,
             "missing_pools": [],
             "setup_error": None,
             "admin_profile_bypass": True,
@@ -875,9 +1057,13 @@ def get_mgmt_chain_ui_context(submitter: User | None) -> dict[str, Any]:
             "chain": [],
             "supervisor": {
                 "assigned": bool(sup_assigned),
+                "id": sup_assigned.id if sup_assigned else None,
                 "full_name": (sup_assigned.full_name or sup_assigned.username) if sup_assigned else None,
                 "designation": (sup_assigned.designation if sup_assigned else None),
+                "job_designation": (sup_assigned.job_designation or "") if sup_assigned else None,
+                "phone": (sup_assigned.phone or "") if sup_assigned else None,
             },
+            "default_reporting_to": default_reporting_to,
             "missing_pools": [],
             "setup_error": setup_err,
             "admin_profile_bypass": False,
@@ -889,10 +1075,14 @@ def get_mgmt_chain_ui_context(submitter: User | None) -> dict[str, Any]:
     if lane == "technician":
         sup_step = next((c for c in chain if c.get("key") == "supervisor"), None)
         if sup_step:
+            sup_obj = _supervisor_for(submitter)
             sup_descriptor = {
                 "assigned": not sup_step.get("missing"),
+                "id": sup_obj.id if sup_obj else None,
                 "full_name": sup_step.get("who_label") if not sup_step.get("missing") else None,
                 "designation": "supervisor",
+                "job_designation": (sup_obj.job_designation or "") if sup_obj else None,
+                "phone": (sup_obj.phone or "") if sup_obj else None,
             }
 
     # Warn when a non-fixed pool we depend on is empty.
@@ -908,6 +1098,7 @@ def get_mgmt_chain_ui_context(submitter: User | None) -> dict[str, Any]:
         "lane_flow": _LANE_FLOW.get(lane),
         "chain": chain,
         "supervisor": sup_descriptor,
+        "default_reporting_to": default_reporting_to,
         "missing_pools": missing_pools,
         "setup_error": None,
         "admin_profile_bypass": False,

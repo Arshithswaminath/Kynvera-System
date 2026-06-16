@@ -133,12 +133,18 @@
           missing: !!c.missing,
         };
       });
+      window.__hrMgmtChainSupervisor = ctx.supervisor || null;
       const managerLabel = ctx.lane === 'technician'
         ? 'Supervisor signature'
         : (ctx.lane === 'supervisor' ? 'Operations manager signature' : 'General manager signature');
       window.__hrMgmtManagerSigLabel = managerLabel;
       document.dispatchEvent(new CustomEvent('hr-mgmt-chain-ready', {
-        detail: { lane: ctx.lane, managerLabel, signers: window.__hrMgmtChainSigners },
+        detail: {
+          lane: ctx.lane,
+          managerLabel,
+          signers: window.__hrMgmtChainSigners,
+          supervisor: ctx.supervisor || null,
+        },
       }));
     } catch (_) { /* ignore */ }
   }
@@ -167,7 +173,12 @@
     wrap.dataset.hrMgmtChainBooted = '1';
 
     const token = localStorage.getItem('access_token');
-    fetch('/hr/api/mgmt-chain-context', {
+    var formType = document.body.getAttribute('data-hr-form-type') || '';
+    var ctxUrl = '/hr/api/mgmt-chain-context';
+    if (formType) {
+      ctxUrl += '?form_type=' + encodeURIComponent(formType);
+    }
+    fetch(ctxUrl, {
       headers: token ? { Authorization: 'Bearer ' + token } : {},
     })
       .then(function (res) {

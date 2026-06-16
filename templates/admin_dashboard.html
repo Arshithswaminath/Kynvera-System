@@ -3426,19 +3426,21 @@
         <div class="table-scroll-wrapper">
         <table class="documents-table documents-table--compact">
           <colgroup>
-            <col class="doc-col-cb">
-            <col class="doc-col-id">
-            <col class="doc-col-site">
-            <col class="doc-col-visit">
-            <col class="doc-col-user">
-            <col class="doc-col-status">
-            <col class="doc-col-at">
-            <col class="doc-col-act">
+            <col class="doc-col-cb" span="1">
+            <col class="doc-col-num" span="1">
+            <col class="doc-col-record" span="1">
+            <col class="doc-col-site" span="1">
+            <col class="doc-col-visit" span="1">
+            <col class="doc-col-user" span="1">
+            <col class="doc-col-status" span="1">
+            <col class="doc-col-at" span="1">
+            <col class="doc-col-act" span="1">
           </colgroup>
           <thead>
             <tr>
               <th><input type="checkbox" id="selectAllHeader" onchange="toggleSelectAllDocuments()" aria-label="Select all"></th>
-              <th title="Document ID and module">Document</th>
+              <th title="Document number (per-category series)">Doc No.</th>
+              <th title="Record type and reference">Record</th>
               <th>Site</th>
               <th>Visit</th>
               <th>Created by</th>
@@ -3451,10 +3453,6 @@
       `;
 
       filteredDocuments.forEach(doc => {
-        const moduleClass = doc.module_type === 'hvac_mep' ? 'hvac' :
-                           doc.module_type === 'civil' ? 'civil' :
-                           doc.module_type === 'cleaning' ? 'cleaning' :
-                           (doc.module_type && String(doc.module_type).startsWith('hr_')) ? 'hr' : 'cleaning';
         let statusClass = doc.status === 'completed' ? 'completed' :
                            doc.status === 'processing' ? 'processing' :
                            doc.status === 'submitted' ? 'submitted' :
@@ -3520,7 +3518,14 @@
 
         const hasModuleLabel = !!(doc.module_display && String(doc.module_display).trim());
         const moduleLabel = hasModuleLabel ? doc.module_display : '—';
-        const moduleBadgeClass = hasModuleLabel ? `module-badge ${moduleClass}` : 'module-badge module-badge--empty';
+        const docTitle = (doc.document_title && String(doc.document_title).trim())
+          || moduleLabel
+          || 'Document';
+        const docSubtitle = (doc.document_subtitle && String(doc.document_subtitle).trim()) || '';
+        const fullSubmissionId = String(doc.submission_id || '');
+        const docNum = (doc.doc_number && String(doc.doc_number).trim())
+          || (doc.id != null ? `#${doc.id}` : '—');
+        const docTooltip = `${docNum} · ${docTitle}${docSubtitle ? ' — ' + docSubtitle : ''} (${fullSubmissionId})`;
 
         const statusLabel = documentsFilter === 'active' ? 'Active' : (doc.status || '—');
         const sameStatusWf = String(statusLabel).toLowerCase() === String(workflowDisplay).toLowerCase();
@@ -3553,9 +3558,12 @@
         html += `
           <tr>
             <td data-label="Select"><input type="checkbox" class="document-checkbox" value="${doc.submission_id}" onchange="updateDocumentCloseButton()"></td>
-            <td class="doc-id-cell" data-label="Document">
-              <button type="button" class="doc-id-btn" onclick="viewAdminDocument('${sidJs}', '${mtJs}')" title="View (${escapeHtml(String(doc.submission_id || ''))})">${escapeHtml(String(doc.submission_id || ''))}</button>
-              <span class="${moduleBadgeClass} doc-module-line">${escapeHtml(moduleLabel)}</span>
+            <td class="doc-num-cell" data-label="Doc No."><span class="doc-num" title="${escapeHtml(docTooltip)}">${escapeHtml(docNum)}</span></td>
+            <td class="doc-id-cell" data-label="Record">
+              <div class="doc-id-cell__inner">
+                <button type="button" class="doc-title-btn" onclick="viewAdminDocument('${sidJs}', '${mtJs}')" title="${escapeHtml(docTooltip)}">${escapeHtml(docTitle)}</button>
+                ${docSubtitle ? `<span class="doc-subtitle-line">${escapeHtml(docSubtitle)}</span>` : ''}
+              </div>
             </td>
             <td data-label="Site" title="${escapeHtml(siteName)}"><strong>${escapeHtml(siteName)}</strong></td>
             <td data-label="Visit">${visitDate}</td>

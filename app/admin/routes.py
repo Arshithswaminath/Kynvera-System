@@ -12,6 +12,7 @@ from app.models import (
 from app.middleware import admin_required
 from common.error_responses import error_response, success_response
 from common.form_data_utils import shallow_copy_form_data
+from common.document_display import build_document_labels, get_module_display_name
 from common.datetime_utils import utc_now_naive, parse_employment_start_date
 from datetime import datetime, timedelta
 from io import BytesIO, StringIO
@@ -1099,7 +1100,16 @@ def list_documents():
     """Get all submissions/documents with their details"""
     try:
         from app.models import Submission, Job, File
-        
+        from common.document_display import ensure_document_numbers
+
+        # Lazily assign per-series document numbers (HR-0001, INSP-0001, ...)
+        # to any submissions that don't have one yet. Existing numbers never change.
+        try:
+            ensure_document_numbers()
+        except Exception as num_err:
+            db.session.rollback()
+            current_app.logger.warning(f"Document numbering skipped: {num_err}")
+
         # Get all submissions with user info
         submissions = Submission.query.order_by(Submission.created_at.desc()).all()
         
@@ -1140,24 +1150,19 @@ def list_documents():
             
             # Format module type for display (HR uses same labels as HR module)
             mt = submission.module_type or ''
-            if mt.startswith('hr_'):
-                try:
-                    from module_hr.routes import get_form_type_display
-                    module_display = get_form_type_display(mt)
-                except Exception:
-                    module_display = mt.replace('hr_', '').replace('_', ' ').title()
-            else:
-                module_display = {
-                    'hvac_mep': 'HVAC & MEP',
-                    'civil': 'Civil Works',
-                    'cleaning': 'Cleaning Services'
-                }.get(mt, (mt or 'Unknown').replace('_', ' ').title())
+            module_display = get_module_display_name(mt)
+
+            doc_labels = build_document_labels(submission, module_display)
             
             documents.append({
                 'id': submission.id,
+                'doc_number': submission.doc_number or '',
                 'submission_id': submission.submission_id,
                 'module_type': submission.module_type,
                 'module_display': module_display,
+                'document_title': doc_labels['document_title'],
+                'document_subtitle': doc_labels['document_subtitle'],
+                'document_ref': doc_labels['document_ref'],
                 'site_name': submission.site_name or 'N/A',
                 'visit_date': submission.visit_date.isoformat() if submission.visit_date else None,
                 'status': submission.status,

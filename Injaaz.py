@@ -445,7 +445,8 @@ def create_app():
                     ('supervisor_notified_at', 'TIMESTAMP DEFAULT NULL'),
                     ('supervisor_reviewed_at', 'TIMESTAMP DEFAULT NULL'),
                     ('manager_notified_at', 'TIMESTAMP DEFAULT NULL'),
-                    ('manager_reviewed_at', 'TIMESTAMP DEFAULT NULL')
+                    ('manager_reviewed_at', 'TIMESTAMP DEFAULT NULL'),
+                    ('doc_number', 'VARCHAR(20) DEFAULT NULL')
                 ]
                 
                 for col_name, col_def in workflow_fields:

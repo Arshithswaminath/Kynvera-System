@@ -37,7 +37,7 @@
     @media(max-width:900px){.leave-form-layout{grid-template-columns:1fr}.leave-form-layout-aside{position:static}}
   </style>
 </head>
-<body class="hr-form-unified{% if hr_embed %} hr-embed-mode{% endif %}">
+<body class="hr-form-unified{% if hr_embed %} hr-embed-mode{% endif %}" data-hr-form-type="interview_assessment">
   {% set active_page = 'hr' %}
   {% include 'partials/hr_embed_optional_navbar.html' %}
 
@@ -149,6 +149,7 @@
               </div>
               <div class="fld fw" style="margin-top:.85rem;padding-top:.85rem;border-top:1px solid rgba(226,232,240,.9)">
                 <label class="fld-lbl">Interviewer with Injaaz account <span class="req">*</span> — signs on their device (not here)</label>
+                <p style="font-size:.78rem;color:var(--muted);margin:.35rem 0 .5rem;line-height:1.45">The interviewer will sign digitally, then choose who receives the form next. It always finishes with General Manager and HR approval.</p>
                 <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:flex-end;margin-top:.35rem">
                   <select class="fld-inp" id="intAssignSel" style="flex:1;min-width:11rem"><option value="">Loading…</option></select>
                   <button type="button" class="btn-ghost" id="intAssignAdd">Add</button>
@@ -203,7 +204,7 @@ document.getElementById('hrForm').addEventListener('submit',async e=>{
   if(r.success){
     const lead=document.getElementById('successMsgLead');
     if(lead) lead.textContent = r.workflow_status==='replacement_signoff'
-      ? 'Your interviewer must sign digitally before HR receives this.'
+      ? 'Your interviewer must sign and choose the next approver before management approval begins.'
       : 'Interview assessment sent to HR.';
     window.__hrLastHrSubmissionId=r.submission_id;document.getElementById('submissionId').textContent=r.submission_id;document.getElementById('successModal').classList.add('show')}
   else{alert('Error: '+(r.error||'Unknown'));btn.disabled=false;btn.innerHTML='Submit Form'}

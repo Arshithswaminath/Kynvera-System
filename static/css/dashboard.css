@@ -1575,18 +1575,18 @@ body.procurement-page .proc-hero-inner > .back-btn + .hero-title {
   padding: 5rem 2rem 2rem !important;
 }
 
-/* Profile sheet — anchored under fixed nav (not vertically centered) so the card sits higher */
+/* Profile sheet — below fixed nav with comfortable top offset */
 #profileModal.contact-modal {
   align-items: flex-start !important;
   justify-content: center !important;
-  padding-top: max(0.35rem, calc(env(safe-area-inset-top, 0px) + 4.25rem + 6px)) !important;
+  padding-top: max(1.5rem, calc(env(safe-area-inset-top, 0px) + 4.25rem + 3rem)) !important;
   padding-right: 1.25rem !important;
   padding-bottom: max(1rem, calc(env(safe-area-inset-bottom, 0px) + 0.75rem)) !important;
   padding-left: 1.25rem !important;
-  /* Black frosted backdrop — dim + blur page behind profile */
-  background: rgba(0, 0, 0, 0.62) !important;
-  backdrop-filter: blur(14px) saturate(1.05);
-  -webkit-backdrop-filter: blur(14px) saturate(1.05);
+  /* Dim + soft blur — darker backdrop, modal stays in focus */
+  background: rgba(15, 23, 42, 0.55) !important;
+  backdrop-filter: blur(8px) saturate(1.02);
+  -webkit-backdrop-filter: blur(8px) saturate(1.02);
   /* Scroll inside the card only — not the backdrop or page behind */
   overflow: hidden !important;
   overscroll-behavior: none;
@@ -1596,9 +1596,9 @@ body.procurement-page .proc-hero-inner > .back-btn + .hero-title {
 }
 
 #profileModal.contact-modal.active {
-  background: rgba(0, 0, 0, 0.62) !important;
-  backdrop-filter: blur(14px) saturate(1.05);
-  -webkit-backdrop-filter: blur(14px) saturate(1.05);
+  background: rgba(15, 23, 42, 0.55) !important;
+  backdrop-filter: blur(8px) saturate(1.02);
+  -webkit-backdrop-filter: blur(8px) saturate(1.02);
   opacity: 1;
 }
 
@@ -1608,9 +1608,9 @@ body.procurement-page .proc-hero-inner > .back-btn + .hero-title {
 }
 
 #profileModal .contact-modal-content {
-  max-width: 500px;
-  width: auto;
-  padding: 1.75rem;
+  max-width: min(640px, calc(100vw - 1.5rem));
+  width: min(640px, calc(100vw - 1.5rem));
+  padding: 0;
 }
 
 #profileModal .contact-modal-header {
@@ -3273,15 +3273,14 @@ body.procurement-page .proc-hero-inner > .back-btn + .hero-title {
 
 #profileModal .contact-modal-content {
   padding: 0 !important;
-  max-width: min(720px, calc(100vw - 1.5rem));
+  max-width: min(900px, calc(100vw - 1.5rem));
+  width: min(900px, calc(100vw - 1.5rem));
   border-radius: var(--radius-xl);
-  /* Scroll lives in .pro-tab-panels; shell clips to radius */
   overflow: hidden;
   background: white;
   min-height: 0;
   align-self: flex-start;
-  display: flex;
-  flex-direction: column;
+  display: block;
 }
 
 #profileModal .contact-modal-close {
@@ -3311,12 +3310,8 @@ body.procurement-page .proc-hero-inner > .back-btn + .hero-title {
 
 #profileModal #profileContent {
   padding: 0;
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  -webkit-overflow-scrolling: touch;
+  overflow: visible;
+  display: block;
 }
 
 #profileModal .pro-tab-panels {
@@ -3326,21 +3321,18 @@ body.procurement-page .proc-hero-inner > .back-btn + .hero-title {
 
 /* Profile Modal Container - shared across all modules */
 .contact-modal-content.profile-modal-container {
-  max-width: min(720px, calc(100vw - 1.5rem)) !important;
-  width: min(720px, calc(100vw - 1.5rem)) !important;
+  max-width: min(900px, calc(100vw - 1.5rem)) !important;
+  width: min(900px, calc(100vw - 1.5rem)) !important;
   min-width: min(300px, 100%);
   padding: 0 !important;
   border-radius: 20px !important;
   overflow: hidden;
-  box-shadow: 0 25px 60px rgba(0,0,0,0.3);
-  /* Fixed height so tab panels scroll inside the card, not the page */
-  height: min(92vh, calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 6rem));
-  max-height: min(92vh, calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 6rem));
+  box-shadow: 0 20px 48px rgba(15, 23, 42, 0.24), 0 2px 10px rgba(15, 23, 42, 0.12);
+  height: auto !important;
+  max-height: min(78vh, calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 4.5rem));
   min-height: 0;
-  display: flex;
-  flex-direction: column;
+  margin-top: clamp(0.75rem, 3vh, 2rem);
   -webkit-overflow-scrolling: touch;
-  margin-top: 0;
 }
 
 /* Lock page scroll while profile is open (no position:fixed — avoids shifting the dashboard) */
