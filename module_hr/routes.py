@@ -35,11 +35,14 @@ from module_hr.hr_management_chain import (
     MGMT_CHAIN_KEY,
     WF_MGMT_GM,
     WF_MGMT_HR,
+    apply_interview_chain_after_interviewer,
     apply_management_signature,
     first_management_workflow_status,
+    get_interview_routing_ui_context,
     get_mgmt_chain_ui_context,
     has_management_chain,
     init_management_chain_on_submit,
+    interview_routing_deferred_at_submit,
     lane_for_user,
     notify_current_management_signers,
     notify_submitter_management_final,
@@ -709,9 +712,12 @@ def submit_hr_form():
 
     _strip_non_privileged_hr_submit_fields(data, user)
 
-    mgmt_err = init_management_chain_on_submit(data, user)
-    if mgmt_err:
-        return jsonify({'error': mgmt_err}), 400
+    if form_type == 'interview_assessment':
+        data['interview_routing'] = interview_routing_deferred_at_submit()
+    else:
+        mgmt_err = init_management_chain_on_submit(data, user)
+        if mgmt_err:
+            return jsonify({'error': mgmt_err}), 400
 
     workflow_status = first_management_workflow_status(data)
     if routed_block:
@@ -866,7 +872,21 @@ def mgmt_chain_context():
     user = get_current_user()
     if not user:
         return jsonify({'error': 'User not found'}), 404
+    form_type = (request.args.get('form_type') or '').strip().lower()
+    if form_type == 'interview_assessment':
+        return jsonify(get_interview_routing_ui_context())
     return jsonify(get_mgmt_chain_ui_context(user))
+
+
+def _interview_interviewer_pending(submission, user):
+    """True when user is the pending interviewer slot on an interview assessment."""
+    if submission.module_type != 'hr_interview_assessment':
+        return None
+    fd = submission.form_data or {}
+    pend = pending_replacement_for_user(fd, user.id, submission.module_type)
+    if pend and pend.get('_slot_key') == 'interviewer':
+        return pend
+    return None
 
 
 @hr_bp.route('/api/active-users-for-picker')
@@ -982,12 +1002,18 @@ def replacement_signoff_detail(submission_id):
 
     pending_for_me = pend is not None
     pending_slot_label = pend.get('_slot_label') if pend else None
+    requires_next_approver = bool(
+        pending_for_me
+        and submission.module_type == 'hr_interview_assessment'
+        and pend.get('_slot_key') == 'interviewer'
+    )
     payload = submission.to_dict()
     return jsonify({
         'success': True,
         'submission': payload,
         'can_sign': bool(pending_for_me),
         'pending_slot_label': pending_slot_label,
+        'requires_next_approver': requires_next_approver,
         'form_type_display': get_form_type_display(submission.module_type),
     })
 
@@ -1006,13 +1032,37 @@ def replacement_signoff_submit(submission_id):
     body = request.get_json() or {}
     signature = (body.get('signature') or '').strip()
     comments = body.get('comments')
+    next_approver_raw = body.get('next_approver_signer_id')
 
     if not signature or not signature.startswith('data:image'):
         return jsonify({'error': 'A captured signature image is required'}), 400
 
+    iv_pending = _interview_interviewer_pending(submission, user)
+    if iv_pending:
+        if next_approver_raw is None or next_approver_raw == '':
+            return jsonify({'error': 'Select a colleague to forward this form to for approval.'}), 400
+        try:
+            next_approver_id = int(next_approver_raw)
+        except (TypeError, ValueError):
+            return jsonify({'error': 'Invalid next approver.'}), 400
+
     ok, err = apply_replacement_signature(submission, user, signature, comments)
     if not ok:
         return jsonify({'error': err}), 400
+
+    if iv_pending:
+        fd = submission.form_data if isinstance(submission.form_data, dict) else {}
+        chain_err = apply_interview_chain_after_interviewer(
+            fd,
+            next_approver_id,
+            submitter_id=submission.user_id,
+            interviewer_id=user.id,
+        )
+        if chain_err:
+            db.session.rollback()
+            return jsonify({'error': chain_err}), 400
+        submission.form_data = fd
+        flag_modified(submission, 'form_data')
 
     advanced = _advance_hr_after_all_replacements_signed(submission)
     db.session.commit()

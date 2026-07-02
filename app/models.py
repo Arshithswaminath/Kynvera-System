@@ -184,6 +184,7 @@ class Submission(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     submission_id = db.Column(db.String(50), unique=True, nullable=False, index=True)
+    doc_number = db.Column(db.String(20), nullable=True, index=True)  # Human-facing series number, e.g. 'HR-0001', 'INSP-0042'
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     module_type = db.Column(db.String(20), nullable=False, index=True)  # 'hvac_mep', 'civil', 'cleaning'
     site_name = db.Column(db.String(255))
@@ -428,13 +429,17 @@ class Device(db.Model):
     name = db.Column(db.String(255), nullable=False)
     device_type = db.Column(db.String(30), default='Laptop')  # Laptop, Desktop, Mobile, Server, Tablet
     os = db.Column(db.String(80), default='Windows 11')  # macOS, Windows 11, iOS, Ubuntu, etc.
-    status = db.Column(db.String(20), default='idle', index=True)  # online, offline, idle, update
+    status = db.Column(db.String(20), default='online', index=True)  # online, offline, update
     health = db.Column(db.Integer, default=100)  # 0-100
     assigned_user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     serial_or_asset_tag = db.Column(db.String(100), nullable=True)
     last_active_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=_utcnow)
     updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
+    company = db.Column(db.String(255), nullable=True, index=True)  # client/company this device belongs to
+    asset_owner_name = db.Column(db.String(255), nullable=True)  # free-text assignee, no User account link
+    device_comment = db.Column(db.Text, nullable=True)  # admin notes / specs
+    assignment_date = db.Column(db.Date, nullable=True)
 
     assigned_user = db.relationship('User', backref='devices', foreign_keys=[assigned_user_id])
 
@@ -460,10 +465,15 @@ class Device(db.Model):
             'health': self.health,
             'assigned_user_id': self.assigned_user_id,
             'assigned_user': self.assigned_user.email.split('@')[0] if self.assigned_user else None,
+            'assigned_user_email': self.assigned_user.email if self.assigned_user else None,
             'serial_or_asset_tag': self.serial_or_asset_tag,
             'last_active': last,
             'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'company': self.company,
+            'asset_owner_name': self.asset_owner_name,
+            'device_comment': self.device_comment,
+            'assignment_date': self.assignment_date.isoformat() if self.assignment_date else None
         }
 
     def __repr__(self):
@@ -861,6 +871,12 @@ class EmailAutomation(db.Model):
         'EmailAutomationAttachment', backref='automation',
         cascade='all, delete-orphan', lazy='selectin',
     )
+    run_logs = db.relationship(
+        'EmailAutomationRunLog', backref='automation',
+        cascade='all, delete-orphan', lazy='dynamic',
+        order_by='EmailAutomationRunLog.run_at.desc()',
+    )
+    creator = db.relationship('User', foreign_keys=[created_by])
 
     def schedule_summary(self):
         """Human-readable one-line schedule description."""
@@ -901,6 +917,10 @@ class EmailAutomation(db.Model):
             'last_run_status': self.last_run_status,
             'last_run_detail': self.last_run_detail,
             'recipient_count': len([e for e in (self.to_emails or '').split(',') if e.strip()]),
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'created_by': self.created_by,
+            'created_by_name': (self.creator.full_name or self.creator.username) if self.creator else None,
             'attachments': [
                 {'id': a.id, 'filename': a.filename, 'mime_type': a.mime_type}
                 for a in self.attachments
@@ -931,6 +951,39 @@ class EmailAutomationAttachment(db.Model):
         return f'<EmailAutomationAttachment id={self.id} file={self.filename!r}>'
 
 
+class EmailAutomationRunLog(db.Model):
+    """One row per email-automation execution (scheduled or manual)."""
+    __tablename__ = 'email_automation_run_log'
+
+    id = db.Column(db.Integer, primary_key=True)
+    automation_id = db.Column(
+        db.Integer, db.ForeignKey('email_automation.id'), nullable=False, index=True,
+    )
+    run_at = db.Column(db.DateTime, default=_utcnow, index=True)
+    status = db.Column(db.String(20))    # success | failed
+    trigger = db.Column(db.String(20))   # scheduled | manual
+    detail = db.Column(db.Text)
+    recipient_count = db.Column(db.Integer, default=0)
+    attachment_count = db.Column(db.Integer, default=0)
+    duration_ms = db.Column(db.Integer)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'automation_id': self.automation_id,
+            'run_at': self.run_at.isoformat() if self.run_at else None,
+            'status': self.status,
+            'trigger': self.trigger,
+            'detail': self.detail,
+            'recipient_count': self.recipient_count or 0,
+            'attachment_count': self.attachment_count or 0,
+            'duration_ms': self.duration_ms,
+        }
+
+    def __repr__(self):
+        return f'<EmailAutomationRunLog id={self.id} automation={self.automation_id} status={self.status}>'
+
+
 class NotificationConfig(db.Model):
     """Single-row JSON settings for workflow notification recipients."""
     __tablename__ = 'notification_config'
@@ -940,6 +993,21 @@ class NotificationConfig(db.Model):
 
     def __repr__(self):
         return f'<NotificationConfig id={self.id}>'
+
+
+class EmailAutomationDefaults(db.Model):
+    """Single-row default To/CC recipients for new email automations."""
+    __tablename__ = 'email_automation_defaults'
+
+    id = db.Column(db.Integer, primary_key=True)
+    to_emails = db.Column(db.Text, default='')   # comma-separated @injaaz.ae
+    cc_emails = db.Column(db.Text, default='')
+
+    def to_dict(self):
+        return {'to_emails': self.to_emails or '', 'cc_emails': self.cc_emails or ''}
+
+    def __repr__(self):
+        return f'<EmailAutomationDefaults id={self.id}>'
 
 
 class TicketProject(db.Model):
@@ -1190,6 +1258,14 @@ class Ticket(db.Model):
     client_signature = db.Column(db.Text, nullable=True)       # base64 data-URL
     client_signed_by = db.Column(db.String(160), nullable=True)
     client_signed_at = db.Column(db.DateTime, nullable=True)
+    client_mobile = db.Column(db.String(40), nullable=True)
+
+    # Technician ID (for Service Report footer)
+    technician_id_no = db.Column(db.String(80), nullable=True)
+
+    # Amaan Service Report template fields
+    service_report_no = db.Column(db.Integer, nullable=True, unique=True)  # auto SRN
+    service_report_data = db.Column(db.Text, nullable=True)                # JSON blob
 
     # Finance approval gate: required when profit margin < 15%
     gm_approval_required = db.Column(db.Boolean, default=False)

@@ -1006,7 +1006,7 @@ def create_app():
     @app.route('/about')
     def about():
         """About page - accessible to all users"""
-        return render_template('about.html')
+        return render_template('about.html', active_page='about')
     
     @app.route('/workflow/pending-reviews')
     def pending_reviews():

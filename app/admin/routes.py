@@ -12,6 +12,7 @@ from app.models import (
 from app.middleware import admin_required
 from common.error_responses import error_response, success_response
 from common.form_data_utils import shallow_copy_form_data
+from common.document_display import build_document_labels, get_module_display_name
 from common.datetime_utils import utc_now_naive, parse_employment_start_date
 from datetime import datetime, timedelta
 from io import BytesIO, StringIO
@@ -825,7 +826,16 @@ def list_documents():
     """Get all submissions/documents with their details"""
     try:
         from app.models import Submission, Job, File
-        
+        from common.document_display import ensure_document_numbers
+
+        # Lazily assign per-series document numbers (HR-0001, INSP-0001, ...)
+        # to any submissions that don't have one yet. Existing numbers never change.
+        try:
+            ensure_document_numbers()
+        except Exception as num_err:
+            db.session.rollback()
+            current_app.logger.warning(f"Document numbering skipped: {num_err}")
+
         # Get all submissions with user info
         submissions = Submission.query.order_by(Submission.created_at.desc()).all()
         
@@ -866,24 +876,19 @@ def list_documents():
             
             # Format module type for display (HR uses same labels as HR module)
             mt = submission.module_type or ''
-            if mt.startswith('hr_'):
-                try:
-                    from module_hr.routes import get_form_type_display
-                    module_display = get_form_type_display(mt)
-                except Exception:
-                    module_display = mt.replace('hr_', '').replace('_', ' ').title()
-            else:
-                module_display = {
-                    'hvac_mep': 'HVAC & MEP',
-                    'civil': 'Civil Works',
-                    'cleaning': 'Cleaning Services'
-                }.get(mt, (mt or 'Unknown').replace('_', ' ').title())
-            
+            module_display = get_module_display_name(mt)
+
+            doc_labels = build_document_labels(submission, module_display)
+
             documents.append({
                 'id': submission.id,
+                'doc_number': submission.doc_number or '',
                 'submission_id': submission.submission_id,
                 'module_type': submission.module_type,
                 'module_display': module_display,
+                'document_title': doc_labels['document_title'],
+                'document_subtitle': doc_labels['document_subtitle'],
+                'document_ref': doc_labels['document_ref'],
                 'site_name': submission.site_name or 'N/A',
                 'visit_date': submission.visit_date.isoformat() if submission.visit_date else None,
                 'status': submission.status,
@@ -1699,6 +1704,9 @@ def list_devices():
         return error_response('Failed to fetch devices', status_code=500, error_code='DATABASE_ERROR')
 
 
+VALID_DEVICE_STATUSES = {'online', 'offline', 'update'}
+
+
 @admin_bp.route('/devices', methods=['POST'])
 @jwt_required()
 @admin_required
@@ -1711,6 +1719,13 @@ def create_device():
         os = (data.get('os') or 'Windows 11').strip()
         user_email = (data.get('assigned_user_email') or '').strip()
         serial = (data.get('serial_or_asset_tag') or '').strip()
+        company = (data.get('company') or '').strip()
+        asset_owner_name = (data.get('asset_owner_name') or '').replace('\xa0', ' ').strip()
+        device_comment = (data.get('device_comment') or '').strip()
+        assignment_date = _parse_iso_date(data.get('assignment_date'))
+        status = (data.get('status') or 'online').strip().lower()
+        if status not in VALID_DEVICE_STATUSES:
+            status = 'online'
 
         if not name:
             return error_response('Device name is required', status_code=400, error_code='VALIDATION_ERROR')
@@ -1736,11 +1751,15 @@ def create_device():
             name=name,
             device_type=device_type,
             os=os,
-            status='idle',
+            status=status,
             health=random.randint(80, 100),
             assigned_user_id=assigned_user_id,
             serial_or_asset_tag=serial or None,
-            last_active_at=utc_now_naive()
+            last_active_at=utc_now_naive(),
+            company=company or None,
+            asset_owner_name=asset_owner_name or None,
+            device_comment=device_comment or None,
+            assignment_date=assignment_date
         )
         db.session.add(device)
         db.session.commit()
@@ -1753,6 +1772,55 @@ def create_device():
         db.session.rollback()
         current_app.logger.error(f"Error creating device: {str(e)}", exc_info=True)
         return error_response('Failed to enroll device', status_code=500, error_code='DATABASE_ERROR')
+
+
+@admin_bp.route('/devices/<int:id>', methods=['PUT'])
+@jwt_required()
+@admin_required
+def update_device(id):
+    """Update an existing device's details"""
+    try:
+        device = Device.query.get_or_404(id)
+        data = request.get_json() or {}
+        name = (data.get('name') or '').strip()
+        if not name:
+            return error_response('Device name is required', status_code=400, error_code='VALIDATION_ERROR')
+
+        status = (data.get('status') or '').strip().lower()
+        if status and status not in VALID_DEVICE_STATUSES:
+            return error_response(
+                f'Invalid status. Must be one of: {", ".join(sorted(VALID_DEVICE_STATUSES))}',
+                status_code=400,
+                error_code='VALIDATION_ERROR'
+            )
+
+        user_email = (data.get('assigned_user_email') or '').strip()
+        assigned_user_id = None
+        if user_email:
+            user = User.query.filter_by(email=user_email).first()
+            if user:
+                assigned_user_id = user.id
+
+        device.name = name
+        device.device_type = (data.get('device_type') or device.device_type or 'Laptop').strip()
+        device.os = (data.get('os') or device.os or 'Windows 11').strip()
+        if status:
+            device.status = status
+        device.assigned_user_id = assigned_user_id
+        device.serial_or_asset_tag = (data.get('serial_or_asset_tag') or '').strip() or None
+        device.company = (data.get('company') or '').strip() or None
+        device.asset_owner_name = (data.get('asset_owner_name') or '').replace('\xa0', ' ').strip() or None
+        device.device_comment = (data.get('device_comment') or '').strip() or None
+
+        db.session.commit()
+        return success_response({
+            'device': device.to_dict(),
+            'message': f'Device "{name}" updated successfully'
+        })
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error updating device: {str(e)}", exc_info=True)
+        return error_response('Failed to update device', status_code=500, error_code='DATABASE_ERROR')
 
 
 @admin_bp.route('/devices/<int:id>', methods=['DELETE'])
@@ -1770,6 +1838,35 @@ def delete_device(id):
         db.session.rollback()
         current_app.logger.error(f"Error deleting device: {str(e)}", exc_info=True)
         return error_response('Failed to remove device', status_code=500, error_code='DATABASE_ERROR')
+
+
+@admin_bp.route('/devices/bulk', methods=['DELETE'])
+@jwt_required()
+@admin_required
+def bulk_delete_devices():
+    """Remove multiple devices at once"""
+    try:
+        data = request.get_json() or {}
+        raw_ids = data.get('ids') or []
+        try:
+            ids = [int(x) for x in raw_ids]
+        except (TypeError, ValueError):
+            ids = []
+        if not ids:
+            return error_response('No device ids provided', status_code=400, error_code='VALIDATION_ERROR')
+
+        devices = Device.query.filter(Device.id.in_(ids)).all()
+        for device in devices:
+            db.session.delete(device)
+        db.session.commit()
+        return success_response({
+            'deleted_count': len(devices),
+            'message': f'{len(devices)} device(s) removed successfully'
+        })
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error bulk deleting devices: {str(e)}", exc_info=True)
+        return error_response('Failed to remove devices', status_code=500, error_code='DATABASE_ERROR')
 
 
 @admin_bp.route('/devices/stats', methods=['GET'])
@@ -1869,6 +1966,22 @@ def import_devices_excel():
             'serial number': 'serial_or_asset_tag',
             'asset tag': 'serial_or_asset_tag',
             'serial or asset tag': 'serial_or_asset_tag',
+            'serial asset tag': 'serial_or_asset_tag',
+            'company': 'company',
+            'person': 'asset_owner_name',
+            'owner': 'asset_owner_name',
+            'owner name': 'asset_owner_name',
+            'assigned to': 'asset_owner_name',
+            'asset owner': 'asset_owner_name',
+            'comment': 'device_comment',
+            'comments': 'device_comment',
+            'notes': 'device_comment',
+            'specs': 'device_comment',
+            'specification': 'device_comment',
+            'specifications': 'device_comment',
+            'assignment date': 'assignment_date',
+            'date assigned': 'assignment_date',
+            'date': 'assignment_date',
         }
 
         canonical_to_original = {}
@@ -1877,9 +1990,11 @@ def import_devices_excel():
             if canonical_name:
                 canonical_to_original[canonical_name] = original_name
 
-        if 'name' not in canonical_to_original:
+        if 'name' not in canonical_to_original and not (
+            'asset_owner_name' in canonical_to_original and 'device_type' in canonical_to_original
+        ):
             return error_response(
-                'Excel must include a "Device Name" (or "Name") column',
+                'Excel must include a "Device Name" column, or both "Owner" and "Device Type" columns',
                 status_code=400,
                 error_code='VALIDATION_ERROR'
             )
@@ -1908,7 +2023,7 @@ def import_devices_excel():
 
         def normalize_status(value):
             s = str(value or '').strip().lower()
-            if s in ['online', 'offline', 'update', 'idle']:
+            if s in ['online', 'offline', 'update']:
                 return s
             if 'warn' in s or 'update' in s:
                 return 'update'
@@ -1916,29 +2031,42 @@ def import_devices_excel():
                 return 'offline'
             if 'on' in s:
                 return 'online'
-            return 'idle'
+            return 'online'
 
         imported = 0
         skipped_duplicates = 0
         skipped_empty = 0
         errors = []
 
+        def clean_text(value):
+            text = str(value or '').replace('\xa0', ' ').strip()
+            return '' if text.lower() == 'nan' else text
+
         import random
         for idx, row in df.iterrows():
             try:
-                name = str(cell(row, 'name', '')).strip()
-                if not name or name.lower() == 'nan':
-                    skipped_empty += 1
-                    continue
+                name = clean_text(cell(row, 'name', ''))
+                device_type = clean_text(cell(row, 'device_type', '')) or 'Laptop'
+                owner = clean_text(cell(row, 'asset_owner_name', ''))
+                company = clean_text(cell(row, 'company', ''))
+                comment = clean_text(cell(row, 'device_comment', ''))
+                serial = clean_text(cell(row, 'serial_or_asset_tag', ''))
 
-                device_type = str(cell(row, 'device_type', 'Laptop')).strip() or 'Laptop'
-                os = str(cell(row, 'os', 'Windows 11')).strip() or 'Windows 11'
-                status = normalize_status(cell(row, 'status', 'idle'))
+                if not name:
+                    if owner:
+                        name = f"{owner} - {device_type}"
+                    elif device_type and (serial or comment or company):
+                        name = device_type
+                    else:
+                        skipped_empty += 1
+                        continue
+
+                is_sim = device_type.strip().lower() == 'sim'
+                os = '' if is_sim else (clean_text(cell(row, 'os', '')) or 'Windows 11')
+                status = normalize_status(cell(row, 'status', 'online'))
                 health = max(0, min(100, safe_int(cell(row, 'health', random.randint(75, 100)), random.randint(75, 100))))
-                user_email = str(cell(row, 'assigned_user_email', '')).strip()
-                serial = str(cell(row, 'serial_or_asset_tag', '')).strip()
-                if serial.lower() == 'nan':
-                    serial = ''
+                user_email = clean_text(cell(row, 'assigned_user_email', ''))
+                assignment_date = _parse_iso_date(cell(row, 'assignment_date', ''))
 
                 dup_key = f"{name.lower()}|{serial.lower()}"
                 if dup_key in existing_keys:
@@ -1969,7 +2097,11 @@ def import_devices_excel():
                     health=health,
                     assigned_user_id=assigned_user_id,
                     serial_or_asset_tag=serial or None,
-                    last_active_at=utc_now_naive()
+                    last_active_at=utc_now_naive(),
+                    company=company or None,
+                    asset_owner_name=owner or None,
+                    device_comment=comment or None,
+                    assignment_date=assignment_date
                 )
                 db.session.add(device)
                 existing_keys.add(dup_key)
@@ -2000,16 +2132,16 @@ def download_devices_sample_excel():
         import pandas as pd
 
         rows = [
-            {'Device Name': 'LAPTOP-HQ-001', 'Device Type': 'Laptop', 'OS': 'Windows 11 Pro', 'Status': 'online', 'Health': 96, 'Assigned User Email': 'admin@injaaz.ae', 'Serial / Asset Tag': 'AST-10001'},
-            {'Device Name': 'DESKTOP-FIN-014', 'Device Type': 'Desktop', 'OS': 'Windows 10', 'Status': 'idle', 'Health': 88, 'Assigned User Email': '', 'Serial / Asset Tag': 'AST-10002'},
-            {'Device Name': 'MOBILE-OPS-022', 'Device Type': 'Mobile', 'OS': 'Android 15', 'Status': 'online', 'Health': 93, 'Assigned User Email': '', 'Serial / Asset Tag': 'AST-10003'},
-            {'Device Name': 'TABLET-QA-005', 'Device Type': 'Tablet', 'OS': 'iOS 18', 'Status': 'update', 'Health': 72, 'Assigned User Email': '', 'Serial / Asset Tag': 'AST-10004'},
-            {'Device Name': 'SERVER-DC-002', 'Device Type': 'Server', 'OS': 'Ubuntu 24.04', 'Status': 'online', 'Health': 91, 'Assigned User Email': '', 'Serial / Asset Tag': 'AST-10005'},
-            {'Device Name': 'LAPTOP-BD-011', 'Device Type': 'Laptop', 'OS': 'macOS Sequoia', 'Status': 'offline', 'Health': 54, 'Assigned User Email': '', 'Serial / Asset Tag': 'AST-10006'},
-            {'Device Name': 'DESKTOP-HR-018', 'Device Type': 'Desktop', 'OS': 'Windows 11', 'Status': 'idle', 'Health': 84, 'Assigned User Email': '', 'Serial / Asset Tag': 'AST-10007'},
-            {'Device Name': 'LAPTOP-ENG-031', 'Device Type': 'Laptop', 'OS': 'Windows 11', 'Status': 'online', 'Health': 97, 'Assigned User Email': '', 'Serial / Asset Tag': 'AST-10008'},
-            {'Device Name': 'MOBILE-FIELD-040', 'Device Type': 'Mobile', 'OS': 'Android 14', 'Status': 'update', 'Health': 67, 'Assigned User Email': '', 'Serial / Asset Tag': 'AST-10009'},
-            {'Device Name': 'TABLET-MEET-003', 'Device Type': 'Tablet', 'OS': 'iPadOS 18', 'Status': 'online', 'Health': 89, 'Assigned User Email': '', 'Serial / Asset Tag': 'AST-10010'},
+            {'Device Name': 'LAPTOP-HQ-001', 'Device Type': 'Laptop', 'OS': 'Windows 11 Pro', 'Status': 'online', 'Health': 96, 'Assigned User Email': 'admin@injaaz.ae', 'Serial / Asset Tag': 'AST-10001', 'Company': 'Injaaz', 'Owner': 'Admin User', 'Comment': '', 'Assignment Date': ''},
+            {'Device Name': 'DESKTOP-FIN-014', 'Device Type': 'Desktop', 'OS': 'Windows 10', 'Status': 'idle', 'Health': 88, 'Assigned User Email': '', 'Serial / Asset Tag': 'AST-10002', 'Company': 'Injaaz', 'Owner': '', 'Comment': '', 'Assignment Date': ''},
+            {'Device Name': 'MOBILE-OPS-022', 'Device Type': 'Mobile', 'OS': 'Android 15', 'Status': 'online', 'Health': 93, 'Assigned User Email': '', 'Serial / Asset Tag': 'AST-10003', 'Company': 'Amaan Systems', 'Owner': '', 'Comment': '', 'Assignment Date': ''},
+            {'Device Name': 'TABLET-QA-005', 'Device Type': 'Tablet', 'OS': 'iOS 18', 'Status': 'update', 'Health': 72, 'Assigned User Email': '', 'Serial / Asset Tag': 'AST-10004', 'Company': 'Amaan Systems', 'Owner': '', 'Comment': '', 'Assignment Date': ''},
+            {'Device Name': 'SERVER-DC-002', 'Device Type': 'Server', 'OS': 'Ubuntu 24.04', 'Status': 'online', 'Health': 91, 'Assigned User Email': '', 'Serial / Asset Tag': 'AST-10005', 'Company': 'Injaaz', 'Owner': '', 'Comment': '', 'Assignment Date': ''},
+            {'Device Name': 'LAPTOP-BD-011', 'Device Type': 'Laptop', 'OS': 'macOS Sequoia', 'Status': 'offline', 'Health': 54, 'Assigned User Email': '', 'Serial / Asset Tag': 'AST-10006', 'Company': 'Injaaz', 'Owner': '', 'Comment': '', 'Assignment Date': ''},
+            {'Device Name': 'DESKTOP-HR-018', 'Device Type': 'Desktop', 'OS': 'Windows 11', 'Status': 'idle', 'Health': 84, 'Assigned User Email': '', 'Serial / Asset Tag': 'AST-10007', 'Company': 'Injaaz', 'Owner': '', 'Comment': '', 'Assignment Date': ''},
+            {'Device Name': 'LAPTOP-ENG-031', 'Device Type': 'Laptop', 'OS': 'Windows 11', 'Status': 'online', 'Health': 97, 'Assigned User Email': '', 'Serial / Asset Tag': 'AST-10008', 'Company': 'Injaaz', 'Owner': '', 'Comment': '', 'Assignment Date': ''},
+            {'Device Name': 'MOBILE-FIELD-040', 'Device Type': 'Mobile', 'OS': 'Android 14', 'Status': 'update', 'Health': 67, 'Assigned User Email': '', 'Serial / Asset Tag': 'AST-10009', 'Company': 'Amaan Systems', 'Owner': '', 'Comment': '', 'Assignment Date': ''},
+            {'Device Name': 'TABLET-MEET-003', 'Device Type': 'Tablet', 'OS': 'iPadOS 18', 'Status': 'online', 'Health': 89, 'Assigned User Email': '', 'Serial / Asset Tag': 'AST-10010', 'Company': 'Amaan Systems', 'Owner': '', 'Comment': '', 'Assignment Date': ''},
         ]
 
         df = pd.DataFrame(rows)
@@ -2207,6 +2339,17 @@ def bd_dashboard_data():
                 'value': stage_value
             })
 
+        # Analytics: weighted forecast, conversion funnel, stalled deals, outcome loop.
+        from app.bd import analytics as BDA
+        from app.models import InspectionNotification, TicketProject
+        notifications = InspectionNotification.query.all()
+        ticket_projects = TicketProject.query.all()
+
+        forecast = BDA.weighted_forecast(projects)
+        funnel = BDA.conversion_funnel(projects)
+        stalled = BDA.stalled_deals(projects)
+        outcome = BDA.outcome_loop(notifications, ticket_projects)
+
         return success_response({
             'projects': [p.to_dict() for p in projects],
             'followups': [f.to_dict() for f in followups],
@@ -2218,7 +2361,11 @@ def bd_dashboard_data():
                 'win_rate': win_rate,
                 'avg_deal_size': avg_deal_size,
                 'overdue_followups': overdue_followups,
-                'stage_stats': stage_stats
+                'stage_stats': stage_stats,
+                'forecast': forecast,
+                'funnel': funnel,
+                'stalled': stalled,
+                'outcome': outcome,
             }
         })
     except Exception as e:

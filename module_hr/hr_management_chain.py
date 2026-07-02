@@ -28,11 +28,13 @@ WF_MGMT_OM = "hr_mgmt_operations_manager"
 WF_MGMT_RM = "hr_mgmt_reporting_manager"
 WF_MGMT_GM = "hr_mgmt_gm"
 WF_MGMT_HR = "hr_mgmt_hr_head_office"
+WF_MGMT_ROUTING = "hr_mgmt_routing_approver"
 
 ALL_MGMT_WF_STATUSES = (
     WF_MGMT_SUP,
     WF_MGMT_OM,
     WF_MGMT_RM,
+    WF_MGMT_ROUTING,
     WF_MGMT_GM,
     WF_MGMT_HR,
 )
@@ -104,6 +106,172 @@ def _reporting_contact(submitter: User) -> User | None:
 
 def _is_general_manager_designation(u: User | None) -> bool:
     return bool(u and _desig(u) == "general_manager")
+
+
+def _default_reporting_to_prefill(submitter: User) -> dict[str, Any] | None:
+    """Reporting To block defaults from the submitter's profile reporting manager."""
+    mgr = _reporting_contact(submitter)
+    if not mgr:
+        return None
+    return {
+        "id": mgr.id,
+        "full_name": mgr.full_name or mgr.username,
+        "designation": mgr.designation or "",
+        "job_designation": getattr(mgr, "job_designation", "") or "",
+        "phone": getattr(mgr, "phone", "") or "",
+    }
+
+
+def build_interview_chain_after_interviewer(
+    next_approver_id: int,
+    *,
+    submitter_id: int | None,
+    interviewer_id: int,
+) -> tuple[list[dict[str, Any]], str | None]:
+    """
+    Interview assessment: interviewer picks the next approver at sign time.
+    Chain is always: chosen colleague → GM (pool) → HR head office (pool).
+    """
+    try:
+        na_id = int(next_approver_id)
+        iv_id = int(interviewer_id)
+    except (TypeError, ValueError):
+        return [], "Invalid next approver."
+
+    if na_id == iv_id:
+        return [], "You cannot forward the form to yourself."
+    if submitter_id is not None and na_id == int(submitter_id):
+        return [], "You cannot forward the form back to the person who submitted it."
+
+    approver = db.session.get(User, na_id)
+    if not approver or not approver.is_active:
+        return [], "Selected next approver is not an active user."
+
+    steps = [
+        _step(
+            "routing_approver",
+            WF_MGMT_ROUTING,
+            approver.full_name or approver.username or "Next approver",
+            signer_mode="fixed_user",
+            signer_id=approver.id,
+        ),
+        _step(
+            "general_manager",
+            WF_MGMT_GM,
+            "General manager",
+            signer_mode="designation",
+            designation_gate="general_manager",
+        ),
+        _step(
+            "hr_head_office",
+            WF_MGMT_HR,
+            "HR (head office)",
+            signer_mode="designation",
+            designation_gate="hr_head_office",
+        ),
+    ]
+    return steps, None
+
+
+def apply_interview_chain_after_interviewer(
+    form_data: dict[str, Any],
+    next_approver_id: int,
+    *,
+    submitter_id: int | None,
+    interviewer_id: int,
+) -> str | None:
+    """Write hr_mgmt_chain after interviewer sign. Returns error message or None."""
+    steps, err = build_interview_chain_after_interviewer(
+        next_approver_id,
+        submitter_id=submitter_id,
+        interviewer_id=interviewer_id,
+    )
+    if err:
+        return err
+
+    approver = db.session.get(User, int(next_approver_id))
+    approver_name = (approver.full_name or approver.username) if approver else "Next approver"
+
+    form_data["next_approver_signer_id"] = int(next_approver_id)
+    form_data["next_approver_name"] = approver_name
+    form_data[MGMT_CHAIN_KEY] = {
+        "v": 1,
+        "lane": "interview_routing",
+        "current_index": 0,
+        "steps": steps,
+        "reporting_contact_id": int(next_approver_id),
+        "reporting_contact_name": approver_name,
+        "pdf_hints": [],
+    }
+    form_data["interview_routing"] = {
+        "v": 1,
+        "deferred": False,
+        "resolved_at": naive_utc_isoformat_z(utc_now_naive()),
+        "next_approver_signer_id": int(next_approver_id),
+        "next_approver_name": approver_name,
+    }
+    return None
+
+
+def interview_routing_deferred_at_submit() -> dict[str, Any]:
+    """Marker stored on interview submit until the interviewer signs and picks routing."""
+    return {"v": 1, "deferred": True}
+
+
+def get_interview_routing_ui_context() -> dict[str, Any]:
+    """Sidebar preview for interview assessment (chain deferred until interviewer signs)."""
+    lane_flow = (
+        "Interviewer sign -> Next approver (chosen at sign) -> General manager -> HR"
+    )
+    return {
+        "success": True,
+        "lane": "interview_routing",
+        "lane_intro": (
+            "Interview assessment: the assigned interviewer signs first and chooses who "
+            "receives the form next. It then goes to the General Manager and HR head office."
+        ),
+        "lane_flow": lane_flow,
+        "chain": [
+            {
+                "key": "interviewer",
+                "role_label": "Interviewer",
+                "who_label": "Assigned at submit",
+                "who_detail": "Signs digitally before management approval begins.",
+                "signer_mode": "routed",
+                "missing": False,
+            },
+            {
+                "key": "routing_approver",
+                "role_label": "Next approver",
+                "who_label": "Chosen by interviewer",
+                "who_detail": "Selected when the interviewer signs.",
+                "signer_mode": "fixed_user",
+                "missing": False,
+            },
+            {
+                "key": "general_manager",
+                "role_label": "General manager",
+                "who_label": "Any active GM",
+                "who_detail": "Designation pool sign-off.",
+                "signer_mode": "designation",
+                "missing": False,
+            },
+            {
+                "key": "hr_head_office",
+                "role_label": "HR (head office)",
+                "who_label": "HR head office",
+                "who_detail": "Final sign-off.",
+                "signer_mode": "designation",
+                "missing": False,
+            },
+        ],
+        "supervisor": None,
+        "default_reporting_to": None,
+        "missing_pools": [],
+        "setup_error": None,
+        "admin_profile_bypass": False,
+        "interview_routing_preview": True,
+    }
 
 
 def build_chain_for_lane(
@@ -603,6 +771,92 @@ def submissions_pending_management_for_user_query(user: User):
     ).order_by(Submission.created_at.desc())
 
 
+def _pool_for_gate(gate: str) -> list[User]:
+    """Active users who satisfy a designation gate (same rules as user_allowed_to_sign_step)."""
+    g = (gate or "").strip().lower()
+    if g == "general_manager":
+        return (
+            User.query.filter(
+                User.is_active == True,  # noqa: E712
+                db.func.lower(User.designation) == "general_manager",
+            ).all()
+        )
+    if g == "hr_head_office":
+        return (
+            User.query.filter(
+                User.is_active == True,  # noqa: E712
+                db.or_(
+                    db.func.lower(User.designation) == "hr_manager",
+                    User.access_hr == True,  # noqa: E712
+                ),
+            ).all()
+        )
+    return []
+
+
+def _pool_label(pool: list[User], plural_label: str) -> str:
+    if not pool:
+        return "Not assigned"
+    if len(pool) == 1:
+        return pool[0].full_name or pool[0].username
+    return plural_label
+
+
+def _ui_chain_for_submitter(submitter: User) -> tuple[list[dict[str, Any]], str | None]:
+    """
+    Display-only management approval chain for the sidebar (names + missing flags).
+    Mirrors the steps that build_chain_for_lane() would create at submit time.
+    Returns (chain, lane_flow).
+    """
+    lane = lane_for_user(submitter)
+    contact = _reporting_contact(submitter)
+    if not contact:
+        return [], None
+
+    rc_is_gm = _is_general_manager_designation(contact)
+    contact_name = contact.full_name or contact.username
+    chain: list[dict[str, Any]] = []
+
+    if lane == "technician":
+        chain.append({
+            "key": "supervisor", "role_label": "Reporting supervisor",
+            "who_label": contact_name, "who_detail": None, "missing": False,
+        })
+        chain.append({
+            "key": "operations_manager", "role_label": "Operations manager",
+            "who_label": "Selected when you submit",
+            "who_detail": "You choose the operations manager on the form.", "missing": False,
+        })
+        lane_flow = "Reporting supervisor -> Operations manager -> General manager -> HR"
+    else:
+        chain.append({
+            "key": "reporting_manager", "role_label": "Reporting manager",
+            "who_label": contact_name,
+            "who_detail": "Also signs as General Manager on this trail." if rc_is_gm else None,
+            "missing": False,
+        })
+        lane_flow = (
+            "Reporting manager (also GM) -> HR" if rc_is_gm
+            else "Reporting manager -> General manager -> HR"
+        )
+
+    if not rc_is_gm:
+        gm_pool = _pool_for_gate("general_manager")
+        chain.append({
+            "key": "general_manager", "role_label": "General manager",
+            "who_label": _pool_label(gm_pool, "Any active GM"),
+            "who_detail": None, "missing": not gm_pool,
+        })
+
+    hr_pool = _pool_for_gate("hr_head_office")
+    chain.append({
+        "key": "hr_head_office", "role_label": "HR (head office)",
+        "who_label": _pool_label(hr_pool, "HR head office"),
+        "who_detail": "Final sign-off.", "missing": not hr_pool,
+    })
+    return chain, lane_flow
+
+
 def get_mgmt_chain_ui_context(submitter: User | None) -> dict[str, Any]:
     """Reporting line comes from Admin (user.reporting_manager_id) only."""
     if not submitter:
@@ -610,7 +864,9 @@ def get_mgmt_chain_ui_context(submitter: User | None) -> dict[str, Any]:
 
     lane = lane_for_user(submitter)
     c = _reporting_contact(submitter)
+    default_reporting_to = _default_reporting_to_prefill(submitter)
     if getattr(submitter, "role", None) == "admin" and c is None:
+        hr_pool = _pool_for_gate("hr_head_office")
         return {
             "success": True,
             "lane": lane,
@@ -618,9 +874,17 @@ def get_mgmt_chain_ui_context(submitter: User | None) -> dict[str, Any]:
             "has_reporting_contact": False,
             "reporting_contact_is_general_manager": False,
             "reporting_contact": None,
+            "default_reporting_to": default_reporting_to,
             "technician_supervisor_valid": True,
             "setup_error": None,
             "admin_profile_bypass": True,
+            "lane_intro": "Administrator submission — this form goes straight to HR review (no management sign-off chain).",
+            "lane_flow": "Direct to HR review",
+            "chain": [{
+                "key": "hr_head_office", "role_label": "HR (head office)",
+                "who_label": _pool_label(hr_pool, "HR head office"),
+                "who_detail": "Final sign-off.", "missing": not hr_pool,
+            }],
         }
 
     rm_is_gm = _is_general_manager_designation(c) if c else False
@@ -643,6 +907,8 @@ def get_mgmt_chain_ui_context(submitter: User | None) -> dict[str, Any]:
     elif not c:
         err = "Reporting manager must be set on your user profile by an administrator before submitting HR forms."
 
+    chain, lane_flow = ([], None) if err else _ui_chain_for_submitter(submitter)
+
     return {
         "success": True,
         "lane": lane,
@@ -650,6 +916,9 @@ def get_mgmt_chain_ui_context(submitter: User | None) -> dict[str, Any]:
         "has_reporting_contact": c is not None,
         "reporting_contact_is_general_manager": rm_is_gm,
         "reporting_contact": rc_payload,
+        "default_reporting_to": default_reporting_to,
         "technician_supervisor_valid": technician_supervisor_ok,
         "setup_error": err,
+        "chain": chain,
+        "lane_flow": lane_flow,
     }

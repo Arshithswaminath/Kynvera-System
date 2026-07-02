@@ -8,6 +8,26 @@
 (function () {
   const state = { ctx: null };
 
+  // Shared, cached fetch of the management-chain context so multiple consumers
+  // on the same page (this sidebar + the Reporting-To prefill) don't each hit
+  // the API. Returns the same promise regardless of how many callers ask.
+  let _ctxPromise = null;
+  function loadMgmtChainContext() {
+    if (_ctxPromise) return _ctxPromise;
+    const token = localStorage.getItem('access_token');
+    _ctxPromise = fetch('/hr/api/mgmt-chain-context', {
+      headers: token ? { Authorization: 'Bearer ' + token } : {},
+    })
+      .then(function (res) {
+        return res.json().catch(function () { return {}; }).then(function (ctx) {
+          return { ok: res.ok, ctx: ctx || {} };
+        });
+      })
+      .catch(function () { return { ok: false, ctx: {}, networkError: true }; });
+    return _ctxPromise;
+  }
+  window.HrMgmtChainContext = { load: loadMgmtChainContext };
+
   function escapeHtml(s) {
     const d = document.createElement('div');
     d.textContent = s == null ? '' : String(s);
@@ -166,30 +186,23 @@
     if (!wrap || wrap.dataset.hrMgmtChainBooted === '1') return;
     wrap.dataset.hrMgmtChainBooted = '1';
 
-    const token = localStorage.getItem('access_token');
-    fetch('/hr/api/mgmt-chain-context', {
-      headers: token ? { Authorization: 'Bearer ' + token } : {},
-    })
-      .then(function (res) {
-        return res.json().catch(function () { return {}; }).then(function (ctx) {
-          if (!res.ok || !ctx.success) {
-            applyContext({
-              chain: [],
-              missing_pools: [],
-              setup_error: ctx.error || 'Could not load management routing.',
-            });
-          } else {
-            applyContext(ctx);
-          }
-        });
-      })
-      .catch(function () {
+    loadMgmtChainContext().then(function (r) {
+      if (r.networkError) {
         applyContext({
           chain: [],
           missing_pools: [],
           setup_error: 'Network error loading management routing.',
         });
-      });
+      } else if (!r.ok || !r.ctx.success) {
+        applyContext({
+          chain: [],
+          missing_pools: [],
+          setup_error: r.ctx.error || 'Could not load management routing.',
+        });
+      } else {
+        applyContext(r.ctx);
+      }
+    });
   }
 
   window.HrMgmtChainValidate = function () {

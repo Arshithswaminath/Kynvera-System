@@ -19,6 +19,7 @@ _WORKFLOW_LABELS: dict[str, str] = {
     "hr_mgmt_supervisor": "Awaiting reporting supervisor sign-off",
     "hr_mgmt_operations_manager": "Awaiting operations manager sign-off",
     "hr_mgmt_reporting_manager": "Awaiting reporting manager sign-off",
+    "hr_mgmt_routing_approver": "Awaiting next approver sign-off",
     "hr_mgmt_gm": "Awaiting general manager sign-off",
     "hr_mgmt_hr_head_office": "With HR (head office) for final sign-off",
     "hr_review": "With HR for review",

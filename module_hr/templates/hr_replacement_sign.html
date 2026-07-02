@@ -189,6 +189,16 @@
           <label class="fld-lbl">Comments <span style="opacity:.65">(optional)</span></label>
           <textarea class="fld-inp" id="rspComments" data-approval-comment placeholder="Add notes for the next reviewer…"></textarea>
 
+          <div id="rspNextApproverBlock" style="display:none;margin-top:1rem;padding-top:.85rem;border-top:1px solid rgba(226,232,240,.9)">
+            <label class="fld-lbl">Forward for approval to <span class="req">*</span></label>
+            <p style="font-size:.78rem;color:#64748b;margin:.35rem 0 .5rem;line-height:1.4">Choose who should review this form next. After they sign, it goes to the General Manager and HR.</p>
+            <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:flex-end;margin-top:.35rem">
+              <select class="fld-inp" id="rspNextApproverSel" style="flex:1;min-width:11rem"><option value="">Loading…</option></select>
+              <button type="button" class="btn-ghost" id="rspNextApproverAdd">Add</button>
+            </div>
+            <div id="rspNextApproverChips" style="margin-top:.35rem;display:flex;flex-wrap:wrap;gap:.2rem"></div>
+          </div>
+
           <p class="fld-lbl" style="margin-top:1rem;"><strong>Signature</strong> <span class="req">*</span></p>
           <div class="sig-canvas-box" style="margin-top:.35rem;">
             <canvas id="rspSig"></canvas>
@@ -207,11 +217,14 @@
 <script src="{{ url_for('static', filename='js/approval_comment.js') }}"></script>
 <script src="{{ url_for('static', filename='js/hr_sign_pdf_preview.js') }}"></script>
 <script src="{{ url_for('static', filename='js/hr_center_notice_modal.js') }}"></script>
+<script src="{{ url_for('static', filename='js/hr_colleague_slot_picker.js') }}"></script>
 <script>
 const SUBMISSION_ID = {{ submission_id | tojson }};
 const TOKEN = localStorage.getItem('access_token');
 let pad = null;
 let pdfPreviewLoadGen = 0;
+let requiresNextApprover = false;
+const next_approver_signer_ids = [];
 
 window.addEventListener('beforeunload', function () {
   try { HrSignPdfPreview.revokeBlob(); } catch (e) {}
@@ -337,6 +350,20 @@ async function boot(){
     return;
   }
 
+  requiresNextApprover = !!j.requires_next_approver;
+  if (requiresNextApprover) {
+    document.getElementById('rspNextApproverBlock').style.display = 'block';
+    if (window.HrColleagueSlotPicker) {
+      HrColleagueSlotPicker.bind({
+        selectId: 'rspNextApproverSel',
+        addBtnId: 'rspNextApproverAdd',
+        chipsId: 'rspNextApproverChips',
+        ids: next_approver_signer_ids,
+        multi: false,
+      });
+    }
+  }
+
   prefillSignComment();
 
   document.getElementById('rspClear').addEventListener('click', ()=>{
@@ -359,6 +386,11 @@ async function submitSig(){
     err.style.display='block';
     return;
   }
+  if (requiresNextApprover && next_approver_signer_ids.length !== 1) {
+    err.textContent = 'Select exactly one colleague to forward this form to for approval.';
+    err.style.display = 'block';
+    return;
+  }
   const dataUrl = pad.toDataURL('image/png');
   let comments = document.getElementById('rspComments').value.trim();
   if (window.InjaazApprovalComment) {
@@ -367,10 +399,14 @@ async function submitSig(){
   document.getElementById('rspSubmit').disabled = true;
 
   try{
+    const payload = { signature: dataUrl, comments };
+    if (requiresNextApprover) {
+      payload.next_approver_signer_id = next_approver_signer_ids[0];
+    }
     const res = await fetch('/hr/api/replacement-signoff/'+encodeURIComponent(SUBMISSION_ID)+'/sign', {
       method: 'POST',
       headers:{ 'Authorization':'Bearer '+TOKEN, 'Content-Type':'application/json' },
-      body: JSON.stringify({ signature: dataUrl, comments })
+      body: JSON.stringify(payload)
     });
     const j = await res.json().catch(()=>({}));
     if(!res.ok){

@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-forms-unified.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/ticketing.css') }}">
-  <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
   <style>
     .hr-form-unified .page { padding-top: 5.5rem; }
     body.hr-embed-mode .hr-form-unified .page { padding-top: 0 !important; }
@@ -122,10 +122,14 @@
               <section class="sec">
                 <h2 class="sec-hd">Reporting To</h2>
                 <div class="grid-2">
-                  <div class="fld"><label class="fld-lbl">Name <span class="req">*</span></label><input class="fld-inp" type="text" name="reporting_to_name" required></div>
-                  <div class="fld"><label class="fld-lbl">Designation / Title <span class="req">*</span></label><input class="fld-inp" type="text" name="reporting_to_designation" required></div>
-                  <div class="fld fw"><label class="fld-lbl">Contact No <span class="req">*</span></label><input class="fld-inp" type="tel" name="reporting_to_contact" required></div>
+                  <div class="fld"><label class="fld-lbl">Name <span class="req">*</span></label><input class="fld-inp" type="text" name="reporting_to_name" id="reportingToName" required></div>
+                  <div class="fld"><label class="fld-lbl">Designation / Title <span class="req">*</span></label><input class="fld-inp" type="text" name="reporting_to_designation" id="reportingToDesignation" required></div>
+                  <div class="fld fw"><label class="fld-lbl">Contact No</label><input class="fld-inp" type="tel" name="reporting_to_contact" id="reportingToContact"></div>
                 </div>
+                <p id="reportingToAutoHint" style="display:none;font-size:.78rem;color:var(--muted);margin:.45rem 0 0;line-height:1.4;">
+                  <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="vertical-align:-1px;margin-right:3px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  Pre-filled from your profile. You can change any field if needed.
+                </p>
               </section>
               <p class="doc-intro" style="font-size:.85rem;margin-top:1rem;">If you need assistance with Salary letter required to open new bank account, please forward an email to HR Department at joana@ajmanholding.ae</p>
               <div class="step-nav">
@@ -195,6 +199,7 @@
   </div>
 
 <script src="{{ url_for('static', filename='js/hr_colleague_slot_picker.js') }}"></script>
+<script src="{{ url_for('static', filename='js/hr_reporting_to_prefill.js') }}"></script>
 <script src="{{ url_for('static', filename='js/hr_form_draft.js') }}"></script>
 <script>
 const reporting_officer_signer_ids=[];
@@ -207,6 +212,23 @@ document.addEventListener('DOMContentLoaded', ()=>{
       ids:reporting_officer_signer_ids,
       multi:false,
     });
+  }
+  // Reporting To — pre-fill from the submitter's profile reporting manager.
+  // Reuses the single cached mgmt-chain-context fetch (shared with the sidebar)
+  // so the page does not request the same data twice.
+  if(window.HrReportingToPrefill){
+    window.HrReportingToPrefill.bindFieldEditGuards();
+    const applyMgr = ctx => {
+      const mgr = window.HrReportingToPrefill.reportingManagerFromContext(ctx || {});
+      if (mgr) window.HrReportingToPrefill.applyPrefill(mgr);
+    };
+    if (window.HrMgmtChainContext && window.HrMgmtChainContext.load) {
+      window.HrMgmtChainContext.load().then(r => applyMgr(r && r.ctx));
+    } else {
+      const token = localStorage.getItem('access_token');
+      fetch('/hr/api/mgmt-chain-context', { headers: token ? { Authorization: 'Bearer ' + token } : {} })
+        .then(r => r.json()).catch(() => ({})).then(applyMgr);
+    }
   }
 });
 document.getElementById('empSignDate').value = new Date().toISOString().split('T')[0];
