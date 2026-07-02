@@ -6,7 +6,7 @@
   
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
 <title>Device Management — Amaan Admin</title>
-  <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}">
@@ -46,12 +46,17 @@
     @media (max-width: 1100px) {
       :root { --sidebar-w: 232px; }
     }
-    body.has-main-nav { padding-top: 89px; } /* 73px nav + 16px breathing room */
+    body.has-main-nav { padding-top: var(--dm-nav-top); }
     body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; background: #ffffff; }
     html { background: #ffffff; }
 
     .dm-root {
-      background: #f7fbf9;
+      background:
+        radial-gradient(820px 520px at 10% -8%, rgba(210, 23, 37, 0.13), transparent 58%),
+        radial-gradient(760px 560px at 102% 2%, rgba(99, 102, 241, 0.12), transparent 55%),
+        radial-gradient(680px 680px at 72% 116%, rgba(20, 160, 120, 0.10), transparent 55%),
+        linear-gradient(180deg, #fbfcff 0%, #f3f6fc 100%);
+      background-attachment: fixed;
       min-height: calc(100vh - var(--dm-nav-top));
       padding: 0;
       display: flex;
@@ -141,28 +146,30 @@
     @media (max-width: 1000px) { .dm-stats-grid { grid-template-columns: repeat(2, 1fr); } }
     @media (max-width: 500px) { .dm-stats-grid { grid-template-columns: 1fr; } }
     .dm-stat-card {
-      background: white;
-      border-radius: var(--radius);
+      background: rgba(255, 255, 255, 0.55);
+      backdrop-filter: blur(20px) saturate(160%);
+      -webkit-backdrop-filter: blur(20px) saturate(160%);
+      border-radius: 18px;
       padding: 20px 22px;
-      border: 1.5px solid var(--gray-100);
-      box-shadow: var(--shadow-sm);
+      border: 1px solid rgba(255, 255, 255, 0.75);
+      box-shadow: 0 10px 30px rgba(30, 38, 60, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.55);
       position: relative;
       overflow: hidden;
-      transition: all 0.22s;
+      transition: transform 0.22s ease, box-shadow 0.22s ease;
       animation: dm-fadeUp 0.4s ease both;
     }
     .dm-stat-card:nth-child(1){animation-delay:0.05s;}
     .dm-stat-card:nth-child(2){animation-delay:0.10s;}
     .dm-stat-card:nth-child(3){animation-delay:0.15s;}
     .dm-stat-card:nth-child(4){animation-delay:0.20s;}
-    .dm-stat-card:hover { border-color: var(--green-border); transform: translateY(-2px); box-shadow: var(--shadow); }
+    .dm-stat-card:hover { transform: translateY(-3px); box-shadow: 0 18px 40px rgba(30, 38, 60, 0.13), inset 0 1px 0 rgba(255, 255, 255, 0.55); }
     .dm-stat-card::after {
       content: '';
       position: absolute;
       top: 0; right: 0;
-      width: 90px; height: 90px;
+      width: 120px; height: 120px;
       border-radius: 0 0 0 100%;
-      opacity: 0.04;
+      opacity: 0.10;
     }
     .dm-stat-card.green::after { background: var(--green); }
     .dm-stat-card.blue::after { background: var(--info); }
@@ -175,10 +182,11 @@
       display: flex; align-items: center; justify-content: center;
       font-size: 18px;
     }
-    .dm-stat-icon.green { background: var(--green-pale); }
-    .dm-stat-icon.blue { background: #e8f0fb; }
-    .dm-stat-icon.amber { background: #fef3e2; }
-    .dm-stat-icon.red { background: #fdecea; }
+    .dm-stat-icon { box-shadow: 0 6px 14px rgba(30, 38, 60, 0.10); }
+    .dm-stat-icon.green { background: linear-gradient(145deg, #ff5b6a, #d21725); }
+    .dm-stat-icon.blue { background: linear-gradient(145deg, #6f8cff, #4257b2); }
+    .dm-stat-icon.amber { background: linear-gradient(145deg, #f7b955, #d4850a); }
+    .dm-stat-icon.red { background: linear-gradient(145deg, #ff6f63, #c0392b); }
     .dm-stat-value { font-size: 30px; font-weight: 700; color: var(--gray-900); letter-spacing: -1px; line-height: 1; margin-bottom: 4px; }
     .dm-stat-label { font-size: 12.5px; color: var(--gray-400); font-weight: 500; }
 
@@ -191,10 +199,12 @@
     @media (max-width: 1100px) { .dm-main-grid { grid-template-columns: 1fr; } }
 
     .dm-card {
-      background: white;
-      border-radius: var(--radius);
-      border: 1.5px solid var(--gray-100);
-      box-shadow: var(--shadow-sm);
+      background: rgba(255, 255, 255, 0.58);
+      backdrop-filter: blur(22px) saturate(155%);
+      -webkit-backdrop-filter: blur(22px) saturate(155%);
+      border-radius: 18px;
+      border: 1px solid rgba(255, 255, 255, 0.75);
+      box-shadow: 0 12px 36px rgba(30, 38, 60, 0.09), inset 0 1px 0 rgba(255, 255, 255, 0.55);
       overflow: hidden;
       animation: dm-fadeUp 0.4s ease both;
       animation-delay: 0.25s;
@@ -204,7 +214,7 @@
       display: flex;
       align-items: center;
       gap: 10px;
-      border-bottom: 1.5px solid var(--gray-100);
+      border-bottom: 1px solid rgba(13, 34, 24, 0.06);
     }
     .dm-card-title { font-size: 14.5px; font-weight: 700; color: var(--gray-900); }
     .dm-card-sub { font-size: 12px; color: var(--gray-400); margin-top: 1px; }
@@ -233,28 +243,105 @@
     .dm-filter-tab.active { background: white; color: var(--green); box-shadow: var(--shadow-sm); }
     .dm-filter-tab:hover:not(.active) { color: var(--gray-600); }
 
-    .dm-device-table { width: 100%; min-width: 600px; border-collapse: collapse; }
+    .dm-device-table { width: 100%; min-width: 640px; border-collapse: collapse; }
     .dm-device-table th {
-      padding: 10px 18px;
+      padding: 0 12px 12px;
       font-size: 11px;
       font-weight: 600;
-      color: var(--gray-400);
+      color: var(--gray-500, #7c8c85);
       text-align: left;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.4px;
       text-transform: uppercase;
-      background: var(--gray-50);
-      border-bottom: 1.5px solid var(--gray-100);
-    }
-    .dm-device-table td {
-      padding: 14px 18px;
-      font-size: 13px;
-      border-bottom: 1px solid var(--gray-50);
+      background: transparent;
+      border-bottom: 1px solid rgba(13, 34, 24, 0.07);
       vertical-align: middle;
     }
-    .dm-device-table tr:last-child td { border-bottom: none; }
-    .dm-device-table tbody tr { cursor: pointer; transition: background 0.12s; }
-    .dm-device-table tbody tr:hover { background: var(--green-glass); }
-    .dm-device-table tbody tr.selected { background: var(--green-pale); }
+    /* Collapsible "Filters" toggle button */
+    .dm-filters-toggle {
+      display: inline-flex; align-items: center; gap: 6px;
+      height: 32px; padding: 0 12px;
+      font-size: 12.5px; font-weight: 600; color: var(--gray-700);
+      background: rgba(255, 255, 255, 0.7);
+      border: 1px solid rgba(13, 34, 24, 0.12);
+      border-radius: 9px;
+      cursor: pointer;
+      transition: all 0.13s;
+    }
+    .dm-filters-toggle:hover { border-color: var(--green-border); background: #fff; }
+    .dm-filters-toggle .dm-filters-caret { transition: transform 0.18s ease; color: var(--gray-400); }
+    .dm-filters-toggle[aria-expanded="true"] { border-color: var(--green); color: var(--green); background: rgba(210, 23, 37, 0.06); }
+    .dm-filters-toggle[aria-expanded="true"] .dm-filters-caret { transform: rotate(180deg); color: var(--green); }
+    .dm-filters-badge {
+      min-width: 17px; height: 17px; padding: 0 5px;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 10.5px; font-weight: 700; line-height: 1;
+      color: #fff; background: var(--green); border-radius: 999px;
+    }
+    .dm-filters-badge[hidden] { display: none; }
+    /* One-line filter bar revealed by the toggle */
+    .dm-filter-bar {
+      display: flex; align-items: center; flex-wrap: wrap; gap: 18px;
+      padding: 14px 22px;
+      border-bottom: 1px solid rgba(13, 34, 24, 0.06);
+      background: rgba(255, 255, 255, 0.4);
+      animation: dm-fadeUp 0.22s ease both;
+    }
+    .dm-filter-bar[hidden] { display: none; }
+    .dm-fb-clear[hidden] { display: none; }
+    .dm-fb-field { display: inline-flex; align-items: center; gap: 8px; }
+    .dm-fb-field label { font-size: 11.5px; font-weight: 600; color: var(--gray-500, #7c8c85); text-transform: uppercase; letter-spacing: 0.4px; }
+    .dm-fb-clear {
+      margin-left: auto; height: 30px; padding: 0 12px;
+      font-size: 12px; font-weight: 600; color: var(--green);
+      background: transparent; border: none; cursor: pointer; border-radius: 8px;
+    }
+    .dm-fb-clear:hover { background: rgba(210, 23, 37, 0.08); }
+    /* Filter pills (custom-styled selects) */
+    .dm-col-filter {
+      appearance: none; -webkit-appearance: none; -moz-appearance: none;
+      display: inline-block;
+      width: auto;
+      min-width: 80px;
+      max-width: 132px;
+      height: 30px;
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0;
+      text-transform: none;
+      color: var(--gray-700);
+      background-color: rgba(255, 255, 255, 0.78);
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%238fa99e' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 11px center;
+      border: 1px solid rgba(13, 34, 24, 0.12);
+      border-radius: 999px;
+      padding: 0 30px 0 13px;
+      cursor: pointer;
+      box-shadow: 0 1px 2px rgba(30, 38, 60, 0.05);
+      transition: border-color 0.13s, box-shadow 0.13s, background-color 0.13s, color 0.13s;
+    }
+    .dm-col-filter:hover { border-color: var(--green-border); background-color: #fff; }
+    .dm-col-filter:focus-visible { outline: none; border-color: var(--green); box-shadow: 0 0 0 3px rgba(210, 23, 37, 0.12); }
+    .dm-col-filter.dm-col-active {
+      border-color: rgba(210, 23, 37, 0.45);
+      color: var(--green);
+      font-weight: 600;
+      background-color: rgba(210, 23, 37, 0.07);
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23d21725' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    }
+    .dm-col-filter option { color: var(--gray-900); font-weight: 500; }
+    .dm-device-table td {
+      padding: 14px 12px;
+      font-size: 13px;
+      vertical-align: middle;
+      background: transparent;
+      border-bottom: 1px solid rgba(13, 34, 24, 0.05);
+    }
+    .dm-device-table tbody tr:last-child td { border-bottom: none; }
+    .dm-device-table tbody tr { cursor: pointer; transition: background 0.14s ease; }
+    .dm-device-table tbody tr:hover td { background: rgba(255, 255, 255, 0.6); }
+    .dm-device-table tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--green); }
+    .dm-device-table tbody tr.selected td { background: rgba(210, 23, 37, 0.06); }
 
     .dm-device-check {
       width: 16px; height: 16px;
@@ -278,74 +365,85 @@
       font-weight: 700;
     }
 
-    .dm-device-name-cell { display: flex; align-items: center; gap: 10px; }
-    .dm-device-icon-badge {
+    .dm-device-name-cell { display: flex; align-items: center; gap: 11px; }
+    .dm-device-avatar {
       width: 34px; height: 34px;
-      border-radius: 9px;
-      background: var(--green-pale);
+      border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
-      font-size: 16px;
-      flex-shrink: 0;
-    }
-    .dm-device-name { font-weight: 600; font-size: 13.5px; color: var(--gray-900); }
-    .dm-device-id { font-size: 11px; color: var(--gray-400); font-family: 'DM Mono', monospace; }
-
-    .dm-status-pill {
-      display: inline-flex; align-items: center; gap: 5px;
-      padding: 4px 10px;
-      border-radius: 20px;
       font-size: 11.5px;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+      flex-shrink: 0;
+      background: linear-gradient(150deg, rgba(255,255,255,0.9), rgba(232,237,243,0.85));
+      border: 1px solid rgba(255, 255, 255, 0.85);
+      color: var(--gray-600);
+      box-shadow: 0 3px 8px rgba(30, 38, 60, 0.10);
+    }
+    .dm-device-meta { min-width: 0; }
+    .dm-device-name {
+      font-weight: 600; font-size: 13px; color: var(--gray-900);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      max-width: 210px;
+    }
+    .dm-device-sub {
+      font-size: 11.5px; color: var(--gray-400); margin-top: 2px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      max-width: 210px;
+    }
+    .dm-device-id { font-family: 'DM Mono', monospace; }
+
+    /* Frosted-glass status pill: dot + text */
+    .dm-status-pill {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 5px 12px 5px 10px;
+      border-radius: 20px;
+      font-size: 12px;
       font-weight: 600;
+      color: var(--gray-700);
+      background: rgba(255, 255, 255, 0.55);
+      border: 1px solid rgba(255, 255, 255, 0.7);
+      box-shadow: 0 2px 7px rgba(30, 38, 60, 0.06);
     }
     .dm-status-pill::before {
       content: '';
-      width: 6px; height: 6px;
+      width: 7px; height: 7px;
       border-radius: 50%;
       flex-shrink: 0;
+      background: var(--gray-300, #c2cdc8);
     }
-    .dm-status-pill.online { background: #fde8ea; color: var(--green); }
-    .dm-status-pill.online::before { background: var(--green); box-shadow: 0 0 0 2px rgba(210, 23, 37, 0.2); animation: dm-pulse 2s infinite; }
-    .dm-status-pill.offline { background: var(--gray-50); color: var(--gray-400); }
+    .dm-status-pill.online { color: #178a52; }
+    .dm-status-pill.online::before { background: #21a065; box-shadow: 0 0 0 3px rgba(33, 160, 101, 0.18); }
     .dm-status-pill.offline::before { background: var(--gray-400); }
-    .dm-status-pill.warning { background: #fef3e2; color: var(--warning); }
+    .dm-status-pill.warning { color: var(--warning); }
     .dm-status-pill.warning::before { background: var(--warning); }
-    .dm-status-pill.maintenance { background: #e8f0fb; color: var(--info); }
     .dm-status-pill.maintenance::before { background: var(--info); }
-    @keyframes dm-pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
 
-    .dm-tag {
-      display: inline-flex; align-items: center;
-      padding: 2px 8px;
-      border-radius: 5px;
-      font-size: 11px;
-      font-weight: 600;
-      background: var(--gray-50);
-      color: var(--gray-600);
-      border: 1px solid var(--gray-100);
-    }
+    /* Type & OS as quiet plain text */
+    .dm-pill, .dm-tag { font-size: 12.5px; font-weight: 500; color: var(--gray-600); }
+    .dm-os-text { font-size: 12.5px; color: var(--gray-600); }
 
-    .dm-health-bar-wrap { width: 80px; }
-    .dm-health-label { font-size: 11px; font-weight: 600; margin-bottom: 4px; }
-    .dm-health-bar { height: 5px; background: var(--gray-100); border-radius: 3px; overflow: hidden; }
-    .dm-health-fill { height: 100%; border-radius: 3px; transition: width 1s ease; }
-    .dm-health-fill.good { background: var(--green); }
-    .dm-health-fill.ok { background: var(--warning); }
-    .dm-health-fill.bad { background: var(--danger); }
+    /* Health: gradient bar + muted figure */
+    .dm-health-min { display: flex; align-items: center; gap: 9px; }
+    .dm-health-min .dm-hbar { width: 48px; height: 6px; background: rgba(13, 34, 24, 0.08); border-radius: 6px; overflow: hidden; flex-shrink: 0; }
+    .dm-health-min .dm-hbar i { display: block; height: 100%; border-radius: 6px; }
+    .dm-health-min .dm-hval { font-size: 12px; font-weight: 600; color: var(--gray-500, #7c8c85); font-variant-numeric: tabular-nums; }
 
     .dm-action-btn {
       width: 28px; height: 28px;
-      border-radius: 6px;
+      border-radius: 7px;
       display: inline-flex; align-items: center; justify-content: center;
-      border: 1.5px solid var(--gray-100);
-      background: white;
+      border: none;
+      background: transparent;
       cursor: pointer;
       color: var(--gray-400);
-      font-size: 14px;
-      transition: all 0.15s;
+      font-size: 13px;
+      opacity: 0.55;
+      transition: all 0.12s;
       text-decoration: none;
     }
-    .dm-action-btn:hover { border-color: var(--green); color: var(--green); background: var(--green-pale); }
-    .dm-action-btn.danger:hover { border-color: var(--danger); color: var(--danger); background: #fdecea; }
+    .dm-device-table tbody tr:hover .dm-action-btn { opacity: 1; }
+    .dm-action-btn:hover { background: var(--gray-100); }
+    .dm-action-btn.danger:hover { background: #fdecea; }
 
     .dm-right-panel { display: flex; flex-direction: column; gap: 16px; }
 
@@ -370,6 +468,9 @@
     .dm-alert-desc { font-size: 11.5px; color: var(--gray-600); margin-top: 2px; }
 
     .dm-activity-list { padding: 0 8px 8px; }
+    /* Recent Activity grows to match the Device Inventory card height */
+    .dm-activity-card { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+    .dm-activity-card .dm-activity-list { flex: 1; overflow-y: auto; }
     .dm-activity-item {
       display: flex; align-items: flex-start; gap: 10px;
       padding: 12px 14px;
@@ -399,8 +500,10 @@
       animation-delay: 0.3s;
     }
     @media (max-width: 1000px) { .dm-bottom-grid { grid-template-columns: 1fr; } }
+    /* Make bottom cards flex columns so their content fills the equal-height boxes */
+    .dm-bottom-grid > .dm-card { display: flex; flex-direction: column; }
 
-    .dm-donut-wrap { display: flex; flex-direction: column; align-items: center; padding: 20px 16px; }
+    .dm-donut-wrap { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px 16px; flex: 1; }
     .dm-donut-svg { width: 130px; height: 130px; }
     .dm-donut-legend { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; width: 100%; }
     .dm-legend-item { display: flex; align-items: center; gap: 8px; }
@@ -409,7 +512,7 @@
     .dm-legend-val { font-size: 12px; font-weight: 700; color: var(--gray-900); }
     .dm-legend-pct { font-size: 11px; color: var(--gray-400); }
 
-    .dm-actions-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 14px 16px 18px; }
+    .dm-actions-grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 12px; padding: 14px 16px 18px; flex: 1; }
     .dm-quick-action {
       display: flex; flex-direction: column; align-items: center; justify-content: center;
       gap: 6px;
@@ -426,9 +529,10 @@
     .dm-quick-action .qa-label { font-size: 11.5px; font-weight: 600; color: var(--gray-600); line-height: 1.3; }
     .dm-quick-action:hover .qa-label { color: var(--green); }
 
-    .dm-compliance-list { padding: 12px 18px 18px; }
+    .dm-compliance-list { padding: 12px 18px 18px; flex: 1; display: flex; flex-direction: column; }
     .dm-compliance-item {
       display: flex; align-items: center; gap: 12px;
+      flex: 1;
       padding: 10px 0;
       border-bottom: 1px solid var(--gray-50);
     }
@@ -559,9 +663,16 @@
     .dm-toast.show { transform: translateY(0); opacity: 1; }
     .dm-toast.err { background: var(--danger); }
 
-    .dm-table-scroll { overflow-x: auto; }
-    .dm-table-scroll::-webkit-scrollbar { height: 6px; }
+    .dm-table-scroll { overflow-x: auto; overflow-y: auto; max-height: 560px; }
+    .dm-table-scroll::-webkit-scrollbar { height: 6px; width: 6px; }
     .dm-table-scroll::-webkit-scrollbar-thumb { background: var(--gray-200); border-radius: 10px; }
+    .dm-device-table thead th {
+      position: sticky; top: 0; z-index: 5;
+      padding-top: 14px;
+      background: rgba(255, 255, 255, 0.72);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
 
     @media (max-width: 768px) {
       .dm-topbar {
@@ -647,6 +758,9 @@
         <span class="dm-search-icon">🔍</span>
         <input type="text" placeholder="Search devices, users, IDs…" id="searchInput">
       </div>
+      <select id="companyFilter" style="margin-right:8px;border:1px solid var(--gray-200);border-radius:8px;padding:8px 10px;font-size:13px;color:var(--gray-700);">
+        <option value="">All Companies</option>
+      </select>
       <button type="button" class="dm-add-btn" id="enrollBtn">＋ Add Device</button>
     </header>
 
@@ -691,6 +805,12 @@
                 <div class="dm-card-sub" id="deviceCount">0 devices</div>
               </div>
               <div class="dm-card-header-right">
+                <button type="button" class="dm-btn-cancel" id="bulkDeleteBtn" style="display:none;color:var(--danger);border-color:var(--danger);">🗑 Delete (<span id="bulkDeleteCount">0</span>)</button>
+                <button type="button" class="dm-filters-toggle" id="filtersToggle" aria-expanded="false">
+                  <span>Filters</span>
+                  <span class="dm-filters-badge" id="filtersBadge" hidden>0</span>
+                  <svg class="dm-filters-caret" width="11" height="7" viewBox="0 0 11 7" aria-hidden="true"><path d="M1 1l4.5 4.5L10 1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
                 <div class="dm-filter-tabs">
                   <button type="button" class="dm-filter-tab active" data-tab="all">All</button>
                   <button type="button" class="dm-filter-tab" data-tab="online">Online</button>
@@ -698,6 +818,26 @@
                   <button type="button" class="dm-filter-tab" data-tab="update">Alerts</button>
                 </div>
               </div>
+            </div>
+            <div class="dm-filter-bar" id="filterBar" hidden>
+              <div class="dm-fb-field">
+                <label for="statusColFilter">Status</label>
+                <select class="dm-col-filter" id="statusColFilter">
+                  <option value="">All</option>
+                  <option value="online">Online</option>
+                  <option value="offline">Offline</option>
+                  <option value="update">Alert</option>
+                </select>
+              </div>
+              <div class="dm-fb-field">
+                <label for="typeColFilter">Type</label>
+                <select class="dm-col-filter" id="typeColFilter"><option value="">All</option></select>
+              </div>
+              <div class="dm-fb-field">
+                <label for="osColFilter">OS</label>
+                <select class="dm-col-filter" id="osColFilter"><option value="">All</option></select>
+              </div>
+              <button type="button" class="dm-fb-clear" id="clearFiltersBtn" hidden>Clear all</button>
             </div>
             <div class="dm-table-scroll">
               <table class="dm-device-table" id="deviceTable">
@@ -707,10 +847,9 @@
                     <th>Device</th>
                     <th>Status</th>
                     <th>Type</th>
-                    <th>User</th>
                     <th>Health</th>
                     <th>OS</th>
-                    <th>Actions</th>
+                    <th style="text-align:right">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="deviceBody"></tbody>
@@ -736,7 +875,7 @@
                 </div>
               </div>
             </div>
-            <div class="dm-card" style="animation-delay:0.32s">
+            <div class="dm-card dm-activity-card" style="animation-delay:0.32s">
               <div class="dm-card-header">
                 <div>
                   <div class="dm-card-title">⚡ Recent Activity</div>
@@ -839,8 +978,8 @@
       <div class="dm-modal-header">
         <div class="dm-modal-header-icon">🖥️</div>
         <div>
-          <div class="dm-modal-title">Enroll New Device</div>
-          <div class="dm-modal-sub">Register a device into the management system</div>
+          <div class="dm-modal-title" id="modalTitle">Enroll New Device</div>
+          <div class="dm-modal-sub" id="modalSub">Register a device into the management system</div>
         </div>
         <div class="dm-modal-close" id="modalClose">✕</div>
       </div>
@@ -864,24 +1003,50 @@
               <option>Mobile</option>
               <option>Tablet</option>
               <option>Server</option>
+              <option>SIM</option>
             </select>
           </div>
           <div class="dm-form-field">
             <label>Operating System</label>
-            <select id="newDevOS">
-              <option>Windows 11</option>
-              <option>Windows 10</option>
-              <option>macOS Sequoia</option>
-              <option>macOS Sonoma</option>
-              <option>iOS 18</option>
-              <option>Android 15</option>
+            <input type="text" id="newDevOS" list="osOptions" placeholder="e.g. Windows 11">
+            <datalist id="osOptions">
+              <option value="Windows 11">
+              <option value="Windows 10">
+              <option value="macOS Sequoia">
+              <option value="macOS Sonoma">
+              <option value="iOS 18">
+              <option value="Android 15">
+            </datalist>
+          </div>
+        </div>
+        <div class="dm-form-row">
+          <div class="dm-form-field">
+            <label>Status</label>
+            <select id="newDevStatus">
+              <option value="online">Online</option>
+              <option value="offline">Offline</option>
+              <option value="update">Alert</option>
             </select>
+          </div>
+          <div class="dm-form-field">
+            <label>Company</label>
+            <input type="text" id="newDevCompany" placeholder="e.g. Injaaz">
+          </div>
+        </div>
+        <div class="dm-form-row">
+          <div class="dm-form-field">
+            <label>Owner (free text)</label>
+            <input type="text" id="newDevOwner" placeholder="Name of person assigned">
+          </div>
+          <div class="dm-form-field">
+            <label>Assigned User Email</label>
+            <input type="email" id="newDevUser" placeholder="user@company.com">
           </div>
         </div>
         <div class="dm-form-row full">
           <div class="dm-form-field">
-            <label>Assigned User Email</label>
-            <input type="email" id="newDevUser" placeholder="user@company.com">
+            <label>Comment / Notes</label>
+            <input type="text" id="newDevComment" placeholder="Specs, plan details, etc.">
           </div>
         </div>
       </div>
@@ -916,12 +1081,50 @@
     return 'maintenance';
   }
   function statusLabel(s) {
-    const m = { online:'Online', offline:'Offline', update:'Warning', idle:'Idle' };
+    const m = { online:'Online', offline:'Offline', update:'Alert', idle:'Idle' };
     return m[s] || (s ? s.charAt(0).toUpperCase()+s.slice(1) : '—');
   }
   function deviceIcon(type) {
-    const icons = { Laptop:'💻', Desktop:'🖥️', Mobile:'📱', Server:'🖥️', Tablet:'📟' };
+    const icons = { Laptop:'💻', Desktop:'🖥️', Mobile:'📱', Server:'🖥️', Tablet:'📟', SIM:'📶' };
     return icons[type] || '💻';
+  }
+  function avatarInitials(d) {
+    const src = (d.asset_owner_name || d.name || '').trim();
+    const parts = src.split(/[\s\-]+/).filter(Boolean);
+    if (!parts.length) return '?';
+    return (parts[0][0] + (parts[1] ? parts[1][0] : '')).toUpperCase();
+  }
+  function healthRingColor(hc) {
+    if (hc === 'good') return 'linear-gradient(90deg, #34d27b, #1f9d63)';
+    if (hc === 'ok') return 'linear-gradient(90deg, #f7b955, #d4850a)';
+    return 'linear-gradient(90deg, #ff6f63, #c0392b)';
+  }
+  function populateCompanyFilter() {
+    const sel = document.getElementById('companyFilter');
+    const current = sel.value;
+    const companies = Array.from(new Set(devicesData.map(d => d.company).filter(Boolean))).sort();
+    sel.innerHTML = '<option value="">All Companies</option>' +
+      companies.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+    if (companies.includes(current)) sel.value = current;
+  }
+  function fillColFilter(id, values, allLabel) {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    const current = sel.value;
+    const opts = Array.from(new Set(values.filter(Boolean))).sort((a, b) => a.localeCompare(b));
+    sel.innerHTML = `<option value="">${allLabel}</option>` +
+      opts.map(v => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join('');
+    if (opts.includes(current)) sel.value = current;
+  }
+  function populateColumnFilters() {
+    fillColFilter('typeColFilter', devicesData.map(d => d.device_type), 'All');
+    fillColFilter('osColFilter', devicesData.map(d => d.os), 'All');
+  }
+  function updateFilterBadge(count) {
+    const badge = document.getElementById('filtersBadge');
+    const clear = document.getElementById('clearFiltersBtn');
+    if (badge) { badge.textContent = count; badge.hidden = count === 0; }
+    if (clear) clear.hidden = count === 0;
   }
   function healthClass(h) {
     if (h >= 80) return 'good';
@@ -932,18 +1135,32 @@
   function renderDevices(data) {
     const tbody = document.getElementById('deviceBody');
     const searchQ = (document.getElementById('searchInput').value || '').toLowerCase();
+    const companyQ = document.getElementById('companyFilter').value || '';
+    const statusQ = document.getElementById('statusColFilter')?.value || '';
+    const typeQ = document.getElementById('typeColFilter')?.value || '';
+    const osQ = document.getElementById('osColFilter')?.value || '';
+    [['statusColFilter', statusQ], ['typeColFilter', typeQ], ['osColFilter', osQ]].forEach(([id, v]) => {
+      document.getElementById(id)?.classList.toggle('dm-col-active', !!v);
+    });
+    updateFilterBadge([statusQ, typeQ, osQ].filter(Boolean).length);
     let filtered = data.filter(d => {
       const matchTab = currentTab === 'all' || d.status === currentTab;
-      const matchSearch = !searchQ || 
+      const matchCompany = !companyQ || d.company === companyQ;
+      const matchStatus = !statusQ || d.status === statusQ;
+      const matchType = !typeQ || d.device_type === typeQ;
+      const matchOs = !osQ || (d.os || '') === osQ;
+      const matchSearch = !searchQ ||
         (d.name||'').toLowerCase().includes(searchQ) ||
         (d.device_id||'').toLowerCase().includes(searchQ) ||
         (d.assigned_user||'').toLowerCase().includes(searchQ) ||
+        (d.asset_owner_name||'').toLowerCase().includes(searchQ) ||
+        (d.company||'').toLowerCase().includes(searchQ) ||
         (d.os||'').toLowerCase().includes(searchQ);
-      return matchTab && matchSearch;
+      return matchTab && matchCompany && matchStatus && matchType && matchOs && matchSearch;
     });
 
     if (!filtered.length) {
-      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--gray-400);">No devices match your filter</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--gray-400);">No devices match your filter</td></tr>';
       document.getElementById('deviceCount').textContent = '0 devices';
       return;
     }
@@ -956,31 +1173,27 @@
       <tr data-id="${d.id}" onclick="window.dmSelectRow && window.dmSelectRow(this)">
         <td><input type="checkbox" class="dm-device-check row-cb" value="${d.id}" onclick="event.stopPropagation()"></td>
         <td>
-          <div class="dm-device-name-cell">
-            <div class="dm-device-icon-badge">${deviceIcon(d.device_type)}</div>
-            <div>
+          <div class="dm-device-name-cell" title="${escapeHtml(d.device_comment || '')}">
+            <div class="dm-device-avatar">${escapeHtml(avatarInitials(d))}</div>
+            <div class="dm-device-meta">
               <div class="dm-device-name">${escapeHtml(d.name)}</div>
-              <div class="dm-device-id">${d.device_id}</div>
+              <div class="dm-device-sub">${escapeHtml(d.company || d.assigned_user || d.asset_owner_name || '')}${(d.company || d.assigned_user || d.asset_owner_name) ? ' · ' : ''}<span class="dm-device-id">${d.device_id}</span></div>
             </div>
           </div>
         </td>
         <td><span class="dm-status-pill ${sc}">${statusLabel(d.status)}</span></td>
-        <td><span class="dm-tag">${escapeHtml(d.device_type)}</span></td>
+        <td><span class="dm-pill">${escapeHtml(d.device_type)}</span></td>
         <td>
-          <div style="font-size:13px;font-weight:500;color:var(--gray-900)">${escapeHtml(d.assigned_user || '—')}</div>
-        </td>
-        <td>
-          <div class="dm-health-bar-wrap">
-            <div class="dm-health-label" style="color:${hc==='good'?'var(--green)':hc==='ok'?'var(--warning)':'var(--danger)'}">${h}%</div>
-            <div class="dm-health-bar">
-              <div class="dm-health-fill ${hc}" style="width:${h}%"></div>
-            </div>
+          <div class="dm-health-min">
+            <span class="dm-hbar"><i style="width:${h}%;background:${healthRingColor(hc)}"></i></span>
+            <span class="dm-hval">${h}%</span>
           </div>
         </td>
-        <td><span class="dm-tag">${escapeHtml(d.os)}</span></td>
+        <td><span class="dm-os-text">${escapeHtml(d.os || '—')}</span></td>
         <td>
-          <div style="display:flex;gap:4px">
-            <span class="dm-action-btn" title="Remove" onclick="event.stopPropagation();window.dmRemoveDevice && window.dmRemoveDevice(${d.id})">🗑</span>
+          <div style="display:flex;gap:6px;justify-content:flex-end">
+            <span class="dm-action-btn" title="Edit" onclick="event.stopPropagation();window.dmEditDevice && window.dmEditDevice(${d.id})">✏️</span>
+            <span class="dm-action-btn danger" title="Remove" onclick="event.stopPropagation();window.dmRemoveDevice && window.dmRemoveDevice(${d.id})">🗑</span>
           </div>
         </td>
       </tr>`;
@@ -988,11 +1201,45 @@
     document.getElementById('deviceCount').textContent = filtered.length + ' devices';
 
     tbody.querySelectorAll('.row-cb').forEach(cb => {
+      cb.checked = selected.has(parseInt(cb.value));
       cb.onchange = () => {
         if (cb.checked) selected.add(parseInt(cb.value));
         else selected.delete(parseInt(cb.value));
+        updateBulkDeleteUI();
       };
     });
+    updateBulkDeleteUI();
+  }
+
+  function updateBulkDeleteUI() {
+    const btn = document.getElementById('bulkDeleteBtn');
+    btn.style.display = selected.size > 0 ? '' : 'none';
+    document.getElementById('bulkDeleteCount').textContent = selected.size;
+  }
+
+  async function bulkDeleteSelected() {
+    if (!selected.size) return;
+    if (!confirm(`Remove ${selected.size} selected device(s)?`)) return;
+    try {
+      const res = await fetch('/api/admin/devices/bulk', {
+        method: 'DELETE',
+        headers: apiHeaders(),
+        body: JSON.stringify({ ids: Array.from(selected) })
+      });
+      const json = await res.json();
+      if (!res.ok) { showToast(json.message || json.error || 'Failed to remove devices', true); return; }
+      devicesData = devicesData.filter(d => !selected.has(d.id));
+      selected.clear();
+      renderDevices(devicesData);
+      updateStats();
+      updateDonut();
+      updateCompliance();
+      updateActivity();
+      updateAlerts();
+      showToast('✅ Selected devices removed');
+    } catch (e) {
+      showToast('Failed to remove devices', true);
+    }
   }
 
   function updateStats() {
@@ -1123,6 +1370,7 @@
       if (cb.checked) selected.add(id);
       else selected.delete(id);
     }
+    updateBulkDeleteUI();
   };
 
   window.dmRemoveDevice = async function(id) {
@@ -1153,6 +1401,8 @@
       if (!res.ok) { showToast('Failed to load devices', true); return; }
       const json = await res.json();
       devicesData = (json.devices || json.data?.devices || []);
+      populateCompanyFilter();
+      populateColumnFilters();
       renderDevices(devicesData);
       updateStats();
       updateDonut();
@@ -1164,29 +1414,82 @@
     }
   }
 
-  async function enrollDevice() {
+  let editingDeviceId = null;
+
+  function resetEnrollFields() {
+    document.getElementById('newDevName').value = '';
+    document.getElementById('newDevUser').value = '';
+    document.getElementById('newDevSerial').value = '';
+    document.getElementById('newDevCompany').value = '';
+    document.getElementById('newDevOwner').value = '';
+    document.getElementById('newDevComment').value = '';
+    document.getElementById('newDevType').value = 'Laptop';
+    document.getElementById('newDevOS').value = 'Windows 11';
+    document.getElementById('newDevStatus').value = 'online';
+  }
+
+  function openEnrollModal(deviceId) {
+    editingDeviceId = deviceId || null;
+    if (!editingDeviceId) {
+      resetEnrollFields();
+      document.getElementById('modalTitle').textContent = 'Enroll New Device';
+      document.getElementById('modalSub').textContent = 'Register a device into the management system';
+      document.getElementById('enrollSubmitBtn').textContent = 'Enroll Device';
+    } else {
+      const d = devicesData.find(x => x.id === editingDeviceId);
+      if (!d) return;
+      document.getElementById('newDevName').value = d.name || '';
+      document.getElementById('newDevSerial').value = d.serial_or_asset_tag || '';
+      document.getElementById('newDevType').value = d.device_type || 'Laptop';
+      document.getElementById('newDevOS').value = d.os || 'Windows 11';
+      document.getElementById('newDevStatus').value = d.status || 'online';
+      document.getElementById('newDevCompany').value = d.company || '';
+      document.getElementById('newDevOwner').value = d.asset_owner_name || '';
+      document.getElementById('newDevUser').value = d.assigned_user_email || '';
+      document.getElementById('newDevComment').value = d.device_comment || '';
+      document.getElementById('modalTitle').textContent = 'Edit Device';
+      document.getElementById('modalSub').textContent = 'Update device details';
+      document.getElementById('enrollSubmitBtn').textContent = 'Save Changes';
+    }
+    document.getElementById('enrollModal').classList.add('open');
+  }
+  window.dmEditDevice = function(id) { openEnrollModal(id); };
+
+  function closeEnrollModal() {
+    document.getElementById('enrollModal').classList.remove('open');
+    editingDeviceId = null;
+  }
+
+  async function saveDeviceModal() {
     const name = (document.getElementById('newDevName').value || '').trim();
     const type = document.getElementById('newDevType').value;
     const os = document.getElementById('newDevOS').value;
+    const status = document.getElementById('newDevStatus').value;
     const user = (document.getElementById('newDevUser').value || '').trim();
     const serial = (document.getElementById('newDevSerial').value || '').trim();
+    const company = (document.getElementById('newDevCompany').value || '').trim();
+    const owner = (document.getElementById('newDevOwner').value || '').trim();
+    const comment = (document.getElementById('newDevComment').value || '').trim();
     if (!name) { showToast('Please fill in device name', true); return; }
+    const body = {
+      name, device_type: type, os, status, assigned_user_email: user || undefined, serial_or_asset_tag: serial || undefined,
+      company: company || undefined, asset_owner_name: owner || undefined, device_comment: comment || undefined
+    };
+    const isEdit = !!editingDeviceId;
     try {
-      const res = await fetch('/api/admin/devices', {
-        method: 'POST',
+      const res = await fetch(isEdit ? '/api/admin/devices/' + editingDeviceId : '/api/admin/devices', {
+        method: isEdit ? 'PUT' : 'POST',
         headers: apiHeaders(),
-        body: JSON.stringify({ name, device_type: type, os, assigned_user_email: user || undefined, serial_or_asset_tag: serial || undefined })
+        body: JSON.stringify(body)
       });
       const json = await res.json();
-      if (!res.ok) { showToast(json.message || json.error || 'Failed to enroll device', true); return; }
-      document.getElementById('enrollModal').classList.remove('open');
-      document.getElementById('newDevName').value = '';
-      document.getElementById('newDevUser').value = '';
-      document.getElementById('newDevSerial').value = '';
+      if (!res.ok) { showToast(json.message || json.error || 'Failed to save device', true); return; }
+      closeEnrollModal();
+      resetEnrollFields();
       loadDevices();
-      showToast('✅ Device enrolled successfully');
+      showToast(isEdit ? '✅ Device updated successfully' : '✅ Device enrolled successfully');
     } catch (e) {
-      showToast('Failed to enroll device', true);
+      showToast('Failed to save device', true);
     }
   }
 
@@ -1261,22 +1564,58 @@
     }
   }
 
+  function csvCell(v) {
+    const s = String(v == null ? '' : v);
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  }
   function exportCSV() {
-    const rows = [['ID','Name','Status','Type','OS','User','Health']];
-    devicesData.forEach(d => rows.push([d.device_id,d.name,d.status,d.device_type,d.os,d.assigned_user||'',d.health||0]));
+    const rows = [['ID','Name','Status','Type','Company','User','Owner','Health','Comment']];
+    devicesData.forEach(d => rows.push([
+      d.device_id, d.name, d.status, d.device_type, d.company || '',
+      d.assigned_user || '', d.asset_owner_name || '', d.health || 0, d.device_comment || ''
+    ]));
     const a = document.createElement('a');
-    a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(rows.map(r=>r.join(',')).join('\n'));
+    a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(rows.map(r => r.map(csvCell).join(',')).join('\n'));
     a.download = 'devices_export.csv';
     a.click();
     showToast('CSV exported');
   }
 
   document.getElementById('searchInput').oninput = () => renderDevices(devicesData);
+  document.getElementById('companyFilter').onchange = () => renderDevices(devicesData);
+  ['statusColFilter', 'typeColFilter', 'osColFilter'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.onchange = () => {
+      // if the Status dropdown is used, clear the redundant status tab selection
+      if (id === 'statusColFilter' && el.value) {
+        document.querySelectorAll('.dm-filter-tab').forEach(x => x.classList.toggle('active', x.dataset.tab === 'all'));
+        currentTab = 'all';
+      }
+      renderDevices(devicesData);
+    };
+  });
+  // Collapsible Filters panel
+  document.getElementById('filtersToggle').onclick = function() {
+    const bar = document.getElementById('filterBar');
+    const open = bar.hidden;
+    bar.hidden = !open;
+    this.setAttribute('aria-expanded', String(open));
+  };
+  document.getElementById('clearFiltersBtn').onclick = () => {
+    ['statusColFilter', 'typeColFilter', 'osColFilter'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    renderDevices(devicesData);
+  };
   document.querySelectorAll('.dm-filter-tab').forEach(t => {
     t.onclick = () => {
       document.querySelectorAll('.dm-filter-tab').forEach(x => x.classList.remove('active'));
       t.classList.add('active');
       currentTab = t.dataset.tab || 'all';
+      // tabs and the Status column dropdown both filter status — keep them in sync
+      const sc = document.getElementById('statusColFilter');
+      if (sc) sc.value = '';
       renderDevices(devicesData);
     };
   });
@@ -1286,20 +1625,22 @@
       if (this.checked) selected.add(parseInt(cb.value));
       else selected.delete(parseInt(cb.value));
     });
+    updateBulkDeleteUI();
   };
+  document.getElementById('bulkDeleteBtn').onclick = bulkDeleteSelected;
   document.getElementById('exportBtn').onclick = exportCSV;
-  document.getElementById('enrollBtn2').onclick = () => document.getElementById('enrollModal').classList.add('open');
+  document.getElementById('enrollBtn2').onclick = () => openEnrollModal();
   document.getElementById('importExcelBtn').onclick = () => document.getElementById('deviceExcelInput')?.click();
   document.getElementById('downloadSampleBtn').onclick = downloadSampleExcel;
   document.getElementById('deviceExcelInput').onchange = function() {
     const file = this.files && this.files[0];
     if (file) importDevicesExcel(file);
   };
-  document.getElementById('enrollBtn').onclick = () => document.getElementById('enrollModal').classList.add('open');
-  document.getElementById('modalClose').onclick = () => document.getElementById('enrollModal').classList.remove('open');
-  document.getElementById('modalCancel').onclick = () => document.getElementById('enrollModal').classList.remove('open');
-  document.getElementById('enrollSubmitBtn').onclick = enrollDevice;
-  document.getElementById('enrollModal').onclick = function(e) { if (e.target === this) this.classList.remove('open'); };
+  document.getElementById('enrollBtn').onclick = () => openEnrollModal();
+  document.getElementById('modalClose').onclick = closeEnrollModal;
+  document.getElementById('modalCancel').onclick = closeEnrollModal;
+  document.getElementById('enrollSubmitBtn').onclick = saveDeviceModal;
+  document.getElementById('enrollModal').onclick = function(e) { if (e.target === this) closeEnrollModal(); };
 
   document.querySelectorAll('.sb-nav-item[data-dm-nav]').forEach(el => {
     el.addEventListener('click', function(e) {

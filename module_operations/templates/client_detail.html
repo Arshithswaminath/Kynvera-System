@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+  {% include 'partials/caveat_font.html' %}
+  <title>{{ client.client_name }} - Clients</title>
+  <meta name="theme-color" content="#d21725">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <style>
+    :root { --primary: #d21725; --primary-light: #e8323f; --ops-ink:#0f172a; --ops-muted:#64748b; --ops-rule:#e2e8f0; }
+    body.ops-page { background:#faf8f8; }
+    .ops-wrap { max-width: 1180px; margin: 7rem auto 3rem; padding: 0 1.25rem; }
+    .ops-btn { display:inline-flex; align-items:center; gap:.45rem; border:none; border-radius:10px; padding:.62rem 1.05rem; font-weight:600; font-size:.9rem; cursor:pointer; text-decoration:none; transition:transform .12s ease, box-shadow .12s ease; }
+    .ops-btn-primary { background:var(--primary); color:#fff; }
+    .ops-btn-primary:hover { transform:translateY(-1px); box-shadow:0 6px 16px rgba(210,23,37,.22); }
+    .ops-btn-ghost { background:#fff; color:var(--ops-ink); border:1px solid var(--ops-rule); }
+    .ops-btn-ghost:hover { border-color:var(--primary-light); }
+    .ops-btn-sm { padding:.36rem .6rem; font-size:.8rem; border-radius:8px; }
+    .ops-btn[disabled] { opacity:.55; cursor:not-allowed; transform:none !important; box-shadow:none !important; }
+    .ops-card { background:#fff; border:1px solid var(--ops-rule); border-radius:16px; box-shadow:0 1px 3px rgba(15,23,42,.05); overflow:hidden; }
+
+    /* Hero */
+    .cl-hero { position:relative; overflow:hidden; border-radius:18px; padding:1.6rem 1.8rem; margin-bottom:1.1rem;
+      background:linear-gradient(135deg, #a8121e 0%, #d21725 70%, #e8323f 100%); color:#fff;
+      box-shadow:0 14px 34px rgba(168,18,30,.28); }
+    .cl-hero::before { content:''; position:absolute; right:-70px; top:-90px; width:280px; height:280px; border-radius:50%;
+      background:rgba(255,255,255,.08); pointer-events:none; }
+    .cl-hero::after { content:''; position:absolute; right:90px; bottom:-120px; width:200px; height:200px; border-radius:50%;
+      background:rgba(255,255,255,.05); pointer-events:none; }
+    .cl-hero-row { position:relative; z-index:1; display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; flex-wrap:wrap; }
+    .cl-hero-main { display:flex; gap:1rem; align-items:center; min-width:0; }
+    .cl-hero-avatar { width:56px; height:56px; border-radius:16px; background:rgba(255,255,255,.18); border:1px solid rgba(255,255,255,.3);
+      display:flex; align-items:center; justify-content:center; font-size:1.25rem; font-weight:800; letter-spacing:.03em; flex-shrink:0; }
+    .cl-hero-name { font-size:1.5rem; font-weight:800; line-height:1.2; margin:0 0 .45rem; word-break:break-word; }
+    .cl-chip-row { display:flex; gap:.45rem; flex-wrap:wrap; align-items:center; }
+    .cl-chip { display:inline-flex; align-items:center; gap:.35rem; background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.22);
+      color:#fff; border-radius:999px; padding:.24rem .7rem; font-size:.78rem; font-weight:600; text-decoration:none; }
+    .cl-chip svg { width:13px; height:13px; flex-shrink:0; }
+    a.cl-chip:hover { background:rgba(255,255,255,.28); }
+    .cl-chip.mono { font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:.74rem; letter-spacing:.02em; }
+    .cl-chip.st-active { background:#dcfce7; border-color:#dcfce7; color:#166534; }
+    .cl-chip.st-inactive { background:#f1f5f9; border-color:#f1f5f9; color:#475569; }
+    .cl-hero-actions { display:flex; gap:.6rem; flex-wrap:wrap; }
+    .cl-hero-actions .ops-btn-ghost { background:rgba(255,255,255,.95); }
+
+    /* KPIs */
+    .kpi-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:.9rem; margin-bottom:1.1rem; }
+    .kpi-card { background:#fff; border:1px solid var(--ops-rule); border-radius:14px; padding:.95rem 1.1rem; box-shadow:0 1px 3px rgba(15,23,42,.04); }
+    .kpi-label { font-size:.68rem; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--ops-muted); margin-bottom:.2rem; }
+    .kpi-value { font-size:1.32rem; font-weight:800; color:var(--ops-ink); line-height:1.15; font-variant-numeric:tabular-nums; white-space:nowrap; }
+    .kpi-sub { font-size:.74rem; color:var(--ops-muted); margin-top:.2rem; }
+
+    /* Layout */
+    .detail-grid { display:grid; grid-template-columns:1fr 340px; gap:1.1rem; align-items:start; }
+    .card-head { display:flex; align-items:center; justify-content:space-between; gap:.8rem; flex-wrap:wrap; padding:1rem 1.25rem; border-bottom:1px solid #f1f5f9; }
+    .card-title { font-size:.95rem; font-weight:800; color:var(--ops-ink); margin:0; }
+    .card-title small { font-weight:600; color:var(--ops-muted); }
+    .card-body { padding:1.1rem 1.25rem; }
+    .stack > .ops-card { margin-bottom:1.1rem; }
+
+    /* Chart */
+    .spark-wrap { padding:1.1rem 1.25rem 0.9rem; }
+    .spark { display:flex; align-items:flex-end; gap:6px; height:120px; }
+    .spark-col { flex:1; display:flex; flex-direction:column; justify-content:flex-end; height:100%; min-width:0; }
+    .spark-bar { background:#fbd5d8; border-radius:4px 4px 0 0; height:0%; transition:height .5s cubic-bezier(.22,.8,.36,1); }
+    .spark-bar.now { background:var(--primary); }
+    .spark-col:hover .spark-bar { background:var(--primary-light); }
+    .spark-labels { display:flex; gap:6px; margin-top:.4rem; }
+    .spark-labels span { flex:1; text-align:center; font-size:.64rem; color:var(--ops-muted); overflow:hidden; }
+    .spark-empty { padding:.4rem 0 .6rem; color:var(--ops-muted); font-size:.85rem; }
+
+    /* Invoices */
+    .cl-chips-sm { display:flex; gap:.35rem; flex-wrap:wrap; }
+    .chip-sm { border:1px solid var(--ops-rule); background:#fff; color:var(--ops-muted); border-radius:999px; padding:.26rem .7rem; font-size:.76rem; font-weight:600; cursor:pointer; font-family:inherit; }
+    .chip-sm.active { background:var(--primary); border-color:var(--primary); color:#fff; }
+    .inv-table { width:100%; border-collapse:collapse; font-size:.86rem; }
+    .inv-table th { text-align:left; color:var(--ops-muted); font-size:.7rem; text-transform:uppercase; letter-spacing:.06em; padding:.6rem 1.25rem; border-bottom:1px solid #f1f5f9; white-space:nowrap; }
+    .inv-table td { padding:.68rem 1.25rem; border-bottom:1px solid #f8fafc; vertical-align:middle; color:var(--ops-ink); }
+    .inv-table tr:last-child td { border-bottom:none; }
+    .inv-table tbody tr:hover { background:#fcfcfd; }
+    .inv-no { font-weight:700; color:var(--primary); text-decoration:none; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:.8rem; }
+    .inv-no:hover { text-decoration:underline; }
+    .num-cell { font-variant-numeric:tabular-nums; white-space:nowrap; }
+    .badge-inv { display:inline-block; padding:.18rem .55rem; border-radius:999px; font-size:.72rem; font-weight:700; text-transform:capitalize; }
+    .badge-inv.draft { background:#f1f5f9; color:#475569; }
+    .badge-inv.issued { background:#fef3c7; color:#92400e; }
+    .badge-inv.paid { background:#dcfce7; color:#166534; }
+    .pdf-link { color:var(--ops-muted); display:inline-flex; }
+    .pdf-link:hover { color:var(--primary); }
+    .inv-empty { padding:2.2rem 1.25rem; text-align:center; color:var(--ops-muted); }
+
+    /* Sidebar */
+    .kv { display:flex; justify-content:space-between; gap:1rem; padding:.5rem 0; border-bottom:1px solid #f8fafc; font-size:.86rem; }
+    .kv:last-child { border-bottom:none; }
+    .kv .k { color:var(--ops-muted); flex-shrink:0; }
+    .kv .v { color:var(--ops-ink); font-weight:600; text-align:right; word-break:break-word; white-space:pre-line; }
+    .notes-body { font-size:.88rem; color:var(--ops-ink); white-space:pre-line; }
+    .danger-card { background:#fef2f2; border:1px solid #fecaca; border-radius:16px; padding:1.1rem 1.25rem; }
+    .danger-title { font-size:.92rem; font-weight:800; color:#991b1b; margin:0 0 .35rem; }
+    .danger-note { font-size:.78rem; color:#b91c1c; margin:.5rem 0 0; }
+    .btn-danger { background:#dc2626; color:#fff; }
+    .btn-danger:hover { box-shadow:0 6px 16px rgba(220,38,38,.25); transform:translateY(-1px); }
+
+    /* Modal + toast */
+    .ops-modal-backdrop { position:fixed; inset:0; background:rgba(15,23,42,.45); display:none; align-items:center; justify-content:center; z-index:1000; padding:1rem; }
+    .ops-modal-backdrop.open { display:flex; }
+    .ops-modal { background:#fff; border-radius:16px; width:100%; max-width:560px; max-height:92vh; overflow:auto; box-shadow:0 20px 50px rgba(15,23,42,.25); }
+    .ops-modal-head { padding:1.1rem 1.35rem; border-bottom:1px solid var(--ops-rule); display:flex; align-items:center; justify-content:space-between; }
+    .ops-modal-head h3 { margin:0; font-size:1.15rem; color:var(--ops-ink); }
+    .ops-modal-body { padding:1.35rem; }
+    .ops-modal-foot { padding:1rem 1.35rem; border-top:1px solid var(--ops-rule); display:flex; justify-content:flex-end; gap:.6rem; }
+    .ops-field { margin-bottom:1rem; }
+    .ops-field label { display:block; font-size:.82rem; font-weight:600; color:#334155; margin-bottom:.35rem; }
+    .ops-field input, .ops-field select, .ops-field textarea { width:100%; border:1px solid #cbd5e1; border-radius:9px; padding:.6rem .7rem; font-size:.9rem; font-family:inherit; box-sizing:border-box; }
+    .ops-field input:focus, .ops-field select:focus, .ops-field textarea:focus { outline:none; border-color:var(--primary-light); box-shadow:0 0 0 3px rgba(210,23,37,.12); }
+    .ops-grid2 { display:grid; grid-template-columns:1fr 1fr; gap:.85rem; }
+    .ops-close { background:none; border:none; font-size:1.5rem; line-height:1; cursor:pointer; color:#94a3b8; }
+    .ops-toast { position:fixed; bottom:1.5rem; left:50%; transform:translateX(-50%); background:var(--ops-ink); color:#fff; padding:.7rem 1.2rem; border-radius:10px; font-size:.9rem; z-index:2000; opacity:0; transition:opacity .2s; pointer-events:none; }
+    .ops-toast.show { opacity:1; }
+    .ops-toast.err { background:#b91c1c; }
+
+    @media (max-width:960px){ .detail-grid{grid-template-columns:1fr;} }
+    @media (max-width:760px){ .kpi-grid{grid-template-columns:repeat(2,1fr);} }
+    @media (max-width:640px){
+      .ops-grid2{grid-template-columns:1fr;}
+      .cl-hero{padding:1.25rem 1.2rem;}
+      .col-hide-sm{display:none;}
+      .inv-table th, .inv-table td { padding-left:.9rem; padding-right:.9rem; }
+    }
+  </style>
+</head>
+<body class="ops-page">
+  {% set active_page = 'operations' %}
+  {% include 'partials/main_navbar.html' with context %}
+
+  <div class="ops-wrap">
+    <div style="margin-bottom:1rem">
+      <a href="/operations/clients" class="back-btn">
+        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        Clients
+      </a>
+    </div>
+
+    <!-- Hero (server-rendered: paints instantly) -->
+    <div class="cl-hero">
+      <div class="cl-hero-row">
+        <div class="cl-hero-main">
+          <div class="cl-hero-avatar" id="heroAvatar">{{ (client.client_name.split()[0][0] ~ (client.client_name.split()[1][0] if client.client_name.split()|length > 1 else ''))|upper }}</div>
+          <div style="min-width:0">
+            <h1 class="cl-hero-name">{{ client.client_name }}</h1>
+            <div class="cl-chip-row">
+              <span class="cl-chip mono">{{ client.client_id }}</span>
+              <span class="cl-chip st-{{ client.status }}">{{ client.status|capitalize }}</span>
+              {% if client.email %}
+              <a class="cl-chip" href="mailto:{{ client.email }}">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"/></svg>
+                {{ client.email }}
+              </a>
+              {% endif %}
+              {% if client.phone %}
+              <a class="cl-chip" href="tel:{{ client.phone }}">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 0 1-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z"/></svg>
+                {{ client.phone }}
+              </a>
+              {% endif %}
+              {% if client.city %}
+              <span class="cl-chip">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z"/></svg>
+                {{ client.city }}{% if client.country %}, {{ client.country }}{% endif %}
+              </span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        <div class="cl-hero-actions">
+          <button class="ops-btn ops-btn-ghost" id="editBtn">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125"/></svg>
+            Edit
+          </button>
+          <a class="ops-btn ops-btn-primary" href="/operations/invoices?new_for={{ client.id }}">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14"/></svg>
+            New Invoice
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="kpi-grid">
+      <div class="kpi-card"><div class="kpi-label">Total Revenue</div><div class="kpi-value" id="kpiRevenue">–</div><div class="kpi-sub" id="kpiRevenueSub"></div></div>
+      <div class="kpi-card"><div class="kpi-label">Outstanding</div><div class="kpi-value" id="kpiOutstanding">–</div><div class="kpi-sub" id="kpiOutstandingSub"></div></div>
+      <div class="kpi-card"><div class="kpi-label">Invoices</div><div class="kpi-value" id="kpiCount">–</div><div class="kpi-sub" id="kpiCountSub"></div></div>
+      <div class="kpi-card"><div class="kpi-label">Avg Invoice</div><div class="kpi-value" id="kpiAvg">–</div><div class="kpi-sub" id="kpiAvgSub"></div></div>
+    </div>
+
+    <div class="detail-grid">
+      <div class="stack" style="min-width:0">
+        <!-- Revenue chart -->
+        <div class="ops-card">
+          <div class="card-head">
+            <h2 class="card-title">Revenue <small>· last 12 months</small></h2>
+            <span class="num-cell" style="font-weight:800;color:var(--ops-ink)" id="chartTotal"></span>
+          </div>
+          <div class="spark-wrap" id="chartWrap">
+            <div class="spark" id="spark"></div>
+            <div class="spark-labels" id="sparkLabels"></div>
+          </div>
+        </div>
+
+        <!-- Invoices -->
+        <div class="ops-card">
+          <div class="card-head">
+            <h2 class="card-title">Invoices <small id="invCount"></small></h2>
+            <div class="cl-chips-sm" id="invChips">
+              <button class="chip-sm active" data-st="all">All</button>
+              <button class="chip-sm" data-st="draft">Draft</button>
+              <button class="chip-sm" data-st="issued">Issued</button>
+              <button class="chip-sm" data-st="paid">Paid</button>
+            </div>
+          </div>
+          <table class="inv-table">
+            <thead><tr><th>Invoice</th><th>Date</th><th class="col-hide-sm">Due</th><th class="num-cell">Total</th><th>Status</th><th></th></tr></thead>
+            <tbody id="invBody"><tr><td colspan="6" class="inv-empty">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Sidebar -->
+      <div class="stack" style="min-width:0">
+        <div class="ops-card">
+          <div class="card-head"><h2 class="card-title">Billing details</h2></div>
+          <div class="card-body" style="padding-top:.5rem;padding-bottom:.6rem">
+            <div class="kv"><span class="k">Contact</span><span class="v">{{ client.contact_person or '—' }}</span></div>
+            <div class="kv"><span class="k">Address</span><span class="v">{{ client.billing_address or '—' }}</span></div>
+            <div class="kv"><span class="k">City</span><span class="v">{{ client.city or '—' }}</span></div>
+            <div class="kv"><span class="k">Country</span><span class="v">{{ client.country or '—' }}</span></div>
+            <div class="kv"><span class="k">Tax ID / TRN</span><span class="v">{{ client.tax_id or '—' }}</span></div>
+          </div>
+        </div>
+
+        {% if client.notes %}
+        <div class="ops-card">
+          <div class="card-head"><h2 class="card-title">Notes</h2></div>
+          <div class="card-body notes-body">{{ client.notes }}</div>
+        </div>
+        {% endif %}
+
+        <div class="ops-card">
+          <div class="card-head"><h2 class="card-title">Record</h2></div>
+          <div class="card-body" style="padding-top:.5rem;padding-bottom:.6rem">
+            <div class="kv"><span class="k">Created</span><span class="v">{{ client.created_at.strftime('%d %b %Y') if client.created_at else '—' }}</span></div>
+            <div class="kv"><span class="k">Client since</span><span class="v" id="clientSince">—</span></div>
+            <div class="kv"><span class="k">First invoice</span><span class="v" id="firstInvoice">—</span></div>
+            <div class="kv"><span class="k">Last invoice</span><span class="v" id="lastInvoice">—</span></div>
+          </div>
+        </div>
+
+        <div class="danger-card">
+          <h2 class="danger-title">Danger zone</h2>
+          <button class="ops-btn btn-danger ops-btn-sm" id="deleteBtn" disabled>Delete client</button>
+          <p class="danger-note" id="deleteNote">Checking invoices…</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit modal (same fields as list page) -->
+  <div class="ops-modal-backdrop" id="clModal">
+    <div class="ops-modal">
+      <div class="ops-modal-head">
+        <h3>Edit Client</h3>
+        <button class="ops-close" data-close>&times;</button>
+      </div>
+      <div class="ops-modal-body">
+        <input type="hidden" id="f_id">
+        <div class="ops-field"><label>Client Name *</label><input type="text" id="f_client_name"></div>
+        <div class="ops-grid2">
+          <div class="ops-field"><label>Contact Person</label><input type="text" id="f_contact_person"></div>
+          <div class="ops-field"><label>Tax ID / TRN</label><input type="text" id="f_tax_id"></div>
+        </div>
+        <div class="ops-grid2">
+          <div class="ops-field"><label>Email</label><input type="email" id="f_email"></div>
+          <div class="ops-field"><label>Phone</label><input type="text" id="f_phone"></div>
+        </div>
+        <div class="ops-field"><label>Billing Address</label><textarea id="f_billing_address" rows="2"></textarea></div>
+        <div class="ops-grid2">
+          <div class="ops-field"><label>City</label><input type="text" id="f_city"></div>
+          <div class="ops-field"><label>Country</label><input type="text" id="f_country"></div>
+        </div>
+        <div class="ops-grid2">
+          <div class="ops-field"><label>Status</label>
+            <select id="f_status"><option value="active">Active</option><option value="inactive">Inactive</option></select>
+          </div>
+        </div>
+        <div class="ops-field"><label>Notes</label><textarea id="f_notes" rows="2"></textarea></div>
+      </div>
+      <div class="ops-modal-foot">
+        <button class="ops-btn ops-btn-ghost" data-close>Cancel</button>
+        <button class="ops-btn ops-btn-primary" id="saveBtn">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="ops-toast" id="toast"></div>
+
+  <script src="{{ url_for('static', filename='pwa-install.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='mobile_utils.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='api-client.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+  <script>
+  (function(){
+    const CLIENT_DB_ID = {{ client.id }};
+    const modal = document.getElementById('clModal');
+    let clientData = null;
+    let allInvoices = [];
+    let invFilter = 'all';
+
+    function toast(msg, isErr){ const t=document.getElementById('toast'); t.textContent=msg; t.className='ops-toast show'+(isErr?' err':''); setTimeout(()=>t.className='ops-toast',2600); }
+    function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+    function fmtAED(n){ return 'AED ' + (Number(n)||0).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+    function fmtDate(d){ if(!d) return '—'; const dt=new Date(d+'T00:00:00'); return dt.toLocaleDateString('en-GB', {day:'2-digit', month:'short', year:'numeric'}); }
+    function monthsSince(iso){
+      if(!iso) return '—';
+      const then = new Date(iso); const now = new Date();
+      let m = (now.getFullYear()-then.getFullYear())*12 + (now.getMonth()-then.getMonth());
+      if(m < 1) return 'This month';
+      if(m < 12) return m + ' month' + (m===1?'':'s');
+      const y = Math.floor(m/12); const rem = m%12;
+      return y + ' yr' + (y===1?'':'s') + (rem ? ' ' + rem + ' mo' : '');
+    }
+
+    async function load(){
+      try{
+        const res = await ApiClient.fetch('/operations/api/clients/' + CLIENT_DB_ID + '/details', { method:'GET' });
+        const data = await res.json();
+        if(!res.ok || !data.success){ throw new Error(data.error||'Failed to load'); }
+        clientData = data.client;
+        allInvoices = data.invoices || [];
+        renderKpis(data.stats);
+        renderChart(data.monthly_revenue || []);
+        renderInvoices();
+        renderRecord(data.stats);
+        renderDanger(data.stats);
+      }catch(e){
+        toast(e.message, true);
+        document.getElementById('invBody').innerHTML = '<tr><td colspan="6" class="inv-empty">'+esc(e.message)+'</td></tr>';
+      }
+    }
+
+    function renderKpis(s){
+      document.getElementById('kpiRevenue').textContent = fmtAED(s.total_revenue);
+      document.getElementById('kpiRevenueSub').textContent = s.paid_total ? fmtAED(s.paid_total) + ' collected' : '';
+      document.getElementById('kpiOutstanding').textContent = fmtAED(s.outstanding);
+      document.getElementById('kpiOutstandingSub').textContent = s.issued_count ? s.issued_count + ' issued invoice' + (s.issued_count===1?'':'s') + ' awaiting payment' : 'Nothing awaiting payment';
+      document.getElementById('kpiCount').textContent = s.invoice_count;
+      const parts = [];
+      if(s.issued_count) parts.push(s.issued_count + ' issued');
+      if(s.paid_count) parts.push(s.paid_count + ' paid');
+      if(s.draft_count) parts.push(s.draft_count + ' draft');
+      document.getElementById('kpiCountSub').textContent = parts.join(' · ');
+      document.getElementById('kpiAvg').textContent = s.invoice_count ? fmtAED(s.avg_invoice_value) : '—';
+      document.getElementById('kpiAvgSub').textContent = s.invoice_count ? 'per invoice' : '';
+    }
+
+    function renderChart(series){
+      const spark = document.getElementById('spark');
+      const labels = document.getElementById('sparkLabels');
+      const max = Math.max(...series.map(p=>p.total), 0);
+      document.getElementById('chartTotal').textContent = fmtAED(series.reduce((s,p)=>s+p.total,0));
+      if(max <= 0){
+        document.getElementById('chartWrap').innerHTML = '<div class="spark-empty">No revenue recorded in the last 12 months.</div>';
+        return;
+      }
+      const last = series.length - 1;
+      spark.innerHTML = series.map((p,i)=>{
+        const monthName = new Date(p.month + '-01T00:00:00').toLocaleDateString('en-GB', {month:'long', year:'numeric'});
+        return `<div class="spark-col" title="${esc(monthName)} — ${esc(fmtAED(p.total))}">
+          <div class="spark-bar${i===last?' now':''}" data-h="${max ? Math.max(4, p.total/max*100) : 4}"></div>
+        </div>`;
+      }).join('');
+      labels.innerHTML = series.map(p=>'<span>'+esc(p.label)+'</span>').join('');
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{
+        spark.querySelectorAll('.spark-bar').forEach(b=>{ b.style.height = b.dataset.h + '%'; });
+      }));
+    }
+
+    function renderInvoices(){
+      const body = document.getElementById('invBody');
+      const rows = invFilter==='all' ? allInvoices : allInvoices.filter(i=>i.status===invFilter);
+      document.getElementById('invCount').textContent = '· ' + allInvoices.length;
+      if(!allInvoices.length){
+        body.innerHTML = `<tr><td colspan="6" class="inv-empty">No invoices yet. <a href="/operations/invoices?new_for=${CLIENT_DB_ID}" style="color:var(--primary);font-weight:600">Create the first invoice</a></td></tr>`;
+        return;
+      }
+      if(!rows.length){
+        body.innerHTML = '<tr><td colspan="6" class="inv-empty">No ' + esc(invFilter) + ' invoices.</td></tr>';
+        return;
+      }
+      body.innerHTML = rows.map(inv=>`
+        <tr>
+          <td><a class="inv-no" href="/operations/invoices/${esc(inv.invoice_no)}">${esc(inv.invoice_no)}</a></td>
+          <td class="num-cell">${fmtDate(inv.invoice_date)}</td>
+          <td class="num-cell col-hide-sm">${fmtDate(inv.due_date)}</td>
+          <td class="num-cell" style="font-weight:700">${fmtAED(inv.grand_total)}</td>
+          <td><span class="badge-inv ${esc(inv.status)}">${esc(inv.status)}</span></td>
+          <td style="text-align:right"><a class="pdf-link" href="/operations/invoices/${esc(inv.invoice_no)}/pdf" target="_blank" title="Download PDF">
+            <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m.75 12 3 3m0 0 3-3m-3 3v-6m-1.5-9H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>
+          </a></td>
+        </tr>`).join('');
+    }
+
+    function renderRecord(s){
+      document.getElementById('clientSince').textContent = monthsSince(s.first_invoice_date || clientData.created_at);
+      document.getElementById('firstInvoice').textContent = fmtDate(s.first_invoice_date);
+      document.getElementById('lastInvoice').textContent = fmtDate(s.last_invoice_date);
+    }
+
+    function renderDanger(s){
+      const btn = document.getElementById('deleteBtn');
+      const note = document.getElementById('deleteNote');
+      if(s.invoice_count > 0){
+        btn.disabled = true;
+        note.textContent = 'This client has ' + s.invoice_count + ' invoice' + (s.invoice_count===1?'':'s') + ' and cannot be deleted.';
+      }else{
+        btn.disabled = false;
+        note.textContent = 'Permanently removes this client. This cannot be undone.';
+      }
+    }
+
+    document.getElementById('invChips').addEventListener('click', e=>{
+      const chip = e.target.closest('.chip-sm'); if(!chip) return;
+      invFilter = chip.dataset.st;
+      document.querySelectorAll('#invChips .chip-sm').forEach(c=>c.classList.toggle('active', c===chip));
+      renderInvoices();
+    });
+
+    // Edit modal
+    function openModal(){
+      const c = clientData || {};
+      const f = id=>document.getElementById(id);
+      f('f_id').value = CLIENT_DB_ID;
+      f('f_client_name').value = c.client_name||'';
+      f('f_contact_person').value = c.contact_person||''; f('f_tax_id').value = c.tax_id||'';
+      f('f_email').value = c.email||''; f('f_phone').value = c.phone||'';
+      f('f_billing_address').value = c.billing_address||''; f('f_city').value = c.city||'';
+      f('f_country').value = c.country||''; f('f_status').value = c.status||'active';
+      f('f_notes').value = c.notes||'';
+      modal.classList.add('open');
+    }
+    function closeModal(){ modal.classList.remove('open'); }
+    async function save(){
+      const f = id=>document.getElementById(id).value;
+      const payload = { client_name:f('f_client_name').trim(), contact_person:f('f_contact_person').trim(),
+        tax_id:f('f_tax_id').trim(), email:f('f_email').trim(), phone:f('f_phone').trim(),
+        billing_address:f('f_billing_address').trim(), city:f('f_city').trim(), country:f('f_country').trim(),
+        status:f('f_status'), notes:f('f_notes').trim() };
+      if(!payload.client_name){ toast('Client name is required', true); return; }
+      try{
+        const res = await ApiClient.fetch('/operations/api/clients/' + CLIENT_DB_ID, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+        const data = await res.json();
+        if(!res.ok || !data.success){ throw new Error(data.error||'Save failed'); }
+        toast('Client updated');
+        setTimeout(()=>location.reload(), 450);
+      }catch(e){ toast(e.message, true); }
+    }
+    async function del(){
+      if(!confirm('Delete this client? This cannot be undone.')) return;
+      try{
+        const res = await ApiClient.fetch('/operations/api/clients/' + CLIENT_DB_ID, { method:'DELETE' });
+        const data = await res.json();
+        if(!res.ok || !data.success){ throw new Error(data.error||'Delete failed'); }
+        window.location.href = '/operations/clients';
+      }catch(e){ toast(e.message, true); }
+    }
+
+    document.getElementById('editBtn').addEventListener('click', openModal);
+    document.getElementById('saveBtn').addEventListener('click', save);
+    document.getElementById('deleteBtn').addEventListener('click', del);
+    modal.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click', closeModal));
+    modal.addEventListener('click', e=>{ if(e.target===modal) closeModal(); });
+
+    load();
+  })();
+  </script>
+</body>
+</html>

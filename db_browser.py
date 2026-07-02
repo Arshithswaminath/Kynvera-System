@@ -1,12 +1,28 @@
 """
-Injaaz App — Database Browser (User-Friendly Edition)
-Run: python db_browser.py
-Then open: http://localhost:8765
+Amaan App — Database Browser (User-Friendly Edition)
+
+Local SQLite (default):
+    python db_browser.py
+    → http://localhost:8765
+
+Production Postgres (Render) — READ-ONLY by default:
+    export PROD_DATABASE_URL="postgresql://USER:PASS@HOST/DBNAME"   # from Render dashboard
+    python db_browser.py --prod
+    → opens the SAME UI against the live database, but edits/deletes are blocked.
+
+To allow editing the live database (use with care, back up first):
+    python db_browser.py --prod --allow-edit
+
+The production URL is read from the PROD_DATABASE_URL (or DATABASE_URL) environment
+variable — it is never hard-coded here. Never commit a real database URL to git.
 """
 
+import argparse
 import csv
 import io
 import json
+import os
+import sqlite3
 import http.server
 import webbrowser
 import threading
@@ -14,19 +30,81 @@ import urllib.parse
 from datetime import datetime, date
 from decimal import Decimal
 
-try:
-    import psycopg2
-    import psycopg2.extras
-except ImportError:
-    print("Installing psycopg2-binary...")
-    import subprocess, sys
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "psycopg2-binary"])
-    import psycopg2
-    import psycopg2.extras
-
 # ── CONFIG ──────────────────────────────────────────────────────────────────
-DATABASE_URL = "postgresql://injaaz_db_t2rb_user:BxwqYHt2GiA6uenC9PkjgebiIE2ydut8@dpg-d6sheakr85hc73esmetg-a.oregon-postgres.render.com/injaaz_db_t2rb"
+DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "injaaz.db")
 PORT = 8765
+
+# Backend selection — populated in main(). Defaults to local SQLite.
+BACKEND = "sqlite"        # "sqlite" | "postgres"
+PG_URL = None             # set from env when --prod is used
+ALLOW_EDIT = True         # SQLite local: editable. --prod forces read-only unless --allow-edit.
+# ────────────────────────────────────────────────────────────────────────────
+
+
+# ── Database abstraction (works for both SQLite and Postgres) ────────────────
+
+def get_conn():
+    """Open a connection to whichever backend is active."""
+    if BACKEND == "postgres":
+        import psycopg2
+        return psycopg2.connect(PG_URL)
+    conn = sqlite3.connect(DATABASE_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def _ph():
+    """Parameter placeholder for the active backend (? for SQLite, %s for Postgres)."""
+    return "%s" if BACKEND == "postgres" else "?"
+
+
+def _like():
+    """Case-insensitive match operator (ILIKE on Postgres, LIKE on SQLite)."""
+    return "ILIKE" if BACKEND == "postgres" else "LIKE"
+
+
+def get_table_names(cur):
+    """List user tables for the active backend."""
+    if BACKEND == "postgres":
+        cur.execute(
+            "SELECT table_name FROM information_schema.tables "
+            "WHERE table_schema = 'public' AND table_type = 'BASE TABLE' "
+            "ORDER BY table_name"
+        )
+    else:
+        cur.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' "
+            "AND name NOT LIKE 'sqlite_%' ORDER BY name"
+        )
+    return [r[0] for r in cur.fetchall()]
+
+
+def get_columns(cur, table):
+    """Return [(name, type, is_pk), ...] in column order for the active backend."""
+    if BACKEND == "postgres":
+        cur.execute(
+            "SELECT column_name, data_type FROM information_schema.columns "
+            "WHERE table_schema = 'public' AND table_name = %s "
+            "ORDER BY ordinal_position",
+            (table,),
+        )
+        cols = [(r[0], r[1]) for r in cur.fetchall()]
+        cur.execute(
+            "SELECT a.attname FROM pg_index i "
+            "JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey) "
+            "WHERE i.indrelid = %s::regclass AND i.indisprimary",
+            (f'"{table}"',),
+        )
+        pks = {r[0] for r in cur.fetchall()}
+        return [(name, typ, name in pks) for name, typ in cols]
+    cur.execute(f'PRAGMA table_info("{table}")')
+    return [(r[1], r[2], r[5] > 0) for r in cur.fetchall()]
+
+
+def _rows_as_dicts(cur):
+    """Read all rows from a cursor as dicts, regardless of backend, via cur.description."""
+    names = [d[0] for d in cur.description]
+    return [dict(zip(names, r)) for r in cur.fetchall()]
 # ────────────────────────────────────────────────────────────────────────────
 
 # Friendly metadata for each table
@@ -93,49 +171,42 @@ DASHBOARD_QUERIES = [
 ]
 
 
-def get_conn():
-    return psycopg2.connect(DATABASE_URL)
-
-
 def safe_json(obj):
     if isinstance(obj, (datetime, date)):
         return obj.isoformat()
     if isinstance(obj, Decimal):
         return float(obj)
-    if isinstance(obj, memoryview):
-        return obj.tobytes().decode("utf-8", errors="replace")
+    if isinstance(obj, bytes):
+        return obj.decode("utf-8", errors="replace")
     return str(obj)
 
 
 def api_tables():
     conn = get_conn()
     cur = conn.cursor()
-    cur.execute("""
-        SELECT table_name FROM information_schema.tables
-        WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
-        ORDER BY table_name;
-    """)
-    tables = [r[0] for r in cur.fetchall()]
+    tables = get_table_names(cur)
     counts = {}
     for t in tables:
-        cur.execute(f'SELECT COUNT(*) FROM "{t}"')
-        counts[t] = cur.fetchone()[0]
-    cur.close()
+        try:
+            cur.execute(f'SELECT COUNT(*) FROM "{t}"')
+            counts[t] = cur.fetchone()[0]
+        except Exception:
+            conn.rollback()  # Postgres aborts the txn on error; reset before next query
+            counts[t] = 0
     conn.close()
     return {"tables": tables, "counts": counts, "meta": TABLE_META,
-            "filters": TABLE_FILTERS, "dashboard": DASHBOARD_QUERIES}
+            "filters": TABLE_FILTERS, "dashboard": DASHBOARD_QUERIES,
+            "backend": BACKEND, "read_only": not ALLOW_EDIT}
 
 
 def api_table_data(table, page=1, per_page=50, search="", sort_col="", sort_dir="asc", preset_filter=""):
     conn = get_conn()
-    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur = conn.cursor()
 
-    cur.execute("""
-        SELECT column_name, data_type FROM information_schema.columns
-        WHERE table_schema='public' AND table_name=%s ORDER BY ordinal_position;
-    """, (table,))
-    columns = cur.fetchall()
-    col_names = [c["column_name"] for c in columns]
+    col_info = get_columns(cur, table)
+    col_names = [c[0] for c in col_info]
+    col_types = {c[0]: c[1] for c in col_info}
+    ph = _ph()
 
     conditions = []
     params = []
@@ -144,14 +215,14 @@ def api_table_data(table, page=1, per_page=50, search="", sort_col="", sort_dir=
         conditions.append(f"({preset_filter})")
 
     if search and col_names:
-        search_conds = [f'CAST("{c}" AS TEXT) ILIKE %s' for c in col_names]
+        search_conds = [f'CAST("{c}" AS TEXT) {_like()} {ph}' for c in col_names]
         conditions.append("(" + " OR ".join(search_conds) + ")")
         params += [f"%{search}%"] * len(col_names)
 
     where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
 
     cur.execute(f'SELECT COUNT(*) FROM "{table}" {where}', params)
-    total = cur.fetchone()["count"]
+    total = cur.fetchone()[0]
 
     order = ""
     if sort_col and sort_col in col_names:
@@ -159,14 +230,14 @@ def api_table_data(table, page=1, per_page=50, search="", sort_col="", sort_dir=
         order = f'ORDER BY "{sort_col}" {direction}'
 
     offset = (page - 1) * per_page
-    cur.execute(f'SELECT * FROM "{table}" {where} {order} LIMIT %s OFFSET %s', params + [per_page, offset])
-    rows = [dict(r) for r in cur.fetchall()]
+    cur.execute(f'SELECT * FROM "{table}" {where} {order} LIMIT {ph} OFFSET {ph}',
+                params + [per_page, offset])
+    rows = _rows_as_dicts(cur)
 
-    cur.close()
     conn.close()
     return {
         "columns": col_names,
-        "column_types": {c["column_name"]: c["data_type"] for c in columns},
+        "column_types": col_types,
         "rows": rows,
         "total": int(total),
         "page": page,
@@ -176,19 +247,16 @@ def api_table_data(table, page=1, per_page=50, search="", sort_col="", sort_dir=
 
 def api_export_csv(table, search="", sort_col="", sort_dir="asc", preset_filter=""):
     conn = get_conn()
-    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    cur.execute("""
-        SELECT column_name FROM information_schema.columns
-        WHERE table_schema='public' AND table_name=%s ORDER BY ordinal_position;
-    """, (table,))
-    col_names = [c["column_name"] for c in cur.fetchall()]
+    cur = conn.cursor()
+    col_names = [c[0] for c in get_columns(cur, table)]
+    ph = _ph()
 
     conditions = []
     params = []
     if preset_filter:
         conditions.append(f"({preset_filter})")
     if search and col_names:
-        search_conds = [f'CAST("{c}" AS TEXT) ILIKE %s' for c in col_names]
+        search_conds = [f'CAST("{c}" AS TEXT) {_like()} {ph}' for c in col_names]
         conditions.append("(" + " OR ".join(search_conds) + ")")
         params += [f"%{search}%"] * len(col_names)
 
@@ -199,8 +267,7 @@ def api_export_csv(table, search="", sort_col="", sort_dir="asc", preset_filter=
         order = f'ORDER BY "{sort_col}" {direction}'
 
     cur.execute(f'SELECT * FROM "{table}" {where} {order}', params)
-    rows = [dict(r) for r in cur.fetchall()]
-    cur.close()
+    rows = _rows_as_dicts(cur)
     conn.close()
 
     output = io.StringIO()
@@ -221,11 +288,12 @@ def api_dashboard():
         try:
             where = f"WHERE {q['filter']}" if q.get("filter") else ""
             cur.execute(f"SELECT COUNT(*) FROM \"{q['table']}\" {where}")
-            count = cur.fetchone()[0]
+            row = cur.fetchone()
+            count = row[0] if row else 0
         except Exception:
+            conn.rollback()  # reset aborted Postgres txn before the next card query
             count = 0
         results.append({**q, "count": count})
-    cur.close()
     conn.close()
     return {"cards": results}
 
@@ -234,85 +302,83 @@ def api_get_primary_key(table):
     """Return the primary key column name for a table (usually 'id')."""
     conn = get_conn()
     cur = conn.cursor()
-    cur.execute("""
-        SELECT kcu.column_name
-        FROM information_schema.table_constraints tc
-        JOIN information_schema.key_column_usage kcu
-          ON tc.constraint_name = kcu.constraint_name
-         AND tc.table_schema = kcu.table_schema
-        WHERE tc.constraint_type = 'PRIMARY KEY'
-          AND tc.table_schema = 'public'
-          AND tc.table_name = %s
-        LIMIT 1;
-    """, (table,))
-    row = cur.fetchone()
-    cur.close()
+    cols = get_columns(cur, table)
     conn.close()
-    return row[0] if row else "id"
+    pk_cols = [c[0] for c in cols if c[2]]
+    return pk_cols[0] if pk_cols else "id"
 
 
 def api_update_row(table, pk_col, pk_val, updates):
     """Update a row. updates = {col: new_value, ...}"""
+    if not ALLOW_EDIT:
+        return {"error": "Read-only mode — editing the live database is disabled. "
+                         "Restart with --allow-edit to enable (back up first)."}
     if not updates:
         return {"error": "No fields to update."}
-    # Only allow known columns
     conn = get_conn()
     cur = conn.cursor()
-    cur.execute("""
-        SELECT column_name FROM information_schema.columns
-        WHERE table_schema='public' AND table_name=%s;
-    """, (table,))
-    valid_cols = {r[0] for r in cur.fetchall()}
+    ph = _ph()
+    valid_cols = {c[0] for c in get_columns(cur, table)}
     bad = [k for k in updates if k not in valid_cols]
     if bad:
-        cur.close(); conn.close()
+        conn.close()
         return {"error": f"Unknown column(s): {', '.join(bad)}"}
-    set_clause = ", ".join(f'"{k}" = %s' for k in updates)
+    set_clause = ", ".join(f'"{k}" = {ph}' for k in updates)
     values = list(updates.values()) + [pk_val]
     try:
-        cur.execute(f'UPDATE "{table}" SET {set_clause} WHERE "{pk_col}" = %s', values)
+        cur.execute(f'UPDATE "{table}" SET {set_clause} WHERE "{pk_col}" = {ph}', values)
         conn.commit()
         return {"ok": True, "rowcount": cur.rowcount}
     except Exception as e:
         conn.rollback()
         return {"error": str(e)}
     finally:
-        cur.close(); conn.close()
+        conn.close()
 
 
 def api_delete_row(table, pk_col, pk_val):
     """Delete a single row by primary key."""
+    if not ALLOW_EDIT:
+        return {"error": "Read-only mode — deleting from the live database is disabled. "
+                         "Restart with --allow-edit to enable (back up first)."}
     conn = get_conn()
     cur = conn.cursor()
+    ph = _ph()
     try:
-        cur.execute(f'DELETE FROM "{table}" WHERE "{pk_col}" = %s', (pk_val,))
+        cur.execute(f'DELETE FROM "{table}" WHERE "{pk_col}" = {ph}', (pk_val,))
         conn.commit()
         return {"ok": True, "rowcount": cur.rowcount}
     except Exception as e:
         conn.rollback()
         return {"error": str(e)}
     finally:
-        cur.close(); conn.close()
+        conn.close()
 
 
 def api_run_query(sql):
+    # In read-only mode allow only a single SELECT statement.
+    if not ALLOW_EDIT:
+        stripped = sql.strip().rstrip(";").lstrip("(").strip()
+        if (not stripped.lower().startswith(("select", "with"))) or ";" in sql.strip().rstrip(";"):
+            return {"columns": [], "rows": [], "rowcount": 0,
+                    "error": "Read-only mode — only a single SELECT query is allowed. "
+                             "Restart with --allow-edit to run writes (back up first)."}
     conn = get_conn()
-    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur = conn.cursor()
     try:
         cur.execute(sql)
         if cur.description:
-            col_names = [d.name for d in cur.description]
-            rows = [dict(r) for r in cur.fetchall()]
+            col_names = [d[0] for d in cur.description]
+            rows = [dict(zip(col_names, r)) for r in cur.fetchall()]
             conn.commit()
             return {"columns": col_names, "rows": rows, "rowcount": len(rows), "error": None}
         else:
             conn.commit()
-            return {"columns": [], "rows": [], "rowcount": cur.rowcount, "error": None}
+            return {"columns": [], "rows": [], "rowcount": cur.rowcount or 0, "error": None}
     except Exception as e:
         conn.rollback()
         return {"columns": [], "rows": [], "rowcount": 0, "error": str(e)}
     finally:
-        cur.close()
         conn.close()
 
 
@@ -507,8 +573,8 @@ tbody td{padding:9px 14px;max-width:260px;overflow:hidden;text-overflow:ellipsis
 <!-- SIDEBAR -->
 <div id="sidebar">
   <div id="sidebar-top">
-    <h1>🗄 Injaaz Data</h1>
-    <p>Live database · Render</p>
+    <h1>🗄 Amaan Data</h1>
+    <p>Local SQLite · Development</p>
   </div>
   <div id="sidebar-search">
     <input type="text" placeholder="Find a section…" oninput="filterSidebar(this.value)">
@@ -518,7 +584,7 @@ tbody td{padding:9px 14px;max-width:260px;overflow:hidden;text-overflow:ellipsis
   </div>
   <div id="db-footer">
     <div class="dot"></div>
-    <span>Connected to Render</span>
+    <span>Connected · injaaz.db</span>
   </div>
 </div>
 
@@ -534,7 +600,7 @@ tbody td{padding:9px 14px;max-width:260px;overflow:hidden;text-overflow:ellipsis
   <!-- DASHBOARD -->
   <div id="dashboard">
     <h2>Welcome back, Arshith 👋</h2>
-    <p>Here's a live snapshot of your Injaaz application database.</p>
+    <p>Here's a live snapshot of your Amaan application database.</p>
     <div class="cards-grid" id="kpi-cards">
       <div style="color:var(--muted);font-size:13px;padding:20px;">Loading stats…</div>
     </div>
@@ -1272,18 +1338,56 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.send_response(404); self.end_headers()
 
 
+def _resolve_args():
+    """Parse CLI flags and configure the active backend."""
+    global BACKEND, PG_URL, ALLOW_EDIT
+    parser = argparse.ArgumentParser(description="Amaan Data Browser")
+    parser.add_argument("--prod", action="store_true",
+                        help="Connect to the production Postgres (from PROD_DATABASE_URL/DATABASE_URL).")
+    parser.add_argument("--allow-edit", action="store_true",
+                        help="Permit edits/deletes against --prod (default is read-only).")
+    args = parser.parse_args()
+
+    if args.prod:
+        BACKEND = "postgres"
+        PG_URL = os.getenv("PROD_DATABASE_URL") or os.getenv("DATABASE_URL")
+        if not PG_URL:
+            parser.error(
+                "No production URL found. Set it first, e.g.:\n"
+                '  export PROD_DATABASE_URL="postgresql://USER:PASS@HOST/DBNAME"\n'
+                "(copy the External Database URL from your Render dashboard)."
+            )
+        if PG_URL.startswith("postgres://"):
+            PG_URL = PG_URL.replace("postgres://", "postgresql://", 1)
+        # Live DB is read-only unless the user explicitly opts in.
+        ALLOW_EDIT = bool(args.allow_edit)
+    else:
+        BACKEND = "sqlite"
+        ALLOW_EDIT = True
+
+
 def main():
+    _resolve_args()
     print("=" * 55)
-    print("  🗄  Injaaz — Data Browser")
+    print("  🗄  Amaan — Data Browser")
     print("=" * 55)
-    print(f"\n  Connecting to Render PostgreSQL…")
     try:
         conn = get_conn()
         cur = conn.cursor()
-        cur.execute("SELECT version();")
-        ver = cur.fetchone()[0].split(" on ")[0]
-        cur.close(); conn.close()
-        print(f"  ✅ Connected! ({ver})")
+        if BACKEND == "postgres":
+            cur.execute("SELECT version()")
+            ver = cur.fetchone()[0].split(",")[0]
+            conn.close()
+            mode = "EDIT ENABLED ⚠️" if ALLOW_EDIT else "READ-ONLY 🔒"
+            host = PG_URL.split("@")[-1].split("/")[0] if PG_URL else "?"
+            print(f"\n  🌐 PRODUCTION — {host}  [{mode}]")
+            print(f"  ✅ Connected! ({ver})")
+        else:
+            print(f"\n  Opening {DATABASE_PATH}…")
+            cur.execute("SELECT sqlite_version()")
+            ver = cur.fetchone()[0]
+            conn.close()
+            print(f"  ✅ Connected! (Local SQLite {ver})")
     except Exception as e:
         print(f"  ❌ Connection failed: {e}"); return
 
