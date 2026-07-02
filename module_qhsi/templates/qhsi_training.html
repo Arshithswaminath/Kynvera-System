@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  {% set qhsi_page_title = 'Training & Meetings' %}
+  {% include 'partials/qhsi_head.html' %}
+</head>
+{% include 'partials/qhse_shell_open.html' with context %}
+  <div class="page qhsi-form-unified">
+    <div class="page-inner">
+      <div class="qhsi-bento">
+        <div class="bento-tile bento-tile--hero span-12">
+          <div class="bento-tile__hd">
+            <span class="bento-tile__hd-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4.26 10.147a60.438 60.438 0 0 0-.491 6.347A48.62 48.62 0 0 1 12 20.904a48.62 48.62 0 0 1 8.232-4.41 60.46 60.46 0 0 0-.491-6.347m-15.482 0a50.636 50.636 0 0 0-2.658-.813A59.906 59.906 0 0 1 12 3.493a59.903 59.903 0 0 1 10.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.717 50.717 0 0 1 12 13.489a50.702 50.702 0 0 1 7.74-3.342"/></svg></span>
+            <div class="bento-tile__hd-text">
+              <h1 class="bento-tile__hd-title">Training &amp; Meetings</h1>
+              <p class="bento-tile__hd-sub">Schedule &amp; track project sessions</p>
+            </div>
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="" class="bento-hero-logo">
+          </div>
+        </div>
+
+        <section class="bento-tile span-5">
+          <div class="bento-tile__hd">
+            <span class="bento-tile__hd-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 4.5v15m7.5-7.5h-15"/></svg></span>
+            <div class="bento-tile__hd-text">
+              <h2 class="bento-tile__hd-title">Book training</h2>
+              <p class="bento-tile__hd-sub">Schedule session</p>
+            </div>
+          </div>
+          <div class="bento-tile__body">
+            <form id="trainingForm">
+              <div class="fld" style="margin-bottom:0.85rem">
+                <label class="fld-lbl">Project <span class="req">*</span></label>
+                <select class="fld-inp" id="t_project" required>
+                  <option value="">Select project…</option>
+                </select>
+              </div>
+              <div class="fld" style="margin-bottom:0.85rem">
+                <label class="fld-lbl">Title <span class="req">*</span></label>
+                <input class="fld-inp" id="t_title" required placeholder="e.g. QHSE induction — Site A">
+              </div>
+              <div class="fld" style="margin-bottom:0.85rem">
+                <label class="fld-lbl">Type</label>
+                <select class="fld-inp" id="t_type">
+                  <option value="training">Training</option>
+                  <option value="meeting">Meeting</option>
+                  <option value="audit">Audit / walkthrough</option>
+                  <option value="induction">Induction</option>
+                </select>
+              </div>
+              <div class="grid-2" style="margin-bottom:0.85rem">
+                <div class="fld">
+                  <label class="fld-lbl">Date &amp; time <span class="req">*</span></label>
+                  <input type="datetime-local" class="fld-inp" id="t_scheduled" required>
+                </div>
+                <div class="fld">
+                  <label class="fld-lbl">Duration (min)</label>
+                  <input type="number" class="fld-inp" id="t_duration" value="60" min="15" step="15">
+                </div>
+              </div>
+              <div class="fld" style="margin-bottom:0.85rem">
+                <label class="fld-lbl">Location</label>
+                <input class="fld-inp" id="t_location" placeholder="Site office, training room…">
+              </div>
+              <div class="fld" style="margin-bottom:0.85rem">
+                <label class="fld-lbl">Facilitator</label>
+                <input class="fld-inp" id="t_facilitator">
+              </div>
+              <div class="fld" style="margin-bottom:0.85rem">
+                <label class="fld-lbl">Attendees</label>
+                <input class="fld-inp" id="t_attendees" placeholder="Comma-separated names">
+              </div>
+              <div class="fld" style="margin-bottom:1rem">
+                <label class="fld-lbl">Notes</label>
+                <textarea class="fld-inp" id="t_notes" rows="2"></textarea>
+              </div>
+              <button type="submit" class="btn-primary" style="width:100%">Schedule session</button>
+            </form>
+          </div>
+        </section>
+
+        <section class="bento-tile span-7">
+          <div class="bento-tile__hd">
+            <span class="bento-tile__hd-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5"/></svg></span>
+            <div class="bento-tile__hd-text">
+              <h2 class="bento-tile__hd-title">Upcoming &amp; recent</h2>
+              <p class="bento-tile__hd-sub">Project sessions</p>
+            </div>
+            <div class="bento-tile__hd-action">
+              <select class="fld-inp" id="filterStatus" style="max-width:150px;min-height:40px;font-size:0.85rem">
+                <option value="">All</option>
+                <option value="scheduled" selected>Scheduled</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+          </div>
+          <div class="bento-tile__body">
+            <div class="qhsi-training-list" id="trainingList"></div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+  <script src="{{ url_for('static', filename='js/qhsi-ui.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/qhsi-training.js') }}"></script>
+{% include 'partials/qhse_shell_close.html' with context %}
+</html>

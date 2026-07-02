@@ -252,6 +252,10 @@ function applyProfileBasedNavVisibility(user) {
   if (reportEl) {
     reportEl.style.display = userHasReportGenerationNavAccess(user) ? 'list-item' : 'none';
   }
+  const qhsiEl = document.getElementById('qhsi-menu-item');
+  if (qhsiEl) {
+    qhsiEl.style.display = (user && (user.role === 'admin' || user.access_qhsi === true)) ? 'list-item' : 'none';
+  }
 }
 
 // Function to check and show admin menu
@@ -483,6 +487,18 @@ function updateModuleVisibility(user) {
     const showOperations = shouldShowModule(user.access_operations === true);
     operationsCard.style.display = showOperations ? 'block' : 'none';
     operationsCard.style.visibility = showOperations ? 'visible' : 'hidden';
+  }
+
+  // QHSI (Quality, Hospitality, Safety & Inspections)
+  const qhsiCard = document.getElementById('module-qhsi');
+  const qhsiMenuItem = document.getElementById('qhsi-menu-item');
+  const showQhsi = shouldShowModule(user.access_qhsi === true);
+  if (qhsiCard) {
+    qhsiCard.style.display = showQhsi ? 'block' : 'none';
+    qhsiCard.style.visibility = showQhsi ? 'visible' : 'hidden';
+  }
+  if (qhsiMenuItem) {
+    qhsiMenuItem.style.display = showQhsi ? 'list-item' : 'none';
   }
 
   // Check Report Generation / MMR hub

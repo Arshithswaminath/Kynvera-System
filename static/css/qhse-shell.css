@@ -1,0 +1,248 @@
+/**
+ * QHSE module shell — hub (top nav only) + activity pages (top nav + green sidebar).
+ */
+body.qhse-dh-page,
+body.qhse-hub-page,
+body.qhse-module-page {
+  --qhse-nav-box: 72px;
+  --qhse-content-top: 2.5rem;
+  --sb-bg: #d21725;
+  --sidebar-w: 268px;
+  --font-body: var(--font-sans, -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif);
+}
+
+@media (max-width: 768px) {
+  body.qhse-dh-page,
+  body.qhse-hub-page { --qhse-nav-box: 56px; }
+}
+@media (max-width: 600px) {
+  body.qhse-dh-page,
+  body.qhse-hub-page { --qhse-nav-box: 64px; }
+}
+@media (max-width: 1280px) {
+  body.qhse-dh-page,
+  body.qhse-hub-page { --sidebar-w: 248px; }
+}
+@media (max-width: 1100px) {
+  body.qhse-dh-page,
+  body.qhse-hub-page { --sidebar-w: 228px; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   HUB (/qhsi/) — top nav, gradient hero, cards; NO module sidebar
+   (same structure as Inspection/HR hubs: hero + modules on body, full-page fill)
+   ═══════════════════════════════════════════════════════════════ */
+html[data-theme="light"]:has(body.qhse-hub-page),
+html:not([data-theme="dark"]):has(body.qhse-hub-page) {
+  background-color: #f8faf8 !important;
+  color-scheme: light;
+}
+
+body.qhse-hub-page {
+  background: #f8faf8 !important;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+body.qhse-hub-page.has-main-nav {
+  --nav-offset: calc(var(--qhse-nav-box) + 1px);
+  padding-top: var(--nav-offset) !important;
+}
+
+body.qhse-hub-page > .footer {
+  margin-top: auto;
+  flex-shrink: 0;
+  background: #f8faf8 !important;
+}
+
+body.qhse-hub-page .qhsi-hero {
+  padding: 2.5rem 0 5rem !important;
+  background: linear-gradient(180deg, #eef4f0 0%, #f2f7f4 45%, #f8faf8 100%) !important;
+}
+
+body.qhse-hub-page .qhsi-hero::before,
+body.qhse-hub-page .qhsi-hero::after {
+  display: none !important;
+}
+
+body.qhse-hub-page .hero-split .hero-content.hero-split-inner {
+  padding-left: 0;
+  padding-right: 0;
+  max-width: none;
+}
+
+body.qhse-hub-page .qhsi-modules-section {
+  background: #f8faf8 !important;
+  margin-top: -3rem;
+  padding: 1rem 0 7rem !important;
+  opacity: 1 !important;
+  transform: none !important;
+  animation: none !important;
+  flex: 1 1 auto;
+}
+
+body.qhse-hub-page .modules-inner {
+  padding-left: 0;
+  padding-right: 0;
+  max-width: none;
+}
+
+body.qhse-hub-page .hero-title,
+body.qhse-hub-page .hero-subtitle {
+  opacity: 1 !important;
+  animation: none !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ACTIVITY PAGES — top nav + sidebar + scrollable content
+   ═══════════════════════════════════════════════════════════════ */
+body.qhse-module-page.has-main-nav {
+  --nav-offset: calc(var(--qhse-nav-box) + 1px);
+  padding-top: var(--nav-offset) !important;
+  min-height: 100dvh;
+  min-height: 100svh;
+  height: 100dvh;
+  height: 100svh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #f8faf8 !important;
+}
+
+body.qhse-module-page .qhse-dh-app-root {
+  flex: 1 1 0%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+}
+
+body.qhse-module-page .qhse-dh-page-root {
+  flex: 1 1 0%;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  overflow: hidden;
+  background: #f8faf8;
+}
+
+body.qhse-module-page .qhse-dh-page-root .dh-sidebar {
+  flex: 0 0 var(--sidebar-w);
+  width: var(--sidebar-w);
+  min-width: var(--sidebar-w);
+  min-height: 0;
+  align-self: stretch;
+  background: var(--sb-bg) !important;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-family: var(--font-body);
+  font-size: 15px;
+}
+
+body.qhse-module-page .qhse-dh-main {
+  flex: 1 1 0%;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding: var(--qhse-content-top) 1.5rem 2rem 1.25rem;
+  background: #f8faf8;
+}
+
+body.qhse-module-page .qhse-dh-content {
+  width: 100%;
+  max-width: 1280px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+body.qhse-module-page .qhse-dh-page-root .sb-brand-logo {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+body.qhse-module-page .qhse-dh-page-root .sb-avatar {
+  background: linear-gradient(135deg, #a8121e, #1a7a4c);
+}
+
+body.qhse-module-page .qhse-dh-page-root .sb-nav-item.active {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #fff !important;
+  font-weight: 600;
+}
+
+body.qhse-module-page .page,
+body.qhse-module-page .qhsi-form-unified.page {
+  padding-top: 0;
+  width: 100%;
+}
+
+body.qhse-module-page .page-inner {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+body.qhse-module-page .dh-overlay.active {
+  display: block;
+  z-index: 150;
+}
+
+#qhseDhSidebarToggle {
+  display: none;
+  position: fixed !important;
+  left: max(16px, env(safe-area-inset-left, 0px)) !important;
+  bottom: max(20px, env(safe-area-inset-bottom, 0px)) !important;
+  z-index: 2147483000 !important;
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 12px;
+  background: var(--sb-bg, #d21725);
+  color: #fff;
+  border: none;
+  box-shadow: 0 4px 16px rgba(210, 23, 37, 0.28);
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+}
+
+@media (max-width: 900px) {
+  body.qhse-module-page {
+    --qhse-content-top: 1.75rem;
+  }
+
+  body.qhse-module-page .qhse-dh-page-root .dh-sidebar {
+    position: fixed;
+    left: 0;
+    top: var(--nav-offset, calc(72px + 1px));
+    bottom: 0;
+    z-index: 160;
+    transform: translateX(-100%);
+    transition: transform 0.22s ease;
+    width: min(86vw, 268px);
+    min-width: min(86vw, 268px);
+    box-shadow: 8px 0 24px rgba(0, 0, 0, 0.22);
+  }
+
+  body.qhse-module-page .qhse-dh-page-root .dh-sidebar.open {
+    transform: translateX(0);
+  }
+
+  body.qhse-module-page .qhse-dh-main {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  #qhseDhSidebarToggle {
+    display: flex !important;
+  }
+}

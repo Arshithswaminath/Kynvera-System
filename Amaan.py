@@ -150,6 +150,15 @@ except Exception as e:
     logger.exception("Could not import module_finance.routes.finance_bp: %s", e)
     finance_bp = None
 
+# QHSI Module (Quality, Hospitality, Safety & Inspection)
+qhsi_bp = None
+try:
+    from module_qhsi.routes import qhsi_bp  # noqa: F401
+    logger.info("Imported module_qhsi.routes.qhsi_bp")
+except Exception as e:
+    logger.exception("Could not import module_qhsi.routes.qhsi_bp: %s", e)
+    qhsi_bp = None
+
 # Live Assistant Module
 assistant_bp = None
 try:
@@ -382,6 +391,7 @@ def create_app():
                     ('access_submitted_forms', 'BOOLEAN DEFAULT FALSE'),
                     ('access_ticketing', 'BOOLEAN DEFAULT FALSE'),
                     ('access_operations', 'BOOLEAN DEFAULT FALSE'),
+                    ('access_qhsi', 'BOOLEAN DEFAULT FALSE'),
                     ('last_login', 'TIMESTAMP'),
                     ('employment_start_date', 'DATE'),
                     ('job_designation', 'VARCHAR(160)'),
@@ -955,6 +965,18 @@ def create_app():
         logger.info("✅ Registered Finance blueprint at /finance")
     else:
         logger.warning("⚠️  Finance blueprint not available - check imports")
+
+    # Register QHSI blueprint
+    if qhsi_bp:
+        if hasattr(app, 'csrf') and app.csrf:
+            app.csrf.exempt(qhsi_bp)
+        app.register_blueprint(qhsi_bp)
+        @app.route('/qhsi')
+        def redirect_qhsi_to_slash():
+            return redirect('/qhsi/', code=302)
+        logger.info("✅ Registered QHSI blueprint at /qhsi")
+    else:
+        logger.warning("⚠️  QHSI blueprint not available - check imports")
 
     # Register Live Assistant blueprint
     if assistant_bp:

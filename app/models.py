@@ -897,6 +897,126 @@ class KnowledgeBaseEntry(db.Model):
         return f'<KnowledgeBaseEntry {self.id} - {self.title}>'
 
 
+class QhsiTraining(db.Model):
+    """Quality team training sessions and meetings booked per project."""
+    __tablename__ = 'qhsi_trainings'
+
+    id = db.Column(db.Integer, primary_key=True)
+    training_id = db.Column(db.String(40), unique=True, nullable=False, index=True)
+    project_name = db.Column(db.String(255), nullable=False, index=True)
+    bd_project_id = db.Column(db.Integer, db.ForeignKey('bd_projects.id'), nullable=True)
+    title = db.Column(db.String(255), nullable=False)
+    training_type = db.Column(db.String(30), default='training')  # training, meeting, audit, induction
+    scheduled_at = db.Column(db.DateTime, nullable=False, index=True)
+    duration_minutes = db.Column(db.Integer, default=60)
+    location = db.Column(db.String(255))
+    facilitator_name = db.Column(db.String(120))
+    facilitator_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    attendees = db.Column(JSON, default=list)  # [{name, role, user_id?}]
+    status = db.Column(db.String(20), default='scheduled', index=True)  # scheduled, completed, cancelled
+    notes = db.Column(db.Text)
+    created_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=_utcnow)
+    updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
+
+    bd_project = db.relationship('BDProject', foreign_keys=[bd_project_id])
+    facilitator = db.relationship('User', foreign_keys=[facilitator_id])
+    created_by = db.relationship('User', foreign_keys=[created_by_id])
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'training_id': self.training_id,
+            'project_name': self.project_name,
+            'bd_project_id': self.bd_project_id,
+            'title': self.title,
+            'training_type': self.training_type,
+            'scheduled_at': self.scheduled_at.isoformat() if self.scheduled_at else None,
+            'duration_minutes': self.duration_minutes,
+            'location': self.location,
+            'facilitator_name': self.facilitator_name,
+            'facilitator_id': self.facilitator_id,
+            'attendees': self.attendees or [],
+            'status': self.status,
+            'notes': self.notes,
+            'created_by_id': self.created_by_id,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+class QhseComplianceImport(db.Model):
+    """Batch metadata for Excel-imported staff compliance data."""
+    __tablename__ = 'qhse_compliance_imports'
+
+    id = db.Column(db.Integer, primary_key=True)
+    import_id = db.Column(db.String(40), unique=True, nullable=False, index=True)
+    filename = db.Column(db.String(255))
+    row_count = db.Column(db.Integer, default=0)
+    employee_count = db.Column(db.Integer, default=0)
+    stats_json = db.Column(JSON, default=dict)
+    imported_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True, index=True)
+    created_at = db.Column(db.DateTime, default=_utcnow, index=True)
+
+    imported_by = db.relationship('User', foreign_keys=[imported_by_id])
+    rows = db.relationship(
+        'QhseStaffComplianceRow',
+        back_populates='import_batch',
+        cascade='all, delete-orphan',
+    )
+
+    def to_dict(self):
+        return {
+            'import_id': self.import_id,
+            'filename': self.filename,
+            'row_count': self.row_count,
+            'employee_count': self.employee_count,
+            'stats': self.stats_json or {},
+            'imported_by_id': self.imported_by_id,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class QhseStaffComplianceRow(db.Model):
+    """One kit line from Excel import (drives QHSE dashboard compliance metrics)."""
+    __tablename__ = 'qhse_staff_compliance_rows'
+
+    id = db.Column(db.Integer, primary_key=True)
+    import_batch_id = db.Column(
+        db.Integer,
+        db.ForeignKey('qhse_compliance_imports.id', ondelete='CASCADE'),
+        nullable=False,
+        index=True,
+    )
+    employee_name = db.Column(db.String(200), nullable=False, index=True)
+    employee_id = db.Column(db.String(80))
+    project_name = db.Column(db.String(255), nullable=False, index=True)
+    record_date = db.Column(db.String(20))
+    department = db.Column(db.String(120))
+    supervisor_name = db.Column(db.String(120))
+    notes = db.Column(db.Text)
+    item_type = db.Column(db.String(80))
+    item_label = db.Column(db.String(160))
+    condition = db.Column(db.String(20), nullable=False, index=True)  # ok, issue, missing
+    created_at = db.Column(db.DateTime, default=_utcnow)
+
+    import_batch = db.relationship('QhseComplianceImport', back_populates='rows')
+
+    def to_dict(self):
+        return {
+            'employee_name': self.employee_name,
+            'employee_id': self.employee_id,
+            'project_name': self.project_name,
+            'record_date': self.record_date,
+            'department': self.department,
+            'supervisor_name': self.supervisor_name,
+            'notes': self.notes,
+            'item_type': self.item_type,
+            'item_label': self.item_label,
+            'condition': self.condition,
+        }
+
+
 class EmailAutomation(db.Model):
     """A user-created recurring email automation (free-form email on a schedule)."""
     __tablename__ = 'email_automation'
