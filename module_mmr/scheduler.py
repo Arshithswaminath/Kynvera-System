@@ -86,15 +86,20 @@ def _trigger_for(automation):
 # Job function (runs outside request context – needs its own app context)
 # ──────────────────────────────────────────────────────────────────────────────
 
-def _run_automation(automation_id, app, force=False):
-    """Send the email for one automation. Records last-run status on the row.
+RUN_LOG_KEEP = 100  # newest rows kept per automation
+
+
+def _run_automation(automation_id, app, force=False, trigger='scheduled'):
+    """Send the email for one automation. Records last-run status on the row
+    and appends a row to the run-log table (pruned to RUN_LOG_KEEP entries).
 
     force=True (manual "Run now") sends even when the automation is disabled;
     the scheduled path uses force=False so disabled automations stay dormant.
     """
     with app.app_context():
+        import time as _time
         from datetime import datetime, timezone as _tz
-        from app.models import db, EmailAutomation
+        from app.models import db, EmailAutomation, EmailAutomationRunLog
         from common.email_service import send_email
 
         automation = EmailAutomation.query.get(automation_id)
@@ -105,14 +110,37 @@ def _run_automation(automation_id, app, force=False):
             logger.info('Automation %s disabled; skipping', automation_id)
             return
 
+        t0 = _time.monotonic()
         to_list = [e.strip() for e in (automation.to_emails or '').split(',') if e.strip()]
         cc_list = [e.strip() for e in (automation.cc_emails or '').split(',') if e.strip()] or None
+        n_rcpt = len(to_list) + (len(cc_list) if cc_list else 0)
 
-        def _finish(status, detail):
+        def _finish(status, detail, attachment_count=0):
             try:
-                automation.last_run_at = datetime.now(_tz.utc).replace(tzinfo=None)
+                now = datetime.now(_tz.utc).replace(tzinfo=None)
+                automation.last_run_at = now
                 automation.last_run_status = status
                 automation.last_run_detail = (detail or '')[:1000]
+                db.session.add(EmailAutomationRunLog(
+                    automation_id=automation.id,
+                    run_at=now,
+                    status=status,
+                    trigger=trigger,
+                    detail=(detail or '')[:1000],
+                    recipient_count=n_rcpt,
+                    attachment_count=attachment_count,
+                    duration_ms=int((_time.monotonic() - t0) * 1000),
+                ))
+                # Prune: keep only the newest RUN_LOG_KEEP rows per automation.
+                keep_ids = db.session.query(EmailAutomationRunLog.id).filter_by(
+                    automation_id=automation.id,
+                ).order_by(
+                    EmailAutomationRunLog.run_at.desc(), EmailAutomationRunLog.id.desc(),
+                ).limit(RUN_LOG_KEEP).subquery()
+                EmailAutomationRunLog.query.filter(
+                    EmailAutomationRunLog.automation_id == automation.id,
+                    ~EmailAutomationRunLog.id.in_(db.session.query(keep_ids.c.id)),
+                ).delete(synchronize_session=False)
                 db.session.commit()
             except Exception:
                 db.session.rollback()
@@ -155,13 +183,12 @@ def _run_automation(automation_id, app, force=False):
                 cc=cc_list,
                 attachments=attachments,
             )
+            n_att = len(attachments) if attachments else 0
             if not ok:
-                _finish('failed', 'Email service rejected the send (check mail configuration)')
+                _finish('failed', 'Email service rejected the send (check mail configuration)', n_att)
                 logger.warning('Automation %s (%s): send_email returned False', automation_id, automation.name)
                 return
-            n_att = len(attachments) if attachments else 0
-            n_rcpt = len(to_list) + (len(cc_list) if cc_list else 0)
-            _finish('success', f'Sent to {n_rcpt} recipient(s) with {n_att} attachment(s)')
+            _finish('success', f'Sent to {n_rcpt} recipient(s) with {n_att} attachment(s)', n_att)
             logger.info('Automation %s (%s) sent successfully', automation_id, automation.name)
         except Exception as exc:
             logger.exception('Automation %s failed', automation_id)
@@ -255,4 +282,20 @@ def remove_automation_job(automation_id, app):
 
 def run_automation_now(automation_id, app):
     """Fire an automation immediately (manual test from the UI), even if disabled."""
-    _run_automation(automation_id, app, force=True)
+    _run_automation(automation_id, app, force=True, trigger='manual')
+
+
+def get_next_run_iso(automation_id):
+    """Next scheduled fire time as a naive-UTC ISO string, or None.
+
+    Naive UTC matches how last_run_at is stored — the front-end appends 'Z'
+    before parsing, so both fields render consistently in local time.
+    """
+    global _scheduler
+    if not _scheduler:
+        return None
+    job = _scheduler.get_job(_job_id(automation_id))
+    if not job or not job.next_run_time:
+        return None
+    from datetime import timezone as _tz
+    return job.next_run_time.astimezone(_tz.utc).replace(tzinfo=None).isoformat()

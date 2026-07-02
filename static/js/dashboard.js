@@ -923,16 +923,16 @@ function displayProfileData(user) {
 
 function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDisplay, getModuleAccess, formatDate) {
   const modules = [];
-  if (user.role === 'admin' || user.access_hvac) modules.push({ name: 'HVAC & MEP', icon: '🔧', color: '#3b82f6' });
-  if (user.role === 'admin' || user.access_civil) modules.push({ name: 'Civil Works', icon: '🏢', color: '#8b5cf6' });
-  if (user.role === 'admin' || user.access_cleaning) modules.push({ name: 'Cleaning', icon: '🧹', color: '#10b981' });
-  if (userHasHrNavAccess(user)) modules.push({ name: 'HR', icon: '👤', color: '#f59e0b' });
-  if (user.role === 'admin' || user.access_procurement_module) modules.push({ name: 'Procurement', icon: '📦', color: '#7c3aed' });
-  if (user.role === 'admin' || user.designation === 'business_development' || user.access_business_development) modules.push({ name: 'Business Development', icon: '📧', color: '#0d9488' });
-  if (userHasReportGenerationNavAccess(user)) modules.push({ name: 'Report Generation', icon: '📊', color: '#0369a1' });
+  if (user.role === 'admin' || user.access_hvac) modules.push({ name: 'HVAC & MEP', color: '#3b82f6' });
+  if (user.role === 'admin' || user.access_civil) modules.push({ name: 'Civil Works', color: '#8b5cf6' });
+  if (user.role === 'admin' || user.access_cleaning) modules.push({ name: 'Cleaning', color: '#10b981' });
+  if (userHasHrNavAccess(user)) modules.push({ name: 'HR', color: '#f59e0b' });
+  if (user.role === 'admin' || user.access_procurement_module) modules.push({ name: 'Procurement', color: '#7c3aed' });
+  if (user.role === 'admin' || user.designation === 'business_development' || user.access_business_development) modules.push({ name: 'Business Development', color: '#0d9488' });
+  if (userHasReportGenerationNavAccess(user)) modules.push({ name: 'Report Generation', color: '#0369a1' });
   
   const moduleBadges = modules.length > 0 
-    ? modules.map(m => `<span class="pro-module-badge" style="--badge-color: ${m.color}">${m.icon} ${m.name}</span>`).join('')
+    ? modules.map(m => `<span class="pro-module-badge" style="--badge-color: ${m.color}">${m.name}</span>`).join('')
     : '<span class="pro-no-access">No modules assigned</span>';
 
   const hrJobTitle = escapeHtml(user.job_designation || '—');
@@ -1164,58 +1164,47 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
       }
       
       .pro-info-item {
+        position: relative;
         display: flex;
         align-items: center;
-        gap: 0.75rem;
-        padding: 0.65rem 0.75rem;
-        background: #f8fafc;
+        padding: 0.7rem 0.9rem;
+        background: #fff;
         border-radius: 12px;
-        border: 1px solid #e2e8f0;
-        transition: all 0.2s ease;
+        border: 1px solid #eef1f5;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+        transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
       }
-      
+
       .pro-info-item:hover {
-        background: #f1f5f9;
-        border-color: #cbd5e1;
+        border-color: #dbe1ea;
+        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.07);
+        transform: translateY(-1px);
       }
-      
+
       .pro-info-item--span {
         grid-column: 1 / -1;
-        align-items: flex-start;
       }
-      
-      .pro-info-icon {
-        width: 36px;
-        height: 36px;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1rem;
-        background: linear-gradient(135deg, #d21725 0%, #e8323f 100%);
-        color: white;
-        flex-shrink: 0;
-      }
-      
+
       .pro-info-content {
         flex: 1;
         min-width: 0;
       }
-      
+
       .pro-info-label {
-        font-size: 0.7rem;
+        font-size: 0.68rem;
         font-weight: 600;
         color: #94a3b8;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
-        margin-bottom: 0.125rem;
+        letter-spacing: 0.6px;
+        margin-bottom: 0.2rem;
       }
-      
+
       .pro-info-value {
         font-size: 0.95rem;
         font-weight: 600;
         color: #1e293b;
         word-break: break-word;
+        line-height: 1.3;
       }
       
       .pro-profile-edit-grid {
@@ -1566,19 +1555,10 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
         }
         
         .pro-info-item {
-          align-items: flex-start;
-          padding: 0.625rem 0.625rem;
-          gap: 0.625rem;
+          align-items: center;
+          padding: 0.6rem 0.7rem;
         }
-        
-        .pro-info-icon {
-          width: 36px;
-          height: 36px;
-          font-size: 0.95rem;
-          border-radius: 8px;
-          margin-top: 0.1rem;
-        }
-        
+
         .pro-info-label {
           font-size: 0.625rem;
         }
@@ -1909,42 +1889,36 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
       <div class="pro-tab-content active" data-content="profile">
         <div class="pro-info-list">
           <div class="pro-info-item">
-            <div class="pro-info-icon">👤</div>
             <div class="pro-info-content">
               <div class="pro-info-label">Username</div>
               <div class="pro-info-value">${escapeHtml(user.username)}</div>
             </div>
           </div>
           <div class="pro-info-item">
-            <div class="pro-info-icon">✉️</div>
             <div class="pro-info-content">
               <div class="pro-info-label">Email Address</div>
               <div class="pro-info-value">${escapeHtml(user.email || 'Not provided')}</div>
             </div>
           </div>
-          <div class="pro-info-item">
-            <div class="pro-info-icon">💼</div>
+          <div class="pro-info-item pro-info-item--span">
             <div class="pro-info-content">
               <div class="pro-info-label">Job title (HR)</div>
               <div class="pro-info-value">${hrJobTitle}</div>
             </div>
           </div>
           <div class="pro-info-item">
-            <div class="pro-info-icon">🏖️</div>
             <div class="pro-info-content">
               <div class="pro-info-label">Annual leave (days)</div>
               <div class="pro-info-value">${annualLeavesDisp}</div>
             </div>
           </div>
           <div class="pro-info-item">
-            <div class="pro-info-icon">📋</div>
             <div class="pro-info-content">
               <div class="pro-info-label">Other leave (days)</div>
               <div class="pro-info-value">${otherLeavesDisp}</div>
             </div>
           </div>
           <div class="pro-info-item pro-info-item--span">
-            <div class="pro-info-icon">👔</div>
             <div class="pro-info-content">
               <div class="pro-info-label">Reporting manager</div>
               <div class="pro-info-value">${reportingMgrDisp}</div>
@@ -1980,7 +1954,7 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
       <!-- Security Tab -->
       <div class="pro-tab-content" data-content="security">
         <div class="pro-security-card ${user.password_changed ? 'success' : 'warning'}">
-          <div class="pro-security-icon">${user.password_changed ? '✓' : '⚠️'}</div>
+          <div class="pro-security-icon">${user.password_changed ? '✓' : '!'}</div>
           <div class="pro-security-content">
             <div class="pro-security-title">${user.password_changed ? 'Password is secure' : 'Password change required'}</div>
             <div class="pro-security-desc">${user.password_changed ? 'Your password meets security requirements' : 'Please update your password for security'}</div>
@@ -1994,7 +1968,6 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
         
         <div class="pro-info-list">
           <div class="pro-info-item">
-            <div class="pro-info-icon">🛡️</div>
             <div class="pro-info-content">
               <div class="pro-info-label">Account Status</div>
               <div class="pro-info-value" style="color: ${user.is_active ? '#16a34a' : '#dc2626'}">
@@ -2003,7 +1976,6 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
             </div>
           </div>
           <div class="pro-info-item">
-            <div class="pro-info-icon">👑</div>
             <div class="pro-info-content">
               <div class="pro-info-label">Role</div>
               <div class="pro-info-value">${escapeHtml(getRoleDisplay())}</div>
@@ -2016,7 +1988,7 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
       <div class="pro-tab-content" data-content="signature">
         <div class="pro-sig-section">
           <div class="pro-sig-header">
-            <div class="pro-sig-header-icon">✍️</div>
+            <div class="pro-sig-header-icon"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg></div>
             <div class="pro-sig-header-text">
               <h4>Default Signature</h4>
               <p>Used for automatic form signing</p>
@@ -2026,7 +1998,7 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
             <div class="pro-sig-grid">
               <div class="pro-sig-preview" id="profileSigPreview" title="Click to draw signature">
                 <div class="pro-sig-empty" id="profileSigEmpty">
-                  <div class="pro-sig-empty-icon">✍️</div>
+                  <div class="pro-sig-empty-icon"><svg width="26" height="26" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg></div>
                   <div class="pro-sig-empty-text">Tap to sign</div>
                 </div>
                 <img id="profileSigImage" style="display: none;" alt="Signature">
@@ -2046,7 +2018,7 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
       <div class="pro-popup-overlay" id="sigPopupOverlay">
         <div class="pro-popup">
           <div class="pro-popup-header">
-            <h3 class="pro-popup-title">✍️ Draw Signature</h3>
+            <h3 class="pro-popup-title">Draw Signature</h3>
             <button class="pro-popup-close" id="sigPopupClose">×</button>
           </div>
           <div class="pro-popup-body">

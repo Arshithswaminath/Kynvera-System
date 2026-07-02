@@ -8,7 +8,7 @@
   {% include 'partials/caveat_font.html' ignore missing %}
   <title>Finance — Amaan</title>
   <meta name="theme-color" content="#d21725">
-  <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
   <style>
@@ -990,15 +990,29 @@
       body.innerHTML = items.map(t => rowHtml(t, currentTab)).join('');
     }
 
+    function fmtDT(iso) {
+      if (!iso) return '';
+      const d = new Date(iso);
+      if (isNaN(d)) return '';
+      return d.toLocaleDateString('en-AE', { day: 'numeric', month: 'short' })
+        + ', ' + d.toLocaleTimeString('en-AE', { hour: 'numeric', minute: '2-digit', hour12: true });
+    }
+
     function rowHtml(t, tab) {
       const completed = tab === 'completed';
+      const gmApproved = completed || !!t.gm_approved_at;
+      const invoiceLogged = completed || !!t.finance_confirmed_at;
+      const stepTime = (iso) => {
+        const s = fmtDT(iso);
+        return s ? ` <span style="font-weight:400;opacity:.75;">· ${s}</span>` : '';
+      };
       const stepHtml = `
         <div class="qr-status">
-          <span class="qr-status-step done">✓ Closed</span>
+          <span class="qr-status-step done">✓ Verified${stepTime(t.resolved_at)}</span>
           <span class="qr-status-sep">→</span>
-          <span class="qr-status-step done">✓ GM Approved</span>
+          <span class="qr-status-step ${gmApproved ? 'done' : 'active'}">${gmApproved ? '✓ GM Approved' + stepTime(t.gm_approved_at) : '● GM Approval'}</span>
           <span class="qr-status-sep">→</span>
-          <span class="qr-status-step ${completed ? 'done' : 'active'}">${completed ? '✓' : '●'} ERP Invoice</span>
+          <span class="qr-status-step ${invoiceLogged ? 'done' : 'active'}">${invoiceLogged ? '✓ ERP Invoice' + stepTime(t.finance_confirmed_at) : '● ERP Invoice'}</span>
           <span class="qr-status-sep">→</span>
           <span class="qr-status-step ${completed ? 'done' : ''}">${completed ? '✓ Email Sent' : 'Auto-email'}</span>
         </div>`;
@@ -1006,12 +1020,20 @@
       const detailsAttr = usingSample
         ? `href="javascript:void(0)" onclick="demoDoc()"`
         : `href="/tickets/${t.ticket_id}"`;
-      const actions = completed
-        ? `<a ${detailsAttr} class="btn btn-outline btn-sm">View Details</a>`
-        : `<button type="button" class="btn btn-green btn-sm" onclick="openModal('${t.ticket_id}')" data-open-modal="${t.ticket_id}">
+      let actions;
+      if (completed) {
+        actions = `<a ${detailsAttr} class="btn btn-outline btn-sm">View Details</a>`;
+      } else if (invoiceLogged) {
+        actions = `<span class="btn btn-outline btn-sm" style="pointer-events:none;opacity:.75;cursor:default;">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+            Awaiting GM approval
+          </span>`;
+      } else {
+        actions = `<button type="button" class="btn btn-green btn-sm" onclick="openModal('${t.ticket_id}')" data-open-modal="${t.ticket_id}">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.4" stroke="currentColor" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z"/></svg>
             Log ERP Invoice
           </button>`;
+      }
 
       // Demo rows have no backing ticket — guard doc links so they don't 404.
       const srAttr  = usingSample ? `href="javascript:void(0)" onclick="demoDoc()"` : `href="/tickets/${t.ticket_id}/service-report" target="_blank"`;
@@ -1027,6 +1049,7 @@
           <div class="qr-meta">
             <span><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="11" height="11"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12 5.379 8.871a1.5 1.5 0 0 1 2.122 0L10.5 11.871m0 0 4.379-4.379a1.5 1.5 0 0 1 2.122 0L21 11.621"/></svg> ${escHtml(t.project)}${t.property ? ' · ' + escHtml(t.property) : ''}</span>
             <span><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="11" height="11"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z"/></svg> ${escHtml(t.supervisor_name || '—')}</span>
+            ${t.created_at ? `<span><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="11" height="11"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5"/></svg> Created ${fmtDT(t.created_at)}</span>` : ''}
             ${completed ? `<span><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="11" height="11"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 6v.75m0 3v.75"/></svg> <strong>${escHtml(t.finance_invoice_ref || '—')}</strong></span>` : ''}
           </div>
           ${stepHtml}
@@ -1098,11 +1121,17 @@
       document.getElementById('processForm').style.display = '';
     }
 
-    function showModalSuccess(ref, emailTo) {
+    function showModalSuccess(ref, emailTo, status) {
       const sub = document.getElementById('msSubText');
-      if (sub) sub.textContent = emailTo
-        ? `ERP ref ${ref} logged · notification sent to ${emailTo}.`
-        : `ERP ref ${ref} logged · notification sent to the team.`;
+      if (sub) {
+        if (status === 'pending_gm_approval') {
+          sub.textContent = `ERP ref ${ref} logged · ticket will close automatically once the GM approves.`;
+        } else {
+          sub.textContent = emailTo
+            ? `ERP ref ${ref} logged · notification sent to ${emailTo}.`
+            : `ERP ref ${ref} logged · notification sent to the team.`;
+        }
+      }
       // swap form → success panel
       document.getElementById('processForm').style.display = 'none';
       document.getElementById('modalFoot').style.display = 'none';
@@ -1153,7 +1182,7 @@
         });
         const data = await res.json().catch(() => ({}));
         if (res.ok && data.success) {
-          showModalSuccess(ref, emailTo);
+          showModalSuccess(ref, emailTo, data.status);
           await loadQueue();
         } else {
           toast(data.error || 'Unable to confirm');

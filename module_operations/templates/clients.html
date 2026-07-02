@@ -7,15 +7,15 @@
   {% include 'partials/caveat_font.html' %}
   <title>Clients - Operations</title>
   <meta name="theme-color" content="#d21725">
-  <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
   <style>
     :root { --primary: #d21725; --primary-light: #e8323f; --ops-ink:#0f172a; --ops-muted:#64748b; --ops-rule:#e2e8f0; }
-    body.ops-page { background:#F8FAF8; }
-    .ops-wrap { max-width: 1180px; margin: 7rem auto 3rem; padding: 0 1.25rem; }
-    .ops-head { display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; margin-bottom:1.5rem; }
+    body.ops-page { background:#faf8f8; }
+    .ops-wrap { max-width: 1280px; margin: 7rem auto 3rem; padding: 0 1.25rem; }
+    .ops-head { display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; margin-bottom:1.4rem; }
     .ops-title { font-size:1.85rem; font-weight:800; color:var(--ops-ink); margin:0; }
     .ops-sub { color:var(--ops-muted); margin:.35rem 0 0; font-size:.95rem; }
     .ops-actions { display:flex; gap:.6rem; flex-wrap:wrap; }
@@ -26,14 +26,50 @@
     .ops-btn-ghost:hover { border-color:var(--primary-light); }
     .ops-btn-sm { padding:.36rem .6rem; font-size:.8rem; border-radius:8px; }
     .ops-card { background:#fff; border:1px solid var(--ops-rule); border-radius:16px; box-shadow:0 1px 3px rgba(15,23,42,.05); overflow:hidden; }
+    /* KPI strip */
+    .kpi-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:.9rem; margin-bottom:1.1rem; }
+    .kpi-card { background:#fff; border:1px solid var(--ops-rule); border-radius:14px; padding:1rem 1.1rem; display:flex; align-items:center; gap:.85rem; box-shadow:0 1px 3px rgba(15,23,42,.04); }
+    .kpi-icon { width:40px; height:40px; border-radius:11px; display:flex; align-items:center; justify-content:center; flex-shrink:0; background:#fdeaec; color:var(--primary); }
+    .kpi-icon svg { width:20px; height:20px; }
+    .kpi-icon.green { background:#dcfce7; color:#16a34a; }
+    .kpi-icon.amber { background:#fef3c7; color:#b45309; }
+    .kpi-icon.slate { background:#eef2f7; color:#475569; }
+    .kpi-label { font-size:.7rem; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--ops-muted); margin-bottom:.15rem; }
+    .kpi-value { font-size:1.4rem; font-weight:800; color:var(--ops-ink); line-height:1.15; font-variant-numeric:tabular-nums; white-space:nowrap; }
+    /* Toolbar */
+    .cl-toolbar { display:flex; align-items:center; gap:.75rem; flex-wrap:wrap; margin-bottom:1rem; }
+    .cl-search { flex:1; min-width:220px; position:relative; }
+    .cl-search svg { position:absolute; left:.8rem; top:50%; transform:translateY(-50%); width:16px; height:16px; color:#94a3b8; pointer-events:none; }
+    .cl-search input { width:100%; box-sizing:border-box; border:1px solid var(--ops-rule); border-radius:11px; background:#fff; padding:.62rem .9rem .62rem 2.4rem; font-size:.9rem; font-family:inherit; }
+    .cl-search input:focus { outline:none; border-color:var(--primary-light); box-shadow:0 0 0 3px rgba(210,23,37,.1); }
+    .cl-chips { display:flex; gap:.4rem; }
+    .cl-chip { border:1px solid var(--ops-rule); background:#fff; color:var(--ops-muted); border-radius:999px; padding:.42rem .95rem; font-size:.82rem; font-weight:600; cursor:pointer; font-family:inherit; transition:all .12s ease; }
+    .cl-chip:hover { border-color:var(--primary-light); color:var(--ops-ink); }
+    .cl-chip.active { background:var(--primary); border-color:var(--primary); color:#fff; }
+    .cl-count { font-size:.82rem; color:var(--ops-muted); white-space:nowrap; }
+    /* Table */
     .ops-table { width:100%; border-collapse:collapse; font-size:.88rem; }
     .ops-table th { text-align:left; background:#faf5f6; color:#7a1019; font-weight:700; padding:.8rem 1rem; border-bottom:1px solid var(--ops-rule); white-space:nowrap; }
-    .ops-table td { padding:.75rem 1rem; border-bottom:1px solid #f1f5f9; color:var(--ops-ink); vertical-align:middle; }
+    .ops-table td { padding:.7rem 1rem; border-bottom:1px solid #f1f5f9; color:var(--ops-ink); vertical-align:middle; }
     .ops-table tr:last-child td { border-bottom:none; }
-    .ops-table tbody tr:hover { background:#fcfcfd; }
+    .ops-table tbody tr[data-href] { cursor:pointer; }
+    .ops-table tbody tr[data-href]:hover { background:#fcf5f6; }
+    .num-cell { font-variant-numeric:tabular-nums; white-space:nowrap; }
+    .cl-cell { display:flex; align-items:center; gap:.7rem; min-width:0; }
+    .cl-avatar { width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:.82rem; flex-shrink:0; letter-spacing:.02em; }
+    .cl-name { font-weight:700; color:var(--ops-ink); line-height:1.25; }
+    .cl-contact { font-size:.78rem; color:var(--ops-muted); line-height:1.25; }
+    .badge-status { display:inline-block; padding:.2rem .6rem; border-radius:999px; font-size:.74rem; font-weight:700; text-transform:capitalize; }
+    .badge-status.active { background:#dcfce7; color:#166534; }
+    .badge-status.inactive { background:#f1f5f9; color:#64748b; }
+    .row-chevron { color:#cbd5e1; }
+    .row-actions { display:flex; gap:.4rem; justify-content:flex-end; align-items:center; }
     .ops-empty { padding:3rem 1rem; text-align:center; color:var(--ops-muted); }
-    .ops-pill { display:inline-block; padding:.18rem .55rem; border-radius:999px; font-size:.74rem; font-weight:700; background:#eef2f7; color:#475569; text-transform:capitalize; }
-    .row-actions { display:flex; gap:.4rem; justify-content:flex-end; }
+    .ops-empty .ops-btn { margin-top:1rem; }
+    .ops-empty-icon { width:52px; height:52px; margin:0 auto .8rem; border-radius:50%; background:#fdeaec; color:var(--primary); display:flex; align-items:center; justify-content:center; }
+    .ops-empty-icon svg { width:26px; height:26px; }
+    .clear-link { color:var(--primary); cursor:pointer; font-weight:600; text-decoration:underline; background:none; border:none; font-size:inherit; font-family:inherit; }
+    /* Modal + toast (unchanged patterns) */
     .ops-modal-backdrop { position:fixed; inset:0; background:rgba(15,23,42,.45); display:none; align-items:center; justify-content:center; z-index:1000; padding:1rem; }
     .ops-modal-backdrop.open { display:flex; }
     .ops-modal { background:#fff; border-radius:16px; width:100%; max-width:560px; max-height:92vh; overflow:auto; box-shadow:0 20px 50px rgba(15,23,42,.25); }
@@ -50,7 +86,8 @@
     .ops-toast { position:fixed; bottom:1.5rem; left:50%; transform:translateX(-50%); background:var(--ops-ink); color:#fff; padding:.7rem 1.2rem; border-radius:10px; font-size:.9rem; z-index:2000; opacity:0; transition:opacity .2s; pointer-events:none; }
     .ops-toast.show { opacity:1; }
     .ops-toast.err { background:#b91c1c; }
-    @media (max-width:640px){ .ops-grid2{grid-template-columns:1fr;} .ops-table{font-size:.8rem;} }
+    @media (max-width:900px){ .kpi-grid{grid-template-columns:repeat(2,1fr);} .col-hide-md{display:none;} }
+    @media (max-width:640px){ .ops-grid2{grid-template-columns:1fr;} .ops-table{font-size:.8rem;} .col-hide-sm{display:none;} .kpi-value{font-size:1.15rem;} }
   </style>
 </head>
 <body class="ops-page">
@@ -65,7 +102,7 @@
           Operations
         </a>
         <h1 class="ops-title">Clients</h1>
-        <p class="ops-sub">Customer master used when creating trading invoices.</p>
+        <p class="ops-sub">Customer master with revenue insight across trading invoices.</p>
       </div>
       <div class="ops-actions">
         <button class="ops-btn ops-btn-primary" id="addBtn">
@@ -75,10 +112,58 @@
       </div>
     </div>
 
+    <div class="kpi-grid" id="kpis">
+      <div class="kpi-card">
+        <div class="kpi-icon">
+          <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Z"/></svg>
+        </div>
+        <div><div class="kpi-label">Total Clients</div><div class="kpi-value" id="kpiTotal">–</div></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon green">
+          <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+        </div>
+        <div><div class="kpi-label">Active Clients</div><div class="kpi-value" id="kpiActive">–</div></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon slate">
+          <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18 9 11.25l4.306 4.306a11.95 11.95 0 0 1 5.814-5.518l2.74-1.22m0 0-5.94-2.281m5.94 2.28-2.28 5.941"/></svg>
+        </div>
+        <div><div class="kpi-label">Total Revenue</div><div class="kpi-value" id="kpiRevenue">–</div></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon amber" id="kpiOutIcon">
+          <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+        </div>
+        <div><div class="kpi-label">Outstanding</div><div class="kpi-value" id="kpiOutstanding">–</div></div>
+      </div>
+    </div>
+
+    <div class="cl-toolbar">
+      <div class="cl-search">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg>
+        <input type="search" id="searchInput" placeholder="Search clients by name, contact, email or city…" autocomplete="off">
+      </div>
+      <div class="cl-chips" id="statusChips">
+        <button class="cl-chip active" data-status="all">All</button>
+        <button class="cl-chip" data-status="active">Active</button>
+        <button class="cl-chip" data-status="inactive">Inactive</button>
+      </div>
+      <span class="cl-count" id="countLabel"></span>
+    </div>
+
     <div class="ops-card">
       <table class="ops-table">
         <thead>
-          <tr><th>Client</th><th>Contact</th><th>Email</th><th>Phone</th><th>City</th><th>Status</th><th></th></tr>
+          <tr>
+            <th>Client</th>
+            <th class="col-hide-sm">City</th>
+            <th class="num-cell">Invoices</th>
+            <th class="num-cell">Revenue</th>
+            <th class="col-hide-md">Last Invoice</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
         </thead>
         <tbody id="clBody"><tr><td colspan="7" class="ops-empty">Loading…</td></tr></tbody>
       </table>
@@ -132,33 +217,100 @@
     const body = document.getElementById('clBody');
     const modal = document.getElementById('clModal');
     let clients = [];
+    let q = '', statusFilter = 'all';
+
     function toast(msg, isErr){ const t=document.getElementById('toast'); t.textContent=msg; t.className='ops-toast show'+(isErr?' err':''); setTimeout(()=>t.className='ops-toast',2600); }
     function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+    function fmtAED(n){ return 'AED ' + (Number(n)||0).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+    function fmtDate(d){ if(!d) return '—'; const dt=new Date(d+'T00:00:00'); return dt.toLocaleDateString('en-GB', {day:'2-digit', month:'short', year:'numeric'}); }
+
+    const AVATAR_COLORS = ['#d21725','#0e7490','#7c3aed','#b45309','#15803d','#be185d'];
+    function avatarColor(name){ let h=0; for(const ch of String(name||'')) h=(h*31+ch.charCodeAt(0))>>>0; return AVATAR_COLORS[h%AVATAR_COLORS.length]; }
+    function initials(name){
+      const parts = String(name||'').trim().split(/\s+/).filter(Boolean);
+      return ((parts[0]?.[0]||'') + (parts[1]?.[0]||'')).toUpperCase() || '?';
+    }
 
     async function load(){
       try{
         const res = await ApiClient.fetch('/operations/api/clients', { method:'GET' });
         const data = await res.json();
         if(!res.ok || !data.success){ throw new Error(data.error||'Failed to load'); }
-        clients = data.clients || []; render();
+        clients = data.clients || [];
+        renderKpis();
+        applyFilters();
       }catch(e){ body.innerHTML='<tr><td colspan="7" class="ops-empty">'+esc(e.message)+'</td></tr>'; }
     }
-    function render(){
-      if(!clients.length){ body.innerHTML='<tr><td colspan="7" class="ops-empty">No clients yet. Add your first client.</td></tr>'; return; }
-      body.innerHTML = clients.map(c=>`
-        <tr>
-          <td><strong>${esc(c.client_name)}</strong></td>
-          <td>${esc(c.contact_person)||'—'}</td>
-          <td>${esc(c.email)||'—'}</td>
-          <td>${esc(c.phone)||'—'}</td>
-          <td>${esc(c.city)||'—'}</td>
-          <td><span class="ops-pill">${esc(c.status)}</span></td>
+
+    function renderKpis(){
+      const active = clients.filter(c=>c.status==='active').length;
+      const revenue = clients.reduce((s,c)=>s+(c.total_revenue||0),0);
+      const outstanding = clients.reduce((s,c)=>s+(c.outstanding||0),0);
+      document.getElementById('kpiTotal').textContent = clients.length;
+      document.getElementById('kpiActive').textContent = active;
+      document.getElementById('kpiRevenue').textContent = fmtAED(revenue);
+      document.getElementById('kpiOutstanding').textContent = fmtAED(outstanding);
+      document.getElementById('kpiOutIcon').className = 'kpi-icon ' + (outstanding > 0 ? 'amber' : 'slate');
+    }
+
+    function applyFilters(){
+      const needle = q.toLowerCase();
+      const filtered = clients.filter(c=>{
+        if(statusFilter !== 'all' && c.status !== statusFilter) return false;
+        if(!needle) return true;
+        return [c.client_name, c.contact_person, c.email, c.city]
+          .some(v => v && String(v).toLowerCase().includes(needle));
+      });
+      document.getElementById('countLabel').textContent =
+        (filtered.length === clients.length) ? clients.length + ' client' + (clients.length===1?'':'s')
+                                             : filtered.length + ' of ' + clients.length + ' clients';
+      render(filtered);
+    }
+
+    function render(rows){
+      if(!clients.length){
+        body.innerHTML = `<tr><td colspan="7" class="ops-empty">
+          <div class="ops-empty-icon"><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0ZM3 19.235v-.11a6.375 6.375 0 0 1 12.75 0v.109A12.318 12.318 0 0 1 9.374 21c-2.331 0-4.512-.645-6.374-1.766Z"/></svg></div>
+          <div style="font-weight:700;color:var(--ops-ink);margin-bottom:.2rem">No clients yet</div>
+          <div>Clients you add appear here with revenue insight from their invoices.</div>
+          <button class="ops-btn ops-btn-primary" id="emptyAddBtn">Add your first client</button>
+        </td></tr>`;
+        const b = document.getElementById('emptyAddBtn');
+        if(b) b.addEventListener('click', ()=>openModal(null));
+        return;
+      }
+      if(!rows.length){
+        body.innerHTML = `<tr><td colspan="7" class="ops-empty">No clients match your search. <button class="clear-link" id="clearFilters">Clear filters</button></td></tr>`;
+        document.getElementById('clearFilters').addEventListener('click', ()=>{
+          q=''; statusFilter='all';
+          document.getElementById('searchInput').value='';
+          document.querySelectorAll('#statusChips .cl-chip').forEach(ch=>ch.classList.toggle('active', ch.dataset.status==='all'));
+          applyFilters();
+        });
+        return;
+      }
+      body.innerHTML = rows.map(c=>`
+        <tr data-href="/operations/clients/${esc(c.client_id)}" tabindex="0">
+          <td><div class="cl-cell">
+            <div class="cl-avatar" style="background:${avatarColor(c.client_name)}">${esc(initials(c.client_name))}</div>
+            <div>
+              <div class="cl-name">${esc(c.client_name)}</div>
+              <div class="cl-contact">${esc(c.contact_person || c.email || '')}</div>
+            </div>
+          </div></td>
+          <td class="col-hide-sm">${esc(c.city)||'—'}</td>
+          <td class="num-cell">${c.invoice_count||0}</td>
+          <td class="num-cell">${c.invoice_count ? fmtAED(c.total_revenue) : '—'}</td>
+          <td class="col-hide-md">${fmtDate(c.last_invoice_date)}</td>
+          <td><span class="badge-status ${esc(c.status)}">${esc(c.status)}</span></td>
           <td><div class="row-actions">
             <button class="ops-btn ops-btn-ghost ops-btn-sm" data-edit="${c.id}">Edit</button>
             <button class="ops-btn ops-btn-ghost ops-btn-sm" data-del="${c.id}">Delete</button>
+            <svg class="row-chevron" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
           </div></td>
         </tr>`).join('');
     }
+
     function openModal(c){
       document.getElementById('clModalTitle').textContent = c ? 'Edit Client' : 'Add Client';
       const f = id=>document.getElementById(id);
@@ -196,15 +348,34 @@
         toast('Client deleted'); load();
       }catch(e){ toast(e.message, true); }
     }
+
     document.getElementById('addBtn').addEventListener('click', ()=>openModal(null));
     document.getElementById('saveBtn').addEventListener('click', save);
     modal.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click', closeModal));
     modal.addEventListener('click', e=>{ if(e.target===modal) closeModal(); });
+
+    document.getElementById('searchInput').addEventListener('input', e=>{ q = e.target.value.trim(); applyFilters(); });
+    document.getElementById('statusChips').addEventListener('click', e=>{
+      const chip = e.target.closest('.cl-chip'); if(!chip) return;
+      statusFilter = chip.dataset.status;
+      document.querySelectorAll('#statusChips .cl-chip').forEach(ch=>ch.classList.toggle('active', ch===chip));
+      applyFilters();
+    });
+
     body.addEventListener('click', e=>{
       const ed=e.target.closest('[data-edit]'); const dl=e.target.closest('[data-del]');
-      if(ed){ openModal(clients.find(x=>x.id==ed.getAttribute('data-edit'))); }
-      if(dl){ del(dl.getAttribute('data-del')); }
+      if(ed){ openModal(clients.find(x=>x.id==ed.getAttribute('data-edit'))); return; }
+      if(dl){ del(dl.getAttribute('data-del')); return; }
+      if(e.target.closest('a,button')) return;
+      const row = e.target.closest('tr[data-href]');
+      if(row) window.location.href = row.dataset.href;
     });
+    body.addEventListener('keydown', e=>{
+      if(e.key !== 'Enter') return;
+      const row = e.target.closest('tr[data-href]');
+      if(row && !e.target.closest('a,button')) window.location.href = row.dataset.href;
+    });
+
     load();
   })();
   </script>

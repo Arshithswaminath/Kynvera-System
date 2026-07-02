@@ -16,6 +16,7 @@ from flask import (
     Blueprint, render_template, redirect, request, send_file, current_app,
 )
 from flask_jwt_extended import jwt_required, get_jwt_identity
+from sqlalchemy import func, case
 
 from app.models import (
     db, User, OvertimeRecord, Client, TradingInvoice, TradingInvoiceItem,
@@ -517,14 +518,61 @@ def clients_page():
     return render_template('clients.html', user=user)
 
 
+@operations_bp.route('/clients/<client_ref>')
+@jwt_required()
+def client_detail_page(client_ref):
+    user = _current_user()
+    if not _has_operations_access(user):
+        return redirect('/dashboard')
+    client = Client.query.filter_by(client_id=client_ref).first()
+    if not client and client_ref.isdigit():
+        client = Client.query.get(int(client_ref))
+    if not client:
+        return redirect('/operations/clients')
+    return render_template('client_detail.html', user=user, client=client,
+                           can_manage=_can_manage_invoices(user))
+
+
 @operations_bp.route('/api/clients', methods=['GET'])
 @jwt_required()
 def api_list_clients():
     user = _current_user()
     if not _has_operations_access(user):
         return error_response('Access denied', status_code=403, error_code='ACCESS_DENIED')
-    clients = Client.query.order_by(Client.client_name.asc()).all()
-    return success_response({'clients': [c.to_dict() for c in clients]})
+
+    agg_rows = (db.session.query(
+            TradingInvoice.client_id.label('cid'),
+            func.count(TradingInvoice.id).label('invoice_count'),
+            func.coalesce(func.sum(TradingInvoice.grand_total), 0.0).label('total_revenue'),
+            func.coalesce(func.sum(case(
+                (TradingInvoice.status == 'issued', TradingInvoice.grand_total),
+                else_=0.0)), 0.0).label('outstanding'),
+            func.max(TradingInvoice.invoice_date).label('last_invoice_date'),
+        ).group_by(TradingInvoice.client_id).all())
+    agg = {r.cid: r for r in agg_rows}
+
+    query = Client.query
+    q = (request.args.get('q') or '').strip()
+    status = (request.args.get('status') or '').strip().lower()
+    if q:
+        like = f'%{q}%'
+        query = query.filter(db.or_(
+            Client.client_name.ilike(like), Client.contact_person.ilike(like),
+            Client.email.ilike(like), Client.city.ilike(like)))
+    if status in ('active', 'inactive'):
+        query = query.filter(Client.status == status)
+    clients = query.order_by(Client.client_name.asc()).all()
+
+    out = []
+    for c in clients:
+        d = c.to_dict()
+        r = agg.get(c.id)
+        d['invoice_count'] = r.invoice_count if r else 0
+        d['total_revenue'] = round(float(r.total_revenue), 2) if r else 0.0
+        d['outstanding'] = round(float(r.outstanding), 2) if r else 0.0
+        d['last_invoice_date'] = r.last_invoice_date.isoformat() if (r and r.last_invoice_date) else None
+        out.append(d)
+    return success_response({'clients': out})
 
 
 @operations_bp.route('/api/clients', methods=['POST'])
@@ -611,6 +659,70 @@ def api_delete_client(client_id):
         logger.error('delete_client: %s', e, exc_info=True)
         return error_response('Database error', status_code=500, error_code='DATABASE_ERROR')
     return success_response(message='Client deleted.')
+
+
+@operations_bp.route('/api/clients/<int:client_id>/details', methods=['GET'])
+@jwt_required()
+def api_client_details(client_id):
+    user = _current_user()
+    if not _has_operations_access(user):
+        return error_response('Access denied', status_code=403, error_code='ACCESS_DENIED')
+    c = Client.query.get(client_id)
+    if not c:
+        return error_response('Client not found', status_code=404, error_code='NOT_FOUND')
+
+    invoices = (TradingInvoice.query.filter_by(client_id=c.id)
+                .order_by(TradingInvoice.invoice_date.desc(), TradingInvoice.id.desc()).all())
+
+    total_revenue = round(sum(inv.grand_total or 0.0 for inv in invoices), 2)
+    outstanding = round(sum(inv.grand_total or 0.0 for inv in invoices if inv.status == 'issued'), 2)
+    paid_total = round(sum(inv.grand_total or 0.0 for inv in invoices if inv.status == 'paid'), 2)
+    by_status = {'draft': 0, 'issued': 0, 'paid': 0}
+    for inv in invoices:
+        if inv.status in by_status:
+            by_status[inv.status] += 1
+    inv_dates = [inv.invoice_date for inv in invoices if inv.invoice_date]
+    stats = {
+        'invoice_count': len(invoices),
+        'total_revenue': total_revenue,
+        'outstanding': outstanding,
+        'paid_total': paid_total,
+        'draft_count': by_status['draft'],
+        'issued_count': by_status['issued'],
+        'paid_count': by_status['paid'],
+        'avg_invoice_value': round(total_revenue / len(invoices), 2) if invoices else 0.0,
+        'first_invoice_date': min(inv_dates).isoformat() if inv_dates else None,
+        'last_invoice_date': max(inv_dates).isoformat() if inv_dates else None,
+    }
+
+    # Last 12 calendar months, oldest → newest, zero-filled (Python-side bucketing
+    # keeps this portable across SQLite and Postgres).
+    month_labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    y, m = date.today().year, date.today().month
+    months = []
+    for _ in range(12):
+        months.append((y, m))
+        m -= 1
+        if m == 0:
+            y, m = y - 1, 12
+    months.reverse()
+    buckets = {f'{yy:04d}-{mm:02d}': 0.0 for yy, mm in months}
+    for inv in invoices:
+        if inv.invoice_date:
+            key = f'{inv.invoice_date.year:04d}-{inv.invoice_date.month:02d}'
+            if key in buckets:
+                buckets[key] = round(buckets[key] + (inv.grand_total or 0.0), 2)
+    monthly_revenue = [{'month': f'{yy:04d}-{mm:02d}',
+                        'label': month_labels[mm - 1],
+                        'total': buckets[f'{yy:04d}-{mm:02d}']} for yy, mm in months]
+
+    return success_response({
+        'client': c.to_dict(),
+        'stats': stats,
+        'monthly_revenue': monthly_revenue,
+        'invoices': [inv.to_dict(include_items=False) for inv in invoices],
+    })
 
 
 # ── Trading Invoices ─────────────────────────────────────────────────────────

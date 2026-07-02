@@ -530,12 +530,15 @@ def api_queue():
 
     if bucket == 'completed':
         tickets = (Ticket.query
-                   .filter(Ticket.finance_confirmed_at.isnot(None))
+                   .filter(Ticket.finance_confirmed_at.isnot(None),
+                           Ticket.status == 'closed')
                    .order_by(Ticket.finance_confirmed_at.desc())
                    .limit(limit).all())
     else:
+        # Tickets enter the finance queue as soon as the supervisor verifies —
+        # GM approval runs in parallel ('pending_gm_approval') or is done ('pending_finance').
         tickets = (Ticket.query
-                   .filter(Ticket.status == 'pending_finance')
+                   .filter(Ticket.status.in_(('pending_finance', 'pending_gm_approval')))
                    .order_by(Ticket.resolved_at.desc().nullslast(),
                              Ticket.updated_at.desc())
                    .limit(limit).all())
@@ -554,9 +557,10 @@ def api_queue():
             'selling_price': round(t.selling_price or 0, 2),
             'total_cost': round(t.total_cost or 0, 2),
             'margin_pct': _compute_margin(t),
-            'service_report_url': f'/tickets/{t.ticket_id}#service-report',
+            'service_report_url': f'/tickets/{t.ticket_id}/service-report',
             'invoice_url': f'/tickets/{t.ticket_id}/invoice',
             'ticket_url': f'/tickets/{t.ticket_id}',
+            'created_at': t.created_at.isoformat() if t.created_at else None,
             'gm_approved_at': t.gm_approved_at.isoformat() if t.gm_approved_at else None,
             'resolved_at': t.resolved_at.isoformat() if t.resolved_at else None,
             'finance_confirmed_at': t.finance_confirmed_at.isoformat() if t.finance_confirmed_at else None,
@@ -566,7 +570,8 @@ def api_queue():
         })
 
     # Counts for stats
-    pending_count   = Ticket.query.filter(Ticket.status == 'pending_finance').count()
+    pending_count   = Ticket.query.filter(
+        Ticket.status.in_(('pending_finance', 'pending_gm_approval'))).count()
     completed_today = (Ticket.query
                        .filter(func.date(Ticket.finance_confirmed_at) == date.today())
                        .count())

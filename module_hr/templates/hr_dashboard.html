@@ -8,7 +8,7 @@
   {% include 'partials/caveat_font.html' %}
 <title>HR Module - Amaan Application</title>
   <meta name="theme-color" content="#d21725">
-  <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
@@ -20,15 +20,26 @@
       --secondary: #6366f1;
     }
     
-    /* HR Hero: gradient at top only, no grid */
-    .hr-hero::before {
+    /* HR Hero: simple red tint fading down from the navbar, no grid/orb - matches the
+       red brand without the busier main-dashboard hero treatment. */
+    .hero.hr-hero {
+      background: linear-gradient(180deg, rgba(210, 23, 37, 0.14) 0%, rgba(210, 23, 37, 0.04) 35%, #faf8f8 100%);
+    }
+    .hero.hr-hero::before {
       display: none;
     }
+    .hero.hr-hero::after {
+      display: none;
+    }
+    /* Nav clearance lives inside the hero (so its gradient fills the space, like every
+       other module hero) instead of in .hr-dashboard-content as plain background - that
+       split is what produced a flat blank strip between the navbar and the hero content. */
     .hr-hero {
-      padding: 2.5rem 0 2rem;
+      padding-top: calc(max(4.75rem, calc(72px + env(safe-area-inset-top, 0px) + 0.5rem)) + 2.5rem);
+      padding-bottom: 2rem;
     }
     .hr-dashboard-content {
-      padding-top: max(4.75rem, calc(72px + env(safe-area-inset-top, 0px) + 0.5rem));
+      padding-top: 0;
     }
     /* Tighter space between workflow strip and HR form cards */
     .hr-dashboard .hr-modules-section {
@@ -129,10 +140,11 @@
     /* Mobile: tighter hero + workflow tiles (override global .module-card grid) */
     @media (max-width: 768px) {
       .hr-dashboard-content {
-        padding-top: max(4rem, calc(56px + env(safe-area-inset-top, 0px) + 0.85rem)) !important;
+        padding-top: 0 !important;
       }
       .hr-hero {
-        padding: 1.05rem 0 1.45rem !important;
+        padding-top: calc(max(4rem, calc(56px + env(safe-area-inset-top, 0px) + 0.85rem)) + 1.05rem) !important;
+        padding-bottom: 1.45rem !important;
       }
       /* One readable column: same horizontal inset as HR forms list below */
       .hr-hero .hero-content.hero-split-inner {
@@ -601,7 +613,7 @@
         <a href="/hr/duty-resumption-form" class="module-card">
           <div class="card-body">
             <span class="module-number">03 &mdash; HR</span>
-            <div class="module-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064"/></svg></div>
+            <div class="module-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M14 2v20M14 2h7v20h-7"/><circle cx="18.5" cy="12" r="0.4" fill="currentColor" stroke="none"/><circle cx="6.5" cy="5" r="1.4"/><path stroke-linecap="round" stroke-linejoin="round" d="M6.5 7v5.5M6.5 8.5l2.5 2M6.5 8.5l-2 1.5M6.5 12.5l2.5 5M6.5 12.5l-2 5"/></svg></div>
             <h2 class="module-title">Duty Resumption</h2>
             <p class="module-description">Resumption of duty after leave</p>
             <span class="module-arrow">Open Form <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>

@@ -1,0 +1,367 @@
+/* ═══════════════════════════════════════════════════════════════
+   INSPECTION FORMS — FRESH DESIGN (v2)
+   Loaded last. Replaces red hero + green pill stepper with a
+   clean, mobile-first layout aligned with Service Report / app UI.
+   Applies to: Fire, HVAC, Civil, Cleaning inspection forms.
+   ═══════════════════════════════════════════════════════════════ */
+
+:root {
+  --if-fresh-bg: #f4f5f7;
+  --if-fresh-surface: #ffffff;
+  --if-fresh-border: #e5e7eb;
+  --if-fresh-ink: #111827;
+  --if-fresh-muted: #6b7280;
+  --if-fresh-accent: #d21725;
+  --if-fresh-accent-soft: #fde8ea;
+  --if-fresh-radius: 14px;
+  --if-fresh-shadow: 0 1px 3px rgba(16, 24, 40, 0.06), 0 1px 2px rgba(16, 24, 40, 0.04);
+}
+
+html:not([data-theme="dark"]):has(body.inspection-form),
+html:not([data-theme="dark"]) body.inspection-form {
+  background-color: var(--if-fresh-bg) !important;
+}
+
+body.inspection-form {
+  background: var(--if-fresh-bg) !important;
+  color: var(--if-fresh-ink) !important;
+}
+
+body.inspection-form .inspection-form-bar {
+  max-width: 1100px !important;
+  padding: 0.85rem 1rem 0 !important;
+  margin: 0 auto !important;
+}
+
+body.inspection-form .if-back-btn {
+  color: var(--if-fresh-muted) !important;
+  font-size: 0.85rem !important;
+  font-weight: 600 !important;
+}
+body.inspection-form .if-back-btn:hover {
+  color: var(--if-fresh-accent) !important;
+  opacity: 1 !important;
+}
+
+body.inspection-form .container,
+body.inspection-form .container.has-if-layout,
+body.inspection-form .container:has(.if-layout) {
+  max-width: 1100px !important;
+  margin-top: calc(72px + 0.75rem) !important;
+  margin-bottom: 3rem !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  overflow: visible !important;
+}
+
+body.inspection-form .if-layout {
+  grid-template-columns: 1fr !important;
+  gap: 1rem !important;
+  padding-top: 0 !important;
+}
+
+@media (min-width: 1100px) {
+  body.inspection-form .if-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 280px) !important;
+  }
+}
+
+body.inspection-form .if-layout-main form:has(> ul.nav.nav-tabs),
+body.inspection-form form:has(> ul.nav.nav-tabs) {
+  display: flex !important;
+  flex-direction: column !important;
+  background: var(--if-fresh-surface) !important;
+  border: 1px solid var(--if-fresh-border) !important;
+  border-radius: var(--if-fresh-radius) !important;
+  box-shadow: var(--if-fresh-shadow) !important;
+  overflow: hidden !important;
+}
+
+/* Beat redesign.css order (header → steps → content) */
+body.inspection-form .container.has-if-layout .if-layout-main form:has(> ul.nav.nav-tabs) > .if-form-hd,
+body.inspection-form .container:has(.if-layout) .if-layout-main form:has(> ul.nav.nav-tabs) > .if-form-hd,
+body.inspection-form form:has(> ul.nav.nav-tabs) > .if-form-hd {
+  order: 1 !important;
+}
+
+body.inspection-form .container.has-if-layout .if-layout-main form:has(> ul.nav.nav-tabs) > ul.nav.nav-tabs,
+body.inspection-form .container:has(.if-layout) .if-layout-main form:has(> ul.nav.nav-tabs) > ul.nav.nav-tabs,
+body.inspection-form form:has(> ul.nav.nav-tabs) > ul.nav.nav-tabs {
+  order: 2 !important;
+}
+
+body.inspection-form .container.has-if-layout .if-layout-main form:has(> ul.nav.nav-tabs) > .tab-content,
+body.inspection-form .container:has(.if-layout) .if-layout-main form:has(> ul.nav.nav-tabs) > .tab-content,
+body.inspection-form form:has(> ul.nav.nav-tabs) > .tab-content {
+  order: 3 !important;
+  background: var(--if-fresh-surface) !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+body.inspection-form .container.has-if-layout .if-layout-main form:has(> ul.nav.nav-tabs) > .if-form-hd,
+body.inspection-form .container:has(.if-layout) .if-layout-main form:has(> ul.nav.nav-tabs) > .if-form-hd {
+  border-radius: 0 !important;
+  border: none !important;
+  border-bottom: 1px solid var(--if-fresh-border) !important;
+}
+
+body.inspection-form .if-form-hd {
+  background: var(--if-fresh-surface) !important;
+  padding: 1.25rem 1.5rem 1rem !important;
+  border: none !important;
+  border-bottom: 1px solid var(--if-fresh-border) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  gap: 1rem !important;
+}
+body.inspection-form .if-form-hd::before {
+  display: none !important;
+}
+body.inspection-form .if-form-title {
+  font-size: 1.35rem !important;
+  font-weight: 800 !important;
+  color: var(--if-fresh-ink) !important;
+  text-shadow: none !important;
+  letter-spacing: -0.02em !important;
+}
+body.inspection-form .if-form-subtitle {
+  font-size: 0.72rem !important;
+  font-weight: 600 !important;
+  color: var(--if-fresh-muted) !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.06em !important;
+  margin-top: 0.25rem !important;
+}
+body.inspection-form .if-form-logo {
+  display: block !important;
+  height: 40px !important;
+  max-width: 40px !important;
+  filter: none !important;
+  opacity: 1 !important;
+}
+
+body.inspection-form .nav-tabs {
+  order: 2 !important;
+  position: relative !important;
+  top: auto !important;
+  left: auto !important;
+  right: auto !important;
+  transform: none !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  gap: 0.35rem !important;
+  padding: 0.75rem 1rem !important;
+  margin: 0 !important;
+  background: #fafafa !important;
+  border: none !important;
+  border-bottom: 1px solid var(--if-fresh-border) !important;
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  counter-reset: ifstep;
+}
+body.inspection-form .nav-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+body.inspection-form .nav-tabs .nav-item {
+  margin: 0 !important;
+  counter-increment: ifstep;
+  flex-shrink: 0;
+}
+body.inspection-form .nav-tabs .nav-item:not(:last-child)::after {
+  display: none !important;
+}
+
+body.inspection-form .nav-tabs .nav-link {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.45rem !important;
+  padding: 0.5rem 0.85rem 0.5rem 0.5rem !important;
+  border-radius: 10px !important;
+  font-size: 0.78rem !important;
+  font-weight: 600 !important;
+  color: var(--if-fresh-muted) !important;
+  background: transparent !important;
+  border: 1.5px solid transparent !important;
+  box-shadow: none !important;
+  white-space: nowrap !important;
+  backdrop-filter: none !important;
+}
+body.inspection-form .nav-tabs .nav-link::before {
+  content: counter(ifstep) !important;
+  width: 1.5rem !important;
+  height: 1.5rem !important;
+  min-width: 1.5rem !important;
+  border-radius: 50% !important;
+  background: #e5e7eb !important;
+  color: #6b7280 !important;
+  border: none !important;
+  font-size: 0.68rem !important;
+  font-weight: 700 !important;
+  box-shadow: none !important;
+}
+body.inspection-form .nav-tabs .nav-link.active {
+  background: var(--if-fresh-surface) !important;
+  color: var(--if-fresh-accent) !important;
+  border-color: var(--if-fresh-accent) !important;
+}
+body.inspection-form .nav-tabs .nav-link.active::before {
+  background: var(--if-fresh-accent) !important;
+  color: #fff !important;
+}
+body.inspection-form .nav-tabs .nav-link:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.7) !important;
+  color: var(--if-fresh-ink) !important;
+  border-color: var(--if-fresh-border) !important;
+}
+body.inspection-form .nav-tabs .nav-item.done .nav-link::before {
+  background: #16a34a !important;
+  color: #fff !important;
+}
+
+body.inspection-form .tab-content {
+  order: 3 !important;
+  padding: 1.25rem 1.5rem 1.5rem !important;
+  margin: 0 !important;
+  background: var(--if-fresh-surface) !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+body.inspection-form .section-heading,
+body.inspection-form .section-heading-no-border,
+body.inspection-form .work-items-section-title {
+  font-size: 0.72rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.07em !important;
+  text-transform: uppercase !important;
+  color: var(--if-fresh-muted) !important;
+  border-bottom: 1px solid var(--if-fresh-border) !important;
+  padding-bottom: 0.5rem !important;
+  margin-bottom: 1rem !important;
+}
+body.inspection-form .section-heading::before,
+body.inspection-form .section-heading-no-border::before,
+body.inspection-form .work-items-section-title::before {
+  display: none !important;
+}
+
+body.inspection-form .form-label {
+  font-size: 0.76rem !important;
+  font-weight: 700 !important;
+  color: #374151 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.03em !important;
+}
+
+body.inspection-form .form-control,
+body.inspection-form .form-select,
+body.inspection-form textarea.form-control {
+  background: #fff !important;
+  border: 1.5px solid var(--if-fresh-border) !important;
+  border-radius: 10px !important;
+  padding: 0.65rem 0.75rem !important;
+  font-size: 16px !important;
+  min-height: 44px !important;
+  color: var(--if-fresh-ink) !important;
+  box-shadow: none !important;
+}
+body.inspection-form .form-control:focus,
+body.inspection-form .form-select:focus,
+body.inspection-form textarea.form-control:focus {
+  border-color: var(--if-fresh-accent) !important;
+  box-shadow: 0 0 0 3px rgba(210, 23, 37, 0.1) !important;
+  outline: none !important;
+}
+
+body.inspection-form .card,
+body.inspection-form .item-card,
+body.inspection-form .section-card,
+body.inspection-form .editable-item-card,
+body.inspection-form .hvac-add-item-card {
+  border: 1px solid var(--if-fresh-border) !important;
+  border-radius: 12px !important;
+  background: #fff !important;
+  box-shadow: none !important;
+}
+
+body.inspection-form .btn-primary {
+  background: var(--if-fresh-accent) !important;
+  border-color: var(--if-fresh-accent) !important;
+  border-radius: 10px !important;
+  font-weight: 600 !important;
+  min-height: 44px !important;
+  box-shadow: none !important;
+}
+body.inspection-form .btn-outline-primary,
+body.inspection-form .btn-outline-secondary,
+body.inspection-form .btn-success {
+  border-radius: 10px !important;
+  min-height: 44px !important;
+}
+
+body.inspection-form input[type="checkbox"],
+body.inspection-form input[type="radio"] {
+  accent-color: var(--if-fresh-accent) !important;
+}
+
+body.inspection-form .fc-section {
+  border: 1px solid var(--if-fresh-border) !important;
+  border-radius: 12px !important;
+  box-shadow: none !important;
+}
+body.inspection-form .fc-section-head {
+  background: #fafafa !important;
+  border-bottom: 1px solid var(--if-fresh-border) !important;
+}
+body.inspection-form .fc-section-icon {
+  background: var(--if-fresh-accent-soft) !important;
+  color: var(--if-fresh-accent) !important;
+}
+body.inspection-form .fc-section-title {
+  color: var(--if-fresh-ink) !important;
+}
+body.inspection-form .fc-section-count {
+  background: var(--if-fresh-accent-soft) !important;
+  color: var(--if-fresh-accent) !important;
+}
+body.inspection-form .fc-summary {
+  background: #fafafa !important;
+  border-color: var(--if-fresh-border) !important;
+  color: var(--if-fresh-muted) !important;
+}
+
+body.inspection-form .if-layout-aside .leave-sidebar-card.tkt-card {
+  border: 1px solid var(--if-fresh-border) !important;
+  border-radius: 12px !important;
+  box-shadow: var(--if-fresh-shadow) !important;
+}
+
+@media (max-width: 640px) {
+  body.inspection-form .container,
+  body.inspection-form .container.has-if-layout {
+    margin-top: calc(64px + 0.5rem) !important;
+    margin-left: 0.5rem !important;
+    margin-right: 0.5rem !important;
+  }
+  body.inspection-form .if-form-hd {
+    padding: 1rem !important;
+  }
+  body.inspection-form .if-form-logo {
+    display: none !important;
+  }
+  body.inspection-form .tab-content {
+    padding: 1rem !important;
+  }
+}

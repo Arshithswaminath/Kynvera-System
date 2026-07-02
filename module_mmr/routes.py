@@ -13,7 +13,8 @@ from flask import (Blueprint, request, jsonify, render_template,
                    current_app)
 from flask_jwt_extended import jwt_required, get_jwt_identity
 
-from app.models import db, User, EmailAutomation, EmailAutomationAttachment
+from app.models import (db, User, EmailAutomation, EmailAutomationAttachment,
+                        EmailAutomationDefaults)
 
 logger = logging.getLogger(__name__)
 
@@ -90,6 +91,17 @@ def _remove_job(automation_id):
         logger.exception('Failed to remove scheduler job for automation %s', automation_id)
 
 
+def _with_next_run(automation, include_body=False):
+    """to_dict() enriched with the APScheduler next fire time (next_run_at)."""
+    d = automation.to_dict(include_body=include_body)
+    try:
+        from .scheduler import get_next_run_iso
+        d['next_run_at'] = get_next_run_iso(automation.id)
+    except Exception:
+        d['next_run_at'] = None
+    return d
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Field parsing / validation
 # ──────────────────────────────────────────────────────────────────────────────
@@ -152,6 +164,39 @@ def dashboard():
 
 
 # ──────────────────────────────────────────────────────────────────────────────
+# Default email settings (global, single row)
+# ──────────────────────────────────────────────────────────────────────────────
+
+@mmr_bp.route('/api/defaults', methods=['GET'])
+@mmr_jwt_and_report_access
+def get_defaults():
+    row = EmailAutomationDefaults.query.first()
+    defaults = row.to_dict() if row else {'to_emails': '', 'cc_emails': ''}
+    return jsonify({'defaults': defaults})
+
+
+@mmr_bp.route('/api/defaults', methods=['PUT'])
+@mmr_jwt_and_report_access
+def save_defaults():
+    data = request.get_json(silent=True) or {}
+    to_list, err = _validate_injaaz_emails(data.get('to_emails') or '')
+    if err:
+        return jsonify({'error': err}), 400
+    cc_list, err = _validate_injaaz_emails(data.get('cc_emails') or '')
+    if err:
+        return jsonify({'error': err}), 400
+
+    row = EmailAutomationDefaults.query.first()
+    if not row:
+        row = EmailAutomationDefaults()
+        db.session.add(row)
+    row.to_emails = ', '.join(to_list)
+    row.cc_emails = ', '.join(cc_list)
+    db.session.commit()
+    return jsonify({'defaults': row.to_dict()})
+
+
+# ──────────────────────────────────────────────────────────────────────────────
 # Automation CRUD
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -159,7 +204,7 @@ def dashboard():
 @mmr_jwt_and_report_access
 def list_automations():
     rows = EmailAutomation.query.order_by(EmailAutomation.created_at.desc()).all()
-    return jsonify({'automations': [r.to_dict() for r in rows]})
+    return jsonify({'automations': [_with_next_run(r) for r in rows]})
 
 
 @mmr_bp.route('/api/automations', methods=['POST'])
@@ -177,7 +222,7 @@ def create_automation():
     db.session.add(automation)
     db.session.commit()
     _sync_job(automation)
-    return jsonify({'automation': automation.to_dict(include_body=True)}), 201
+    return jsonify({'automation': _with_next_run(automation, include_body=True)}), 201
 
 
 @mmr_bp.route('/api/automations/<int:aid>', methods=['GET'])
@@ -186,7 +231,7 @@ def get_automation(aid):
     automation = EmailAutomation.query.get(aid)
     if not automation:
         return jsonify({'error': 'Automation not found'}), 404
-    return jsonify({'automation': automation.to_dict(include_body=True)})
+    return jsonify({'automation': _with_next_run(automation, include_body=True)})
 
 
 @mmr_bp.route('/api/automations/<int:aid>', methods=['PUT'])
@@ -201,7 +246,7 @@ def update_automation(aid):
         return jsonify({'error': err}), 400
     db.session.commit()
     _sync_job(automation)
-    return jsonify({'automation': automation.to_dict(include_body=True)})
+    return jsonify({'automation': _with_next_run(automation, include_body=True)})
 
 
 @mmr_bp.route('/api/automations/<int:aid>', methods=['DELETE'])
@@ -225,7 +270,7 @@ def toggle_automation(aid):
     automation.enabled = not automation.enabled
     db.session.commit()
     _sync_job(automation)
-    return jsonify({'automation': automation.to_dict()})
+    return jsonify({'automation': _with_next_run(automation)})
 
 
 @mmr_bp.route('/api/automations/<int:aid>/run-now', methods=['POST'])
@@ -241,7 +286,22 @@ def run_automation_now(aid):
         logger.exception('Manual run failed for automation %s', aid)
         return jsonify({'error': f'Run failed: {exc}'}), 500
     db.session.refresh(automation)
-    return jsonify({'automation': automation.to_dict()})
+    return jsonify({'automation': _with_next_run(automation)})
+
+
+@mmr_bp.route('/api/automations/<int:aid>/logs', methods=['GET'])
+@mmr_jwt_and_report_access
+def list_automation_logs(aid):
+    automation = EmailAutomation.query.get(aid)
+    if not automation:
+        return jsonify({'error': 'Automation not found'}), 404
+    limit = _clamp(request.args.get('limit'), 1, 100, 50)
+    offset = _clamp(request.args.get('offset'), 0, 10000, 0)
+    logs = automation.run_logs.offset(offset).limit(limit).all()
+    return jsonify({
+        'logs': [l.to_dict() for l in logs],
+        'total': automation.run_logs.count(),
+    })
 
 
 # ──────────────────────────────────────────────────────────────────────────────

@@ -15,6 +15,7 @@
   --text-mid: #374151;
   --text-light: #6b7280;
   --text-muted: #9ca3af;
+  --logo-brand-color: #6b7280;
   --bg-light: #f9fafb;
   --white: #ffffff;
   --bg-body: #faf8f8;
@@ -75,6 +76,7 @@ html:not([data-theme="dark"]) body.page-dashboard,
 html:not([data-theme="dark"]) body.hr-dashboard,
 html:not([data-theme="dark"]) body.inspection-dashboard,
 html:not([data-theme="dark"]) body.inspection-form,
+html:not([data-theme="dark"]) body.operations-dashboard,
 html:not([data-theme="dark"]) body.review-dashboard {
   --bg-body: #faf8f8;
   --bg-light: #f9fafb;
@@ -89,6 +91,7 @@ html:not([data-theme="dark"]) body.review-dashboard {
 body.page-dashboard,
 body.hr-dashboard,
 body.inspection-dashboard,
+body.operations-dashboard,
 body.review-dashboard {
   background: var(--bg-body, #faf8f8) !important;
 }
@@ -133,12 +136,20 @@ body.review-dashboard {
   align-items: center;
   gap: 0.75rem;
   text-decoration: none;
+  color: inherit;
   transition: opacity 0.2s ease;
   flex-shrink: 0;
   min-width: 0;
   grid-column: 1;
   justify-self: start;
   margin-right: 1.5rem;
+}
+
+a.logo,
+a.logo:visited,
+a.logo:hover,
+a.logo:active {
+  color: inherit;
 }
 
 .nav-center {
@@ -167,12 +178,12 @@ body.review-dashboard {
   filter: none;
 }
 
-/* Official nav mark — scaled up visually; transform keeps layout box at 36px so nav height is unchanged */
+/* Official nav mark — emblem-only crop fills its box, so a larger explicit size
+   makes the logo visibly bigger; 56px stays within the 72px nav so height is unchanged. */
 .logo img.logo-img-official {
-  border-radius: 12px;
-  transform: scale(1.8);
-  transform-origin: left center;
-  margin-left: -0.75rem;
+  height: 44px !important;
+  width: auto;
+  margin-left: -0.4rem;
 }
 
 .logo-text {
@@ -183,16 +194,16 @@ body.review-dashboard {
   gap: 0.1rem;
   min-width: 0;
   text-align: left;
-  margin-left: 0.5rem;
+  margin-left: 0.25rem;
 }
 
 .logo-brand {
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Helvetica, Arial, sans-serif;
-  font-size: 0.6rem;
+  font-size: 0.95rem;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.15em;
-  color: var(--text-muted);
+  text-transform: none;
+  letter-spacing: 0.01em;
+  color: var(--logo-brand-color) !important;
   line-height: 1;
 }
 
@@ -205,7 +216,7 @@ body.review-dashboard {
   line-height: 1.2;
   white-space: nowrap;
   text-align: left;
-  max-width: min(34vw, 360px);
+  max-width: min(60vw, 520px);
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -1813,7 +1824,7 @@ body.review-dashboard {
   #welcome-text {
     font-size: 1.08rem !important;
     font-weight: 600 !important;
-    max-width: min(28vw, 300px) !important;
+    max-width: min(60vw, 520px) !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
     white-space: nowrap !important;

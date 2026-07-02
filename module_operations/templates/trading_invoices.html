@@ -7,40 +7,126 @@
   {% include 'partials/caveat_font.html' %}
   <title>Trading Invoices - Operations</title>
   <meta name="theme-color" content="#d21725">
-  <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
   <style>
-    :root { --primary: #d21725; --primary-light: #e8323f; --ops-ink:#0f172a; --ops-muted:#64748b; --ops-rule:#e2e8f0; }
-    body.ops-page { background:#F8FAF8; }
-    .ops-wrap { max-width: 1180px; margin: 7rem auto 3rem; padding: 0 1.25rem; }
+    :root { --primary: #d21725; --primary-light: #e8323f; --ops-ink:#0f172a; --ops-muted:#64748b; --ops-rule:#e2e8f0; --paper-rule:#eef1f5; }
+    /* Always reserve the scrollbar gutter so the layout never shifts sideways
+       when a tall invoice loads into the right pane. */
+    body.ops-page { background:#F8FAF8; overflow-y:scroll; }
+    .ops-wrap { max-width: 1500px; margin: 7rem auto 3rem; padding: 0 1.25rem; }
     .ops-head { display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; margin-bottom:1.5rem; }
     .ops-title { font-size:1.85rem; font-weight:800; color:var(--ops-ink); margin:0; }
     .ops-sub { color:var(--ops-muted); margin:.35rem 0 0; font-size:.95rem; }
-    .ops-actions { display:flex; gap:.6rem; flex-wrap:wrap; }
-    .ops-btn { display:inline-flex; align-items:center; gap:.45rem; border:none; border-radius:10px; padding:.62rem 1.05rem; font-weight:600; font-size:.9rem; cursor:pointer; text-decoration:none; transition:transform .12s ease, box-shadow .12s ease; }
+    .ops-actions { display:flex; gap:.6rem; flex-wrap:wrap; align-items:center; }
+    .ops-btn { display:inline-flex; align-items:center; justify-content:center; gap:.45rem; border:1px solid transparent; border-radius:10px; padding:.62rem 1.05rem; font-family:inherit; font-weight:600; font-size:.9rem; line-height:1.2; cursor:pointer; text-decoration:none; box-sizing:border-box; transition:transform .12s ease, box-shadow .12s ease, border-color .12s ease; }
     .ops-btn-primary { background:var(--primary); color:#fff; }
     .ops-btn-primary:hover { transform:translateY(-1px); box-shadow:0 6px 16px rgba(210,23,37,.22); }
     .ops-btn-ghost { background:#fff; color:var(--ops-ink); border:1px solid var(--ops-rule); }
     .ops-btn-ghost:hover { border-color:var(--primary-light); }
+    .ops-btn-danger { background:#fff; color:#b91c1c; border:1px solid #f1c4c4; }
+    .ops-btn-danger:hover { background:#fef2f2; border-color:#e89a9a; }
     .ops-btn-sm { padding:.36rem .6rem; font-size:.8rem; border-radius:8px; }
-    .ops-card { background:#fff; border:1px solid var(--ops-rule); border-radius:16px; box-shadow:0 1px 3px rgba(15,23,42,.05); overflow:hidden; }
-    .ops-table { width:100%; border-collapse:collapse; font-size:.88rem; }
-    .ops-table th { text-align:left; background:#faf5f6; color:#7a1019; font-weight:700; padding:.8rem 1rem; border-bottom:1px solid var(--ops-rule); white-space:nowrap; }
-    .ops-table td { padding:.75rem 1rem; border-bottom:1px solid #f1f5f9; color:var(--ops-ink); vertical-align:middle; }
-    .ops-table tr:last-child td { border-bottom:none; }
-    .ops-table tbody tr:hover { background:#fcfcfd; }
+    .ops-btn:disabled { opacity:.6; cursor:default; }
+    @keyframes opsSpin { to { transform:rotate(360deg); } }
+    .ops-btn svg.spin { animation:opsSpin .7s linear infinite; }
     .ops-num { text-align:right; font-variant-numeric:tabular-nums; }
     .ops-empty { padding:3rem 1rem; text-align:center; color:var(--ops-muted); }
     .ops-pill { display:inline-block; padding:.18rem .55rem; border-radius:999px; font-size:.74rem; font-weight:700; text-transform:capitalize; }
     .pill-draft { background:#eef2f7; color:#475569; }
     .pill-issued { background:#fef3c7; color:#92400e; }
     .pill-paid { background:#dcfce7; color:#166534; }
-    .row-actions { display:flex; gap:.4rem; justify-content:flex-end; }
-    .ops-link { color:var(--primary); font-weight:700; text-decoration:none; }
-    .ops-link:hover { text-decoration:underline; }
     .view-tag { display:inline-flex; align-items:center; gap:.4rem; font-size:.78rem; font-weight:700; color:var(--ops-muted); background:#fff; border:1px solid var(--ops-rule); border-radius:999px; padding:.45rem .85rem; }
+    .status-sel { border:1px solid #cbd5e1; border-radius:10px; padding:.55rem .7rem; font-size:.86rem; font-family:inherit; background:#fff; color:var(--ops-ink); }
+    .status-sel:focus { outline:none; border-color:var(--primary-light); box-shadow:0 0 0 3px rgba(210,23,37,.12); }
+
+    /* ── Split master/detail layout ────────────────────────────────────────── */
+    /* Fixed-height grid: the overall split area is locked to the viewport.
+       Neither column can ever grow the page — content scrolls inside each pane. */
+    .inv-split { display:grid; grid-template-columns: 380px 1fr; gap:1.25rem; align-items:stretch; height:calc(100vh - 17rem); overflow:hidden; }
+
+    /* Left: invoice list cards */
+    .inv-list { display:flex; flex-direction:column; gap:.6rem; height:100%; overflow-y:auto; padding:.15rem; }
+    .inv-listcard { position:relative; background:#fff; border:1px solid var(--ops-rule); border-radius:13px; padding:.85rem 1rem; cursor:pointer; transition:border-color .14s, box-shadow .14s, transform .14s; }
+    .inv-listcard:hover { border-color:#f1c4c4; box-shadow:0 4px 14px rgba(15,23,42,.07); }
+    .inv-listcard.selected { border-color:var(--primary); background:#fffafa; box-shadow:0 6px 18px rgba(210,23,37,.10); }
+    .inv-listcard .lc-top { display:flex; align-items:center; justify-content:space-between; gap:.5rem; }
+    .inv-listcard .lc-no { font-weight:800; color:var(--ops-ink); font-size:.92rem; letter-spacing:-.01em; }
+    .inv-listcard .lc-client { color:var(--ops-muted); font-size:.84rem; margin-top:.25rem; }
+    .inv-listcard .lc-meta { display:flex; align-items:center; justify-content:space-between; gap:.5rem; margin-top:.55rem; }
+    .inv-listcard .lc-date { color:#94a3b8; font-size:.78rem; }
+    .inv-listcard .lc-total { font-weight:800; color:var(--ops-ink); font-size:.9rem; font-variant-numeric:tabular-nums; }
+    .inv-list-empty { padding:2.5rem 1rem; text-align:center; color:var(--ops-muted); font-size:.88rem; background:#fff; border:1px dashed var(--ops-rule); border-radius:13px; }
+
+    /* Right: detail pane fills the grid cell exactly. The action bar keeps its
+       space reserved at all times (visibility, not display) and only the
+       document area below it scrolls — so selecting an invoice moves nothing. */
+    .inv-detail-pane { height:100%; display:flex; flex-direction:column; overflow:hidden; }
+    /* The bar is always present so the pane structure matches the open-invoice
+       state; it's just grayed out and inert until an invoice is selected. */
+    .inv-bar { flex-shrink:0; }
+    .inv-bar:not(.active) { opacity:.45; pointer-events:none; }
+    /* overflow-y:scroll (not auto) keeps the scrollbar track permanently
+       reserved, so the paper never changes width when a tall invoice loads.
+       (scrollbar-gutter alone is not enough — Safari ignores it.) */
+    .inv-scroll { flex:1; min-height:0; overflow-y:scroll; overflow-x:auto; scrollbar-gutter:stable; }
+    .inv-back { display:none; align-items:center; gap:.4rem; background:none; border:none; color:var(--primary); font-weight:700; font-size:.9rem; cursor:pointer; padding:.2rem 0; margin-bottom:.6rem; font-family:inherit; }
+    /* Action bar tracks the paper's width so its buttons stay aligned with
+       the document's right edge. */
+    .inv-bar { display:flex; align-items:center; justify-content:flex-end; gap:.55rem; flex-wrap:wrap; width:100%; max-width:var(--inv-paper-w); margin:0 auto 1rem; }
+    .inv-actions { display:flex; gap:.55rem; flex-wrap:wrap; align-items:center; }
+
+    /* The invoice "paper" document (ported from detail page).
+       Pinned to one fixed document width and centered in the pane, so the
+       preview is always the same size no matter the invoice or window. */
+    :root { --inv-paper-w: 760px; }
+    .inv-paper { background:#fff; border-radius:16px; box-shadow:0 14px 40px rgba(15,23,42,.10); overflow:hidden; width:var(--inv-paper-w); margin:0 auto; }
+    .inv-accent { display:none; }
+    .inv-inner { padding:1.4rem 2.8rem; }
+    .inv-head { display:flex; justify-content:space-between; align-items:center; gap:2rem; padding-bottom:1.2rem; border-bottom:1px solid var(--paper-rule); }
+    .inv-brand img { width:110px; height:auto; object-fit:contain; display:block; }
+    .inv-doc { text-align:right; }
+    .inv-doc-title { font-size:1.05rem; font-weight:800; letter-spacing:.16em; color:var(--primary); text-transform:uppercase; }
+    .inv-doc-no { font-size:1.45rem; font-weight:800; color:var(--ops-ink); margin-top:.2rem; }
+    .inv-pill { display:inline-block; margin-top:.55rem; padding:.26rem .7rem; border-radius:999px; font-size:.74rem; font-weight:700; text-transform:capitalize; }
+    .inv-parties { display:grid; grid-template-columns:1.4fr 1fr; gap:2rem; padding:1.6rem 0; }
+    .party h4 { margin:0 0 .55rem; font-size:.72rem; text-transform:uppercase; letter-spacing:.08em; color:var(--ops-muted); font-weight:700; }
+    .party p { margin:.12rem 0; color:var(--ops-ink); font-size:.9rem; line-height:1.45; }
+    .party .name { font-weight:700; font-size:.98rem; }
+    .meta-rows { display:grid; grid-template-columns:auto auto; gap:.3rem 1rem; justify-content:end; }
+    .meta-rows .k { color:var(--ops-muted); font-size:.84rem; text-align:right; }
+    .meta-rows .v { color:var(--ops-ink); font-size:.9rem; font-weight:600; text-align:right; }
+    /* Fixed column grid: the text of an invoice must never move the columns,
+       so the table layout is identical on every invoice. */
+    .inv-table { width:100%; border-collapse:collapse; font-size:.88rem; margin-top:.2rem; table-layout:fixed; }
+    .inv-table thead th { text-align:left; font-size:.7rem; text-transform:uppercase; letter-spacing:.05em; color:#7a1019; background:#faf5f6; font-weight:700; padding:.7rem .85rem; white-space:nowrap; }
+    .inv-table thead th:first-child { border-top-left-radius:9px; }
+    .inv-table thead th:last-child { border-top-right-radius:9px; }
+    .inv-table tbody td { padding:.7rem .85rem; border-bottom:1px solid var(--paper-rule); color:var(--ops-ink); vertical-align:top; overflow-wrap:break-word; }
+    .inv-table tbody tr:last-child td { border-bottom:1px solid var(--ops-rule); }
+    .inv-table .idx { color:var(--ops-muted); width:34px; }
+    .inv-table .mat { font-weight:700; }
+    .inv-table .desc { color:var(--ops-muted); }
+    .num { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+    .inv-foot { display:flex; justify-content:space-between; gap:2rem; margin-top:1.4rem; flex-wrap:wrap; }
+    .inv-notes { flex:1 1 300px; min-width:240px; }
+    .inv-notes h4 { margin:0 0 .35rem; font-size:.72rem; text-transform:uppercase; letter-spacing:.08em; color:var(--ops-muted); font-weight:700; }
+    .inv-notes p { margin:0; color:var(--ops-ink); font-size:.88rem; line-height:1.5; white-space:pre-line; }
+    .inv-totals { width:300px; max-width:100%; margin-left:auto; }
+    .inv-totals .row { display:flex; justify-content:space-between; padding:.4rem 0; color:var(--ops-ink); font-size:.9rem; }
+    .inv-totals .row .lbl { color:var(--ops-muted); }
+    .inv-totals .grand { margin-top:.4rem; padding:.7rem .9rem; background:linear-gradient(90deg, rgba(210,23,37,.06), rgba(232,50,63,.04)); border-radius:10px; font-size:1.1rem; font-weight:800; color:var(--primary); }
+    .inv-thanks { margin-top:2rem; padding-top:1.3rem; border-top:1px solid var(--paper-rule); text-align:center; color:var(--ops-muted); font-size:.8rem; }
+    /* Empty state shown until an invoice is selected: no box, just the text,
+       occupying the same footprint as the invoice paper so nothing shifts. */
+    .inv-empty { width:var(--inv-paper-w); min-height:540px; margin:0 auto; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; padding-top:3rem; gap:.35rem; text-align:center; color:#b6bec9; }
+    .inv-empty.hidden { display:none; }
+    .inv-empty-title { font-size:1.05rem; font-weight:700; color:var(--ops-muted); margin-top:.5rem; }
+    .inv-empty-sub { font-size:.86rem; color:#94a3b8; }
+    @keyframes invFade { from{opacity:0; transform:translateY(5px);} to{opacity:1; transform:none;} }
+    #invDoc .inv-paper { animation:invFade .22s ease; }
     /* Modal */
     .ops-modal-backdrop { position:fixed; inset:0; background:rgba(15,23,42,.5); -webkit-backdrop-filter:blur(2px); backdrop-filter:blur(2px); display:none; align-items:flex-start; justify-content:center; z-index:1000; padding:5rem 1rem 2rem; overflow:auto; }
     .ops-modal-backdrop.open { display:flex; }
@@ -122,7 +208,40 @@
 
     .ops-toast { position:fixed; bottom:1.5rem; left:50%; transform:translateX(-50%); background:var(--ops-ink); color:#fff; padding:.7rem 1.2rem; border-radius:10px; font-size:.9rem; z-index:2000; opacity:0; transition:opacity .2s; pointer-events:none; }
     .ops-toast.show { opacity:1; } .ops-toast.err { background:#b91c1c; }
-    @media (max-width:680px){ .ops-grid3{grid-template-columns:1fr;} .ops-table{font-size:.8rem;} .ops-modal-body{padding:1.25rem;} .ops-summary{width:100%;} .ops-summary-wrap{justify-content:stretch;} }
+    @media (max-width:680px){ .ops-grid3{grid-template-columns:1fr;} .ops-modal-body{padding:1.25rem;} .ops-summary{width:100%;} .ops-summary-wrap{justify-content:stretch;} }
+
+    /* Mobile / narrow: list-only, preview slides over full-screen */
+    @media (max-width:980px){
+      .inv-split { grid-template-columns:1fr; height:auto; overflow:visible; }
+      .inv-list { height:auto; max-height:none; }
+      .inv-detail-pane {
+        position:fixed; inset:0; z-index:1200; background:#eef1f4;
+        padding:1.1rem 1rem 2rem; overflow-y:auto;
+        transform:translateX(100%); transition:transform .26s ease; visibility:hidden;
+      }
+      .inv-detail-pane.open { transform:none; visibility:visible; }
+      .inv-back { display:inline-flex; }
+      .inv-paper, .inv-empty { width:100%; }
+      .inv-inner { padding:1.4rem 1.25rem; }
+      .inv-head { flex-direction:column; align-items:flex-start; gap:1rem; }
+      .inv-doc { text-align:left; }
+      .meta-rows { justify-content:start; }
+      .meta-rows .k, .meta-rows .v { text-align:left; }
+      .inv-parties { grid-template-columns:1fr; gap:1.2rem; }
+      .inv-table { font-size:.82rem; }
+    }
+
+    /* Print: show only the selected invoice document */
+    @media print {
+      body.ops-page { background:#fff; }
+      .nav, .mobile-menu-drawer, .mobile-overlay, .ops-head, .inv-list, .inv-bar, .inv-back, .inv-empty, .ops-toast, .ops-modal-backdrop { display:none !important; }
+      .ops-wrap { margin:0; max-width:100%; padding:0; }
+      .inv-split { display:block; height:auto; overflow:visible; }
+      .inv-detail-pane { position:static; transform:none; visibility:visible; display:block; height:auto; overflow:visible; }
+      .inv-scroll { overflow:visible; }
+      .inv-paper { box-shadow:none; border-radius:0; width:auto; }
+      .inv-accent { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    }
   </style>
 </head>
 <body class="ops-page">
@@ -140,6 +259,10 @@
         <p class="ops-sub">Invoices for materials sourced and sold to clients.</p>
       </div>
       <div class="ops-actions">
+        <button class="ops-btn ops-btn-ghost" id="refreshBtn" type="button" title="Refresh invoices">
+          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          Refresh
+        </button>
         {% if can_manage %}
         <a class="ops-btn ops-btn-ghost" href="/operations/clients">Manage Clients</a>
         <button class="ops-btn ops-btn-primary" id="addBtn">
@@ -155,13 +278,56 @@
       </div>
     </div>
 
-    <div class="ops-card">
-      <table class="ops-table">
-        <thead>
-          <tr><th>Invoice No</th><th>Client</th><th>Date</th><th class="ops-num">Total</th><th>Status</th><th></th></tr>
-        </thead>
-        <tbody id="invBody"><tr><td colspan="6" class="ops-empty">Loading…</td></tr></tbody>
-      </table>
+    <div class="inv-split">
+      <!-- Left: invoice list -->
+      <div class="inv-list" id="invList">
+        <div class="inv-list-empty">Loading…</div>
+      </div>
+
+      <!-- Right: invoice preview -->
+      <div class="inv-detail-pane" id="detailPane">
+        <button type="button" class="inv-back" id="backBtn">
+          <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+          Back to invoices
+        </button>
+
+        <div class="inv-bar" id="invBar">
+          <div class="inv-actions">
+            {% if can_manage %}
+            <select class="status-sel" id="statusSel" title="Change status">
+              {% for s in ['draft','issued','paid'] %}
+              <option value="{{ s }}">{{ s|capitalize }}</option>
+              {% endfor %}
+            </select>
+            {% else %}
+            <span class="view-tag">
+              <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.46 12a10 10 0 0119.08 0 10 10 0 01-19.08 0z"/></svg>
+              View only
+            </span>
+            {% endif %}
+            <button class="ops-btn ops-btn-ghost" id="printBtn" type="button" title="Print">
+              <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6v-8z"/></svg>
+              Print
+            </button>
+            <button class="ops-btn ops-btn-primary" id="pdfBtn" type="button">
+              <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"/></svg>
+              Download PDF
+            </button>
+            {% if can_manage %}
+            <button class="ops-btn ops-btn-danger" id="delBtn" type="button">Delete</button>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="inv-scroll" id="invScroll">
+          <div class="inv-empty" id="invEmpty">
+            <svg width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            <div class="inv-empty-title">No preview</div>
+            <div class="inv-empty-sub">Select an invoice from the list to view it here.</div>
+          </div>
+          <div id="invDoc"></div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -260,15 +426,22 @@
   <script>
   (function(){
     const canManage = {{ 'true' if can_manage else 'false' }};
-    const body = document.getElementById('invBody');
+    const listEl = document.getElementById('invList');
+    const detailPane = document.getElementById('detailPane');
+    const invBar = document.getElementById('invBar');
+    const invDoc = document.getElementById('invDoc');
+    const invEmpty = document.getElementById('invEmpty');
     const modal = document.getElementById('invModal');
     const liBody = document.getElementById('liBody');
     let invoices = [], clients = [];
+    let selectedId = null, selectedInv = null;
 
     function toast(msg, isErr){ const t=document.getElementById('toast'); t.textContent=msg; t.className='ops-toast show'+(isErr?' err':''); setTimeout(()=>t.className='ops-toast',2600); }
     function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
     function fmtAED(v){ return 'AED '+Number(v||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); }
     function pillClass(s){ return s==='paid'?'pill-paid':s==='issued'?'pill-issued':'pill-draft'; }
+    const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    function fmtDate(iso){ if(!iso) return '—'; const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(iso); if(!m) return iso; return `${parseInt(m[3])} ${MONTHS[parseInt(m[2])-1]} ${m[1]}`; }
 
     async function loadInvoices(){
       try{
@@ -276,22 +449,122 @@
         const data = await res.json();
         if(!res.ok || !data.success){ throw new Error(data.error||'Failed to load'); }
         invoices = data.invoices || []; render();
-      }catch(e){ body.innerHTML='<tr><td colspan="6" class="ops-empty">'+esc(e.message)+'</td></tr>'; }
+      }catch(e){ listEl.innerHTML='<div class="inv-list-empty">'+esc(e.message)+'</div>'; }
     }
     function render(){
-      if(!invoices.length){ body.innerHTML='<tr><td colspan="6" class="ops-empty">No invoices yet. Create your first trading invoice.</td></tr>'; return; }
-      body.innerHTML = invoices.map(inv=>`
+      if(!invoices.length){ listEl.innerHTML='<div class="inv-list-empty">No invoices yet. Create your first trading invoice.</div>'; return; }
+      listEl.innerHTML = invoices.map(inv=>`
+        <div class="inv-listcard${inv.id===selectedId?' selected':''}" data-id="${inv.id}" data-no="${esc(inv.invoice_no)}">
+          <div class="lc-top">
+            <span class="lc-no">${esc(inv.invoice_no)}</span>
+            <span class="ops-pill ${pillClass(inv.status)}">${esc(inv.status)}</span>
+          </div>
+          <div class="lc-client">${esc(inv.client_name)||'—'}</div>
+          <div class="lc-meta">
+            <span class="lc-date">${fmtDate(inv.invoice_date)}</span>
+            <span class="lc-total">${fmtAED(inv.grand_total)}</span>
+          </div>
+        </div>`).join('');
+    }
+
+    // ── Detail preview ───────────────────────────────────────────────────────
+    function renderInvoice(inv){
+      const c = inv.client || {};
+      const loc = [c.city, c.country].filter(Boolean).join(', ');
+      const billLines = [
+        c.contact_person ? `<p>${esc(c.contact_person)}</p>` : '',
+        c.billing_address ? `<p>${esc(c.billing_address)}</p>` : '',
+        loc ? `<p>${esc(loc)}</p>` : '',
+        c.phone ? `<p>${esc(c.phone)}</p>` : '',
+        c.email ? `<p>${esc(c.email)}</p>` : '',
+      ].join('');
+      const items = (inv.items||[]).map((it,i)=>`
         <tr>
-          <td><a class="ops-link" href="/operations/invoices/${esc(inv.invoice_no)}">${esc(inv.invoice_no)}</a></td>
-          <td>${esc(inv.client_name)||'—'}</td>
-          <td>${esc(inv.invoice_date)||'—'}</td>
-          <td class="ops-num"><strong>${fmtAED(inv.grand_total)}</strong></td>
-          <td><span class="ops-pill ${pillClass(inv.status)}">${esc(inv.status)}</span></td>
-          <td><div class="row-actions">
-            <a class="ops-btn ops-btn-ghost ops-btn-sm" href="/operations/invoices/${esc(inv.invoice_no)}">Open</a>
-            ${canManage ? `<button class="ops-btn ops-btn-ghost ops-btn-sm" data-del="${inv.id}">Delete</button>` : ''}
-          </div></td>
-        </tr>`).join('');
+          <td class="idx">${i+1}</td>
+          <td class="mat">${esc(it.material_name)}</td>
+          <td class="desc">${esc(it.description)||'—'}</td>
+          <td class="num">${Number(it.quantity||0).toFixed(2)}</td>
+          <td>${esc(it.unit)||'—'}</td>
+          <td class="num">${fmtAED(it.unit_price)}</td>
+          <td class="num">${fmtAED(it.total_price)}</td>
+        </tr>`).join('') || '<tr><td colspan="7" style="text-align:center; color:var(--ops-muted); padding:1.4rem;">No line items.</td></tr>';
+      const taxLabel = inv.tax_pct ? `Tax (${inv.tax_pct}%)` : 'Tax';
+      const notes = inv.notes
+        ? `<div class="inv-notes"><h4>Notes</h4><p>${esc(inv.notes)}</p></div>`
+        : `<div class="inv-notes"></div>`;
+      invDoc.innerHTML = `
+        <div class="inv-paper">
+          <div class="inv-accent"></div>
+          <div class="inv-inner">
+            <div class="inv-head">
+              <div class="inv-brand"><img src="{{ url_for('static', filename='icons/Amaan.png') }}" alt="Amaan"></div>
+              <div class="inv-doc">
+                <div class="inv-doc-title">Trading Invoice</div>
+                <div class="inv-doc-no">${esc(inv.invoice_no)}</div>
+                <span class="inv-pill ${pillClass(inv.status)}">${esc(inv.status)}</span>
+              </div>
+            </div>
+            <div class="inv-parties">
+              <div class="party">
+                <h4>Bill To</h4>
+                <p class="name">${esc(inv.client_name)||'—'}</p>
+                ${billLines}
+              </div>
+              <div class="party">
+                <h4>Invoice Details</h4>
+                <div class="meta-rows">
+                  <div class="k">Invoice No</div><div class="v">${esc(inv.invoice_no)}</div>
+                  <div class="k">Date</div><div class="v">${fmtDate(inv.invoice_date)}</div>
+                  <div class="k">Due Date</div><div class="v">${fmtDate(inv.due_date)}</div>
+                </div>
+              </div>
+            </div>
+            <table class="inv-table">
+              <colgroup>
+                <col style="width:5%"><col style="width:28%"><col style="width:22%">
+                <col style="width:8%"><col style="width:9%"><col style="width:14%"><col style="width:14%">
+              </colgroup>
+              <thead><tr>
+                <th class="idx">#</th><th>Material</th><th>Description</th>
+                <th class="num">Qty</th><th>Unit</th><th class="num">Unit Price</th><th class="num">Total</th>
+              </tr></thead>
+              <tbody>${items}</tbody>
+            </table>
+            <div class="inv-foot">
+              ${notes}
+              <div class="inv-totals">
+                <div class="row"><span class="lbl">Subtotal</span><span>${fmtAED(inv.subtotal)}</span></div>
+                <div class="row"><span class="lbl">${taxLabel}</span><span>${fmtAED(inv.tax_amount)}</span></div>
+                <div class="row grand"><span>Grand Total</span><span>${fmtAED(inv.grand_total)}</span></div>
+              </div>
+            </div>
+            <div class="inv-thanks">Thank you for your business · Amaan Facilities Management</div>
+          </div>
+        </div>`;
+    }
+
+    async function selectInvoice(id){
+      selectedId = id;
+      listEl.querySelectorAll('.inv-listcard').forEach(el=>el.classList.toggle('selected', parseInt(el.dataset.id)===id));
+      detailPane.classList.add('open');
+      try{
+        const res = await ApiClient.fetch('/operations/api/invoices/'+id, { method:'GET' });
+        const data = await res.json();
+        if(!res.ok || !data.success){ throw new Error(data.error||'Failed to load invoice'); }
+        selectedInv = data.invoice;
+        // Swap content in only once the data is ready — no flash, no collapse.
+        renderInvoice(selectedInv);
+        invEmpty.classList.add('hidden');
+        invBar.classList.add('active');
+        const statusSel = document.getElementById('statusSel');
+        if(statusSel) statusSel.value = selectedInv.status;
+      }catch(e){ toast(e.message, true); }
+    }
+
+    function clearSelection(){
+      selectedId=null; selectedInv=null; invDoc.innerHTML=''; invEmpty.classList.remove('hidden'); invBar.classList.remove('active');
+      detailPane.classList.remove('open');
+      listEl.querySelectorAll('.inv-listcard.selected').forEach(el=>el.classList.remove('selected'));
     }
 
     async function loadClients(){
@@ -529,18 +802,22 @@
         const data = await res.json();
         if(!res.ok || !data.success){ throw new Error(data.error||'Create failed'); }
         toast('Invoice created'); closeModal();
-        if(data.invoice && data.invoice.invoice_no){ window.location.href='/operations/invoices/'+data.invoice.invoice_no; return; }
-        loadInvoices();
+        await loadInvoices();
+        if(data.invoice && data.invoice.id){ selectInvoice(data.invoice.id); }
       }catch(e){ toast(e.message, true); }
     }
-    async function del(id){
-      if(!confirm('Delete this invoice?')) return;
-      try{
-        const res = await ApiClient.fetch('/operations/api/invoices/'+id, { method:'DELETE' });
-        const data = await res.json();
-        if(!res.ok || !data.success){ throw new Error(data.error||'Delete failed'); }
-        toast('Invoice deleted'); loadInvoices();
-      }catch(e){ toast(e.message, true); }
+
+    const refreshBtn = document.getElementById('refreshBtn');
+    if (refreshBtn) {
+      refreshBtn.addEventListener('click', async ()=>{
+        const icon = refreshBtn.querySelector('svg');
+        refreshBtn.disabled = true; if(icon) icon.classList.add('spin');
+        await loadInvoices();
+        // If the previewed invoice no longer exists, go back to the blank state.
+        if(selectedId != null && !invoices.some(x=>x.id===selectedId)) clearSelection();
+        refreshBtn.disabled = false; if(icon) icon.classList.remove('spin');
+        toast('Invoice list refreshed');
+      });
     }
 
     const addBtn = document.getElementById('addBtn');
@@ -550,9 +827,88 @@
     document.getElementById('saveBtn').addEventListener('click', save);
     modal.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click', closeModal));
     modal.addEventListener('click', e=>{ if(e.target===modal) closeModal(); });
-    body.addEventListener('click', e=>{ const dl=e.target.closest('[data-del]'); if(dl) del(dl.getAttribute('data-del')); });
 
-    loadInvoices();
+    // List card selection
+    listEl.addEventListener('click', e=>{ const card=e.target.closest('.inv-listcard'); if(card) selectInvoice(parseInt(card.dataset.id)); });
+
+    // Back button (mobile slide-over)
+    document.getElementById('backBtn').addEventListener('click', ()=>detailPane.classList.remove('open'));
+
+    // ── Action bar (operates on the selected invoice) ────────────────────────
+    const statusSel = document.getElementById('statusSel');
+    if (statusSel) {
+      statusSel.addEventListener('change', async function(){
+        if(!selectedInv) return;
+        try{
+          const res = await ApiClient.fetch('/operations/api/invoices/'+selectedInv.id, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ status:this.value }) });
+          const data = await res.json();
+          if(!res.ok || !data.success){ throw new Error(data.error||'Update failed'); }
+          selectedInv.status = this.value;
+          // update pill in the document
+          const docPill = invDoc.querySelector('.inv-pill');
+          if(docPill){ docPill.className='inv-pill '+pillClass(this.value); docPill.textContent=this.value; }
+          // update pill + cached list
+          const li = invoices.find(x=>x.id===selectedInv.id); if(li) li.status=this.value;
+          const cardPill = listEl.querySelector(`.inv-listcard[data-id="${selectedInv.id}"] .ops-pill`);
+          if(cardPill){ cardPill.className='ops-pill '+pillClass(this.value); cardPill.textContent=this.value; }
+          toast('Status updated to '+this.value);
+        }catch(e){ toast(e.message, true); }
+      });
+    }
+
+    const printBtn = document.getElementById('printBtn');
+    if (printBtn) printBtn.addEventListener('click', ()=>window.print());
+
+    const pdfBtn = document.getElementById('pdfBtn');
+    if (pdfBtn) {
+      pdfBtn.addEventListener('click', async function(){
+        if(!selectedInv) return;
+        try{
+          const res = await ApiClient.fetch('/operations/invoices/'+selectedInv.invoice_no+'/pdf', { method:'GET' });
+          if(!res.ok){ throw new Error('Could not generate PDF'); }
+          const blob = await res.blob();
+          const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = selectedInv.invoice_no+'.pdf';
+          document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
+        }catch(e){ toast(e.message, true); }
+      });
+    }
+
+    const delBtn = document.getElementById('delBtn');
+    if (delBtn) {
+      delBtn.addEventListener('click', async function(){
+        if(!selectedInv) return;
+        if(!confirm('Delete this invoice? This cannot be undone.')) return;
+        try{
+          const res = await ApiClient.fetch('/operations/api/invoices/'+selectedInv.id, { method:'DELETE' });
+          const data = await res.json();
+          if(!res.ok || !data.success){ throw new Error(data.error||'Delete failed'); }
+          toast('Invoice deleted'); clearSelection();
+          await loadInvoices();
+        }catch(e){ toast(e.message, true); }
+      });
+    }
+
+    (async function init(){
+      await loadInvoices();
+      // Deep-link: ?inv=TRD-INV-XXXX auto-selects
+      const params = new URLSearchParams(location.search);
+      const want = params.get('inv');
+      if(want){
+        const m = invoices.find(x=>x.invoice_no===want);
+        if(m){ selectInvoice(m.id); }
+      }
+      // Deep-link: ?new_for=<client db id> opens the create modal with that
+      // client preselected (used by the client detail page's New Invoice button).
+      const newFor = params.get('new_for');
+      if(!want && newFor && addBtn){
+        await loadClients();
+        openModal();
+        const c = clients.find(x=>String(x.id)===newFor);
+        if(c) selectClient(c.id, c.client_name);
+      }
+      // No auto-selection otherwise: the pane shows the "No preview"
+      // placeholder until the user picks an invoice.
+    })();
   })();
   </script>
 </body>
