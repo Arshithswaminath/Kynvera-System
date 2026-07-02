@@ -62,78 +62,148 @@
       margin-top: 0;
       padding-top: 2.5rem;
     }
-    /* Workflow cards next to headline - same size as HR form cards */
+    /* Workflow cards — match module-card grid alignment below */
     .hr-hero .hero-content {
-      gap: 2.5rem;
-      align-items: stretch;
+      gap: 0;
+      align-items: flex-start;
     }
     .hr-hero .hero-left {
       flex: 0 0 auto;
-      max-width: 280px;
+      max-width: none;
+      width: 100%;
     }
-    .hr-hero .hero-right {
-      flex: 1;
-      min-width: 0;
-      display: flex;
-      justify-content: flex-end;
+    /* Match card corner language (module-card uses 16px; icon wells use 12px) */
+    .hr-dashboard .hero.hr-hero .back-btn {
+      border-radius: 12px !important;
     }
     .hr-workflow-cards {
       width: 100%;
-      min-width: 0;
+      margin-bottom: 1.5rem;
     }
-    .hr-workflow-cards .modules-grid {
-      margin-left: auto;
-      width: fit-content;
-      grid-template-columns: repeat(3, minmax(140px, 200px));
-      gap: 1rem;
-      height: 100%;
-    }
-    .hr-workflow-cards .modules-grid > div {
-      min-width: 0;
+    .hr-wf-strip {
       display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      width: 100%;
     }
-    .hr-workflow-cards .modules-grid > div > a {
+    .hr-wf-strip .modules-section-label {
+      margin-bottom: 0;
+    }
+    .hr-wf-grid {
+      margin-bottom: 0;
+    }
+    .hr-wf-grid > div {
+      display: flex;
+      min-width: 0;
+    }
+    .hr-wf-card {
       flex: 1;
       min-width: 0;
       display: flex;
+      background: var(--white, #fff);
+      border: 1px solid var(--border-color, #e2e8e4);
+      border-radius: 16px;
+      text-decoration: none;
+      color: inherit;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 4px 12px rgba(0, 0, 0, 0.04);
+      transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.28s ease, border-color 0.28s ease;
     }
-    .hr-workflow-cards .module-card {
-      min-width: 0;
-      min-height: 130px;
+    .hr-wf-card:hover {
+      border-color: rgba(210, 23, 37, 0.32);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.07), 0 12px 32px rgba(210, 23, 37, 0.09);
+      transform: translateY(-2px);
     }
-    .hr-workflow-cards .card-body {
-      padding: 1rem 1.25rem;
+    .hr-wf-card-inner {
       display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      align-items: flex-start;
+      align-items: center;
+      gap: 0.85rem;
+      padding: 1rem 1.15rem;
+      width: 100%;
+      min-width: 0;
     }
-    .hr-workflow-cards .module-title {
-      margin-bottom: 0;
-      font-size: 0.95rem;
+    .hr-wf-card .hr-wf-icon {
+      width: 40px;
+      height: 40px;
+      min-width: 40px;
+      background: var(--border-light, #eef2ee);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted, #6b7c6f);
+      flex-shrink: 0;
+      transition: background 0.25s ease, color 0.25s ease;
     }
-    .hr-workflow-cards .module-arrow {
-      margin-top: 0.5rem;
-      font-size: 0.8rem;
+    .hr-wf-card .hr-wf-icon svg {
+      width: 20px;
+      height: 20px;
+      stroke: currentColor;
     }
-    .hr-workflow-cards .module-number {
+    .hr-wf-card:hover .hr-wf-icon {
+      background: rgba(210, 23, 37, 0.1);
+      color: #d21725;
+    }
+    .hr-wf-info {
+      flex: 1;
+      min-width: 0;
+    }
+    .hr-wf-info .module-number {
       font-size: 0.6rem;
+      color: var(--text-muted, #6b7c6f);
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 0.2rem;
+      display: block;
     }
-    
+    .hr-wf-info .module-title {
+      font-size: 0.92rem;
+      font-weight: 700;
+      color: var(--text-dark, #1a2e22);
+      margin: 0;
+      line-height: 1.3;
+      letter-spacing: -0.02em;
+      transition: color 0.2s ease;
+    }
+    .hr-wf-card:hover .hr-wf-info .module-title {
+      color: #d21725;
+    }
+    .hr-wf-meta {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      flex-shrink: 0;
+    }
+    .hr-wf-badge {
+      background: #ef4444;
+      color: #fff;
+      font-size: 0.65rem;
+      font-weight: 700;
+      border-radius: 10px;
+      padding: 0.15em 0.5em;
+      min-width: 18px;
+      text-align: center;
+      line-height: 1.5;
+      border: 2px solid #fff;
+      box-shadow: 0 2px 6px rgba(239, 68, 68, 0.35);
+    }
+    .hr-wf-arrow {
+      width: 14px;
+      height: 14px;
+      color: #d21725;
+      flex-shrink: 0;
+      transition: transform 0.22s ease;
+    }
+    .hr-wf-card:hover .hr-wf-arrow {
+      transform: translateX(3px);
+    }
+    body.hr-dashboard .hr-modules-section .hr-workflow-cards + .modules-section-label {
+      margin-top: 0;
+    }
+
     @media (max-width: 992px) {
-      .hr-hero .hero-content {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 1.35rem;
-      }
-      .hr-workflow-cards {
-        max-width: 100%;
-      }
-      .hr-workflow-cards .modules-grid {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        width: 100%;
-        margin: 0;
-        gap: 0.65rem;
+      .hr-wf-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
       }
     }
 
@@ -157,7 +227,7 @@
         padding-right: 1.45rem !important;
       }
       .hr-hero .hero-content {
-        gap: 1.2rem !important;
+        gap: 1rem !important;
       }
       .hr-hero .hero-left {
         display: flex !important;
@@ -172,129 +242,19 @@
         margin-bottom: 0.55rem !important;
         align-self: flex-start !important;
       }
-      .hr-hero .hero-tagline {
-        margin-bottom: 0.5rem !important;
-        align-self: flex-start !important;
-      }
       .hr-hero .hero-title {
         align-self: flex-start !important;
         text-align: left !important;
       }
-      .hr-workflow-cards {
-        margin-top: 0.15rem !important;
+      .hr-wf-grid {
+        grid-template-columns: 1fr !important;
+        gap: 0.85rem !important;
       }
-      .hr-workflow-cards .modules-grid {
-        gap: 0.45rem !important;
+      .hr-wf-card-inner {
+        padding: 0.85rem 1rem !important;
       }
-      .hr-dashboard .hr-workflow-cards .module-card:not([style*="display: none"]) {
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: stretch !important;
-      }
-      .hr-dashboard .hr-workflow-cards .module-card {
-        min-height: 122px !important;
-        padding: 0 !important;
-        grid-template-columns: unset !important;
-        grid-template-rows: unset !important;
-        gap: 0 !important;
-        border-radius: 14px !important;
-        border: 1px solid rgba(226, 232, 228, 0.98) !important;
-        background: #fff !important;
-        box-shadow: 0 2px 12px rgba(210, 23, 37, 0.07), 0 1px 3px rgba(0, 0, 0, 0.04) !important;
-      }
-      .hr-dashboard .hr-workflow-cards .module-card .card-body {
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: flex-start !important;
-        justify-content: flex-start !important;
-        text-align: left !important;
-        padding: 0.65rem 0.5rem 0.5rem 0.52rem !important;
-        gap: 0.32rem !important;
-        width: 100% !important;
-        flex: 1 1 auto !important;
-        min-height: 0 !important;
-      }
-      .hr-dashboard .hr-workflow-cards .module-number {
-        display: none !important;
-      }
-      .hr-dashboard .hr-workflow-cards .module-icon {
-        width: 36px !important;
-        height: 36px !important;
-        min-width: 36px !important;
-        min-height: 36px !important;
-        margin: 0 !important;
-        align-self: flex-start !important;
-        grid-column: unset !important;
-        grid-row: unset !important;
-        border-radius: 10px !important;
-      }
-      .hr-dashboard .hr-workflow-cards .module-icon svg {
-        width: 19px !important;
-        height: 19px !important;
-      }
-      .hr-dashboard .hr-workflow-cards .module-title {
-        font-size: 0.625rem !important;
-        font-weight: 700 !important;
-        line-height: 1.22 !important;
-        letter-spacing: 0.02em !important;
-        margin: 0 !important;
-        grid-column: unset !important;
-        grid-row: unset !important;
-        white-space: normal !important;
-        display: -webkit-box !important;
-        -webkit-line-clamp: 3 !important;
-        -webkit-box-orient: vertical !important;
-        overflow: hidden !important;
-        text-align: left !important;
-        align-self: stretch !important;
-        color: #14221a !important;
-      }
-      .hr-dashboard .hr-workflow-cards .module-badge {
-        font-size: 0.55rem !important;
-        padding: 0.1rem 0.3rem !important;
-        min-width: 17px !important;
-        top: -4px !important;
-        right: -4px !important;
-      }
-      /* Minimal CTA: hairline rule + label + chevron (no pill chrome) */
-      .hr-dashboard .hr-workflow-cards .module-arrow {
-        grid-column: unset !important;
-        grid-row: unset !important;
-        align-self: stretch !important;
-        width: 100% !important;
-        max-width: 100% !important;
-        min-width: 0 !important;
-        height: auto !important;
-        min-height: 0 !important;
-        margin: 0 !important;
-        margin-top: auto !important;
-        padding: 0.42rem 0 0 !important;
-        font-size: 0.64rem !important;
-        font-weight: 600 !important;
-        letter-spacing: 0.02em !important;
-        text-transform: none !important;
-        border: none !important;
-        border-radius: 0 !important;
-        border-top: 1px solid rgba(210, 23, 37, 0.1) !important;
-        background: transparent !important;
-        box-shadow: none !important;
-        color: var(--primary) !important;
-        display: inline-flex !important;
-        align-items: center !important;
-        justify-content: flex-start !important;
-        gap: 0.2rem !important;
-        line-height: 1.2 !important;
-      }
-      .hr-dashboard .hr-workflow-cards .module-arrow svg {
-        width: 11px !important;
-        height: 11px !important;
-        flex-shrink: 0 !important;
-        opacity: 0.9 !important;
-      }
-      .hr-dashboard .hr-workflow-cards .module-card:active .module-arrow {
-        background: transparent !important;
-        box-shadow: none !important;
-        opacity: 0.72 !important;
+      .hr-wf-info .module-title {
+        font-size: 0.85rem !important;
       }
     }
     
@@ -542,54 +502,69 @@
         </a>
         <h1 class="hero-title">HR <span class="hero-title-accent">Forms</span></h1>
       </div>
-      <div class="hero-right hr-workflow-cards" id="hrWorkflowCards" style="display: none;">
-        <div class="modules-grid" id="quickActionsRow" style="display: none;">
-          <div id="hrReviewCard" style="display: none;">
-            <a href="/hr/pending-review" class="module-card">
-              <div class="card-body">
-                <span class="module-number">Workflow</span>
-                <div class="module-icon" style="position: relative;">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
-                  <span class="module-badge" id="pendingBadge" style="display: none;">0</span>
-                </div>
-                <h2 class="module-title">Pending HR Review</h2>
-                <span class="module-arrow hr-workflow-cta">Open <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" /></svg></span>
-              </div>
-            </a>
-          </div>
-          <div id="gmApprovalCard" style="display: none;">
-            <a href="/hr/gm-approval" class="module-card">
-              <div class="card-body">
-                <span class="module-number">Workflow</span>
-                <div class="module-icon" style="position: relative;">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
-                  <span class="module-badge" id="gmPendingBadge" style="display: none;">0</span>
-                </div>
-                <h2 class="module-title">GM Final Approval</h2>
-                <span class="module-arrow hr-workflow-cta">Open <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" /></svg></span>
-              </div>
-            </a>
-          </div>
-          <div id="approvedFormsCol" style="display: none;">
-            <a href="/hr/approved-forms" class="module-card">
-              <div class="card-body">
-                <span class="module-number">Workflow</span>
-                <div class="module-icon">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                </div>
-                <h2 class="module-title">Approved Forms</h2>
-                <span class="module-arrow hr-workflow-cta">Open <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" /></svg></span>
-              </div>
-            </a>
-          </div>
-        </div>
-      </div>
     </div>
   </header>
 
   <!-- HR Forms (main dashboard module-card style) -->
   <section class="modules-section hr-modules-section" id="modules">
     <div class="modules-inner">
+      <div class="hr-workflow-cards" id="hrWorkflowCards" style="display: none;">
+        <div class="hr-wf-strip" id="quickActionsRow" style="display: none;">
+          <h2 class="modules-section-label">Workflows</h2>
+          <div class="modules-grid hr-wf-grid">
+            <div id="hrReviewCard" style="display: none;">
+              <a href="/hr/pending-review" class="hr-wf-card">
+                <div class="hr-wf-card-inner">
+                  <div class="hr-wf-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+                  </div>
+                  <div class="hr-wf-info">
+                    <span class="module-number">Workflow</span>
+                    <h2 class="module-title">Pending HR Review</h2>
+                  </div>
+                  <div class="hr-wf-meta">
+                    <span class="hr-wf-badge" id="pendingBadge" style="display: none;">0</span>
+                    <svg class="hr-wf-arrow" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
+                  </div>
+                </div>
+              </a>
+            </div>
+            <div id="gmApprovalCard" style="display: none;">
+              <a href="/hr/gm-approval" class="hr-wf-card">
+                <div class="hr-wf-card-inner">
+                  <div class="hr-wf-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                  </div>
+                  <div class="hr-wf-info">
+                    <span class="module-number">Workflow</span>
+                    <h2 class="module-title">GM Final Approval</h2>
+                  </div>
+                  <div class="hr-wf-meta">
+                    <span class="hr-wf-badge" id="gmPendingBadge" style="display: none;">0</span>
+                    <svg class="hr-wf-arrow" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
+                  </div>
+                </div>
+              </a>
+            </div>
+            <div id="approvedFormsCol" style="display: none;">
+              <a href="/hr/approved-forms" class="hr-wf-card">
+                <div class="hr-wf-card-inner">
+                  <div class="hr-wf-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  </div>
+                  <div class="hr-wf-info">
+                    <span class="module-number">Workflow</span>
+                    <h2 class="module-title">Approved Forms</h2>
+                  </div>
+                  <div class="hr-wf-meta">
+                    <svg class="hr-wf-arrow" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
+                  </div>
+                </div>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
       <h2 class="modules-section-label">HR Forms (from HR Documents)</h2>
       <div class="modules-grid" id="hrFormsGrid">
         <a href="/hr/leave-application-form" class="module-card">
@@ -842,7 +817,7 @@
         
         // Show the quick actions row and individual cards if user has any access
         if (hasAnyAccess) {
-          document.getElementById('quickActionsRow').style.display = 'grid';
+          document.getElementById('quickActionsRow').style.display = 'block';
           const approvedCol = document.getElementById('approvedFormsCol');
           if (approvedCol) approvedCol.style.display = 'block';
           const wfContainer = document.getElementById('hrWorkflowCards');
