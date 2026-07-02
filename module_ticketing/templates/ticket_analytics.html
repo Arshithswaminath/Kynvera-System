@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Analytics — Injaaz</title>
+  {% include 'partials/caveat_font.html' ignore missing %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/ticketing.css') }}">
+  <style>
+    .tkt-container { max-width: 1400px; padding-left: 28px; padding-right: 28px; }
+
+    /* KPI cards */
+    .an-kpi-row { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 14px; margin-bottom: 22px; }
+    .an-kpi {
+      background:#fff; border:1px solid #e8edf3; border-radius:16px; padding:16px 18px;
+      box-shadow:0 1px 2px rgba(15,23,42,.04);
+    }
+    .an-kpi-label { font-size:.7rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:#94a3b8; margin:0 0 6px; }
+    .an-kpi-value { font-size:1.7rem; font-weight:800; color:#0f172a; line-height:1.05; }
+    .an-kpi-value small { font-size:.9rem; font-weight:600; color:#64748b; }
+    .an-kpi-sub { font-size:.74rem; color:#64748b; margin-top:4px; }
+    .an-kpi--alert .an-kpi-value { color:#dc2626; }
+
+    /* Panels */
+    .an-grid { display:grid; grid-template-columns: 1.45fr 1fr; gap:18px; margin-bottom:18px; align-items:start; }
+    .an-panel {
+      background:#fff; border:1px solid #e8edf3; border-radius:16px; padding:18px 20px;
+      box-shadow:0 1px 2px rgba(15,23,42,.04); margin-bottom:18px;
+    }
+    .an-panel-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:14px; }
+    .an-panel-title { font-size:.95rem; font-weight:800; color:#0f172a; margin:0; display:flex; align-items:center; gap:8px; }
+    .an-panel-hint { font-size:.74rem; color:#94a3b8; }
+
+    /* Tables */
+    .an-table { width:100%; border-collapse:collapse; font-size:.82rem; }
+    .an-table th { text-align:left; font-size:.66rem; letter-spacing:.05em; text-transform:uppercase; color:#94a3b8; font-weight:700; padding:6px 8px; border-bottom:1px solid #eef2f7; }
+    .an-table td { padding:8px 8px; border-bottom:1px solid #f4f6f9; color:#1e293b; vertical-align:middle; }
+    .an-table tr:last-child td { border-bottom:none; }
+    .an-num { text-align:right; font-variant-numeric:tabular-nums; }
+
+    /* Pills / chips */
+    .an-pill { display:inline-flex; align-items:center; gap:4px; font-size:.68rem; font-weight:700; padding:2px 9px; border-radius:20px; }
+    .an-pill.breached { background:#fee2e2; color:#b91c1c; }
+    .an-pill.at_risk  { background:#fef3c7; color:#b45309; }
+    .an-pill.on_track { background:#dcfce7; color:#15803d; }
+    .an-prio { font-size:.68rem; font-weight:700; text-transform:capitalize; padding:2px 8px; border-radius:6px; }
+    .an-prio.critical { background:#ede9fe; color:#6d28d9; }
+    .an-prio.high     { background:#fee2e2; color:#b91c1c; }
+    .an-prio.medium   { background:#fef3c7; color:#b45309; }
+    .an-prio.low      { background:#dcfce7; color:#15803d; }
+
+    /* Probability mini-bar */
+    .an-prob { display:flex; align-items:center; gap:8px; min-width:120px; }
+    .an-prob-track { flex:1; height:7px; background:#eef2f7; border-radius:6px; overflow:hidden; }
+    .an-prob-fill { height:100%; border-radius:6px; }
+    .an-prob-val { font-size:.72rem; font-weight:700; color:#475569; width:34px; text-align:right; }
+
+    /* Horizontal bar rows (stage / priority / fault) */
+    .an-bar-row { display:grid; grid-template-columns: 150px 1fr 80px; gap:10px; align-items:center; padding:5px 0; }
+    .an-bar-label { font-size:.78rem; color:#334155; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .an-bar-track { height:18px; background:#f1f5f9; border-radius:6px; overflow:hidden; }
+    .an-bar-fill { height:100%; border-radius:6px; background:linear-gradient(90deg,#d21725,#e8323f); }
+    .an-bar-fill.muted { background:linear-gradient(90deg,#94a3b8,#cbd5e1); }
+    .an-bar-fill.bottleneck { background:linear-gradient(90deg,#b91c1c,#ef4444); }
+    .an-bar-val { font-size:.76rem; font-weight:700; color:#475569; text-align:right; font-variant-numeric:tabular-nums; }
+    .an-bottleneck-tag { font-size:.62rem; font-weight:800; color:#b91c1c; background:#fee2e2; border-radius:5px; padding:1px 6px; margin-left:6px; }
+
+    .an-empty { text-align:center; color:#94a3b8; font-size:.85rem; padding:26px 0; }
+    .an-loading { text-align:center; color:#64748b; padding:40px 0; font-size:.88rem; }
+    .an-spin { width:30px; height:30px; border:3px solid #e2e8f0; border-top-color:#d21725; border-radius:50%; animation:anspin .8s linear infinite; margin:0 auto 12px; }
+    @keyframes anspin { to { transform:rotate(360deg); } }
+
+    @media (max-width: 1000px) { .an-grid { grid-template-columns:1fr; } .an-kpi-row { grid-template-columns:repeat(2,1fr); } }
+    @media (max-width: 560px) { .an-bar-row { grid-template-columns:110px 1fr 64px; } }
+  </style>
+</head>
+<body class="tkt-dh-page has-main-nav">
+<div class="tkt-dh-app-root">
+{% set active_page = 'ticketing' %}
+{% include 'partials/main_navbar.html' with context %}
+<div class="dh-page-root tkt-dh-page-root">
+{% include 'partials/tkt_sidebar.html' with context %}
+<div class="tkt-dh-main"><div class="tkt-content">
+
+  <div class="tkt-page-header">
+    <div>
+      <h1 class="tkt-page-title">Analytics</h1>
+      <p style="font-size:.86rem;color:#64748b;margin:4px 0 0;">Resolution speed, SLA breach-risk, stage bottlenecks and team performance — computed from your own ticket history.</p>
+    </div>
+  </div>
+
+  <div id="anRoot">
+    <div class="an-loading"><div class="an-spin"></div>Crunching ticket history…</div>
+  </div>
+
+</div></div>
+</div>
+</div>
+
+<script src="{{ url_for('static', filename='js/ticketing.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}" defer></script>
+<script>
+(function () {
+  const API = "{{ url_for('ticketing.analytics_data') }}";
+  const CAN_FINANCE = {{ 'true' if can_finance else 'false' }};
+
+  const fmtDays = v => (v === null || v === undefined) ? '—' : v + 'd';
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const labelOf = (labels, k) => (labels && labels[k]) || String(k).replace(/_/g,' ').replace(/\b\w/g, c => c.toUpperCase());
+  const probColor = p => p >= 0.66 ? '#dc2626' : p >= 0.4 ? '#d97706' : '#16a34a';
+
+  function kpiCards(d) {
+    const r = d.resolution.overall || {};
+    const c = d.breach.counts || {};
+    const atRisk = (c.breached || 0) + (c.at_risk || 0);
+    const completion = d.meta.total ? Math.round(100 * (r.count || 0) / d.meta.total) : 0;
+    return `
+      <div class="an-kpi-row">
+        <div class="an-kpi">
+          <p class="an-kpi-label">Median time to close</p>
+          <div class="an-kpi-value">${fmtDays(r.median_days)}</div>
+          <div class="an-kpi-sub">${r.count || 0} closed tickets</div>
+        </div>
+        <div class="an-kpi">
+          <p class="an-kpi-label">90th percentile</p>
+          <div class="an-kpi-value">${fmtDays(r.p90_days)}</div>
+          <div class="an-kpi-sub">9 in 10 close within this</div>
+        </div>
+        <div class="an-kpi">
+          <p class="an-kpi-label">Completion rate</p>
+          <div class="an-kpi-value">${completion}<small>%</small></div>
+          <div class="an-kpi-sub">${r.count || 0} of ${d.meta.total} tickets</div>
+        </div>
+        <div class="an-kpi ${atRisk ? 'an-kpi--alert' : ''}">
+          <p class="an-kpi-label">Open &amp; at risk</p>
+          <div class="an-kpi-value">${atRisk}</div>
+          <div class="an-kpi-sub">${c.breached || 0} breached · ${c.at_risk || 0} at risk · ${d.meta.open} open</div>
+        </div>
+      </div>`;
+  }
+
+  function breachBoard(d) {
+    const rows = d.breach.rows || [];
+    const body = rows.length ? rows.map(r => `
+      <tr>
+        <td><a href="{{ url_for('ticketing.dashboard') }}" style="color:#d21725;font-weight:700;text-decoration:none;">${esc(r.ticket_id)}</a></td>
+        <td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(r.title)}</td>
+        <td><span class="an-prio ${r.priority}">${esc(r.priority)}</span></td>
+        <td>${esc(labelOf(d.meta.status_labels, r.status))}</td>
+        <td class="an-num">${r.age_hours}h <span style="color:#94a3b8;">/ ${r.target_hours}h</span></td>
+        <td>
+          <div class="an-prob">
+            <div class="an-prob-track"><div class="an-prob-fill" style="width:${Math.round(r.breach_prob*100)}%;background:${probColor(r.breach_prob)};"></div></div>
+            <span class="an-prob-val">${Math.round(r.breach_prob*100)}%</span>
+          </div>
+        </td>
+        <td><span class="an-pill ${r.tier}">${r.tier.replace('_',' ')}</span></td>
+      </tr>`).join('') : `<tr><td colspan="7" class="an-empty">No open tickets — nothing at risk.</td></tr>`;
+    return `
+      <div class="an-panel">
+        <div class="an-panel-head">
+          <h2 class="an-panel-title">SLA breach-risk board</h2>
+          <span class="an-panel-hint">Probability = share of past same-priority tickets still open at this age that went on to breach</span>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="an-table">
+            <thead><tr><th>Ticket</th><th>Title</th><th>Priority</th><th>Status</th><th class="an-num">Age / SLA</th><th>Breach risk</th><th>Tier</th></tr></thead>
+            <tbody>${body}</tbody>
+          </table>
+        </div>
+      </div>`;
+  }
+
+  function stagePanel(d) {
+    const stages = (d.stages.stages || []).filter(s => s.avg_hours !== null);
+    const max = Math.max(1, ...stages.map(s => s.avg_hours));
+    const bn = d.stages.bottleneck;
+    const rows = stages.length ? stages.map(s => `
+      <div class="an-bar-row">
+        <div class="an-bar-label">${esc(labelOf(d.meta.status_labels, s.stage))}${s.stage===bn?'<span class="an-bottleneck-tag">SLOWEST</span>':''}</div>
+        <div class="an-bar-track"><div class="an-bar-fill ${s.stage===bn?'bottleneck':''}" style="width:${Math.max(3,Math.round(100*s.avg_hours/max))}%;"></div></div>
+        <div class="an-bar-val">${s.avg_hours}h</div>
+      </div>`).join('') : `<div class="an-empty">Not enough status history yet.</div>`;
+    return `
+      <div class="an-panel">
+        <div class="an-panel-head"><h2 class="an-panel-title">Stage bottlenecks</h2><span class="an-panel-hint">avg hours waiting in each stage</span></div>
+        ${rows}
+      </div>`;
+  }
+
+  function priorityPanel(d) {
+    const bp = d.resolution.by_priority || {};
+    const order = ['critical','high','medium','low'];
+    const vals = order.map(p => (bp[p] && bp[p].median_days) || 0);
+    const max = Math.max(1, ...vals);
+    const rows = order.map(p => {
+      const s = bp[p] || {};
+      const md = s.median_days;
+      return `
+        <div class="an-bar-row">
+          <div class="an-bar-label"><span class="an-prio ${p}">${p}</span></div>
+          <div class="an-bar-track"><div class="an-bar-fill ${md?'':'muted'}" style="width:${md?Math.max(3,Math.round(100*md/max)):0}%;"></div></div>
+          <div class="an-bar-val">${md!=null?md+'d':'—'} <span style="color:#cbd5e1;font-weight:500;">(${s.count||0})</span></div>
+        </div>`;
+    }).join('');
+    return `
+      <div class="an-panel">
+        <div class="an-panel-head"><h2 class="an-panel-title">Median close by priority</h2><span class="an-panel-hint">(count)</span></div>
+        ${rows}
+      </div>`;
+  }
+
+  function teamPanel(d) {
+    const rows = (d.team || []);
+    const costCol = CAN_FINANCE;
+    const body = rows.length ? rows.map(t => `
+      <tr>
+        <td style="font-weight:600;">${esc(t.name)}</td>
+        <td style="color:#64748b;">${esc(t.roles)}</td>
+        <td class="an-num">${t.handled}</td>
+        <td class="an-num">${t.completed}</td>
+        <td class="an-num">${t.completion_pct}%</td>
+        <td class="an-num">${t.avg_close_days!=null?t.avg_close_days+'d':'—'}</td>
+        <td class="an-num">${t.hours}</td>
+      </tr>`).join('') : `<tr><td colspan="7" class="an-empty">No assignments yet.</td></tr>`;
+    return `
+      <div class="an-panel">
+        <div class="an-panel-head"><h2 class="an-panel-title">Team performance</h2><span class="an-panel-hint">supervisors &amp; technicians</span></div>
+        <div style="overflow-x:auto;">
+          <table class="an-table">
+            <thead><tr><th>Member</th><th>Role</th><th class="an-num">Handled</th><th class="an-num">Completed</th><th class="an-num">Done %</th><th class="an-num">Avg close</th><th class="an-num">Hours</th></tr></thead>
+            <tbody>${body}</tbody>
+          </table>
+        </div>
+      </div>`;
+  }
+
+  function faultPanel(d) {
+    const rows = (d.faults.rows || []);
+    const max = Math.max(1, ...rows.map(r => r.count));
+    const body = rows.length ? rows.map(r => `
+      <div class="an-bar-row" style="grid-template-columns:170px 1fr 110px;">
+        <div class="an-bar-label" title="${esc(r.fault)}">${esc(r.fault)}</div>
+        <div class="an-bar-track"><div class="an-bar-fill" style="width:${Math.max(3,Math.round(100*r.count/max))}%;"></div></div>
+        <div class="an-bar-val">${r.count} · ${r.pct}%${CAN_FINANCE && r.cost ? `<br><span style="font-weight:500;color:#94a3b8;">AED ${r.cost.toLocaleString()}</span>`:''}</div>
+      </div>`).join('') : `<div class="an-empty">No tickets to analyse.</div>`;
+    return `
+      <div class="an-panel">
+        <div class="an-panel-head"><h2 class="an-panel-title">Top fault types (Pareto)</h2><span class="an-panel-hint">count · share${CAN_FINANCE?' · cost':''}</span></div>
+        ${body}
+      </div>`;
+  }
+
+  async function load() {
+    const root = document.getElementById('anRoot');
+    const r = await tktFetch(API);
+    if (!r.ok || !r.data || !r.data.success) {
+      root.innerHTML = `<div class="an-empty">Couldn't load analytics${r.data && r.data.error ? ': ' + esc(r.data.error) : ''}.</div>`;
+      return;
+    }
+    const d = r.data.data;
+    root.innerHTML =
+      kpiCards(d) +
+      breachBoard(d) +
+      `<div class="an-grid"><div>${stagePanel(d)}</div><div>${priorityPanel(d)}</div></div>` +
+      teamPanel(d) +
+      faultPanel(d);
+  }
+
+  if (window.tktFetch) load();
+  else window.addEventListener('DOMContentLoaded', () => setTimeout(load, 50));
+})();
+</script>
+</body>
+</html>

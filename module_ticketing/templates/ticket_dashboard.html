@@ -19,8 +19,14 @@
         linear-gradient(180deg, #eef2ff 0%, #f4f7ff 40%, #f8fafc 100%);
       padding-bottom: 5rem;
     }
-    /* body picks up the same end colour so there is zero visible seam */
+    /* Page behind the hero picks up the same end colour so there is zero visible seam.
+       (.tkt-page covers the plain pages; .tkt-dh-page-root is this sidebar layout's panel,
+       which otherwise paints dochub's #fafafa and draws a faint line at the hero's bottom edge.) */
     .tkt-page { background: #f8fafc; }
+    body.tkt-dh-page .tkt-dh-page-root,
+    body.tkt-dh-page { background: #f8fafc; }
+    /* Default hero red glow blob clashes with the lavender variant (reads as a second bg) */
+    .hero.tkt-hero::after { display: none; }
     .hero.tkt-hero::before {
       background-image:
         linear-gradient(rgba(210,23,37,.04) 1px, transparent 1px),

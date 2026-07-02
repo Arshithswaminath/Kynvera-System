@@ -152,6 +152,12 @@ def _migrate_ticket_columns(app):
         ('client_signature',               'TEXT'),
         ('client_signed_by',               'TEXT'),
         ('client_signed_at',               'TEXT'),
+        ('client_mobile',                  'TEXT'),
+        # technician ID for service report
+        ('technician_id_no',               'TEXT'),
+        # Amaan Service Report template
+        ('service_report_no',              'INTEGER'),
+        ('service_report_data',            'TEXT'),
         # finance approval gate
         ('gm_approval_required',           'INTEGER DEFAULT 0'),
         ('gm_approved_at',                 'TEXT'),
@@ -331,7 +337,7 @@ def _can_access_ticket_docs(user: User, ticket: Ticket) -> bool:
         return True
     if _can_user_view_ticket(user, ticket):
         return True
-    if ticket.status in ('pending_finance', 'closed') and _has_access(user):
+    if ticket.status in ('pending_gm_approval', 'pending_finance', 'closed') and _has_access(user):
         return True
     return False
 
@@ -395,17 +401,24 @@ def _get_supervisor_team(supervisor_id: int) -> list:
 
 
 def _ticket_roster_fallback_workers():
-    rows = []
-    for d in _dummy_technicians():
-        rows.append({
-            'user_id': None,
+    """All active technician accounts — used when no supervisor team is configured."""
+    users = (
+        User.query
+        .filter(User.designation == 'technician', User.is_active == True)  # noqa: E712
+        .order_by(User.full_name)
+        .all()
+    )
+    return [
+        {
+            'user_id': u.id,
             'team_entry_id': None,
-            'code': d['code'],
-            'name': d['name'],
-            'speciality': d['speciality'],
-            'sidebar_row_id': d['code'],
-        })
-    return rows
+            'code': u.username or f'USER-{u.id}',
+            'name': u.full_name or u.username,
+            'speciality': (getattr(u, 'job_designation', None) or '').strip() or 'Field technician',
+            'sidebar_row_id': f'uid-{u.id}',
+        }
+        for u in users
+    ]
 
 
 def _ticketing_team_workers_for_sidebar(supervisor_id: int) -> list:
@@ -427,10 +440,14 @@ def _ticketing_team_workers_for_sidebar(supervisor_id: int) -> list:
     return rows
 
 
-def _ticketing_worker_pick_list(roster_supervisor_user_id):
-    """Prefer DB team for this supervisor account; fallback static demo roster."""
+def _ticketing_worker_pick_list(roster_supervisor_user_id, current_user_id=None):
+    """Prefer DB team for this supervisor account; try current user's team; fallback static demo roster."""
     if roster_supervisor_user_id:
         real = _ticketing_team_workers_for_sidebar(roster_supervisor_user_id)
+        if real:
+            return real
+    if current_user_id and current_user_id != roster_supervisor_user_id:
+        real = _ticketing_team_workers_for_sidebar(current_user_id)
         if real:
             return real
     return _ticket_roster_fallback_workers()
@@ -1034,11 +1051,11 @@ def ticket_detail(ticket_id):
     user_is_supervisor = _is_supervisor_of_ticket(user)
     roster_for_picks = ticket.supervisor_id if ticket.supervisor_id else (user.id if user_is_supervisor else None)
 
-    ticket_sidebar_team = _ticketing_team_workers_for_sidebar(user.id) if user_is_supervisor else []
-    if user_is_supervisor and not ticket_sidebar_team:
-        ticket_sidebar_team = _ticket_roster_fallback_workers()
-
-    worker_pick_list = _ticketing_worker_pick_list(roster_for_picks)
+    worker_pick_list = _ticketing_worker_pick_list(roster_for_picks, current_user_id=user.id)
+    ticket_sidebar_team = (
+        (_ticketing_team_workers_for_sidebar(user.id) or _ticket_roster_fallback_workers())
+        if user_is_supervisor else []
+    )
     technician_users_for_team_add = _technician_users_available_for_team_add(user.id) if user_is_supervisor else []
 
     # Pricing preview
@@ -1243,12 +1260,14 @@ def assign_ticket(ticket_id):
         if not _is_ticket_assignment_supervisor(assignee):
             return jsonify({'success': False, 'error': 'Assignment is limited to supervisor accounts.'}), 400
         ticket.assigned_to_id = assignee.id
-        _add_note(ticket, user, f'Assigned to {assignee.full_name}.', note_type='assignment')
+        ticket.supervisor_id = assignee.id
+        _add_note(ticket, user, f'Supervisor re-routed to {assignee.full_name}.', note_type='assignment')
         _notify_user(assignee.id, f'Ticket assigned: {ticket.ticket_id}',
                      f'You have been assigned ticket {ticket.ticket_id}: {ticket.title}',
                      ntype='info', ticket_id=ticket.ticket_id)
     else:
         ticket.assigned_to_id = None
+        ticket.supervisor_id = None
         _add_note(ticket, user, 'Ticket unassigned.', note_type='assignment')
 
     db.session.commit()
@@ -2083,6 +2102,24 @@ def supervisor_close(ticket_id):
                      f'Ticket "{ticket.title}" from project {ticket.project} is awaiting your approval. '
                      f'Selling price: AED {ticket.selling_price or 0:.2f}.',
                      ntype='warning',
+                     ticket_id=ticket.ticket_id)
+
+    # Notify Finance in parallel — they may start the ERP invoice without waiting for GM
+    _gm_ids = {gm.id for gm in gm_users}
+    finance_users = [
+        fu for fu in User.query.filter(
+            User.is_active == True,  # noqa: E712
+            User.designation == 'finance',
+        ).all()
+        if fu.id not in _gm_ids
+    ]
+    for fu in finance_users:
+        _notify_user(fu.id,
+                     f'Ready for Invoicing — {ticket.ticket_id}',
+                     f'Supervisor has verified ticket "{ticket.title}" (Project: {ticket.project}). '
+                     f'Selling price: AED {ticket.selling_price or 0:.2f}. '
+                     f'You may log the ERP invoice now; GM approval is running in parallel.',
+                     ntype='info',
                      ticket_id=ticket.ticket_id)
 
     db.session.commit()
@@ -3314,12 +3351,132 @@ def client_sign_ticket(ticket_id):
     ticket.client_signature = signature
     ticket.client_signed_by = signed_by
     ticket.client_signed_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    mobile = (data.get('client_mobile') or '').strip()
+    if mobile:
+        ticket.client_mobile = mobile
 
     _add_note(ticket, user,
               f'Service report signed by client: {signed_by}.',
               note_type='status_change')
     db.session.commit()
     return jsonify({'success': True, 'client_signed_by': signed_by})
+
+
+# ---------------------------------------------------------------------------
+# Amaan Service Report data (GET / PATCH)
+# ---------------------------------------------------------------------------
+
+@ticketing_bp.route('/api/tickets/<string:ticket_id>/service-report-data', methods=['GET'])
+@jwt_required()
+def get_service_report_data(ticket_id):
+    """Return merged auto-fill + saved service report JSON."""
+    user = _current_user()
+    ticket = Ticket.query.filter_by(ticket_id=ticket_id).first_or_404()
+    if not _can_access_ticket_docs(user, ticket):
+        abort(403)
+    from module_ticketing.service_report import merge_service_report_data, get_or_assign_service_report_no
+    materials = ticket.materials.all()
+    srn = get_or_assign_service_report_no(ticket)
+    data = merge_service_report_data(ticket, materials)
+    data['service_report_no'] = srn
+    # Include read-only parts_used from TicketMaterial
+    data['parts_used'] = [
+        {'part': m.material_name, 'specification': m.notes or '', 'qty': m.quantity}
+        for m in materials
+    ]
+    return jsonify({'success': True, 'data': data, 'srn': srn})
+
+
+@ticketing_bp.route('/api/tickets/<string:ticket_id>/service-report-data', methods=['PATCH'])
+@jwt_required()
+def save_service_report_data(ticket_id):
+    """Persist editable service report fields."""
+    import json as _json
+    user = _current_user()
+    if not _has_access(user):
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+    ticket = Ticket.query.filter_by(ticket_id=ticket_id).first_or_404()
+    deny = _api_forbid_unless_ticket_visible(user, ticket)
+    if deny:
+        return deny
+
+    payload = request.get_json(silent=True) or {}
+
+    # Load existing saved data and merge
+    try:
+        existing = _json.loads(ticket.service_report_data) if ticket.service_report_data else {}
+    except Exception:
+        existing = {}
+
+    # SRN is editable (the paper form's "Need to change" note). Validate + guard uniqueness.
+    new_srn = payload.pop('service_report_no', None)
+    payload.pop('_auto', None)
+    payload.pop('parts_used', None)
+
+    if new_srn not in (None, ''):
+        try:
+            new_srn_int = int(new_srn)
+            if new_srn_int <= 0:
+                raise ValueError
+        except (TypeError, ValueError):
+            return jsonify({'success': False, 'error': 'SRN must be a positive number'}), 400
+        if new_srn_int != ticket.service_report_no:
+            clash = Ticket.query.filter(
+                Ticket.service_report_no == new_srn_int,
+                Ticket.id != ticket.id,
+            ).first()
+            if clash:
+                return jsonify({'success': False,
+                                'error': f'SRN {new_srn_int} is already in use by {clash.ticket_id}'}), 400
+            ticket.service_report_no = new_srn_int
+
+    existing.update(payload)
+    # Remove _auto flag so we know user has edited this
+    existing.pop('_auto', None)
+
+    # Validate job_type
+    valid_job_types = {'maintenance', 'installation', 'rectification', 'others'}
+    if 'job_type' in existing and existing['job_type'] not in valid_job_types:
+        return jsonify({'success': False, 'error': 'Invalid job_type'}), 400
+
+    # Strip empty parts_required rows
+    if 'parts_required' in existing:
+        existing['parts_required'] = [
+            r for r in existing['parts_required']
+            if (r.get('part') or '').strip()
+        ]
+
+    # Persist top-level convenience fields
+    if 'client_mobile' in payload and payload['client_mobile']:
+        ticket.client_mobile = payload['client_mobile'].strip()
+    if 'technician_id_no' in payload and payload['technician_id_no']:
+        ticket.technician_id_no = payload['technician_id_no'].strip()
+
+    ticket.service_report_data = _json.dumps(existing)
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+# Service report PDF download
+@ticketing_bp.route('/<string:ticket_id>/service-report/pdf', methods=['GET'])
+@jwt_required()
+def download_service_report_pdf(ticket_id):
+    """Generate and stream the Amaan Service Report PDF."""
+    user = _current_user()
+    ticket = Ticket.query.filter_by(ticket_id=ticket_id).first_or_404()
+    if not _can_access_ticket_docs(user, ticket):
+        abort(403)
+    from module_ticketing.service_report import merge_service_report_data, get_or_assign_service_report_no
+    from module_ticketing.service_report_pdf_builder import build_service_report_pdf
+    materials = ticket.materials.all()
+    srn = get_or_assign_service_report_no(ticket)
+    sr_data = merge_service_report_data(ticket, materials)
+    sr_data['service_report_no'] = srn
+    buf = io.BytesIO()
+    build_service_report_pdf(ticket, sr_data, materials, buf)
+    buf.seek(0)
+    filename = f'ServiceReport_{ticket.ticket_id}.pdf'
+    return send_file(buf, mimetype='application/pdf', as_attachment=False, download_name=filename)
 
 
 # ---------------------------------------------------------------------------
@@ -3351,6 +3508,31 @@ def gm_approve_ticket(ticket_id):
     ticket.gm_approval_notes = notes
     ticket.gm_rejected_at = None
     ticket.gm_rejection_notes = None
+
+    if ticket.finance_confirmed_at:
+        # Finance already logged the ERP invoice — GM approval was the last gate.
+        ticket.status = 'closed'
+        ticket.closed_at = datetime.now(timezone.utc).replace(tzinfo=None)
+
+        _add_note(ticket, user,
+                  f'GM approval granted by {user.full_name}. Finance had already logged the invoice'
+                  f'{(" (ref: " + ticket.finance_invoice_ref + ")") if ticket.finance_invoice_ref else ""}, '
+                  f'so the ticket is now fully closed. '
+                  f'{("Notes: " + notes) if notes else ""}',
+                  note_type='status_change')
+
+        for uid in filter(None, {ticket.supervisor_id, ticket.reporter_id}):
+            _notify_user(uid,
+                         f'Ticket Closed — {ticket.ticket_id}',
+                         f'Ticket "{ticket.title}" has been approved by the GM and fully closed. '
+                         f'Invoice was processed by Finance.',
+                         ntype='success',
+                         ticket_id=ticket.ticket_id)
+
+        db.session.commit()
+        _send_completion_emails(ticket, user)
+        return jsonify({'success': True, 'status': 'closed', 'approved_by': user.full_name})
+
     ticket.status = 'pending_finance'
 
     _add_note(ticket, user,
@@ -3408,9 +3590,17 @@ def gm_reject_ticket(ticket_id):
     ticket.gm_rejection_notes = rejection_notes
     ticket.status = 'verification'
 
+    # If Finance already logged the invoice in parallel, reset their confirmation —
+    # pricing may change after rework. Keep finance_invoice_ref for reference.
+    finance_had_confirmed = bool(ticket.finance_confirmed_at)
+    if finance_had_confirmed:
+        ticket.finance_confirmed_at = None
+        ticket.finance_confirmed_by_id = None
+
     _add_note(ticket, user,
               f'GM rejected by {user.full_name}. Ticket returned to Supervisor Review. '
-              f'Reason: {rejection_notes}',
+              f'Reason: {rejection_notes}'
+              f'{" Finance invoice confirmation has been reset and may need revision." if finance_had_confirmed else ""}',
               note_type='status_change')
 
     # Notify supervisor
@@ -3421,6 +3611,21 @@ def gm_reject_ticket(ticket_id):
                      f'Reason: {rejection_notes}. Please review and resubmit.',
                      ntype='error',
                      ticket_id=ticket.ticket_id)
+
+    # Notify finance if their parallel invoice work was invalidated
+    if finance_had_confirmed:
+        finance_users = User.query.filter(
+            User.is_active == True,  # noqa: E712
+            db.or_(User.designation == 'finance', User.role == 'admin'),
+        ).all()
+        for fu in finance_users:
+            _notify_user(fu.id,
+                         f'GM Rejected — {ticket.ticket_id}',
+                         f'Ticket "{ticket.title}" was rejected by the GM and returned to the supervisor. '
+                         f'The ERP invoice{(" (ref: " + ticket.finance_invoice_ref + ")") if ticket.finance_invoice_ref else ""} '
+                         f'may need revision once the ticket is resubmitted.',
+                         ntype='warning',
+                         ticket_id=ticket.ticket_id)
 
     db.session.commit()
     return jsonify({'success': True, 'status': 'verification', 'rejected_by': user.full_name})
@@ -3443,7 +3648,7 @@ def finance_confirm_ticket(ticket_id):
 
     ticket = Ticket.query.filter_by(ticket_id=ticket_id).first_or_404()
 
-    if ticket.status != 'pending_finance':
+    if ticket.status not in ('pending_finance', 'pending_gm_approval'):
         return jsonify({'success': False, 'error': f'Ticket is not pending finance confirmation. Current status: {ticket.status}'}), 400
 
     data = request.get_json(silent=True) or {}
@@ -3455,6 +3660,32 @@ def finance_confirm_ticket(ticket_id):
     ticket.finance_confirmed_at = datetime.now(timezone.utc).replace(tzinfo=None)
     ticket.finance_confirmed_by_id = user.id
     ticket.finance_invoice_ref = invoice_ref
+
+    if ticket.status == 'pending_gm_approval':
+        # Finance finished first — GM approval is the final gate, so don't close yet.
+        _add_note(ticket, user,
+                  f'Invoice logged by Finance ({user.full_name}). '
+                  f'{("Invoice ref: " + invoice_ref + ". ") if invoice_ref else ""}'
+                  f'Awaiting GM approval to close the ticket.',
+                  note_type='status_change')
+
+        gm_users = User.query.filter(
+            User.is_active == True,  # noqa: E712
+            db.or_(User.role == 'admin', User.designation == 'general_manager'),
+        ).all()
+        for gm in gm_users:
+            _notify_user(gm.id,
+                         f'Finance Done — {ticket.ticket_id}',
+                         f'Finance has logged the ERP invoice for ticket "{ticket.title}"'
+                         f'{(" (ref: " + invoice_ref + ")") if invoice_ref else ""}. '
+                         f'Only your approval is pending to close the ticket.',
+                         ntype='info',
+                         ticket_id=ticket.ticket_id)
+
+        db.session.commit()
+        return jsonify({'success': True, 'status': 'pending_gm_approval', 'invoice_ref': invoice_ref})
+
+    # GM already approved (pending_finance) — finance confirmation fully closes the ticket.
     ticket.status = 'closed'
     ticket.closed_at = datetime.now(timezone.utc).replace(tzinfo=None)
 
@@ -3474,3 +3705,370 @@ def finance_confirm_ticket(ticket_id):
     db.session.commit()
     _send_completion_emails(ticket, user, custom_to=custom_to, custom_cc=custom_cc, custom_body=custom_body)
     return jsonify({'success': True, 'status': 'closed', 'invoice_ref': invoice_ref})
+
+
+# ---------------------------------------------------------------------------
+# Reports — spec-driven PDF / Excel downloads
+# ---------------------------------------------------------------------------
+
+_FINANCE_TIER_REPORTS = {'financial', 'projects'}
+
+
+def _can_use_finance_reports(user: User) -> bool:
+    return _ticketing_sees_all_tickets(user) or _is_finance_user(user)
+
+
+def _report_filtered_tickets(user: User, args):
+    """Visible tickets narrowed by the shared report filters (date range, project, status)."""
+    q = _visible_tickets_base_query(user)
+
+    date_from = (args.get('date_from') or '').strip()
+    date_to = (args.get('date_to') or '').strip()
+    project = (args.get('project') or '').strip()
+    status = (args.get('status') or '').strip()
+
+    label_parts = []
+    if date_from:
+        try:
+            q = q.filter(Ticket.created_at >= datetime.strptime(date_from, '%Y-%m-%d'))
+            label_parts.append(f'from {date_from}')
+        except ValueError:
+            pass
+    if date_to:
+        try:
+            # inclusive end-of-day
+            q = q.filter(Ticket.created_at < datetime.strptime(date_to, '%Y-%m-%d').replace(hour=23, minute=59, second=59))
+            label_parts.append(f'to {date_to}')
+        except ValueError:
+            pass
+    if project:
+        q = q.filter(Ticket.project == project)
+        label_parts.append(f'project: {project}')
+    if status:
+        q = q.filter(Ticket.status == status)
+        label_parts.append(f'status: {_STATUS_LABELS.get(status, status)}')
+
+    return q.order_by(Ticket.created_at.desc()).all(), ', '.join(label_parts)
+
+
+def _fmt_dt(value):
+    if not value:
+        return ''
+    try:
+        return value.strftime('%d %b %Y')
+    except AttributeError:
+        return str(value)
+
+
+def _report_rows(report_key: str, user: User, args):
+    """Build (rows, summary) for a report key. Rows are dicts keyed by column spec keys."""
+    tickets, filters_label = _report_filtered_tickets(user, args)
+
+    if report_key == 'work_orders':
+        rows = [{
+            'ticket_id': t.ticket_id,
+            'title': t.title,
+            'project': t.project,
+            'service_group': t.service_group,
+            'priority': (t.priority or '').capitalize(),
+            'status': _STATUS_LABELS.get(t.status, t.status),
+            'supervisor': t.supervisor.full_name if t.supervisor else '',
+            'technician': t.technician.full_name if t.technician else '',
+            'created': _fmt_dt(t.created_at),
+            'closed': _fmt_dt(t.closed_at),
+        } for t in tickets]
+        statuses = [t.status for t in tickets]
+        summary = [
+            ('Total', len(tickets)),
+            ('Open', statuses.count('open')),
+            ('In Progress', sum(1 for s in statuses if s in ('assigned', 'site_attended', 'work_started', 'in_progress'))),
+            ('Completed', sum(1 for s in statuses if s in ('work_completed', 'verification', 'pending_gm_approval', 'pending_finance'))),
+            ('Closed', statuses.count('closed')),
+            ('Cancelled', statuses.count('cancelled')),
+        ]
+        return rows, summary, filters_label
+
+    if report_key == 'financial':
+        fin_tickets = [t for t in tickets if t.is_chargeable or t.selling_price or t.total_cost]
+        rows = []
+        for t in fin_tickets:
+            margin = (t.selling_price or 0) - (t.total_cost or 0)
+            rows.append({
+                'ticket_id': t.ticket_id,
+                'project': t.project,
+                'title': t.title,
+                'total_cost': t.total_cost or 0,
+                'actual_price': t.actual_price or 0,
+                'markup_pct': t.markup_pct or 0,
+                'selling_price': t.selling_price or 0,
+                'margin': margin,
+                'invoice_ref': t.finance_invoice_ref or '',
+                'closed': _fmt_dt(t.closed_at),
+            })
+        total_rev = sum(r['selling_price'] for r in rows)
+        total_cost = sum(r['total_cost'] for r in rows)
+        summary = [
+            ('Work Orders', len(rows)),
+            ('Revenue (AED)', f'{total_rev:,.2f}'),
+            ('Cost (AED)', f'{total_cost:,.2f}'),
+            ('Margin (AED)', f'{total_rev - total_cost:,.2f}'),
+            ('Invoiced', sum(1 for r in rows if r['invoice_ref'])),
+        ]
+        return rows, summary, filters_label
+
+    if report_key == 'projects':
+        by_project = {}
+        for t in tickets:
+            by_project.setdefault(t.project or '—', []).append(t)
+        rows = []
+        for project, ts in sorted(by_project.items()):
+            closed = [t for t in ts if t.status == 'closed']
+            close_days = [
+                (t.closed_at - t.created_at).days
+                for t in closed if t.closed_at and t.created_at
+            ]
+            revenue = sum(t.selling_price or 0 for t in ts)
+            cost = sum(t.total_cost or 0 for t in ts)
+            rows.append({
+                'project': project,
+                'total': len(ts),
+                'open': sum(1 for t in ts if t.status not in ('closed', 'cancelled')),
+                'closed': len(closed),
+                'revenue': revenue,
+                'cost': cost,
+                'margin': revenue - cost,
+                'avg_close_days': f'{sum(close_days) / len(close_days):.1f}' if close_days else '—',
+            })
+        summary = [
+            ('Projects', len(rows)),
+            ('Work Orders', sum(r['total'] for r in rows)),
+            ('Revenue (AED)', f"{sum(r['revenue'] for r in rows):,.2f}"),
+            ('Margin (AED)', f"{sum(r['margin'] for r in rows):,.2f}"),
+        ]
+        return rows, summary, filters_label
+
+    if report_key == 'team':
+        people = {}
+
+        def _bucket(u, role):
+            if not u:
+                return None
+            key = (u.id, role)
+            if key not in people:
+                people[key] = {'name': u.full_name or u.username, 'role': role,
+                               'assigned': 0, 'completed': 0, 'hours': 0.0, 'labour_cost': 0.0}
+            return people[key]
+
+        for t in tickets:
+            tech = _bucket(t.technician, 'Technician')
+            if tech:
+                tech['assigned'] += 1
+                if t.status in ('work_completed', 'verification', 'pending_gm_approval', 'pending_finance', 'closed'):
+                    tech['completed'] += 1
+            sup = _bucket(t.supervisor, 'Supervisor')
+            if sup:
+                sup['assigned'] += 1
+                if t.status == 'closed':
+                    sup['completed'] += 1
+            for mp in t.manpower.all():
+                worker = None
+                if mp.worker_user_id:
+                    wu = User.query.get(mp.worker_user_id)
+                    worker = _bucket(wu, 'Technician') if wu else None
+                if worker is None and mp.worker_name:
+                    key = (mp.worker_name, 'Technician')
+                    if key not in people:
+                        people[key] = {'name': mp.worker_name, 'role': 'Technician',
+                                       'assigned': 0, 'completed': 0, 'hours': 0.0, 'labour_cost': 0.0}
+                    worker = people[key]
+                if worker:
+                    worker['hours'] += mp.hours or 0
+                    worker['labour_cost'] += mp.total_cost or 0
+
+        rows = sorted(people.values(), key=lambda r: (-r['assigned'], r['name']))
+        for r in rows:
+            r['hours'] = f"{r['hours']:.2f}".rstrip('0').rstrip('.')
+        summary = [
+            ('Team Members', len(rows)),
+            ('Orders Covered', len(tickets)),
+            ('Labour Cost (AED)', f"{sum(r['labour_cost'] for r in rows):,.2f}"),
+        ]
+        return rows, summary, filters_label
+
+    if report_key == 'materials':
+        agg = {}
+        for t in tickets:
+            for m in t.materials.all():
+                key = ((m.material_name or '').strip().lower(), (m.unit or '').strip().lower())
+                entry = agg.setdefault(key, {
+                    'material': (m.material_name or '').strip() or '—',
+                    'unit': (m.unit or '').strip(),
+                    'quantity': 0.0, 'spend': 0.0, '_prices': [], '_tickets': set(),
+                })
+                entry['quantity'] += m.quantity or 0
+                entry['spend'] += m.total_price or 0
+                if m.unit_price:
+                    entry['_prices'].append(m.unit_price)
+                entry['_tickets'].add(t.ticket_id)
+
+        rows = []
+        for entry in sorted(agg.values(), key=lambda e: -e['spend']):
+            rows.append({
+                'material': entry['material'],
+                'unit': entry['unit'],
+                'quantity': f"{entry['quantity']:.2f}".rstrip('0').rstrip('.'),
+                'avg_price': (sum(entry['_prices']) / len(entry['_prices'])) if entry['_prices'] else 0,
+                'spend': entry['spend'],
+                'tickets': len(entry['_tickets']),
+            })
+        summary = [
+            ('Distinct Materials', len(rows)),
+            ('Total Spend (AED)', f"{sum(r['spend'] for r in rows):,.2f}"),
+            ('Orders With Materials', len({tid for e in agg.values() for tid in e['_tickets']})),
+        ]
+        return rows, summary, filters_label
+
+    return None, None, filters_label
+
+
+@ticketing_bp.route('/reports', methods=['GET'])
+@jwt_required()
+def reports_page():
+    """Reports hub — download work-order, financial and operational reports."""
+    user = _current_user()
+    if not _has_access(user):
+        abort(403)
+
+    from module_ticketing.report_builders import REPORT_SPECS
+    can_finance = _can_use_finance_reports(user)
+
+    projects = sorted({
+        p[0] for p in _visible_tickets_base_query(user)
+        .with_entities(Ticket.project).distinct() if p[0]
+    })
+
+    return render_template(
+        'ticket_reports.html',
+        user=user,
+        report_specs=REPORT_SPECS,
+        can_finance=can_finance,
+        projects=projects,
+        status_labels=_STATUS_LABELS,
+        sidebar_stats=_get_sidebar_stats(user),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Analytics — resolution speed, SLA breach-risk, stage bottlenecks, team & faults
+# ---------------------------------------------------------------------------
+
+def _build_ticket_analytics(user) -> dict:
+    """Crunch every analytics view from the user's visible tickets.
+
+    Routes scope + fetch; module_ticketing.analytics does the maths. Cost/margin
+    figures are only included for finance-tier users.
+    """
+    from module_ticketing import analytics as A
+
+    tickets = _visible_tickets_base_query(user).all()
+    ticket_ids = [t.id for t in tickets]
+    can_finance = _can_use_finance_reports(user)
+
+    status_notes, manpower = [], []
+    if ticket_ids:
+        status_notes = (
+            TicketNote.query
+            .filter(TicketNote.ticket_id.in_(ticket_ids),
+                    TicketNote.note_type == 'status_change')
+            .all()
+        )
+        manpower = TicketManpower.query.filter(TicketManpower.ticket_id.in_(ticket_ids)).all()
+
+    # On-hold tickets have a paused clock, so they're excluded from breach risk.
+    open_for_breach = [
+        t for t in tickets if t.status in _ACTIVE_STATUSES and t.status != 'on_hold'
+    ]
+    users = {u.id: u for u in User.query.all()}
+
+    return {
+        'resolution': A.compute_resolution_stats(tickets),
+        'stages': A.compute_stage_durations(tickets, status_notes),
+        'breach': A.compute_breach_risk(open_for_breach, tickets),
+        'team': A.compute_team_perf(tickets, manpower, users),
+        'faults': A.compute_fault_pareto(tickets, include_cost=can_finance),
+        'meta': {
+            'total': len(tickets),
+            'open': len(open_for_breach),
+            'can_finance': can_finance,
+            'sla_targets': A.SLA_TARGET_HOURS,
+            'status_labels': _STATUS_LABELS,
+        },
+    }
+
+
+@ticketing_bp.route('/analytics', methods=['GET'])
+@jwt_required()
+def analytics_page():
+    """Analytics hub — speed, SLA breach-risk, stage bottlenecks, team & fault insights."""
+    user = _current_user()
+    if not _has_access(user):
+        abort(403)
+    return render_template(
+        'ticket_analytics.html',
+        user=user,
+        can_finance=_can_use_finance_reports(user),
+        sidebar_stats=_get_sidebar_stats(user),
+        active_page='ticketing',
+    )
+
+
+@ticketing_bp.route('/api/analytics/data', methods=['GET'])
+@jwt_required()
+def analytics_data():
+    """JSON payload feeding the analytics page charts/tables."""
+    user = _current_user()
+    if not _has_access(user):
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+    return jsonify({'success': True, 'data': _build_ticket_analytics(user)})
+
+
+@ticketing_bp.route('/api/reports/<string:report_key>/download', methods=['GET'])
+@jwt_required()
+def download_report(report_key):
+    """Build the requested report and stream it as PDF or Excel."""
+    user = _current_user()
+    if not _has_access(user):
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+
+    from module_ticketing.report_builders import (
+        REPORT_SPECS, build_report_pdf, build_report_excel,
+    )
+
+    spec = REPORT_SPECS.get(report_key)
+    if not spec:
+        return jsonify({'success': False, 'error': 'Unknown report'}), 404
+
+    if report_key in _FINANCE_TIER_REPORTS and not _can_use_finance_reports(user):
+        return jsonify({'success': False, 'error': 'This report is restricted to management and finance'}), 403
+
+    fmt = (request.args.get('format') or 'pdf').lower()
+    if fmt not in ('pdf', 'excel'):
+        return jsonify({'success': False, 'error': 'format must be pdf or excel'}), 400
+
+    rows, summary, filters_label = _report_rows(report_key, user, request.args)
+    if rows is None:
+        return jsonify({'success': False, 'error': 'Unknown report'}), 404
+
+    buf = io.BytesIO()
+    stamp = datetime.now(timezone.utc).strftime('%Y%m%d')
+    if fmt == 'pdf':
+        build_report_pdf(spec, rows, summary, filters_label, buf)
+        mimetype = 'application/pdf'
+        filename = f'AMAAN_{report_key}_{stamp}.pdf'
+    else:
+        build_report_excel(spec, rows, summary, filters_label, buf)
+        mimetype = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        filename = f'AMAAN_{report_key}_{stamp}.xlsx'
+    buf.seek(0)
+
+    return send_file(buf, mimetype=mimetype, as_attachment=True, download_name=filename)

@@ -442,6 +442,8 @@
       letter-spacing: .07em; color: #64748b; margin: 28px 0 16px;
     }
     .tkt-section-header::after { content: ''; flex: 1; height: 1px; background: #e2e8f0; }
+
+
   </style>
 </head>
 <body class="tkt-dh-page has-main-nav">
@@ -1269,7 +1271,7 @@ function closeComplSearchDd() {
 function ticketNewSelCascade(id, val) {
   const el = document.getElementById(id);
   if (!el || !val) return;
-  const exists = [...el.options].some((o) => o.value === val);
+  const exists = [...(el.options || [])].some((o) => o.value === val);
   if (!exists) return;
   el.removeAttribute('disabled');
   el.value = val;
@@ -1334,8 +1336,9 @@ function validateLocationCascade() {
   if (cascadedSelectNeedsValue(szSel) && !(szSel.value || '').trim()) {
     return { ok: false, msg: 'Select a sub-zone — required for this zone.' };
   }
-  if (cascadedSelectNeedsValue(unitSel) && !(unitSel.value || '').trim()) {
-    return { ok: false, msg: 'Select a base unit — required for this sub-zone.' };
+  refreshUnitOptionsFromZone();
+  if (_unitOptions.length > 0 && !(unitSel.value || '').trim()) {
+    return { ok: false, msg: 'Select or type a base unit — required for this location.' };
   }
   return { ok: true, msg: '' };
 }
@@ -1822,7 +1825,7 @@ function updateLocationFromProject() {
   }
   resetSelect(zoneSel, 'Select zone…', true);
   resetSelect(szSel, 'Select sub-zone…', true);
-  resetSelect(unitSel, 'Select unit…', true);
+  resetUnitInput(unitSel);
   syncProjectSearchFromSelect();
   syncPropertySearchFromSelect();
   updateSummary();
@@ -1848,7 +1851,7 @@ document.getElementById('propertySelect').addEventListener('change', function() 
   if (zones.length) zoneSel.disabled = false;
 
   resetSelect(szSel, 'Select sub-zone…', true);
-  resetSelect(unitSel, 'Select unit…', true);
+  resetUnitInput(unitSel);
   syncPropertySearchFromSelect();
   updateSummary();
 });
@@ -1878,45 +1881,13 @@ document.getElementById('zoneSelect').addEventListener('change', function() {
   resetSelect(szSel, 'Select sub-zone…', !subZones.length);
   subZones.forEach(sz => szSel.insertAdjacentHTML('beforeend', `<option value="${sz.name}" data-id="${sz.id}">${sz.name}</option>`));
   if (subZones.length) szSel.disabled = false;
-  resetSelect(unitSel, 'Select unit…', true);
+  populateUnitSelect();
   syncPropertySearchFromSelect();
   updateSummary();
 });
 
 document.getElementById('subZoneSelect').addEventListener('change', function() {
-  const unitSel = document.getElementById('baseUnitSelect');
-  const propName = document.getElementById('propertySelect').value;
-  const zoneName = document.getElementById('zoneSelect').value;
-  const szName = this.value;
-
-  let units = [];
-  for (const proj of _locationTree) {
-    const prop = (proj.properties || []).find(p => p.name === propName);
-    if (prop) {
-      const zone = (prop.zones || []).find(z => z.name === zoneName);
-      if (zone) {
-        const sz = (zone.sub_zones || []).find(s => s.name === szName);
-        if (sz) { units = sz.base_units || []; break; }
-      }
-    }
-  }
-  if (!units.length) {
-    const standalone = _allProperties.filter((p) => !p._projectId && p.name === propName);
-    if (standalone.length) {
-      const z = (standalone[0].zones || []).find((zo) => zo.name === zoneName);
-      const szMatch = z && (z.sub_zones || []).find((s) => s.name === szName);
-      if (szMatch) units = szMatch.base_units || [];
-    }
-  }
-
-  resetSelect(unitSel, 'Select unit…', !units.length);
-  units.forEach(u => unitSel.insertAdjacentHTML('beforeend', `<option value="${u.name}">${u.name}</option>`));
-  if (units.length) unitSel.disabled = false;
-  syncPropertySearchFromSelect();
-  updateSummary();
-});
-
-document.getElementById('baseUnitSelect').addEventListener('change', () => {
+  populateUnitSelect();
   syncPropertySearchFromSelect();
   updateSummary();
 });
@@ -1925,6 +1896,71 @@ function resetSelect(sel, placeholder, disabled) {
   sel.innerHTML = `<option value="">${placeholder}</option>`;
   sel.disabled = disabled;
 }
+
+function resetUnitInput(sel) {
+  resetSelect(sel, 'Select unit…', true);
+}
+
+// ── Base unit select ──────────────────────────────────────
+// Each entry: { name: string, subZone: string }
+let _unitOptions = [];
+
+// Collect all units across every sub-zone of the currently selected zone.
+function refreshUnitOptionsFromZone() {
+  const propName = document.getElementById('propertySelect')?.value || '';
+  const zoneName = document.getElementById('zoneSelect')?.value || '';
+  if (!propName || !zoneName) { _unitOptions = []; return; }
+
+  let subZones = [];
+  for (const proj of _locationTree) {
+    const prop = (proj.properties || []).find(p => p.name === propName);
+    if (prop) {
+      const zone = (prop.zones || []).find(z => z.name === zoneName);
+      if (zone) { subZones = zone.sub_zones || []; break; }
+    }
+  }
+  if (!subZones.length) {
+    const standalone = _allProperties.filter(p => !p._projectId && p.name === propName);
+    if (standalone.length) {
+      const z = (standalone[0].zones || []).find(zo => zo.name === zoneName);
+      if (z) subZones = z.sub_zones || [];
+    }
+  }
+
+  _unitOptions = [];
+  subZones.forEach(sz => {
+    (sz.base_units || []).forEach(u => {
+      _unitOptions.push({ name: u.name || u, subZone: sz.name || '' });
+    });
+  });
+}
+
+function populateUnitSelect() {
+  const sel = document.getElementById('baseUnitSelect');
+  if (!sel) return;
+  refreshUnitOptionsFromZone();
+  sel.innerHTML = '<option value="">Select unit…</option>';
+  _unitOptions.forEach(item => {
+    const opt = document.createElement('option');
+    opt.value = item.name;
+    opt.dataset.subzone = item.subZone;
+    opt.textContent = item.subZone ? `${item.name} (${item.subZone})` : item.name;
+    sel.appendChild(opt);
+  });
+  sel.disabled = !_unitOptions.length;
+}
+
+document.getElementById('baseUnitSelect').addEventListener('change', function() {
+  const sz = this.options[this.selectedIndex]?.dataset?.subzone || '';
+  if (sz) {
+    const szSel = document.getElementById('subZoneSelect');
+    if (szSel && [...szSel.options].some(o => o.value === sz)) {
+      szSel.value = sz;
+    }
+  }
+  syncPropertySearchFromSelect();
+  updateSummary();
+});
 
 // ── Priority pills ────────────────────────────────────────
 function initPriorityPills() {

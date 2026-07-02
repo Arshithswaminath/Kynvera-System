@@ -140,7 +140,7 @@
       border-bottom: none;
     }
     .tkt-detail-sidebar-grid > .tkt-sidebar-span-full { grid-column: 1 / -1; }
-    @media (max-width: 520px) {
+    @media (max-width: 1180px) {
       .tkt-detail-sidebar-grid { grid-template-columns: 1fr; }
       .tkt-detail-sidebar-grid > .tkt-sidebar-span-full { grid-column: auto; }
       .tkt-sidebar-stack--span { grid-column: auto; }
@@ -189,12 +189,11 @@
       color: #475569;
     }
     #statusCard .tkt-status-pick-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
     }
     #statusCard .tkt-status-pick-grid > .status-btn.tkt-status-span2 {
-      grid-column: 1 / -1;
       margin-top: 2px;
       border-style: dashed;
       border-color: #cbd5e1 !important;
@@ -202,19 +201,15 @@
     #statusCard .tkt-status-pick-grid .status-btn {
       width: 100%;
       box-sizing: border-box;
-      min-height: 42px !important;
-      padding: 10px 12px !important;
+      min-height: 40px !important;
+      padding: 9px 14px !important;
       font-size: 0.8125rem !important;
       font-weight: 600 !important;
       color: #1e293b !important;
-      border-radius: 10px !important;
+      border-radius: 9px !important;
       gap: 8px !important;
-      line-height: 1.25 !important;
-    }
-    #statusCard .tkt-status-pick-grid .status-btn > span[style*="border-radius"] {
-      width: 8px !important;
-      height: 8px !important;
-      flex-shrink: 0;
+      line-height: 1.2 !important;
+      white-space: nowrap !important;
     }
     #statusCard .tkt-status-span2-caption {
       font-size: .65rem;
@@ -259,11 +254,6 @@
       font-weight: 600 !important;
       justify-content: flex-start !important;
       border-radius: 10px !important;
-    }
-    @media (max-width: 420px) {
-      #statusCard .tkt-status-pick-grid { grid-template-columns: 1fr; }
-      #statusCard .tkt-status-pick-grid > .tkt-status-span2,
-      #statusCard .tkt-status-span2-caption { grid-column: 1 / -1; }
     }
 
     /* ── Ticket detail: supervisor send (secondary — white surface, blue label) ── */
@@ -796,15 +786,15 @@
           </button>
           {% endif %}
 
-          <a href="{{ url_for('ticketing.download_pdf', ticket_id=ticket.ticket_id) }}" target="_blank"
+          <a href="{{ url_for('ticketing.service_report_page', ticket_id=ticket.ticket_id) }}" target="_blank"
              style="{{ _btn_style }} text-decoration:none; background:rgba(255,255,255,.12); border:1.5px solid rgba(255,255,255,.4); color:#fff; backdrop-filter:blur(4px);"
              onmouseover="this.style.background='rgba(255,255,255,.22)';this.style.transform='translateY(-1px)'"
              onmouseout="this.style.background='rgba(255,255,255,.12)';this.style.transform=''">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>
             Service Report
           </a>
-          {# Team's invoice — available once the GM has approved (sent to Finance) and after closing. Finance builds the ERP invoice from the Service Report + this. #}
-          {% if ticket.status in ('closed', 'pending_finance') %}
+          {# Team's invoice — available once the supervisor verifies (GM + Finance review in parallel) and after closing. Finance builds the ERP invoice from the Service Report + this. #}
+          {% if ticket.status in ('closed', 'pending_finance', 'pending_gm_approval') %}
           <a href="{{ url_for('ticketing.download_invoice', ticket_id=ticket.ticket_id) }}" target="_blank"
              style="{{ _btn_style }} text-decoration:none; background:rgba(255,255,255,.18); border:1.5px solid rgba(255,255,255,.55); color:#fff; backdrop-filter:blur(4px);"
              onmouseover="this.style.background='rgba(255,255,255,.28)';this.style.transform='translateY(-1px)'"
@@ -893,19 +883,15 @@
         <!-- Tab bar -->
         <div class="detail-tabs">
           <button class="detail-tab active" data-tab="activity">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z"/></svg>
             Activity <span class="tab-badge">{{ notes|length }}</span>
           </button>
           <button class="detail-tab" data-tab="details">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z"/></svg>
             Details
           </button>
           <button class="detail-tab" data-tab="images">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"/></svg>
             Photos <span class="tab-badge">{{ images|length }}</span>
           </button>
           <button class="detail-tab" data-tab="costs">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
             Costs
             {% if (mp_total + mat_total) > 0 %}
             <span class="tab-badge">AED {{ '%.0f'|format(mp_total + mat_total) }}</span>
@@ -958,7 +944,6 @@
           {% if ticket.status == 'open' and user_is_supervisor %}
           <div class="workflow-panel panel-supervisor">
             <div class="workflow-panel-title">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"/></svg>
               Assign Technician
             </div>
             <p style="font-size:.86rem;color:#1e40af;margin:0 0 14px;">Select a technician from your team. The ticket moves to <strong>Assigned</strong> and they will be notified.</p>
@@ -1002,40 +987,11 @@
           </div>
           {% endif %}
 
-          {# ─ Reassign technician — supervisor can change assignment on an active ticket ─ #}
-          {% if user_is_supervisor and ticket.status in ('assigned','site_attended','work_started','in_progress','pending_parts') %}
-          <div class="workflow-panel panel-supervisor">
-            <div class="workflow-panel-title">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
-              Reassign Technician
-            </div>
-            <p style="font-size:.86rem;color:#1e40af;margin:0 0 14px;">Change the technician working this ticket. It returns to <strong>Assigned</strong> and the new technician is notified.</p>
-            <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
-              <div style="flex:1;min-width:200px;">
-                <label style="font-size:.82rem;font-weight:600;color:#1e40af;display:block;margin-bottom:4px;">Technician</label>
-                <select class="tkt-select" id="techReassignSelect">
-                  <option value="">— Select technician —</option>
-                  {% for w in worker_pick_list %}
-                  <option value="{% if w.user_id %}u-{{ w.user_id }}{% else %}d-{{ w.code }}{% endif %}"
-                          data-user-id="{{ w.user_id if w.user_id else '' }}" data-demo="{% if w.user_id %}0{% else %}1{% endif %}"
-                          data-name="{{ w.name }}" data-code="{{ w.code }}"
-                          {% if w.user_id and w.user_id == ticket.technician_id %}selected{% endif %}>{{ w.name }} ({{ w.speciality }})</option>
-                  {% endfor %}
-                </select>
-              </div>
-              <button class="tkt-btn tkt-btn-outline tkt-btn-sm" id="reassignTechBtn">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
-                Reassign
-              </button>
-            </div>
-          </div>
-          {% endif %}
 
           {# ─ STAGE 2: Assigned — technician advances to Site Attended ─ #}
           {% if ticket.status == 'assigned' and (user.id == ticket.technician_id or user.id == ticket.assigned_to_id or ticketing_sees_all or user_is_supervisor) %}
           <div class="workflow-panel panel-advance">
             <div class="workflow-panel-title">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z"/></svg>
               Confirm Site Visit
             </div>
             <p style="font-size:.86rem;color:#15803d;margin:0 0 12px;">Once you have arrived at the site, confirm your visit. The ticket will advance to <strong>Site Attended</strong>.</p>
@@ -1050,7 +1006,6 @@
           {% if ticket.status == 'site_attended' and (user.id == ticket.technician_id or user.id == ticket.assigned_to_id or ticketing_sees_all or user_is_supervisor) %}
           <div class="workflow-panel panel-advance">
             <div class="workflow-panel-title">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17 17.25 21A2.652 2.652 0 0 0 21 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 1 1-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 0 0 4.486-6.336l-3.276 3.277a3.004 3.004 0 0 1-2.25-2.25l3.276-3.276a4.5 4.5 0 0 0-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085m-1.745 1.437L5.909 7.5H4.5L2.25 3.75l1.5-1.5L7.5 4.5v1.409l4.26 4.26m-1.745 1.437 1.745-1.437m6.615 8.206L15.75 15.75M4.867 19.125h.008v.008h-.008v-.008Z"/></svg>
               Start Work
             </div>
             <p style="font-size:.86rem;color:#15803d;margin:0 0 12px;">Log any initial findings then mark work as started. Add manpower and materials in the Costs tab.</p>
@@ -1062,16 +1017,15 @@
           {% endif %}
 
           {# ─ STAGE 4: Work Started — advance to Work Completed ─ #}
-          {% if ticket.status in ('work_started', 'in_progress', 'pending_parts') and (user.id == ticket.technician_id or user.id == ticket.assigned_to_id or ticketing_sees_all or (user_is_supervisor and ticket.supervisor_id == user.id and not ticket.technician_id)) %}
+          {% if ticket.status in ('work_started', 'in_progress', 'pending_parts') and (user.id == ticket.technician_id or user.id == ticket.assigned_to_id or ticketing_sees_all or (user_is_supervisor and ticket.supervisor_id == user.id)) %}
           <div class="workflow-panel panel-technician">
             <div class="workflow-panel-title">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
               Mark Work Completed
             </div>
             <p style="font-size:.86rem;color:#15803d;margin:0 0 12px;">Once all work is done, mark it completed. The supervisor will verify and close the ticket. Make sure all costs are logged in the <strong>Costs</strong> tab.</p>
             <div class="tkt-field" style="margin-bottom:12px;">
               <label style="font-size:.82rem;font-weight:600;color:#15803d;display:block;margin-bottom:4px;">Completion Notes <span style="font-weight:400;color:#64748b;">(optional)</span></label>
-              <textarea class="tkt-textarea" id="resolutionNotes" rows="2" placeholder="Describe what was done, parts used, findings…" style="font-size:.9rem;"></textarea>
+              <textarea class="tkt-textarea" id="resolutionNotes" rows="2" placeholder="Describe what was done, parts used, findings…" style="font-size:.9rem;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',sans-serif;"></textarea>
             </div>
             <button class="tkt-btn tkt-btn-sm" id="markCompletedBtn" style="background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;border:none;padding:10px 18px;border-radius:8px;font-weight:700;font-size:.9rem;cursor:pointer;">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
@@ -1084,7 +1038,6 @@
           {% if ticket.status == 'work_completed' and (user_is_supervisor or ticketing_sees_all) %}
           <div class="workflow-panel panel-verification">
             <div class="workflow-panel-title">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
               Work Completed — Begin Verification
             </div>
             {% if ticket.technician_resolution_notes %}
@@ -1114,7 +1067,6 @@
           {% if ticket.status in ('verification', 'pending_verification') and (user_is_supervisor or ticketing_sees_all) %}
           <div class="workflow-panel panel-verification">
             <div class="workflow-panel-title">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
               Under Verification
             </div>
             {% if ticket.technician_resolution_notes %}
@@ -1133,7 +1085,7 @@
               </div>
             </div>
             <p style="font-size:.86rem;color:#854d0e;margin:0 0 10px;">Review the costs, then click <strong>Verify &amp; Close</strong> to set the markup and finalise the invoice.</p>
-            <button id="supCloseBtn" class="tkt-btn tkt-btn-sm" style="background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;border:none;font-weight:700;">
+            <button id="supCloseBtn3" class="tkt-btn tkt-btn-sm" style="background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;border:none;font-weight:700;">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
               Verify &amp; Close Ticket
             </button>
@@ -1144,7 +1096,6 @@
           {% if ticket.status == 'pending_gm_approval' and (user.role == 'admin' or user.designation == 'general_manager') %}
           <div class="workflow-panel panel-verification">
             <div class="workflow-panel-title">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
               GM Approval Required
             </div>
             <div style="background:#fff7e0;border-radius:8px;padding:12px 14px;margin-bottom:12px;">
@@ -1155,15 +1106,26 @@
                 {% if ticket.selling_price %}<span style="color:#b45309;">Selling: <strong>AED {{ '%.2f'|format(ticket.selling_price) }}</strong></span>{% endif %}
               </div>
             </div>
-            <p style="font-size:.86rem;color:#854d0e;margin:0 0 10px;">Review the verified work and costing. <strong>Approve</strong> to send it to Finance for invoicing, or <strong>Reject</strong> to send it back to the supervisor.</p>
+            {% if ticket.finance_confirmed_at %}
+            <div style="display:flex;align-items:center;gap:7px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:9px 12px;margin-bottom:12px;font-size:.84rem;color:#15803d;font-weight:600;">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 12" fill="none" stroke="#16a34a" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" width="13" height="13" style="flex-shrink:0;"><polyline points="1.5,6.5 4.5,9.5 10.5,2.5"/></svg>
+              Finance has logged the ERP invoice{% if ticket.finance_invoice_ref %} — <strong>{{ ticket.finance_invoice_ref }}</strong>{% endif %}. Your approval closes the ticket.
+            </div>
+            {% else %}
+            <div style="display:flex;align-items:center;gap:7px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:9px 12px;margin-bottom:12px;font-size:.84rem;color:#64748b;">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="#94a3b8" width="13" height="13" style="flex-shrink:0;"><path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-13a.75.75 0 0 0-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 0 0 0-1.5h-3.25V5Z" clip-rule="evenodd"/></svg>
+              Finance invoicing is in progress — it runs in parallel with your approval.
+            </div>
+            {% endif %}
+            <p style="font-size:.86rem;color:#854d0e;margin:0 0 10px;">Review the verified work and costing. Finance is already invoicing in parallel — <strong>Approve</strong> to {% if ticket.finance_confirmed_at %}close the ticket{% else %}give your final sign-off{% endif %}, or <strong>Reject</strong> to send it back to the supervisor.</p>
             <div class="tkt-field" style="margin-bottom:12px;">
               <label style="font-size:.82rem;font-weight:600;color:#854d0e;display:block;margin-bottom:4px;">Notes <span style="font-weight:400;color:#64748b;">(optional)</span></label>
-              <textarea class="tkt-textarea" id="gmApprovalNotes" rows="2" placeholder="Approval or rejection notes…" style="font-size:.9rem;"></textarea>
+              <textarea class="tkt-textarea" id="gmApprovalNotes" rows="2" placeholder="Approval or rejection notes…" style="font-size:.9rem;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',sans-serif;"></textarea>
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
               <button class="tkt-btn tkt-btn-sm" id="gmApproveBtn" style="background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;border:none;font-weight:700;">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
-                Approve &amp; Send to Finance
+                {% if ticket.finance_confirmed_at %}Approve &amp; Close Ticket{% else %}Approve{% endif %}
               </button>
               <button class="tkt-btn tkt-btn-sm" id="gmRejectBtn" style="background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;border:none;font-weight:700;">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
@@ -1561,10 +1523,7 @@
         {% if user_is_supervisor %}
         <div class="tkt-card tkt-my-team-sidebar-card">
           <div class="tkt-card-header">
-            <h3 style="display:flex;align-items:center;gap:6px;">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z"/></svg>
-              My Team
-            </h3>
+            <h3>My Team</h3>
             <button class="tkt-btn tkt-btn-outline tkt-btn-sm" id="toggleAddTeamMember" style="font-size:.75rem;padding:4px 10px;">+ Add</button>
           </div>
           <div class="tkt-card-body">
@@ -1592,15 +1551,48 @@
               </div>
             </div>
             <div id="teamMembersList" class="tkt-team-members-list" aria-label="Team members">
-              {% for tm in ticket_sidebar_team %}
-                <div class="team-member-row" id="team-{{ tm.sidebar_row_id }}" style="display:flex;align-items:center;justify-content:space-between;padding:9px 4px;">
-                  <div style="display:flex;align-items:center;gap:8px;">
-                    <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#d21725,#7c3aed);display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;color:#fff;">
-                      {{ tm.name[:1] | upper }}
-                    </div>
-                    <span style="font-size:.88rem;font-weight:600;color:#1e293b;">{{ tm.name }}</span>
+              {# ── Assigned member block (pinned at top) ── #}
+              {% for tm in ticket_sidebar_team if ticket.technician_id and ticket.technician_id == tm.user_id %}
+                {% set parts = tm.name.split(' ') %}
+                {% set initials = (parts[0][:1] + (parts[-1][:1] if parts|length > 1 else '')) | upper %}
+                <div style="font-size:.68rem;font-weight:700;color:#94a3b8;letter-spacing:.06em;text-transform:uppercase;padding:2px 2px 6px;margin-bottom:2px;">Currently Assigned</div>
+                <div class="team-member-row" id="team-{{ tm.sidebar_row_id }}" data-uid="{{ tm.user_id }}" data-name="{{ tm.name }}"
+                     style="display:flex;align-items:center;gap:10px;padding:10px 10px 10px 9px;border-radius:10px;background:#fff3f4;border:1.5px solid #fbbdc1;margin-bottom:10px;">
+                  <div style="width:36px;height:36px;flex-shrink:0;border-radius:50%;background:#d21725;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;color:#fff;letter-spacing:.5px;box-shadow:0 0 0 3px rgba(210,23,37,.18);">
+                    {{ initials }}
                   </div>
-                  <span style="font-size:.72rem;color:#64748b;">{{ tm.code }}</span>
+                  <div style="flex:1;min-width:0;">
+                    <div style="font-size:.85rem;font-weight:700;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ tm.name }}</div>
+                  </div>
+                  <span style="flex-shrink:0;font-size:.71rem;font-weight:700;padding:5px 11px;border-radius:20px;background:#d21725;color:#fff;white-space:nowrap;">
+                    Assigned
+                  </span>
+                </div>
+              {% endfor %}
+
+              {# ── Rest of team ── #}
+              {% set has_assigned = ticket.technician_id %}
+              {% for tm in ticket_sidebar_team if not (ticket.technician_id and ticket.technician_id == tm.user_id) %}
+                {% if loop.first and has_assigned %}
+                  <div style="font-size:.68rem;font-weight:700;color:#94a3b8;letter-spacing:.06em;text-transform:uppercase;padding:2px 2px 6px;margin-bottom:2px;">Reassign To</div>
+                {% endif %}
+                {% set parts = tm.name.split(' ') %}
+                {% set initials = (parts[0][:1] + (parts[-1][:1] if parts|length > 1 else '')) | upper %}
+                <div class="team-member-row" id="team-{{ tm.sidebar_row_id }}" data-uid="{{ tm.user_id }}" data-name="{{ tm.name }}"
+                     style="display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid #f1f5f9;">
+                  <div style="width:32px;height:32px;flex-shrink:0;border-radius:50%;background:linear-gradient(135deg,#e8323f,#a8121e);display:flex;align-items:center;justify-content:center;font-size:.67rem;font-weight:700;color:#fff;letter-spacing:.5px;">
+                    {{ initials }}
+                  </div>
+                  <div style="flex:1;min-width:0;">
+                    <div style="font-size:.83rem;font-weight:600;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ tm.name }}</div>
+                    <div style="font-size:.71rem;color:#94a3b8;margin-top:1px;">{{ tm.code }}</div>
+                  </div>
+                  {% if ticket.status not in ('closed','resolved','cancelled') %}
+                  <button class="team-assign-btn" data-uid="{{ tm.user_id }}" data-name="{{ tm.name }}"
+                          style="flex-shrink:0;font-size:.71rem;font-weight:600;padding:4px 11px;border-radius:20px;border:1.5px solid #cbd5e1;background:transparent;color:#475569;cursor:pointer;white-space:nowrap;">
+                    {% if has_assigned %}Reassign{% else %}Assign{% endif %}
+                  </button>
+                  {% endif %}
                 </div>
               {% endfor %}
             </div>
@@ -1611,7 +1603,7 @@
         {# Overwatch: routing sits under My Team (same column — no idle gap above) #}
         {% if ticketing_sees_all and ticket.status not in ('closed','resolved') and not _stage_locked %}
         <div class="tkt-card">
-          <div class="tkt-card-header"><h3>Routing override</h3><span style="font-size:.68rem;color:#94a3b8;font-weight:600;margin-left:8px;">OPS / GM / ADMIN</span></div>
+          <div class="tkt-card-header"><h3>Routing override</h3><span style="font-size:.68rem;color:#94a3b8;font-weight:600;margin-left:8px;white-space:nowrap;flex-shrink:0;align-self:center;">OPS / GM / ADMIN</span></div>
           <div class="tkt-card-body">
             <p style="font-size:.78rem;color:#64748b;margin:0 0 10px;">Assign a liaison supervisor account if needed. Supervisors still assign technicians from their team.</p>
             <select class="tkt-select" id="assignSelect" style="margin-bottom:10px;">
@@ -1644,7 +1636,7 @@
               <div>
                 <div style="font-size:.86rem;font-weight:700;color:#334155;margin-bottom:3px;">Ticket locked</div>
                 <p style="font-size:.82rem;color:#64748b;margin:0;line-height:1.45;">
-                  {% if ticket.status == 'pending_finance' %}This work order has been approved by the GM and is now with <strong>Finance</strong> for invoicing. It can't be edited at this stage.{% else %}This work order has been verified and submitted for <strong>GM approval</strong>. No further changes can be made from your side.{% endif %}
+                  {% if ticket.status == 'pending_finance' %}This work order has been approved by the GM and is now with <strong>Finance</strong> for invoicing. It can't be edited at this stage.{% else %}This work order has been verified and is now with the <strong>GM</strong> and <strong>Finance</strong> for parallel review. No further changes can be made from your side.{% endif %}
                 </p>
               </div>
             </div>
@@ -1675,21 +1667,45 @@
               ('work_completed', 'Work Completed', '#16a34a'),
               ('verification', 'Verification', '#d97706'),
             ] %}
+            {# Determine index of current stage so we can mark past vs active vs future #}
+            {% set wf_order = ['open','assigned','site_attended','work_started','work_completed','verification'] %}
+            {% set ns = namespace(cur_idx=-1) %}
+            {% for s in wf_order %}{% if s == cur_wf %}{% set ns.cur_idx = loop.index0 %}{% endif %}{% endfor %}
+            {# After Verify & Close the ticket is past all field stages — GM/Finance review runs next #}
+            {% set all_done = cur_wf in ('pending_gm_approval', 'pending_finance', 'closed') %}
             {% for s, lbl, icon_color in wf_rows %}
-            <button type="button" class="tkt-btn tkt-btn-outline tkt-btn-sm status-btn{% if cur_wf == s %} active{% endif %}"
+            {% set s_idx    = loop.index0 %}
+            {% set is_active = (cur_wf == s) %}
+            {% set is_done   = all_done or (ns.cur_idx > s_idx) %}
+            {% set is_future = (not is_active) and (not is_done) %}
+            <button type="button" class="tkt-btn tkt-btn-outline tkt-btn-sm status-btn{% if is_active %} active{% endif %}"
                     data-status="{{ s }}" data-label="{{ lbl }}" data-color="{{ icon_color }}"
-                    style="justify-content:flex-start;{% if cur_wf == s %}background:#eff6ff;border-color:#d21725;color:#a8121e;{% endif %}">
-              <span style="width:9px;height:9px;border-radius:50%;background:{{ icon_color }};flex-shrink:0;"></span>
-              <span style="flex:1;text-align:left;white-space:normal;line-height:1.2;">{{ lbl }}</span>
-              {% if cur_wf == s %}<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="#d21725" width="11" height="11" style="flex-shrink:0;"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>{% endif %}
+                    style="justify-content:flex-start;align-items:center;gap:6px;{% if is_active %}background:rgba(210,23,37,.05);border-color:#d21725;color:#a8121e;{% elif is_done %}background:rgba(22,163,74,.04);border-color:#bbf7d0;{% elif is_future %}opacity:.65;{% endif %}">
+              {% if is_active %}
+              {# Clock — currently in progress #}
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="{{ icon_color }}" width="14" height="14" style="flex-shrink:0;display:block;">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-13a.75.75 0 0 0-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 0 0 0-1.5h-3.25V5Z" clip-rule="evenodd"/>
+              </svg>
+              {% elif is_done %}
+              {# Bold tick — completed #}
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 12" fill="none" stroke="#16a34a" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" width="13" height="13" style="flex-shrink:0;display:block;">
+                <polyline points="1.5,6.5 4.5,9.5 10.5,2.5"/>
+              </svg>
+              {% else %}
+              {# Empty ring — not yet reached #}
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 12" fill="none" stroke="#cbd5e1" stroke-width="1.8" width="12" height="12" style="flex-shrink:0;display:block;">
+                <circle cx="6" cy="6" r="4.5"/>
+              </svg>
+              {% endif %}
+              <span style="flex:1;text-align:left;">{{ lbl }}</span>
             </button>
             {% endfor %}
             {% if ticketing_sees_all or user_is_supervisor %}
             <p class="tkt-status-span2-caption">When work is done, closing from <strong>Verify &amp; close</strong> in the header is preferred. Use <strong>Closed</strong> below only if you need a manual lifecycle override.</p>
             <button type="button" class="tkt-btn tkt-btn-outline tkt-btn-sm status-btn tkt-status-span2"
                     data-status="closed" data-label="Closed" data-color="#374151"
-                    style="justify-content:flex-start;">
-              <span style="width:9px;height:9px;border-radius:50%;background:#374151;flex-shrink:0;"></span>
+                    style="justify-content:flex-start;align-items:center;gap:6px;">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 12" fill="none" stroke="#374151" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" width="13" height="13" style="flex-shrink:0;display:block;"><polyline points="1.5,6.5 4.5,9.5 10.5,2.5"/></svg>
               <span style="flex:1;text-align:left;font-weight:600;">Closed</span>
               {% if not ticketing_sees_all %}<span style="flex-shrink:0;font-size:.65rem;color:#94a3b8;font-weight:600;text-transform:none;">manual</span>{% endif %}
             </button>
@@ -1705,14 +1721,14 @@
                       title="Waiting for materials, approval, …"
                       data-open-modal="hold"
                       style="{% if ticket.status == 'on_hold' %}background:#fff7ed;border-color:#fdba74;color:#9a3412;{% endif %}">
-                <span style="width:8px;height:8px;border-radius:50%;background:#ea580c;flex-shrink:0;"></span>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 12" fill="none" stroke="#ea580c" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" width="13" height="13" style="flex-shrink:0;display:block;"><polyline points="1.5,6.5 4.5,9.5 10.5,2.5"/></svg>
                 On hold
               </button>
               <button type="button" class="tkt-btn tkt-btn-outline tkt-btn-sm status-btn-open-modal"
                       title="Cancellation requires a reason"
                       data-open-modal="cancel"
                       style="border-color:#fecaca;">
-                <span style="width:8px;height:8px;border-radius:50%;background:#dc2626;flex-shrink:0;"></span>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 12" fill="none" stroke="#dc2626" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" width="13" height="13" style="flex-shrink:0;display:block;"><polyline points="1.5,6.5 4.5,9.5 10.5,2.5"/></svg>
                 Cancel
               </button>
             </div>
@@ -1849,15 +1865,15 @@
       <!-- Supervisor sign-off -->
       <div class="tkt-field" style="margin-bottom:12px;">
         <label>Supervisor Name <span class="req">*</span></label>
-        <input class="tkt-input" id="supSignedBy" type="text" placeholder="Your full name…" value="{{ user.full_name }}">
+        <input class="tkt-input" id="supSignedBy" type="text" placeholder="Your full name…" value="{{ user.full_name }}" style="font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',sans-serif;">
       </div>
       <div class="tkt-field" style="margin-bottom:12px;">
         <label>Role / Designation</label>
-        <input class="tkt-input" id="supSignedRole" type="text" placeholder="e.g. Supervisor, Facility Manager…" value="{{ user.designation|capitalize if user.designation else '' }}">
+        <input class="tkt-input" id="supSignedRole" type="text" placeholder="e.g. Supervisor, Facility Manager…" value="{{ user.job_designation if user.job_designation else (user.designation|replace('_',' ')|title if user.designation else '') }}" style="font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',sans-serif;">
       </div>
       <div class="tkt-field" style="margin-bottom:12px;">
         <label>Verification Notes</label>
-        <textarea class="tkt-textarea" id="supVerifNotes" rows="2" placeholder="Any remarks on the completed work…"></textarea>
+        <textarea class="tkt-textarea" id="supVerifNotes" rows="2" placeholder="Any remarks on the completed work…" style="font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',sans-serif;"></textarea>
       </div>
       <div class="tkt-field">
         <label>Supervisor Signature <span class="req">*</span></label>
@@ -2270,10 +2286,7 @@ document.querySelectorAll('.tkt-btn-advance').forEach(btn => {
   });
 });
 
-// ── supCloseBtn2 (from work_completed panel) → opens same sup-close modal ──
-document.getElementById('supCloseBtn2')?.addEventListener('click', () => {
-  document.getElementById('supCloseModal')?.classList.add('open');
-});
+// ── supCloseBtn2/3 → same modal (handled by openSupCloseModal below) ──
 
 // ── Assign ────────────────────────────────────────────────
 document.getElementById('saveAssignBtn')?.addEventListener('click', async () => {
@@ -2622,6 +2635,24 @@ document.getElementById('reassignTechBtn')?.addEventListener('click', async () =
   } else { tktToast(res.data.error || 'Failed.', 'error'); btn.disabled = false; btn.textContent = prevLabel; }
 });
 
+// ── My Team — Assign button per member row ──
+document.getElementById('teamMembersList')?.addEventListener('click', async (e) => {
+  const btn = e.target.closest('.team-assign-btn');
+  if (!btn) return;
+  const uid = parseInt(btn.dataset.uid || '', 10);
+  const name = btn.dataset.name || '';
+  if (!Number.isFinite(uid) || uid < 1) { tktToast('Invalid team member.', 'error'); return; }
+  const prevLabel = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Assigning…';
+  const res = await tktFetch(`/tickets/api/tickets/${TICKET_ID}/assign-technician`, {
+    method: 'POST', body: JSON.stringify({ technician_id: uid }),
+  });
+  if (res.ok && res.data.success) {
+    tktToast(`Assigned to ${res.data.technician_name}.`, 'success');
+    setTimeout(() => location.reload(), 800);
+  } else { tktToast(res.data.error || 'Failed.', 'error'); btn.disabled = false; btn.textContent = prevLabel; }
+});
+
 // ── GM approval (general manager / admin) ──
 document.getElementById('gmApproveBtn')?.addEventListener('click', async () => {
   const notes = document.getElementById('gmApprovalNotes')?.value.trim() || '';
@@ -2632,7 +2663,7 @@ document.getElementById('gmApproveBtn')?.addEventListener('click', async () => {
     method: 'POST', body: JSON.stringify({ notes }),
   });
   if (res.ok && res.data.success) {
-    tktToast('Approved and sent to Finance.', 'success');
+    tktToast(res.data.status === 'closed' ? 'Approved — ticket fully closed.' : 'Approved — ticket will close once Finance logs the invoice.', 'success');
     setTimeout(() => location.reload(), 800);
   } else { tktToast(res.data?.error || 'Failed.', 'error'); btn.disabled = false; btn.innerHTML = prev; }
 });
@@ -2688,15 +2719,19 @@ function selectMarkup(pct) {
   }
 }
 
-document.getElementById('supCloseBtn')?.addEventListener('click', () => {
+function openSupCloseModal() {
   supCloseModal?.classList.add('open');
-  if (!supSigPad) {
-    const canvas = document.getElementById('supSigCanvas');
-    const wrap = document.getElementById('supSigWrap');
-    canvas.style.width = wrap.offsetWidth + 'px';
-    canvas.style.height = '130px';
-    supSigPad = new TktSignaturePad(canvas);
-  }
+  const canvas = document.getElementById('supSigCanvas');
+  const wrap = document.getElementById('supSigWrap');
+  // Always reinitialize so events are bound regardless of which button opened the modal
+  canvas.style.width = wrap.offsetWidth + 'px';
+  canvas.style.height = '130px';
+  if (supSigPad) { supSigPad._scale(); } else { supSigPad = new TktSignaturePad(canvas); }
+  // Re-scale after CSS transition completes (200ms) to correct any transform distortion
+  setTimeout(() => { if (supSigPad && supSigPad.isEmpty) supSigPad._scale(); }, 300);
+}
+['supCloseBtn', 'supCloseBtn2', 'supCloseBtn3'].forEach(id => {
+  document.getElementById(id)?.addEventListener('click', openSupCloseModal);
 });
 document.getElementById('cancelSupCloseBtn')?.addEventListener('click', () => supCloseModal?.classList.remove('open'));
 document.getElementById('supCloseModalX')?.addEventListener('click', () => supCloseModal?.classList.remove('open'));

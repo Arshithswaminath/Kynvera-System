@@ -3,79 +3,232 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+  <meta name="theme-color" content="#d21725">
   <title>Service Report — {{ ticket.ticket_id }}</title>
   {% include 'partials/caveat_font.html' ignore missing %}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
   <style>
-    :root { --accent: #d21725; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; background: #f7f8fa; color: #111; }
-    body.has-main-nav { padding-top: 5.5rem; }
-    .sr-wrap { max-width: 860px; margin: 0 auto; padding: 32px 20px 60px; }
-    /* print header */
-    .sr-print-header { display: none; }
-    @media print {
-      body.has-main-nav { padding-top: 0; }
-      nav, .no-print { display: none !important; }
-      .sr-print-header { display: block; }
-      .sr-wrap { padding: 0; max-width: none; }
-      .sig-canvas { border: 1px solid #d1d5db !important; }
+    /* ═══════════════════════════════════════════════════════════════
+       SERVICE REPORT — inspection-suite "new skin"
+       (matches inspection-forms-unified.css visual language:
+        red gradient header, rounded container card, section cards,
+        red uppercase section headings, brand-red accents)
+       ═══════════════════════════════════════════════════════════════ */
+    :root {
+      --accent: #d21725; --accent-l: #e8323f; --dark-red: #a8121e;
+      --ink: #0f172a; --ink2: #334155; --muted: #6b7280;
+      --line: #e4e9ee; --line-soft: #eef2f5; --bg: #fafafa; --surface: #ffffff;
+      --shadow: 0 24px 64px rgba(210,23,37,.08), 0 8px 24px rgba(0,0,0,.04);
     }
-    /* top bar */
-    .sr-topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; gap: 12px; flex-wrap: wrap; }
-    .sr-topbar h1 { font-size: 1.4rem; font-weight: 800; margin: 0; }
-    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px; border-radius: 8px; font-size: .85rem; font-weight: 600; cursor: pointer; border: none; }
-    .btn-primary { background: var(--accent); color: #fff; }
-    .btn-primary:hover { background: #b91c1c; }
-    .btn-outline { background: #fff; border: 1.5px solid #d1d5db; color: #374151; }
-    .btn-outline:hover { background: #f3f4f6; }
-    .btn-green { background: #16a34a; color: #fff; }
-    .btn-green:hover { background: #15803d; }
-    /* sections */
-    .sr-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 24px; margin-bottom: 20px; }
-    .sr-card h2 { font-size: 1rem; font-weight: 800; color: #111; margin: 0 0 16px; border-bottom: 2px solid #f3f4f6; padding-bottom: 10px; display: flex; align-items: center; gap: 8px; }
-    .info-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
-    .info-item { }
-    .info-label { font-size: .7rem; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 3px; }
-    .info-val { font-size: .9rem; font-weight: 600; color: #111; }
-    /* status timeline */
-    .timeline { display: flex; flex-direction: column; gap: 10px; }
-    .tl-item { display: flex; gap: 12px; align-items: flex-start; }
-    .tl-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); flex-shrink: 0; margin-top: 5px; }
-    .tl-line { flex: 1; }
-    .tl-meta { font-size: .75rem; color: #9ca3af; margin-top: 2px; }
-    /* materials table */
-    table.mat-table { width: 100%; border-collapse: collapse; font-size: .88rem; }
-    table.mat-table th { background: #f9fafb; padding: 8px 12px; text-align: left; font-size: .72rem; font-weight: 700; color: #9ca3af; text-transform: uppercase; border-bottom: 1.5px solid #e5e7eb; }
-    table.mat-table td { padding: 9px 12px; border-bottom: 1px solid #f3f4f6; }
-    table.mat-table tr:last-child td { border-bottom: none; }
-    .total-row td { font-weight: 700; background: #f9fafb; }
-    /* images */
-    .img-grid { display: flex; flex-wrap: wrap; gap: 10px; }
-    .img-thumb { width: 120px; height: 90px; object-fit: cover; border-radius: 8px; border: 1.5px solid #e5e7eb; cursor: pointer; }
-    /* signature pad */
-    .sig-area { border: 2px dashed #d1d5db; border-radius: 10px; padding: 16px; text-align: center; }
-    .sig-canvas { border: 1.5px solid #d1d5db; border-radius: 8px; touch-action: none; cursor: crosshair; background: #fff; display: block; margin: 0 auto 10px; }
-    .sig-controls { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
-    /* existing sig */
-    .sig-display img { max-width: 260px; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px; }
-    /* status badge */
-    .badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 999px; font-size: .72rem; font-weight: 700; }
-    .badge-blue    { background: #ffe4e6; color: #a8121e; }
-    .badge-green   { background: #d1fae5; color: #065f46; }
-    .badge-amber   { background: #fef3c7; color: #92400e; }
-    .badge-red     { background: #fee2e2; color: #dc2626; }
-    .badge-gray    { background: #f3f4f6; color: #374151; }
-    /* lightbox */
-    .lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.85); z-index: 9999; align-items: center; justify-content: center; }
-    .lightbox.open { display: flex; }
-    .lightbox img { max-width: 90vw; max-height: 90vh; border-radius: 8px; }
-    .lightbox-close { position: absolute; top: 16px; right: 20px; color: #fff; font-size: 2rem; cursor: pointer; background: none; border: none; }
-    /* section icon */
-    .sec-icon { width: 20px; height: 20px; color: var(--accent); }
-    .report-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
-    .report-logo img { height: 40px; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      color: var(--ink); margin: 0; min-height: 100vh; line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      background:
+        radial-gradient(ellipse 85% 55% at 0% 0%, rgba(210,23,37,.055) 0%, transparent 58%),
+        radial-gradient(ellipse 55% 45% at 100% 8%, rgba(210,23,37,.035) 0%, transparent 52%),
+        var(--bg);
+    }
+    body.has-main-nav { padding-top: 5.5rem; }
+
+    /* ── outer wrapper ── */
+    .sr-wrap { max-width: 960px; margin: 0 auto; padding: 14px 16px 130px; }
+
+    /* ── back link (above card) ── */
+    .sr-back { display: inline-flex; align-items: center; gap: .45rem; padding: .35rem 0;
+               color: var(--accent); font-size: .875rem; font-weight: 600; text-decoration: none; margin-bottom: .9rem; }
+    .sr-back:hover { color: var(--dark-red); opacity: .9; }
+
+    /* ── container card ── */
+    .container { position: relative; border-radius: 20px; background: rgba(255,255,255,.99);
+                 border: 1px solid rgba(228,233,238,.9); box-shadow: var(--shadow); overflow: hidden; }
+
+    /* ── red gradient header ── */
+    .if-form-hd {
+      background: linear-gradient(160deg,#3d0509 0%,#5c0a10 25%,#a8121e 55%,#d21725 100%);
+      padding: 1.7rem 2rem; display: flex; align-items: center; justify-content: space-between;
+      gap: 1.5rem; position: relative; overflow: hidden; flex-wrap: wrap;
+    }
+    .if-form-hd::before { content: ''; position: absolute; inset: 0;
+      background: linear-gradient(180deg,rgba(255,255,255,.07) 0%,transparent 50%); pointer-events: none; }
+    .if-hd-left { position: relative; }
+    .if-form-title { font-size: 1.6rem; font-weight: 800; color: #fff; margin: 0;
+      letter-spacing: -.02em; text-shadow: 0 1px 2px rgba(0,0,0,.2); line-height: 1.2; }
+    .if-form-subtitle { font-size: .72rem; color: rgba(255,255,255,.92); text-transform: uppercase;
+      letter-spacing: .05em; margin: .4rem 0 0; font-weight: 500; }
+
+    /* ── SRN box in header ── */
+    .srn-box { position: relative; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+    .srn-box label { font-size: .64rem; font-weight: 700; color: rgba(255,255,255,.88);
+      text-transform: uppercase; letter-spacing: .06em; display: flex; gap: 6px; align-items: center; }
+    .srn-box .auto-badge { color: #fff; background: rgba(255,255,255,.22); }
+    .srn-input { width: 140px; text-align: center; font-weight: 800; font-size: 1.1rem; color: #fff;
+      border: 1.5px solid rgba(255,255,255,.45); border-radius: 11px; padding: 9px; outline: none;
+      background: rgba(255,255,255,.15); }
+    .srn-input::placeholder { color: rgba(255,255,255,.6); }
+    .srn-input:focus { border-color: #fff; background: rgba(255,255,255,.25); box-shadow: 0 0 0 3px rgba(255,255,255,.15); }
+
+    /* ── card body ── */
+    .sr-body { padding: 2rem; }
+
+    /* ── section cards ── */
+    .card { background: linear-gradient(180deg,rgba(255,255,255,.98) 0%,rgba(250,251,252,.98) 100%);
+            border: 1px solid var(--line-soft); border-radius: 16px; margin-bottom: 1.15rem;
+            overflow: hidden; box-shadow: 0 1px 4px rgba(210,23,37,.04); }
+    .card:last-child { margin-bottom: 0; }
+    .card-head { display: flex; align-items: center; gap: 11px; padding: 1rem 1.25rem;
+                 border-bottom: 1px solid var(--line-soft); }
+    .card-head .ic { width: 34px; height: 34px; border-radius: 10px;
+      background: linear-gradient(145deg,#fde8ea,#fbd3d7); color: var(--accent);
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+      box-shadow: 0 1px 3px rgba(210,23,37,.12); }
+    .card-head h2 { font-size: .95rem; font-weight: 700; margin: 0; color: var(--ink); letter-spacing: -.01em; }
+    .card-head .req-star { color: var(--accent); }
+    .card-head .step-no { margin-left: auto; font-size: .68rem; font-weight: 800; color: var(--accent);
+      background: #fff0f1; border: 1px solid #fbd3d7; border-radius: 999px; min-width: 24px; height: 24px;
+      display: inline-flex; align-items: center; justify-content: center; padding: 0 6px; }
+    .card-body { padding: 1.25rem 1.25rem 1.35rem; }
+
+    /* ── fields ── */
+    .field { margin-bottom: 1rem; }
+    .field:last-child { margin-bottom: 0; }
+    .field-label { display: flex; align-items: center; gap: 6px; font-size: .72rem; font-weight: 700;
+      color: var(--ink2); margin-bottom: 7px; text-transform: uppercase; letter-spacing: .045em; }
+    .auto-badge { font-size: .58rem; font-weight: 700; color: var(--accent); background: #fff0f1;
+      border: 1px solid #fbd3d7; border-radius: 999px; padding: 2px 7px; text-transform: none; letter-spacing: 0; }
+    .req-star { color: var(--accent); }
+    .input, .textarea, select.input {
+      width: 100%; border: 1.5px solid var(--line); border-radius: 12px; background: #fff;
+      font-size: 16px; padding: .7rem .85rem; outline: none; color: var(--ink); font-family: inherit; min-height: 46px;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .input:focus, .textarea:focus, select.input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(210,23,37,.12); }
+    .textarea { resize: vertical; min-height: 120px; line-height: 1.55; }
+    .hint { font-size: .72rem; color: var(--muted); margin-top: 5px; }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem 1.15rem; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem 1.15rem; }
+
+    /* ── sub-section heading inside a card ── */
+    .sub-head { font-size: .74rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+      color: var(--accent); margin: 0 0 .85rem; padding-bottom: .5rem; border-bottom: 2px solid #f6d9dc;
+      display: flex; align-items: center; gap: .5rem; }
+    .sub-head::before { content: ''; width: 4px; height: 15px; border-radius: 2px; flex-shrink: 0;
+      background: linear-gradient(180deg,var(--accent),var(--accent-l)); }
+    .sub-head .hint { margin: 0; text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--muted); }
+
+    /* ── time grid ── */
+    .time-list { display: grid; gap: .9rem; }
+    .time-item { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 10px; }
+    .time-item .tl { font-size: .85rem; font-weight: 600; color: var(--ink2); display: flex; align-items: center; gap: 6px; }
+    .time-pair { display: flex; align-items: center; gap: 5px; }
+    .time-pair input { width: 60px; text-align: center; border: 1.5px solid var(--line); border-radius: 10px;
+      font-size: 16px; padding: 9px 4px; outline: none; min-height: 46px; transition: border-color .15s, box-shadow .15s; }
+    .time-pair input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(210,23,37,.1); }
+    .time-pair span { font-size: .66rem; color: var(--muted); font-weight: 700; }
+
+    /* ── fire fighting toggles ── */
+    .toggle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; }
+    .toggle { display: flex; align-items: center; gap: 11px; border: 1.5px solid var(--line); border-radius: 13px;
+      padding: 12px 14px; cursor: pointer; min-height: 52px; transition: border-color .15s, background .15s, box-shadow .15s; user-select: none; }
+    .toggle:hover { border-color: #f0aeb4; }
+    .toggle input { width: 20px; height: 20px; accent-color: var(--accent); flex-shrink: 0; }
+    .toggle.on { border-color: var(--accent); background: #fff5f5; box-shadow: 0 1px 6px rgba(210,23,37,.08); }
+    .toggle .tg-label { font-size: .9rem; font-weight: 600; color: var(--ink); }
+
+    /* ── job type segmented ── */
+    .seg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; }
+    .seg { display: flex; align-items: center; gap: 11px; border: 1.5px solid var(--line); border-radius: 13px;
+      padding: 14px; cursor: pointer; min-height: 54px; transition: border-color .15s, background .15s, box-shadow .15s; user-select: none; }
+    .seg:hover { border-color: #f0aeb4; }
+    .seg input { width: 20px; height: 20px; accent-color: var(--accent); }
+    .seg.on { border-color: var(--accent); background: #fff5f5; box-shadow: 0 1px 6px rgba(210,23,37,.08); }
+    .seg .sg-label { font-size: .92rem; font-weight: 600; color: var(--ink); }
+
+    /* ── parts ── */
+    .parts-used-list { display: flex; flex-direction: column; gap: 9px; }
+    .pu-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 12px; align-items: center;
+      background: #fbfcfd; border: 1px solid var(--line-soft); border-radius: 12px; padding: 11px 14px; }
+    .pu-row .pu-name { font-weight: 600; font-size: .9rem; color: var(--ink); }
+    .pu-row .pu-spec { font-size: .82rem; color: var(--muted); }
+    .pu-row .pu-qty { font-size: .8rem; font-weight: 700; color: var(--accent); white-space: nowrap;
+      background: #fff0f1; border-radius: 999px; padding: 3px 10px; }
+    .pu-empty { font-size: .85rem; color: var(--muted); text-align: center; padding: 16px;
+      background: #fbfcfd; border: 1px dashed var(--line); border-radius: 12px; }
+
+    .pr-row { display: grid; grid-template-columns: 1fr 1fr 72px 44px; gap: 9px; align-items: center; margin-bottom: 9px; }
+    .pr-row input { border: 1.5px solid var(--line); border-radius: 11px; font-size: 15px; padding: 10px;
+      outline: none; min-height: 46px; width: 100%; transition: border-color .15s, box-shadow .15s; }
+    .pr-row input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(210,23,37,.1); }
+    .pr-del { background: #fef2f2; border: none; color: #dc2626; border-radius: 11px; height: 46px; cursor: pointer;
+      font-size: 1.15rem; display: flex; align-items: center; justify-content: center; transition: background .15s; }
+    .pr-del:hover { background: #fee2e2; }
+    .add-row-btn { margin-top: 6px; }
+
+    /* ── signature ── */
+    .sig-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.4rem; }
+    .sig-block h3 { font-size: .74rem; font-weight: 700; color: var(--accent); text-transform: uppercase;
+      letter-spacing: .05em; margin: 0 0 .9rem; padding-bottom: .45rem; border-bottom: 2px solid #f6d9dc;
+      display: flex; align-items: center; gap: .5rem; }
+    .sig-block h3::before { content: ''; width: 4px; height: 14px; border-radius: 2px;
+      background: linear-gradient(180deg,var(--accent),var(--accent-l)); }
+    .sig-canvas { border: 1.5px solid var(--line); border-radius: 12px; touch-action: none; cursor: crosshair;
+      background: #fff; display: block; width: 100%; max-width: 340px; height: 130px; }
+    .sig-display img { max-width: 250px; border: 1px solid var(--line-soft); border-radius: 12px; padding: 8px; background: #fff; }
+    .sig-signed-meta { font-size: .82rem; color: var(--ink2); margin-top: 8px; }
+    .sig-pending { background: #fbfcfd; border: 1px dashed var(--line); border-radius: 12px; padding: 18px;
+      text-align: center; color: var(--muted); font-size: .85rem; }
+    .sig-controls { display: flex; gap: 9px; margin-top: 10px; flex-wrap: wrap; }
+
+    /* ── buttons ── */
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 11px 20px;
+      border-radius: 999px; font-size: .9rem; font-weight: 700; cursor: pointer; border: none; text-decoration: none;
+      min-height: 46px; transition: filter .15s, background .15s, transform .1s, box-shadow .15s; }
+    .btn:active { transform: scale(.98); }
+    .btn-primary { background: linear-gradient(135deg,#a8121e 0%,var(--accent) 45%,var(--accent-l) 100%);
+      color: #fff; box-shadow: 0 4px 14px rgba(210,23,37,.25); }
+    .btn-primary:hover { filter: brightness(1.05); }
+    .btn-outline { background: #fff; border: 1.5px solid var(--line); color: var(--ink2); }
+    .btn-outline:hover { border-color: #f0aeb4; color: var(--accent); }
+    .btn-green { background: linear-gradient(135deg,#15803d,#16a34a); color: #fff; box-shadow: 0 4px 14px rgba(22,163,74,.22); }
+    .btn-green:hover { filter: brightness(1.05); }
+
+    /* ── sticky save bar ── */
+    .save-bar { position: fixed; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,.97); backdrop-filter: blur(12px);
+      border-top: 1px solid var(--line-soft); padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+      display: flex; gap: 10px; align-items: center; z-index: 200; box-shadow: 0 -4px 20px rgba(0,0,0,.05); }
+    .save-bar .spacer { flex: 1; }
+    .save-status { font-size: .85rem; color: var(--muted); }
+    .save-status.ok { color: #16a34a; font-weight: 600; }
+    .save-status.err { color: #dc2626; font-weight: 600; }
+
+    /* ── responsive ── */
+    @media (max-width: 640px) {
+      .sr-body { padding: 1.25rem 1.1rem 1.4rem; }
+      .if-form-hd { padding: 1.4rem 1.25rem; }
+      .if-form-title { font-size: 1.35rem; }
+      .srn-box { align-items: flex-start; width: 100%; }
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      .toggle-grid, .seg-grid { grid-template-columns: 1fr; }
+      .sig-grid { grid-template-columns: 1fr; }
+      .pr-row { grid-template-columns: 1fr 1fr 60px 44px; }
+      .head-actions { width: 100%; }
+      .save-bar .btn span.lbl { display: none; }
+    }
+
+    /* ── print ── */
+    @media print {
+      body { background: #fff !important; padding-top: 0 !important; }
+      nav, .no-print, .save-bar, .sr-back { display: none !important; }
+      .sr-wrap { padding: 0; max-width: none; }
+      .container { box-shadow: none; border: none; }
+      .if-form-hd { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .card { box-shadow: none; break-inside: avoid; border-color: #ddd; }
+      .input, .textarea, .time-pair input, .pr-row input { border: none !important; box-shadow: none !important; background: transparent !important; padding: 2px 0 !important; }
+    }
   </style>
 </head>
 <body class="has-main-nav">
@@ -83,285 +236,479 @@
   {% include 'partials/main_navbar.html' with context %}
 
   <div class="sr-wrap">
-    <!-- Top bar (no-print) -->
-    <div class="sr-topbar no-print">
-      <div>
-        <a href="/tickets/{{ ticket.ticket_id }}" style="color:var(--accent);text-decoration:none;font-size:.85rem;">← Back to Ticket</a>
-        <h1 style="margin-top:6px;">Digital Service Report</h1>
-      </div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;">
-        <button class="btn btn-outline" onclick="window.print()">
-          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
-          Print / PDF
-        </button>
-        <a href="/tickets/{{ ticket.ticket_id }}/pdf" class="btn btn-outline">
-          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-          Download PDF
-        </a>
-      </div>
-    </div>
 
-    <!-- Print-only header -->
-    <div class="sr-print-header">
-      <div class="report-logo">
-        <img src="{{ url_for('static', filename='icons/Amaan.png') }}" alt="Amaan">
-        <div><div style="font-size:1.2rem;font-weight:800;">Amaan Facilities Management</div><div style="font-size:.85rem;color:#6b7280;">Digital Service Report</div></div>
-      </div>
-      <hr style="margin-bottom:20px;">
-    </div>
+    <a href="/tickets/{{ ticket.ticket_id }}" class="sr-back no-print">
+      <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+      Back to Ticket
+    </a>
 
-    <!-- 1. Job Information -->
-    <div class="sr-card">
-      <h2><svg class="sec-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>Job Information</h2>
-      <div class="info-grid">
-        <div class="info-item"><div class="info-label">Work Order</div><div class="info-val">{{ ticket.ticket_id }}</div></div>
-        <div class="info-item"><div class="info-label">Status</div><div class="info-val">
-          <span class="badge {{ 'badge-green' if ticket.status == 'closed' else 'badge-blue' if ticket.status in ('work_completed','verification') else 'badge-amber' if ticket.status == 'on_hold' else 'badge-gray' }}">{{ ticket.status | tkt_status_label }}</span>
-        </div></div>
-        <div class="info-item"><div class="info-label">Priority</div><div class="info-val">{{ ticket.priority | upper }}</div></div>
-        <div class="info-item"><div class="info-label">Project</div><div class="info-val">{{ ticket.project }}</div></div>
-        <div class="info-item"><div class="info-label">Service Group</div><div class="info-val">{{ ticket.service_group }}</div></div>
-        <div class="info-item"><div class="info-label">Category</div><div class="info-val">{{ ticket.category }}</div></div>
-        <div class="info-item"><div class="info-label">Fault Type</div><div class="info-val">{{ ticket.fault_type }}</div></div>
-        <div class="info-item"><div class="info-label">Property</div><div class="info-val">{{ ticket.property_name or '—' }}</div></div>
-        <div class="info-item"><div class="info-label">Location</div><div class="info-val">{{ [ticket.zone, ticket.sub_zone, ticket.base_unit] | select | join(' / ') or '—' }}</div></div>
-        <div class="info-item"><div class="info-label">Reported By</div><div class="info-val">{{ ticket.reporter.full_name if ticket.reporter else '—' }}</div></div>
-        <div class="info-item"><div class="info-label">Technician</div><div class="info-val">{{ ticket.technician.full_name if ticket.technician else (ticket.assigned_to.full_name if ticket.assigned_to else '—') }}</div></div>
-        <div class="info-item"><div class="info-label">Created</div><div class="info-val">{{ ticket.created_at | tkt_datetime if ticket.created_at else '—' }}</div></div>
-        {% if ticket.closed_at %}<div class="info-item"><div class="info-label">Completed</div><div class="info-val">{{ ticket.closed_at | tkt_datetime }}</div></div>{% endif %}
-      </div>
-      {% if ticket.work_description %}
-      <div style="margin-top:16px;">
-        <div class="info-label">Work Description</div>
-        <div style="margin-top:6px;font-size:.9rem;line-height:1.6;color:#374151;white-space:pre-line;">{{ ticket.work_description }}</div>
-      </div>
-      {% endif %}
-    </div>
+    <div class="container">
 
-    <!-- 2. Work Activity Log -->
-    <div class="sr-card">
-      <h2><svg class="sec-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Activity Log</h2>
-      {% if notes %}
-      <div class="timeline">
-        {% for note in notes %}
-        <div class="tl-item">
-          <div class="tl-dot" style="{{ 'background:#16a34a' if note.note_type == 'status_change' else '' }}"></div>
-          <div class="tl-line">
-            <div style="font-size:.88rem;color:#111;">{{ note.content }}</div>
-            <div class="tl-meta">{{ note.author_name }} · {{ note.created_at | tkt_datetime }}</div>
-          </div>
+      <!-- ── Gradient header ── -->
+      <div class="if-form-hd">
+        <div class="if-hd-left">
+          <h1 class="if-form-title">Service Report</h1>
+          <div class="if-form-subtitle">{{ ticket.ticket_id }} · {{ ticket.title }}</div>
         </div>
-        {% endfor %}
-      </div>
-      {% else %}
-      <p style="color:#9ca3af;font-size:.88rem;">No activity recorded.</p>
-      {% endif %}
-    </div>
-
-    <!-- 3. Materials Used -->
-    {% if materials %}
-    <div class="sr-card">
-      <h2><svg class="sec-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>Materials Used</h2>
-      <table class="mat-table">
-        <thead>
-          <tr>
-            <th>Item</th>
-            <th>Qty</th>
-            <th>Unit</th>
-            <th>Unit Price (AED)</th>
-            <th>Total (AED)</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for m in materials %}
-          <tr>
-            <td>{{ m.material_name }}</td>
-            <td>{{ m.quantity }}</td>
-            <td>{{ m.unit or '—' }}</td>
-            <td>{{ '%.2f' % m.unit_price }}</td>
-            <td>{{ '%.2f' % m.total_price }}</td>
-          </tr>
-          {% endfor %}
-          <tr class="total-row">
-            <td colspan="4" style="text-align:right;">Materials Total</td>
-            <td>AED {{ '%.2f' % materials | sum(attribute='total_price') }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-    {% endif %}
-
-    <!-- 4. Manpower -->
-    {% if manpower_entries %}
-    <div class="sr-card">
-      <h2><svg class="sec-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>Manpower</h2>
-      <table class="mat-table">
-        <thead>
-          <tr><th>Worker</th><th>Date</th><th>Hours</th><th>Rate/hr (AED)</th><th>Total (AED)</th></tr>
-        </thead>
-        <tbody>
-          {% for m in manpower_entries %}
-          <tr>
-            <td>{{ m.worker_name }}</td>
-            <td>{{ m.work_date | tkt_datetime if m.work_date else '—' }}</td>
-            <td>{{ m.hours }}</td>
-            <td>{{ '%.2f' % (m.rate_per_hour or 0) }}</td>
-            <td>{{ '%.2f' % (m.total_cost or 0) }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-    {% endif %}
-
-    <!-- 5. Cost Summary -->
-    {% if ticket.is_chargeable %}
-    <div class="sr-card">
-      <h2><svg class="sec-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Cost Summary</h2>
-      <div class="info-grid">
-        <div class="info-item"><div class="info-label">Total Cost (Raw)</div><div class="info-val">AED {{ '%.2f' % (ticket.total_cost or 0) }}</div></div>
-        <div class="info-item"><div class="info-label">Overhead ({{ ticket.overhead_pct or 10 }}%)</div><div class="info-val">AED {{ '%.2f' % ((ticket.total_cost or 0) * (ticket.overhead_pct or 10) / 100) }}</div></div>
-        <div class="info-item"><div class="info-label">Actual Price</div><div class="info-val">AED {{ '%.2f' % (ticket.actual_price or 0) }}</div></div>
-        {% if ticket.markup_pct %}<div class="info-item"><div class="info-label">Markup ({{ ticket.markup_pct }}%)</div><div class="info-val">AED {{ '%.2f' % ((ticket.actual_price or 0) * ticket.markup_pct / 100) }}</div></div>{% endif %}
-        <div class="info-item"><div class="info-label">Selling Price</div><div class="info-val" style="color:var(--accent);font-size:1.05rem;">AED {{ '%.2f' % (ticket.selling_price or 0) }}</div></div>
-        {% if ticket.gm_approval_required %}
-        <div class="info-item" style="grid-column:1/-1;">
-          <div class="info-label">GM Approval</div>
-          <div class="info-val" style="color:#16a34a;">
-            {% if ticket.gm_approved_at %}✓ Approved by {{ ticket.gm_approved_by.full_name if ticket.gm_approved_by else 'GM' }} on {{ ticket.gm_approved_at | tkt_datetime }}{% else %}<span style="color:#d97706;">⚠ Pending GM approval (margin below 15%)</span>{% endif %}
-          </div>
+        <div class="srn-box no-print">
+          <label>SRN <span class="auto-badge">Auto · editable</span></label>
+          <input type="number" class="srn-input" id="fieldSRN" placeholder="—" min="1">
         </div>
-        {% endif %}
       </div>
-    </div>
-    {% endif %}
 
-    <!-- 6. Job Photos -->
-    {% if images %}
-    <div class="sr-card">
-      <h2><svg class="sec-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>Job Photos ({{ images | length }})</h2>
-      <div class="img-grid">
-        {% for img in images %}
-        <img class="img-thumb" src="{{ img.url() }}" alt="{{ img.caption or 'Job photo' }}" onclick="openLightbox('{{ img.url() }}')" loading="lazy">
-        {% endfor %}
-      </div>
-    </div>
-    {% endif %}
+      <div class="sr-body">
 
-    <!-- 7. Technician Notes -->
-    {% if ticket.technician_resolution_notes or ticket.service_report_notes %}
-    <div class="sr-card">
-      <h2><svg class="sec-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>Field Notes</h2>
-      {% if ticket.service_report_notes %}
-      <div style="margin-bottom:12px;">
-        <div class="info-label">Service Report</div>
-        <div style="margin-top:6px;font-size:.9rem;line-height:1.6;color:#374151;white-space:pre-line;">{{ ticket.service_report_notes }}</div>
-      </div>
-      {% endif %}
-      {% if ticket.technician_resolution_notes %}
-      <div>
-        <div class="info-label">Technician Resolution Notes</div>
-        <div style="margin-top:6px;font-size:.9rem;line-height:1.6;color:#374151;white-space:pre-line;">{{ ticket.technician_resolution_notes }}</div>
-      </div>
-      {% endif %}
-    </div>
-    {% endif %}
-
-    <!-- 8. Sign-off section -->
-    <div class="sr-card">
-      <h2><svg class="sec-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>Sign-off</h2>
-
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;flex-wrap:wrap;">
-        <!-- Technician / Supervisor signature -->
-        <div>
-          <div class="info-label" style="margin-bottom:8px;">Technician / Supervisor</div>
-          {% if ticket.close_signature %}
-          <div class="sig-display"><img src="{{ ticket.close_signature }}" alt="Technician signature"><div style="font-size:.8rem;color:#374151;margin-top:6px;"><strong>{{ ticket.close_signed_by }}</strong> ({{ ticket.close_signed_role or 'Technician' }})</div></div>
-          {% else %}
-          <div style="background:#f9fafb;border-radius:8px;padding:16px;text-align:center;color:#9ca3af;font-size:.85rem;">Not yet signed</div>
-          {% endif %}
+      <!-- ── Card 1: Job Details ── -->
+      <div class="card">
+        <div class="card-head">
+          <span class="ic"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></span>
+          <h2>Job Details</h2>
+          <span class="step-no">1</span>
         </div>
-
-        <!-- Client signature -->
-        <div>
-          <div class="info-label" style="margin-bottom:8px;">Client Sign-off</div>
-          {% if ticket.client_signature %}
-          <div class="sig-display"><img src="{{ ticket.client_signature }}" alt="Client signature"><div style="font-size:.8rem;color:#374151;margin-top:6px;"><strong>{{ ticket.client_signed_by }}</strong><br><span style="color:#9ca3af;">{{ ticket.client_signed_at | tkt_datetime if ticket.client_signed_at else '' }}</span></div></div>
-          {% else %}
-          <!-- Client signature pad -->
-          <div id="clientSignArea" class="sig-area no-print">
-            <p style="font-size:.8rem;color:#6b7280;margin-bottom:10px;">Client — please sign below to acknowledge completion</p>
-            <canvas id="clientSigCanvas" class="sig-canvas" width="280" height="120"></canvas>
-            <div style="margin-bottom:10px;">
-              <label style="font-size:.75rem;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Client Name *</label>
-              <input type="text" id="clientName" placeholder="Full name" style="width:100%;border:1.5px solid #d1d5db;border-radius:6px;padding:7px 10px;font-size:.85rem;box-sizing:border-box;">
+        <div class="card-body">
+          <div class="grid-2">
+            <div class="field">
+              <label class="field-label">Customer <span class="auto-badge">Auto</span></label>
+              <input type="text" class="input" id="fieldCustomer" data-key="client_name" placeholder="Customer name">
             </div>
-            <div class="sig-controls">
-              <button class="btn btn-outline" onclick="clearClientSig()" style="font-size:.78rem;padding:6px 12px;">Clear</button>
-              <button class="btn btn-green" onclick="submitClientSign()" style="font-size:.78rem;padding:6px 12px;">Submit Client Sign-off</button>
+            <div class="field">
+              <label class="field-label">Job No <span class="auto-badge">Auto</span></label>
+              <input type="text" class="input" id="fieldJobNo" data-key="job_no" placeholder="Job number">
+            </div>
+            <div class="field">
+              <label class="field-label">Site Name <span class="auto-badge">Auto</span></label>
+              <input type="text" class="input" id="fieldSite" data-key="site_name" placeholder="Site / building">
+            </div>
+            <div class="field">
+              <label class="field-label">Location <span class="auto-badge">Auto</span></label>
+              <input type="text" class="input" id="fieldLocation" data-key="location" placeholder="Zone / area / unit">
+            </div>
+            <div class="field">
+              <label class="field-label">Engineer / Technician <span class="auto-badge">Auto</span></label>
+              <input type="text" class="input" id="fieldTechName" data-key="technician_name" placeholder="Technician name">
+            </div>
+            <div class="field">
+              <label class="field-label">Date <span class="auto-badge">Auto</span></label>
+              <input type="date" class="input" id="fieldServiceDate" data-key="service_date">
             </div>
           </div>
-          {% endif %}
         </div>
       </div>
-    </div>
 
-  </div>
+      <!-- ── Card 2: Time On Site ── -->
+      <div class="card">
+        <div class="card-head">
+          <span class="ic"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></span>
+          <h2>Time On Site</h2>
+          <span class="step-no">2</span>
+        </div>
+        <div class="card-body">
+          <div class="time-list">
+            <div class="time-item">
+              <span class="tl">Time Arrive <span class="auto-badge">Auto</span></span>
+              <span class="time-pair"><input type="number" min="0" max="23" id="arriveH" data-timekey="time_arrive" data-part="h" placeholder="HH"><span>Hrs</span></span>
+              <span class="time-pair"><input type="number" min="0" max="59" id="arriveM" data-timekey="time_arrive" data-part="m" placeholder="MM"><span>Mns</span></span>
+            </div>
+            <div class="time-item">
+              <span class="tl">Time Left <span class="auto-badge">Auto</span></span>
+              <span class="time-pair"><input type="number" min="0" max="23" id="leftH" data-timekey="time_left" data-part="h" placeholder="HH"><span>Hrs</span></span>
+              <span class="time-pair"><input type="number" min="0" max="59" id="leftM" data-timekey="time_left" data-part="m" placeholder="MM"><span>Mns</span></span>
+            </div>
+            <div class="time-item">
+              <span class="tl">Travel Time</span>
+              <span class="time-pair"><input type="number" min="0" max="23" id="travelH" data-timekey="travel_time" data-part="h" placeholder="HH"><span>Hrs</span></span>
+              <span class="time-pair"><input type="number" min="0" max="59" id="travelM" data-timekey="travel_time" data-part="m" placeholder="MM"><span>Mns</span></span>
+            </div>
+            <div class="time-item">
+              <span class="tl">Total <span class="auto-badge">Auto</span></span>
+              <span class="time-pair"><input type="number" min="0" max="99" id="totalH" data-timekey="total_time" data-part="h" placeholder="HH"><span>Hrs</span></span>
+              <span class="time-pair"><input type="number" min="0" max="59" id="totalM" data-timekey="total_time" data-part="m" placeholder="MM"><span>Mns</span></span>
+            </div>
+          </div>
+          <div class="hint">Total is calculated from Arrive and Left — you can override it.</div>
+        </div>
+      </div>
 
-  <!-- Image lightbox -->
-  <div class="lightbox" id="lightbox" onclick="closeLightbox()">
-    <button class="lightbox-close" onclick="closeLightbox()">×</button>
-    <img id="lightboxImg" src="" alt="">
+      <!-- ── Card 3: Systems ── -->
+      <div class="card">
+        <div class="card-head">
+          <span class="ic"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></span>
+          <h2>System Details</h2>
+          <span class="step-no">3</span>
+        </div>
+        <div class="card-body">
+          <div class="sub-head">Fire Alarm System</div>
+          <div class="grid-2" style="margin-bottom:1.4rem;">
+            <div class="field" style="margin-bottom:0;"><label class="field-label">Qty</label><input type="text" class="input" id="faQty" data-fakey="qty" placeholder="—"></div>
+            <div class="field" style="margin-bottom:0;"><label class="field-label">Type</label><input type="text" class="input" id="faType" data-fakey="type" placeholder="—"></div>
+            <div class="field" style="margin-bottom:0;"><label class="field-label">Make</label><input type="text" class="input" id="faMake" data-fakey="make" placeholder="—"></div>
+            <div class="field" style="margin-bottom:0;"><label class="field-label">No. of Zones / Loops</label><input type="text" class="input" id="faZones" data-fakey="zones_loops" placeholder="—"></div>
+          </div>
+
+          <div class="sub-head">Fire Fighting System <span class="hint">(tick all that apply)</span></div>
+          <div class="toggle-grid" id="ffGrid">
+            <label class="toggle"><input type="checkbox" data-ffkey="fire_extinguisher"><span class="tg-label">Fire Extinguisher</span></label>
+            <label class="toggle"><input type="checkbox" data-ffkey="gas_suppression"><span class="tg-label">Gas Suppression</span></label>
+            <label class="toggle"><input type="checkbox" data-ffkey="hose_reel"><span class="tg-label">Hose Reel</span></label>
+            <label class="toggle"><input type="checkbox" data-ffkey="kitchen_hood"><span class="tg-label">Kitchen Hood</span></label>
+            <label class="toggle"><input type="checkbox" data-ffkey="sprinkler"><span class="tg-label">Sprinkler</span></label>
+            <label class="toggle"><input type="checkbox" data-ffkey="wet_dry_riser"><span class="tg-label">Wet / Dry Riser</span></label>
+            <label class="toggle"><input type="checkbox" data-ffkey="fire_pump_set"><span class="tg-label">Fire Pump Set</span></label>
+            <label class="toggle"><input type="checkbox" data-ffkey="others"><span class="tg-label">Others</span></label>
+          </div>
+          <div class="field" style="margin-top:12px;margin-bottom:0;">
+            <input type="text" class="input" id="ffOthersText" placeholder="Others — specify…">
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Card 4: Type of Job ── -->
+      <div class="card">
+        <div class="card-head">
+          <span class="ic"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.196-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.783-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg></span>
+          <h2>Type of Job <span class="req-star">*</span></h2>
+          <span class="step-no">4</span>
+        </div>
+        <div class="card-body">
+          <div class="seg-grid" id="jtGrid">
+            <label class="seg"><input type="radio" name="jobType" value="maintenance"><span class="sg-label">Maintenance</span></label>
+            <label class="seg"><input type="radio" name="jobType" value="installation"><span class="sg-label">Installation</span></label>
+            <label class="seg"><input type="radio" name="jobType" value="rectification"><span class="sg-label">Rectification</span></label>
+            <label class="seg"><input type="radio" name="jobType" value="others"><span class="sg-label">Others</span></label>
+          </div>
+          <div class="field" style="margin-top:12px;margin-bottom:0;">
+            <input type="text" class="input" id="jobTypeOther" placeholder="Others — specify…">
+          </div>
+          <div class="hint">Auto-suggested from the ticket's fault type — change if needed.</div>
+        </div>
+      </div>
+
+      <!-- ── Card 5: Work Comments ── -->
+      <div class="card">
+        <div class="card-head">
+          <span class="ic"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h6m-6 4h10M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z"/></svg></span>
+          <h2>Work Comments</h2>
+          <span class="step-no">5</span>
+        </div>
+        <div class="card-body">
+          <textarea class="textarea" id="fieldComments" rows="8" placeholder="Describe work performed, root cause, corrective actions, tests carried out…"></textarea>
+        </div>
+      </div>
+
+      <!-- ── Card 6: Parts ── -->
+      <div class="card">
+        <div class="card-head">
+          <span class="ic"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg></span>
+          <h2>Parts</h2>
+          <span class="step-no">6</span>
+        </div>
+        <div class="card-body">
+          <div class="sub-head">Parts Used <span class="auto-badge">Auto · from materials</span></div>
+          <div class="parts-used-list" id="partsUsedList"></div>
+
+          <div class="sub-head" style="margin-top:1.4rem;">Parts Required</div>
+          <div id="partsReqList"></div>
+          <button class="btn btn-outline add-row-btn" onclick="addPartsReqRow()" type="button">
+            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            Add Part
+          </button>
+        </div>
+      </div>
+
+      <!-- ── Card 7: Customer Remarks ── -->
+      <div class="card">
+        <div class="card-head">
+          <span class="ic"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 3v-3z"/></svg></span>
+          <h2>Customer Remarks</h2>
+          <span class="step-no">7</span>
+        </div>
+        <div class="card-body">
+          <textarea class="textarea" id="fieldCustomerRemarks" rows="3" placeholder="Customer comments or observations…" style="min-height:90px;"></textarea>
+        </div>
+      </div>
+
+      <!-- ── Card 8: Sign-off ── -->
+      <div class="card">
+        <div class="card-head">
+          <span class="ic"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg></span>
+          <h2>Sign-off</h2>
+          <span class="step-no">8</span>
+        </div>
+        <div class="card-body">
+          <div class="sig-grid">
+            <!-- Customer -->
+            <div class="sig-block">
+              <h3>Customer</h3>
+              {% if ticket.client_signature %}
+              <div class="sig-display"><img src="{{ ticket.client_signature }}" alt="Client signature"></div>
+              <div class="sig-signed-meta">
+                <strong>{{ ticket.client_signed_by }}</strong>
+                {% if ticket.client_mobile %}<br>{{ ticket.client_mobile }}{% endif %}
+                {% if ticket.client_signed_at %}<br><span style="color:#9ca3af;font-size:.75rem;">{{ ticket.client_signed_at | tkt_datetime }}</span>{% endif %}
+              </div>
+              {% else %}
+              <div class="field"><label class="field-label">Customer Name <span class="req-star">*</span></label><input type="text" class="input" id="clientName" placeholder="Full name"></div>
+              <div class="field"><label class="field-label">Mobile No</label><input type="text" class="input" id="clientMobile" placeholder="e.g. 050-1234567"></div>
+              <div class="field" style="margin-bottom:0;">
+                <label class="field-label">Signature</label>
+                <canvas id="clientSigCanvas" class="sig-canvas" width="340" height="130"></canvas>
+                <div class="sig-controls">
+                  <button class="btn btn-outline" onclick="clearClientSig()" type="button">Clear</button>
+                  <button class="btn btn-green" onclick="submitClientSign()" type="button">Submit Signature</button>
+                </div>
+              </div>
+              {% endif %}
+            </div>
+            <!-- Technician -->
+            <div class="sig-block">
+              <h3>Engineer / Technician</h3>
+              <div class="field"><label class="field-label">Technician ID No <span class="auto-badge">Editable</span></label><input type="text" class="input" id="fieldTechId" placeholder="ID number"></div>
+              {% if ticket.close_signature %}
+              <div class="sig-display"><img src="{{ ticket.close_signature }}" alt="Technician signature"></div>
+              <div class="sig-signed-meta">
+                <strong>{{ ticket.close_signed_by }}</strong>
+                {% if ticket.close_signed_role %}<span style="color:#9ca3af;"> ({{ ticket.close_signed_role }})</span>{% endif %}
+              </div>
+              {% else %}
+              <div class="sig-pending">Technician / Supervisor signature is captured when the work order is verified and closed.</div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      </div><!-- /.sr-body -->
+    </div><!-- /.container -->
+
+  </div><!-- /.sr-wrap -->
+
+  <!-- ── Sticky save bar ── -->
+  <div class="save-bar no-print">
+    <button class="btn btn-primary" onclick="saveServiceReport()" type="button">
+      <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+      <span class="lbl">Save</span>
+    </button>
+    <a href="/tickets/{{ ticket.ticket_id }}/service-report/pdf" target="_blank" class="btn btn-outline">
+      <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+      <span class="lbl">PDF</span>
+    </a>
+    <button class="btn btn-outline no-print" onclick="window.print()" type="button">
+      <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2z"/></svg>
+    </button>
+    <span class="spacer"></span>
+    <span class="save-status" id="saveStatus"></span>
   </div>
 
   <script src="{{ url_for('static', filename='api-client.js') }}"></script>
   <script>
-    // ── Signature pad
+  (function () {
+    const TICKET_ID = {{ ticket.ticket_id | tojson }};
+
+    // ── Load ──────────────────────────────────────────────────────────────
+    async function loadSRData() {
+      try {
+        const res = await apiClient.get(`/tickets/api/tickets/${TICKET_ID}/service-report-data`);
+        populateForm(res.data || {}, res.srn);
+      } catch (e) {
+        console.error('Failed to load SR data', e);
+        setStatus('Could not load report data', 'err');
+      }
+    }
+
+    function populateForm(d, srn) {
+      setVal('fieldSRN', srn || d.service_report_no || '');
+
+      setVal('fieldCustomer',    d.client_name || '');
+      setVal('fieldJobNo',       d.job_no || TICKET_ID);
+      setVal('fieldSite',        d.site_name || '');
+      setVal('fieldLocation',    d.location || '');
+      setVal('fieldTechName',    d.technician_name || '');
+      setVal('fieldServiceDate', d.service_date || '');
+
+      // Times
+      [['time_arrive','arriveH','arriveM'],['time_left','leftH','leftM'],
+       ['travel_time','travelH','travelM'],['total_time','totalH','totalM']].forEach(([k,hId,mId]) => {
+        const t = d[k] || {};
+        setVal(hId, t.h != null ? t.h : '');
+        setVal(mId, t.m != null ? t.m : '');
+      });
+
+      // Fire alarm
+      const fa = d.fire_alarm || {};
+      setVal('faQty', fa.qty || ''); setVal('faType', fa.type || '');
+      setVal('faMake', fa.make || ''); setVal('faZones', fa.zones_loops || '');
+
+      // Fire fighting
+      const ff = d.fire_fighting || {};
+      document.querySelectorAll('[data-ffkey]').forEach(cb => {
+        cb.checked = !!ff[cb.dataset.ffkey];
+        syncToggle(cb);
+      });
+      setVal('ffOthersText', ff.others_text || '');
+
+      // Job type
+      const jt = d.job_type || '';
+      const r = document.querySelector(`input[name=jobType][value="${jt}"]`);
+      if (r) { r.checked = true; }
+      document.querySelectorAll('#jtGrid .seg input').forEach(syncSeg);
+      setVal('jobTypeOther', d.job_type_other || '');
+
+      // Comments / remarks / tech id
+      setVal('fieldComments', d.comments || '');
+      setVal('fieldCustomerRemarks', d.customer_remarks || '');
+      setVal('fieldTechId', d.technician_id_no || '');
+
+      // Parts used
+      const puList = document.getElementById('partsUsedList');
+      const used = d.parts_used || [];
+      puList.innerHTML = used.length
+        ? used.map(p => `<div class="pu-row"><span class="pu-name">${esc(p.part)}</span><span class="pu-spec">${esc(p.specification) || '—'}</span><span class="pu-qty">Qty: ${esc(fmtQty(p.qty))}</span></div>`).join('')
+        : '<div class="pu-empty">No materials recorded on this ticket yet.</div>';
+
+      // Parts required
+      const prList = document.getElementById('partsReqList');
+      prList.innerHTML = '';
+      const req = d.parts_required || [];
+      if (req.length) req.forEach(r2 => appendPartsRow(r2.part, r2.specification, r2.qty));
+      else appendPartsRow();
+
+      // Client mobile prefill
+      if (d.client_mobile) setVal('clientMobile', d.client_mobile);
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────
+    function setVal(id, v) { const el = document.getElementById(id); if (el) el.value = (v != null ? v : ''); }
+    function getVal(id) { const el = document.getElementById(id); return el ? el.value : ''; }
+    function esc(v) { return String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+    function fmtQty(q) { const n = parseFloat(q); return isNaN(n) ? (q ?? '') : (Number.isInteger(n) ? n : n); }
+    function setStatus(msg, cls) { const s = document.getElementById('saveStatus'); s.textContent = msg; s.className = 'save-status' + (cls ? ' ' + cls : ''); }
+
+    // ── Toggle / segment visual sync ────────────────────────────────────────
+    function syncToggle(cb) { cb.closest('.toggle')?.classList.toggle('on', cb.checked); }
+    function syncSeg(r) { r.closest('.seg')?.classList.toggle('on', r.checked); }
+    document.querySelectorAll('[data-ffkey]').forEach(cb => cb.addEventListener('change', () => syncToggle(cb)));
+    document.querySelectorAll('#jtGrid .seg input').forEach(r =>
+      r.addEventListener('change', () => document.querySelectorAll('#jtGrid .seg input').forEach(syncSeg)));
+
+    // ── Auto-compute Total when arrive/left change ──────────────────────────
+    function recomputeTotal() {
+      const aH = parseInt(getVal('arriveH')), aM = parseInt(getVal('arriveM'));
+      const lH = parseInt(getVal('leftH')),   lM = parseInt(getVal('leftM'));
+      if ([aH,aM,lH,lM].some(isNaN)) return;
+      let total = (lH*60+lM) - (aH*60+aM);
+      if (total < 0) return;
+      setVal('totalH', Math.floor(total/60));
+      setVal('totalM', total%60);
+    }
+    ['arriveH','arriveM','leftH','leftM'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('input', recomputeTotal);
+    });
+
+    // ── Parts Required rows ─────────────────────────────────────────────────
+    window.addPartsReqRow = function () { appendPartsRow(); };
+    function appendPartsRow(part='', spec='', qty='') {
+      const list = document.getElementById('partsReqList');
+      const row = document.createElement('div');
+      row.className = 'pr-row';
+      row.innerHTML = `
+        <input type="text" value="${esc(part)}" placeholder="Part name">
+        <input type="text" value="${esc(spec)}" placeholder="Specification">
+        <input type="number" value="${esc(qty)}" placeholder="Qty" min="1">
+        <button class="pr-del" title="Remove" type="button">&times;</button>`;
+      row.querySelector('.pr-del').addEventListener('click', () => row.remove());
+      list.appendChild(row);
+    }
+
+    // ── Collect + Save ───────────────────────────────────────────────────────
+    function collectPayload() {
+      const getTime = (hId, mId) => {
+        const h = getVal(hId), m = getVal(mId);
+        return { h: h !== '' ? parseInt(h) : null, m: m !== '' ? parseInt(m) : null };
+      };
+      const ff = {};
+      document.querySelectorAll('[data-ffkey]').forEach(cb => { ff[cb.dataset.ffkey] = cb.checked; });
+      ff.others_text = getVal('ffOthersText');
+
+      const prRows = [];
+      document.querySelectorAll('#partsReqList .pr-row').forEach(r => {
+        const i = r.querySelectorAll('input');
+        const part = (i[0]?.value || '').trim();
+        if (part) prRows.push({ part, specification: (i[1]?.value||'').trim(), qty: parseFloat(i[2]?.value) || 1 });
+      });
+
+      const jtRadio = document.querySelector('input[name=jobType]:checked');
+
+      const payload = {
+        client_name:      getVal('fieldCustomer'),
+        job_no:           getVal('fieldJobNo'),
+        site_name:        getVal('fieldSite'),
+        location:         getVal('fieldLocation'),
+        technician_name:  getVal('fieldTechName'),
+        service_date:     getVal('fieldServiceDate'),
+        time_arrive:      getTime('arriveH','arriveM'),
+        time_left:        getTime('leftH','leftM'),
+        travel_time:      getTime('travelH','travelM'),
+        total_time:       getTime('totalH','totalM'),
+        fire_alarm:       { qty: getVal('faQty'), type: getVal('faType'), make: getVal('faMake'), zones_loops: getVal('faZones') },
+        fire_fighting:    ff,
+        job_type:         jtRadio ? jtRadio.value : '',
+        job_type_other:   getVal('jobTypeOther'),
+        comments:         getVal('fieldComments'),
+        parts_required:   prRows,
+        customer_remarks: getVal('fieldCustomerRemarks'),
+        technician_id_no: getVal('fieldTechId').trim(),
+        client_mobile:    getVal('clientMobile').trim(),
+      };
+      const srn = getVal('fieldSRN').trim();
+      if (srn !== '') payload.service_report_no = srn;
+      return payload;
+    }
+
+    window.saveServiceReport = async function () {
+      setStatus('Saving…');
+      try {
+        await apiClient.patch(`/tickets/api/tickets/${TICKET_ID}/service-report-data`, collectPayload());
+        setStatus('✓ Saved', 'ok');
+        setTimeout(() => setStatus(''), 3000);
+      } catch (e) {
+        setStatus('✗ ' + (e.message || 'Failed to save'), 'err');
+      }
+    };
+
+    // ── Client signature pad ──────────────────────────────────────────────────
     const canvas = document.getElementById('clientSigCanvas');
-    let drawing = false, lastX = 0, lastY = 0;
     if (canvas) {
       const ctx = canvas.getContext('2d');
       ctx.strokeStyle = '#111'; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-
-      function getPos(e) {
-        const r = canvas.getBoundingClientRect();
-        const src = e.touches ? e.touches[0] : e;
-        return [src.clientX - r.left, src.clientY - r.top];
-      }
-      canvas.addEventListener('mousedown',  e => { drawing = true; [lastX, lastY] = getPos(e); });
-      canvas.addEventListener('touchstart', e => { drawing = true; [lastX, lastY] = getPos(e); e.preventDefault(); }, {passive:false});
-      canvas.addEventListener('mousemove',  e => { if (!drawing) return; const [x,y]=getPos(e); ctx.beginPath(); ctx.moveTo(lastX,lastY); ctx.lineTo(x,y); ctx.stroke(); [lastX,lastY]=[x,y]; });
-      canvas.addEventListener('touchmove',  e => { if (!drawing) return; const [x,y]=getPos(e); ctx.beginPath(); ctx.moveTo(lastX,lastY); ctx.lineTo(x,y); ctx.stroke(); [lastX,lastY]=[x,y]; e.preventDefault(); }, {passive:false});
-      canvas.addEventListener('mouseup',    () => drawing = false);
-      canvas.addEventListener('touchend',   () => drawing = false);
+      let drawing = false, lx = 0, ly = 0;
+      const pos = e => { const r = canvas.getBoundingClientRect(); const s = e.touches ? e.touches[0] : e;
+        return [(s.clientX - r.left) * (canvas.width / r.width), (s.clientY - r.top) * (canvas.height / r.height)]; };
+      canvas.addEventListener('mousedown',  e => { drawing = true; [lx,ly] = pos(e); });
+      canvas.addEventListener('touchstart', e => { drawing = true; [lx,ly] = pos(e); e.preventDefault(); }, {passive:false});
+      canvas.addEventListener('mousemove',  e => { if(!drawing) return; const [x,y]=pos(e); ctx.beginPath(); ctx.moveTo(lx,ly); ctx.lineTo(x,y); ctx.stroke(); [lx,ly]=[x,y]; });
+      canvas.addEventListener('touchmove',  e => { if(!drawing) return; const [x,y]=pos(e); ctx.beginPath(); ctx.moveTo(lx,ly); ctx.lineTo(x,y); ctx.stroke(); [lx,ly]=[x,y]; e.preventDefault(); }, {passive:false});
+      canvas.addEventListener('mouseup',  () => drawing = false);
+      canvas.addEventListener('touchend', () => drawing = false);
     }
-
-    function clearClientSig() {
-      if (!canvas) return;
-      canvas.getContext('2d').clearRect(0,0,canvas.width,canvas.height);
-    }
-
-    async function submitClientSign() {
-      const name = (document.getElementById('clientName').value||'').trim();
+    window.clearClientSig = function () { if (canvas) canvas.getContext('2d').clearRect(0,0,canvas.width,canvas.height); };
+    window.submitClientSign = async function () {
+      const name = (getVal('clientName')||'').trim();
+      const mobile = (getVal('clientMobile')||'').trim();
       if (!name) { alert('Please enter the client name.'); return; }
       if (!canvas) return;
       const blank = !canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height).data.some(v=>v>0);
       if (blank) { alert('Please provide a signature before submitting.'); return; }
       try {
-        await apiClient.post('/tickets/api/tickets/{{ ticket.ticket_id }}/client-sign', {
-          signature: canvas.toDataURL('image/png'),
-          signed_by: name,
+        await apiClient.post(`/tickets/api/tickets/${TICKET_ID}/client-sign`, {
+          signature: canvas.toDataURL('image/png'), signed_by: name, client_mobile: mobile,
         });
         location.reload();
-      } catch(e) { alert(e.message || 'Failed to save signature.'); }
-    }
+      } catch (e) { alert(e.message || 'Failed to save signature.'); }
+    };
 
-    // ── Lightbox
-    function openLightbox(src) {
-      document.getElementById('lightboxImg').src = src;
-      document.getElementById('lightbox').classList.add('open');
-    }
-    function closeLightbox() { document.getElementById('lightbox').classList.remove('open'); }
+    loadSRData();
+  })();
   </script>
 </body>
 </html>
