@@ -102,6 +102,19 @@ BREVO_API_KEY = os.getenv("BREVO_API_KEY") or os.getenv("SENDINBLUE_API_KEY")
 MAILJET_API_KEY = os.getenv("MAILJET_API_KEY")
 MAILJET_SECRET_KEY = os.getenv("MAILJET_SECRET_KEY")
 
+# Live Assistant — natural chat (Claude default; OpenAI optional fallback)
+ANTHROPIC_API_KEY = (os.getenv("ANTHROPIC_API_KEY") or "").strip()
+ASSISTANT_LLM_PROVIDER = (os.getenv("ASSISTANT_LLM_PROVIDER") or "claude").strip().lower()
+OPENAI_API_KEY = (os.getenv("OPENAI_API_KEY") or os.getenv("ASSISTANT_OPENAI_API_KEY") or "").strip()
+ASSISTANT_LLM_BASE_URL = (os.getenv("ASSISTANT_LLM_BASE_URL") or "").strip()  # optional OpenAI-compatible endpoint
+_default_llm_model = "claude-haiku-4-5" if ASSISTANT_LLM_PROVIDER == "claude" else "gpt-4o-mini"
+ASSISTANT_LLM_MODEL = os.getenv("ASSISTANT_LLM_MODEL", _default_llm_model)
+_llm_has_key = ANTHROPIC_API_KEY if ASSISTANT_LLM_PROVIDER == "claude" else OPENAI_API_KEY
+ASSISTANT_LLM_ENABLED = (
+    os.getenv("ASSISTANT_LLM_ENABLED", "true").lower() in ("1", "true", "yes")
+    and bool(_llm_has_key)
+)
+
 # Application
 APP_BASE_URL = os.getenv("APP_BASE_URL", "http://localhost:5000")
 

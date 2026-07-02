@@ -1,0 +1,46 @@
+{# Amaan Live Assistant — floating chat widget (authenticated pages only) #}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/assistant.css') }}?v=7">
+<div id="injaazAssistant" class="injaaz-assistant" aria-hidden="true" data-assistant-root>
+  <button type="button" class="injaaz-assistant-fab" id="assistantFab" aria-label="Open Amaan assistant" title="Amaan Assistant">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a49.255 49.255 0 0 0 4.365-1.238C20.864 15.052 22 13.714 22 12.015c0-4.746-4.03-8.511-9-8.511S4 7.269 4 12.015v.745Z" />
+    </svg>
+    <span class="injaaz-assistant-fab-label">Ask Amaan</span>
+  </button>
+
+  <div class="injaaz-assistant-panel" id="assistantPanel" role="dialog" aria-label="Amaan assistant chat" aria-modal="true">
+    <header class="injaaz-assistant-header">
+      <div class="injaaz-assistant-header-text">
+        <span class="injaaz-assistant-title">Amaan Assistant</span>
+        <span class="injaaz-assistant-subtitle">Here to help</span>
+      </div>
+      <button type="button" class="injaaz-assistant-close" id="assistantClose" aria-label="Close assistant">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </header>
+
+    <div class="injaaz-assistant-messages" id="assistantMessages" aria-live="polite"></div>
+
+    <div class="injaaz-assistant-suggestions" id="assistantSuggestions"></div>
+
+    <form class="injaaz-assistant-input-row" id="assistantForm">
+      <input
+        type="text"
+        id="assistantInput"
+        class="injaaz-assistant-input"
+        placeholder="Ask about pending forms, leave, documents…"
+        autocomplete="off"
+        maxlength="500"
+        aria-label="Message to assistant"
+      >
+      <button type="submit" class="injaaz-assistant-send" id="assistantSend" aria-label="Send message">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 12 18 12M12 6l6 6-6 6" />
+        </svg>
+      </button>
+    </form>
+  </div>
+</div>
+<script src="{{ url_for('static', filename='js/assistant.js') }}?v=6" defer></script>

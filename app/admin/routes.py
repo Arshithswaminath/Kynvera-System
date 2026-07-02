@@ -7,7 +7,7 @@ from sqlalchemy.orm import joinedload
 from app.models import (
     db, User, AuditLog, Device, BDProject, BDFollowUp, BDContact, BDActivity,
     DocHubAccess, NotificationConfig, AdminPersonalProject, AdminPersonalProgressStep,
-    Technician,
+    Technician, KnowledgeBaseEntry,
 )
 from app.middleware import admin_required
 from common.error_responses import error_response, success_response
@@ -3463,3 +3463,338 @@ def export_technicians_template():
         download_name='technicians_import_template.xlsx',
         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     )
+
+
+# ---------------------------------------------------------------------------
+# Knowledge Base (feeds the Amaan assistant)
+# ---------------------------------------------------------------------------
+
+KB_ALLOWED_EXTENSIONS = {'pdf', 'docx', 'txt', 'md'}
+KB_CATEGORIES = ['General', 'HR', 'Inspection', 'Procurement', 'Ticketing',
+                 'QHSI', 'Reports', 'Business Development', 'Policy', 'IT', 'Workflow']
+
+
+def _kb_invalidate_cache():
+    try:
+        from module_assistant.knowledge import invalidate_cache
+        invalidate_cache()
+    except Exception as e:
+        current_app.logger.warning(f"KB cache invalidate failed: {e}")
+
+
+def _kb_clean_category(value):
+    val = (value or 'General').strip()
+    return val if val in KB_CATEGORIES else 'General'
+
+
+@admin_bp.route('/knowledge-base', methods=['GET'])
+@jwt_required()
+@admin_required
+def kb_list_entries():
+    """List knowledge base entries with optional search and category filter."""
+    try:
+        q = (request.args.get('q') or '').strip().lower()
+        category = (request.args.get('category') or '').strip()
+
+        query = KnowledgeBaseEntry.query
+        if category and category in KB_CATEGORIES:
+            query = query.filter(KnowledgeBaseEntry.category == category)
+        entries = query.order_by(KnowledgeBaseEntry.updated_at.desc()).all()
+
+        if q:
+            entries = [
+                e for e in entries
+                if q in (e.title or '').lower()
+                or q in (e.content or '').lower()
+                or q in (e.keywords or '').lower()
+            ]
+
+        data = [e.to_dict(include_content=False) for e in entries]
+        return success_response({
+            'entries': data,
+            'count': len(data),
+            'categories': KB_CATEGORIES,
+        })
+    except Exception as e:
+        current_app.logger.error(f"Error listing knowledge base: {str(e)}", exc_info=True)
+        return error_response('Failed to fetch knowledge base', status_code=500, error_code='DATABASE_ERROR')
+
+
+@admin_bp.route('/knowledge-base/<int:entry_id>', methods=['GET'])
+@jwt_required()
+@admin_required
+def kb_get_entry(entry_id):
+    """Get a single knowledge base entry with full content."""
+    try:
+        entry = KnowledgeBaseEntry.query.get_or_404(entry_id)
+        return success_response({'entry': entry.to_dict(include_content=True)})
+    except Exception as e:
+        current_app.logger.error(f"Error getting KB entry: {str(e)}", exc_info=True)
+        return error_response('Failed to fetch entry', status_code=500, error_code='DATABASE_ERROR')
+
+
+@admin_bp.route('/knowledge-base', methods=['POST'])
+@jwt_required()
+@admin_required
+def kb_create_entry():
+    """Create a text knowledge record."""
+    try:
+        data = request.get_json() or {}
+        title = (data.get('title') or '').strip()
+        content = (data.get('content') or '').strip()
+        if not title:
+            return error_response('Title is required', status_code=400, error_code='VALIDATION_ERROR')
+        if not content:
+            return error_response('Content is required for a text record', status_code=400, error_code='VALIDATION_ERROR')
+
+        keywords = (data.get('keywords') or '').strip()
+        if isinstance(data.get('keywords'), list):
+            keywords = ', '.join(str(k).strip() for k in data['keywords'] if str(k).strip())
+
+        entry = KnowledgeBaseEntry(
+            title=title[:255],
+            content=content,
+            keywords=keywords or None,
+            category=_kb_clean_category(data.get('category')),
+            answer_link=(data.get('answer_link') or '').strip() or None,
+            source_type='text',
+            is_active=bool(data.get('is_active', True)),
+            created_by=get_jwt_identity(),
+        )
+        db.session.add(entry)
+        db.session.commit()
+        _kb_invalidate_cache()
+        return success_response({'entry': entry.to_dict()}, message='Knowledge record created', status_code=201)
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error creating KB entry: {str(e)}", exc_info=True)
+        return error_response('Failed to create knowledge record', status_code=500, error_code='DATABASE_ERROR')
+
+
+@admin_bp.route('/knowledge-base/upload', methods=['POST'])
+@jwt_required()
+@admin_required
+def kb_upload_document():
+    """Upload a document; extract its text into a knowledge record."""
+    try:
+        from werkzeug.utils import secure_filename
+        from module_assistant.extract import extract_text
+
+        f = request.files.get('file')
+        if not f or not f.filename:
+            return error_response('No file selected', status_code=400, error_code='VALIDATION_ERROR')
+
+        ext = (f.filename.rsplit('.', 1)[1].lower() if '.' in f.filename else '')
+        if ext not in KB_ALLOWED_EXTENSIONS:
+            return error_response(
+                'Unsupported file type. Allowed: PDF, DOCX, TXT, MD',
+                status_code=400, error_code='VALIDATION_ERROR'
+            )
+
+        generated_root = current_app.config.get('GENERATED_DIR')
+        if not generated_root:
+            return error_response('Generated directory not configured', status_code=500, error_code='CONFIG_ERROR')
+
+        kb_dir = os.path.join(generated_root, 'knowledge')
+        os.makedirs(kb_dir, exist_ok=True)
+
+        original_name = secure_filename(f.filename)
+        import uuid
+        unique_name = f"{uuid.uuid4().hex[:12]}_{original_name}"
+        stored_path = os.path.join(kb_dir, unique_name)
+        f.save(stored_path)
+
+        extracted = extract_text(stored_path, ext)
+
+        title = (request.form.get('title') or '').strip()
+        if not title:
+            title = os.path.splitext(original_name)[0].replace('_', ' ').strip() or 'Untitled Document'
+
+        keywords = (request.form.get('keywords') or '').strip()
+
+        entry = KnowledgeBaseEntry(
+            title=title[:255],
+            content=extracted,
+            keywords=keywords or None,
+            category=_kb_clean_category(request.form.get('category')),
+            answer_link=(request.form.get('answer_link') or '').strip() or None,
+            source_type='upload',
+            file_name=original_name,
+            stored_path=stored_path,
+            file_type=ext.upper(),
+            is_active=str(request.form.get('is_active', 'true')).lower() != 'false',
+            created_by=get_jwt_identity(),
+        )
+        db.session.add(entry)
+        db.session.commit()
+        _kb_invalidate_cache()
+
+        msg = 'Document uploaded and indexed'
+        if not extracted:
+            msg = 'Document uploaded, but no text could be extracted. You can add content manually.'
+        return success_response({'entry': entry.to_dict(include_content=False)}, message=msg, status_code=201)
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error uploading KB document: {str(e)}", exc_info=True)
+        return error_response('Failed to upload document', status_code=500, error_code='DATABASE_ERROR')
+
+
+@admin_bp.route('/knowledge-base/<int:entry_id>', methods=['PUT'])
+@jwt_required()
+@admin_required
+def kb_update_entry(entry_id):
+    """Update a knowledge record or toggle its active state."""
+    try:
+        entry = KnowledgeBaseEntry.query.get_or_404(entry_id)
+        data = request.get_json() or {}
+
+        if 'title' in data:
+            t = (data.get('title') or '').strip()
+            if not t:
+                return error_response('Title cannot be empty', status_code=400, error_code='VALIDATION_ERROR')
+            entry.title = t[:255]
+        if 'content' in data:
+            entry.content = (data.get('content') or '').strip()
+        if 'keywords' in data:
+            kw = data.get('keywords')
+            if isinstance(kw, list):
+                kw = ', '.join(str(k).strip() for k in kw if str(k).strip())
+            entry.keywords = (kw or '').strip() or None
+        if 'category' in data:
+            entry.category = _kb_clean_category(data.get('category'))
+        if 'answer_link' in data:
+            entry.answer_link = (data.get('answer_link') or '').strip() or None
+        if 'is_active' in data:
+            entry.is_active = bool(data.get('is_active'))
+
+        db.session.commit()
+        _kb_invalidate_cache()
+        return success_response({'entry': entry.to_dict()}, message='Knowledge record updated')
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error updating KB entry: {str(e)}", exc_info=True)
+        return error_response('Failed to update knowledge record', status_code=500, error_code='DATABASE_ERROR')
+
+
+@admin_bp.route('/knowledge-base/<int:entry_id>', methods=['DELETE'])
+@jwt_required()
+@admin_required
+def kb_delete_entry(entry_id):
+    """Delete a knowledge record (and its stored file if any)."""
+    try:
+        entry = KnowledgeBaseEntry.query.get_or_404(entry_id)
+        title = entry.title
+        stored_path = entry.stored_path
+
+        db.session.delete(entry)
+        db.session.commit()
+        _kb_invalidate_cache()
+
+        if stored_path and os.path.isfile(stored_path):
+            try:
+                os.remove(stored_path)
+            except OSError:
+                pass
+
+        return success_response({'message': f'Knowledge record "{title}" deleted'})
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error deleting KB entry: {str(e)}", exc_info=True)
+        return error_response('Failed to delete knowledge record', status_code=500, error_code='DATABASE_ERROR')
+
+
+# Marks the start of the full page text within a 'link' record's content,
+# so the assistant excerpt surfaces the summary while search covers everything.
+_KB_LINK_SEPARATOR = '\n\n--- Full page content ---\n\n'
+
+
+def _kb_build_link_content(summary, full_text):
+    """Store summary first (for excerpts) + full text (for keyword search)."""
+    summary = (summary or '').strip()
+    full_text = (full_text or '').strip()
+    if summary and full_text:
+        return f"{summary}{_KB_LINK_SEPARATOR}{full_text}"
+    return summary or full_text
+
+
+@admin_bp.route('/knowledge-base/link', methods=['POST'])
+@jwt_required()
+@admin_required
+def kb_add_link():
+    """Fetch a URL, summarize it, and store it as a knowledge record."""
+    try:
+        from module_assistant.fetch_url import fetch_url_text, summarize_extractive, FetchError
+
+        data = request.get_json() or {}
+        url = (data.get('url') or '').strip()
+        if not url:
+            return error_response('A URL is required', status_code=400, error_code='VALIDATION_ERROR')
+
+        try:
+            page_title, full_text = fetch_url_text(url)
+        except FetchError as fe:
+            return error_response(str(fe), status_code=400, error_code='FETCH_ERROR')
+
+        summary = summarize_extractive(full_text)
+
+        title = (data.get('title') or '').strip() or (page_title or '').strip() or url
+        keywords = (data.get('keywords') or '').strip()
+        if isinstance(data.get('keywords'), list):
+            keywords = ', '.join(str(k).strip() for k in data['keywords'] if str(k).strip())
+
+        entry = KnowledgeBaseEntry(
+            title=title[:255],
+            content=_kb_build_link_content(summary, full_text),
+            keywords=keywords or None,
+            category=_kb_clean_category(data.get('category')),
+            answer_link=(data.get('answer_link') or '').strip() or url,
+            source_type='link',
+            source_url=url[:1000],
+            fetched_at=utc_now_naive(),
+            is_active=bool(data.get('is_active', True)),
+            created_by=get_jwt_identity(),
+        )
+        db.session.add(entry)
+        db.session.commit()
+        _kb_invalidate_cache()
+        return success_response(
+            {'entry': entry.to_dict(include_content=False), 'summary': summary},
+            message='Link fetched, summarized and indexed',
+            status_code=201,
+        )
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error adding KB link: {str(e)}", exc_info=True)
+        return error_response('Failed to add link', status_code=500, error_code='DATABASE_ERROR')
+
+
+@admin_bp.route('/knowledge-base/<int:entry_id>/refetch', methods=['POST'])
+@jwt_required()
+@admin_required
+def kb_refetch_link(entry_id):
+    """Re-fetch and re-summarize an existing link record."""
+    try:
+        from module_assistant.fetch_url import fetch_url_text, summarize_extractive, FetchError
+
+        entry = KnowledgeBaseEntry.query.get_or_404(entry_id)
+        if entry.source_type != 'link' or not entry.source_url:
+            return error_response('This record is not a link', status_code=400, error_code='VALIDATION_ERROR')
+
+        try:
+            page_title, full_text = fetch_url_text(entry.source_url)
+        except FetchError as fe:
+            return error_response(str(fe), status_code=400, error_code='FETCH_ERROR')
+
+        summary = summarize_extractive(full_text)
+        entry.content = _kb_build_link_content(summary, full_text)
+        entry.fetched_at = utc_now_naive()
+        db.session.commit()
+        _kb_invalidate_cache()
+        return success_response(
+            {'entry': entry.to_dict(include_content=False), 'summary': summary},
+            message='Link content refreshed',
+        )
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error refetching KB link: {str(e)}", exc_info=True)
+        return error_response('Failed to refresh link', status_code=500, error_code='DATABASE_ERROR')

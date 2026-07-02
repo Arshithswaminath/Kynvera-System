@@ -150,6 +150,15 @@ except Exception as e:
     logger.exception("Could not import module_finance.routes.finance_bp: %s", e)
     finance_bp = None
 
+# Live Assistant Module
+assistant_bp = None
+try:
+    from module_assistant.routes import assistant_bp  # noqa: F401
+    logger.info("Imported module_assistant.routes.assistant_bp")
+except Exception as e:
+    logger.exception("Could not import module_assistant.routes.assistant_bp: %s", e)
+    assistant_bp = None
+
 # Ensure required directories exist at startup
 os.makedirs(GENERATED_DIR, exist_ok=True)
 os.makedirs(UPLOADS_DIR, exist_ok=True)
@@ -946,6 +955,15 @@ def create_app():
         logger.info("✅ Registered Finance blueprint at /finance")
     else:
         logger.warning("⚠️  Finance blueprint not available - check imports")
+
+    # Register Live Assistant blueprint
+    if assistant_bp:
+        if hasattr(app, 'csrf') and app.csrf:
+            app.csrf.exempt(assistant_bp)
+        app.register_blueprint(assistant_bp)
+        logger.info("✅ Registered Live Assistant blueprint at /api/assistant")
+    else:
+        logger.warning("⚠️  Live Assistant blueprint not available - check imports")
 
     # Register reports API blueprint for on-demand regeneration
     try:

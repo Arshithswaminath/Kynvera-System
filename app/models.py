@@ -832,6 +832,71 @@ class DocHubAccess(db.Model):
         return f'<DocHubAccess user={self.user_id} access={self.can_access}>'
 
 
+class KnowledgeBaseEntry(db.Model):
+    """Admin-managed knowledge records that feed the Amaan assistant brain."""
+    __tablename__ = 'knowledge_base_entries'
+
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(255), nullable=False, index=True)
+    content = db.Column(db.Text, nullable=True)  # typed text and/or extracted document text
+    keywords = db.Column(db.Text, nullable=True)  # comma-separated search boosters
+    category = db.Column(db.String(50), default='General', index=True)
+    answer_link = db.Column(db.String(500), nullable=True)  # optional deep link the assistant surfaces
+    source_type = db.Column(db.String(20), default='text', index=True)  # 'text' | 'upload' | 'link'
+    file_name = db.Column(db.String(255), nullable=True)
+    stored_path = db.Column(db.String(500), nullable=True)
+    file_type = db.Column(db.String(20), nullable=True)  # PDF, DOCX, TXT, MD
+    source_url = db.Column(db.String(1000), nullable=True)  # original URL for 'link' records
+    fetched_at = db.Column(db.DateTime, nullable=True)  # when the link was last fetched
+    is_active = db.Column(db.Boolean, default=True, index=True)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=_utcnow, index=True)
+    updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow, index=True)
+
+    author = db.relationship('User', foreign_keys=[created_by], backref=db.backref('knowledge_entries', lazy='dynamic'))
+
+    def excerpt(self, length=200):
+        text = (self.content or '').strip()
+        if len(text) <= length:
+            return text
+        return text[:length].rsplit(' ', 1)[0] + '…'
+
+    def keyword_list(self):
+        if not self.keywords:
+            return []
+        return [k.strip() for k in self.keywords.split(',') if k.strip()]
+
+    def to_dict(self, include_content=True):
+        author_name = None
+        if self.author:
+            author_name = self.author.full_name or self.author.username
+        data = {
+            'id': self.id,
+            'title': self.title,
+            'keywords': self.keyword_list(),
+            'category': self.category or 'General',
+            'answer_link': self.answer_link or '',
+            'source_type': self.source_type or 'text',
+            'file_name': self.file_name,
+            'file_type': self.file_type,
+            'source_url': self.source_url or '',
+            'fetched_at': self.fetched_at.isoformat() if self.fetched_at else None,
+            'is_active': bool(self.is_active),
+            'created_by': self.created_by,
+            'author_name': author_name,
+            'excerpt': self.excerpt(),
+            'content_length': len(self.content or ''),
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+        if include_content:
+            data['content'] = self.content or ''
+        return data
+
+    def __repr__(self):
+        return f'<KnowledgeBaseEntry {self.id} - {self.title}>'
+
+
 class EmailAutomation(db.Model):
     """A user-created recurring email automation (free-form email on a schedule)."""
     __tablename__ = 'email_automation'
