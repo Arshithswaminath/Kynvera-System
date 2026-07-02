@@ -25,142 +25,11 @@
       font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
       background: var(--bg-light);
       color: var(--text-dark);
-      padding-top: 96px;
+      padding-top: 89px; /* 73px shared nav + 16px breathing room */
       animation: pageFade 0.35s ease;
     }
 
-    .nav {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      z-index: 1000;
-      background: rgba(255, 255, 255, 0.85);
-      backdrop-filter: blur(30px) saturate(180%);
-      border-bottom: 1px solid rgba(210, 23, 37, 0.08);
-      box-shadow: 0 2px 20px rgba(0, 0, 0, 0.02);
-      transition: all 0.3s ease;
-    }
-
-    .nav-container {
-      max-width: 1600px;
-      margin: 0 auto;
-      padding: 1rem 4rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 2rem;
-      min-height: 80px;
-    }
-
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      text-decoration: none;
-      transition: all 0.3s ease;
-      position: relative;
-      flex-shrink: 0;
-    }
-
-    .logo img {
-      height: 45px;
-      width: auto;
-      filter: drop-shadow(0 2px 8px rgba(210, 23, 37, 0.15));
-      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-
-    .logo span {
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: var(--primary);
-      letter-spacing: -0.5px;
-      transition: all 0.3s ease;
-      white-space: nowrap;
-    }
-
-    .nav-right {
-      display: flex;
-      align-items: center;
-      gap: 3rem;
-      flex-shrink: 0;
-    }
-
-    .nav-menu {
-      display: flex;
-      align-items: center;
-      gap: 2.5rem;
-      list-style: none;
-      margin: 0;
-      padding: 0;
-    }
-
-    .nav-menu a {
-      color: var(--text-light);
-      text-decoration: none;
-      font-size: 0.95rem;
-      font-weight: 500;
-      letter-spacing: 0.5px;
-      transition: all 0.3s ease;
-      position: relative;
-      padding: 0.5rem 0;
-      white-space: nowrap;
-    }
-
-    .nav-menu a::before {
-      content: '';
-      position: absolute;
-      bottom: 0;
-      left: 50%;
-      width: 0;
-      height: 2px;
-      background: linear-gradient(90deg, var(--primary-light), var(--primary));
-      transform: translateX(-50%);
-      transition: width 0.3s ease;
-    }
-
-    .nav-menu a:hover {
-      color: var(--primary);
-    }
-
-    .nav-menu a:hover::before {
-      width: 100%;
-    }
-
-    .logout-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.625rem 1.25rem;
-      font-size: 0.95rem;
-      font-weight: 600;
-      color: white;
-      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
-      border: none;
-      border-radius: 8px;
-      text-decoration: none;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      cursor: pointer;
-      box-shadow: 0 2px 8px rgba(210, 23, 37, 0.2);
-      letter-spacing: 0.3px;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .logout-btn::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: -100%;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-      transition: left 0.5s;
-    }
-
-    .logout-btn:hover::before {
-      left: 100%;
-    }
+    /* Navbar styling comes from the shared partial + dashboard.css — no page overrides. */
 
     .btn {
       background: var(--primary);
@@ -709,67 +578,7 @@
       }
     }
     
-    /* Mobile menu toggle (hidden by default) */
-    .mobile-menu-toggle { display: none; }
-    .mobile-overlay { display: none; position: fixed; top: 56px; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); z-index: 998; opacity: 0; transition: opacity 0.3s; }
-    .mobile-overlay.active { display: block; opacity: 1; }
-    
     @media (max-width: 768px) {
-      .nav-container {
-        padding: 0.75rem 1rem !important;
-        gap: 0.5rem !important;
-      }
-      .logo img { height: 28px !important; }
-      .logo span { font-size: 0.9rem !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
-      .nav-right { gap: 0.375rem !important; }
-      
-      .mobile-menu-toggle {
-        display: flex !important;
-        align-items: center; justify-content: center;
-        width: 40px; height: 40px; min-width: 40px; min-height: 40px;
-        border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.1);
-        border-radius: 8px; cursor: pointer; padding: 0;
-        color: white;
-      }
-      .mobile-menu-toggle span {
-        display: block; width: 18px; height: 2px; background: currentColor;
-        position: relative; transition: all 0.3s;
-      }
-      .mobile-menu-toggle span::before,
-      .mobile-menu-toggle span::after {
-        content: ''; position: absolute; left: 0; width: 18px; height: 2px;
-        background: currentColor; transition: all 0.3s;
-      }
-      .mobile-menu-toggle span::before { top: -6px; }
-      .mobile-menu-toggle span::after { bottom: -6px; }
-      .mobile-menu-toggle.active span { background: transparent; }
-      .mobile-menu-toggle.active span::before { top: 0; transform: rotate(45deg); }
-      .mobile-menu-toggle.active span::after { bottom: 0; transform: rotate(-45deg); }
-      
-      .nav-menu {
-        position: fixed !important; top: 56px; left: -100%;
-        width: min(280px, 80vw); height: calc(100vh - 56px);
-        background: white; box-shadow: 4px 0 20px rgba(0,0,0,0.08);
-        flex-direction: column; display: flex !important;
-        padding: 0.5rem 0; gap: 0 !important;
-        transition: left 0.3s ease; z-index: 999;
-        overflow-y: auto; border-right: 1px solid #e5e7eb;
-      }
-      .nav-menu.active { left: 0; }
-      .nav-menu li { width: 100%; padding: 0; display: block; list-style: none; }
-      .nav-menu a {
-        display: flex !important; align-items: center; padding: 0.9rem 1.25rem !important;
-        border-radius: 0 !important; font-size: 0.95rem !important; font-weight: 500;
-        color: #1f2937 !important; border-bottom: 1px solid #f3f4f6 !important;
-        min-height: 48px; width: 100%;
-      }
-      .nav-menu a:hover { background: #f9fafb; }
-      .nav-menu a::before { display: none !important; }
-      
-      .logout-btn { padding: 0.45rem 0.6rem !important; font-size: 0.8rem !important; }
-      .logout-btn span { display: none !important; }
-      .logout-btn svg { width: 18px !important; height: 18px !important; }
-      
       .container { margin-top: 1rem; padding: 0 0.75rem; }
     }
 
@@ -1218,29 +1027,7 @@
       });
     }
 
-    // Mobile menu
-    const mobileMenuToggle = document.getElementById('mobileMenuToggle');
-    const navMenu = document.querySelector('.nav-menu');
-    const mobileOverlay = document.getElementById('mobileOverlay');
-    function closeMobileMenu() {
-      if (mobileMenuToggle) mobileMenuToggle.classList.remove('active');
-      if (navMenu) navMenu.classList.remove('active');
-      if (mobileOverlay) mobileOverlay.classList.remove('active');
-      document.body.style.overflow = '';
-    }
-    if (mobileMenuToggle && navMenu) {
-      mobileMenuToggle.addEventListener('click', function() {
-        const isOpen = navMenu.classList.contains('active');
-        if (isOpen) { closeMobileMenu(); } else {
-          mobileMenuToggle.classList.add('active');
-          navMenu.classList.add('active');
-          if (mobileOverlay) mobileOverlay.classList.add('active');
-          document.body.style.overflow = 'hidden';
-        }
-      });
-    }
-    if (mobileOverlay) mobileOverlay.addEventListener('click', closeMobileMenu);
-    if (navMenu) navMenu.querySelectorAll('a').forEach(l => l.addEventListener('click', closeMobileMenu));
+    // Mobile menu is handled by the shared navbar (dashboard.js + main_navbar.html).
 
     function buildSubmissionBlock(row) {
       if (!row) return;

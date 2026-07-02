@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
   <title>BizFlow — Business Development | Amaan Admin</title>
-  <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}">
@@ -361,6 +361,24 @@ body.has-main-nav{padding-top:5.5rem}
               </div>
             </div>
           </div>
+
+          <!-- Analytics: weighted forecast · stalled deals · outcome loop -->
+          <div class="bf-kpi-row" style="grid-template-columns:repeat(4,1fr);margin:22px 0 16px;">
+            <div class="bf-kpi-card c3"><div class="bf-kpi-label">Probable Revenue</div><div class="bf-kpi-val serif" id="bfKpiForecast">$0</div><span class="bf-kpi-trend up" id="bfForecastConf">0% confidence</span></div>
+            <div class="bf-kpi-card c5"><div class="bf-kpi-label">Stalled Deals</div><div class="bf-kpi-val" style="color:var(--rose)" id="bfKpiStalled">0</div><span class="bf-kpi-trend dn">need attention</span></div>
+            <div class="bf-kpi-card c1"><div class="bf-kpi-label">CD Pass Rate</div><div class="bf-kpi-val" id="bfKpiCdPass">0<span style="font-size:16px;font-weight:500">%</span></div><span class="bf-kpi-trend neu" id="bfCdSub">0 inspections</span></div>
+            <div class="bf-kpi-card c2"><div class="bf-kpi-label">Won → Delivery</div><div class="bf-kpi-val serif" id="bfKpiRealised">$0</div><span class="bf-kpi-trend up" id="bfRealisedSub">0 projects</span></div>
+          </div>
+          <div class="bf-dash-grid">
+            <div class="bf-card">
+              <div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">Needs Attention — Stalled Deals</div><div class="bf-card-hd-sub" id="bfStalledSub">Live deals with no recent movement or past their close date</div></div></div>
+              <div style="overflow-x:auto"><table class="bf-proj-table"><thead><tr><th>Deal</th><th>Stage</th><th>Value</th><th>Idle</th><th>Why</th></tr></thead><tbody id="bfStalledTbody"></tbody></table></div>
+            </div>
+            <div class="bf-card">
+              <div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">Outcome Loop</div><div class="bf-card-hd-sub">Civil Defense compliance &amp; deal-to-delivery</div></div></div>
+              <div id="bfOutcomeBody" style="padding:4px 2px"></div>
+            </div>
+          </div>
         </div>
 
         <div class="bf-view-section" id="bf-v-projects">
@@ -579,6 +597,51 @@ function updateDashboardStats(){
 
   const sidebarProj=document.getElementById('bfSidebarProjectCount');if(sidebarProj)sidebarProj.textContent=String(projects.length);
   const sidebarFu=document.getElementById('bfSidebarFollowupBadge');if(sidebarFu){sidebarFu.textContent=String(overdueItems.length);sidebarFu.classList.toggle('sb-badge--alert',overdueItems.length>0);}
+
+  updateBdAnalytics();
+}
+
+// Weighted forecast · stalled deals · outcome loop (data from bdStats.*).
+function updateBdAnalytics(){
+  const setText=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+
+  const fc=bdStats.forecast||{};
+  setText('bfKpiForecast',money(fc.weighted_forecast||0));
+  setText('bfForecastConf',`${fc.confidence_pct||0}% of ${money(fc.raw_pipeline||0)}`);
+
+  const st=bdStats.stalled||{};
+  setText('bfKpiStalled',String(st.count||0));
+  const stBody=document.getElementById('bfStalledTbody');
+  if(stBody){
+    const rows=st.rows||[];
+    stBody.innerHTML=rows.length?rows.map(d=>`<tr>
+      <td><div style="font-weight:600">${esc(d.name)}</div><div style="font-size:11px;color:var(--subtle)">${esc(d.company||'')}</div></td>
+      <td style="text-transform:capitalize">${esc(d.stage||'—')}</td>
+      <td>${money(d.value)}</td>
+      <td>${d.idle_days!=null?d.idle_days+'d':'—'}</td>
+      <td style="font-size:11px;color:var(--rose);font-weight:600">${esc(d.reason||'')}</td>
+    </tr>`).join(''):'<tr><td colspan="5" style="padding:16px;color:var(--subtle)">No stalled deals — pipeline is moving.</td></tr>';
+  }
+  const stSub=document.getElementById('bfStalledSub');
+  if(stSub)stSub.textContent=`${st.count||0} deal(s) need attention`;
+
+  const oc=bdStats.outcome||{};
+  setText('bfKpiCdPass',oc.cd_pass_rate||0);
+  setText('bfCdSub',`${oc.cd_total||0} inspections · ${oc.cd_fail||0} failed`);
+  setText('bfKpiRealised',money(oc.bd_realised_value||0));
+  setText('bfRealisedSub',`${oc.bd_converted||0} project(s) delivered`);
+
+  const ob=document.getElementById('bfOutcomeBody');
+  if(ob){
+    const row=(label,val)=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)"><span style="font-size:13px;color:var(--subtle)">${label}</span><span style="font-size:14px;font-weight:700;color:var(--ink)">${val}</span></div>`;
+    ob.innerHTML=
+      row('Civil Defense — pass / fail',`${oc.cd_pass||0} / ${oc.cd_fail||0}`)+
+      row('Reinspection rate',`${oc.cd_reinspection_rate||0}×`)+
+      row('Overdue inspections',`${oc.cd_overdue||0}`)+
+      row('Amaan-actionable failures',`${oc.cd_actionable||0}`)+
+      row('BD wins → ticketing projects',`${oc.bd_converted||0}`)+
+      row('Realised contract value',`${money(oc.bd_realised_value||0)}`);
+  }
 }
 
 function renderAll(){
