@@ -1182,6 +1182,14 @@
     const osl = document.getElementById('dhSbOtherSectionLabel');
     if (osl) osl.textContent = panelTitle();
 
+    // Update folder grid card counts on the home screen
+    ['onboarding', 'contracts', 'policies', 'manuals', 'reports', 'Internal'].forEach(tag => {
+      const el = document.getElementById('dhFolderCount-' + tag);
+      if (!el) return;
+      const n = docs.filter(d => (d.tag || '').toLowerCase() === tag.toLowerCase() && d.status !== 'archived').length;
+      el.textContent = n + ' doc' + (n === 1 ? '' : 's');
+    });
+
     syncSbBucketOpenState();
     syncMainSearchPanel();
   }
@@ -1748,8 +1756,12 @@
     markDirty();
   }
 
+  window.dhGoToFolder = function(tag) {
+    dhSelectSbBucket(tag);
+  };
+
   function applyWriteUI() {
-    ['dhNewDocBtn', 'dhUploadBtn', 'dhEmptyNewBtn', 'dhEmptyUploadBtn'].forEach(id => {
+    ['dhNewDocBtn', 'dhUploadBtn', 'dhSbNewBtn', 'dhSbUploadBtn'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.style.display = dhCanEdit ? '' : 'none';
     });
@@ -1841,6 +1853,13 @@
     syncTabStyles();
   }
 
+  function dhSyncTemplateSelection() {
+    document.querySelectorAll('#dhTemplateGrid .template-item').forEach(el => {
+      const on = el.classList.contains('selected');
+      el.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+  }
+
   function openNewModal() {
     document.getElementById('dhNewDocModal').classList.add('open');
     document.getElementById('dhNewTitle').value = '';
@@ -1848,6 +1867,7 @@
     document.querySelectorAll('#dhTemplateGrid .template-item').forEach((x, i) => {
       x.classList.toggle('selected', i === 0);
     });
+    dhSyncTemplateSelection();
   }
 
   function closeNewModal() {
@@ -2478,6 +2498,7 @@
           .querySelectorAll('#dhTemplateGrid .template-item')
           .forEach(x => x.classList.remove('selected'));
         el.classList.add('selected');
+        dhSyncTemplateSelection();
       });
     });
 

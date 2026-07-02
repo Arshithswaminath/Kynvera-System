@@ -49,7 +49,7 @@ def _run_scheduled_report(app):
                                   _format_report_date, _format_report_date_range_str,
                                   _REPORT_DATE_PLACEHOLDER, _report_filename, _complete_current_cycle,
                                   auto_stop_stale_cycle, _is_current_cycle_approved)
-            from .mmr_service import parse_excel, generate_report_excel, get_report_date_range_from_df, get_report_date_from_excel, format_chargeable_summary_for_email, format_per_tower_chargeable_html_for_email
+            from .mmr_service import parse_excel, generate_report_excel, get_report_date_range_from_df, get_report_date_from_excel, build_mmr_email_bodies
             from common.email_service import send_email
 
             config = _load_config()
@@ -128,29 +128,13 @@ def _run_scheduled_report(app):
                 rf = 'daily'
             filename = _report_filename(report_date_range=date_range, upload_path=path, report_format=rf)
 
-            body = config.get('body', '')
             report_date = _format_report_date_range_str(date_range)
             if report_date is None:
                 report_dt = get_report_date_from_excel(path) or (datetime.now() - timedelta(days=1))
                 report_date = _format_report_date(report_dt)
             subject = config.get('subject', 'Daily Report on Resolved and Pending Complaints for {{REPORT_DATE}}').replace(_REPORT_DATE_PLACEHOLDER, report_date)
-            body = body.replace(_REPORT_DATE_PLACEHOLDER, report_date)
-            intro_for_html = body.rstrip()
-            chargeable_summary = format_chargeable_summary_for_email(df)
-            if chargeable_summary:
-                body = (body.rstrip() + '\n\n' + chargeable_summary).rstrip()
-            body = (body.rstrip() + '\n\nFor full information, please refer to the attached Excel file.').rstrip()
-
-            html_tables = format_per_tower_chargeable_html_for_email(df)
-            html_body = None
-            if html_tables:
-                intro_escaped = intro_for_html.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('\n', '<br>')
-                html_body = f'''<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="font-family:Arial,sans-serif;font-size:12px;color:#333">
-<p style="margin:0 0 12px 0;line-height:1.5">{intro_escaped}</p>
-{html_tables}
-<p style="margin:12px 0 8px 0;font-size:10px;color:#666;font-style:italic">* This is computer generated, please cross check at least once.</p>
-<p style="margin:0">For full information, please refer to the attached Excel file.</p>
-</body></html>'''
+            body = config.get('body', '').replace(_REPORT_DATE_PLACEHOLDER, report_date)
+            body, html_body = build_mmr_email_bodies(body, df)
 
             send_email(
                 recipient=to_list,

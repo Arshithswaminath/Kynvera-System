@@ -6,6 +6,7 @@ Requires JWT plus admin role or User.access_report_generation.
 import os
 import json
 import logging
+import re
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 from io import BytesIO
@@ -117,12 +118,83 @@ def _email_presets() -> dict:
         'daily': {
             'subject': _DEFAULT_CONFIG['subject'],
             'body': _DEFAULT_CONFIG['body'],
+            'to': _DEFAULT_CONFIG['to'],
+            'cc': _DEFAULT_CONFIG['cc'],
         },
         'monthly': {
             'subject': _MONTHLY_SUBJECT_DEFAULT,
             'body': _MONTHLY_BODY_DEFAULT,
+            'to': _DEFAULT_CONFIG['to'],
+            'cc': _DEFAULT_CONFIG['cc'],
         },
     }
+
+
+def _email_presets_resolved(cfg: dict) -> dict:
+    """Daily/monthly presets including saved To/CC per format."""
+    out = _email_presets()
+    fr = cfg.get('format_recipients')
+    if not isinstance(fr, dict):
+        fr = {}
+    legacy_to = (cfg.get('to') or '').strip()
+    legacy_cc = (cfg.get('cc') or '').strip()
+    fr_has_data = False
+    for fmt in ('daily', 'monthly'):
+        block = fr.get(fmt) if isinstance(fr.get(fmt), dict) else {}
+        if (block.get('to') or '').strip() or (block.get('cc') or '').strip():
+            fr_has_data = True
+            break
+    for fmt in ('daily', 'monthly'):
+        block = fr.get(fmt) if isinstance(fr.get(fmt), dict) else {}
+        to_val = (block.get('to') or '').strip()
+        cc_val = (block.get('cc') or '').strip()
+        if not fr_has_data:
+            if legacy_to:
+                to_val = legacy_to
+            if legacy_cc:
+                cc_val = legacy_cc
+        out[fmt]['to'] = to_val or out[fmt]['to']
+        out[fmt]['cc'] = cc_val or out[fmt]['cc']
+    return out
+
+
+_PRESET_NAME_MAX_LEN = 40
+
+
+def _normalize_preset_key(name: str) -> str | None:
+    """Slug for custom preset storage; None if invalid."""
+    raw = (name or '').strip()
+    if not raw or len(raw) > _PRESET_NAME_MAX_LEN:
+        return None
+    if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9 _\-]*', raw):
+        return None
+    return raw.lower().replace(' ', '_')
+
+
+def _custom_presets_list(config: dict) -> list[dict]:
+    """Saved custom To/CC/subject/body presets, sorted by display name."""
+    raw = config.get('custom_presets') or {}
+    if not isinstance(raw, dict):
+        return []
+    out = []
+    for key, val in raw.items():
+        if not isinstance(val, dict):
+            continue
+        display = (val.get('name') or key or '').strip()
+        if not display:
+            continue
+        rf = str(val.get('report_format', 'daily')).strip().lower()
+        out.append({
+            'key': key,
+            'name': display,
+            'to': val.get('to', '') or '',
+            'cc': val.get('cc', '') or '',
+            'subject': val.get('subject', '') or '',
+            'body': val.get('body', '') or '',
+            'report_format': rf if rf in ('daily', 'monthly') else 'daily',
+        })
+    out.sort(key=lambda p: p['name'].lower())
+    return out
 
 _REPORT_DATE_PLACEHOLDER = '{{REPORT_DATE}}'
 
@@ -190,6 +262,17 @@ def _config_path():
 
 def _upload_path():
     return os.path.join(current_app.config['GENERATED_DIR'], _UPLOAD_FILE)
+
+
+def _safe_report_folder_path(filename: str | None) -> str | None:
+    """Return absolute path for a basename in the reports folder, or None if invalid."""
+    fn = (filename or '').strip()
+    if not fn or '..' in fn or '/' in fn or '\\' in fn:
+        return None
+    path = os.path.join(_reports_folder(), fn)
+    if os.path.exists(path) and os.path.isfile(path):
+        return path
+    return None
 
 
 def _dashboard_payload_from_path(path: str) -> tuple[dict, list]:
@@ -1125,8 +1208,81 @@ def open_report_from_folder(filename):
 @mmr_jwt_and_report_access
 def get_email_config():
     cfg = _load_config()
-    out = {**cfg, 'presets': _email_presets()}
+    out = {**cfg, 'presets': _email_presets_resolved(cfg), 'custom_presets': _custom_presets_list(cfg)}
     return jsonify(out)
+
+
+def _collect_mmr_email_suggestions() -> list[dict]:
+    """Unique @injaaz.ae addresses for To/CC autocomplete."""
+    seen: set[str] = set()
+    out: list[dict] = []
+
+    def add(email: str, name: str = '') -> None:
+        e = (email or '').strip()
+        if not e.lower().endswith(f'@{ALLOWED_DOMAIN}'):
+            return
+        key = e.lower()
+        if key in seen:
+            return
+        seen.add(key)
+        out.append({'email': e, 'name': (name or '').strip()})
+
+    for field in ('to', 'cc'):
+        for part in (_DEFAULT_CONFIG.get(field, '') or '').split(','):
+            add(part.strip())
+
+    cfg = _load_config()
+    for field in ('to', 'cc'):
+        for part in (cfg.get(field) or '').split(','):
+            add(part.strip())
+    fr = cfg.get('format_recipients')
+    if isinstance(fr, dict):
+        for fmt in ('daily', 'monthly'):
+            block = fr.get(fmt)
+            if isinstance(block, dict):
+                for part in (block.get('to') or '').split(','):
+                    add(part.strip())
+                for part in (block.get('cc') or '').split(','):
+                    add(part.strip())
+    for preset in _custom_presets_list(cfg):
+        for part in (preset.get('to') or '').split(','):
+            add(part.strip())
+        for part in (preset.get('cc') or '').split(','):
+            add(part.strip())
+
+    try:
+        rows = (
+            User.query.filter(
+                User.is_active.is_(True),
+                User.email.ilike(f'%@{ALLOWED_DOMAIN}'),
+            )
+            .order_by(User.full_name.asc().nullslast(), User.email.asc())
+            .all()
+        )
+        for u in rows:
+            add(u.email, u.full_name or u.username or '')
+    except Exception as e:
+        logger.warning(f'MMR email suggestions user lookup skipped: {e}')
+
+    out.sort(key=lambda x: ((x.get('name') or x['email']).lower(), x['email'].lower()))
+    return out
+
+
+@mmr_bp.route('/api/email-suggestions', methods=['GET'])
+@mmr_jwt_and_report_access
+def get_email_suggestions():
+    q = (request.args.get('q') or '').strip().lower()
+    items = _collect_mmr_email_suggestions()
+    if q:
+        filtered = []
+        for item in items:
+            email = item['email'].lower()
+            name = (item.get('name') or '').lower()
+            local = email.split('@')[0]
+            if q in email or q in name or local.startswith(q):
+                filtered.append(item)
+        items = filtered
+    return jsonify({'suggestions': items[:15]})
 
 
 @mmr_bp.route('/api/automation-status', methods=['GET'])
@@ -1415,19 +1571,60 @@ def save_email_config():
             _, err = _validate_injaaz_emails(data[field])
             if err:
                 return jsonify({'error': err}), 400
+    fr_in = data.get('format_recipients')
+    if isinstance(fr_in, dict):
+        for fmt in ('daily', 'monthly'):
+            block = fr_in.get(fmt)
+            if not isinstance(block, dict):
+                continue
+            for field in ('to', 'cc'):
+                if block.get(field):
+                    _, err = _validate_injaaz_emails(block[field])
+                    if err:
+                        return jsonify({'error': err}), 400
 
     config = _load_config()
     prev_schedule_on = bool(config.get('schedule_enabled'))
     allowed = ['to', 'cc', 'subject', 'body',
-                'schedule_enabled', 'schedule_hour', 'schedule_minute', 'schedule_paused']
+                'schedule_enabled', 'schedule_hour', 'schedule_minute', 'schedule_paused',
+                'active_custom_preset']
     for k in allowed:
         if k in data:
             config[k] = data[k]
     if 'report_format' in data:
         rf = str(data['report_format']).strip().lower()
-        if rf not in ('daily', 'monthly'):
-            return jsonify({'error': 'report_format must be "daily" or "monthly"'}), 400
+        if rf not in ('daily', 'monthly', 'custom'):
+            return jsonify({'error': 'report_format must be "daily", "monthly", or "custom"'}), 400
         config['report_format'] = rf
+    if 'active_custom_preset' in data:
+        key = str(data['active_custom_preset'] or '').strip().lower().replace(' ', '_')
+        config['active_custom_preset'] = key
+    # Per-format To/CC (Daily vs Monthly)
+    rf_save = str(config.get('report_format', 'daily')).strip().lower()
+    if rf_save in ('daily', 'monthly') and ('to' in data or 'cc' in data):
+        fr = config.get('format_recipients')
+        if not isinstance(fr, dict):
+            fr = {}
+        block = fr.get(rf_save) if isinstance(fr.get(rf_save), dict) else {}
+        fr[rf_save] = {
+            'to': data.get('to', block.get('to', config.get('to', ''))),
+            'cc': data.get('cc', block.get('cc', config.get('cc', ''))),
+        }
+        config['format_recipients'] = fr
+    if 'format_recipients' in data and isinstance(data['format_recipients'], dict):
+        fr_in = data['format_recipients']
+        fr = config.get('format_recipients')
+        if not isinstance(fr, dict):
+            fr = {}
+        for fmt in ('daily', 'monthly'):
+            block = fr_in.get(fmt)
+            if not isinstance(block, dict):
+                continue
+            fr[fmt] = {
+                'to': block.get('to', fr.get(fmt, {}).get('to', '') if isinstance(fr.get(fmt), dict) else ''),
+                'cc': block.get('cc', fr.get(fmt, {}).get('cc', '') if isinstance(fr.get(fmt), dict) else ''),
+            }
+        config['format_recipients'] = fr
     # Env schedule vars (Render) override form so MMR_SCHEDULE_* survives accidental UI toggles
     config.update(_env_schedule_override())
     _save_config(config)
@@ -1461,6 +1658,66 @@ def save_email_config():
     return jsonify({'success': True})
 
 
+@mmr_bp.route('/api/email-presets', methods=['POST'])
+@mmr_jwt_and_report_access
+def save_email_preset():
+    """Save current-style To/CC/subject/body under a user-chosen name."""
+    data = request.get_json() or {}
+    name = (data.get('name') or '').strip()
+    key = _normalize_preset_key(name)
+    if not key:
+        return jsonify({
+            'error': (
+                f'Preset name is required (letters, numbers, spaces, dash; '
+                f'max {_PRESET_NAME_MAX_LEN} characters).'
+            ),
+        }), 400
+
+    to_raw = (data.get('to') or '').strip()
+    if not to_raw:
+        return jsonify({'error': 'To is required when saving a preset'}), 400
+
+    for field in ('to', 'cc'):
+        if field in data and data[field]:
+            _, err = _validate_injaaz_emails(data[field])
+            if err:
+                return jsonify({'error': err}), 400
+
+    rf = str(data.get('report_format', 'daily')).strip().lower()
+    if rf not in ('daily', 'monthly', 'custom'):
+        rf = 'daily'
+
+    config = _load_config()
+    presets = config.get('custom_presets')
+    if not isinstance(presets, dict):
+        presets = {}
+    presets[key] = {
+        'name': name,
+        'to': data.get('to', '') or '',
+        'cc': data.get('cc', '') or '',
+        'subject': (data.get('subject') or '').strip(),
+        'body': (data.get('body') or '').strip(),
+        'report_format': rf,
+    }
+    config['custom_presets'] = presets
+    _save_config(config)
+    return jsonify({'success': True, 'custom_presets': _custom_presets_list(config)})
+
+
+@mmr_bp.route('/api/email-presets/<path:preset_key>', methods=['DELETE'])
+@mmr_jwt_and_report_access
+def delete_email_preset(preset_key: str):
+    key = _normalize_preset_key(preset_key) or preset_key.strip().lower().replace(' ', '_')
+    config = _load_config()
+    presets = config.get('custom_presets')
+    if not isinstance(presets, dict) or key not in presets:
+        return jsonify({'error': 'Preset not found'}), 404
+    del presets[key]
+    config['custom_presets'] = presets
+    _save_config(config)
+    return jsonify({'success': True, 'custom_presets': _custom_presets_list(config)})
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Send email
 # ──────────────────────────────────────────────────────────────────────────────
@@ -1468,29 +1725,19 @@ def save_email_config():
 @mmr_bp.route('/api/send-email', methods=['POST'])
 @mmr_jwt_and_report_access
 def send_email_now():
+    """Send report email immediately (manual). Does not require cycle approval."""
     data = request.get_json() or {}
-    path = _upload_path()
+    upload_path = _upload_path()
+    folder_path = _safe_report_folder_path(data.get('folder_filename'))
+    use_folder = bool(folder_path and not os.path.exists(upload_path))
+    path = folder_path if use_folder else upload_path
 
     if not os.path.exists(path):
-        return jsonify({'error': 'No MMR file uploaded yet. Please upload an Excel file first.'}), 400
-
-    # Approval gate — emails (manual or scheduled) only go out for an approved cycle.
-    # Auto-stops the automation if the current cycle has aged past the approval timeout.
-    if auto_stop_stale_cycle():
         return jsonify({
             'error': (
-                'Approval timeout — automation has been stopped because the cycle was not '
-                'approved within 30 minutes. Upload a fresh Excel and re-enable the schedule.'
+                'No report available. Upload a CAFM Excel file or open a saved report '
+                'from the Report folder first.'
             ),
-            'auto_stopped': True,
-        }), 400
-    if not _is_current_cycle_approved():
-        return jsonify({
-            'error': (
-                'Cycle not approved yet. Click "Review & Approve" on the current cycle '
-                'before sending the email.'
-            ),
-            'requires_approval': True,
         }), 400
 
     to_raw = data.get('to', '').strip()
@@ -1515,13 +1762,26 @@ def send_email_now():
         return jsonify({'error': cc_err}), 400
     cc_list = cc_list or None
 
-    # Generate report
+    # Generate report (or attach saved report from folder)
     try:
-        from .mmr_service import parse_excel, generate_report_excel, get_report_date_range_from_df, format_chargeable_summary_for_email, format_per_tower_chargeable_html_for_email
-        df = parse_excel(path)
-        report_bytes = generate_report_excel(df)
+        from .mmr_service import (
+            parse_excel,
+            parse_saved_report_excel,
+            generate_report_excel,
+            get_report_date_range_from_df,
+            build_mmr_email_bodies,
+        )
+        if use_folder:
+            with open(path, 'rb') as report_file:
+                report_bytes = report_file.read()
+            df = parse_saved_report_excel(path)
+            filename = os.path.basename(path)
+        else:
+            df = parse_excel(path)
+            report_bytes = generate_report_excel(df)
+            date_range = get_report_date_range_from_df(df)
+            filename = _report_filename(report_date_range=date_range, upload_path=path, report_format=rf)
         date_range = get_report_date_range_from_df(df)
-        filename = _report_filename(report_date_range=date_range, upload_path=path, report_format=rf)
         # Build report_date string for subject/body (same format as filename date part)
         report_date = _format_report_date_range_str(date_range)
         if report_date is None:
@@ -1531,26 +1791,7 @@ def send_email_now():
         subject = subject.replace(_REPORT_DATE_PLACEHOLDER, report_date)
         body = body.replace(_REPORT_DATE_PLACEHOLDER, report_date)
 
-        # Intro for HTML (full body before chargeable summary)
-        intro_for_html = body.rstrip()
-
-        # Plain text body (fallback)
-        chargeable_summary = format_chargeable_summary_for_email(df)
-        if chargeable_summary:
-            body = (body.rstrip() + '\n\n' + chargeable_summary).rstrip()
-        body = (body.rstrip() + '\n\nFor full information, please refer to the attached Excel file.').rstrip()
-
-        # HTML body with per-tower tables (Askaan, Orient, Garden, C1)
-        html_tables = format_per_tower_chargeable_html_for_email(df)
-        html_body = None
-        if html_tables:
-            intro_escaped = intro_for_html.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('\n', '<br>')
-            html_body = f'''<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="font-family:Arial,sans-serif;font-size:12px;color:#333">
-<p style="margin:0 0 12px 0;line-height:1.5">{intro_escaped}</p>
-{html_tables}
-<p style="margin:12px 0 8px 0;font-size:10px;color:#666;font-style:italic">* This is computer generated, please cross check at least once.</p>
-<p style="margin:0">For full information, please refer to the attached Excel file.</p>
-</body></html>'''
+        body, html_body = build_mmr_email_bodies(body, df)
     except Exception as e:
         return jsonify({'error': f'Report generation failed: {str(e)}'}), 500
 

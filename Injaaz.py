@@ -814,7 +814,11 @@ def create_app():
     @app.route('/favicon.ico')
     def favicon():
         """Serve favicon"""
-        return send_from_directory(app.static_folder, 'logo.png', mimetype='image/png')
+        return send_from_directory(
+            os.path.join(app.static_folder, 'icons'),
+            'injaaz-web-favicon-32.png',
+            mimetype='image/png',
+        )
 
     # Register blueprints only if they were imported successfully.
     if hvac_mep_bp:

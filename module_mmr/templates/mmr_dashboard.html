@@ -909,16 +909,61 @@
     .page-info { font-size: .75rem; color: var(--text-muted); }
 
     /* Email */
-    .email-section { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+    .email-section { display: flex; flex-direction: column; gap: .75rem; }
+    .email-section-top {
+      display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 1.25rem; align-items: stretch;
+    }
+    .email-recipients-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: .75rem;
+    }
+    .email-action-btns {
+      display: flex; gap: .5rem; flex-wrap: wrap;
+    }
+    .email-compose-col {
+      min-width: 0; display: flex; flex-direction: column;
+    }
+    .email-body-group {
+      flex: 1 1 auto; display: flex; flex-direction: column;
+      min-height: 10rem; margin-bottom: .75rem;
+    }
+    .email-body-group .form-textarea,
+    #emailBody {
+      flex: 1 1 auto; min-height: 10rem; resize: vertical;
+    }
     .form-group { margin-bottom: .875rem; }
     .form-label { font-size: .8125rem; font-weight: 500; color: var(--text); display: block; margin-bottom: .25rem; }
     .form-input, .form-textarea { width: 100%; padding: .5rem .65rem; border: 1px solid var(--border); border-radius: 6px; font-size: .875rem; }
     .form-input:focus, .form-textarea:focus { outline: none; border-color: var(--primary); }
     .form-input.input-error { border-color: var(--danger); }
     .field-error { font-size: .75rem; color: var(--danger); margin-top: .2rem; }
+    .email-action-status {
+      padding: .75rem 1rem; border-radius: 8px; font-size: .875rem; font-weight: 500;
+      line-height: 1.45; margin-bottom: .75rem;
+    }
+    .email-action-status.hidden { display: none !important; }
+    .email-action-status-success { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+    .email-action-status-error   { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+    .email-action-status-info    { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+    .email-section-status { margin: 0; }
+    .email-send-option {
+      padding: .875rem; border: 1px solid var(--border); border-radius: var(--radius);
+      background: #fff; margin-bottom: 1rem;
+    }
+    .email-send-option:last-child { margin-bottom: 0; }
+    .email-send-option-hdr {
+      font-size: .9rem; font-weight: 700; color: var(--text); margin-bottom: .35rem;
+      display: flex; align-items: center; gap: .4rem;
+    }
+    .email-send-option-hint {
+      font-size: .78rem; color: var(--text-muted); line-height: 1.45; margin-bottom: .85rem;
+    }
+    .email-send-option-actions { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+    .email-send-option.is-send-now { border-color: #a7f3d0; background: #f0fdf4; }
+    .email-send-option.is-schedule { border-color: #bfdbfe; background: #f8fafc; }
     .form-textarea { min-height: 100px; resize: vertical; }
     .report-format-row .form-label { margin-bottom: .4rem; }
-    .report-format-hint { font-size: .75rem; color: var(--text-muted); margin: .4rem 0 0; line-height: 1.4; max-width: 42rem; }
+    .report-format-hint { font-size: .72rem; color: var(--text-muted); margin: .35rem 0 0; line-height: 1.35; }
     .report-format-seg {
       display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
       background: #f9fafb;
@@ -930,6 +975,51 @@
     .report-format-seg .seg-btn + .seg-btn { border-left: 1px solid var(--border); }
     .report-format-seg .seg-btn:hover { background: #f3f4f6; color: var(--text); }
     .report-format-seg .seg-btn.active { background: var(--primary); color: #fff; }
+    .custom-presets-box {
+      margin-top: .875rem; padding: .75rem; background: #f9fafb;
+      border: 1px solid var(--border); border-radius: var(--radius);
+    }
+    .custom-presets-box.is-dimmed { opacity: .72; }
+    .custom-presets-box .custom-presets-title {
+      font-size: .8125rem; font-weight: 600; color: var(--text); margin-bottom: .5rem;
+    }
+    .custom-presets-row {
+      display: flex; flex-wrap: wrap; gap: .5rem; align-items: center;
+    }
+    .custom-presets-row select, .custom-presets-row input[type="text"] {
+      padding: .45rem .55rem; border: 1px solid var(--border); border-radius: 6px;
+      font-size: .8125rem; min-width: 0; flex: 1 1 100%;
+    }
+    .custom-presets-name { flex: 1 1 100%; }
+    .custom-presets-hint {
+      font-size: .72rem; color: var(--text-muted); margin: .5rem 0 0; line-height: 1.35;
+    }
+    .mmr-email-ac-wrap { position: relative; }
+    .mmr-email-ac-list {
+      position: absolute; left: 0; right: 0; top: calc(100% + 2px); z-index: 40;
+      max-height: 220px; overflow-y: auto; background: #fff;
+      border: 1px solid var(--border); border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.12);
+    }
+    .mmr-email-ac-list[hidden] { display: none !important; }
+    .mmr-email-ac-item {
+      display: flex; align-items: center; gap: .55rem; width: 100%;
+      padding: .5rem .65rem; border: none; background: transparent; text-align: left;
+      cursor: pointer; font-size: .8125rem; color: var(--text);
+    }
+    .mmr-email-ac-item:hover, .mmr-email-ac-item.active {
+      background: #ecfdf5; color: var(--primary);
+    }
+    .mmr-email-ac-avatar {
+      flex: 0 0 1.75rem; width: 1.75rem; height: 1.75rem; border-radius: 50%;
+      background: #e5e7eb; color: #374151; font-size: .65rem; font-weight: 700;
+      display: inline-flex; align-items: center; justify-content: center;
+    }
+    .mmr-email-ac-item.active .mmr-email-ac-avatar,
+    .mmr-email-ac-item:hover .mmr-email-ac-avatar { background: var(--primary); color: #fff; }
+    .mmr-email-ac-meta { min-width: 0; flex: 1; }
+    .mmr-email-ac-email { font-weight: 600; word-break: break-all; }
+    .mmr-email-ac-name { font-size: .72rem; color: var(--text-muted); margin-top: .1rem; }
     .schedule-row { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; padding: .875rem; background: #f9fafb; border-radius: var(--radius); margin-top: .5rem; }
     .toggle-wrap { display: flex; align-items: center; gap: .5rem; }
     .toggle { position: relative; width: 36px; height: 20px; }
@@ -940,6 +1030,145 @@
     input:checked + .slider::before { transform: translateX(16px); }
     .time-input { padding: .4rem .5rem; border: 1px solid var(--border); border-radius: 6px; font-size: .875rem; width: 60px; }
     .time-input:focus { outline: none; border-color: var(--primary); }
+
+    /* Report preview strip — equal-height cards */
+    .email-send-col { min-width: 0; display: flex; flex-direction: column; }
+    .email-compose-insight {
+      padding: .65rem .75rem;
+      background: #f1f5f9;
+      border: 1px solid var(--border); border-radius: var(--radius);
+    }
+    .email-compose-insight-hdr {
+      font-size: .8125rem; font-weight: 700; color: var(--text);
+      display: flex; align-items: center; gap: .4rem;
+      margin-bottom: .55rem;
+    }
+    .email-compose-insight-grid {
+      display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: .65rem; align-items: stretch;
+    }
+    .email-compose-insight-block {
+      background: #fff; border: 1px solid var(--border); border-radius: 10px;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, .06);
+      display: flex; flex-direction: column; min-height: 0; overflow: hidden;
+    }
+    .email-compose-insight-block-hdr {
+      display: flex; align-items: center; gap: .45rem;
+      padding: .5rem .65rem; font-size: .72rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .04em;
+      border-bottom: 1px solid var(--border); flex-shrink: 0;
+    }
+    .email-compose-insight-block-icon {
+      width: 1.35rem; height: 1.35rem; border-radius: 6px;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: .72rem; flex-shrink: 0;
+    }
+    .email-compose-insight-block.is-attachment .email-compose-insight-block-hdr {
+      background: #eff6ff; color: #1e40af;
+    }
+    .email-compose-insight-block.is-attachment .email-compose-insight-block-icon {
+      background: #dbeafe;
+    }
+    .email-compose-insight-block.is-preview .email-compose-insight-block-hdr {
+      background: #ecfdf5; color: #065f46;
+    }
+    .email-compose-insight-block.is-preview .email-compose-insight-block-icon {
+      background: #d1fae5;
+    }
+    .email-compose-insight-block.is-checklist .email-compose-insight-block-hdr {
+      background: #fffbeb; color: #92400e;
+    }
+    .email-compose-insight-block.is-checklist .email-compose-insight-block-icon {
+      background: #fef3c7;
+    }
+    .email-compose-insight-block-body {
+      flex: 1 1 auto; display: flex; flex-direction: column;
+      padding: .55rem .65rem; min-height: 0;
+    }
+    .email-compose-insight-kv {
+      display: flex; flex-direction: column; gap: 0; margin: 0; flex: 1 1 auto;
+    }
+    .email-compose-insight-kv-row {
+      display: grid; grid-template-columns: minmax(0, 4.5rem) minmax(0, 1fr);
+      gap: .35rem .5rem; padding: .35rem 0; font-size: .74rem; line-height: 1.35;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .email-compose-insight-kv-row:last-child { border-bottom: none; flex: 1 1 auto; align-content: start; }
+    .email-compose-insight-kv-row dt { color: var(--text-muted); margin: 0; font-weight: 500; }
+    .email-compose-insight-kv-row dd { margin: 0; color: var(--text); word-break: break-word; }
+    .email-compose-insight-kv-row dd strong { color: var(--primary); font-weight: 700; }
+    .email-compose-stat-row {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: .35rem;
+      margin-top: auto; padding-top: .45rem;
+    }
+    .email-compose-stat {
+      text-align: center; padding: .35rem .25rem; background: #f8fafc;
+      border: 1px solid #e2e8f0; border-radius: 6px;
+    }
+    .email-compose-stat .n {
+      display: block; font-size: .85rem; font-weight: 700; color: var(--primary); line-height: 1.2;
+    }
+    .email-compose-stat .l {
+      display: block; font-size: .62rem; color: var(--text-muted); text-transform: uppercase;
+      letter-spacing: .03em; margin-top: .1rem;
+    }
+    .email-compose-insight-preview {
+      flex: 1 1 auto; display: flex; flex-direction: column;
+      height: 100%; min-height: 0;
+      font-size: .76rem; line-height: 1.45; color: var(--text);
+      background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;
+      padding: .6rem .65rem;
+    }
+    .email-compose-insight-preview-subj {
+      font-weight: 700; margin: 0 0 .5rem; color: var(--text); line-height: 1.35;
+      font-size: .78rem; padding-bottom: .45rem; border-bottom: 1px dashed #cbd5e1;
+      flex-shrink: 0;
+    }
+    .email-compose-insight-preview-body {
+      flex: 1 1 auto; display: flex; flex-direction: column;
+      min-height: 0; overflow: hidden;
+    }
+    .email-preview-p {
+      margin: 0 0 .55rem; line-height: 1.45;
+    }
+    .email-preview-p:last-of-type:not(.email-preview-greeting) { margin-bottom: 0; }
+    .email-preview-greeting { font-weight: 600; margin-bottom: .6rem; }
+    .email-preview-signoff {
+      margin-top: auto; padding-top: .55rem;
+      border-top: 1px solid #e2e8f0;
+    }
+    .email-preview-signoff p {
+      margin: 0 0 .2rem; line-height: 1.4; color: var(--text-muted);
+    }
+    .email-preview-signoff p:last-child { margin-bottom: 0; font-weight: 600; color: var(--text); }
+    .email-compose-checklist {
+      list-style: none; margin: 0; padding: 0;
+      display: flex; flex-direction: column; gap: .4rem; flex: 1 1 auto;
+      justify-content: space-evenly;
+    }
+    .email-compose-checklist li {
+      display: flex; align-items: flex-start; gap: .45rem;
+      font-size: .74rem; line-height: 1.35; color: var(--text);
+      padding: .4rem .5rem; border-radius: 7px; border: 1px solid transparent;
+    }
+    .email-compose-checklist li.is-ok { background: #f0fdf4; border-color: #bbf7d0; }
+    .email-compose-checklist li.is-warn { background: #fffbeb; border-color: #fde68a; }
+    .email-compose-checklist li.is-pending { background: #f9fafb; border-color: #e5e7eb; }
+    .email-compose-check-icon {
+      flex: 0 0 1.1rem; width: 1.1rem; height: 1.1rem; border-radius: 50%;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: .6rem; font-weight: 800; margin-top: .05rem;
+    }
+    .email-compose-check-icon.ok { background: #22c55e; color: #fff; }
+    .email-compose-check-icon.warn { background: #f59e0b; color: #fff; }
+    .email-compose-check-icon.pending { background: #9ca3af; color: #fff; }
+    .email-compose-check-sub { display: block; font-size: .68rem; color: var(--text-muted); margin-top: .15rem; line-height: 1.25; }
+    .email-compose-insight-tip {
+      margin-top: .55rem; padding: .45rem .6rem; background: #fff;
+      border: 1px solid #bfdbfe; border-radius: 8px;
+      font-size: .72rem; line-height: 1.35; color: var(--text-muted);
+    }
+    .email-compose-insight-tip strong { color: var(--primary); }
 
     .hidden { display: none !important; }
 
@@ -960,7 +1189,12 @@
     @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: none; opacity: 1; } }
 
     @media (max-width: 900px) {
-      .charts-row, .charts-row-3, .email-section { grid-template-columns: 1fr; }
+      .charts-row, .charts-row-3 { grid-template-columns: 1fr; }
+      .email-section-top { grid-template-columns: 1fr; }
+      .email-compose-insight-grid { grid-template-columns: 1fr; }
+      .email-recipients-grid { grid-template-columns: 1fr; }
+      .email-body-group { min-height: 8rem; }
+      #emailBody { min-height: 8rem; }
       .page { padding: 1rem; }
     }
     @media (max-width: 768px) {
@@ -1763,80 +1997,104 @@
     <div class="card" id="emailCard">
       <div class="card-title">📧 Email Report</div>
       <div class="email-section">
+        <div class="email-section-top">
         <!-- Compose -->
-        <div>
-          <div class="form-group">
+        <div class="email-compose-col">
+          <button type="button" class="btn btn-outline btn-sm" id="btnSavedAddresses" onclick="fillSavedAddresses()" style="margin-bottom:.5rem" title="Fill or clear To and CC with saved addresses for the current report format">
+            📋 Use saved addresses
+          </button>
+          <div class="email-recipients-grid">
+          <div class="form-group" style="margin-bottom:.75rem">
             <label class="form-label">
               To <span style="color:red">*</span>
               <span style="font-weight:400;color:var(--text-muted);font-size:.75rem;margin-left:.4rem;">(@injaaz.ae only)</span>
             </label>
-            <button type="button" class="btn btn-outline btn-sm" id="btnSavedAddresses" onclick="fillSavedAddresses()" style="margin-bottom:.5rem" title="Fill or clear To and CC with saved addresses">
-              📋 Use saved addresses
-            </button>
-            <input class="form-input" id="emailTo" type="text"
-                   placeholder="name@injaaz.ae, name2@injaaz.ae"
-                   oninput="validateEmailField(this)">
+            <div class="mmr-email-ac-wrap">
+              <input class="form-input" id="emailTo" type="text"
+                     placeholder="Start typing a name or email…"
+                     autocomplete="off" spellcheck="false"
+                     aria-autocomplete="list" aria-controls="emailToAcList">
+              <div class="mmr-email-ac-list" id="emailToAcList" role="listbox" hidden></div>
+            </div>
             <div class="field-error" id="emailToError"></div>
           </div>
-          <div class="form-group">
+          <div class="form-group" style="margin-bottom:.75rem">
             <label class="form-label">
               CC
               <span style="font-weight:400;color:var(--text-muted);font-size:.75rem;margin-left:.4rem;">(@injaaz.ae only)</span>
             </label>
-            <input class="form-input" id="emailCc" type="text"
-                   placeholder="name@injaaz.ae"
-                   oninput="validateEmailField(this)">
+            <div class="mmr-email-ac-wrap">
+              <input class="form-input" id="emailCc" type="text"
+                     placeholder="Start typing a name or email…"
+                     autocomplete="off" spellcheck="false"
+                     aria-autocomplete="list" aria-controls="emailCcAcList">
+              <div class="mmr-email-ac-list" id="emailCcAcList" role="listbox" hidden></div>
+            </div>
             <div class="field-error" id="emailCcError"></div>
           </div>
-          <div class="form-group report-format-row">
+          </div>
+          <div class="form-group report-format-row" style="margin-bottom:.75rem">
             <span class="form-label">Report format</span>
-            <div class="report-format-seg" role="group" aria-label="Daily or monthly wording for email and Excel">
+            <div class="report-format-seg" role="group" aria-label="Daily, monthly, or custom wording for email and Excel">
               <button type="button" class="seg-btn active" id="fmtDailyBtn" onclick="setReportFormat('daily', true)">Daily</button>
               <button type="button" class="seg-btn" id="fmtMonthlyBtn" onclick="setReportFormat('monthly', true)">Monthly</button>
+              <button type="button" class="seg-btn" id="fmtCustomBtn" onclick="setReportFormat('custom', true)">Custom</button>
             </div>
-            <p class="report-format-hint">Chooses the wording for the email subject/body and for Excel filenames and attachments (<strong>Daily Report …</strong> vs <strong>Monthly Report …</strong>). The timed schedule below still runs once per day; upload data that matches the period you need. After switching Daily/Monthly, subject and body update to the matching template—use <strong>Save email details</strong> or <strong>Save Config</strong> to keep them. Use <strong>Download Excel</strong> / <strong>Monthly Excel (ZIP)</strong> in the row below for exports.</p>
+            <p class="report-format-hint">Sets recipients, wording, and Excel filenames. Save email details after changes. Custom templates are managed under <strong>Send on schedule</strong>.</p>
           </div>
-          <div class="form-group">
+          <div class="form-group" style="margin-bottom:.75rem">
             <label class="form-label">Subject</label>
             <input class="form-input" id="emailSubject" type="text">
           </div>
-          <div class="form-group">
+          <div class="form-group email-body-group">
             <label class="form-label">Body</label>
             <textarea class="form-textarea" id="emailBody"></textarea>
           </div>
-          <div style="display:flex;gap:.75rem;flex-wrap:wrap">
-            <button class="btn btn-success" id="btnSendEmail" onclick="sendEmailNow()">
-              ✉️ Send Email Now
-            </button>
-            <button class="btn btn-outline" id="btnSaveToFolder" onclick="saveToFolder()" disabled title="Save current report (filtered or full) to Report folder">
+          <div class="email-action-btns">
+            <button class="btn btn-outline btn-sm" id="btnSaveToFolder" onclick="saveToFolder()" disabled title="Save current report (filtered or full) to Report folder">
               📁 Save to Folder
             </button>
-            <button class="btn btn-outline" id="btnSaveToDrive" onclick="saveToDrive()" disabled title="Save report to General\CAFM and CAFM\Daily Generated Report">
+            <button class="btn btn-outline btn-sm" id="btnSaveToDrive" onclick="saveToDrive()" disabled title="Save report to General\CAFM and CAFM\Daily Generated Report">
               💾 Save to Drive
             </button>
-            <button class="btn btn-outline" onclick="saveEmailConfig()">
+            <button class="btn btn-outline btn-sm" onclick="saveEmailConfig()">
               💾 Save Config
             </button>
-            <button type="button" class="btn btn-outline" id="btnSaveEmailDetails" onclick="saveEmailDetailsOnly()"
-              title="Save To, CC, subject, body and Daily/Monthly wording to the server (scheduled sends use the last saved values).">
+            <button type="button" class="btn btn-outline btn-sm" id="btnSaveEmailDetails" onclick="saveEmailDetailsOnly()"
+              title="Save To, CC, subject, body and report format (Daily/Monthly/Custom) to the server (scheduled sends use the last saved values).">
               💾 Save email details
             </button>
-            <button type="button" class="btn btn-outline" id="btnEmailDownloadExcel" onclick="handleDownloadClick()" disabled title="Download Excel (same as top KPI; filename follows Daily/Monthly after Save Config)">
+            <button type="button" class="btn btn-outline btn-sm" id="btnEmailDownloadExcel" onclick="handleDownloadClick()" disabled title="Download Excel (same as top KPI; filename follows Daily/Monthly after Save Config)">
               📥 Download Excel
             </button>
-            <button type="button" class="btn btn-outline hidden" id="btnEmailDownloadMonthlyZip" onclick="downloadReportMonthly()" disabled title="ZIP with one workbook per calendar month">
+            <button type="button" class="btn btn-outline btn-sm hidden" id="btnEmailDownloadMonthlyZip" onclick="downloadReportMonthly()" disabled title="ZIP with one workbook per calendar month">
               📥 Monthly Excel (ZIP)
             </button>
           </div>
         </div>
 
-        <!-- Schedule -->
-        <div>
-          <div class="card-title" style="margin-bottom:.75rem">⏰ Schedule</div>
-          <p style="font-size:.85rem;color:var(--text-muted);margin-bottom:1rem">
-            Automatically send the report every day at the configured time (using the last uploaded Excel file). Uses the <strong>Report format</strong> (Daily/Monthly) on the left for subject, body, and attachment filename.
-          </p>
-          <div class="schedule-row">
+        <!-- Send options: now vs schedule -->
+        <div id="emailSendOptions" class="email-send-col">
+          <div class="card-title" style="margin-bottom:.65rem">📤 Send options</div>
+
+          <div class="email-send-option is-send-now" style="margin-bottom:.75rem">
+            <div class="email-send-option-hdr">✉️ Send email now</div>
+            <p class="email-send-option-hint" style="margin-bottom:.65rem">
+              Sends immediately with the report on your dashboard. Does not change the daily schedule.
+            </p>
+            <div class="email-send-option-actions">
+              <button class="btn btn-success" id="btnSendEmail" onclick="sendEmailNow()">
+                Send Email Now
+              </button>
+            </div>
+          </div>
+
+          <div class="email-send-option is-schedule" style="margin-bottom:0">
+            <div class="email-send-option-hdr">⏰ Send on schedule</div>
+            <p class="email-send-option-hint" style="margin-bottom:.65rem">
+              Sends daily at the time below using the last uploaded CAFM Excel. Approve the cycle in the roadmap before the run.
+            </p>
+          <div class="schedule-row" style="margin-top:0">
             <div class="toggle-wrap">
               <label class="toggle">
                 <input type="checkbox" id="scheduleEnabled" onchange="onScheduleToggle()">
@@ -1852,7 +2110,7 @@
                    min="0" max="59" placeholder="00" value="0">
             <span style="font-size:.78rem;color:var(--text-muted)">(24h, GST)</span>
           </div>
-          <div style="margin-top:1rem;display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
+          <div style="margin-top:.75rem;display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
             <button class="btn btn-primary btn-sm" onclick="saveSchedule()">
               ✔ Save Schedule
             </button>
@@ -1861,15 +2119,45 @@
             </button>
             <span id="scheduleStatus" style="font-size:.83rem;color:var(--text-muted)"></span>
           </div>
-          <div style="margin-top:1.5rem;padding:1rem;background:var(--accent);border-radius:8px">
-            <p style="font-size:.82rem;font-weight:600;color:var(--primary);margin-bottom:.4rem">ℹ️ Note</p>
-            <p style="font-size:.82rem;color:var(--text-muted)">
-              The scheduled email uses the <em>last uploaded</em> Excel file.
-              Upload a fresh file and re-save to refresh the data.
-            </p>
+
+          <div class="custom-presets-box" id="customPresetsBox" style="margin-top:.875rem">
+            <div class="custom-presets-title">Custom email templates</div>
+            <p class="custom-presets-hint" style="margin-top:0;margin-bottom:.45rem">Select <strong>Custom</strong> in Report format, then pick or save a template.</p>
+            <div class="custom-presets-row">
+              <select id="customPresetSelect" aria-label="Saved custom email templates">
+                <option value="">— Select a saved template —</option>
+              </select>
+            </div>
+            <div class="custom-presets-row" id="customPresetNameRow" style="margin-top:.5rem" hidden>
+              <input type="text" id="customPresetName" class="custom-presets-name" maxlength="40"
+                     placeholder="New template name (e.g. Ajman Municipality)" aria-label="New custom template name">
+            </div>
+            <div class="custom-presets-row" style="margin-top:.5rem">
+              <button type="button" class="btn btn-outline btn-sm" id="btnApplyCustomPreset" onclick="applyCustomPreset()" disabled title="Load recipients, subject and body from the selected template">
+                Apply
+              </button>
+              <button type="button" class="btn btn-outline btn-sm" id="btnDeleteCustomPreset" onclick="deleteCustomPreset()" disabled title="Remove the selected template">
+                Delete
+              </button>
+              <button type="button" class="btn btn-primary btn-sm" id="btnSaveCustomPreset" onclick="saveCustomPreset()"
+                title="Save current To, CC, subject and body as a new or updated template">
+                Save as template
+              </button>
+            </div>
+          </div>
+          </div><!-- /.email-send-option.is-schedule -->
+        </div><!-- /#emailSendOptions -->
+        </div><!-- /.email-section-top -->
+
+        <div class="email-compose-insight" id="emailComposeInsight" aria-live="polite">
+          <div class="email-compose-insight-hdr">📋 Report &amp; email preview</div>
+          <div id="emailComposeInsightBody">
+            <p style="font-size:.78rem;color:var(--text-muted);margin:0">Upload a workbook to see attachment details and a live preview of your email.</p>
           </div>
         </div>
-      </div>
+      </div><!-- /.email-section -->
+
+      <div id="emailActionStatus" class="email-action-status email-section-status hidden" role="alert" aria-live="polite"></div>
     </div>
 
   </div><!-- /dashboardSection -->
@@ -1978,6 +2266,10 @@ const CHART_COLORS = [
 
 let charts = {};
 let dashboardData = null;
+/** Saved report filename when dashboard rows came from Report folder (not mmr_latest.xlsx). */
+let mmrActiveFolderReportFilename = null;
+/** True when mmr_latest.xlsx is the active data source (upload or server restore). */
+let mmrHasLiveUpload = false;
 
 // ════════════════════════════════════════════════════════════════
 // Auth helper
@@ -2026,6 +2318,33 @@ function toast(msg, type = 'info') {
   setTimeout(() => el.remove(), 4000);
 }
 
+function showEmailStatus(msg, type = 'info') {
+  const el = document.getElementById('emailActionStatus');
+  if (!el) {
+    toast(msg, type);
+    return;
+  }
+  el.className = `email-action-status email-section-status email-action-status-${type}`;
+  el.textContent = msg;
+  el.classList.remove('hidden');
+  el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  if (type !== 'error') {
+    window.setTimeout(() => {
+      if (el.textContent === msg) {
+        el.classList.add('hidden');
+        el.textContent = '';
+      }
+    }, 10000);
+  }
+}
+
+function clearEmailStatus() {
+  const el = document.getElementById('emailActionStatus');
+  if (!el) return;
+  el.classList.add('hidden');
+  el.textContent = '';
+}
+
 // ════════════════════════════════════════════════════════════════
 // Upload handlers
 // ════════════════════════════════════════════════════════════════
@@ -2053,6 +2372,8 @@ async function uploadFile(file) {
     bar.style.width = '100%';
     const data = await resp.json();
     if (!resp.ok) throw new Error(data.error || 'Upload failed');
+    mmrHasLiveUpload = true;
+    mmrActiveFolderReportFilename = null;
     allRows = data.rows;
     dashboardData = data.dashboard;
     document.getElementById('dashboardSection').classList.remove('hidden');
@@ -2084,6 +2405,7 @@ function renderDashboard(d) {
   populateFilters(d.filters);
   renderAllCharts(d);
   buildTableHeader();
+  updateEmailComposeInsight();
 }
 
 function renderKPIs(d) {
@@ -2618,7 +2940,7 @@ function cancelDownload() {
 }
 
 function reportFilenameLabelPrefix() {
-  return getReportFormat() === 'monthly'
+  return getExcelReportFormat() === 'monthly'
     ? 'Monthly Report on Resolved and Pending Complaints for'
     : 'Daily Report on Resolved and Pending Complaints for';
 }
@@ -2665,6 +2987,213 @@ function getReportFilenameFromRows(rows) {
     datePart = `${fmtDay(min)} - ${fmtDay(max)}`;
   }
   return `${labelPrefix} ${datePart}.xlsx`;
+}
+
+/** Date label embedded in the generated attachment filename (matches server {{REPORT_DATE}}). */
+function getReportDateLabelFromRows(rows) {
+  const fn = getReportFilenameFromRows(rows || []);
+  const m = fn.match(/ for (.+)\.xlsx$/i);
+  return m ? m[1] : '—';
+}
+
+function mmrResolveReportDatePlaceholder(text, rows) {
+  const dateLabel = getReportDateLabelFromRows(rows);
+  return String(text || '').replace(/\{\{REPORT_DATE\}\}/g, dateLabel);
+}
+
+function mmrCountEmailRecipients() {
+  const split = (v) => (v || '').split(',').map(s => s.trim()).filter(Boolean);
+  return split(document.getElementById('emailTo')?.value).length
+    + split(document.getElementById('emailCc')?.value).length;
+}
+
+function mmrEmailReportSourceLabel() {
+  if (mmrHasLiveUpload) return 'Uploaded workbook on server';
+  if (mmrActiveFolderReportFilename) return `Saved report: ${mmrActiveFolderReportFilename}`;
+  return 'No report file';
+}
+
+function mmrEmailReportSourceShort() {
+  if (mmrHasLiveUpload) return 'Uploaded workbook';
+  if (mmrActiveFolderReportFilename) return 'Saved report folder';
+  return '—';
+}
+
+function mmrEmailComposeCheckItem(state, label, sub) {
+  const cls = state === 'ok' ? 'ok' : (state === 'warn' ? 'warn' : 'pending');
+  const icon = state === 'ok' ? '✓' : (state === 'warn' ? '!' : '○');
+  const liCls = state === 'ok' ? 'is-ok' : (state === 'warn' ? 'is-warn' : 'is-pending');
+  return `<li class="${liCls}"><span class="email-compose-check-icon ${cls}" aria-hidden="true">${icon}</span><span>${label}${sub ? `<span class="email-compose-check-sub">${sub}</span>` : ''}</span></li>`;
+}
+
+function mmrEmailInsightKvRow(label, valueHtml) {
+  return `<div class="email-compose-insight-kv-row"><dt>${label}</dt><dd>${valueHtml}</dd></div>`;
+}
+
+/** Render email body as structured preview paragraphs (greeting, body, sign-off). */
+function mmrFormatEmailPreviewBody(text) {
+  const raw = String(text || '').trim();
+  if (!raw) return '<p class="email-preview-p">—</p>';
+
+  const lines = raw.split('\n').map(s => s.trim()).filter(Boolean);
+  if (!lines.length) return '<p class="email-preview-p">—</p>';
+
+  let signStart = -1;
+  for (let i = 0; i < lines.length; i++) {
+    if (/^(regards|best regards|kind regards|thanks|thank you|sincerely)/i.test(lines[i])) {
+      signStart = i;
+      break;
+    }
+  }
+
+  const signLines = signStart >= 0 ? lines.slice(signStart) : [];
+  const bodyLines = signStart >= 0 ? lines.slice(0, signStart) : lines;
+
+  let greetingHtml = '';
+  let mainLines = bodyLines;
+  if (bodyLines.length && /^(dear|hi|hello|good morning|good afternoon)/i.test(bodyLines[0])) {
+    greetingHtml = `<p class="email-preview-p email-preview-greeting">${mmrEscInsight(bodyLines[0])}</p>`;
+    mainLines = bodyLines.slice(1);
+  }
+
+  const mainHtml = mainLines.map(line =>
+    `<p class="email-preview-p">${mmrEscInsight(line)}</p>`
+  ).join('');
+
+  const signoffHtml = signLines.length
+    ? `<div class="email-preview-signoff">${signLines.map(l => `<p>${mmrEscInsight(l)}</p>`).join('')}</div>`
+    : '';
+
+  return greetingHtml + mainHtml + signoffHtml;
+}
+
+function mmrEmailComposeTipHtml() {
+  if (!allRows.length) {
+    return '<strong>Tip:</strong> Upload a CAFM Excel file or open a saved report — the attachment and preview appear here once data is loaded.';
+  }
+  const dirty = mmrPersistedEmailComposeFingerprint !== null
+    && mmrComposeFingerprintFromSnapshot(mmrGetComposeSnapshot()) !== mmrPersistedEmailComposeFingerprint;
+  if (dirty) {
+    return '<strong>Tip:</strong> Save email details before enabling the daily schedule so automated sends use your latest recipients and wording.';
+  }
+  if (automationStatus?.schedule_enabled && !automationStatus?.schedule_paused) {
+    const t = automationStatus.next_run_at || `${String(automationStatus.schedule_hour ?? 10).padStart(2, '0')}:${String(automationStatus.schedule_minute ?? 0).padStart(2, '0')}`;
+    const day = automationStatus.next_run_tomorrow ? 'tomorrow' : 'today';
+    return `<strong>Tip:</strong> Next scheduled send is ${day} at <strong>${mmrEscInsight(t)}</strong> GST. After each send, upload a fresh Excel for the next cycle. Dashboard filters do not change the attachment.`;
+  }
+  if (automationStatus?.schedule_enabled && automationStatus?.schedule_paused) {
+    return '<strong>Tip:</strong> Schedule is paused — upload a fresh workbook, then resume from the roadmap or Email section.';
+  }
+  return '<strong>Tip:</strong> Dashboard filters are for charts and tables only — the emailed Excel always includes the full uploaded report.';
+}
+
+function updateEmailComposeInsight() {
+  const root = document.getElementById('emailComposeInsightBody');
+  if (!root) return;
+
+  if (!allRows.length) {
+    root.innerHTML = '<p style="font-size:.78rem;color:var(--text-muted);margin:0">Upload a workbook to see attachment details and a live preview of your email.</p>';
+    return;
+  }
+
+  const fmt = getReportFormat();
+  const fmtLabel = fmt === 'monthly' ? 'Monthly' : (fmt === 'custom' ? 'Custom' : 'Daily');
+  const attachmentName = getReportFilenameFromRows(allRows);
+  const reportDate = getReportDateLabelFromRows(allRows);
+  const subjectRaw = document.getElementById('emailSubject')?.value || '';
+  const bodyRaw = document.getElementById('emailBody')?.value || '';
+  const subjectPreview = mmrResolveReportDatePlaceholder(subjectRaw, allRows);
+  const bodyPreview = mmrResolveReportDatePlaceholder(bodyRaw, allRows).trim();
+  const bodySnippet = bodyPreview.length > 480 ? bodyPreview.slice(0, 477) + '…' : bodyPreview;
+  const sourceFull = mmrEmailReportSourceLabel();
+  const sourceShort = mmrEmailReportSourceShort();
+  const recipientCount = mmrCountEmailRecipients();
+  const toVal = (document.getElementById('emailTo')?.value || '').trim();
+  const hasReportFile = mmrHasLiveUpload || !!mmrActiveFolderReportFilename;
+  const emailSaved = mmrPersistedEmailComposeFingerprint !== null
+    && mmrComposeFingerprintFromSnapshot(mmrGetComposeSnapshot()) === mmrPersistedEmailComposeFingerprint;
+
+  let pending = 0;
+  let resolved = 0;
+  for (const r of allRows) {
+    const st = (r['Status'] || '').toLowerCase();
+    if (st.includes('pend')) pending++;
+    else if (st.includes('resolv') || st.includes('complet') || st.includes('closed')) resolved++;
+  }
+
+  const checklist = [
+    mmrEmailComposeCheckItem(
+      hasReportFile ? 'ok' : 'pending',
+      hasReportFile ? 'Report file ready' : 'Report file missing',
+      hasReportFile ? '' : 'Upload or open a saved report'
+    ),
+    mmrEmailComposeCheckItem(
+      toVal ? 'ok' : 'pending',
+      toVal ? `${recipientCount} recipient${recipientCount !== 1 ? 's' : ''} configured` : 'Add at least one To address',
+      ''
+    ),
+    mmrEmailComposeCheckItem(
+      emailSaved ? 'ok' : (mmrPersistedEmailComposeFingerprint === null ? 'pending' : 'warn'),
+      emailSaved ? 'Email details saved' : 'Email details not saved',
+      emailSaved ? '' : 'Use Save email details'
+    ),
+  ];
+
+  if (automationStatus?.schedule_enabled) {
+    const schedOk = !automationStatus.schedule_paused;
+    const t = automationStatus.next_run_at || `${String(automationStatus.schedule_hour ?? 10).padStart(2, '0')}:${String(automationStatus.schedule_minute ?? 0).padStart(2, '0')}`;
+    checklist.push(mmrEmailComposeCheckItem(
+      schedOk ? 'ok' : 'warn',
+      schedOk ? `Schedule active · ${t} GST` : 'Schedule paused',
+      schedOk ? '' : 'Upload a fresh workbook to resume'
+    ));
+  }
+
+  root.innerHTML =
+    `<div class="email-compose-insight-grid">
+      <div class="email-compose-insight-block is-attachment">
+        <div class="email-compose-insight-block-hdr">
+          <span class="email-compose-insight-block-icon" aria-hidden="true">📎</span>
+          <span>Attachment</span>
+        </div>
+        <div class="email-compose-insight-block-body">
+          <dl class="email-compose-insight-kv">
+            ${mmrEmailInsightKvRow('Format', `<strong>${mmrEscInsight(fmtLabel)}</strong>`)}
+            ${mmrEmailInsightKvRow('Date', mmrEscInsight(reportDate))}
+            ${mmrEmailInsightKvRow('To send', recipientCount ? recipientCount + ' recipient' + (recipientCount !== 1 ? 's' : '') : '—')}
+            ${mmrEmailInsightKvRow('Source', `<span title="${mmrEscInsight(sourceFull)}">${mmrEscInsight(sourceShort)}</span>`)}
+            ${mmrEmailInsightKvRow('File', mmrEscInsight(attachmentName))}
+          </dl>
+          <div class="email-compose-stat-row">
+            <div class="email-compose-stat"><span class="n">${allRows.length.toLocaleString()}</span><span class="l">Total</span></div>
+            <div class="email-compose-stat"><span class="n">${pending.toLocaleString()}</span><span class="l">Pending</span></div>
+            <div class="email-compose-stat"><span class="n">${resolved.toLocaleString()}</span><span class="l">Resolved</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="email-compose-insight-block is-preview">
+        <div class="email-compose-insight-block-hdr">
+          <span class="email-compose-insight-block-icon" aria-hidden="true">✉️</span>
+          <span>Live preview</span>
+        </div>
+        <div class="email-compose-insight-block-body">
+          <div class="email-compose-insight-preview">
+            <div class="email-compose-insight-preview-subj">${mmrEscInsight(subjectPreview || '—')}</div>
+            <div class="email-compose-insight-preview-body">${mmrFormatEmailPreviewBody(bodySnippet)}</div>
+          </div>
+        </div>
+      </div>
+      <div class="email-compose-insight-block is-checklist">
+        <div class="email-compose-insight-block-hdr">
+          <span class="email-compose-insight-block-icon" aria-hidden="true">✅</span>
+          <span>Before you send</span>
+        </div>
+        <div class="email-compose-insight-block-body">
+          <ul class="email-compose-checklist">${checklist.join('')}</ul>
+        </div>
+      </div>
+    </div>
+    <div class="email-compose-insight-tip">${mmrEmailComposeTipHtml()}</div>`;
 }
 
 /**
@@ -2742,7 +3271,26 @@ function _triggerBlobDownload(blob, filename) {
 
 async function downloadReport() {
   try {
-    const rf = encodeURIComponent(getReportFormat());
+    if (!mmrHasLiveUpload && mmrActiveFolderReportFilename) {
+      const fn = mmrActiveFolderReportFilename;
+      _dlAbortCtrl = new AbortController();
+      const btn = document.getElementById('btnDownloadReport');
+      if (btn) btn.disabled = true;
+      _dlBar.generating('Downloading report…');
+      const resp = await authFetch(
+        '/admin/mmr/api/report-folder/download/' + encodeURIComponent(fn),
+        { signal: _dlAbortCtrl.signal }
+      );
+      if (!resp.ok) {
+        const d = await resp.json().catch(() => ({}));
+        throw new Error(d.error || 'Download failed');
+      }
+      const blob = await resp.blob();
+      _triggerBlobDownload(blob, fn);
+      _dlBar.done('Report downloaded');
+      return;
+    }
+    const rf = encodeURIComponent(getExcelReportFormat());
     const { blob, filename } = await _fetchWithProgress(
       `/admin/mmr/api/download-report?report_format=${rf}`,
       'Generating report on server…',
@@ -2763,8 +3311,12 @@ async function downloadReport() {
 }
 
 async function downloadReportMonthly() {
+  if (!mmrHasLiveUpload && mmrActiveFolderReportFilename) {
+    toast('Monthly ZIP needs a fresh CAFM upload. Download the single report or upload a new Excel file.', 'info');
+    return;
+  }
   try {
-    const rf = encodeURIComponent(getReportFormat());
+    const rf = encodeURIComponent(getExcelReportFormat());
     const { blob, filename } = await _fetchWithProgress(
       `/admin/mmr/api/download-report-monthly?report_format=${rf}`,
       'Building monthly ZIP on server…',
@@ -2797,18 +3349,151 @@ async function downloadReportMonthly() {
 // ════════════════════════════════════════════════════════════════
 const MMR_EMAIL_PRESETS_FALLBACK = {
   daily: {
+    to: 'dennis@injaaz.ae, shakeel@injaaz.ae, araki@injaaz.ae, abbas@injaaz.ae, a.mohammed@injaaz.ae',
+    cc: 'taha@injaaz.ae, george@injaaz.ae, arshith@injaaz.ae, eslam@injaaz.ae, alaa@injaaz.ae, mona@injaaz.ae, siraj@injaaz.ae, jismon@injaaz.ae, ousman@injaaz.ae',
     subject: 'Daily Report on Resolved and Pending Complaints for {{REPORT_DATE}}',
     body: 'Dear FM Team,\n\nPlease find below comprehensive Daily Report of ({{REPORT_DATE}}) generated from our CAFM system / Injaaz Application for all Pending & Resolved work orders.\n\nRegards,\nCAFM Team',
   },
   monthly: {
+    to: 'dennis@injaaz.ae, shakeel@injaaz.ae, araki@injaaz.ae, abbas@injaaz.ae, a.mohammed@injaaz.ae',
+    cc: 'taha@injaaz.ae, george@injaaz.ae, arshith@injaaz.ae, eslam@injaaz.ae, alaa@injaaz.ae, mona@injaaz.ae, siraj@injaaz.ae, jismon@injaaz.ae, ousman@injaaz.ae',
     subject: 'Monthly Report on Resolved and Pending Complaints for {{REPORT_DATE}}',
     body: 'Dear FM Team,\n\nPlease find below comprehensive Monthly Report of ({{REPORT_DATE}}) generated from our CAFM system / Injaaz Application for all Pending & Resolved work orders.\n\nRegards,\nCAFM Team',
   },
 };
+const SAVED_ADDRESSES = {
+  to: 'dennis@injaaz.ae, shakeel@injaaz.ae, araki@injaaz.ae, abbas@injaaz.ae, a.mohammed@injaaz.ae',
+  cc: 'taha@injaaz.ae, george@injaaz.ae, arshith@injaaz.ae, eslam@injaaz.ae, alaa@injaaz.ae, mona@injaaz.ae, siraj@injaaz.ae, jismon@injaaz.ae, ousman@injaaz.ae',
+};
 let mmrEmailPresets = MMR_EMAIL_PRESETS_FALLBACK;
+let mmrCustomPresets = [];
+let mmrActiveCustomPresetKey = '';
+const MMR_PRESET_NEW = '__new__';
+/** In-session To/CC per Daily/Monthly (preserved when toggling format). */
+let mmrFormatRecipients = {
+  daily: { to: '', cc: '' },
+  monthly: { to: '', cc: '' },
+};
+/** True when user edited To/CC for that format without saving yet. */
+let mmrFormatRecipientsDirty = { daily: false, monthly: false };
 
 /** Last compose snapshot persisted on server (load/save). Used for Save email details UX. */
 let mmrPersistedEmailComposeFingerprint = null;
+
+function mmrNormalizeEmailListField(value) {
+  return (value || '')
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean)
+    .join(', ');
+}
+
+function mmrSavedRecipientsForFormat(mode) {
+  const p = mmrEmailPresets[mode] || MMR_EMAIL_PRESETS_FALLBACK[mode] || {};
+  const def = MMR_EMAIL_PRESETS_FALLBACK[mode] || MMR_EMAIL_PRESETS_FALLBACK.daily;
+  const to = mmrNormalizeEmailListField(p.to || def.to || SAVED_ADDRESSES.to);
+  const cc = mmrNormalizeEmailListField(p.cc || def.cc || SAVED_ADDRESSES.cc);
+  return { to, cc };
+}
+
+function mmrSyncSavedFormatRecipientsFromPresets() {
+  for (const fmt of ['daily', 'monthly']) {
+    const saved = mmrSavedRecipientsForFormat(fmt);
+    mmrFormatRecipients[fmt] = { ...saved };
+    mmrFormatRecipientsDirty[fmt] = false;
+    if (!mmrEmailPresets[fmt]) mmrEmailPresets[fmt] = {};
+    mmrEmailPresets[fmt].to = saved.to;
+    mmrEmailPresets[fmt].cc = saved.cc;
+  }
+}
+
+function mmrApplySavedFormatRecipients(payload) {
+  const fr = payload && payload.format_recipients;
+  if (!fr || typeof fr !== 'object') return;
+  for (const fmt of ['daily', 'monthly']) {
+    const block = fr[fmt];
+    if (!block || typeof block !== 'object') continue;
+    const to = mmrNormalizeEmailListField(block.to || '');
+    const cc = mmrNormalizeEmailListField(block.cc || '');
+    mmrFormatRecipients[fmt] = { to, cc };
+    mmrFormatRecipientsDirty[fmt] = false;
+    if (!mmrEmailPresets[fmt]) mmrEmailPresets[fmt] = {};
+    mmrEmailPresets[fmt].to = to;
+    mmrEmailPresets[fmt].cc = cc;
+  }
+}
+
+function mmrStashRecipientsForFormat(fmt) {
+  if (fmt !== 'daily' && fmt !== 'monthly') return;
+  mmrFormatRecipients[fmt] = {
+    to: mmrNormalizeEmailListField(document.getElementById('emailTo')?.value),
+    cc: mmrNormalizeEmailListField(document.getElementById('emailCc')?.value),
+  };
+  mmrFormatRecipientsDirty[fmt] = true;
+}
+
+function mmrApplyFormatPreset(mode) {
+  const p = mmrEmailPresets[mode] || MMR_EMAIL_PRESETS_FALLBACK[mode];
+  const { to, cc } = mmrSavedRecipientsForFormat(mode);
+  const toEl = document.getElementById('emailTo');
+  const ccEl = document.getElementById('emailCc');
+  if (toEl) toEl.value = to;
+  if (ccEl) ccEl.value = cc;
+  mmrFormatRecipients[mode] = { to, cc };
+  mmrFormatRecipientsDirty[mode] = false;
+  if (p.subject) document.getElementById('emailSubject').value = p.subject;
+  if (p.body) document.getElementById('emailBody').value = p.body;
+  if (toEl) validateEmailField(toEl);
+  if (ccEl && ccEl.value.trim()) validateEmailField(ccEl);
+  mmrRefreshSavedAddressesButtonState();
+}
+
+function mmrSavedAddressesForCurrentFormat() {
+  const rf = getReportFormat();
+  if (rf === 'daily' || rf === 'monthly') return mmrSavedRecipientsForFormat(rf);
+  return { to: SAVED_ADDRESSES.to, cc: SAVED_ADDRESSES.cc };
+}
+
+function mmrRefreshSavedAddressesButtonState() {
+  const btn = document.getElementById('btnSavedAddresses');
+  const toEl = document.getElementById('emailTo');
+  const ccEl = document.getElementById('emailCc');
+  if (!btn || !toEl || !ccEl) return;
+  const expected = mmrSavedAddressesForCurrentFormat();
+  const filled =
+    mmrNormalizeEmailListField(toEl.value) === mmrNormalizeEmailListField(expected.to) &&
+    mmrNormalizeEmailListField(ccEl.value) === mmrNormalizeEmailListField(expected.cc);
+  btn.setAttribute('data-filled', filled ? 'true' : 'false');
+  btn.textContent = filled ? '✕ Clear saved addresses' : '📋 Use saved addresses';
+}
+
+function mmrEmailConfigPayload(extra) {
+  const snap = mmrGetComposeSnapshot();
+  const rf = snap.report_format;
+  if (rf === 'daily' || rf === 'monthly') mmrStashRecipientsForFormat(rf);
+  const payload = {
+    to: document.getElementById('emailTo').value,
+    cc: document.getElementById('emailCc').value,
+    subject: snap.subject,
+    body: snap.body,
+    report_format: snap.report_format,
+    format_recipients: {
+      daily: {
+        to: mmrNormalizeEmailListField(mmrFormatRecipients.daily.to),
+        cc: mmrNormalizeEmailListField(mmrFormatRecipients.daily.cc),
+      },
+      monthly: {
+        to: mmrNormalizeEmailListField(mmrFormatRecipients.monthly.to),
+        cc: mmrNormalizeEmailListField(mmrFormatRecipients.monthly.cc),
+      },
+    },
+    ...extra,
+  };
+  if (snap.report_format === 'custom') {
+    payload.active_custom_preset = document.getElementById('customPresetSelect')?.value || mmrActiveCustomPresetKey || '';
+  }
+  return payload;
+}
 
 function mmrGetComposeSnapshot() {
   return {
@@ -2826,24 +3511,26 @@ function mmrComposeFingerprintFromSnapshot(s) {
 
 function refreshMmrEmailDetailsSavedState() {
   const btn = document.getElementById('btnSaveEmailDetails');
-  if (!btn) return;
-  if (mmrPersistedEmailComposeFingerprint === null) {
-    btn.textContent = '💾 Save email details';
-    btn.classList.remove('btn-mmr-email-saved');
-    btn.title = 'Save To, CC, subject, body and Daily/Monthly wording to the server.';
-    return;
+  if (btn) {
+    if (mmrPersistedEmailComposeFingerprint === null) {
+      btn.textContent = '💾 Save email details';
+      btn.classList.remove('btn-mmr-email-saved');
+      btn.title = 'Save To, CC, subject, body and report format to the server.';
+    } else {
+      const cur = mmrComposeFingerprintFromSnapshot(mmrGetComposeSnapshot());
+      const dirty = cur !== mmrPersistedEmailComposeFingerprint;
+      if (dirty) {
+        btn.textContent = '💾 Save email details';
+        btn.classList.remove('btn-mmr-email-saved');
+        btn.title = 'Unsaved changes — save so future visits and scheduled emails use these addresses and wording.';
+      } else {
+        btn.textContent = '✓ Email details saved';
+        btn.classList.add('btn-mmr-email-saved');
+        btn.title = 'Matches what is saved on the server.';
+      }
+    }
   }
-  const cur = mmrComposeFingerprintFromSnapshot(mmrGetComposeSnapshot());
-  const dirty = cur !== mmrPersistedEmailComposeFingerprint;
-  if (dirty) {
-    btn.textContent = '💾 Save email details';
-    btn.classList.remove('btn-mmr-email-saved');
-    btn.title = 'Unsaved changes — save so future visits and scheduled emails use these addresses and wording.';
-  } else {
-    btn.textContent = '✓ Email details saved';
-    btn.classList.add('btn-mmr-email-saved');
-    btn.title = 'Matches what is saved on the server.';
-  }
+  updateEmailComposeInsight();
 }
 
 function mmrSyncPersistedEmailFingerprintFromDom() {
@@ -2853,18 +3540,11 @@ function mmrSyncPersistedEmailFingerprintFromDom() {
 
 async function saveEmailDetailsOnly() {
   if (!validateAllEmailFields()) {
-    toast('Fix the email address errors before saving', 'error');
+    showEmailStatus('Fix the email address errors before saving', 'error');
     return;
   }
   const btn = document.getElementById('btnSaveEmailDetails');
-  const snap = mmrGetComposeSnapshot();
-  const payload = {
-    to: document.getElementById('emailTo').value,
-    cc: document.getElementById('emailCc').value,
-    subject: snap.subject,
-    body: snap.body,
-    report_format: snap.report_format,
-  };
+  const payload = mmrEmailConfigPayload();
   if (btn) btn.disabled = true;
   try {
     const resp = await authFetch('/admin/mmr/api/email-config', {
@@ -2874,35 +3554,244 @@ async function saveEmailDetailsOnly() {
     });
     const data = await resp.json().catch(() => ({}));
     if (!resp.ok) throw new Error(data.error || 'Could not save email details');
+    mmrApplySavedFormatRecipients(payload);
+    mmrSyncSavedFormatRecipientsFromPresets();
     mmrSyncPersistedEmailFingerprintFromDom();
-    toast('Email details saved', 'success');
+    showEmailStatus('Email details saved', 'success');
   } catch (e) {
-    toast(e.message || 'Failed to save', 'error');
+    showEmailStatus(e.message || 'Failed to save', 'error');
   } finally {
     if (btn) btn.disabled = false;
   }
 }
 
 function getReportFormat() {
+  if (document.getElementById('fmtCustomBtn')?.classList.contains('active')) return 'custom';
   const m = document.getElementById('fmtMonthlyBtn');
   return (m && m.classList.contains('active')) ? 'monthly' : 'daily';
 }
 
-/** @param {'daily'|'monthly'} mode @param {boolean} [applyPresets] */
+/** Excel downloads still use daily/monthly filenames; custom keeps daily-style export. */
+function getExcelReportFormat() {
+  const rf = getReportFormat();
+  return rf === 'monthly' ? 'monthly' : 'daily';
+}
+
+function updateCustomPresetsBoxState() {
+  const box = document.getElementById('customPresetsBox');
+  if (!box) return;
+  const isCustom = getReportFormat() === 'custom';
+  box.classList.toggle('is-dimmed', !isCustom);
+}
+
+/** @param {'daily'|'monthly'|'custom'} mode @param {boolean} [applyPresets] */
 function setReportFormat(mode, applyPresets) {
+  const prev = getReportFormat();
+  if (prev === 'daily' || prev === 'monthly') mmrStashRecipientsForFormat(prev);
+
   const dailyBtn = document.getElementById('fmtDailyBtn');
   const monthlyBtn = document.getElementById('fmtMonthlyBtn');
-  if (!dailyBtn || !monthlyBtn) return;
-  const isDaily = mode === 'daily';
-  dailyBtn.classList.toggle('active', isDaily);
-  monthlyBtn.classList.toggle('active', !isDaily);
+  const customBtn = document.getElementById('fmtCustomBtn');
+  if (!dailyBtn || !monthlyBtn || !customBtn) return;
+  dailyBtn.classList.toggle('active', mode === 'daily');
+  monthlyBtn.classList.toggle('active', mode === 'monthly');
+  customBtn.classList.toggle('active', mode === 'custom');
   if (applyPresets) {
-    const p = mmrEmailPresets[mode] || MMR_EMAIL_PRESETS_FALLBACK[mode];
-    if (p && p.subject) document.getElementById('emailSubject').value = p.subject;
-    if (p && p.body) document.getElementById('emailBody').value = p.body;
+    if (mode === 'custom') {
+      const sel = document.getElementById('customPresetSelect');
+      if (sel?.value && sel.value !== MMR_PRESET_NEW) applyCustomPreset(false);
+    } else if (mode === 'daily' || mode === 'monthly') {
+      mmrApplyFormatPreset(mode);
+    }
   }
+  updateCustomPresetsBoxState();
   updateEmailSectionDownloadButtons();
+  mmrRefreshSavedAddressesButtonState();
   refreshMmrEmailDetailsSavedState();
+}
+
+function renderCustomPresetSelect(selectedKey) {
+  const sel = document.getElementById('customPresetSelect');
+  if (!sel) return;
+  const prev = selectedKey !== undefined ? selectedKey : sel.value;
+  sel.innerHTML = '<option value="">— Select a saved template —</option>';
+  mmrCustomPresets.forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p.key;
+    opt.textContent = p.name;
+    sel.appendChild(opt);
+  });
+  const newOpt = document.createElement('option');
+  newOpt.value = MMR_PRESET_NEW;
+  newOpt.textContent = '+ New template…';
+  sel.appendChild(newOpt);
+  if (prev === MMR_PRESET_NEW) sel.value = MMR_PRESET_NEW;
+  else if (prev && mmrCustomPresets.some(p => p.key === prev)) sel.value = prev;
+  updateCustomPresetUi();
+}
+
+function updateCustomPresetUi() {
+  const sel = document.getElementById('customPresetSelect');
+  const nameRow = document.getElementById('customPresetNameRow');
+  const nameEl = document.getElementById('customPresetName');
+  if (!sel) return;
+  const val = sel.value;
+  const isNew = val === MMR_PRESET_NEW;
+  const isExisting = !!val && !isNew;
+  if (nameRow) nameRow.hidden = !isNew;
+  if (isNew) {
+    mmrActiveCustomPresetKey = '';
+    if (nameEl) setTimeout(() => { try { nameEl.focus(); } catch (_) {} }, 0);
+  } else if (isExisting) {
+    mmrActiveCustomPresetKey = val;
+    if (nameEl) nameEl.value = '';
+  } else {
+    mmrActiveCustomPresetKey = '';
+    if (nameEl) nameEl.value = '';
+  }
+  const delBtn = document.getElementById('btnDeleteCustomPreset');
+  const applyBtn = document.getElementById('btnApplyCustomPreset');
+  const saveBtn = document.getElementById('btnSaveCustomPreset');
+  if (delBtn) delBtn.disabled = !isExisting;
+  if (applyBtn) applyBtn.disabled = !isExisting;
+  if (saveBtn) {
+    saveBtn.textContent = isExisting ? 'Update template' : 'Save as template';
+    saveBtn.title = isExisting
+      ? 'Update the selected template with the current recipients and wording'
+      : 'Save the current recipients and wording as a new template';
+  }
+}
+
+function onCustomPresetSelectChange() {
+  updateCustomPresetUi();
+}
+
+function applyCustomPreset(showToast) {
+  const sel = document.getElementById('customPresetSelect');
+  if (!sel || !sel.value || sel.value === MMR_PRESET_NEW) {
+    if (showToast !== false) toast('Select a saved template first', 'error');
+    return;
+  }
+  const p = mmrCustomPresets.find(x => x.key === sel.value);
+  if (!p) {
+    if (showToast !== false) toast('Template not found', 'error');
+    return;
+  }
+  setReportFormat('custom', false);
+  document.getElementById('emailTo').value = p.to || '';
+  document.getElementById('emailCc').value = p.cc || '';
+  document.getElementById('emailSubject').value = p.subject || '';
+  document.getElementById('emailBody').value = p.body || '';
+  mmrActiveCustomPresetKey = p.key;
+  validateEmailField(document.getElementById('emailTo'));
+  const ccEl = document.getElementById('emailCc');
+  if (ccEl && ccEl.value.trim()) validateEmailField(ccEl);
+  refreshMmrEmailDetailsSavedState();
+  if (showToast !== false) toast(`Applied template “${p.name}”`, 'success');
+}
+
+async function saveCustomPreset() {
+  if (getReportFormat() !== 'custom') {
+    setReportFormat('custom', false);
+  }
+  if (!validateAllEmailFields()) {
+    toast('Fix the email address errors before saving', 'error');
+    return;
+  }
+  const nameEl = document.getElementById('customPresetName');
+  const sel = document.getElementById('customPresetSelect');
+  let name = '';
+  if (sel?.value && sel.value !== MMR_PRESET_NEW) {
+    const p = mmrCustomPresets.find(x => x.key === sel.value);
+    name = (p?.name || '').trim();
+  } else {
+    name = (nameEl?.value || '').trim();
+  }
+  if (!name) {
+    if (sel?.value !== MMR_PRESET_NEW) {
+      sel.value = MMR_PRESET_NEW;
+      updateCustomPresetUi();
+    }
+    toast('Enter a name for the new template', 'error');
+    nameEl?.focus();
+    return;
+  }
+  const btn = document.getElementById('btnSaveCustomPreset');
+  const payload = {
+    name,
+    to: document.getElementById('emailTo').value,
+    cc: document.getElementById('emailCc').value,
+    subject: document.getElementById('emailSubject').value,
+    body: document.getElementById('emailBody').value,
+    report_format: 'custom',
+  };
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+  try {
+    const resp = await authFetch('/admin/mmr/api/email-presets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(data.error || 'Could not save template');
+    mmrCustomPresets = data.custom_presets || [];
+    const key = name.toLowerCase().replace(/\s+/g, '_');
+    mmrActiveCustomPresetKey = key;
+    renderCustomPresetSelect(key);
+    updateCustomPresetUi();
+    setReportFormat('custom', false);
+    mmrRegisterEmailSuggestions([
+      ...parseEmailList(payload.to),
+      ...parseEmailList(payload.cc),
+    ]);
+    // Keep server email config in sync with this custom template
+    const cfgResp = await authFetch('/admin/mmr/api/email-config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(mmrEmailConfigPayload({ active_custom_preset: key })),
+    });
+    if (cfgResp.ok) mmrSyncPersistedEmailFingerprintFromDom();
+    toast(`Template “${name}” saved`, 'success');
+  } catch (e) {
+    toast(e.message || 'Failed to save template', 'error');
+  } finally {
+    if (btn) btn.disabled = false;
+    updateCustomPresetUi();
+  }
+}
+
+async function deleteCustomPreset() {
+  const sel = document.getElementById('customPresetSelect');
+  if (!sel || !sel.value || sel.value === MMR_PRESET_NEW) {
+    toast('Select a template to delete', 'error');
+    return;
+  }
+  const p = mmrCustomPresets.find(x => x.key === sel.value);
+  const label = p ? p.name : sel.value;
+  if (!confirm(`Delete saved template “${label}”?`)) return;
+  const btn = document.getElementById('btnDeleteCustomPreset');
+  if (btn) btn.disabled = true;
+  try {
+    const resp = await authFetch(`/admin/mmr/api/email-presets/${encodeURIComponent(sel.value)}`, {
+      method: 'DELETE',
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(data.error || 'Could not delete template');
+    mmrCustomPresets = data.custom_presets || [];
+    mmrActiveCustomPresetKey = '';
+    renderCustomPresetSelect('');
+    updateCustomPresetUi();
+    const nameEl = document.getElementById('customPresetName');
+    if (nameEl) nameEl.value = '';
+    toast(`Template “${label}” deleted`, 'success');
+  } catch (e) {
+    toast(e.message || 'Failed to delete template', 'error');
+    renderCustomPresetSelect();
+    updateCustomPresetUi();
+  } finally {
+    if (btn) btn.disabled = false;
+    updateCustomPresetUi();
+  }
 }
 
 async function loadEmailConfig() {
@@ -2911,26 +3800,53 @@ async function loadEmailConfig() {
     if (!resp.ok) return;
     const cfg = await resp.json();
     mmrEmailPresets = cfg.presets || MMR_EMAIL_PRESETS_FALLBACK;
-    const rf = (cfg.report_format || 'daily').toString().toLowerCase() === 'monthly' ? 'monthly' : 'daily';
+    mmrSyncSavedFormatRecipientsFromPresets();
+    mmrCustomPresets = Array.isArray(cfg.custom_presets) ? cfg.custom_presets : [];
+    mmrActiveCustomPresetKey = (cfg.active_custom_preset || '').trim();
+    renderCustomPresetSelect(mmrActiveCustomPresetKey);
+    const rfRaw = (cfg.report_format || 'daily').toString().toLowerCase();
+    const rf = rfRaw === 'monthly' ? 'monthly' : (rfRaw === 'custom' ? 'custom' : 'daily');
     setReportFormat(rf, false);
-    document.getElementById('emailTo').value       = cfg.to      || '';
-    document.getElementById('emailCc').value       = cfg.cc      || '';
-    const p = mmrEmailPresets[rf] || MMR_EMAIL_PRESETS_FALLBACK[rf];
-    const sub = (cfg.subject || '').trim();
-    const bod = (cfg.body || '').trim();
-    const needsPreset =
-      !sub || !bod ||
-      (rf === 'monthly' && (/Daily Report on Resolved/i.test(sub) || /comprehensive Daily Report/i.test(bod))) ||
-      (rf === 'daily' && (/Monthly Report on Resolved/i.test(sub) || /comprehensive Monthly Report/i.test(bod)));
-    document.getElementById('emailSubject').value = needsPreset ? p.subject : (cfg.subject || p.subject);
-    document.getElementById('emailBody').value    = needsPreset ? p.body : (cfg.body || p.body);
+    if (rf === 'custom') {
+      document.getElementById('emailTo').value = cfg.to || '';
+      document.getElementById('emailCc').value = cfg.cc || '';
+      document.getElementById('emailSubject').value = cfg.subject || '';
+      document.getElementById('emailBody').value = cfg.body || '';
+    } else {
+      mmrApplyFormatPreset(rf);
+      const sub = (cfg.subject || '').trim();
+      const bod = (cfg.body || '').trim();
+      const p = mmrEmailPresets[rf] || MMR_EMAIL_PRESETS_FALLBACK[rf];
+      const needsPreset =
+        !sub || !bod ||
+        (rf === 'monthly' && (/Daily Report on Resolved/i.test(sub) || /comprehensive Daily Report/i.test(bod))) ||
+        (rf === 'daily' && (/Monthly Report on Resolved/i.test(sub) || /comprehensive Monthly Report/i.test(bod)));
+      if (!needsPreset) {
+        document.getElementById('emailSubject').value = cfg.subject || p.subject;
+        document.getElementById('emailBody').value = cfg.body || p.body;
+      }
+    }
     document.getElementById('scheduleEnabled').checked = !!cfg.schedule_enabled;
     document.getElementById('scheduleHour').value   = cfg.schedule_hour   ?? 10;
     document.getElementById('scheduleMinute').value = cfg.schedule_minute ?? 0;
     updateScheduleStatus(cfg);
     updateEmailSectionDownloadButtons();
+    mmrRefreshSavedAddressesButtonState();
     mmrSyncPersistedEmailFingerprintFromDom();
+    mmrRegisterEmailSuggestions([
+      ...parseEmailList(cfg.to),
+      ...parseEmailList(cfg.cc),
+      ...parseEmailList(mmrFormatRecipients.daily.to),
+      ...parseEmailList(mmrFormatRecipients.daily.cc),
+      ...parseEmailList(mmrFormatRecipients.monthly.to),
+      ...parseEmailList(mmrFormatRecipients.monthly.cc),
+      ...(cfg.custom_presets || []).flatMap(p => [...parseEmailList(p.to), ...parseEmailList(p.cc)]),
+    ]);
   } catch(e) { console.warn('Could not load email config', e); }
+}
+
+function parseEmailList(value) {
+  return (value || '').split(',').map(v => v.trim()).filter(Boolean);
 }
 
 function updateEmailSectionDownloadButtons() {
@@ -2946,16 +3862,11 @@ function updateEmailSectionDownloadButtons() {
   } else {
     zip.classList.add('hidden');
   }
+  updateCustomPresetsBoxState();
 }
 
 async function saveEmailConfig() {
-  const payload = {
-    to:      document.getElementById('emailTo').value,
-    cc:      document.getElementById('emailCc').value,
-    subject: document.getElementById('emailSubject').value,
-    body:    document.getElementById('emailBody').value,
-    report_format: getReportFormat(),
-  };
+  const payload = mmrEmailConfigPayload();
   const resp = await authFetch('/admin/mmr/api/email-config', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -2963,19 +3874,209 @@ async function saveEmailConfig() {
   });
   const data = await resp.json().catch(() => ({}));
   if (resp.ok) {
+    mmrApplySavedFormatRecipients(payload);
+    mmrSyncSavedFormatRecipientsFromPresets();
     mmrSyncPersistedEmailFingerprintFromDom();
-    toast('Email config saved', 'success');
+    showEmailStatus('Email config saved', 'success');
   } else {
-    toast(data.error || 'Failed to save config', 'error');
+    showEmailStatus(data.error || 'Failed to save config', 'error');
   }
 }
 
 const ALLOWED_DOMAIN = 'injaaz.ae';
 
-const SAVED_ADDRESSES = {
-  to: 'dennis@injaaz.ae, shakeel@injaaz.ae, araki@injaaz.ae, abbas@injaaz.ae, a.mohammed@injaaz.ae',
-  cc: 'taha@injaaz.ae, george@injaaz.ae, arshith@injaaz.ae, eslam@injaaz.ae, alaa@injaaz.ae, mona@injaaz.ae, siraj@injaaz.ae, jismon@injaaz.ae, ousman@injaaz.ae',
-};
+let mmrEmailSuggestions = [];
+let mmrEmailAcActiveIdx = -1;
+
+function mmrEscapeHtml(s) {
+  return String(s || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function mmrEmailAcInitials(email) {
+  const local = (email || '').split('@')[0] || '?';
+  const parts = local.replace(/[._-]+/g, ' ').trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return local.slice(0, 2).toUpperCase();
+}
+
+function mmrRegisterEmailSuggestions(items) {
+  const map = new Map(mmrEmailSuggestions.map(s => [s.email.toLowerCase(), s]));
+  (items || []).forEach((item) => {
+    const email = (item && item.email ? item.email : item || '').trim();
+    if (!email.toLowerCase().endsWith('@' + ALLOWED_DOMAIN)) return;
+    const key = email.toLowerCase();
+    if (!map.has(key)) map.set(key, { email, name: (item && item.name) || '' });
+  });
+  mmrEmailSuggestions = Array.from(map.values()).sort((a, b) => {
+    const la = (a.name || a.email).toLowerCase();
+    const lb = (b.name || b.email).toLowerCase();
+    return la.localeCompare(lb);
+  });
+}
+
+async function loadMmrEmailSuggestions() {
+  try {
+    const resp = await authFetch('/admin/mmr/api/email-suggestions');
+    if (!resp.ok) return;
+    const data = await resp.json();
+    mmrRegisterEmailSuggestions(data.suggestions || []);
+  } catch (e) {
+    console.warn('Could not load email suggestions', e);
+  }
+}
+
+function mmrEmailsAlreadyInField(input) {
+  return new Set(
+    (input.value || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean)
+  );
+}
+
+function mmrEmailAcContext(input) {
+  const val = input.value;
+  const pos = input.selectionStart ?? val.length;
+  const before = val.slice(0, pos);
+  const lastComma = before.lastIndexOf(',');
+  const start = lastComma >= 0 ? lastComma + 1 : 0;
+  const afterPos = val.slice(pos);
+  const nextComma = afterPos.indexOf(',');
+  const end = nextComma >= 0 ? pos + nextComma : val.length;
+  return { start, end, token: val.slice(start, end), query: val.slice(start, end).trim() };
+}
+
+function mmrFilterEmailSuggestions(query, input) {
+  const q = (query || '').trim().toLowerCase();
+  const present = mmrEmailsAlreadyInField(input);
+  return mmrEmailSuggestions.filter((item) => {
+    const email = item.email.toLowerCase();
+    if (present.has(email)) return false;
+    if (!q) return true;
+    const name = (item.name || '').toLowerCase();
+    const local = email.split('@')[0];
+    return email.includes(q) || name.includes(q) || local.startsWith(q);
+  }).slice(0, 8);
+}
+
+function mmrHideEmailAc(input) {
+  const list = document.getElementById(input.id + 'AcList');
+  if (list) list.hidden = true;
+  mmrEmailAcActiveIdx = -1;
+  input.removeAttribute('aria-activedescendant');
+}
+
+function mmrRenderEmailAc(input) {
+  const list = document.getElementById(input.id + 'AcList');
+  if (!list) return;
+  const ctx = mmrEmailAcContext(input);
+  const matches = mmrFilterEmailSuggestions(ctx.query, input);
+  if (!matches.length) {
+    mmrHideEmailAc(input);
+    return;
+  }
+  list.innerHTML = matches.map((item, idx) => {
+    const initials = mmrEmailAcInitials(item.email);
+    const nameHtml = item.name ? `<div class="mmr-email-ac-name">${mmrEscapeHtml(item.name)}</div>` : '';
+    return `<button type="button" class="mmr-email-ac-item${idx === mmrEmailAcActiveIdx ? ' active' : ''}" role="option" data-idx="${idx}" data-email="${mmrEscapeHtml(item.email)}" id="${input.id}AcOpt${idx}">` +
+      `<span class="mmr-email-ac-avatar">${initials}</span>` +
+      `<span class="mmr-email-ac-meta"><div class="mmr-email-ac-email">${mmrEscapeHtml(item.email)}</div>${nameHtml}</span>` +
+      `</button>`;
+  }).join('');
+  list.hidden = false;
+  list.querySelectorAll('.mmr-email-ac-item').forEach((btn) => {
+    btn.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      mmrApplyEmailSuggestion(input, btn.getAttribute('data-email'));
+    });
+  });
+}
+
+function mmrApplyEmailSuggestion(input, email) {
+  if (!email) return;
+  const ctx = mmrEmailAcContext(input);
+  const val = input.value;
+  let before = val.slice(0, ctx.start).replace(/\s+$/, '');
+  const after = val.slice(ctx.end).replace(/^\s*,?\s*/, '');
+  if (before && !before.endsWith(',')) before += ', ';
+  else if (before.endsWith(',')) before += ' ';
+  input.value = before + email + (after ? ', ' + after : ', ');
+  const pos = (before + email + ', ').length;
+  input.setSelectionRange(pos, pos);
+  mmrHideEmailAc(input);
+  validateEmailField(input);
+  refreshMmrEmailDetailsSavedState();
+}
+
+function mmrOnEmailAcInput(input) {
+  mmrEmailAcActiveIdx = -1;
+  mmrRenderEmailAc(input);
+  validateEmailField(input);
+  refreshMmrEmailDetailsSavedState();
+}
+
+function mmrOnEmailAcKeydown(input, e) {
+  const list = document.getElementById(input.id + 'AcList');
+  const open = list && !list.hidden;
+  const items = open ? Array.from(list.querySelectorAll('.mmr-email-ac-item')) : [];
+  if (open && items.length) {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      mmrEmailAcActiveIdx = Math.min(mmrEmailAcActiveIdx + 1, items.length - 1);
+      mmrRenderEmailAc(input);
+      const active = document.getElementById(`${input.id}AcOpt${mmrEmailAcActiveIdx}`);
+      if (active) {
+        input.setAttribute('aria-activedescendant', active.id);
+        active.scrollIntoView({ block: 'nearest' });
+      }
+      return;
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      mmrEmailAcActiveIdx = Math.max(mmrEmailAcActiveIdx - 1, 0);
+      mmrRenderEmailAc(input);
+      const active = document.getElementById(`${input.id}AcOpt${mmrEmailAcActiveIdx}`);
+      if (active) input.setAttribute('aria-activedescendant', active.id);
+      return;
+    }
+    if ((e.key === 'Enter' || e.key === 'Tab') && mmrEmailAcActiveIdx >= 0) {
+      e.preventDefault();
+      mmrApplyEmailSuggestion(input, items[mmrEmailAcActiveIdx].getAttribute('data-email'));
+      return;
+    }
+    if (e.key === 'Escape') {
+      mmrHideEmailAc(input);
+      return;
+    }
+  }
+  if (e.key === 'Enter' && open && items.length === 1) {
+    e.preventDefault();
+    mmrApplyEmailSuggestion(input, items[0].getAttribute('data-email'));
+  }
+}
+
+function initMmrEmailAutocomplete(inputId) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  input.addEventListener('input', () => mmrOnEmailAcInput(input));
+  input.addEventListener('keydown', (e) => mmrOnEmailAcKeydown(input, e));
+  input.addEventListener('blur', () => {
+    setTimeout(() => mmrHideEmailAc(input), 150);
+    validateEmailField(input);
+  });
+  input.addEventListener('focus', () => mmrRenderEmailAc(input));
+}
+
+function isIncompleteEmailToken(token) {
+  const t = (token || '').trim();
+  if (!t) return true;
+  const lower = t.toLowerCase();
+  if (lower.endsWith('@' + ALLOWED_DOMAIN)) return false;
+  if (!lower.includes('@')) return true;
+  const atPart = lower.slice(lower.indexOf('@'));
+  return ('@' + ALLOWED_DOMAIN).startsWith(atPart);
+}
 
 function fillSavedAddresses() {
   const toEl = document.getElementById('emailTo');
@@ -2989,22 +4090,37 @@ function fillSavedAddresses() {
     btn.textContent = '📋 Use saved addresses';
     toast('To and CC cleared', 'info');
   } else {
-    toEl.value = SAVED_ADDRESSES.to;
-    ccEl.value = SAVED_ADDRESSES.cc;
+    const saved = mmrSavedAddressesForCurrentFormat();
+    toEl.value = saved.to;
+    ccEl.value = saved.cc;
     btn.setAttribute('data-filled', 'true');
     btn.textContent = '✕ Clear saved addresses';
     toast('To and CC filled with saved addresses', 'info');
   }
   validateEmailField(toEl);
   validateEmailField(ccEl);
+  const rf = getReportFormat();
+  if (rf === 'daily' || rf === 'monthly') mmrStashRecipientsForFormat(rf);
   refreshMmrEmailDetailsSavedState();
 }
 
 function validateEmailField(input) {
   const errorEl = document.getElementById(input.id + 'Error');
-  if (!input.value.trim()) { input.classList.remove('input-error'); if (errorEl) errorEl.textContent = ''; return true; }
-  const emails = input.value.split(',').map(e => e.trim()).filter(Boolean);
-  const bad = emails.filter(e => !e.toLowerCase().endsWith('@' + ALLOWED_DOMAIN));
+  if (!input.value.trim()) {
+    input.classList.remove('input-error');
+    if (errorEl) errorEl.textContent = '';
+    return true;
+  }
+  const rawParts = input.value.split(',');
+  const toValidate = [];
+  rawParts.forEach((part, idx) => {
+    const t = part.trim();
+    if (!t) return;
+    const isLast = idx === rawParts.length - 1;
+    if (isLast && isIncompleteEmailToken(t)) return;
+    toValidate.push(t);
+  });
+  const bad = toValidate.filter(e => !e.toLowerCase().endsWith('@' + ALLOWED_DOMAIN));
   if (bad.length) {
     input.classList.add('input-error');
     if (errorEl) errorEl.textContent = `Only @${ALLOWED_DOMAIN} addresses allowed. Invalid: ${bad.join(', ')}`;
@@ -3024,11 +4140,20 @@ function validateAllEmailFields() {
 
 async function sendEmailNow() {
   const to = document.getElementById('emailTo').value.trim();
-  if (!to) { toast('Please enter at least one recipient', 'error'); return; }
-  if (!validateAllEmailFields()) { toast('Fix the email address errors before sending', 'error'); return; }
+  if (!to) { showEmailStatus('Please enter at least one recipient', 'error'); return; }
+  if (!validateAllEmailFields()) { showEmailStatus('Fix the email address errors before sending', 'error'); return; }
+  if (!allRows.length) {
+    showEmailStatus('No report loaded. Upload a CAFM Excel file or open a saved report first.', 'error');
+    return;
+  }
+  if (!mmrHasLiveUpload && !mmrActiveFolderReportFilename) {
+    showEmailStatus('No report file available. Upload a CAFM Excel file or open a saved report from the Report folder.', 'error');
+    return;
+  }
 
   const btn = document.getElementById('btnSendEmail');
   btn.disabled = true; btn.textContent = 'Sending…';
+  clearEmailStatus();
 
   const payload = {
     to,
@@ -3037,6 +4162,9 @@ async function sendEmailNow() {
     body:    document.getElementById('emailBody').value,
     report_format: getReportFormat(),
   };
+  if (!mmrHasLiveUpload && mmrActiveFolderReportFilename) {
+    payload.folder_filename = mmrActiveFolderReportFilename;
+  }
   try {
     const resp = await authFetch('/admin/mmr/api/send-email', {
       method: 'POST',
@@ -3045,29 +4173,27 @@ async function sendEmailNow() {
     });
     const data = await resp.json();
     if (resp.ok) {
-      toast('✅ ' + (data.message || 'Email sent successfully'), 'success');
+      showEmailStatus(data.message || 'Email sent successfully. If you don\'t see it, check spam/junk and Promotions (Gmail).', 'success');
       refreshMmrEmailDetailsSavedState();
       await loadAutomationStatus();
       await loadCycleData();
-    } else toast('❌ ' + (data.error || 'Email failed'), 'error');
+    } else {
+      showEmailStatus(data.error || 'Email failed', 'error');
+    }
+  } catch (e) {
+    showEmailStatus(e.message || 'Could not send email', 'error');
   } finally {
-    btn.disabled = false; btn.textContent = '✉️ Send Email Now';
+    btn.disabled = false; btn.textContent = 'Send Email Now';
   }
 }
 
 async function saveSchedule() {
-  if (!validateAllEmailFields()) { toast('Fix the email address errors before saving', 'error'); return; }
-  const payload = {
+  if (!validateAllEmailFields()) { showEmailStatus('Fix the email address errors before saving', 'error'); return; }
+  const payload = mmrEmailConfigPayload({
     schedule_enabled: document.getElementById('scheduleEnabled').checked,
     schedule_hour:    parseInt(document.getElementById('scheduleHour').value)   || 10,
     schedule_minute:  parseInt(document.getElementById('scheduleMinute').value) || 0,
-    // Also persist compose fields
-    to:      document.getElementById('emailTo').value,
-    cc:      document.getElementById('emailCc').value,
-    subject: document.getElementById('emailSubject').value,
-    body:    document.getElementById('emailBody').value,
-    report_format: getReportFormat(),
-  };
+  });
   const resp = await authFetch('/admin/mmr/api/email-config', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -3075,12 +4201,14 @@ async function saveSchedule() {
   });
   const data = await resp.json();
   if (resp.ok) {
-    toast('Schedule saved', 'success');
+    mmrApplySavedFormatRecipients(payload);
+    mmrSyncSavedFormatRecipientsFromPresets();
+    showEmailStatus('Schedule saved', 'success');
     updateScheduleStatus(payload);
     mmrSyncPersistedEmailFingerprintFromDom();
     loadAutomationStatus();
   } else {
-    toast('Failed: ' + (data.error || 'unknown'), 'error');
+    showEmailStatus('Failed: ' + (data.error || 'unknown'), 'error');
   }
 }
 
@@ -3229,6 +4357,7 @@ function updateUploadSideInsight() {
   root.innerHTML =
     `<div class="upload-side-insight-main">${mainParts.join('')}</div>` +
     buildInsightSmartHtml(s);
+  updateEmailComposeInsight();
 }
 
 function mmrScrollToEmailOrRoadmap() {
@@ -3295,6 +4424,8 @@ function updateAutomationButton() {
 /** Reset view to upload-only (no workbook on server or user chose clear slate). */
 function resetMmrToNewReportView() {
   destroyCharts();
+  mmrHasLiveUpload = false;
+  mmrActiveFolderReportFilename = null;
   allRows = [];
   filteredRows = [];
   dashboardData = null;
@@ -3325,6 +4456,7 @@ function resetMmrToNewReportView() {
   document.getElementById('kpiGrid')?.replaceChildren();
   document.getElementById('tableHead')?.replaceChildren();
   document.getElementById('chargeableTable')?.replaceChildren();
+  updateEmailComposeInsight();
 }
 
 /**
@@ -3539,6 +4671,8 @@ async function restoreDashboardFromServerIfNeeded() {
     if (!data.success || !data.has_file || !Array.isArray(data.rows) || data.rows.length === 0) {
       return;
     }
+    mmrHasLiveUpload = true;
+    mmrActiveFolderReportFilename = null;
     allRows = data.rows;
     dashboardData = data.dashboard;
     document.getElementById('dashboardSection').classList.remove('hidden');
@@ -3701,6 +4835,8 @@ async function openReportAndRestoreFilters(btn) {
     const data = await resp.json();
     if (!resp.ok) throw new Error(data.error || 'Failed to load report');
 
+    mmrHasLiveUpload = false;
+    mmrActiveFolderReportFilename = filename;
     allRows = data.rows;
     dashboardData = data.dashboard;
     destroyCharts();
@@ -4299,11 +5435,15 @@ async function startAutomationFromRoadmap() {
 
 // ════════════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', async () => {
+  await loadMmrEmailSuggestions();
+  initMmrEmailAutocomplete('emailTo');
+  initMmrEmailAutocomplete('emailCc');
   await loadEmailConfig();
 
   ['emailTo', 'emailCc', 'emailSubject', 'emailBody'].forEach((id) => {
     document.getElementById(id)?.addEventListener('input', () => refreshMmrEmailDetailsSavedState());
   });
+  document.getElementById('customPresetSelect')?.addEventListener('change', onCustomPresetSelectChange);
 
   await loadAutomationStatus();
   await loadCycleData();
@@ -4337,6 +5477,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       const data = await resp.json();
       if (!resp.ok) throw new Error(data.error || 'Failed to load report');
 
+      mmrHasLiveUpload = false;
+      mmrActiveFolderReportFilename = filename;
       allRows = data.rows;
       dashboardData = data.dashboard;
       document.getElementById('dashboardSection').classList.remove('hidden');

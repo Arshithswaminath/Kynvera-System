@@ -5,8 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
   
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
-<title>Device Management — Injaaz Admin</title>
-  <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
+<title>Device Management</title>
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='icons/injaaz-web-favicon-16.png') }}?v=5">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='icons/injaaz-web-favicon-32.png') }}?v=5">
+  <link rel="icon" type="image/png" sizes="48x48" href="{{ url_for('static', filename='icons/injaaz-web-favicon-48.png') }}?v=5">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}">
@@ -22,6 +24,7 @@
       --gray-100: #e8edeb;
       --gray-200: #d1ddd8;
       --gray-400: #8fa99e;
+      --gray-500: #6b8078;
       --gray-600: #4a6359;
       --gray-900: #0d2218;
       --danger: #c0392b;
@@ -77,6 +80,17 @@
       height: calc(100vh - var(--dm-nav-top));
       z-index: 40;
       flex-shrink: 0;
+    }
+    .dm-layout > .dh-sidebar .sb-brand-logo {
+      background: transparent;
+      width: 108px;
+      height: 96px;
+    }
+    .dm-layout > .dh-sidebar .sb-brand-logo img {
+      width: 96px;
+      height: 96px;
+      object-fit: contain;
+      filter: none;
     }
     @media (max-width: 900px) {
       .dm-layout > .dh-sidebar { display: none !important; }
@@ -200,6 +214,7 @@
       grid-template-columns: 1fr 320px;
       gap: 20px;
       margin-bottom: 24px;
+      align-items: start;
     }
     @media (max-width: 1100px) { .dm-main-grid { grid-template-columns: 1fr; } }
 
@@ -213,11 +228,11 @@
       animation-delay: 0.25s;
     }
     .dm-card-header {
-      padding: 18px 22px 14px;
+      padding: 14px 16px 10px;
       display: flex;
       align-items: center;
       gap: 10px;
-      border-bottom: 1.5px solid var(--gray-100);
+      border-bottom: 1px solid var(--gray-100);
     }
     .dm-card-title { font-size: 14.5px; font-weight: 700; color: var(--gray-900); }
     .dm-card-sub { font-size: 12px; color: var(--gray-400); margin-top: 1px; }
@@ -246,28 +261,57 @@
     .dm-filter-tab.active { background: white; color: var(--green); box-shadow: var(--shadow-sm); }
     .dm-filter-tab:hover:not(.active) { color: var(--gray-600); }
 
-    .dm-device-table { width: 100%; min-width: 600px; border-collapse: collapse; }
-    .dm-device-table th {
-      padding: 10px 18px;
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--gray-400);
-      text-align: left;
-      letter-spacing: 0.5px;
-      text-transform: uppercase;
+    /* ── Device table — CSS grid, fixed columns ── */
+    .dm-inventory-card {
+      display: flex; flex-direction: column;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    /* columns: cb | device-name | status | type | os | action */
+    .dm-device-grid { width: 100%; min-width: 0; }
+    .dm-device-grid-row {
+      display: grid;
+      grid-template-columns: 36px minmax(200px, 1fr) 88px 76px minmax(110px, 160px) 36px;
+      column-gap: 12px;
+      align-items: center;
+      padding: 0 12px 0 16px;
+    }
+    .dm-device-grid-head {
+      position: sticky; top: 0; z-index: 3;
       background: var(--gray-50);
       border-bottom: 1.5px solid var(--gray-100);
     }
-    .dm-device-table td {
-      padding: 14px 18px;
-      font-size: 13px;
-      border-bottom: 1px solid var(--gray-50);
-      vertical-align: middle;
+    .dm-device-grid-head .dm-device-grid-row {
+      height: 36px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--gray-400);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
     }
-    .dm-device-table tr:last-child td { border-bottom: none; }
-    .dm-device-table tbody tr { cursor: pointer; transition: background 0.12s; }
-    .dm-device-table tbody tr:hover { background: var(--green-glass); }
-    .dm-device-table tbody tr.selected { background: var(--green-pale); }
+    .dm-device-grid-body .dm-device-grid-row {
+      height: 54px;
+      border-bottom: 1px solid rgba(18,84,53,0.06);
+      cursor: pointer;
+      transition: background 0.12s;
+    }
+    .dm-device-grid-body .dm-device-grid-row:last-child { border-bottom: none; }
+    .dm-device-grid-body .dm-device-grid-row:hover { background: rgba(18,84,53,0.035); }
+    .dm-device-grid-body .dm-device-grid-row.selected {
+      background: var(--green-pale);
+      box-shadow: inset 3px 0 0 var(--green);
+    }
+
+    /* column helpers */
+    .dm-col-check { display: flex; align-items: center; justify-content: center; }
+    .dm-col-device { min-width: 0; overflow: hidden; padding-right: 16px; }
+    .dm-col-status {
+      white-space: nowrap;
+      padding-left: 4px;
+    }
+    .dm-col-type { white-space: nowrap; }
+    .dm-col-os { min-width: 0; overflow: hidden; }
 
     .dm-device-check {
       width: 16px; height: 16px;
@@ -279,6 +323,7 @@
       transition: all 0.15s;
       position: relative;
       background: white;
+      flex-shrink: 0;
     }
     .dm-device-check:checked { background: var(--green); border-color: var(--green); }
     .dm-device-check:checked::after {
@@ -287,28 +332,55 @@
       top: 50%; left: 50%;
       transform: translate(-50%, -50%);
       color: white;
-      font-size: 10px;
+      font-size: 9px;
       font-weight: 700;
     }
 
-    .dm-device-name-cell { display: flex; align-items: center; gap: 10px; }
+    .dm-device-name-cell { display: flex; align-items: center; gap: 10px; min-width: 0; width: 100%; }
     .dm-device-icon-badge {
-      width: 34px; height: 34px;
-      border-radius: 9px;
-      background: var(--green-pale);
+      width: 32px; height: 32px;
+      border-radius: 8px;
       display: flex; align-items: center; justify-content: center;
-      font-size: 16px;
+      font-size: 15px;
       flex-shrink: 0;
+      border: 1px solid transparent;
     }
-    .dm-device-name { font-weight: 600; font-size: 13.5px; color: var(--gray-900); }
-    .dm-device-id { font-size: 11px; color: var(--gray-400); font-family: var(--font-mono); }
+    .dm-device-icon-badge.type-laptop { background: #e8f5ee; border-color: rgba(18,84,53,0.12); }
+    .dm-device-icon-badge.type-desktop { background: #eef2f4; border-color: rgba(74,99,89,0.12); }
+    .dm-device-icon-badge.type-tablet { background: #fef3e2; border-color: rgba(212,133,10,0.15); }
+    .dm-device-icon-badge.type-mobile { background: #e8f0fb; border-color: rgba(21,101,168,0.12); }
+    .dm-device-icon-badge.type-sim { background: #e8f0fb; border-color: rgba(21,101,168,0.12); }
+    .dm-device-icon-badge.type-server { background: #f4f6f5; border-color: rgba(74,99,89,0.1); }
+    .dm-device-text { min-width: 0; flex: 1; overflow: hidden; }
+    .dm-device-name {
+      font-weight: 600;
+      font-size: 13.5px;
+      color: var(--gray-900);
+      line-height: 1.3;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: block;
+    }
+    .dm-device-id {
+      font-size: 11px;
+      color: var(--gray-400);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      line-height: 1.3;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: block;
+      margin-top: 1px;
+    }
 
     .dm-status-pill {
       display: inline-flex; align-items: center; gap: 5px;
       padding: 4px 10px;
       border-radius: 20px;
-      font-size: 11.5px;
+      font-size: 12px;
       font-weight: 600;
+      white-space: nowrap;
     }
     .dm-status-pill::before {
       content: '';
@@ -318,49 +390,76 @@
     }
     .dm-status-pill.online { background: #e8f5ee; color: var(--green); }
     .dm-status-pill.online::before { background: var(--green); box-shadow: 0 0 0 2px rgba(18,84,53,0.2); animation: dm-pulse 2s infinite; }
-    .dm-status-pill.offline { background: var(--gray-50); color: var(--gray-400); }
-    .dm-status-pill.offline::before { background: var(--gray-400); }
+    .dm-status-pill.offline { background: #fdecea; color: var(--danger); }
+    .dm-status-pill.offline::before { background: var(--danger); }
     .dm-status-pill.warning { background: #fef3e2; color: var(--warning); }
     .dm-status-pill.warning::before { background: var(--warning); }
+    .dm-status-pill.idle { background: var(--gray-50); color: var(--gray-600); }
+    .dm-status-pill.idle::before { background: var(--gray-400); }
     .dm-status-pill.maintenance { background: #e8f0fb; color: var(--info); }
     .dm-status-pill.maintenance::before { background: var(--info); }
     @keyframes dm-pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
 
-    .dm-tag {
+    .dm-type-chip {
       display: inline-flex; align-items: center;
-      padding: 2px 8px;
-      border-radius: 5px;
-      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
       font-weight: 600;
-      background: var(--gray-50);
-      color: var(--gray-600);
-      border: 1px solid var(--gray-100);
+      letter-spacing: 0.01em;
+      border: 1px solid transparent;
+      white-space: nowrap;
     }
+    .dm-type-chip.laptop { background: #e8f5ee; color: #125435; border-color: rgba(18,84,53,0.12); }
+    .dm-type-chip.desktop { background: #eef2f4; color: #4a6359; border-color: rgba(74,99,89,0.12); }
+    .dm-type-chip.tablet { background: #fef3e2; color: #9a6408; border-color: rgba(212,133,10,0.2); }
+    .dm-type-chip.mobile { background: #e8f0fb; color: #1565a8; border-color: rgba(21,101,168,0.15); }
+    .dm-type-chip.sim { background: #e8f0fb; color: #1565a8; border-color: rgba(21,101,168,0.15); }
+    .dm-type-chip.server { background: #f4f6f5; color: #4a6359; border-color: rgba(74,99,89,0.1); }
 
-    .dm-health-bar-wrap { width: 80px; }
-    .dm-health-label { font-size: 11px; font-weight: 600; margin-bottom: 4px; }
-    .dm-health-bar { height: 5px; background: var(--gray-100); border-radius: 3px; overflow: hidden; }
-    .dm-health-fill { height: 100%; border-radius: 3px; transition: width 1s ease; }
-    .dm-health-fill.good { background: var(--green); }
-    .dm-health-fill.ok { background: var(--warning); }
-    .dm-health-fill.bad { background: var(--danger); }
+    .dm-os-text {
+      font-size: 12.5px;
+      font-weight: 500;
+      color: var(--gray-600);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: block;
+    }
+    .dm-os-text.muted { color: var(--gray-400); }
 
     .dm-action-btn {
       width: 28px; height: 28px;
-      border-radius: 6px;
+      border-radius: 7px;
       display: inline-flex; align-items: center; justify-content: center;
-      border: 1.5px solid var(--gray-100);
-      background: white;
+      border: none;
+      background: transparent;
       cursor: pointer;
       color: var(--gray-400);
-      font-size: 14px;
       transition: all 0.15s;
       text-decoration: none;
     }
-    .dm-action-btn:hover { border-color: var(--green); color: var(--green); background: var(--green-pale); }
-    .dm-action-btn.danger:hover { border-color: var(--danger); color: var(--danger); background: #fdecea; }
+    .dm-action-btn:hover { background: #fdecea; color: var(--danger); }
+    .dm-action-btn svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
-    .dm-right-panel { display: flex; flex-direction: column; gap: 16px; }
+    .dm-empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 28px 16px;
+      text-align: center;
+      color: var(--gray-400);
+    }
+    .dm-empty-icon { font-size: 32px; margin-bottom: 10px; opacity: 0.5; }
+    .dm-empty-title { font-size: 14px; font-weight: 600; color: var(--gray-600); margin-bottom: 4px; }
+    .dm-empty-desc { font-size: 12px; }
+
+    .dm-right-panel {
+      display: flex; flex-direction: column; gap: 12px;
+      min-height: 0;
+      align-self: start;
+    }
 
     .dm-alerts-list { padding: 8px 16px 14px; }
     .dm-alert-item {
@@ -382,7 +481,12 @@
     .dm-alert-title { font-size: 12.5px; font-weight: 600; color: var(--gray-900); }
     .dm-alert-desc { font-size: 11.5px; color: var(--gray-600); margin-top: 2px; }
 
-    .dm-activity-list { padding: 0 8px 8px; }
+    .dm-activity-list {
+      padding: 0 8px 8px;
+      max-height: 220px;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
     .dm-activity-item {
       display: flex; align-items: flex-start; gap: 10px;
       padding: 12px 14px;
@@ -403,6 +507,101 @@
     .dm-activity-text { font-size: 12.5px; color: var(--gray-600); line-height: 1.5; }
     .dm-activity-text strong { color: var(--gray-900); font-weight: 600; }
     .dm-activity-time { font-size: 11px; color: var(--gray-400); margin-top: 2px; }
+
+    /* Fleet intelligence panel */
+    .dm-snapshot-body {
+      padding: 10px 12px 12px;
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .dm-snap-score-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 10px; border-radius: 8px;
+      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+      border: 1px solid var(--gray-100);
+    }
+    .dm-snap-score-ring {
+      width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 800; background: #fff;
+      border: 3px solid var(--green); color: var(--green);
+    }
+    .dm-snap-score-ring.good { border-color: var(--green); color: var(--green); }
+    .dm-snap-score-ring.fair { border-color: var(--warning); color: var(--warning); }
+    .dm-snap-score-ring.poor { border-color: var(--danger); color: var(--danger); }
+    .dm-snap-score-text { min-width: 0; flex: 1; }
+    .dm-snap-score-title { font-size: 12px; font-weight: 700; color: var(--gray-900); line-height: 1.3; }
+    .dm-snap-score-sub { font-size: 10.5px; color: var(--gray-500); margin-top: 2px; line-height: 1.35; }
+    .dm-snap-insight {
+      font-size: 11px; line-height: 1.45; color: var(--gray-700);
+      padding: 8px 10px; border-radius: 8px;
+      background: #eff6ff; border: 1px solid #bfdbfe;
+    }
+    .dm-snap-insight strong { color: #1e40af; font-weight: 700; }
+    .dm-snap-status-block { min-width: 0; }
+    .dm-snap-status-bar {
+      display: flex; height: 8px; border-radius: 999px;
+      overflow: hidden; background: var(--gray-100);
+    }
+    .dm-snap-status-seg { height: 100%; min-width: 4px; }
+    .dm-snap-status-seg.online { background: var(--green); }
+    .dm-snap-status-seg.idle { background: var(--gray-400); }
+    .dm-snap-status-seg.offline { background: var(--danger); }
+    .dm-snap-status-seg.update { background: var(--warning); }
+    .dm-snap-status-legend {
+      display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 6px;
+    }
+    .dm-snap-status-key {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 10px; color: var(--gray-600); font-weight: 500;
+    }
+    .dm-snap-status-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+    .dm-snap-status-dot.online { background: var(--green); }
+    .dm-snap-status-dot.idle { background: var(--gray-400); }
+    .dm-snap-status-dot.offline { background: var(--danger); }
+    .dm-snap-status-dot.update { background: var(--warning); }
+    .dm-snap-block-title {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--gray-400); margin-bottom: 5px;
+    }
+    .dm-snap-actions { display: flex; flex-direction: column; gap: 4px; }
+    .dm-snap-action {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      width: 100%; padding: 7px 9px; border-radius: 7px;
+      border: 1px solid var(--gray-100); background: #fff;
+      cursor: pointer; text-align: left; font-family: inherit;
+      transition: background 0.12s, border-color 0.12s, transform 0.1s;
+    }
+    .dm-snap-action:hover { background: var(--green-pale); border-color: rgba(18,84,53,0.2); transform: translateX(2px); }
+    .dm-snap-action.is-active { background: var(--green-pale); border-color: var(--green); box-shadow: inset 2px 0 0 var(--green); }
+    .dm-snap-action-left { display: flex; align-items: center; gap: 7px; min-width: 0; }
+    .dm-snap-action-icon { font-size: 13px; flex-shrink: 0; }
+    .dm-snap-action-label { font-size: 11px; font-weight: 600; color: var(--gray-800); }
+    .dm-snap-action-count {
+      font-size: 11px; font-weight: 800; color: var(--gray-900);
+      background: var(--gray-50); border: 1px solid var(--gray-100);
+      padding: 2px 7px; border-radius: 999px; flex-shrink: 0;
+    }
+    .dm-snap-action-count.warn { background: #fffbeb; border-color: #fde68a; color: #92400e; }
+    .dm-snap-action-count.bad { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+    .dm-snap-metrics {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+    }
+    .dm-snap-metric {
+      text-align: center; padding: 6px 4px; border-radius: 7px;
+      background: var(--gray-50); border: 1px solid var(--gray-100);
+    }
+    .dm-snap-metric-val { font-size: 14px; font-weight: 800; color: var(--green); line-height: 1.1; }
+    .dm-snap-metric-val.warn { color: var(--warning); }
+    .dm-snap-metric-val.muted { color: var(--gray-500); }
+    .dm-snap-metric-lbl { font-size: 9px; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.04em; margin-top: 2px; }
+    .dm-snap-clear {
+      font-size: 10px; font-weight: 600; color: var(--green);
+      background: none; border: none; cursor: pointer; padding: 0;
+      font-family: inherit; text-decoration: underline;
+    }
+    .dm-snapshot-empty {
+      font-size: 12px; color: var(--gray-400); text-align: center; padding: 16px 8px;
+    }
 
     .dm-bottom-grid {
       display: grid;
@@ -572,9 +771,24 @@
     .dm-toast.show { transform: translateY(0); opacity: 1; }
     .dm-toast.err { background: var(--danger); }
 
-    .dm-table-scroll { overflow-x: auto; }
-    .dm-table-scroll::-webkit-scrollbar { height: 6px; }
-    .dm-table-scroll::-webkit-scrollbar-thumb { background: var(--gray-200); border-radius: 10px; }
+    .dm-inventory-card .dm-table-scroll {
+      overflow: auto;
+      flex: 1 1 auto;
+      min-height: 0;
+      -webkit-overflow-scrolling: touch;
+    }
+    @media (max-width: 1100px) {
+      .dm-inventory-card .dm-table-scroll {
+        min-height: min(440px, calc(100vh - 20rem));
+        max-height: calc(100vh - 14rem);
+      }
+    }
+    .dm-table-scroll::-webkit-scrollbar,
+    .dm-activity-list::-webkit-scrollbar { width: 6px; height: 6px; }
+    .dm-table-scroll::-webkit-scrollbar-thumb,
+    .dm-activity-list::-webkit-scrollbar-thumb { background: var(--gray-200); border-radius: 10px; }
+    .dm-table-scroll::-webkit-scrollbar-track,
+    .dm-activity-list::-webkit-scrollbar-track { background: transparent; }
 
     @media (max-width: 768px) {
       .dm-topbar {
@@ -594,7 +808,15 @@
       .dm-search-wrap input:focus { width: 100%; }
       .dm-add-btn { flex-shrink: 0; padding: 7px 11px; font-size: 12px; }
       .dm-content { padding: 0.875rem; }
-      .dm-device-table th, .dm-device-table td { padding: 0.5rem 0.625rem; font-size: 0.75rem; }
+      .dm-device-grid-body .dm-device-grid-row { height: 56px; }
+      .dm-device-grid { min-width: 0; }
+      .dm-device-grid-row {
+        grid-template-columns: 32px minmax(120px, 1fr) 80px 68px minmax(90px, 130px) 32px;
+        column-gap: 8px;
+        padding: 0 8px 0 12px;
+      }
+      .dm-device-name { font-size: 13px; }
+      .dm-activity-list { max-height: min(240px, calc(100vh - 28rem)); }
       .dm-stat-card { padding: 12px 14px; }
       /* Modal form fields — prevent collapsed look */
       .dm-form-row { grid-template-columns: 1fr; gap: 10px; margin-bottom: 10px; }
@@ -615,6 +837,9 @@
   <div class="dm-root">
     <aside class="dh-sidebar" id="dmSidebar" aria-label="Device management menu">
       <div class="sb-brand">
+        <div class="sb-brand-logo" aria-hidden="true">
+          <img src="{{ url_for('static', filename='icons/Injaaz logo.png') }}" alt="" width="96" height="96" decoding="async">
+        </div>
         <div class="sb-brand-text">
           <span class="name">DeviceCore</span>
           <span class="tagline">Enterprise</span>
@@ -697,7 +922,7 @@
         </div>
 
         <div class="dm-main-grid">
-          <div class="dm-card">
+          <div class="dm-card dm-inventory-card">
             <div class="dm-card-header">
               <div>
                 <div class="dm-card-title">Device Inventory</div>
@@ -713,21 +938,19 @@
               </div>
             </div>
             <div class="dm-table-scroll">
-              <table class="dm-device-table" id="deviceTable">
-                <thead>
-                  <tr>
-                    <th style="width:36px"><input type="checkbox" class="dm-device-check" id="selectAll"></th>
-                    <th>Device</th>
-                    <th>Status</th>
-                    <th>Type</th>
-                    <th>User</th>
-                    <th>Health</th>
-                    <th>OS</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="deviceBody"></tbody>
-              </table>
+              <div class="dm-device-grid" id="deviceTable">
+                <div class="dm-device-grid-head">
+                  <div class="dm-device-grid-row">
+                    <div class="dm-col-check"><input type="checkbox" class="dm-device-check" id="selectAll" aria-label="Select all"></div>
+                    <div class="dm-col-device">Device</div>
+                    <div class="dm-col-status">Status</div>
+                    <div class="dm-col-type">Type</div>
+                    <div class="dm-col-os">OS</div>
+                    <div></div>
+                  </div>
+                </div>
+                <div class="dm-device-grid-body" id="deviceBody"></div>
+              </div>
             </div>
           </div>
 
@@ -749,7 +972,7 @@
                 </div>
               </div>
             </div>
-            <div class="dm-card" style="animation-delay:0.32s">
+            <div class="dm-card dm-activity-card" style="animation-delay:0.32s">
               <div class="dm-card-header">
                 <div>
                   <div class="dm-card-title">⚡ Recent Activity</div>
@@ -758,6 +981,17 @@
               </div>
               <div class="dm-activity-list" id="activityList">
                 <div class="dm-activity-item"><div class="dm-activity-dot green"></div><div><div class="dm-activity-text">Loading…</div><div class="dm-activity-time">—</div></div></div>
+              </div>
+            </div>
+            <div class="dm-card dm-snapshot-card" style="animation-delay:0.36s">
+              <div class="dm-card-header">
+                <div>
+                  <div class="dm-card-title">📡 Fleet Pulse</div>
+                  <div class="dm-card-sub" id="snapshotSub">Status &amp; ownership</div>
+                </div>
+              </div>
+              <div class="dm-snapshot-body" id="snapshotBody">
+                <div class="dm-snapshot-empty">Loading…</div>
               </div>
             </div>
           </div>
@@ -913,6 +1147,7 @@
 (function() {
   let devicesData = [];
   let currentTab = 'all';
+  let snapshotFilter = null;
   let selected = new Set();
 
   function getToken() { return localStorage.getItem('access_token'); }
@@ -922,10 +1157,32 @@
   }
   function escapeHtml(t) { if (!t) return ''; const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
 
+  let dmLayoutSyncRaf = null;
+  function syncDmMainRowHeight() {
+    if (dmLayoutSyncRaf) cancelAnimationFrame(dmLayoutSyncRaf);
+    dmLayoutSyncRaf = requestAnimationFrame(() => {
+      dmLayoutSyncRaf = null;
+      const inventory = document.querySelector('.dm-inventory-card');
+      const right = document.querySelector('.dm-right-panel');
+      if (!inventory || !right) return;
+      if (window.innerWidth <= 1100) {
+        inventory.style.maxHeight = '';
+        inventory.style.minHeight = '';
+        return;
+      }
+      const h = Math.round(right.getBoundingClientRect().height);
+      if (h > 0) {
+        inventory.style.maxHeight = h + 'px';
+        inventory.style.minHeight = h + 'px';
+      }
+    });
+  }
+
   function statusClass(s) {
     if (s === 'online') return 'online';
     if (s === 'offline') return 'offline';
     if (s === 'update') return 'warning';
+    if (s === 'idle') return 'idle';
     return 'maintenance';
   }
   function statusLabel(s) {
@@ -933,79 +1190,204 @@
     return m[s] || (s ? s.charAt(0).toUpperCase()+s.slice(1) : '—');
   }
   function deviceIcon(type) {
-    const icons = { Laptop:'💻', Desktop:'🖥️', Mobile:'📱', Server:'🖥️', Tablet:'📟' };
+    const icons = { Laptop:'💻', Desktop:'🖥️', Mobile:'📱', Server:'🖥️', Tablet:'📟', SIM:'📶' };
     return icons[type] || '💻';
   }
-  function healthClass(h) {
-    if (h >= 80) return 'good';
-    if (h >= 55) return 'ok';
-    return 'bad';
+  function typeClass(type) {
+    const t = (type || 'Laptop').toLowerCase();
+    if (t === 'sim') return 'sim';
+    if (t === 'tablet') return 'tablet';
+    if (t === 'desktop') return 'desktop';
+    if (t === 'mobile') return 'mobile';
+    if (t === 'server') return 'server';
+    return 'laptop';
+  }
+  function formatOs(os, deviceType) {
+    const s = String(os || '').trim();
+    if (!s || s.toLowerCase() === 'nan' || s.toLowerCase() === 'n/a' || s.toLowerCase() === 'none') {
+      return '';
+    }
+    return s;
+  }
+  function truncateText(text, max) {
+    const s = String(text || '').trim();
+    if (s.length <= max) return s;
+    return s.slice(0, max - 1) + '…';
   }
 
+  function deviceIsUnassigned(d) {
+    return !d.assigned_user_id && !d.assigned_user;
+  }
+
+  function deviceIsStale(d) {
+    const la = String(d.last_active || '').trim();
+    if (!la || la === 'Never' || la === '—') return true;
+    const m = la.match(/^(\d+)d ago$/);
+    return !!(m && parseInt(m[1], 10) >= 14);
+  }
+  function deviceIsLaptop(d) {
+    return (d.device_type || 'Laptop').toLowerCase() === 'laptop';
+  }
+  function deviceIsDesktop(d) {
+    return (d.device_type || '').toLowerCase() === 'desktop';
+  }
+
+  function deviceMatchesSnapshotFilter(d) {
+    if (!snapshotFilter) return true;
+    switch (snapshotFilter) {
+      case 'unassigned': return deviceIsUnassigned(d);
+      case 'stale': return deviceIsStale(d);
+      case 'idle': return d.status === 'idle';
+      case 'laptop': return deviceIsLaptop(d);
+      case 'desktop': return deviceIsDesktop(d);
+      case 'offline': return d.status === 'offline';
+      case 'update': return d.status === 'update';
+      default: return true;
+    }
+  }
+
+  window.dmApplySnapshotFilter = function(kind) {
+    snapshotFilter = snapshotFilter === kind ? null : kind;
+    if (snapshotFilter === 'offline' || snapshotFilter === 'update') {
+      currentTab = snapshotFilter;
+      document.querySelectorAll('.dm-filter-tab').forEach(x => x.classList.remove('active'));
+      document.querySelector(`.dm-filter-tab[data-tab="${snapshotFilter}"]`)?.classList.add('active');
+    } else if (snapshotFilter) {
+      currentTab = 'all';
+      document.querySelectorAll('.dm-filter-tab').forEach(x => x.classList.remove('active'));
+      document.querySelector('.dm-filter-tab[data-tab="all"]')?.classList.add('active');
+    }
+    renderDevices(devicesData);
+    updateFleetSnapshot();
+    if (snapshotFilter) {
+      document.getElementById('deviceTable')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  };
+
+  window.dmClearSnapshotFilter = function() {
+    snapshotFilter = null;
+    renderDevices(devicesData);
+    updateFleetSnapshot();
+  };
+
+  function computeFleetReadiness(devices) {
+    const n = devices.length;
+    if (!n) return 0;
+    const pct = (fn) => devices.filter(fn).length / n;
+    let score = 100;
+    score -= pct(d => d.status === 'offline') * 40;
+    score -= pct(d => d.status === 'update') * 25;
+    score -= pct(deviceIsUnassigned) * 25;
+    score -= pct(deviceIsStale) * 10;
+    return Math.max(0, Math.round(score));
+  }
+
+  function fleetReadinessGrade(score) {
+    if (score >= 85) return { cls: 'good', label: 'Well managed' };
+    if (score >= 65) return { cls: 'fair', label: 'Needs follow-up' };
+    return { cls: 'poor', label: 'Action required' };
+  }
+
+  function generateFleetInsight(m) {
+    if (m.unassigned >= Math.max(2, Math.ceil(m.total * 0.1))) {
+      return `<strong>${m.unassigned} devices</strong> have no owner assigned. Link users so support tickets and audits route correctly.`;
+    }
+    if (m.offline > 0) {
+      return `<strong>${m.offline} offline</strong> — confirm these are still deployed or mark them for retirement.`;
+    }
+    if (m.pending > 0) {
+      return `<strong>${m.pending} device(s)</strong> flagged under Alerts. Open the inventory Alerts tab to review.`;
+    }
+    if (m.stale >= Math.max(3, Math.ceil(m.total * 0.2))) {
+      return `<strong>${m.stale} devices</strong> show no recent activity (14+ days). Worth a quick check-in with owners.`;
+    }
+    if (m.online === 0 && m.idle === m.total) {
+      return `All ${m.total} devices are <strong>idle</strong> right now — normal outside core business hours.`;
+    }
+    return `<strong>${m.laptopPct}% laptops</strong> in the fleet · ${m.online} online · ${m.assignedPct}% assigned to users.`;
+  }
+
+  function snapActionRow(kind, icon, label, count, severity) {
+    if (!count) return '';
+    const active = snapshotFilter === kind ? ' is-active' : '';
+    const countCls = severity === 'bad' ? ' bad' : (severity === 'warn' ? ' warn' : '');
+    return `<button type="button" class="dm-snap-action${active}" onclick="window.dmApplySnapshotFilter('${kind}')">
+      <span class="dm-snap-action-left"><span class="dm-snap-action-icon">${icon}</span><span class="dm-snap-action-label">${label}</span></span>
+      <span class="dm-snap-action-count${countCls}">${count}</span>
+    </button>`;
+  }
+  const DM_DELETE_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>';
+
   function renderDevices(data) {
-    const tbody = document.getElementById('deviceBody');
+    const container = document.getElementById('deviceBody');
     const searchQ = (document.getElementById('searchInput').value || '').toLowerCase();
     let filtered = data.filter(d => {
       const matchTab = currentTab === 'all' || d.status === currentTab;
-      const matchSearch = !searchQ || 
+      const matchSearch = !searchQ ||
         (d.name||'').toLowerCase().includes(searchQ) ||
         (d.device_id||'').toLowerCase().includes(searchQ) ||
         (d.assigned_user||'').toLowerCase().includes(searchQ) ||
-        (d.os||'').toLowerCase().includes(searchQ);
-      return matchTab && matchSearch;
+        (d.os||'').toLowerCase().includes(searchQ) ||
+        (d.device_type||'').toLowerCase().includes(searchQ);
+      return matchTab && matchSearch && deviceMatchesSnapshotFilter(d);
     });
 
     if (!filtered.length) {
-      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--gray-400);">No devices match your filter</td></tr>';
+      const emptyHint = snapshotFilter
+        ? 'No devices match this focus area — try clearing the filter'
+        : 'Try adjusting your search or filters';
+      container.innerHTML = `
+        <div class="dm-empty-state">
+          <div class="dm-empty-icon">🖥️</div>
+          <div class="dm-empty-title">No devices found</div>
+          <div class="dm-empty-desc">${emptyHint}</div>
+        </div>`;
       document.getElementById('deviceCount').textContent = '0 devices';
+      syncDmMainRowHeight();
       return;
     }
 
-    tbody.innerHTML = filtered.map(d => {
-      const h = d.health || 0;
-      const hc = healthClass(h);
+    container.innerHTML = filtered.map(d => {
       const sc = statusClass(d.status);
+      const tc = typeClass(d.device_type);
+      const osText = formatOs(d.os, d.device_type);
+      const deviceName = truncateText(d.name, 64);
+      const fullName = escapeHtml(d.name || '');
+      const serialTip = d.serial_or_asset_tag ? ` · ${escapeHtml(d.serial_or_asset_tag)}` : '';
       return `
-      <tr data-id="${d.id}" onclick="window.dmSelectRow && window.dmSelectRow(this)">
-        <td><input type="checkbox" class="dm-device-check row-cb" value="${d.id}" onclick="event.stopPropagation()"></td>
-        <td>
+      <div class="dm-device-grid-row" data-id="${d.id}" onclick="window.dmSelectRow && window.dmSelectRow(this)">
+        <div class="dm-col-check">
+          <input type="checkbox" class="dm-device-check row-cb" value="${d.id}" onclick="event.stopPropagation()" aria-label="Select device">
+        </div>
+        <div class="dm-col-device">
           <div class="dm-device-name-cell">
-            <div class="dm-device-icon-badge">${deviceIcon(d.device_type)}</div>
-            <div>
-              <div class="dm-device-name">${escapeHtml(d.name)}</div>
-              <div class="dm-device-id">${d.device_id}</div>
+            <div class="dm-device-icon-badge type-${tc}">${deviceIcon(d.device_type)}</div>
+            <div class="dm-device-text">
+              <span class="dm-device-name" title="${fullName}${serialTip}">${escapeHtml(deviceName)}</span>
+              <span class="dm-device-id">${escapeHtml(d.device_id || '')}</span>
             </div>
           </div>
-        </td>
-        <td><span class="dm-status-pill ${sc}">${statusLabel(d.status)}</span></td>
-        <td><span class="dm-tag">${escapeHtml(d.device_type)}</span></td>
-        <td>
-          <div style="font-size:13px;font-weight:500;color:var(--gray-900)">${escapeHtml(d.assigned_user || '—')}</div>
-        </td>
-        <td>
-          <div class="dm-health-bar-wrap">
-            <div class="dm-health-label" style="color:${hc==='good'?'var(--green)':hc==='ok'?'var(--warning)':'var(--danger)'}">${h}%</div>
-            <div class="dm-health-bar">
-              <div class="dm-health-fill ${hc}" style="width:${h}%"></div>
-            </div>
-          </div>
-        </td>
-        <td><span class="dm-tag">${escapeHtml(d.os)}</span></td>
-        <td>
-          <div style="display:flex;gap:4px">
-            <span class="dm-action-btn" title="Remove" onclick="event.stopPropagation();window.dmRemoveDevice && window.dmRemoveDevice(${d.id})">🗑</span>
-          </div>
-        </td>
-      </tr>`;
+        </div>
+        <div class="dm-col-status"><span class="dm-status-pill ${sc}">${statusLabel(d.status)}</span></div>
+        <div class="dm-col-type"><span class="dm-type-chip ${tc}">${escapeHtml(d.device_type || 'Laptop')}</span></div>
+        <div class="dm-col-os">
+          <span class="dm-os-text ${osText ? '' : 'muted'}">${escapeHtml(osText || '—')}</span>
+        </div>
+        <div style="display:flex;justify-content:center">
+          <button type="button" class="dm-action-btn" title="Remove device" onclick="event.stopPropagation();window.dmRemoveDevice && window.dmRemoveDevice(${d.id})">${DM_DELETE_ICON}</button>
+        </div>
+      </div>`;
     }).join('');
-    document.getElementById('deviceCount').textContent = filtered.length + ' devices';
+    document.getElementById('deviceCount').textContent = filtered.length + ' device' + (filtered.length === 1 ? '' : 's');
 
-    tbody.querySelectorAll('.row-cb').forEach(cb => {
+    container.querySelectorAll('.row-cb').forEach(cb => {
       cb.onchange = () => {
         if (cb.checked) selected.add(parseInt(cb.value));
         else selected.delete(parseInt(cb.value));
+        cb.closest('.dm-device-grid-row')?.classList.toggle('selected', cb.checked);
       };
     });
+    syncDmMainRowHeight();
   }
 
   function updateStats() {
@@ -1092,6 +1474,7 @@
     }));
     if (!recent.length) {
       list.innerHTML = '<div class="dm-activity-item"><div class="dm-activity-dot green"></div><div><div class="dm-activity-text">No devices yet</div><div class="dm-activity-time">—</div></div></div>';
+      syncDmMainRowHeight();
       return;
     }
     list.innerHTML = recent.map(r => `
@@ -1103,6 +1486,7 @@
         </div>
       </div>
     `).join('');
+    syncDmMainRowHeight();
   }
 
   function updateAlerts() {
@@ -1114,6 +1498,99 @@
     if (offline > 0) html += `<div class="dm-alert-item critical"><span class="dm-alert-icon">🔴</span><div class="dm-alert-body"><div class="dm-alert-title">Offline Devices</div><div class="dm-alert-desc">${offline} device(s) offline</div></div></div>`;
     if (!html) html = `<div class="dm-alert-item info"><span class="dm-alert-icon">📋</span><div class="dm-alert-body"><div class="dm-alert-title">Device Management</div><div class="dm-alert-desc">Track and manage enrolled devices. Enroll new devices to get started.</div></div></div>`;
     list.innerHTML = html;
+    syncDmMainRowHeight();
+  }
+
+  function updateFleetSnapshot() {
+    const body = document.getElementById('snapshotBody');
+    const sub = document.getElementById('snapshotSub');
+    if (!body) return;
+    const total = devicesData.length;
+    if (!total) {
+      if (sub) sub.textContent = 'No data yet';
+      body.innerHTML = '<div class="dm-snapshot-empty">Enroll devices to track status, ownership, and activity.</div>';
+      syncDmMainRowHeight();
+      return;
+    }
+
+    const online = devicesData.filter(d => d.status === 'online').length;
+    const offline = devicesData.filter(d => d.status === 'offline').length;
+    const pending = devicesData.filter(d => d.status === 'update').length;
+    const idle = devicesData.filter(d => d.status === 'idle').length;
+    const unassigned = devicesData.filter(deviceIsUnassigned).length;
+    const stale = devicesData.filter(deviceIsStale).length;
+    const laptops = devicesData.filter(deviceIsLaptop).length;
+    const assigned = devicesData.filter(d => !deviceIsUnassigned(d)).length;
+    const assignedPct = Math.round(100 * assigned / total);
+    const onlinePct = Math.round(100 * online / total);
+    const laptopPct = Math.round(100 * laptops / total);
+    const readiness = computeFleetReadiness(devicesData);
+    const grade = fleetReadinessGrade(readiness);
+
+    const metrics = { total, online, offline, pending, idle, unassigned, stale, laptopPct, assignedPct };
+    if (sub) sub.textContent = readiness + '/100 · ' + total + ' devices';
+
+    const actions = [
+      snapActionRow('unassigned', '👤', 'No assigned user', unassigned, unassigned > 0 ? 'warn' : ''),
+      snapActionRow('offline', '🔴', 'Offline devices', offline, offline > 0 ? 'bad' : ''),
+      snapActionRow('update', '⚠️', 'Alert flagged', pending, pending > 0 ? 'warn' : ''),
+      snapActionRow('stale', '💤', 'No recent activity', stale, stale > 0 ? 'warn' : ''),
+      snapActionRow('idle', '⏸️', 'Currently idle', idle, idle > 0 ? '' : ''),
+      snapActionRow('laptop', '💻', 'Laptops', laptops, ''),
+    ].filter(Boolean).join('');
+
+    const clearBtn = snapshotFilter
+      ? `<button type="button" class="dm-snap-clear" onclick="window.dmClearSnapshotFilter()">Clear filter</button>`
+      : '';
+
+    const statusSegs = [
+      { key: 'online', n: online, cls: 'online', label: 'Online' },
+      { key: 'idle', n: idle, cls: 'idle', label: 'Idle' },
+      { key: 'offline', n: offline, cls: 'offline', label: 'Offline' },
+      { key: 'update', n: pending, cls: 'update', label: 'Alerts' },
+    ].filter(s => s.n > 0);
+    const statusBar = statusSegs.map(s =>
+      `<div class="dm-snap-status-seg ${s.cls}" style="width:${Math.round(100 * s.n / total)}%" title="${s.label}: ${s.n}"></div>`
+    ).join('') || '<div class="dm-snap-status-seg idle" style="width:100%"></div>';
+    const statusLegend = statusSegs.map(s =>
+      `<span class="dm-snap-status-key"><span class="dm-snap-status-dot ${s.cls}"></span>${s.label} ${s.n}</span>`
+    ).join('');
+
+    body.innerHTML = `
+      <div class="dm-snap-score-row">
+        <div class="dm-snap-score-ring ${grade.cls}">${readiness}</div>
+        <div class="dm-snap-score-text">
+          <div class="dm-snap-score-title">${grade.label}</div>
+          <div class="dm-snap-score-sub">Readiness from connectivity, ownership &amp; activity</div>
+        </div>
+      </div>
+      <div class="dm-snap-status-block">
+        <div class="dm-snap-block-title">Live status mix</div>
+        <div class="dm-snap-status-bar">${statusBar}</div>
+        <div class="dm-snap-status-legend">${statusLegend}</div>
+      </div>
+      <div class="dm-snap-insight">${generateFleetInsight(metrics)}</div>
+      <div>
+        <div class="dm-snap-block-title" style="display:flex;justify-content:space-between;align-items:center">
+          <span>Quick filters ${clearBtn ? '·' : ''}</span>${clearBtn}
+        </div>
+        <div class="dm-snap-actions">${actions || '<div class="dm-snapshot-empty" style="padding:8px 0">Nothing to filter — fleet looks good.</div>'}</div>
+      </div>
+      <div class="dm-snap-metrics">
+        <div class="dm-snap-metric">
+          <div class="dm-snap-metric-val ${onlinePct ? '' : 'muted'}">${onlinePct}%</div>
+          <div class="dm-snap-metric-lbl">Online</div>
+        </div>
+        <div class="dm-snap-metric">
+          <div class="dm-snap-metric-val ${assignedPct >= 90 ? '' : 'warn'}">${assignedPct}%</div>
+          <div class="dm-snap-metric-lbl">Assigned</div>
+        </div>
+        <div class="dm-snap-metric">
+          <div class="dm-snap-metric-val">${laptopPct}%</div>
+          <div class="dm-snap-metric-lbl">Laptops</div>
+        </div>
+      </div>`;
+    syncDmMainRowHeight();
   }
 
   let toastTimer;
@@ -1128,14 +1605,13 @@
   window.showToast = showToast;
 
   window.dmSelectRow = function(row) {
-    row.classList.toggle('selected');
-    const id = parseInt(row.dataset.id);
     const cb = row.querySelector('.row-cb');
-    if (cb) {
-      cb.checked = !cb.checked;
-      if (cb.checked) selected.add(id);
-      else selected.delete(id);
-    }
+    if (!cb) return;
+    cb.checked = !cb.checked;
+    row.classList.toggle('selected', cb.checked);
+    const id = parseInt(row.dataset.id);
+    if (cb.checked) selected.add(id);
+    else selected.delete(id);
   };
 
   window.dmRemoveDevice = async function(id) {
@@ -1151,6 +1627,7 @@
       updateCompliance();
       updateActivity();
       updateAlerts();
+      updateFleetSnapshot();
       showToast('Device removed');
     } catch (e) {
       showToast('Failed to remove device', true);
@@ -1172,6 +1649,7 @@
       updateCompliance();
       updateActivity();
       updateAlerts();
+      updateFleetSnapshot();
     } catch (e) {
       showToast('Failed to load devices', true);
     }
@@ -1275,8 +1753,8 @@
   }
 
   function exportCSV() {
-    const rows = [['ID','Name','Status','Type','OS','User','Health']];
-    devicesData.forEach(d => rows.push([d.device_id,d.name,d.status,d.device_type,d.os,d.assigned_user||'',d.health||0]));
+    const rows = [['ID','Name','Status','Type','OS','User']];
+    devicesData.forEach(d => rows.push([d.device_id,d.name,d.status,d.device_type,d.os,d.assigned_user||'']));
     const a = document.createElement('a');
     a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(rows.map(r=>r.join(',')).join('\n'));
     a.download = 'devices_export.csv';
@@ -1290,12 +1768,15 @@
       document.querySelectorAll('.dm-filter-tab').forEach(x => x.classList.remove('active'));
       t.classList.add('active');
       currentTab = t.dataset.tab || 'all';
+      snapshotFilter = null;
       renderDevices(devicesData);
+      updateFleetSnapshot();
     };
   });
   document.getElementById('selectAll').onchange = function() {
     document.querySelectorAll('.row-cb').forEach(cb => {
       cb.checked = this.checked;
+      cb.closest('.dm-device-grid-row')?.classList.toggle('selected', this.checked);
       if (this.checked) selected.add(parseInt(cb.value));
       else selected.delete(parseInt(cb.value));
     });
@@ -1347,6 +1828,15 @@
 
   loadDevices();
   loadUserCard();
+
+  const dmRightPanel = document.querySelector('.dm-right-panel');
+  if (dmRightPanel && typeof ResizeObserver !== 'undefined') {
+    new ResizeObserver(() => syncDmMainRowHeight()).observe(dmRightPanel);
+  }
+  window.addEventListener('resize', syncDmMainRowHeight);
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(syncDmMainRowHeight);
+  }
 })();
   </script>
 </body>

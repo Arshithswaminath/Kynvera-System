@@ -22,6 +22,17 @@
         </div>
       </div>
 
+      <div class="dh-sb-action-row" id="dhSbActionRow">
+        <button type="button" class="dh-sb-action-btn dh-sb-action-primary" id="dhSbNewBtn" onclick="openNewModal()">
+          <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+          Create Document
+        </button>
+        <button type="button" class="dh-sb-action-btn dh-sb-action-ghost" id="dhSbUploadBtn" onclick="openUploadModal()">
+          <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"/></svg>
+          Upload
+        </button>
+      </div>
+
       <nav class="sb-nav">
         <div class="dh-sb-section">
           <div class="sb-section-label">Overview</div>
@@ -192,12 +203,119 @@
           <div class="dh-body">
             <div class="editor-area" id="dhEditorArea">
               <div id="dhSearchResults" class="dh-search-results" hidden aria-live="polite"></div>
-              <div class="empty-state" id="dhEmptyState">
-                <div class="empty-icon">📂</div>
-                <h3>No document selected</h3>
-                <p class="dh-empty-hint">Pick a document from the <span class="dh-empty-hint-desktop">menu on the left</span><span class="dh-empty-hint-mobile">menu (☰)</span>, or create a new one to get started.</p>
-                <button type="button" class="btn btn-primary" id="dhEmptyNewBtn" style="margin-top:8px" onclick="openNewModal()">Create Document</button>
-                <button type="button" class="btn btn-ghost" id="dhEmptyUploadBtn" style="margin-top:6px" onclick="openUploadModal()">Upload Document</button>
+              <div class="dh-home" id="dhEmptyState">
+                <div class="dh-home-inner">
+                  <div class="dh-home-header">
+                    <span class="dh-home-eyebrow">Document Library</span>
+                    <h2 class="dh-home-title">Browse your collections</h2>
+                    <p class="dh-home-sub">Pick a collection to view its documents, or use search above to find anything fast.</p>
+                  </div>
+                  <div class="dh-folder-grid">
+
+                    <button type="button" class="dh-folder-card" onclick="dhGoToFolder('onboarding')">
+                      <div class="dh-folder-top">
+                        <span class="dh-folder-icon-wrap dh-folder-icon--onboarding">
+                          <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"/></svg>
+                        </span>
+                        <span class="dh-folder-count" id="dhFolderCount-onboarding">—</span>
+                      </div>
+                      <div class="dh-folder-bottom">
+                        <div class="dh-folder-name">Onboarding</div>
+                        <div class="dh-folder-desc">Employee onboarding packets and orientation guides</div>
+                        <div class="dh-folder-foot">
+                          <span>View collection</span>
+                          <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg>
+                        </div>
+                      </div>
+                    </button>
+
+                    <button type="button" class="dh-folder-card" onclick="dhGoToFolder('contracts')">
+                      <div class="dh-folder-top">
+                        <span class="dh-folder-icon-wrap dh-folder-icon--contracts">
+                          <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>
+                        </span>
+                        <span class="dh-folder-count" id="dhFolderCount-contracts">—</span>
+                      </div>
+                      <div class="dh-folder-bottom">
+                        <div class="dh-folder-name">Contracts</div>
+                        <div class="dh-folder-desc">Service agreements, vendor contracts, and legal documents</div>
+                        <div class="dh-folder-foot">
+                          <span>View collection</span>
+                          <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg>
+                        </div>
+                      </div>
+                    </button>
+
+                    <button type="button" class="dh-folder-card" onclick="dhGoToFolder('policies')">
+                      <div class="dh-folder-top">
+                        <span class="dh-folder-icon-wrap dh-folder-icon--policies">
+                          <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z"/></svg>
+                        </span>
+                        <span class="dh-folder-count" id="dhFolderCount-policies">—</span>
+                      </div>
+                      <div class="dh-folder-bottom">
+                        <div class="dh-folder-name">Policies</div>
+                        <div class="dh-folder-desc">Company policies, compliance documents, and procedures</div>
+                        <div class="dh-folder-foot">
+                          <span>View collection</span>
+                          <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg>
+                        </div>
+                      </div>
+                    </button>
+
+                    <button type="button" class="dh-folder-card" onclick="dhGoToFolder('manuals')">
+                      <div class="dh-folder-top">
+                        <span class="dh-folder-icon-wrap dh-folder-icon--manuals">
+                          <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25"/></svg>
+                        </span>
+                        <span class="dh-folder-count" id="dhFolderCount-manuals">—</span>
+                      </div>
+                      <div class="dh-folder-bottom">
+                        <div class="dh-folder-name">Manuals</div>
+                        <div class="dh-folder-desc">Technical manuals, user guides, and operating procedures</div>
+                        <div class="dh-folder-foot">
+                          <span>View collection</span>
+                          <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg>
+                        </div>
+                      </div>
+                    </button>
+
+                    <button type="button" class="dh-folder-card" onclick="dhGoToFolder('reports')">
+                      <div class="dh-folder-top">
+                        <span class="dh-folder-icon-wrap dh-folder-icon--reports">
+                          <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z"/></svg>
+                        </span>
+                        <span class="dh-folder-count" id="dhFolderCount-reports">—</span>
+                      </div>
+                      <div class="dh-folder-bottom">
+                        <div class="dh-folder-name">Reports</div>
+                        <div class="dh-folder-desc">Analysis reports, performance reviews, and summaries</div>
+                        <div class="dh-folder-foot">
+                          <span>View collection</span>
+                          <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg>
+                        </div>
+                      </div>
+                    </button>
+
+                    <button type="button" class="dh-folder-card" onclick="dhGoToFolder('Internal')">
+                      <div class="dh-folder-top">
+                        <span class="dh-folder-icon-wrap dh-folder-icon--internal">
+                          <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z"/></svg>
+                        </span>
+                        <span class="dh-folder-count" id="dhFolderCount-Internal">—</span>
+                      </div>
+                      <div class="dh-folder-bottom">
+                        <div class="dh-folder-name">Internal</div>
+                        <div class="dh-folder-desc">Internal communications, memos, and working documents</div>
+                        <div class="dh-folder-foot">
+                          <span>View collection</span>
+                          <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg>
+                        </div>
+                      </div>
+                    </button>
+
+                  </div>
+                </div>
               </div>
 
               <div id="dhViewerState" style="display:none;flex-direction:column;height:100%">
@@ -341,24 +459,70 @@
   </div>
 
   <div class="modal-overlay" id="dhNewDocModal" onclick="if(event.target===this)closeNewModal()">
-    <div class="modal">
-      <h2>New Document</h2>
-      <label>Template</label>
-      <div class="template-grid" id="dhTemplateGrid">
-        <div class="template-item selected" data-cat="onboarding"><div class="template-icon">🚀</div><div class="template-label">Onboarding</div></div>
-        <div class="template-item" data-cat="contracts"><div class="template-icon">📝</div><div class="template-label">Contract</div></div>
-        <div class="template-item" data-cat="policies"><div class="template-icon">📜</div><div class="template-label">Policy</div></div>
-        <div class="template-item" data-cat="manuals"><div class="template-icon">📖</div><div class="template-label">Manual</div></div>
-        <div class="template-item" data-cat="reports"><div class="template-icon">📊</div><div class="template-label">Report</div></div>
-        <div class="template-item" data-cat="other"><div class="template-icon">📄</div><div class="template-label">Blank</div></div>
-      </div>
-      <label>Document Title</label>
-      <input type="text" id="dhNewTitle" placeholder="Enter document title…" autocomplete="off"/>
-      <label>Description (optional)</label>
-      <textarea id="dhNewDesc" placeholder="Brief description…"></textarea>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-ghost" onclick="closeNewModal()">Cancel</button>
-        <button type="button" class="btn btn-primary" onclick="createDoc()">Create Document</button>
+    <div class="modal dh-modal-create">
+      <div class="dh-create-shell">
+        <header class="dh-create-header">
+          <div class="dh-create-header-text">
+            <h2>New Document</h2>
+            <p class="dh-create-lead">Choose a template and title to get started.</p>
+          </div>
+          <button type="button" class="dh-create-close" onclick="closeNewModal()" aria-label="Close">✕</button>
+        </header>
+
+        <div class="dh-create-body">
+          <label class="dh-create-label" for="dhTemplateGrid">Template</label>
+          <div class="template-grid" id="dhTemplateGrid" role="listbox" aria-label="Document template">
+          <button type="button" class="template-item selected" data-cat="onboarding" role="option" aria-selected="true">
+            <span class="template-icon" aria-hidden="true">
+              <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"/></svg>
+            </span>
+            <span class="template-label">Onboarding</span>
+          </button>
+          <button type="button" class="template-item" data-cat="contracts" role="option" aria-selected="false">
+            <span class="template-icon" aria-hidden="true">
+              <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>
+            </span>
+            <span class="template-label">Contract</span>
+          </button>
+          <button type="button" class="template-item" data-cat="policies" role="option" aria-selected="false">
+            <span class="template-icon" aria-hidden="true">
+              <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z"/></svg>
+            </span>
+            <span class="template-label">Policy</span>
+          </button>
+          <button type="button" class="template-item" data-cat="manuals" role="option" aria-selected="false">
+            <span class="template-icon" aria-hidden="true">
+              <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25"/></svg>
+            </span>
+            <span class="template-label">Manual</span>
+          </button>
+          <button type="button" class="template-item" data-cat="reports" role="option" aria-selected="false">
+            <span class="template-icon" aria-hidden="true">
+              <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z"/></svg>
+            </span>
+            <span class="template-label">Report</span>
+          </button>
+          <button type="button" class="template-item" data-cat="other" role="option" aria-selected="false">
+            <span class="template-icon" aria-hidden="true">
+              <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>
+            </span>
+            <span class="template-label">Blank</span>
+          </button>
+        </div>
+        <div class="dh-modal-field">
+          <label for="dhNewTitle">Document title</label>
+          <input type="text" id="dhNewTitle" placeholder="Enter document title…" autocomplete="off"/>
+        </div>
+        <div class="dh-modal-field dh-modal-field--last">
+          <label for="dhNewDesc">Description <span class="dh-field-optional">(optional)</span></label>
+          <textarea id="dhNewDesc" placeholder="Brief description…" rows="2"></textarea>
+        </div>
+        </div>
+
+        <footer class="dh-create-footer">
+          <button type="button" class="btn btn-ghost" onclick="closeNewModal()">Cancel</button>
+          <button type="button" class="btn btn-primary" onclick="createDoc()">Create Document</button>
+        </footer>
       </div>
     </div>
   </div>
@@ -441,13 +605,13 @@
   </div>
 
   <div class="modal-overlay" id="dhAccessModal" onclick="if(event.target===this)dhCloseAccessModal()">
-    <div class="modal" style="max-width:720px;width:96vw">
+    <div class="modal dh-access-modal" style="max-width:720px;width:96vw">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:12px">
         <h2 style="margin:0">DocHub Access Control</h2>
         <button type="button" class="btn btn-ghost" onclick="dhCloseAccessModal()">✕ Close</button>
       </div>
       <p style="font-size:14px;color:var(--ink-3);margin-bottom:12px">Admins can grant or revoke DocHub access per user.</p>
-      <div style="overflow-x:auto">
+      <div class="dh-access-table-wrap">
         <table style="width:100%;border-collapse:collapse;font-size:14px">
           <thead>
             <tr style="background:var(--surface-2);font-size:11.5px;text-transform:uppercase;color:var(--ink-3);font-weight:700">

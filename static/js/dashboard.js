@@ -1019,8 +1019,8 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
         flex-shrink: 0;
         display: flex;
         flex-direction: column;
-        background: #f7f7fa;
-        border-right: 1px solid #e5e5ea;
+        background: #ffffff;
+        border-right: 1px solid #ececf1;
         padding: 1.25rem 0.85rem 1rem;
         box-sizing: border-box;
       }
@@ -1114,13 +1114,12 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
       }
 
       .pro-nav-item:hover:not(.active) {
-        background: rgba(0, 0, 0, 0.04);
         color: #1c1c1e;
       }
 
       .pro-nav-item.active {
-        background: rgba(20, 115, 71, 0.1);
-        color: #0f5132;
+        background: transparent;
+        color: #147347;
         font-weight: 600;
         box-shadow: none;
       }
@@ -1159,8 +1158,7 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
         display: flex;
         align-items: center;
         gap: 0.5rem;
-        padding: 0.55rem 0.7rem;
-        border-radius: 10px;
+        padding: 0.35rem 0;
         font-size: 0.74rem;
         font-weight: 650;
         letter-spacing: 0.02em;
@@ -1174,12 +1172,10 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
       }
 
       .pro-rail-status.is-active {
-        background: #e7f7ee;
         color: #15803d;
       }
 
       .pro-rail-status.is-inactive {
-        background: #fdecec;
         color: #c62828;
       }
 
@@ -1189,6 +1185,7 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
         min-width: 0;
         display: flex;
         flex-direction: column;
+        background: #ffffff;
       }
 
       .pro-main-header {
@@ -1237,9 +1234,8 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
       }
 
       .pro-main-close:hover {
-        background: #f2f2f7;
         color: #1c1c1e;
-        border-color: #e5e5ea;
+        border-color: #d1d1d6;
       }
 
       .pro-main-close svg {
@@ -1263,7 +1259,7 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
         gap: 0.75rem;
         padding: 0.85rem 1.5rem;
         border-top: 1px solid #ececf1;
-        background: #fbfbfd;
+        background: #ffffff;
       }
 
       .pro-main-footer-actions {
@@ -1290,7 +1286,7 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
       }
 
       .pro-field-input--readonly {
-        background: #f2f2f7;
+        background: #ffffff;
         color: #636366;
         cursor: default;
       }
@@ -1298,71 +1294,83 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
       .pro-field-input--readonly:focus {
         border-color: #d1d1d6;
         box-shadow: none;
-        background: #f2f2f7;
+        background: #ffffff;
       }
 
       /* Organization details */
       .pro-org {
         margin-top: 1.5rem;
+        padding-top: 1rem;
+        border-top: 1px solid #ececf1;
       }
 
       .pro-org-title {
-        font-size: 1.02rem;
-        font-weight: 700;
-        color: #1c1c1e;
-        letter-spacing: -0.01em;
-        margin-bottom: 0.7rem;
+        font-size: 0.73rem;
+        font-weight: 600;
+        color: #aeaeb2;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        margin-bottom: 0.75rem;
       }
 
       .pro-org-grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 0.7rem;
+        gap: 0.55rem;
       }
 
       .pro-org-card {
         display: flex;
-        align-items: flex-start;
-        gap: 0.65rem;
-        padding: 0.75rem 0.8rem;
-        background: #f7f7fa;
-        border: 1px solid #ececf1;
-        border-radius: 12px;
+        align-items: center;
+        gap: 0.7rem;
+        padding: 0.72rem 0.85rem;
+        background: #f8f9fa;
+        border: 1px solid #f0f0f5;
+        border-radius: 10px;
+        min-width: 0;
+        transition: border-color 0.15s;
+      }
+
+      .pro-org-card:hover {
+        border-color: #d1d1d6;
       }
 
       .pro-org-ico {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 34px;
-        height: 34px;
-        border-radius: 10px;
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
         flex-shrink: 0;
-        background: color-mix(in srgb, var(--icon-color, #147347) 14%, #ffffff);
+        background: color-mix(in srgb, var(--icon-color, #147347) 12%, #ffffff);
         color: var(--icon-color, #147347);
       }
 
       .pro-org-ico svg {
-        width: 18px;
-        height: 18px;
+        width: 15px;
+        height: 15px;
       }
 
       .pro-org-text {
         min-width: 0;
+        flex: 1;
       }
 
       .pro-org-label {
-        font-size: 0.68rem;
-        font-weight: 600;
-        color: #8e8e93;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-        margin-bottom: 0.15rem;
+        font-size: 0.65rem;
+        font-weight: 500;
+        color: #aeaeb2;
+        letter-spacing: 0.03em;
+        margin-bottom: 0.1rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
 
       .pro-org-value {
-        font-size: 0.88rem;
-        font-weight: 650;
+        font-size: 0.85rem;
+        font-weight: 600;
         color: #1c1c1e;
         line-height: 1.3;
         word-break: break-word;
@@ -1370,9 +1378,9 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
 
       .pro-org-hint {
         font-size: 0.7rem;
-        color: #8e8e93;
-        margin: 0.7rem 0 0;
-        line-height: 1.4;
+        color: #aeaeb2;
+        margin: 0.75rem 0 0;
+        line-height: 1.45;
       }
       
       /* Hero Section */
@@ -1775,21 +1783,23 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
 
       .pro-field-label {
         display: block;
-        margin-bottom: 0.22rem;
-        font-size: 0.68rem;
-        color: #8e8e93;
+        margin-bottom: 0.28rem;
+        font-size: 0.72rem;
+        font-weight: 500;
+        color: #636366;
+        letter-spacing: 0.01em;
       }
 
       .pro-field-input {
         width: 100%;
-        padding: 0.5rem 0.58rem;
-        border: 1px solid #d1d1d6;
+        padding: 0.55rem 0.72rem;
+        border: 1.5px solid #e5e5ea;
         border-radius: 9px;
-        font-size: 0.84rem;
+        font-size: 0.875rem;
         box-sizing: border-box;
-        background: #fbfbfd;
+        background: #ffffff;
         color: #1c1c1e;
-        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        transition: border-color 0.18s ease, box-shadow 0.18s ease;
       }
 
       .pro-field-input:focus {

@@ -66,7 +66,7 @@ BORDER    = "D1D5DB"
 
 LOGO_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-    'static', 'logo.png'
+    'static', 'icons', 'icon-192x192.png'
 )
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -480,6 +480,25 @@ def _text_indicates_garden_city_project(
     if 'garden' in blob and 'city' in blob:
         return True
     return _blob_contains_garden_city_property_code(blob)
+
+
+def _text_indicates_ajman_municipality_client(
+    client_val: str,
+    contract_val: str = '',
+) -> bool:
+    """True for Ajman Municipality CAFM exports (incl. client typo 'Muncipality')."""
+    c = _field_lower(client_val)
+    t = _field_lower(contract_val)
+    blob = f'{c} {t}'.strip()
+    if not blob or blob == 'nan':
+        return False
+    if 'ajman muni' in blob:
+        return True
+    if 'facilities and buildings maintenance' in t:
+        return True
+    if 'investment' in t and 'building' in t:
+        return True
+    return False
 
 
 def _text_indicates_ac_hvac_complaint(
@@ -1466,6 +1485,11 @@ def _apply_mmr_chargeable_overrides(
         base_unit_val or ''
     ):
         return resolved
+    # Location-register BaseUnit toggles must not override Ajman Municipality CAFM
+    # exports — Investment rows use BaseUnit "Ajman Municipality Project" which is
+    # marked non-chargeable in the register, but the workbook Space column is authoritative.
+    if _text_indicates_ajman_municipality_client(client_val, contract_val):
+        return resolved
     bu = (base_unit_val or '').strip().lower()
     best_chargeable = None
     best_len = -1
@@ -1554,6 +1578,17 @@ def _resolve_chargeable(space_val: str, base_unit_val: str, client_val: str,
             out = 'Non-Chargeable'
         elif _br(config, 'floor_word_non_chargeable') and 'floor' in base_unit:
             out = 'Non-Chargeable'
+        elif _text_indicates_ajman_municipality_client(client_val, contract_val):
+            # Project-level BaseUnit labels; trust the workbook Space column when set.
+            space = (space_val or '').strip().lower()
+            if space and space not in ('unknown',):
+                n = _normalise_space(space_val)
+                if n in ('Chargeable', 'Non-Chargeable'):
+                    out = n
+                else:
+                    out = 'Chargeable'
+            else:
+                out = 'Chargeable'
         elif config.get('non_apartment_baseunit_non_chargeable', True):
             out = 'Non-Chargeable'
         else:
@@ -1637,25 +1672,7 @@ def format_chargeable_summary_for_email(df: pd.DataFrame) -> str:
     """Build a plain-text chargeable table for email body.
     Rows: Service Groups. Cols: Chargeable (Resolved+Pending), Non-Chargeable (Resolved+Pending).
     """
-    required = {'Space', 'Status', 'Service Group'}
-    if not required.issubset(set(df.columns)):
-        return ''
-    work = df.copy()
-    work['_space'] = _get_resolved_chargeable_series(df)
-    work['_status'] = work['Status'].apply(_normalise_status_bucket)
-
-    agg = (
-        work.groupby('Service Group', dropna=False)
-        .apply(lambda g: pd.Series({
-            'chg_res': len(g[(g['_space'] == 'Chargeable') & (g['_status'] == 'Resolved')]),
-            'chg_pen': len(g[(g['_space'] == 'Chargeable') & (g['_status'] == 'Pending')]),
-            'nchg_res': len(g[(g['_space'] == 'Non-Chargeable') & (g['_status'] == 'Resolved')]),
-            'nchg_pen': len(g[(g['_space'] == 'Non-Chargeable') & (g['_status'] == 'Pending')]),
-        }), include_groups=False)
-        .reset_index()
-    )
-    agg['Service Group'] = agg['Service Group'].fillna('').astype(str).str.strip()
-    agg = agg.sort_values('Service Group')
+    agg = _chargeable_summary_agg(df)
     if len(agg) == 0:
         return ''
 
@@ -1689,6 +1706,119 @@ def format_chargeable_summary_for_email(df: pd.DataFrame) -> str:
     return '\n'.join(lines)
 
 
+def _chargeable_summary_agg(df: pd.DataFrame) -> pd.DataFrame:
+    """Aggregate chargeable/non-chargeable counts by service group (shared by text + HTML formatters)."""
+    required = {'Space', 'Status', 'Service Group'}
+    if not required.issubset(set(df.columns)):
+        return pd.DataFrame()
+    work = df.copy()
+    work['_space'] = _get_resolved_chargeable_series(df)
+    work['_status'] = work['Status'].apply(_normalise_status_bucket)
+    agg = (
+        work.groupby('Service Group', dropna=False)
+        .apply(lambda g: pd.Series({
+            'chg_res': len(g[(g['_space'] == 'Chargeable') & (g['_status'] == 'Resolved')]),
+            'chg_pen': len(g[(g['_space'] == 'Chargeable') & (g['_status'] == 'Pending')]),
+            'nchg_res': len(g[(g['_space'] == 'Non-Chargeable') & (g['_status'] == 'Resolved')]),
+            'nchg_pen': len(g[(g['_space'] == 'Non-Chargeable') & (g['_status'] == 'Pending')]),
+        }), include_groups=False)
+        .reset_index()
+    )
+    agg['Service Group'] = agg['Service Group'].fillna('').astype(str).str.strip()
+    return agg.sort_values('Service Group')
+
+
+def format_chargeable_summary_html_for_email(df: pd.DataFrame) -> str:
+    """Styled HTML fallback when per-tower chargeable tables are empty."""
+    agg = _chargeable_summary_agg(df)
+    if len(agg) == 0:
+        return ''
+
+    _pad = '2px 4px'
+    _cell = f'padding:{_pad};border:1px solid #0d3d24;font-size:10px;text-align:center'
+    _hdr = f'background:#{ACCENT};font-weight:bold'
+    header_bg = f'#{PRIMARY}'
+
+    rows_html = []
+    for i, row in agg.iterrows():
+        sg = (str(row['Service Group'] or '')).strip()
+        if not sg:
+            continue
+        bg = '#ffffff' if len(rows_html) % 2 == 0 else '#f8faf8'
+        rows_html.append(
+            f'<tr style="background:{bg}">'
+            f'<td style="{_cell};text-align:left">{sg}</td>'
+            f'<td style="{_cell}">{int(row["chg_res"]) or ""}</td>'
+            f'<td style="{_cell}">{int(row["chg_pen"]) or ""}</td>'
+            f'<td style="{_cell}">{int(row["nchg_res"]) or ""}</td>'
+            f'<td style="{_cell}">{int(row["nchg_pen"]) or ""}</td>'
+            f'</tr>'
+        )
+
+    tot_chg_res = int(agg['chg_res'].sum())
+    tot_chg_pen = int(agg['chg_pen'].sum())
+    tot_nchg_res = int(agg['nchg_res'].sum())
+    tot_nchg_pen = int(agg['nchg_pen'].sum())
+    grand_total = tot_chg_res + tot_chg_pen + tot_nchg_res + tot_nchg_pen
+
+    return (
+        f'<table cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:10px;width:100%;max-width:520px;margin:0 0 8px 0">'
+        f'<tr><td colspan="5" style="padding:4px 6px;background:{header_bg};color:#fff;font-weight:bold;text-align:center;border:1px solid #0d3d24;font-size:11px">Chargeable Summary by Service Group</td></tr>'
+        f'<tr>'
+        f'<td style="{_cell};{_hdr};text-align:left">Service Group</td>'
+        f'<td style="{_cell};{_hdr}">Chg Res</td>'
+        f'<td style="{_cell};{_hdr}">Chg Pend</td>'
+        f'<td style="{_cell};{_hdr}">NChg Res</td>'
+        f'<td style="{_cell};{_hdr}">NChg Pend</td>'
+        f'</tr>'
+        + ''.join(rows_html)
+        + f'<tr style="background:{header_bg};color:#fff;font-weight:bold">'
+        f'<td style="{_cell};text-align:left">Total</td>'
+        f'<td style="{_cell}">{tot_chg_res}</td>'
+        f'<td style="{_cell}">{tot_chg_pen}</td>'
+        f'<td style="{_cell}">{tot_nchg_res}</td>'
+        f'<td style="{_cell}">{tot_nchg_pen}</td>'
+        f'</tr>'
+        f'<tr><td colspan="4" style="{_cell};border:1px solid #0d3d24"></td>'
+        f'<td style="{_cell};{_hdr};border:1px solid #0d3d24">{grand_total}</td></tr>'
+        f'</table>'
+    )
+
+
+def build_mmr_email_bodies(intro_body: str, df: pd.DataFrame) -> tuple[str, str | None]:
+    """Build plain-text and HTML email bodies with chargeable summary tables."""
+    intro = (intro_body or '').rstrip()
+    intro_for_html = intro
+
+    chargeable_summary = format_chargeable_summary_for_email(df)
+    html_tables = format_per_tower_chargeable_html_for_email(df)
+    if not html_tables:
+        html_tables = format_chargeable_summary_html_for_email(df)
+
+    html_body = None
+    if html_tables:
+        intro_escaped = intro_for_html.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('\n', '<br>')
+        html_body = (
+            f'<!DOCTYPE html><html><head><meta charset="utf-8"></head>'
+            f'<body style="font-family:Arial,sans-serif;font-size:12px;color:#333">'
+            f'<p style="margin:0 0 12px 0;line-height:1.5">{intro_escaped}</p>'
+            f'{html_tables}'
+            f'<p style="margin:12px 0 8px 0;font-size:10px;color:#666;font-style:italic">'
+            f'* This is computer generated, please cross check at least once.</p>'
+            f'<p style="margin:0">For full information, please refer to the attached Excel file.</p>'
+            f'</body></html>'
+        )
+        plain = intro
+        plain += '\n\nFor full information, please refer to the attached Excel file.'
+    else:
+        plain = intro
+        if chargeable_summary:
+            plain = (plain + '\n\n' + chargeable_summary).rstrip()
+        plain = (plain + '\n\nFor full information, please refer to the attached Excel file.').rstrip()
+
+    return plain, html_body
+
+
 def _normalise_status_bucket(val: str) -> str:
     """Bucket raw Status into Resolved / Pending."""
     v = val.strip().lower()
@@ -1697,20 +1827,65 @@ def _normalise_status_bucket(val: str) -> str:
     return 'Pending'
 
 
+def _field_lower(val) -> str:
+    """Safe lowercased field text (handles NaN / None from pandas)."""
+    if val is None:
+        return ''
+    try:
+        if pd.isna(val):
+            return ''
+    except (TypeError, ValueError):
+        pass
+    s = str(val).strip().lower()
+    return '' if s == 'nan' else s
+
+
+def _ajman_municipality_tower(client: str, contract: str, zone: str = '') -> str | None:
+    """Map Ajman Municipality rows to Investment vs Facilities project tables."""
+    t = _field_lower(contract)
+    c = _field_lower(client)
+    z = _field_lower(zone)
+    if not any(
+        token in f'{c} {t} {z}'
+        for token in ('ajman muni', 'facilities and buildings maintenance')
+    ):
+        return None
+    # Contract name is the source of truth (two distinct CAFM contracts).
+    if 'facilities and buildings maintenance' in t:
+        return 'Ajman Municipality - Facilities & Buildings'
+    if 'investment' in t and 'building' in t:
+        return 'Ajman Municipality - Investment Buildings'
+    return None
+
+
 # Tower display names and matching patterns (Client or Contract)
-# Askaan + Saqr treated as one project; Orient/Garden get - TFM suffix
+# Askaan + Saqr combines multiple CAFM contracts; Ajman Municipality is split per contract;
+# Orient/Garden get - TFM suffix.
 _TOWER_CONFIG = [
     ('Askaan + Saqr Projects', ['askaan', 'saqr']),
     ('Orient Tower - TFM', ['orient']),
     ('Garden City - TFM', ['garden']),
+    (
+        'Ajman Municipality - Investment Buildings',
+        ['ajman municipality investment', 'investment building'],
+    ),
+    (
+        'Ajman Municipality - Facilities & Buildings',
+        ['facilities and buildings maintenance'],
+    ),
     ('C1 Tower', ['c1 tower', 'c1']),
 ]
-def _tower_for_row(client: str, contract: str) -> str | None:
+def _tower_for_row(client: str, contract: str, zone: str = '') -> str | None:
     """Return tower display name if row belongs to a known tower, else None."""
-    c = (client or '').strip().lower()
-    t = (contract or '').strip().lower()
+    ajman = _ajman_municipality_tower(client, contract, zone)
+    if ajman:
+        return ajman
+    c = _field_lower(client)
+    t = _field_lower(contract)
     combined = f'{c} {t}'
     for display_name, patterns in _TOWER_CONFIG:
+        if display_name.startswith('Ajman Municipality'):
+            continue
         if any(p in combined for p in patterns):
             return display_name
     return None
@@ -1730,7 +1905,7 @@ def _tower_chargeable_sections(df: pd.DataFrame) -> list[tuple[str, pd.DataFrame
     work['_space'] = _get_resolved_chargeable_series(df)
     work['_status'] = work['Status'].apply(_normalise_status_bucket)
     work['_tower'] = work.apply(
-        lambda r: _tower_for_row(r.get('Client'), r.get('Contract')), axis=1
+        lambda r: _tower_for_row(r.get('Client'), r.get('Contract'), r.get('Zone')), axis=1
     )
     work = work[work['_space'] == 'Chargeable']
     work = work[work['_tower'].notna()]
@@ -1764,7 +1939,8 @@ def _tower_chargeable_sections(df: pd.DataFrame) -> list[tuple[str, pd.DataFrame
 
 
 def format_per_tower_chargeable_html_for_email(df: pd.DataFrame) -> str:
-    """Build HTML tables for email body: one table per tower (Askaan+Saqr, Orient, Garden, C1).
+    """Build HTML tables for email body: one table per tower (Askaan+Saqr, Orient, Garden,
+    Ajman Investment / Facilities, C1).
     Each table: Service Name | Chargeable Resolved | Chargeable Pending | Total row | Grand total.
     Uses resolved chargeable logic (Garden City AC = Non-Chargeable). Inline CSS for email compatibility.
     """
@@ -1826,12 +2002,42 @@ def format_per_tower_chargeable_html_for_email(df: pd.DataFrame) -> str:
 
 # Clients whose contracts must each get their own sheet instead of one
 # combined client sheet.  Matching is case-insensitive / fuzzy.
-_SPLIT_CLIENTS = {'aqaar community mangement', 'aqar community management',
-                  'aqaar community management'}
+_SPLIT_CLIENTS = {
+    'aqaar community mangement',
+    'aqar community management',
+    'aqaar community management',
+    'ajman muncipality',
+    'ajman municipality',
+}
 
 
 def _is_split_client(client: str) -> bool:
-    return client.strip().lower() in _SPLIT_CLIENTS
+    return _field_lower(client) in _SPLIT_CLIENTS
+
+
+# Excel tab names max 31 chars; header row (B1) uses the full CAFM contract title.
+_AJMAN_CONTRACT_SHEET_TITLES = (
+    (
+        'ajman municipality investment',
+        'Ajman Mun Investment Bldgs',               # sheet tab (≤31)
+        'Ajman Municipality Investment Buildings',  # full title in sheet header
+    ),
+    (
+        'facilities and buildings maintenance',
+        'Ajman Mun Facilities Maint',
+        'Facilities and Buildings Maintenance Contract',
+    ),
+)
+
+
+def _contract_sheet_tab_and_title(contract: str) -> tuple[str, str]:
+    """Return (excel_tab_name, display_title) for a CAFM contract sheet."""
+    t = _field_lower(contract)
+    for key, tab, display in _AJMAN_CONTRACT_SHEET_TITLES:
+        if key in t:
+            return tab[:31], display
+    display = str(contract or '').strip()
+    return display[:31], display or 'Sheet'
 
 
 def generate_report_excel(df: pd.DataFrame) -> bytes:
@@ -1843,7 +2049,7 @@ def generate_report_excel(df: pd.DataFrame) -> bytes:
       3. Chargeable / Non-Chargeable Analysis (filterable summary)
       4. Chargeable by Project (tower tables)
       5–N. Client sheets (one per client, all their contracts combined)
-           Exception: "Aqar Community Management" → one sheet per *contract*
+           Exception: Aqar Community Management and Ajman Municipality → one sheet per *contract*
     """
     wb = openpyxl.Workbook()
     wb.remove(wb.active)
@@ -1873,11 +2079,12 @@ def generate_report_excel(df: pd.DataFrame) -> bytes:
                 client_df['Contract'].replace('', None).dropna().unique().tolist()
             )
             for contract in contracts:
-                name = str(contract)[:31]
+                tab, display = _contract_sheet_tab_and_title(contract)
                 _write_data_sheet(
                     wb,
                     client_df[client_df['Contract'] == contract].copy(),
-                    name,
+                    display,
+                    sheet_name=tab,
                 )
         else:
             name = str(client)[:31]
@@ -2269,8 +2476,15 @@ def _write_dashboard_sheet(wb: openpyxl.Workbook, df: pd.DataFrame):
 # Sheet writers
 # ──────────────────────────────────────────────────────────────────────────────
 
-def _write_data_sheet(wb: openpyxl.Workbook, df: pd.DataFrame, title: str):
-    ws = wb.create_sheet(title)
+def _write_data_sheet(
+    wb: openpyxl.Workbook,
+    df: pd.DataFrame,
+    title: str,
+    *,
+    sheet_name: str | None = None,
+):
+    """Write a data sheet. ``title`` is shown in the header; ``sheet_name`` is the Excel tab (≤31 chars)."""
+    ws = wb.create_sheet((sheet_name or title)[:31])
 
     cols = [c for c in EXPECTED_COLS if c in df.columns]
     n = len(cols)
@@ -2540,7 +2754,8 @@ def _write_chargeable_analysis(wb: openpyxl.Workbook, df: pd.DataFrame):
 
 
 def _write_tower_chargeable_summary_sheet(wb: openpyxl.Workbook, df: pd.DataFrame):
-    """Stacked tables per tower project (Askaan+Saqr, Orient, Garden City, C1): chargeable WOs only,
+    """Stacked tables per tower project (Askaan+Saqr, Orient, Garden City, Ajman Municipality, C1):
+    chargeable WOs only,
     by Service Group with Resolved / Pending counts — matches ``format_per_tower_chargeable_html_for_email``.
     """
     ws = wb.create_sheet('Chargeable by Project')
@@ -2558,7 +2773,8 @@ def _write_tower_chargeable_summary_sheet(wb: openpyxl.Workbook, df: pd.DataFram
             column=1,
             value=(
                 'No tower-project chargeable rows in this export. Tables appear when Client/Contract '
-                'text matches Askaan+Saqr, Orient, Garden City, or C1 Tower (chargeable work orders only).'
+                'text matches Askaan+Saqr, Orient, Garden City, Ajman Municipality (Investment '
+                'or Facilities & Buildings), or C1 Tower (chargeable work orders only).'
             ),
         )
         msg.alignment = Alignment(horizontal='left', vertical='top', wrap_text=True)
