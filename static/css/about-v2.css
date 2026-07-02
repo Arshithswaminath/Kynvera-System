@@ -60,6 +60,8 @@
       filter: none !important;
       mix-blend-mode: lighten !important;
       border-radius: 0 !important;
+      transform: scale(1.8) !important;
+      transform-origin: left center !important;
     }
     body.about-page .logo-brand {
       color:rgba(255,255,255,.55);
@@ -610,7 +612,7 @@
       z-index:0;
     }
     .svc:hover .svc-fill { height:100%; }
-    .svc > * { position:relative; z-index:1; }
+    .svc > *:not(.svc-fill) { position:relative; z-index:1; }
     .svc-num {
       font-family: var(--font-serif);
       font-size:.72rem;
@@ -643,7 +645,31 @@
       line-height:1.65;
       transition:color .35s;
     }
-    .svc:hover p { color:rgba(255,255,255,.65); }
+    .svc:hover p { color:rgba(255,255,255,.65); opacity:0; }
+    .svc-body { position:relative; }
+    .svc .svc-feats {
+      list-style:none; margin:0; padding:0;
+      position:absolute; top:0; left:0; right:0;
+      opacity:0; transform:translateY(8px);
+      transition:opacity .4s ease, transform .4s ease;
+      transition-delay:.05s;
+      pointer-events:none;
+    }
+    .svc:hover .svc-feats { opacity:1; transform:none; }
+    .svc-feats li {
+      font-size:.78rem; line-height:1.5;
+      color:#fff;
+      padding:.28rem 0 .28rem 1.1rem;
+      position:relative;
+    }
+    .svc-feats li + li {
+      border-top:1px solid rgba(255,255,255,.16);
+    }
+    .svc-feats li::before {
+      content:'→'; position:absolute; left:0; top:.28rem;
+      color:rgba(255,255,255,.7);
+      font-weight:700;
+    }
     .svc-arrow {
       display:inline-flex;
       align-items:center;
