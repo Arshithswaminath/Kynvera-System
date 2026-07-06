@@ -151,8 +151,8 @@ def _migrate_ticket_columns(app):
         try:
             conn = db.engine.raw_connection()
             cursor = conn.cursor()
-            cursor.execute("PRAGMA table_info(tickets)")
-            existing = {row[1] for row in cursor.fetchall()}
+            from sqlalchemy import inspect as _sa_inspect
+            existing = {c['name'] for c in _sa_inspect(db.engine).get_columns('tickets')}
             for col_name, col_type in new_cols:
                 if col_name not in existing:
                     try:
@@ -182,8 +182,8 @@ def _migrate_ticket_project_columns(app):
         try:
             conn = db.engine.raw_connection()
             cursor = conn.cursor()
-            cursor.execute('PRAGMA table_info(ticket_projects)')
-            existing = {row[1] for row in cursor.fetchall()}
+            from sqlalchemy import inspect as _sa_inspect
+            existing = {c['name'] for c in _sa_inspect(db.engine).get_columns('ticket_projects')}
             for col_name, col_sql in ticket_project_cols:
                 if col_name not in existing:
                     try:
