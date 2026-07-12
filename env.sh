@@ -14,3 +14,8 @@ fi
 # shellcheck source=/dev/null
 source "$ROOT/venv/bin/activate"
 export PATH="$ROOT/bin:$ROOT/venv/bin:${PATH}"
+
+# shellcheck source=scripts/injaaz-branch.sh
+source "$ROOT/scripts/injaaz-branch.sh"
+injaaz_set_terminal_branch "$ROOT"
+injaaz_print_branch_banner "$ROOT"

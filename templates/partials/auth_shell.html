@@ -1,0 +1,72 @@
+{# Shared auth shell — split brand/form card on the K. coral wave background.
+   Usage:
+     {% from 'partials/auth_shell.html' import auth_shell %}
+     {% call auth_shell(headline='...', description='...', footer='...') %}
+       ...form markup...
+     {% endcall %}
+
+   form_variant: 'default' | 'register' | 'status'
+   steps (register only): list of {num, label, state} where state is '' | 'active' | 'done'
+#}
+{% macro auth_shell(headline=None, description=None, footer=None, form_variant='default', steps=None) %}
+<div class="auth-shell">
+  <div class="auth-shell-overlay" aria-hidden="true"></div>
+
+  <div class="auth-card{% if form_variant == 'status' %} auth-card--status{% endif %}">
+    <div class="auth-card-inner">
+
+      {% if form_variant != 'status' %}
+      <div class="auth-brand-side">
+        <div class="auth-brand-side-overlay" aria-hidden="true"></div>
+        <div class="auth-brand-panel">
+          <div class="auth-brand-glow" aria-hidden="true"></div>
+
+          <div class="auth-brand-top">
+            {% if headline %}<h2 class="auth-brand-headline">{{ headline|safe }}</h2>{% endif %}
+            {% if description %}<p class="auth-brand-description">{{ description }}</p>{% endif %}
+          </div>
+
+          {% if steps %}
+          <div class="auth-step-cards" role="list">
+            {% for step in steps %}
+            <div class="auth-step-card{% if step.state %} {{ step.state }}{% endif %}" data-step-indicator="{{ step.num }}" role="listitem">
+              <div class="auth-step-num">{{ step.num }}</div>
+              <div class="auth-step-label">{{ step.label }}</div>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="auth-brand-logo-wrap">
+            <img src="{{ url_for('static', filename='images/auth/k-logo-white.png') }}" alt="K." class="auth-logo auth-logo--lg">
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="auth-form-panel{% if form_variant == 'status' %} auth-status-panel{% endif %}">
+        <div class="auth-form-panel-glow" aria-hidden="true"></div>
+
+        {% if form_variant == 'status' %}
+        <div class="auth-status-inner">
+          {{ caller() }}
+        </div>
+        {% else %}
+        <div class="auth-form-inner{% if form_variant == 'register' %} auth-form-inner--register{% endif %}">
+          <div class="auth-mobile-logo">
+            <img src="{{ url_for('static', filename='images/auth/k-logo-white.png') }}" alt="K." class="auth-logo auth-logo--md">
+          </div>
+          <div class="auth-form-content">
+            {{ caller() }}
+          </div>
+          {% if footer %}
+          <div class="auth-form-footer">{{ footer|safe }}</div>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endmacro %}

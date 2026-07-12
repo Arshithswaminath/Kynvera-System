@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
 # Quick start (no activate needed):  ./run
-cd "$(dirname "$0")"
+ROOT="$(cd "$(dirname "$0")" && pwd)"
+cd "$ROOT"
+
+# shellcheck source=scripts/injaaz-branch.sh
+source "$ROOT/scripts/injaaz-branch.sh"
+injaaz_set_terminal_branch "$ROOT"
+injaaz_print_branch_banner "$ROOT"
+
 export PORT=5002
 exec ./venv/bin/python Injaaz.py "$@"

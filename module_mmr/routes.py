@@ -1795,14 +1795,15 @@ def send_email_now():
     except Exception as e:
         return jsonify({'error': f'Report generation failed: {str(e)}'}), 500
 
-    # Guard: SMTP or Brevo HTTP API (Render free tier blocks outbound SMTP ports)
+    # Guard: SMTP or Mailjet HTTPS API (Render free tier blocks outbound SMTP ports)
     from flask import current_app as _app
     from common.email_service import is_email_configured
     if not is_email_configured(_app):
         return jsonify({
             'error': (
                 'Email is not configured. Set MAIL_* for SMTP, or '
-                'BREVO_API_KEY + MAIL_DEFAULT_SENDER for Brevo (HTTPS, recommended on Render free tier).'
+                'MAILJET_API_KEY + MAILJET_SECRET_KEY + MAIL_DEFAULT_SENDER for Mailjet '
+                '(HTTPS, recommended on Render free tier).'
             )
         }), 503
 

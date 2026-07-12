@@ -3,17 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
-  <title>Work Order Settings — Injaaz</title>
+  <title>Work Order Settings — Kynvera</title>
   {% include 'partials/caveat_font.html' ignore missing %}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/ticketing.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
   <style>
-    /* iOS system typography — Work Order Settings */
+    /* Inter typography — Work Order Settings */
     .tkt-settings-ios {
-      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", Helvetica, Arial, sans-serif;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Helvetica, Arial, sans-serif;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
     }
@@ -32,8 +35,8 @@
       color:#64748b; border-bottom:2.5px solid transparent; margin-bottom:-2px;
       transition:color .15s, border-color .15s; background:none; border-top:none; border-left:none; border-right:none;
     }
-    .settings-tab.active { color:#1e3a5f; border-bottom-color:#2563eb; }
-    .settings-tab:hover { color:#1e3a5f; }
+    .settings-tab.active { color:var(--tkt-accent-deep); border-bottom-color:var(--tkt-accent); }
+    .settings-tab:hover { color:var(--tkt-accent-deep); }
     .settings-panel { display:none; }
     .settings-panel.active { display:block; }
 
@@ -43,7 +46,7 @@
       display:flex; align-items:center; gap:8px; padding:7px 10px;
       border-radius:8px; cursor:pointer; transition:background .12s;
     }
-    .loc-node-header:hover { background:#f0f7ff; }
+    .loc-node-header:hover { background:#fff5f0; }
     .loc-node-icon { color:#94a3b8; flex-shrink:0; transition:transform .15s; }
     .loc-node-icon.open { transform:rotate(90deg); }
     .loc-node-children { margin-left:22px; border-left:2px solid #e2e8f0; padding-left:8px; display:none; }
@@ -54,11 +57,11 @@
       display:flex; gap:8px; padding:6px 10px 6px 12px; align-items:center; margin-top:2px;
     }
     .loc-add-row input { flex:1; padding:5px 10px; border:1.5px solid #cbd5e1; border-radius:6px; font-size:.82rem; }
-    .loc-add-row input:focus { border-color:#2563eb; outline:none; }
+    .loc-add-row input:focus { border-color:#ff8e68; outline:none; }
 
     .tmpl-badge {
       display:inline-block; padding:2px 7px; border-radius:4px; font-size:.72rem; font-weight:600;
-      background:#dbeafe; color:#1d4ed8; margin-right:3px;
+      background:#ffe4d6; color:#c2440c; margin-right:3px;
     }
     .proj-card {
       display:flex; align-items:center; gap:10px; padding:12px 16px;
@@ -88,10 +91,10 @@
       transition: background 0.15s ease, box-shadow 0.15s ease;
     }
     .proj-card-ios .proj-card.proj-card-clickable:hover {
-      background: rgba(0, 122, 255, 0.04);
+      background: rgba(255, 142, 104, 0.06);
     }
     .proj-card-ios .proj-card.proj-card-clickable:focus-visible {
-      outline: 2px solid #007aff;
+      outline: 2px solid #ff8e68;
       outline-offset: 2px;
     }
     .proj-card-actions { display:flex; align-items:center; gap:8px; flex-shrink:0; }
@@ -195,7 +198,7 @@
       border: none;
       border-radius: 12px;
       background: transparent;
-      color: #007aff;
+      color: #ff8e68;
       font-size: 17px;
       font-weight: 600;
       cursor: pointer;
@@ -317,7 +320,7 @@
       font-weight: 600;
       letter-spacing: -0.02em;
       background: rgba(120, 120, 128, 0.16);
-      color: #007aff;
+      color: #ff8e68;
       cursor: pointer;
     }
     .proj-ios-btn-primary {
@@ -328,7 +331,7 @@
       font-size: 17px;
       font-weight: 600;
       letter-spacing: -0.02em;
-      background: #007aff;
+      background: #ff8e68;
       color: #fff;
       cursor: pointer;
     }
@@ -345,7 +348,7 @@
       display: flex;
       flex-direction: column;
       min-height: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", Roboto, sans-serif;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", Roboto, sans-serif;
       -webkit-font-smoothing: antialiased;
     }
     #tab-faults .fault-cat-card .tkt-card-body {
@@ -423,10 +426,10 @@
       vertical-align: top;
       color: rgba(60, 60, 67, 0.92);
     }
-    .fault-cat-table tbody tr:hover { background: rgba(0, 122, 255, 0.04); }
+    .fault-cat-table tbody tr:hover { background: rgba(255, 142, 104, 0.06); }
     .fault-cat-code {
       font-weight: 600;
-      color: #1e3a5f;
+      color: var(--tkt-text);
       font-variant-numeric: tabular-nums;
     }
     .fault-cat-name-cell { min-width: 180px; max-width: 420px; }
@@ -480,26 +483,27 @@
     }
     #tab-faults .fault-cat-rebuild p { font-size: 13px !important; line-height: 1.45 !important; }
     #tab-faults .fault-cat-rebuild .tkt-btn-primary {
-      background: #007aff !important;
+      background: var(--tkt-accent) !important;
       border-radius: 10px;
       font-weight: 600;
       letter-spacing: -0.02em;
       font-size: 15px !important;
     }
     #tab-faults .fault-cat-rebuild .tkt-btn-primary:hover {
-      background: #0068e5 !important;
+      background: var(--tkt-accent-hover) !important;
     }
     #faultCatCountNote { flex: 0 0 auto; margin-top: 10px !important; margin-bottom: 0 !important; }
   </style>
 </head>
-<body class="tkt-dh-page has-main-nav tkt-settings-ios">
+<body class="tkt-dh-page tkt-settings-ios">
 <div class="tkt-dh-app-root">
-{% set active_page = 'ticketing' %}
 {% set ticketing_can_manage_fault_catalog = ticketing_can_manage_fault_catalog|default(false) %}
-{% include 'partials/main_navbar.html' with context %}
 <div class="dh-page-root tkt-dh-page-root">
 {% include 'partials/tkt_sidebar.html' with context %}
-<div class="tkt-dh-main"><div class="tkt-content">
+<div class="tkt-dh-main">
+{% set tkt_topbar_title = 'Settings' %}
+{% include 'partials/tkt_topbar.html' with context %}
+<div class="tkt-content">
 
     <div class="tkt-page-header">
       <h1 class="tkt-page-title">
@@ -515,6 +519,7 @@
       <button class="settings-tab" data-tab="locations">Location Hierarchy</button>
       <button class="settings-tab" data-tab="titles">Title Templates</button>
       <button class="settings-tab" data-tab="faults">Fault codes</button>
+      <button class="settings-tab" data-tab="email-intake">Email a Ticket</button>
     </div>
 
     <!-- ── Projects Tab ── -->
@@ -559,6 +564,16 @@
               <div class="tkt-field">
                 <label>Value (AED)</label>
                 <input class="tkt-input" id="projCreateValue" type="number" step="0.01" min="0" placeholder="Optional">
+              </div>
+              <div class="tkt-field">
+                <label>Client finance email(s)</label>
+                <input class="tkt-input" id="projFinanceEmails" type="text" placeholder="finance@client.gov.ae, ...">
+                <span style="font-size:.72rem;color:#64748b;">Closing invoice is emailed here. Comma-separated.</span>
+              </div>
+              <div class="tkt-field">
+                <label>Client operations email(s)</label>
+                <input class="tkt-input" id="projOpsEmails" type="text" placeholder="ops@client.gov.ae, ...">
+                <span style="font-size:.72rem;color:#64748b;">Also cc'd on the closing invoice. Comma-separated.</span>
               </div>
               <div class="tkt-field" style="grid-column:1/-1;">
                 <label>Project details</label>
@@ -727,6 +742,65 @@
       </div>
     </div>
 
+    <!-- ── Email a Ticket Tab ── -->
+    <div class="settings-panel" id="tab-email-intake">
+      <div class="tkt-card">
+        <div class="tkt-card-header">
+          <h3>Raise a ticket by email</h3>
+        </div>
+        <div class="tkt-card-body">
+          <p style="font-size:.88rem;color:#475569;line-height:1.6;margin-top:0;">
+            Anyone can raise a work order by sending an email to the address below — no Injaaz
+            login required. The system reads the email and creates a <strong>draft ticket</strong>;
+            a supervisor then reviews it under <a href="{{ url_for('ticketing.draft_tickets') }}">Draft Tickets</a>
+            and converts it into an active work order. Following the format below helps the system
+            fill in more fields automatically, but nothing is required beyond a subject and a message —
+            anything missing is simply filled in during review.
+          </p>
+
+          <div class="tkt-inline-form" style="margin-bottom:20px;">
+            <div class="tkt-field" style="margin-bottom:0;">
+              <label>Ticket intake address</label>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                <code id="intakeEmailAddr" style="background:#f1f5f9;border:1px solid #e2e8f0;border-radius:8px;padding:8px 12px;font-size:.9rem;">{{ intake_email }}</code>
+                <button type="button" class="tkt-btn tkt-btn-outline tkt-btn-sm" id="copyIntakeEmailBtn">Copy</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="tkt-form-grid">
+            <div class="tkt-field">
+              <label>Suggested subject format</label>
+              <pre style="background:#0f172a;color:#e2e8f0;border-radius:10px;padding:14px 16px;font-size:.8rem;overflow-x:auto;margin:0;">[Project Name] Category - Priority - Short title</pre>
+              <span style="font-size:.72rem;color:#94a3b8;margin-top:6px;display:block;">Priority: low / medium / high / critical. Any part you skip is just left blank for review.</span>
+            </div>
+            <div class="tkt-field">
+              <label>Suggested body format</label>
+              <pre style="background:#0f172a;color:#e2e8f0;border-radius:10px;padding:14px 16px;font-size:.8rem;overflow-x:auto;margin:0;">Property: Tower A
+Zone: Ground Floor
+Unit: Shop 4
+
+Describe the issue here in as much
+detail as possible. Attach photos
+directly to the email if you have any.</pre>
+            </div>
+          </div>
+
+          <div class="draft-example" style="margin-top:18px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px 18px;">
+            <p style="font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:#94a3b8;margin:0 0 8px;">Full example</p>
+            <p style="font-size:.85rem;margin:0 0 4px;"><strong>To:</strong> {{ intake_email }}</p>
+            <p style="font-size:.85rem;margin:0 0 10px;"><strong>Subject:</strong> [Tower A Residential] Plumbing - High - Leaking pipe under sink</p>
+            <pre style="font-size:.82rem;color:#334155;white-space:pre-wrap;margin:0;">Property: Tower A
+Zone: Ground Floor
+Unit: Shop 4
+
+There is a leaking pipe under the kitchen sink, water pooling on the floor.
+Attached two photos.</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
 </div></div>{# tkt-content / tkt-dh-main #}
 </div></div>{# tkt-dh-page-root / tkt-dh-app-root #}
 
@@ -804,6 +878,20 @@
           </span>
         </div>
         <div class="tkt-field" style="margin:0;">
+          <label for="projModalFinanceEmails">Client finance email(s)</label>
+          <input class="tkt-input" id="projModalFinanceEmails" type="text" placeholder="finance@client.gov.ae, ...">
+          <span style="font-size:12px;color:rgba(60,60,67,.48);margin-top:6px;display:block;line-height:1.35;">
+            The closing invoice is emailed here once operations gives final approval. Comma-separated.
+          </span>
+        </div>
+        <div class="tkt-field" style="margin:0;">
+          <label for="projModalOpsEmails">Client operations email(s)</label>
+          <input class="tkt-input" id="projModalOpsEmails" type="text" placeholder="ops@client.gov.ae, ...">
+          <span style="font-size:12px;color:rgba(60,60,67,.48);margin-top:6px;display:block;line-height:1.35;">
+            Also cc'd on the closing invoice. Leave both blank to fall back to internal admin/operations recipients.
+          </span>
+        </div>
+        <div class="tkt-field" style="margin:0;">
           <label for="projModalDesc">Project details</label>
           <textarea class="tkt-textarea" id="projModalDesc" rows="6" placeholder="Site notes, contract references, scope, contacts…"></textarea>
         </div>
@@ -816,9 +904,6 @@
   </div>
 </div>
 
-<button type="button" class="dh-sidebar-toggle" id="tktDhSidebarToggle"
-        onclick="tktToggleMobileSidebar()" aria-label="Open menu" title="Menu">&#9776;</button>
-
 <script src="{{ url_for('static', filename='js/ticketing.js') }}"></script>
 <script>
 const TKT_FAULT_REBUILD_URL = {{ url_for('ticketing.settings_rebuild_fault_catalog')|tojson }};
@@ -830,6 +915,13 @@ document.querySelectorAll('.settings-tab').forEach(tab => {
     tab.classList.add('active');
     document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
   });
+});
+
+// ── Copy intake email ─────────────────────────────────────
+document.getElementById('copyIntakeEmailBtn')?.addEventListener('click', () => {
+  const text = document.getElementById('intakeEmailAddr')?.textContent || '';
+  navigator.clipboard?.writeText(text).then(() => tktToast('Copied.', 'success'))
+    .catch(() => tktToast('Could not copy — select and copy manually.', 'error'));
 });
 
 // ── Load options ──────────────────────────────────────────
@@ -1009,6 +1101,8 @@ function openProjectModal(id) {
   document.getElementById('projModalRenew').value = (p.renewal_date || '').slice(0, 10);
   const pv = p.project_value;
   document.getElementById('projModalValue').value = (pv != null && pv !== '') ? String(pv) : '';
+  document.getElementById('projModalFinanceEmails').value = p.finance_emails || '';
+  document.getElementById('projModalOpsEmails').value = p.ops_emails || '';
 
   modal.classList.add('is-open');
   modal.setAttribute('aria-hidden', 'false');
@@ -1058,6 +1152,8 @@ async function saveProjectModal() {
       project_end_date: endVal || null,
       renewal_date: renewVal || null,
       project_value: valRaw === '' ? null : valRaw,
+      finance_emails: document.getElementById('projModalFinanceEmails').value.trim(),
+      ops_emails: document.getElementById('projModalOpsEmails').value.trim(),
     }),
   });
   if (res.ok && res.data.success) {
@@ -1094,8 +1190,8 @@ function renderProjects(list) {
     wrap.innerHTML = `
       <div class="proj-card" id="proj-${p.id}" role="button" tabindex="0"
            aria-label="${tktEsc(`Open details for ${p.name || 'project'}`)}">
-        <div style="width:38px;height:38px;border-radius:10px;background:#eff6ff;display:flex;align-items:center;justify-content:center;flex-shrink:0;pointer-events:none;">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="#2563eb" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Z"/></svg>
+        <div style="width:38px;height:38px;border-radius:10px;background:#fff5f0;display:flex;align-items:center;justify-content:center;flex-shrink:0;pointer-events:none;">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="#ff8e68" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Z"/></svg>
         </div>
         <div style="flex:1;min-width:0;pointer-events:none;">
           <div class="proj-card-name">${tktEsc(p.name)}</div>
@@ -1179,6 +1275,8 @@ document.getElementById('saveProjectBtn').addEventListener('click', async () => 
       project_end_date: cEnd || null,
       renewal_date: cRenew || null,
       project_value: cValRaw === '' ? null : cValRaw,
+      finance_emails: document.getElementById('projFinanceEmails').value.trim(),
+      ops_emails: document.getElementById('projOpsEmails').value.trim(),
     }),
   });
   if (res.ok && res.data.success) {
@@ -1192,6 +1290,8 @@ document.getElementById('saveProjectBtn').addEventListener('click', async () => 
     document.getElementById('projCreateEnd').value = '';
     document.getElementById('projCreateRenew').value = '';
     document.getElementById('projCreateValue').value = '';
+    document.getElementById('projFinanceEmails').value = '';
+    document.getElementById('projOpsEmails').value = '';
     fillSupervisorDropdown(document.getElementById('projSupervisor'), '');
     fillBdProjectDropdown(document.getElementById('projBdLink'), '');
     tktToast('Project added.', 'success');
@@ -1294,7 +1394,7 @@ function buildPropNode(prop) {
   wrap.innerHTML = `
     <div class="loc-node-header" onclick="toggleLocNode(this)">
       <svg class="loc-node-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="#2563eb" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Z"/></svg>
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="#ff8e68" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Z"/></svg>
       <span class="loc-node-label">${prop.name}</span>
       <button class="tkt-btn tkt-btn-danger tkt-btn-sm tkt-btn-icon" onclick="event.stopPropagation();deleteProp(${prop.id})" title="Delete">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="12" height="12"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
@@ -1609,7 +1709,7 @@ function renderTemplates(list) {
     d.style.alignItems = 'flex-start';
     d.innerHTML = `
       <div style="display:flex;align-items:center;gap:8px;width:100%;">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="#2563eb" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="#ff8e68" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z"/></svg>
         <span style="font-weight:700;font-size:.9rem;flex:1;">${t.title}</span>
         <button class="tkt-btn tkt-btn-danger tkt-btn-sm tkt-btn-icon" onclick="deleteTmpl(${t.id})">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>

@@ -12,6 +12,8 @@
 {% set cnt_work_done   = (st.get('work_completed',0) + st.get('verification',0)) if st else 0 %}
 {% set cnt_closed      = st.get('closed',   0) if st else 0 %}
 {% set cnt_cancelled   = st.get('cancelled',0) if st else 0 %}
+{% set cnt_draft       = st.get('draft',    0) if st else 0 %}
+{% set can_view_drafts = st.get('can_view_drafts', False) if st else False %}
 
 {% if user is defined and user %}
   {% set _parts     = (user.full_name or '')|trim %}
@@ -25,20 +27,17 @@
 
 <aside class="dh-sidebar" id="tktDhSidebar" aria-label="Service Tickets menu">
 
-  <!-- ── Brand ── -->
-  <div class="sb-brand">
+  <!-- ── Brand (home → dashboard) ── -->
+  <a href="{{ url_for('ticketing.dashboard') }}" class="sb-brand sb-brand-link" aria-label="Service Tickets home">
     <div class="sb-brand-logo" aria-hidden="true">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-           stroke-width="1.8" stroke="rgba(255,255,255,0.9)" width="18" height="18">
-        <path stroke-linecap="round" stroke-linejoin="round"
-              d="M11.42 15.17 17.25 21A2.652 2.652 0 0 0 21 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 1 1-3.586-3.586l5.654-4.654m5.96-4.399 3.932-3.932a2.25 2.25 0 0 0-3.182-3.182L12 8.399"/>
-      </svg>
+      <img src="{{ url_for('static', filename='images/auth/k-logo-white.png') }}"
+           alt="" width="18" height="18" decoding="async">
     </div>
     <div class="sb-brand-text">
-      <span class="name">Injaaz</span>
+      <span class="name">Kynvera</span>
       <span class="tagline">Service Tickets</span>
     </div>
-  </div>
+  </a>
 
   <!-- ── Nav ── -->
   <nav class="sb-nav">
@@ -69,6 +68,19 @@
         All Work Orders
         {% if cnt_total != '' %}<span class="sb-badge">{{ cnt_total }}</span>{% endif %}
       </a>
+
+      {% if can_view_drafts %}
+      <a href="{{ url_for('ticketing.draft_tickets') }}"
+         class="sb-nav-item{% if ep == 'ticketing.draft_tickets' %} active{% endif %}">
+        <span class="sb-nav-icon" aria-hidden="true">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"/>
+          </svg>
+        </span>
+        Draft Tickets (Email)
+        {% if cnt_draft > 0 %}<span class="sb-badge sb-badge--alert">{{ cnt_draft }}</span>{% endif %}
+      </a>
+      {% endif %}
     </div>
 
     <hr class="sb-nav-divider" aria-hidden="true">
@@ -107,7 +119,7 @@
           </svg>
         </span>
         On Hold
-        {% if cnt_on_hold > 0 %}<span class="sb-badge" style="background:#ea580c;">{{ cnt_on_hold }}</span>{% endif %}
+        {% if cnt_on_hold > 0 %}<span class="sb-badge sb-badge--warn">{{ cnt_on_hold }}</span>{% endif %}
       </a>
 
       <a href="{{ url_for('ticketing.ticket_list') }}?status=verification"
@@ -118,7 +130,7 @@
           </svg>
         </span>
         Needs Verification
-        {% if cnt_work_done > 0 %}<span class="sb-badge" style="background:#d97706;">{{ cnt_work_done }}</span>{% endif %}
+        {% if cnt_work_done > 0 %}<span class="sb-badge sb-badge--pending">{{ cnt_work_done }}</span>{% endif %}
       </a>
 
       <a href="{{ url_for('ticketing.ticket_list') }}?status=closed"
@@ -140,7 +152,7 @@
           </svg>
         </span>
         Cancelled
-        {% if cnt_cancelled > 0 %}<span class="sb-badge" style="background:#dc2626;">{{ cnt_cancelled }}</span>{% endif %}
+        {% if cnt_cancelled > 0 %}<span class="sb-badge sb-badge--danger">{{ cnt_cancelled }}</span>{% endif %}
       </a>
     </div>
 

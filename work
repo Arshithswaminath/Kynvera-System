@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# Name / switch the branch you are working on, and show it in the terminal.
+#
+#   ./work                    # show current branch
+#   ./work ajman-municipality # checkout (or create) and label the session
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")" && pwd)"
+cd "$ROOT"
+
+# shellcheck source=scripts/injaaz-branch.sh
+source "$ROOT/scripts/injaaz-branch.sh"
+
+usage() {
+  cat <<'EOF'
+Usage: ./work [branch-name]
+
+  No argument   Print the current git branch and set the terminal tab title.
+  branch-name   Checkout that branch (create it from HEAD if it does not exist).
+
+Examples:
+  ./work
+  ./work ajman-municipality
+  ./work Test-Case
+EOF
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+if [[ $# -gt 1 ]]; then
+  usage >&2
+  exit 1
+fi
+
+if [[ -n "${1:-}" ]]; then
+  if git show-ref --verify --quiet "refs/heads/$1"; then
+    git checkout "$1"
+    echo "Switched to branch '$1'."
+  else
+    git checkout -b "$1"
+    echo "Created and switched to branch '$1'."
+  fi
+fi
+
+branch="$(injaaz_git_branch "$ROOT")"
+if [[ -z "$branch" ]]; then
+  echo "Not on a git branch (detached HEAD or not a git repo)." >&2
+  exit 1
+fi
+
+injaaz_set_terminal_branch "$ROOT"
+injaaz_print_branch_banner "$ROOT"

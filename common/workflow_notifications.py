@@ -302,7 +302,7 @@ def _send(
 ) -> bool:
     """
     Resolve recipients from admin config then send via the same send_email()
-    path used by the MMR daily report (Brevo / Mailjet / SMTP).
+    path used by the MMR daily report (Mailjet / SMTP).
     """
     try:
         sub_email = _submitter_email(submission)

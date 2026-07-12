@@ -94,12 +94,13 @@ MAIL_PASSWORD = os.getenv("MAIL_PASSWORD")
 MAIL_USE_TLS = os.getenv("MAIL_USE_TLS", "true").lower() == "true"
 MAIL_DEFAULT_SENDER = os.getenv("MAIL_DEFAULT_SENDER", "noreply@injaaz.com")
 
-# Brevo (Sendinblue) — HTTPS API; use on hosts that block SMTP (e.g. Render free tier blocks ports 25/465/587).
-BREVO_API_KEY = os.getenv("BREVO_API_KEY") or os.getenv("SENDINBLUE_API_KEY")
-
-# Mailjet — optional explicit keys for REST API (HTTPS). If unset, MAIL_USERNAME/PASSWORD with MAIL_SERVER=in-v3.mailjet.com still work (SMTP or REST on Render).
+# Mailjet — REST API (HTTPS) or SMTP. On Render free tier use MAILJET_API_KEY + MAILJET_SECRET_KEY.
 MAILJET_API_KEY = os.getenv("MAILJET_API_KEY")
 MAILJET_SECRET_KEY = os.getenv("MAILJET_SECRET_KEY")
+
+# Ticket email intake (Mailjet Parse API webhook)
+TICKET_INBOUND_WEBHOOK_SECRET = os.getenv("TICKET_INBOUND_WEBHOOK_SECRET")
+TICKET_INTAKE_EMAIL = os.getenv("TICKET_INTAKE_EMAIL")
 
 # Application
 APP_BASE_URL = os.getenv("APP_BASE_URL", "http://localhost:5002")

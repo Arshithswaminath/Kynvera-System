@@ -267,7 +267,7 @@
             <div class="neat-side-metric">
               <span class="neat-side-metric-ico neat-side-metric-ico--c" aria-hidden="true">📋</span>
               <span class="neat-side-metric-val" id="sideMetricHrForms">—</span>
-              <span class="neat-side-metric-lbl">HR forms</span>
+              <span class="neat-side-metric-lbl">HR module</span>
               <span class="neat-side-metric-sub">All HR submissions</span>
             </div>
             <div class="neat-side-metric">
@@ -464,7 +464,7 @@
         <div class="notif-card">
           <div class="notif-card-header">
             <div class="notif-card-icon">👥</div>
-            <h3 class="notif-card-title">HR Forms</h3>
+            <h3 class="notif-card-title">HR Module</h3>
           </div>
           <div class="notif-card-body">
             <!-- To -->
@@ -2827,6 +2827,8 @@
           if (qhsi) qhsi.checked = !!user.access_qhsi;
           modWrap.querySelectorAll('input[type="checkbox"]').forEach((cb) => { cb.disabled = false; });
         }
+        const reporterCb = document.getElementById('isTicketReporter');
+        if (reporterCb) reporterCb.checked = !!user.is_ticket_reporter;
       }
 
       document.getElementById('profileDefaultComment').value = user.default_comment || '';
@@ -3271,6 +3273,7 @@
         payload.access_submitted_forms = document.getElementById('accessSubmittedForms').checked;
         payload.access_ticketing = document.getElementById('accessTicketing')?.checked || false;
         payload.access_qhsi = document.getElementById('accessQhsi')?.checked || false;
+        payload.is_ticket_reporter = document.getElementById('isTicketReporter')?.checked || false;
       }
 
       try {

@@ -3,8 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>New Work Order — Injaaz</title>
+  <title>New Work Order — Kynvera</title>
   {% include 'partials/caveat_font.html' ignore missing %}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}">
@@ -83,10 +86,10 @@
     .loc-step-label {
       display: flex; align-items: center; gap: 10px;
       font-size: .78rem; font-weight: 700;
-      color: #0f766e; letter-spacing: .04em; text-transform: uppercase;
+      color: var(--tkt-accent-strong); letter-spacing: .04em; text-transform: uppercase;
       margin: 16px 0 12px;
     }
-    .loc-step-label::after { content: ''; flex: 1; height: 1px; background: #ccfbf1; }
+    .loc-step-label::after { content: ''; flex: 1; height: 1px; background: var(--tkt-accent-100); }
 
     /* Property / Zone | Sub-zone / Unit — two dropdowns per row */
     .new-tkt-location-step-grid {
@@ -115,9 +118,9 @@
     .tkt-ac-wrap { position: relative; }
     .tkt-ac-dropdown {
       position: absolute; top: 100%; left: 0; right: 0;
-      background: #fff; border: 1.5px solid #bfdbfe;
+      background: #fff; border: 1px solid var(--tkt-accent-200);
       border-top: none; border-radius: 0 0 10px 10px;
-      box-shadow: 0 8px 24px rgba(30,58,95,.12);
+      box-shadow: 0 8px 24px rgba(23,25,35,.12);
       z-index: 400; max-height: 240px; overflow-y: auto;
       display: none;
     }
@@ -127,13 +130,19 @@
       align-items: center; gap: 10px; font-size: .875rem;
       border-bottom: 1px solid #f1f5f9; transition: background .1s;
     }
-    .tkt-ac-item:hover, .tkt-ac-item.focused { background: #eff6ff; }
+    .tkt-ac-item:hover, .tkt-ac-item.focused { background: #fff5f0; }
     .tkt-ac-item:last-child { border-bottom: none; }
+    .tkt-select-expanded {
+      position: relative;
+      z-index: 60;
+      box-shadow: 0 8px 24px rgba(23,25,35,.12);
+      border-radius: 10px;
+    }
     .tkt-ac-icon { flex-shrink: 0; opacity: .5; }
     .tkt-ac-source { font-size: .7rem; color: #94a3b8; margin-left: auto; white-space: nowrap; }
     .tkt-ac-template-tag {
       display: inline-block; padding: 1px 6px; border-radius: 4px;
-      font-size: .7rem; font-weight: 600; background: #dbeafe; color: #1d4ed8;
+      font-size: .7rem; font-weight: 600; background: #ffe4d6; color: #c2440c;
     }
     .tkt-ac-item-meta {
       flex-shrink: 0;
@@ -155,15 +164,15 @@
     /* ── Auto-desc indicator ── */
     .tkt-auto-desc-bar {
       display: flex; align-items: center; gap: 8px; font-size: .78rem;
-      color: #2563eb; margin-bottom: 6px; padding: 6px 10px;
-      background: #eff6ff; border-radius: 6px;
-      border: 1px solid #bfdbfe;
+      color: #c2440c; margin-bottom: 6px; padding: 6px 10px;
+      background: #fff5f0; border-radius: 6px;
+      border: 1px solid #ffd5c2;
       opacity: 0; pointer-events: none; transition: opacity .2s;
     }
     .tkt-auto-desc-bar.show { opacity: 1; pointer-events: all; }
 
-    /* ── Summary card (right panel) ── */
-    .summary-card { position: sticky; top: 88px; }
+    /* ── Summary card (right panel) — sticks below the 64px topbar ── */
+    .summary-card { position: sticky; top: 80px; }
     .summary-item {
       display: flex; flex-direction: column; gap: 2px;
       padding: 10px 0; border-bottom: 1px solid #f1f5f9;
@@ -183,17 +192,17 @@
       font-size: .8rem; font-weight: 600; color: #94a3b8;
       white-space: nowrap;
     }
-    .tkt-step.active { color: #1e3a5f; }
+    .tkt-step.active { color: var(--tkt-accent-deep); }
     .tkt-step.done { color: #16a34a; }
     .tkt-step-num {
       width: 26px; height: 26px; border-radius: 50%;
-      border: 2px solid #e2e8f0; background: #fff;
+      border: 2px solid var(--tkt-border-strong); background: #fff;
       display: flex; align-items: center; justify-content: center;
       font-size: .8rem; font-weight: 700; flex-shrink: 0;
     }
-    .tkt-step.active .tkt-step-num { background: #1e3a5f; border-color: #1e3a5f; color: #fff; }
+    .tkt-step.active .tkt-step-num { background: var(--tkt-accent); border-color: var(--tkt-accent); color: #fff; }
     .tkt-step.done .tkt-step-num { background: #16a34a; border-color: #16a34a; color: #fff; }
-    .tkt-step-connector { flex: 1; min-width: 20px; height: 2px; background: #e2e8f0; }
+    .tkt-step-connector { flex: 1; min-width: 20px; height: 2px; background: var(--tkt-border-strong); }
     .tkt-step-connector.done { background: #16a34a; }
 
     .new-tkt-pending-img-grid {
@@ -239,7 +248,7 @@
     /* Photos & attachments — dedicated sidebar card */
     .tkt-summary-photos-card {
       margin-top: 14px;
-      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, sans-serif;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", Roboto, sans-serif;
       -webkit-font-smoothing: antialiased;
       border-radius: 14px;
       border: 0.8889px solid rgba(60, 60, 67, 0.12);
@@ -317,14 +326,14 @@
     }
     .tkt-summary-photos-card .summary-new-tkt-upload:focus-within,
     .tkt-summary-photos-card .summary-new-tkt-upload:hover {
-      border-color: rgba(0, 122, 255, 0.42) !important;
-      background: rgba(0, 122, 255, 0.06);
-      box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.15);
+      border-color: rgba(255, 142, 104, 0.5) !important;
+      background: rgba(255, 142, 104, 0.08);
+      box-shadow: 0 0 0 3px rgba(255, 142, 104, 0.16);
     }
     .tkt-summary-photos-card .summary-new-tkt-upload.drag-over {
-      border-color: rgba(0, 122, 255, 0.55) !important;
-      background: rgba(0, 122, 255, 0.1);
-      box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.2);
+      border-color: rgba(255, 142, 104, 0.65) !important;
+      background: rgba(255, 142, 104, 0.12);
+      box-shadow: 0 0 0 3px rgba(255, 142, 104, 0.22);
     }
     .tkt-summary-photos-card .summary-new-tkt-upload svg {
       display: block;
@@ -387,7 +396,7 @@
       white-space: normal;
       line-height: 1.35;
     }
-    .new-tkt-recap-chip.sg { border-color: #bfdbfe; background: #eff6ff; color: #1e40af; }
+    .new-tkt-recap-chip.sg { border-color: #ffd5c2; background: #fff5f0; color: #c2440c; }
     .new-tkt-recap-chip.cat { border-color: #ddd6fe; background: #f5f3ff; color: #6d28d9; }
     .new-tkt-recap-chip.fault { border-color: #a7f3d0; background: #ecfdf5; color: #047857; }
     .new-tkt-recap-pri-hint {
@@ -443,13 +452,14 @@
     .tkt-section-header::after { content: ''; flex: 1; height: 1px; background: #e2e8f0; }
   </style>
 </head>
-<body class="tkt-dh-page has-main-nav">
+<body class="tkt-dh-page">
 <div class="tkt-dh-app-root">
-{% set active_page = 'ticketing' %}
-{% include 'partials/main_navbar.html' with context %}
 <div class="dh-page-root tkt-dh-page-root">
 {% include 'partials/tkt_sidebar.html' with context %}
-<div class="tkt-dh-main"><div class="tkt-content">
+<div class="tkt-dh-main">
+{% set tkt_topbar_title = 'New Work Order' %}
+{% include 'partials/tkt_topbar.html' with context %}
+<div class="tkt-content">
 
 <div class="new-tkt-page-wrap">
   <div class="tkt-page-header" style="margin-bottom:20px;">
@@ -492,19 +502,19 @@
                   <label for="projectSearch">Find project</label>
                   <div class="tkt-ac-wrap">
                     <input class="tkt-input" id="projectSearch" type="search" autocomplete="off"
-                           placeholder="Project name or client…" aria-autocomplete="list" aria-controls="projectSearchDropdown">
+                           placeholder="Project name or client — click to browse…" aria-autocomplete="list" aria-controls="projectSearchDropdown">
                     <div class="tkt-ac-dropdown" id="projectSearchDropdown" role="listbox"></div>
                   </div>
-                  <span style="font-size:.72rem;color:#94a3b8;margin-top:2px;display:block;">Sets the contract / project.</span>
+                  <span style="font-size:.72rem;color:#94a3b8;margin-top:2px;display:block;">Click or type to browse projects. Sets the contract / project.</span>
                 </div>
                 <div class="tkt-field" style="margin-bottom:0;">
                   <label for="propertySearch">Find location <span class="req">*</span></label>
                   <div class="tkt-ac-wrap">
                     <input class="tkt-input" id="propertySearch" type="search" autocomplete="off"
-                           placeholder="Property / zone / sub-zone / unit (min. 3 characters)…" aria-autocomplete="list" aria-controls="propertySearchDropdown">
+                           placeholder="Property / zone / sub-zone / unit — click to browse…" aria-autocomplete="list" aria-controls="propertySearchDropdown">
                     <div class="tkt-ac-dropdown" id="propertySearchDropdown" role="listbox"></div>
                   </div>
-                  <span style="font-size:.72rem;color:#94a3b8;margin-top:2px;display:block;">Search anywhere in the path. Selecting a suggestion fills Property → Zone → Sub-zone → Unit when stored below.</span>
+                  <span style="font-size:.72rem;color:#94a3b8;margin-top:2px;display:block;">Click or type to browse locations. Selecting a suggestion fills Property → Zone → Sub-zone → Unit when stored below.</span>
                 </div>
               </div>
 
@@ -563,10 +573,10 @@
                 <label for="complaintSearch">Find complaint type</label>
                 <div class="tkt-ac-wrap">
                   <input class="tkt-input" id="complaintSearch" type="search" autocomplete="off"
-                         placeholder="Fault code, symptom, category…" aria-autocomplete="list" aria-controls="complaintSearchDropdown">
+                         placeholder="Fault code, symptom, category — click to browse…" aria-autocomplete="list" aria-controls="complaintSearchDropdown">
                   <div class="tkt-ac-dropdown" id="complaintSearchDropdown" role="listbox"></div>
                 </div>
-                <span style="font-size:.72rem;color:#94a3b8;margin-top:2px;">Search official fault codes (symptom, category, service group). Fills title and technician checklist in the work description.</span>
+                <span style="font-size:.72rem;color:#94a3b8;margin-top:2px;">Click or type to browse fault codes (symptom, category, service group). Fills title and technician checklist in the work description.</span>
               </div>
               <div class="new-tkt-complaint-topgrid">
                 <div class="tkt-field">
@@ -639,7 +649,7 @@
               <div class="tkt-auto-desc-bar" id="autoDescBar">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z"/></svg>
                 <span>Description auto-generated from work order info.</span>
-                <button type="button" id="regenerateDescBtn" style="margin-left:auto;background:none;border:none;color:#2563eb;font-size:.78rem;font-weight:600;cursor:pointer;text-decoration:underline;">Regenerate</button>
+                <button type="button" id="regenerateDescBtn" style="margin-left:auto;background:none;border:none;color:#c2440c;font-size:.78rem;font-weight:600;cursor:pointer;text-decoration:underline;">Regenerate</button>
               </div>
 
               <!-- Work Description -->
@@ -663,7 +673,7 @@
               </h3>
             </div>
             <div class="tkt-card-body">
-              <p style="font-size:.78rem;color:#64748b;margin:0 0 14px;line-height:1.5;">Each work order goes to the <strong>supervisor queue</strong> first. A supervisor assigns someone from their team.</p>
+              <p style="font-size:.78rem;color:#64748b;margin:0 0 14px;line-height:1.5;">Each work order goes to the <strong>supervisor queue</strong> first. A supervisor assigns someone from their vendor team.</p>
               <div class="tkt-form-grid">
                 <div class="tkt-field">
                   <label>Reported By <span class="req">*</span></label>
@@ -676,28 +686,6 @@
                     {% endfor %}
                   </select>
                 </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- ── Section: Financial ── -->
-          <div class="tkt-card">
-            <div class="tkt-card-header">
-              <h3>
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
-                Financial
-              </h3>
-            </div>
-            <div class="tkt-card-body">
-              <div class="tkt-toggle-row" style="margin-bottom:16px;">
-                <div class="tkt-toggle-row__text">
-                  <div class="tkt-toggle-row__title">Chargeable Work Order</div>
-                  <p class="tkt-desc">Will this work be billed to the client?</p>
-                </div>
-                <label class="tkt-switch" for="isChargeable" aria-label="Chargeable work order">
-                  <input type="checkbox" id="isChargeable" name="is_chargeable">
-                  <span class="tkt-slider" aria-hidden="true"></span>
-                </label>
               </div>
             </div>
           </div>
@@ -753,10 +741,6 @@
               <span class="summary-label">Reporter</span>
               <span class="summary-val" id="sum-reporter">{{ user.full_name }}</span>
             </div>
-            <div class="summary-item">
-              <span class="summary-label">Chargeable</span>
-              <span class="summary-val" id="sum-charge">No</span>
-            </div>
           </div>
         </div>
 
@@ -802,9 +786,6 @@
 </div></div>{# tkt-content / tkt-dh-main #}
 </div></div>{# tkt-dh-page-root / tkt-dh-app-root #}
 
-<button type="button" class="dh-sidebar-toggle" id="tktDhSidebarToggle"
-        onclick="tktToggleMobileSidebar()" aria-label="Open menu" title="Menu">&#9776;</button>
-
 <script src="{{ url_for('static', filename='js/ticketing.js') }}"></script>
 <script>
 let _options = {};
@@ -821,9 +802,6 @@ let _complaintHits = [];
 let _projSearchStaging = [];
 let _propSearchStaging = [];
 let _complSearchStaging = [];
-let _projSearchDebounce = null;
-let _propSearchDebounce = null;
-let _complSearchDebounce = null;
 /** Populated when options.use_fault_catalog — official fault-code rows */
 let _faultCatalog = [];
 let _suppressNextDescFetch = false;
@@ -1153,34 +1131,36 @@ function rebuildPropertySearchIndex() {
   });
 }
 
+function sortSearchHits(hits, q) {
+  hits.sort((a, b) => {
+    if (q) {
+      const aStart = a.hay.startsWith(q) ? 0 : 1;
+      const bStart = b.hay.startsWith(q) ? 0 : 1;
+      if (aStart !== bStart) return aStart - bStart;
+    }
+    return String(a.primary).localeCompare(String(b.primary));
+  });
+  return hits;
+}
+
 function filterProjectSearchHits(qRaw) {
   const q = tktNormQTicketNew(qRaw);
-  if (!q.length) return [];
-  const hits = _projSearchHits.filter((h) => h.hay.includes(q));
-  hits.sort((a, b) => {
-    const aStart = a.hay.startsWith(q) ? 0 : 1;
-    const bStart = b.hay.startsWith(q) ? 0 : 1;
-    if (aStart !== bStart) return aStart - bStart;
-    return String(a.primary).length - String(b.primary).length;
-  });
-  return hits.slice(0, 42);
+  let hits = q.length
+    ? _projSearchHits.filter((h) => h.hay.includes(q))
+    : _projSearchHits.slice();
+  return sortSearchHits(hits, q).slice(0, 42);
 }
 
 function filterPropertySearchHits(qRaw) {
   const q = tktNormQTicketNew(qRaw);
-  if (!q.length || q.length < 3) return [];
   const projGate = (document.getElementById('project')?.value || '').trim();
-  let hits = _propSearchHits.filter((h) => h.hay.includes(q));
+  let hits = q.length
+    ? _propSearchHits.filter((h) => h.hay.includes(q))
+    : _propSearchHits.slice();
   if (projGate) {
     hits = hits.filter((h) => !h.standalone && h.projectName === projGate);
   }
-  hits.sort((a, b) => {
-    const aStart = a.hay.startsWith(q) ? 0 : 1;
-    const bStart = b.hay.startsWith(q) ? 0 : 1;
-    if (aStart !== bStart) return aStart - bStart;
-    return String(a.primary).length - String(b.primary).length;
-  });
-  return hits.slice(0, 42);
+  return sortSearchHits(hits, q).slice(0, 42);
 }
 
 function rebuildComplaintSearchIndex() {
@@ -1228,15 +1208,10 @@ function rebuildComplaintSearchIndex() {
 
 function filterComplaintSearchHits(qRaw) {
   const q = tktNormQTicketNew(qRaw);
-  if (!q.length) return [];
-  const hits = _complaintHits.filter((h) => h.hay.includes(q));
-  hits.sort((a, b) => {
-    const aStart = a.hay.startsWith(q) ? 0 : 1;
-    const bStart = b.hay.startsWith(q) ? 0 : 1;
-    if (aStart !== bStart) return aStart - bStart;
-    return String(a.primary).length - String(b.primary).length;
-  });
-  return hits.slice(0, 64);
+  let hits = q.length
+    ? _complaintHits.filter((h) => h.hay.includes(q))
+    : _complaintHits.slice();
+  return sortSearchHits(hits, q).slice(0, 64);
 }
 
 function closeProjSearchDd() {
@@ -1488,50 +1463,81 @@ function renderComplSearchDropdown() {
   d.classList.add('open');
 }
 
-function initLocationComplaintSearchUI() {
-  const pjInp = document.getElementById('projectSearch');
-  const propInp = document.getElementById('propertySearch');
-  const csInp = document.getElementById('complaintSearch');
+function initSelectExpandOnFocus(selectIds) {
+  selectIds.forEach((id) => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
 
-  if (pjInp) {
-    pjInp.addEventListener('input', () => {
-      clearTimeout(_projSearchDebounce);
-      _projSearchDebounce = setTimeout(renderProjSearchDropdown, 220);
+    const collapse = () => {
+      sel.size = 1;
+      sel.classList.remove('tkt-select-expanded');
+    };
+    const expand = () => {
+      if (sel.disabled) return;
+      const count = [...sel.options].filter((o) => o.value).length;
+      if (count < 1) return;
+      sel.size = Math.min(count + 1, 10);
+      sel.classList.add('tkt-select-expanded');
+    };
+
+    sel.addEventListener('focus', expand);
+    sel.addEventListener('mousedown', (e) => {
+      if (sel.disabled) return;
+      const count = [...sel.options].filter((o) => o.value).length;
+      if (count < 1) return;
+      if (sel.size <= 1) {
+        e.preventDefault();
+        expand();
+      }
     });
-    pjInp.addEventListener('focus', () => {
-      clearTimeout(_projSearchDebounce);
-      _projSearchDebounce = setTimeout(renderProjSearchDropdown, 120);
-    });
-    pjInp.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') closeProjSearchDd();
-    });
-  }
-  if (propInp) {
-    propInp.addEventListener('input', () => {
-      clearTimeout(_propSearchDebounce);
-      _propSearchDebounce = setTimeout(renderPropSearchDropdown, 220);
-    });
-    propInp.addEventListener('focus', () => {
-      clearTimeout(_propSearchDebounce);
-      _propSearchDebounce = setTimeout(renderPropSearchDropdown, 120);
-    });
-    propInp.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') closePropSearchDd();
-    });
-  }
-  if (csInp) {
-    csInp.addEventListener('input', () => {
-      clearTimeout(_complSearchDebounce);
-      _complSearchDebounce = setTimeout(renderComplSearchDropdown, 220);
-    });
-    csInp.addEventListener('focus', () => {
-      clearTimeout(_complSearchDebounce);
-      _complSearchDebounce = setTimeout(renderComplSearchDropdown, 120);
-    });
-    csInp.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') closeComplSearchDd();
-    });
-  }
+    sel.addEventListener('blur', () => setTimeout(collapse, 120));
+    sel.addEventListener('change', collapse);
+  });
+}
+
+function bindSearchBrowseInput(inp, renderFn, closeFn) {
+  if (!inp) return;
+  const open = () => {
+    clearTimeout(inp._browseDebounce);
+    inp._browseDebounce = setTimeout(renderFn, 80);
+  };
+  inp.addEventListener('input', () => {
+    clearTimeout(inp._browseDebounce);
+    inp._browseDebounce = setTimeout(renderFn, 220);
+  });
+  inp.addEventListener('focus', open);
+  inp.addEventListener('click', open);
+  inp.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeFn();
+  });
+}
+
+function initLocationComplaintSearchUI() {
+  bindSearchBrowseInput(
+    document.getElementById('projectSearch'),
+    renderProjSearchDropdown,
+    closeProjSearchDd,
+  );
+  bindSearchBrowseInput(
+    document.getElementById('propertySearch'),
+    renderPropSearchDropdown,
+    closePropSearchDd,
+  );
+  bindSearchBrowseInput(
+    document.getElementById('complaintSearch'),
+    renderComplSearchDropdown,
+    closeComplSearchDd,
+  );
+
+  initSelectExpandOnFocus([
+    'propertySelect',
+    'zoneSelect',
+    'subZoneSelect',
+    'baseUnitSelect',
+    'serviceGroup',
+    'category',
+    'faultType',
+  ]);
 
   document.addEventListener('mousedown', (e) => {
     function outside(inpId, closeFn) {
@@ -2064,20 +2070,9 @@ function updateSummary() {
   const repName = repEl?.options[repEl.selectedIndex]?.text?.split(' — ')[0] || '—';
   set('sum-reporter', repName);
 
-  // Chargeable
-  const ch = document.getElementById('isChargeable')?.checked;
-  const chEl = document.getElementById('sum-charge');
-  if (chEl) {
-    chEl.innerHTML = ch
-      ? '<span style="color:#16a34a;font-weight:700;">Yes — Chargeable</span>'
-      : '<span style="color:#64748b;">No</span>';
-    chEl.classList.remove('empty');
-  }
-
   updateComplaintClassRecap();
 }
 
-document.getElementById('isChargeable')?.addEventListener('change', updateSummary);
 document.getElementById('reporterId')?.addEventListener('change', updateSummary);
 document.getElementById('project')?.addEventListener('change', updateSummary);
 
@@ -2101,7 +2096,7 @@ document.getElementById('tktNewForm').addEventListener('submit', async (e) => {
     zone: document.getElementById('zoneSelect').value.trim(),
     sub_zone: document.getElementById('subZoneSelect').value.trim(),
     base_unit: document.getElementById('baseUnitSelect').value.trim(),
-    is_chargeable: document.getElementById('isChargeable').checked,
+    reporter_id: document.getElementById('reporterId')?.value || '',
   };
 
   const locCascade = validateLocationCascade();

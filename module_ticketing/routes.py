@@ -4,17 +4,21 @@ Handles complaint registration, assignment, progress tracking, cost logging,
 closing with signatures, PDF report generation and email notifications.
 """
 import os
+import re
 import uuid
 import io
+import base64
 import calendar
 import logging
 import tempfile
+import requests
+from email.utils import parseaddr
 from pathlib import Path
-from datetime import datetime, timezone, date
+from datetime import datetime, timezone, date, timedelta
 from decimal import Decimal
 from flask import (
     Blueprint, render_template, request, jsonify,
-    current_app, send_file, abort
+    current_app, send_file, abort, redirect, url_for
 )
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from werkzeug.utils import secure_filename
@@ -26,8 +30,9 @@ from app.models import (
     TicketMaterial, TicketManpower, Notification,
     TicketProject, TicketProperty, TicketZone, TicketSubZone,
     TicketBaseUnit, TicketTitleTemplate, TicketSupervisorTeam,
-    BDProject,
+    BDProject, TicketEmailIntake,
 )
+from module_ticketing.tz_utils import to_gst, GST_OFFSET
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +40,11 @@ ticketing_bp = Blueprint('ticketing', __name__, template_folder='templates')
 
 
 def _tkt_datetime_filter(value, fmt='%d %b %Y, %H:%M'):
-    """Format datetime/date for templates; tolerate strings or driver quirks (no .strftime on str)."""
+    """Format datetime/date for templates; tolerate strings or driver quirks (no .strftime on str).
+
+    All ticket timestamps are stored as naive UTC — this converts to Gulf
+    Standard Time (UTC+4) for display, since the app is used by UAE-based teams.
+    """
     if value is None:
         return ''
     if isinstance(value, str):
@@ -46,13 +55,14 @@ def _tkt_datetime_filter(value, fmt='%d %b %Y, %H:%M'):
             if 'T' in s or (len(s) >= 10 and s[4:5] == '-' and s[7:8] == '-'):
                 iso = s.replace('Z', '+00:00')
                 dt = datetime.fromisoformat(iso)
-                return dt.strftime(fmt)
+                dt = dt.replace(tzinfo=None) if dt.tzinfo else dt
+                return to_gst(dt).strftime(fmt)
         except Exception:
             return s
         return s
     if isinstance(value, datetime):
         try:
-            return value.strftime(fmt)
+            return to_gst(value).strftime(fmt)
         except Exception:
             return str(value)
     if isinstance(value, date):
@@ -67,6 +77,7 @@ def _tkt_datetime_filter(value, fmt='%d %b %Y, %H:%M'):
 
 
 _STATUS_LABELS = {
+    'draft':            'Draft (Email Intake)',
     # v2 canonical
     'open':             'Open',
     'assigned':         'Assigned',
@@ -74,6 +85,7 @@ _STATUS_LABELS = {
     'work_started':     'Work Started',
     'work_completed':   'Work Completed',
     'verification':     'Verification',
+    'provider_closed':  'Provider Verified — Pending Ops',
     'on_hold':          'On Hold',
     'cancelled':        'Cancelled',
     'closed':           'Closed',
@@ -104,12 +116,39 @@ CANCEL_REASONS = {
 
 # Statuses that count as "active" (ticket is not done)
 _ACTIVE_STATUSES = frozenset({
-    'open', 'assigned', 'site_attended', 'work_started', 'work_completed', 'verification', 'on_hold',
+    'open', 'assigned', 'site_attended', 'work_started', 'work_completed', 'verification',
+    'provider_closed', 'on_hold',
     # legacy
     'pending_supervisor', 'in_progress', 'pending_parts', 'pending_verification',
 })
 
 _TERMINAL_STATUSES = frozenset({'closed', 'cancelled', 'resolved'})
+
+# Statuses at or beyond "Work Started" — the cost module (manpower/materials) only
+# unlocks once the technician has actually begun work on site, and locks again once
+# the service-provider supervisor has verified/submitted costs (`provider_closed`).
+_COST_ENTRY_ALLOWED_STATUSES = frozenset({
+    'work_started', 'work_completed', 'verification',
+    # legacy
+    'in_progress', 'pending_parts', 'pending_verification', 'on_hold', 'resolved',
+})
+
+
+def _cost_entry_allowed(ticket: Ticket) -> bool:
+    return (ticket.status or '') in _COST_ENTRY_ALLOWED_STATUSES
+
+
+# Cost summary (Actual Price / Markup / Selling Price) and invoice details are only
+# surfaced once work is actually completed — not while a technician is still on site.
+_COST_SUMMARY_VISIBLE_STATUSES = frozenset({
+    'work_completed', 'verification', 'provider_closed', 'closed',
+    # legacy
+    'pending_verification', 'resolved',
+})
+
+
+def _cost_summary_visible(ticket: Ticket) -> bool:
+    return (ticket.status or '') in _COST_SUMMARY_VISIBLE_STATUSES
 
 
 def _tkt_status_label_filter(status):
@@ -145,6 +184,17 @@ def _migrate_ticket_columns(app):
         ('site_attended_at',               'TEXT'),
         ('work_started_at',                'TEXT'),
         ('work_completed_at',              'TEXT'),
+        # Email intake (draft tickets created from inbound email)
+        ('source',                         "VARCHAR(20) DEFAULT 'manual'"),
+        ('source_sender_email',            'VARCHAR(255)'),
+        ('source_sender_name',             'VARCHAR(255)'),
+        ('source_subject',                 'VARCHAR(500)'),
+        ('source_message_id',              'VARCHAR(255)'),
+        # Two-stage close — Stage 2 (client operations) sign-off
+        ('ops_close_notes',                'TEXT'),
+        ('ops_close_signature',            'TEXT'),
+        ('ops_close_signed_by',            'VARCHAR(160)'),
+        ('ops_close_signed_role',          'VARCHAR(120)'),
     ]
     with app.app_context():
         from app.models import db
@@ -177,6 +227,8 @@ def _migrate_ticket_project_columns(app):
         ('project_end_date', 'DATE'),
         ('renewal_date', 'DATE'),
         ('project_value', 'REAL'),
+        ('finance_emails', 'VARCHAR(500)'),
+        ('ops_emails', 'VARCHAR(500)'),
     ]
     with app.app_context():
         try:
@@ -198,11 +250,44 @@ def _migrate_ticket_project_columns(app):
             logger.warning('Ticket project migration warning: %s', exc)
 
 
+EMAIL_INTAKE_USERNAME = 'email_intake'
+EMAIL_INTAKE_EMAIL = 'email-intake@injaaz.system'
+
+
+def _ensure_email_intake_user(app):
+    """Create the system 'Email Intake' account used as reporter/uploader for draft
+    tickets whose sender email doesn't match any registered User."""
+    with app.app_context():
+        try:
+            if User.query.filter_by(username=EMAIL_INTAKE_USERNAME).first():
+                return
+            u = User(
+                username=EMAIL_INTAKE_USERNAME,
+                email=EMAIL_INTAKE_EMAIL,
+                full_name='Email Intake (System)',
+                role='user',
+                is_active=True,
+                access_ticketing=True,
+            )
+            u.set_password(uuid.uuid4().hex)
+            db.session.add(u)
+            db.session.commit()
+            logger.info('Created system "Email Intake" user for inbound email drafts')
+        except Exception as exc:
+            db.session.rollback()
+            logger.warning('Could not ensure Email Intake system user: %s', exc)
+
+
+def _email_intake_user() -> 'User':
+    return User.query.filter_by(username=EMAIL_INTAKE_USERNAME).first()
+
+
 @ticketing_bp.record_once
 def _on_register(state):
     """Run column migrations when the blueprint is first registered."""
     _migrate_ticket_columns(state.app)
     _migrate_ticket_project_columns(state.app)
+    _ensure_email_intake_user(state.app)
 
 
 ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'heic', 'heif'}
@@ -226,6 +311,35 @@ def _has_access(user: User) -> bool:
     if user is None:
         return False
     return bool(user.role == 'admin' or getattr(user, 'access_ticketing', False))
+
+
+def _reporter_candidates():
+    """Users allowed to appear in / be used as the ticket 'Reported By' field.
+
+    Restricted to pre-designated department representatives (`is_ticket_reporter`).
+    Falls back to all active users if none have been flagged yet, so ticket
+    creation doesn't break before an admin has configured any reporters.
+    """
+    flagged = (
+        User.query.filter_by(is_active=True, is_ticket_reporter=True)
+        .order_by(User.full_name)
+        .all()
+    )
+    if flagged:
+        return flagged
+    return User.query.filter_by(is_active=True).order_by(User.full_name).all()
+
+
+def _is_valid_reporter(user_id) -> bool:
+    candidate = db.session.get(User, user_id) if user_id else None
+    if not candidate or not candidate.is_active:
+        return False
+    any_flagged = db.session.query(
+        User.query.filter_by(is_active=True, is_ticket_reporter=True).exists()
+    ).scalar()
+    if not any_flagged:
+        return True
+    return bool(getattr(candidate, 'is_ticket_reporter', False))
 
 
 # Designations that may see every ticket (read + list) like admins.
@@ -271,16 +385,35 @@ def _ticket_visibility_or_clause(user: User):
     return db.or_(*clauses)
 
 
-def _visible_tickets_base_query(user: User):
+def _visible_tickets_base_query(user: User, include_drafts: bool = False):
     q = Ticket.query
     if not _ticketing_sees_all_tickets(user):
         q = q.filter(_ticket_visibility_or_clause(user))
+    if not include_drafts:
+        # Draft (email-intake) tickets live in the dedicated Draft Tickets inbox,
+        # not in the normal dashboard/list views, until a reviewer converts them.
+        q = q.filter(Ticket.status != 'draft')
     return q
+
+
+def _can_view_draft_tickets(user: User) -> bool:
+    """Supervisors, admins, OPS and GM may review the shared email-intake draft inbox."""
+    if user is None:
+        return False
+    if _ticketing_sees_all_tickets(user):
+        return True
+    return _user_in_supervisor_pool(user)
+
+
+def _draft_tickets_query():
+    return Ticket.query.filter(Ticket.status == 'draft')
 
 
 def _can_user_view_ticket(user: User, ticket: Ticket) -> bool:
     if _ticketing_sees_all_tickets(user):
         return True
+    if ticket.status == 'draft':
+        return _can_view_draft_tickets(user)
     if (
         ticket.reporter_id == user.id
         or ticket.assigned_to_id == user.id
@@ -318,18 +451,20 @@ def _ticket_images_dir() -> str:
 
 
 def _recalc_total_cost(ticket: Ticket):
-    """Re-compute ticket.total_cost, actual_price, and selling_price from manpower + materials."""
+    """Re-compute ticket.total_cost, actual_price, and selling_price from manpower + materials.
+
+    The former fixed 10% overhead has been removed; `actual_price` is now simply
+    the manpower + materials base cost, and `selling_price` applies the
+    supervisor-selected markup (0/5/10/15/20/25%) directly on top of it.
+    """
     mp_total  = sum((e.total_cost  or 0) for e in ticket.manpower.all())
     mat_total = sum((m.total_price or 0) for m in ticket.materials.all())
     base_cost = round(mp_total + mat_total, 2)
     ticket.total_cost = base_cost
-
-    overhead = ticket.overhead_pct if ticket.overhead_pct is not None else 10.0
-    actual = round(base_cost * (1 + overhead / 100.0), 2)
-    ticket.actual_price = actual
+    ticket.actual_price = base_cost
 
     if ticket.markup_pct is not None:
-        ticket.selling_price = round(actual * (1 + ticket.markup_pct / 100.0), 2)
+        ticket.selling_price = round(base_cost * (1 + ticket.markup_pct / 100.0), 2)
     else:
         ticket.selling_price = None
 
@@ -491,7 +626,11 @@ def _get_sidebar_stats(user: User) -> dict:
     q = _visible_tickets_base_query(user)
     statuses = [t[0] for t in q.with_entities(Ticket.status).all()]
     active_ct = sum(1 for s in statuses if s in _ACTIVE_STATUSES)
+    can_view_drafts = _can_view_draft_tickets(user)
+    draft_ct = _draft_tickets_query().count() if can_view_drafts else 0
     return {
+        'draft':            draft_ct,
+        'can_view_drafts':  can_view_drafts,
         'total':            len(statuses),
         'active':           active_ct,
         'open':             statuses.count('open'),
@@ -512,16 +651,53 @@ def _get_sidebar_stats(user: User) -> dict:
     }
 
 
-def _dummy_technicians() -> list:
-    """Separate demo technician pool (independent from user/team management)."""
+def _sample_vendor_companies() -> list:
+    """Sample service-provider vendors the municipality can assign work orders to."""
     return [
-        {'code': 'TECH-001', 'name': 'Arshith Swaminath P', 'speciality': 'HVAC'},
-        {'code': 'TECH-002', 'name': 'Fatima Noor', 'speciality': 'Electrical'},
-        {'code': 'TECH-003', 'name': 'Mohamed Fawaz', 'speciality': 'Plumbing'},
-        {'code': 'TECH-004', 'name': 'Rafiq Ali', 'speciality': 'Civil'},
-        {'code': 'TECH-005', 'name': 'Shamnad K', 'speciality': 'Cleaning'},
-        {'code': 'TECH-006', 'name': 'Jerin Thomas', 'speciality': 'General Maintenance'},
+        {
+            'id': 'injaaz',
+            'name': 'Injaaz Facilities Management',
+            'technicians': [
+                {'code': 'TECH-001', 'name': 'Arshith Swaminath P', 'speciality': 'HVAC', 'user_id': None},
+                {'code': 'TECH-002', 'name': 'Fatima Noor', 'speciality': 'Electrical', 'user_id': None},
+            ],
+        },
+        {
+            'id': 'nafco',
+            'name': 'NAFCO Technical Services',
+            'technicians': [
+                {'code': 'TECH-003', 'name': 'Mohamed Fawaz', 'speciality': 'Plumbing', 'user_id': None},
+                {'code': 'TECH-004', 'name': 'Rafiq Ali', 'speciality': 'Civil', 'user_id': None},
+            ],
+        },
+        {
+            'id': 'emrill',
+            'name': 'Emrill Services LLC',
+            'technicians': [
+                {'code': 'TECH-005', 'name': 'Shamnad K', 'speciality': 'Cleaning', 'user_id': None},
+            ],
+        },
+        {
+            'id': 'fcc',
+            'name': 'FCC Facilities Contracting',
+            'technicians': [
+                {'code': 'TECH-006', 'name': 'Jerin Thomas', 'speciality': 'General Maintenance', 'user_id': None},
+            ],
+        },
     ]
+
+
+def _dummy_technicians() -> list:
+    """Flattened demo technician pool grouped under sample vendor companies."""
+    rows = []
+    for co in _sample_vendor_companies():
+        for t in co['technicians']:
+            rows.append({
+                **t,
+                'vendor_id': co['id'],
+                'vendor_name': co['name'],
+            })
+    return rows
 
 
 def _add_note(ticket: Ticket, user: User, content: str, note_type: str = 'note'):
@@ -575,13 +751,48 @@ def _notify_supervisor_queue_ticket(ticket: Ticket, body: str):
         _notify_user(uid, title, body, ntype='info', ticket_id=ticket.ticket_id)
 
 
-def _send_ticket_email(subject: str, recipients: list, body_html: str):
+def _ops_overwatch_recipient_ids() -> set[int]:
+    """Admin + Operations Manager + General Manager — the Stage-2 "client ops" approvers."""
+    ids: set[int] = set()
+    for u in User.query.filter(User.role == 'admin', User.is_active == True):  # noqa: E712
+        ids.add(u.id)
+    for des in _TICKETING_OVERWATCH_DESIGNATIONS:
+        for u in User.query.filter(User.designation == des, User.is_active == True):  # noqa: E712
+            ids.add(u.id)
+    return ids
+
+
+def _notify_ops_close_pending(ticket: Ticket, body: str):
+    title = f'Ready for Final Approval: {ticket.ticket_id}'
+    for uid in _ops_overwatch_recipient_ids():
+        _notify_user(uid, title, body, ntype='info', ticket_id=ticket.ticket_id)
+
+
+def _notify_new_draft_ticket(ticket: Ticket):
+    """Alert supervisors/admins/OPS/GM that a new email-intake draft needs review.
+
+    Broadcast (not routed to a specific supervisor) since drafts are unclassified
+    by definition — any reviewer in the pool can open, complete and convert one.
+    """
+    title = f'New Draft Ticket from Email: {ticket.ticket_id}'
+    sender = ticket.source_sender_name or ticket.source_sender_email or 'an unknown sender'
+    body = (
+        f'Ticket {ticket.ticket_id} — "{ticket.title}" was drafted from an email sent by '
+        f'{sender}. Review and complete it to route it into the ticketing workflow.'
+    )
+    for uid in _supervisor_queue_broadcast_recipient_ids():
+        _notify_user(uid, title, body, ntype='info', ticket_id=ticket.ticket_id)
+
+
+def _send_ticket_email(subject: str, recipients: list, body_html: str, attachments: list | None = None):
     """Best-effort email via common email_service."""
     try:
         from common.email_service import send_email
+        text_fallback = re.sub(r'<[^>]+>', ' ', body_html)
+        text_fallback = re.sub(r'\s+', ' ', text_fallback).strip()
         for recipient in recipients:
             if recipient:
-                send_email(to_email=recipient, subject=subject, html_body=body_html)
+                send_email(recipient, subject, text_fallback, html_body=body_html, attachments=attachments)
     except Exception as exc:
         logger.warning("Ticket email send failed: %s", exc)
 
@@ -590,6 +801,68 @@ def _send_ticket_email(subject: str, recipients: list, body_html: str):
 # Dashboard
 # ---------------------------------------------------------------------------
 
+# Quick-select ranges for the dashboard's date-range control. `this_week` is
+# the default, matching the mockup's "vs last week" trend copy.
+DATE_RANGE_OPTIONS = [
+    {'key': 'this_week', 'label': 'This Week'},
+    {'key': 'last_7_days', 'label': 'Last 7 Days'},
+    {'key': 'this_month', 'label': 'This Month'},
+    {'key': 'last_30_days', 'label': 'Last 30 Days'},
+    {'key': 'all_time', 'label': 'All Time'},
+]
+_DATE_RANGE_KEYS = {opt['key'] for opt in DATE_RANGE_OPTIONS}
+_DATE_RANGE_COMPARE_LABEL = {
+    'this_week': 'last week',
+    'last_7_days': 'previous 7 days',
+    'this_month': 'last month',
+    'last_30_days': 'previous 30 days',
+    'all_time': None,
+}
+
+
+def _dashboard_period_bounds(range_key):
+    """Return (period_start, period_end, prev_start, prev_end, label) as naive
+    Gulf Standard Time datetimes for the dashboard's date-range filter and its
+    week-over-week trend comparison.
+
+    `period_start`/`prev_start` are None for `'all_time'` — callers should
+    treat that as "no filtering, no trend".
+    """
+    now_gst = to_gst(datetime.utcnow())
+    today = now_gst.date()
+
+    if range_key == 'last_7_days':
+        period_start = now_gst - timedelta(days=7)
+        label = f"{period_start.strftime('%b %d')} \u2013 {now_gst.strftime('%b %d, %Y')}"
+    elif range_key == 'this_month':
+        period_start = datetime.combine(today.replace(day=1), datetime.min.time())
+        label = now_gst.strftime('%B %Y')
+    elif range_key == 'last_30_days':
+        period_start = now_gst - timedelta(days=30)
+        label = 'Last 30 Days'
+    elif range_key == 'all_time':
+        return None, None, None, None, 'All Time'
+    else:  # 'this_week' (default)
+        start_date = today - timedelta(days=today.weekday())  # Monday
+        period_start = datetime.combine(start_date, datetime.min.time())
+        label = f"{period_start.strftime('%b %d')} \u2013 {now_gst.strftime('%b %d, %Y')}"
+
+    period_end = now_gst
+    period_len = period_end - period_start
+    prev_end = period_start
+    prev_start = prev_end - period_len
+    return period_start, period_end, prev_start, prev_end, label
+
+
+def _dashboard_trend_pct(current, previous):
+    """Week-over-week % change, or None when there's no baseline to compare against."""
+    if previous is None:
+        return None
+    if previous == 0:
+        return None if current == 0 else 100
+    return int(round((current - previous) / previous * 100.0))
+
+
 @ticketing_bp.route('/', methods=['GET'])
 @jwt_required()
 def dashboard():
@@ -597,7 +870,7 @@ def dashboard():
     if not _has_access(user):
         abort(403)
 
-    # Stats
+    # Stats (all-time — feeds the sidebar nav badges, must stay unfiltered)
     all_tickets = _visible_tickets_base_query(user).order_by(Ticket.created_at.desc())
 
     tickets_q = all_tickets.all()
@@ -606,7 +879,12 @@ def dashboard():
     resolved_ct = sum(1 for t in tickets_q if t.status == 'resolved')
     completed_ct = closed_ct + resolved_ct  # work finished (may still await sign-off)
 
+    can_view_drafts = _can_view_draft_tickets(user)
+    draft_ct = _draft_tickets_query().count() if can_view_drafts else 0
+
     stats = {
+        'draft': draft_ct,
+        'can_view_drafts': can_view_drafts,
         'total': total_ct,
         'open': sum(1 for t in tickets_q if t.status == 'open'),
         'pending_supervisor': sum(1 for t in tickets_q if t.status == 'pending_supervisor'),
@@ -623,16 +901,62 @@ def dashboard():
         'completed_pct': int(round(100.0 * completed_ct / total_ct)) if total_ct else 0,
     }
 
-    recent = tickets_q[:10]
-    all_users = User.query.filter_by(is_active=True).order_by(User.full_name).all()
+    # Period-scoped headline stats + week-over-week trend (dashboard stat cards only)
+    date_range = request.args.get('range', 'this_week')
+    if date_range not in _DATE_RANGE_KEYS:
+        date_range = 'this_week'
+    period_start_gst, period_end_gst, prev_start_gst, prev_end_gst, date_range_label = \
+        _dashboard_period_bounds(date_range)
+
+    def _to_utc(dt):
+        return (dt - GST_OFFSET) if dt is not None else None
+
+    period_start, period_end = _to_utc(period_start_gst), _to_utc(period_end_gst)
+    prev_start, prev_end = _to_utc(prev_start_gst), _to_utc(prev_end_gst)
+
+    base_q = _visible_tickets_base_query(user)
+    resolved_ts = db.func.coalesce(Ticket.resolved_at, Ticket.closed_at)
+
+    def _period_counts(start, end, end_inclusive):
+        if start is None:
+            return {
+                'total': base_q.count(),
+                'open': base_q.filter(Ticket.status == 'open').count(),
+                'in_progress': base_q.filter(Ticket.status == 'in_progress').count(),
+                'resolved': base_q.filter(Ticket.status.in_(['resolved', 'closed'])).count(),
+            }
+        created_hi = (Ticket.created_at <= end) if end_inclusive else (Ticket.created_at < end)
+        resolved_hi = (resolved_ts <= end) if end_inclusive else (resolved_ts < end)
+        return {
+            'total': base_q.filter(Ticket.created_at >= start, created_hi).count(),
+            'open': base_q.filter(Ticket.created_at >= start, created_hi, Ticket.status == 'open').count(),
+            'in_progress': base_q.filter(Ticket.created_at >= start, created_hi, Ticket.status == 'in_progress').count(),
+            'resolved': base_q.filter(
+                resolved_ts >= start, resolved_hi, Ticket.status.in_(['resolved', 'closed'])
+            ).count(),
+        }
+
+    current_counts = _period_counts(period_start, period_end, end_inclusive=True)
+    previous_counts = (
+        _period_counts(prev_start, prev_end, end_inclusive=False) if prev_start is not None else None
+    )
+
+    period_stats = dict(current_counts)
+    period_stats['trend'] = {
+        key: (_dashboard_trend_pct(current_counts[key], previous_counts[key]) if previous_counts else None)
+        for key in ('total', 'open', 'in_progress', 'resolved')
+    }
 
     return render_template(
         'ticket_dashboard.html',
         user=user,
         stats=stats,
         sidebar_stats=stats,
-        recent_tickets=recent,
-        all_users=all_users,
+        period_stats=period_stats,
+        date_range=date_range,
+        date_range_label=date_range_label,
+        date_range_options=DATE_RANGE_OPTIONS,
+        trend_compare_label=_DATE_RANGE_COMPARE_LABEL.get(date_range),
         active_page='ticketing',
     )
 
@@ -697,6 +1021,62 @@ def ticket_list():
 
 
 # ---------------------------------------------------------------------------
+# Draft tickets (email intake inbox)
+# ---------------------------------------------------------------------------
+
+@ticketing_bp.route('/drafts', methods=['GET'])
+@jwt_required()
+def draft_tickets():
+    user = _current_user()
+    if not _has_access(user):
+        abort(403)
+    if not _can_view_draft_tickets(user):
+        abort(403)
+
+    drafts = _draft_tickets_query().order_by(Ticket.created_at.desc()).all()
+
+    return render_template(
+        'ticket_drafts.html',
+        user=user,
+        drafts=drafts,
+        sidebar_stats=_get_sidebar_stats(user),
+        active_page='ticketing',
+    )
+
+
+@ticketing_bp.route('/drafts/<string:ticket_id>/review', methods=['GET'])
+@jwt_required()
+def draft_ticket_review(ticket_id):
+    user = _current_user()
+    if not _has_access(user):
+        abort(403)
+    if not _can_view_draft_tickets(user):
+        abort(403)
+
+    ticket = Ticket.query.filter_by(ticket_id=ticket_id).first_or_404()
+    if ticket.status != 'draft':
+        # Already converted/discarded — send reviewer to the normal detail page.
+        return redirect(url_for('ticketing.ticket_detail', ticket_id=ticket.ticket_id))
+
+    projects = sorted(
+        {p[0] for p in TicketProject.query.filter_by(is_active=True).with_entities(TicketProject.name) if p[0]}
+    )
+    all_users = User.query.filter_by(is_active=True).order_by(User.full_name).all()
+    images = ticket.images.all()
+
+    return render_template(
+        'ticket_draft_review.html',
+        user=user,
+        ticket=ticket,
+        projects=projects,
+        all_users=all_users,
+        images=images,
+        sidebar_stats=_get_sidebar_stats(user),
+        active_page='ticketing',
+    )
+
+
+# ---------------------------------------------------------------------------
 # New ticket form
 # ---------------------------------------------------------------------------
 
@@ -707,7 +1087,7 @@ def new_ticket_form():
     if not _has_access(user):
         abort(403)
 
-    all_users = User.query.filter_by(is_active=True).order_by(User.full_name).all()
+    reporter_candidates = _reporter_candidates()
 
     # Fetch procurement catalog materials for autocomplete
     procurement_materials = _get_procurement_materials()
@@ -715,11 +1095,304 @@ def new_ticket_form():
     return render_template(
         'ticket_new.html',
         user=user,
-        all_users=all_users,
+        all_users=reporter_candidates,
         procurement_materials=procurement_materials,
         sidebar_stats=_get_sidebar_stats(user),
         active_page='ticketing',
     )
+
+
+# ---------------------------------------------------------------------------
+# Inbound email intake -> draft ticket (Mailjet Parse API)
+# ---------------------------------------------------------------------------
+#
+# Requesters email the ticket intake address following the published format guide
+# (see the "Email a ticket" help card in Settings). Mailjet Parse API POSTs parsed
+# JSON to our webhook; we do best-effort field extraction and create a
+# `status='draft'` ticket for supervisor review before it enters the workflow.
+
+_INTAKE_PRIORITIES = {'low', 'medium', 'high', 'critical'}
+
+_INTAKE_BODY_FIELD_PATTERNS = {
+    'property_name': re.compile(r'^\s*property\s*:\s*(.+)$', re.IGNORECASE),
+    'zone':          re.compile(r'^\s*zone(?:\s*/\s*unit)?\s*:\s*(.+)$', re.IGNORECASE),
+    'base_unit':     re.compile(r'^\s*(?:unit|base\s*unit)\s*:\s*(.+)$', re.IGNORECASE),
+}
+
+
+def _header_value(headers: dict, name: str):
+    """Read a single Mailjet header value (string or first element of a list)."""
+    if not headers:
+        return None
+    val = headers.get(name) or headers.get(name.lower())
+    if val is None:
+        return None
+    if isinstance(val, (list, tuple)):
+        return str(val[0]).strip() if val else None
+    return str(val).strip() or None
+
+
+def _attachment_filename_from_part_headers(headers: dict) -> str:
+    disp = _header_value(headers, 'Content-Disposition') or ''
+    m = re.search(r'filename\*?=(?:UTF-8\'\')?"?([^";\r\n]+)"?', disp, re.IGNORECASE)
+    if m:
+        return m.group(1).strip()
+    ctype = _header_value(headers, 'Content-Type') or ''
+    m = re.search(r'name=([^;\r\n]+)', ctype, re.IGNORECASE)
+    if m:
+        return m.group(1).strip().strip('"')
+    return 'attachment'
+
+
+def _mailjet_parse_attachments(payload: dict) -> list:
+    """Extract image attachments from a Mailjet Parse API webhook payload."""
+    out = []
+    seen_refs = set()
+    for part in payload.get('Parts') or []:
+        ref = (part.get('ContentRef') or '').strip()
+        if not ref.startswith('Attachment') or ref in seen_refs:
+            continue
+        seen_refs.add(ref)
+        b64 = payload.get(ref)
+        if not b64:
+            continue
+        name = _attachment_filename_from_part_headers(part.get('Headers') or {})
+        try:
+            out.append({'name': name, 'content': base64.b64decode(b64)})
+        except Exception:
+            logger.warning('Could not decode Mailjet attachment %s', ref, exc_info=True)
+    for key, b64 in payload.items():
+        if not (isinstance(key, str) and key.startswith('Attachment') and key not in seen_refs):
+            continue
+        if not b64 or not isinstance(b64, str):
+            continue
+        seen_refs.add(key)
+        try:
+            out.append({'name': key, 'content': base64.b64decode(b64)})
+        except Exception:
+            logger.warning('Could not decode Mailjet attachment %s', key, exc_info=True)
+    return out
+
+
+def _normalize_mailjet_parse_payload(payload: dict) -> dict:
+    """Map Mailjet Parse API JSON into our internal intake dict."""
+    from_raw = (payload.get('From') or '').strip()
+    from_name, from_email = parseaddr(from_raw)
+    if not from_email:
+        from_email = (payload.get('Sender') or '').strip().lower() or None
+    else:
+        from_email = from_email.lower()
+    if not from_name:
+        from_name = None
+
+    headers = payload.get('Headers') or {}
+    message_id = _header_value(headers, 'Message-ID')
+    body = (payload.get('Text-part') or payload.get('Html-part') or '').strip()
+
+    return {
+        'message_id': message_id,
+        'from_email': from_email,
+        'from_name': from_name,
+        'to_email': (payload.get('Recipient') or '').strip() or None,
+        'subject': (payload.get('Subject') or '').strip(),
+        'body': body,
+        'attachments': _mailjet_parse_attachments(payload),
+    }
+
+
+def _parse_intake_subject(subject: str) -> dict:
+    """Best-effort parse of a '[Project] Category - Priority - Short title' subject.
+
+    Any segment that doesn't match the expected shape is simply left blank —
+    the supervisor fills gaps in during review, this never blocks draft creation.
+    """
+    result = {'project': None, 'category': None, 'priority': None, 'title': None}
+    if not subject:
+        return result
+    s = re.sub(r'^\s*(re|fwd|fw)\s*:\s*', '', subject.strip(), flags=re.IGNORECASE).strip()
+    m = re.match(r'^\[(?P<project>[^\]]+)\]\s*(?P<rest>.*)$', s)
+    if m:
+        result['project'] = m.group('project').strip() or None
+        s = m.group('rest').strip()
+    parts = [p.strip() for p in s.split(' - ') if p.strip()]
+    if len(parts) >= 3:
+        result['category'] = parts[0] or None
+        if parts[1].lower() in _INTAKE_PRIORITIES:
+            result['priority'] = parts[1].lower()
+        result['title'] = ' - '.join(parts[2:]).strip() or None
+    elif len(parts) == 2:
+        if parts[0].lower() in _INTAKE_PRIORITIES:
+            result['priority'] = parts[0].lower()
+            result['title'] = parts[1]
+        else:
+            result['category'] = parts[0]
+            result['title'] = parts[1]
+    elif len(parts) == 1:
+        result['title'] = parts[0]
+    return result
+
+
+def _parse_intake_body(body: str) -> dict:
+    """Extract 'Key: value' lines (Property / Zone / Unit); remainder is the description."""
+    result = {'property_name': None, 'zone': None, 'base_unit': None, 'description': None}
+    if not body:
+        return result
+    remaining = []
+    for line in body.splitlines():
+        matched = False
+        for field, pattern in _INTAKE_BODY_FIELD_PATTERNS.items():
+            m = pattern.match(line)
+            if m:
+                result[field] = m.group(1).strip() or None
+                matched = True
+                break
+        if not matched:
+            remaining.append(line)
+    desc = '\n'.join(remaining).strip()
+    desc = re.sub(r'^\s*description\s*:\s*', '', desc, flags=re.IGNORECASE).strip()
+    result['description'] = desc or body.strip()
+    return result
+
+
+def _resolve_email_intake_reporter(from_email: str):
+    """Match a known User by email; fall back to the system 'Email Intake' account."""
+    if from_email:
+        u = User.query.filter(db.func.lower(User.email) == from_email.strip().lower()).first()
+        if u and u.is_active:
+            return u
+    return _email_intake_user()
+
+
+def _process_inbound_email_intake(intake: dict):
+    """Parse one normalized inbound email into a draft Ticket."""
+    message_id = (intake.get('message_id') or '').strip() or None
+    from_email = (intake.get('from_email') or '').strip().lower() or None
+    from_name = (intake.get('from_name') or '').strip() or None
+    to_email = (intake.get('to_email') or '').strip() or None
+    subject = (intake.get('subject') or '').strip()
+    body = (intake.get('body') or '').strip()
+
+    if message_id and TicketEmailIntake.query.filter_by(message_id=message_id).first():
+        logger.info('Duplicate inbound email ignored (Message-Id=%s)', message_id)
+        return
+
+    intake_log = TicketEmailIntake(
+        from_email=from_email, from_name=from_name, to_email=to_email,
+        subject=subject, raw_body=body, message_id=message_id, status='processed',
+    )
+    db.session.add(intake_log)
+
+    try:
+        reporter = _resolve_email_intake_reporter(from_email)
+        if reporter is None:
+            raise RuntimeError('No reporter available (Email Intake system user missing)')
+
+        subj_fields = _parse_intake_subject(subject)
+        body_fields = _parse_intake_body(body)
+
+        project = subj_fields.get('project') or ''
+        proj_supervisor_id = _resolve_project_supervisor_id(project) if project else None
+        title = (subj_fields.get('title') or subject or 'New ticket from email').strip()[:255]
+
+        ticket = Ticket(
+            ticket_id=_generate_ticket_id(),
+            reporter_id=reporter.id,
+            assigned_to_id=proj_supervisor_id,
+            supervisor_id=proj_supervisor_id,
+            title=title,
+            project=project or 'Unassigned',
+            service_group='Unclassified',
+            category=subj_fields.get('category') or 'Unclassified',
+            fault_type='Unclassified',
+            priority=subj_fields.get('priority') or 'medium',
+            work_description=body_fields.get('description') or '(No description provided)',
+            property_name=body_fields.get('property_name'),
+            zone=body_fields.get('zone'),
+            base_unit=body_fields.get('base_unit'),
+            status='draft',
+            source='email',
+            source_sender_email=from_email,
+            source_sender_name=from_name,
+            source_subject=subject,
+            source_message_id=message_id,
+        )
+        db.session.add(ticket)
+        db.session.flush()
+
+        sender_bit = f' sent by {from_name} <{from_email}>' if from_email else ''
+        _add_note(
+            ticket,
+            reporter,
+            f'Draft created from inbound email{sender_bit}. Awaiting supervisor review '
+            'before this becomes an active ticket.',
+            note_type='status_change',
+        )
+
+        skipped = []
+        for att in (intake.get('attachments') or []):
+            name = att.get('name') or 'attachment'
+            if not _allowed_image(name):
+                skipped.append(name)
+                continue
+            content = att.get('content')
+            if not content:
+                skipped.append(name)
+                continue
+            ext = name.rsplit('.', 1)[1].lower()
+            safe_name = f'{ticket.ticket_id}_{uuid.uuid4().hex[:8]}.{ext}'
+            save_path = os.path.join(_ticket_images_dir(), safe_name)
+            with open(save_path, 'wb') as fh:
+                fh.write(content)
+            db.session.add(TicketImage(
+                ticket_id=ticket.id,
+                filename=safe_name,
+                file_path=save_path,
+                caption=f'From email attachment: {name}',
+                uploaded_by=reporter.id,
+            ))
+        if skipped:
+            _add_note(
+                ticket, reporter,
+                f'Skipped non-image attachment(s) (not stored): {", ".join(skipped)}.',
+                note_type='note',
+            )
+
+        intake_log.ticket_id = ticket.id
+        _notify_new_draft_ticket(ticket)
+        db.session.commit()
+    except Exception as exc:
+        db.session.rollback()
+        err_log = TicketEmailIntake(
+            from_email=from_email, from_name=from_name, to_email=to_email,
+            subject=subject, raw_body=body, message_id=message_id,
+            status='error', error_message=str(exc)[:2000],
+        )
+        db.session.add(err_log)
+        db.session.commit()
+        logger.error('Inbound email processing failed: %s', exc, exc_info=True)
+
+
+@ticketing_bp.route('/api/inbound-email/<secret_token>', methods=['POST'])
+def inbound_email_webhook(secret_token):
+    """Mailjet Parse API webhook target. No JWT — a long random secret in the URL path."""
+    configured_secret = (
+        current_app.config.get('TICKET_INBOUND_WEBHOOK_SECRET')
+        or os.environ.get('TICKET_INBOUND_WEBHOOK_SECRET')
+    )
+    if not configured_secret or secret_token != configured_secret:
+        abort(404)
+
+    payload = request.get_json(silent=True) or {}
+    if not payload.get('Sender') and not payload.get('From'):
+        return jsonify({'success': False, 'error': 'Not a Mailjet parse payload'}), 400
+
+    try:
+        intake = _normalize_mailjet_parse_payload(payload)
+        _process_inbound_email_intake(intake)
+    except Exception:
+        logger.error('Unhandled error processing inbound email', exc_info=True)
+
+    return jsonify({'success': True}), 200
 
 
 # ---------------------------------------------------------------------------
@@ -742,9 +1415,19 @@ def create_ticket():
 
     proj_supervisor_id = _resolve_project_supervisor_id(data['project'].strip())
 
+    reporter_id = user.id
+    submitted_reporter_id = data.get('reporter_id')
+    if submitted_reporter_id:
+        try:
+            submitted_reporter_id = int(submitted_reporter_id)
+        except (TypeError, ValueError):
+            submitted_reporter_id = None
+        if submitted_reporter_id and _is_valid_reporter(submitted_reporter_id):
+            reporter_id = submitted_reporter_id
+
     ticket = Ticket(
         ticket_id=_generate_ticket_id(),
-        reporter_id=user.id,
+        reporter_id=reporter_id,
         assigned_to_id=proj_supervisor_id,
         supervisor_id=proj_supervisor_id,
         title=data['title'].strip(),
@@ -788,6 +1471,112 @@ def create_ticket():
 
 
 # ---------------------------------------------------------------------------
+# Convert / discard a draft (email intake review)
+# ---------------------------------------------------------------------------
+
+@ticketing_bp.route('/api/tickets/<string:ticket_id>/convert-draft', methods=['POST'])
+@jwt_required()
+def convert_draft(ticket_id):
+    user = _current_user()
+    if not _has_access(user):
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+    if not _can_view_draft_tickets(user):
+        return jsonify({'success': False, 'error': 'Only supervisors / OPS / GM / Admin may review drafts'}), 403
+
+    ticket = Ticket.query.filter_by(ticket_id=ticket_id).first_or_404()
+    if ticket.status != 'draft':
+        return jsonify({'success': False, 'error': 'Ticket is not a draft'}), 400
+
+    data = request.get_json(silent=True) or {}
+
+    required = ['title', 'project', 'service_group', 'category', 'fault_type', 'priority', 'work_description']
+    for field in required:
+        if not (data.get(field) or '').strip():
+            return jsonify({'success': False, 'error': f'Field "{field}" is required'}), 400
+
+    ticket.title = data['title'].strip()
+    ticket.project = data['project'].strip()
+    ticket.service_group = data['service_group'].strip()
+    ticket.category = data['category'].strip()
+    ticket.fault_type = data['fault_type'].strip()
+    ticket.priority = data['priority'].strip()
+    ticket.work_description = data['work_description'].strip()
+    ticket.property_name = (data.get('property_name') or '').strip() or None
+    ticket.zone = (data.get('zone') or '').strip() or None
+    ticket.sub_zone = (data.get('sub_zone') or '').strip() or None
+    ticket.base_unit = (data.get('base_unit') or '').strip() or None
+    ticket.is_chargeable = bool(data.get('is_chargeable', False))
+    if data.get('projected_cost'):
+        try:
+            ticket.projected_cost = float(data['projected_cost'])
+        except (TypeError, ValueError):
+            pass
+
+    # Optionally reassign the reporter (e.g. an internal user reviewing on behalf
+    # of an external sender that couldn't be matched to any account).
+    reporter_id = data.get('reporter_id')
+    if reporter_id:
+        try:
+            candidate = db.session.get(User, int(reporter_id))
+        except (TypeError, ValueError):
+            candidate = None
+        if candidate and candidate.is_active:
+            ticket.reporter_id = candidate.id
+
+    proj_supervisor_id = _apply_ticket_project_routing(ticket)
+    ticket.status = 'pending_supervisor'
+
+    route_sup = db.session.get(User, proj_supervisor_id) if proj_supervisor_id else None
+    route_bit = (
+        f' Routed to project supervisor {route_sup.full_name}.'
+        if route_sup
+        else ' Queued in the shared supervisor pool (no project supervisor configured).'
+    )
+    _add_note(
+        ticket,
+        user,
+        f'Draft reviewed and converted to an active ticket by {user.full_name}; '
+        f'queued for supervisor routing (no technician yet).{route_bit}',
+        note_type='status_change',
+    )
+
+    _notify_supervisor_queue_ticket(
+        ticket,
+        f'Ticket {ticket.ticket_id} — "{ticket.title}" is in the supervisor queue for technician assignment.',
+    )
+
+    db.session.commit()
+    return jsonify({'success': True, 'ticket_id': ticket.ticket_id, 'id': ticket.id})
+
+
+@ticketing_bp.route('/api/tickets/<string:ticket_id>/discard-draft', methods=['POST'])
+@jwt_required()
+def discard_draft(ticket_id):
+    user = _current_user()
+    if not _has_access(user):
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+    if not _can_view_draft_tickets(user):
+        return jsonify({'success': False, 'error': 'Only supervisors / OPS / GM / Admin may review drafts'}), 403
+
+    ticket = Ticket.query.filter_by(ticket_id=ticket_id).first_or_404()
+    if ticket.status != 'draft':
+        return jsonify({'success': False, 'error': 'Ticket is not a draft'}), 400
+
+    reason = (request.get_json(silent=True) or {}).get('reason', '').strip()
+    ticket.status = 'cancelled'
+    ticket.cancelled_reason = 'other'
+    ticket.cancelled_at = datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
+    _add_note(
+        ticket,
+        user,
+        f'Email-intake draft discarded by {user.full_name}.' + (f' Reason: {reason}' if reason else ''),
+        note_type='status_change',
+    )
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+# ---------------------------------------------------------------------------
 # Detail view
 # ---------------------------------------------------------------------------
 
@@ -802,6 +1591,10 @@ def ticket_detail(ticket_id):
 
     if not _can_user_view_ticket(user, ticket):
         abort(403)
+
+    if ticket.status == 'draft':
+        # Drafts are reviewed/edited on a dedicated page, not the normal detail workflow view.
+        return redirect(url_for('ticketing.draft_ticket_review', ticket_id=ticket.ticket_id))
 
     notes = ticket.notes.order_by(TicketNote.created_at.asc()).all()
     images = ticket.images.all()
@@ -825,10 +1618,9 @@ def ticket_detail(ticket_id):
     worker_pick_list = _ticketing_worker_pick_list(roster_for_picks)
     technician_users_for_team_add = _technician_users_available_for_team_add(user.id) if user_is_supervisor else []
 
-    # Pricing preview
-    overhead = ticket.overhead_pct if ticket.overhead_pct is not None else 10.0
+    # Pricing preview (no overhead — actual price is the raw manpower + materials cost)
     base_cost   = mp_total + mat_total
-    actual_price = round(base_cost * (1 + overhead / 100.0), 2)
+    actual_price = round(base_cost, 2)
 
     return render_template(
         'ticket_detail.html',
@@ -847,9 +1639,12 @@ def ticket_detail(ticket_id):
         ticket_sidebar_team=ticket_sidebar_team,
         worker_pick_list=worker_pick_list,
         technician_users_for_team_add=technician_users_for_team_add,
+        vendor_companies=_sample_vendor_companies(),
         supervisor_team=[],  # legacy template var (unused)
         base_cost=base_cost,
         actual_price=actual_price,
+        cost_entry_allowed=_cost_entry_allowed(ticket),
+        cost_summary_visible=_cost_summary_visible(ticket),
         sidebar_stats=_get_sidebar_stats(user),
         active_page='ticketing',
     )
@@ -879,9 +1674,16 @@ def update_status(ticket_id):
     data = request.get_json(silent=True) or {}
     new_status = data.get('status', '').strip()
 
+    if new_status in ('closed', 'provider_closed'):
+        return jsonify({
+            'success': False,
+            'error': 'Closing must go through the two-stage flow: "Verify & Submit for Approval" '
+                     '(supervisor), then Operations final approval — it cannot be set manually.',
+        }), 400
+
     valid = {
         'open', 'assigned', 'site_attended', 'work_started', 'work_completed',
-        'verification', 'on_hold', 'closed', 'cancelled',
+        'verification', 'on_hold', 'cancelled',
         # legacy passthrough
         'in_progress', 'pending_parts', 'pending_supervisor', 'pending_verification', 'resolved',
     }
@@ -1013,7 +1815,7 @@ def assign_ticket(ticket_id):
             'success': False,
             'error': (
                 'Only Admin, Operations Manager, or General Manager may override supervisor routing here. '
-                'Supervisors assign technicians from their team via Assign Technician.'
+                'Supervisors assign technicians from their vendor team via Assign Technician.'
             ),
         }), 403
 
@@ -1155,6 +1957,11 @@ def add_manpower(ticket_id):
     deny = _api_forbid_unless_ticket_visible(user, ticket)
     if deny:
         return deny
+    if not _cost_entry_allowed(ticket):
+        return jsonify({
+            'success': False,
+            'error': 'Manpower costs can only be added once the ticket reaches "Work Started".',
+        }), 400
     data = request.get_json(silent=True) or {}
 
     worker_name = (data.get('worker_name') or '').strip()
@@ -1239,6 +2046,11 @@ def add_material(ticket_id):
     deny = _api_forbid_unless_ticket_visible(user, ticket)
     if deny:
         return deny
+    if not _cost_entry_allowed(ticket):
+        return jsonify({
+            'success': False,
+            'error': 'Material costs can only be added once the ticket reaches "Work Started".',
+        }), 400
     data = request.get_json(silent=True) or {}
 
     name = (data.get('material_name') or '').strip()
@@ -1285,6 +2097,11 @@ def add_materials_bulk(ticket_id):
     deny = _api_forbid_unless_ticket_visible(user, ticket)
     if deny:
         return deny
+    if not _cost_entry_allowed(ticket):
+        return jsonify({
+            'success': False,
+            'error': 'Material costs can only be added once the ticket reaches "Work Started".',
+        }), 400
     data = request.get_json(silent=True) or {}
     items = data.get('items', [])
 
@@ -1360,46 +2177,18 @@ def delete_material(ticket_id, mat_id):
 @ticketing_bp.route('/api/tickets/<string:ticket_id>/close', methods=['POST'])
 @jwt_required()
 def close_ticket(ticket_id):
+    """Deprecated: superseded by the two-stage close flow (`supervisor-close` then
+    `ops-close`). Kept only so old clients get a clear error instead of silently
+    bypassing Stage 2 (client operations) approval.
+    """
     user = _current_user()
     if not _has_access(user):
         return jsonify({'success': False, 'error': 'Access denied'}), 403
-
-    ticket = Ticket.query.filter_by(ticket_id=ticket_id).first_or_404()
-    deny = _api_forbid_unless_ticket_visible(user, ticket)
-    if deny:
-        return deny
-    data = request.get_json(silent=True) or {}
-
-    signature = (data.get('signature') or '').strip()
-    signed_by = (data.get('signed_by') or '').strip()
-    signed_role = (data.get('signed_role') or '').strip()
-    close_notes = (data.get('close_notes') or '').strip() or None
-
-    if not signature:
-        return jsonify({'success': False, 'error': 'Signature is required to close ticket'}), 400
-    if not signed_by:
-        return jsonify({'success': False, 'error': 'Signer name is required'}), 400
-
-    ticket.status = 'closed'
-    ticket.close_signature = signature
-    ticket.close_signed_by = signed_by
-    ticket.close_signed_role = signed_role
-    ticket.close_notes = close_notes
-    ticket.closed_at = datetime.now(timezone.utc).replace(tzinfo=None)
-    if not ticket.resolved_at:
-        ticket.resolved_at = ticket.closed_at
-
-    _recalc_total_cost(ticket)
-    _add_note(ticket, user,
-              f'Ticket closed and signed by {signed_by} ({signed_role}).',
-              note_type='status_change')
-
-    db.session.commit()
-
-    # Send completion emails
-    _send_completion_emails(ticket, user)
-
-    return jsonify({'success': True, 'ticket_id': ticket.ticket_id})
+    return jsonify({
+        'success': False,
+        'error': 'Direct close is disabled. Use "Verify & Close" (supervisor) followed by '
+                 'operations final approval instead.',
+    }), 400
 
 
 # ---------------------------------------------------------------------------
@@ -1517,7 +2306,7 @@ def hold_ticket(ticket_id):
     deny = _api_forbid_unless_ticket_visible(user, ticket)
     if deny:
         return deny
-    if ticket.status in _TERMINAL_STATUSES:
+    if ticket.status in _TERMINAL_STATUSES or ticket.status == 'provider_closed':
         return jsonify({'success': False, 'error': f'Cannot hold a {ticket.status} ticket'}), 400
     if ticket.status == 'on_hold':
         return jsonify({'success': False, 'error': 'Ticket is already on hold'}), 400
@@ -1677,15 +2466,16 @@ def assign_technician(ticket_id):
     deny = _api_forbid_unless_ticket_visible(user, ticket)
     if deny:
         return deny
-    if not _is_supervisor_of_ticket(user):
-        return jsonify({'success': False, 'error': 'Only supervisors can assign technicians'}), 403
+    if not (_is_supervisor_of_ticket(user) or _ticketing_sees_all_tickets(user)):
+        return jsonify({'success': False, 'error': 'Only supervisors or OPS / GM / Admin can assign technicians'}), 403
 
     data = request.get_json(silent=True) or {}
     tech_id = data.get('technician_id')
     tech_name = (data.get('technician_name') or '').strip()
     tech_code = (data.get('technician_code') or '').strip()
+    vendor_company = (data.get('vendor_company') or '').strip()
 
-    ticket.supervisor_id = user.id
+    ticket.supervisor_id = user.id if _is_supervisor_of_ticket(user) else ticket.supervisor_id
     ticket.status = 'assigned'
 
     if tech_id:
@@ -1706,30 +2496,33 @@ def assign_technician(ticket_id):
             if not in_team:
                 return jsonify({
                     'success': False,
-                    'error': 'That technician is not on your ticketing team.',
+                    'error': 'That technician is not on your vendor team.',
                 }), 403
 
         ticket.technician_id = technician.id
         ticket.assigned_to_id = technician.id
         display_name = technician.full_name
 
+        vendor_bit = f' ({vendor_company})' if vendor_company else ''
         _add_note(ticket, user,
-                  f'Technician {display_name} assigned by supervisor {user.full_name}. Work in progress.',
+                  f'Technician {display_name}{vendor_bit} assigned by {user.full_name}. Work in progress.',
                   note_type='assignment')
         _notify_user(technician.id, f'Work Order Assigned: {ticket.ticket_id}',
                      f'You have been assigned to work order {ticket.ticket_id}: "{ticket.title}".',
                      ntype='info', ticket_id=ticket.ticket_id)
     elif tech_name:
-        # Dummy technician path: keep assignment independent from system users.
+        # Demo vendor technician path (no linked system user).
         ticket.technician_id = None
         ticket.assigned_to_id = None
         display_name = tech_name
+        vendor_bit = f' — {vendor_company}' if vendor_company else ''
         _add_note(
             ticket,
             user,
-            f'Dummy technician {display_name}'
+            f'Vendor technician {display_name}'
             + (f' ({tech_code})' if tech_code else '')
-            + f' assigned by supervisor {user.full_name}. Work in progress.',
+            + vendor_bit
+            + f' assigned by {user.full_name}. Work in progress.',
             note_type='assignment',
         )
     else:
@@ -1800,7 +2593,10 @@ def mark_completed(ticket_id):
 @ticketing_bp.route('/api/tickets/<string:ticket_id>/supervisor-close', methods=['POST'])
 @jwt_required()
 def supervisor_close(ticket_id):
-    """Supervisor verifies work, sets markup, and closes the ticket."""
+    """Stage 1 of the two-stage close: service-provider supervisor verifies work,
+    sets the markup, and signs off. This does NOT fully close the ticket — it moves
+    to `provider_closed`, awaiting Stage 2 (client operations) approval via `ops_close()`.
+    """
     user = _current_user()
     if not _has_access(user):
         return jsonify({'success': False, 'error': 'Access denied'}), 403
@@ -1821,8 +2617,8 @@ def supervisor_close(ticket_id):
     if markup_pct is not None:
         try:
             markup_pct = float(markup_pct)
-            if markup_pct not in (0, 10, 20, 30):
-                return jsonify({'success': False, 'error': 'Markup must be 0, 10, 20, or 30'}), 400
+            if markup_pct not in (0, 5, 10, 15, 20, 25):
+                return jsonify({'success': False, 'error': 'Markup must be 0, 5, 10, 15, 20, or 25'}), 400
         except (TypeError, ValueError):
             return jsonify({'success': False, 'error': 'Invalid markup_pct'}), 400
 
@@ -1842,25 +2638,90 @@ def supervisor_close(ticket_id):
     ticket.close_signed_by  = signed_by
     ticket.close_signed_role = signed_role
     ticket.close_notes = ver_notes
-    ticket.status     = 'closed'
-    ticket.closed_at  = datetime.now(timezone.utc).replace(tzinfo=None)
+    ticket.status     = 'provider_closed'
 
     _recalc_total_cost(ticket)
 
     markup_label = f'{int(markup_pct)}%' if markup_pct else 'No markup'
     _add_note(ticket, user,
-              f'Ticket verified and closed by supervisor {user.full_name} ({signed_role}). '
-              f'Markup applied: {markup_label}. Selling price: AED {ticket.selling_price or 0:.2f}.',
+              f'Ticket verified by service-provider supervisor {user.full_name} ({signed_role}). '
+              f'Markup applied: {markup_label}. Selling price: AED {ticket.selling_price or 0:.2f}. '
+              f'Awaiting final approval from operations.',
+              note_type='status_change')
+
+    db.session.commit()
+    _notify_ops_close_pending(
+        ticket,
+        f'Ticket {ticket.ticket_id} — "{ticket.title}" has been verified by the supervisor '
+        f'and is awaiting your final sign-off to close and issue the invoice.',
+    )
+    db.session.commit()
+    return jsonify({
+        'success': True,
+        'status': 'provider_closed',
+        'actual_price': ticket.actual_price,
+        'selling_price': ticket.selling_price,
+        'markup_pct': ticket.markup_pct,
+    })
+
+
+# ---------------------------------------------------------------------------
+# Stage 2: Operations (client-side) final verification & close
+# ---------------------------------------------------------------------------
+
+@ticketing_bp.route('/api/tickets/<string:ticket_id>/ops-close', methods=['POST'])
+@jwt_required()
+def ops_close(ticket_id):
+    """Stage 2 of the two-stage close: client operations (Operations Manager /
+    General Manager / Admin) gives final sign-off, actually closing the ticket
+    and triggering invoice generation/routing.
+    """
+    user = _current_user()
+    if not _has_access(user):
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+
+    ticket = Ticket.query.filter_by(ticket_id=ticket_id).first_or_404()
+    deny = _api_forbid_unless_ticket_visible(user, ticket)
+    if deny:
+        return deny
+    if not _ticketing_sees_all_tickets(user):
+        return jsonify({'success': False, 'error': 'Only Operations Manager, General Manager, or Admin can give final close approval'}), 403
+
+    if ticket.status != 'provider_closed':
+        return jsonify({'success': False, 'error': f'Ticket must be provider-verified (provider_closed) first. Current: {ticket.status}'}), 400
+
+    data = request.get_json(silent=True) or {}
+    signature   = (data.get('signature') or '').strip()
+    signed_by   = (data.get('signed_by') or '').strip()
+    signed_role = (data.get('signed_role') or '').strip()
+    ops_notes   = (data.get('notes') or '').strip() or None
+
+    if not signature:
+        return jsonify({'success': False, 'error': 'Signature is required to close'}), 400
+    if not signed_by:
+        return jsonify({'success': False, 'error': 'Signer name is required'}), 400
+
+    ticket.ops_close_signature = signature
+    ticket.ops_close_signed_by = signed_by
+    ticket.ops_close_signed_role = signed_role
+    ticket.ops_close_notes = ops_notes
+    ticket.status    = 'closed'
+    ticket.closed_at = datetime.now(timezone.utc).replace(tzinfo=None)
+
+    _recalc_total_cost(ticket)
+    _add_note(ticket, user,
+              f'Ticket given final approval and closed by {signed_by} ({signed_role or "Operations"}).'
+              + (f' Notes: {ops_notes}' if ops_notes else ''),
               note_type='status_change')
 
     db.session.commit()
     _send_completion_emails(ticket, user)
+    _send_invoice_emails(ticket)
     return jsonify({
         'success': True,
         'status': 'closed',
         'actual_price': ticket.actual_price,
         'selling_price': ticket.selling_price,
-        'markup_pct': ticket.markup_pct,
     })
 
 
@@ -1897,7 +2758,7 @@ def add_team_member():
 
     tech_id = int(tech_id)
     if tech_id == user.id:
-        return jsonify({'success': False, 'error': 'Cannot add yourself to your own team'}), 400
+        return jsonify({'success': False, 'error': 'Cannot add yourself to your own vendor team'}), 400
 
     technician = db.session.get(User, tech_id)
     if not technician or not technician.is_active:
@@ -1976,8 +2837,7 @@ def pricing_preview(ticket_id):
     mp_total  = sum((e.total_cost  or 0) for e in ticket.manpower.all())
     mat_total = sum((m.total_price or 0) for m in ticket.materials.all())
     base_cost = mp_total + mat_total
-    overhead  = ticket.overhead_pct if ticket.overhead_pct is not None else 10.0
-    actual    = round(base_cost * (1 + overhead / 100.0), 2)
+    actual    = round(base_cost, 2)
     selling   = round(actual * (1 + markup_pct / 100.0), 2)
 
     return jsonify({
@@ -1985,8 +2845,6 @@ def pricing_preview(ticket_id):
         'mp_total': mp_total,
         'mat_total': mat_total,
         'base_cost': base_cost,
-        'overhead_pct': overhead,
-        'overhead_amount': round(base_cost * overhead / 100.0, 2),
         'actual_price': actual,
         'markup_pct': markup_pct,
         'markup_amount': round(actual * markup_pct / 100.0, 2),
@@ -2024,10 +2882,9 @@ def _send_completion_emails(ticket: Ticket, closed_by: User):
             <tr><td style="padding:6px; font-weight:bold;">Reported by</td><td style="padding:6px;">{ticket.reporter.full_name if ticket.reporter else 'N/A'}</td></tr>
             <tr><td style="padding:6px; font-weight:bold;">Assigned to</td><td style="padding:6px;">{ticket.assigned_to.full_name if ticket.assigned_to else 'N/A'}</td></tr>
             <tr><td style="padding:6px; font-weight:bold;">Location</td><td style="padding:6px;">{' / '.join(filter(None, [ticket.property_name, ticket.zone, ticket.sub_zone, ticket.base_unit]))}</td></tr>
-            <tr><td style="padding:6px; font-weight:bold;">Chargeable</td><td style="padding:6px;">{'Yes' if ticket.is_chargeable else 'No'}</td></tr>
             <tr><td style="padding:6px; font-weight:bold;">Total Cost</td><td style="padding:6px;">AED {ticket.total_cost or 0:.2f}</td></tr>
             <tr><td style="padding:6px; font-weight:bold;">Closed by</td><td style="padding:6px;">{ticket.close_signed_by} ({ticket.close_signed_role})</td></tr>
-            <tr><td style="padding:6px; font-weight:bold;">Closed at</td><td style="padding:6px;">{ticket.closed_at.strftime('%d %b %Y %H:%M') if ticket.closed_at else 'N/A'} (UTC)</td></tr>
+            <tr><td style="padding:6px; font-weight:bold;">Closed at</td><td style="padding:6px;">{to_gst(ticket.closed_at).strftime('%d %b %Y %H:%M') if ticket.closed_at else 'N/A'} (GST)</td></tr>
           </table>
           {"<p><strong>Closing notes:</strong> " + ticket.close_notes + "</p>" if ticket.close_notes else ""}
           <hr style="margin-top:20px;"/>
@@ -2037,6 +2894,84 @@ def _send_completion_emails(ticket: Ticket, closed_by: User):
         _send_ticket_email(subject, recipients, body)
     except Exception as exc:
         logger.warning("Failed to send completion emails: %s", exc)
+
+
+def _invoice_recipient_emails(ticket: Ticket) -> list[str]:
+    """Resolve who the closing invoice should be emailed to.
+
+    Prefers the client's own finance/ops contacts configured on the ticket's
+    `TicketProject` (e.g. Ajman Municipality's finance + operations addresses),
+    so the invoice loop no longer routes back through Injaz's internal finance.
+    Falls back to Injaz admins + operations overwatch users when a project has
+    no contacts configured, so nothing silently stops sending.
+    """
+    project = TicketProject.query.filter(
+        db.func.lower(TicketProject.name) == (ticket.project or '').strip().lower()
+    ).first()
+
+    emails: set[str] = set()
+    if project:
+        for field in (project.finance_emails, project.ops_emails):
+            if field:
+                emails.update(e.strip() for e in field.split(',') if e.strip())
+
+    if not emails:
+        for u in User.query.filter(User.role == 'admin', User.is_active == True):  # noqa: E712
+            if u.email:
+                emails.add(u.email)
+        for uid in _ops_overwatch_recipient_ids():
+            u = db.session.get(User, uid)
+            if u and u.email:
+                emails.add(u.email)
+
+    return sorted(emails)
+
+
+def _send_invoice_emails(ticket: Ticket):
+    """Generate the closing invoice PDF and email it to the client's finance +
+    operations recipients (see `_invoice_recipient_emails`). Best-effort — a
+    failure here must never block the close itself."""
+    try:
+        recipients = _invoice_recipient_emails(ticket)
+        if not recipients:
+            logger.warning("No invoice recipients resolved for ticket %s", ticket.ticket_id)
+            return
+
+        materials = ticket.materials.all()
+        manpower_entries = ticket.manpower.all()
+
+        from module_ticketing.ticket_invoice_builder import build_invoice_pdf
+        buf = io.BytesIO()
+        build_invoice_pdf(ticket, materials, manpower_entries, buf)
+        pdf_bytes = buf.getvalue()
+
+        amount = ticket.selling_price if ticket.selling_price is not None else ticket.actual_price
+        subject = f'[Injaaz] Invoice — Work Order {ticket.ticket_id}'
+        body = f"""
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #1e3a5f;">Work Order Invoice</h2>
+          <p>Please find attached the invoice for the completed and approved work order below.</p>
+          <table style="width:100%; border-collapse:collapse; font-size:14px;">
+            <tr><td style="padding:6px; font-weight:bold; width:160px;">Ticket</td><td style="padding:6px;">{ticket.ticket_id}</td></tr>
+            <tr><td style="padding:6px; font-weight:bold;">Title</td><td style="padding:6px;">{ticket.title}</td></tr>
+            <tr><td style="padding:6px; font-weight:bold;">Project</td><td style="padding:6px;">{ticket.project}</td></tr>
+            <tr><td style="padding:6px; font-weight:bold;">Location</td><td style="padding:6px;">{' / '.join(filter(None, [ticket.property_name, ticket.zone, ticket.sub_zone, ticket.base_unit]))}</td></tr>
+            <tr><td style="padding:6px; font-weight:bold;">Invoice Total</td><td style="padding:6px;">AED {amount or 0:.2f}</td></tr>
+            <tr><td style="padding:6px; font-weight:bold;">Approved by</td><td style="padding:6px;">{ticket.ops_close_signed_by} ({ticket.ops_close_signed_role or 'Operations'})</td></tr>
+            <tr><td style="padding:6px; font-weight:bold;">Closed at</td><td style="padding:6px;">{to_gst(ticket.closed_at).strftime('%d %b %Y %H:%M') if ticket.closed_at else 'N/A'} (GST)</td></tr>
+          </table>
+          <hr style="margin-top:20px;"/>
+          <p style="font-size:12px; color:#888;">This is an automated notification from Injaaz Application.</p>
+        </div>
+        """
+        attachments = [{
+            'content': pdf_bytes,
+            'filename': f'{ticket.ticket_id}_invoice.pdf',
+            'mime_type': 'application/pdf',
+        }]
+        _send_ticket_email(subject, recipients, body, attachments=attachments)
+    except Exception as exc:
+        logger.warning("Failed to send invoice emails: %s", exc)
 
 
 # ---------------------------------------------------------------------------
@@ -2317,10 +3252,16 @@ def settings_page():
     user = _current_user()
     if not _has_access(user):
         abort(403)
+    intake_email = (
+        current_app.config.get('TICKET_INTAKE_EMAIL')
+        or os.environ.get('TICKET_INTAKE_EMAIL')
+        or 'tickets@intake.injaaz.com'
+    )
     return render_template(
         'ticket_settings.html',
         user=user,
         ticketing_can_manage_fault_catalog=_is_admin(user),
+        intake_email=intake_email,
         sidebar_stats=_get_sidebar_stats(user),
         active_page='ticketing',
     )
@@ -2466,6 +3407,25 @@ def _parse_project_value(raw) -> tuple[float | None, str | None]:
         return None, 'Invalid project value'
 
 
+_EMAIL_RE = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+
+
+def _parse_email_list(raw) -> tuple[str | None, str | None]:
+    """Normalize a comma/semicolon-separated address list into a clean comma-joined string.
+
+    Returns (normalized_value_or_None, error_message_or_None).
+    """
+    if raw in (None, ''):
+        return None, None
+    parts = [p.strip() for p in re.split(r'[,;]', str(raw)) if p.strip()]
+    if not parts:
+        return None, None
+    for p in parts:
+        if not _EMAIL_RE.match(p):
+            return None, f'Invalid email address: {p}'
+    return ', '.join(dict.fromkeys(parts)), None  # de-dupe, keep order
+
+
 def _validate_supervisor_pick(raw) -> tuple[int | None, str | None]:
     """If raw is empty, return (None, None). Else return (user_id, error_message)."""
     if raw is None or raw == '':
@@ -2577,6 +3537,14 @@ def settings_create_project():
     if err:
         return jsonify({'success': False, 'error': err}), 400
 
+    finance_emails, err = _parse_email_list(data.get('finance_emails'))
+    if err:
+        return jsonify({'success': False, 'error': err}), 400
+
+    ops_emails, err = _parse_email_list(data.get('ops_emails'))
+    if err:
+        return jsonify({'success': False, 'error': err}), 400
+
     p = TicketProject(
         name=name,
         client_name=(data.get('client_name') or '').strip() or None,
@@ -2586,6 +3554,8 @@ def settings_create_project():
         project_end_date=end_f,
         renewal_date=renew_f,
         project_value=val_f,
+        finance_emails=finance_emails,
+        ops_emails=ops_emails,
     )
     db.session.add(p)
     db.session.commit()
@@ -2632,6 +3602,16 @@ def settings_update_project(pid):
         if err:
             return jsonify({'success': False, 'error': err}), 400
         p.project_value = val_f
+    if 'finance_emails' in data:
+        finance_emails, err = _parse_email_list(data.get('finance_emails'))
+        if err:
+            return jsonify({'success': False, 'error': err}), 400
+        p.finance_emails = finance_emails
+    if 'ops_emails' in data:
+        ops_emails, err = _parse_email_list(data.get('ops_emails'))
+        if err:
+            return jsonify({'success': False, 'error': err}), 400
+        p.ops_emails = ops_emails
     if 'is_active' in data:
         p.is_active = bool(data['is_active'])
     db.session.commit()

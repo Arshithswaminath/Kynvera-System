@@ -117,8 +117,9 @@ def main():
             print(
                 "\n  [SKIP]  Email is NOT configured on this machine.\n"
                 "\n  To enable:\n"
-                "    Option A (Brevo / Sendinblue — recommended):\n"
-                "      Set env vars:  BREVO_API_KEY=<your-key>\n"
+                "    Option A (Mailjet — recommended on Render):\n"
+                "      Set env vars:  MAILJET_API_KEY=<your-key>\n"
+                "                     MAILJET_SECRET_KEY=<your-secret>\n"
                 "                     MAIL_DEFAULT_SENDER=noreply@injaaz.com\n"
                 "\n    Option B (Gmail SMTP):\n"
                 "      Set env vars:  MAIL_SERVER=smtp.gmail.com\n"

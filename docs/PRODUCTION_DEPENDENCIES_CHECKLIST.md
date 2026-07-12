@@ -59,12 +59,11 @@ If Redis is missing, the app may still run, but **API rate limits** and **any Re
 
 ## 5. Email (at least one path when you need mail)
 
-Pick **one** primary method and configure. Render often blocks raw SMTP; **Brevo HTTPS API** is documented in `.env.example`.
+Pick **one** primary method and configure. Render often blocks raw SMTP; **Mailjet HTTPS API** is documented in `.env.example`.
 
 | Done | Item |
 |------|------|
-| ☐ | **Brevo API:** `BREVO_API_KEY` (or `SENDINBLUE_API_KEY`) + **`MAIL_DEFAULT_SENDER`** (verified domain/sender in Brevo). |
-| ☐ | **OR Mailjet REST/SMTP:** `MAILJET_API_KEY` + `MAILJET_SECRET_KEY` + sender. |
+| ☐ | **Mailjet REST:** `MAILJET_API_KEY` + `MAILJET_SECRET_KEY` + **`MAIL_DEFAULT_SENDER`** (verified domain/sender in Mailjet). |
 | ☐ | **OR SMTP (if allowed):** `MAIL_SERVER`, `MAIL_PORT`, `MAIL_USE_TLS`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_DEFAULT_SENDER`. |
 | ☐ | Smoke test: password reset, workflow notification, or MMR/report email (whichever you use) sends and is received. |
 

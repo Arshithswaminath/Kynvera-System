@@ -1,0 +1,71 @@
+{# ── Ticketing Module Topbar (Kynvera shell) ─────────────────────────
+   Include as first child of .tkt-dh-main:
+     {% set tkt_topbar_title = 'Dashboard' %}
+     {% include 'partials/tkt_topbar.html' with context %}
+   Expects: user (optional), tkt_topbar_title (optional)
+   Re-homes from main_navbar: notifications, assistant, profile modal,
+   logout — all IDs preserved (dashboard.js / assistant.js bind by ID).
+──────────────────────────────────────────────────────────────────── #}
+{% if user is defined and user %}
+  {% set _tb_parts    = (user.full_name or '')|trim %}
+  {% set _tb_words    = _tb_parts.split() %}
+  {% set tb_name      = _tb_parts or '—' %}
+  {% set tb_initials  = ((_tb_words[0][0] if _tb_words else '?') ~ (_tb_words[-1][0] if _tb_words|length > 1 else ''))|upper %}
+  {% set tb_role      = (user.role or '')|replace('_',' ')|title %}
+{% else %}
+  {% set tb_name = '—' %} {% set tb_initials = '?' %} {% set tb_role = '' %}
+{% endif %}
+
+<header class="tkt-topbar">
+  <div class="tkt-topbar-left">
+    <button type="button" id="tktDhSidebarToggle" aria-label="Toggle menu"
+            onclick="if(typeof tktToggleMobileSidebar==='function'){tktToggleMobileSidebar();}">&#9776;</button>
+    <h1 class="tkt-topbar-title">{{ tkt_topbar_title | default('Service Tickets') }}</h1>
+  </div>
+
+  <div class="tkt-topbar-actions">
+    <button type="button" class="tkt-topbar-iconbtn" id="navAssistantBtn"
+            aria-label="Ask Injaaz assistant" title="Ask Injaaz — help with forms, leave, documents"
+            aria-expanded="false" aria-controls="assistantPanel">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a49.255 49.255 0 0 0 4.365-1.238C20.864 15.052 22 13.714 22 12.015c0-4.746-4.03-8.511-9-8.511S4 7.269 4 12.015v.745Z" />
+      </svg>
+    </button>
+
+    <div class="notification-wrapper" id="notificationWrapper">
+      <button class="tkt-topbar-iconbtn" id="notificationBtn" type="button" title="Notifications" aria-label="Notifications">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+        </svg>
+        <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
+      </button>
+      <div class="notification-dropdown" id="notificationDropdown">
+        <div class="notification-header">
+          <h4>Notifications</h4>
+          <button type="button" class="mark-all-read" id="markAllRead">Mark all read</button>
+        </div>
+        <div class="notification-list" id="notificationList">
+          <div class="notification-empty">No notifications</div>
+        </div>
+      </div>
+    </div>
+
+    <button type="button" class="tkt-topbar-user" title="Profile"
+            onclick="if(typeof openProfileModal==='function'){openProfileModal();}">
+      <span class="tkt-topbar-avatar" aria-hidden="true">{{ tb_initials }}</span>
+      <span class="tkt-topbar-user-meta">
+        <span class="tkt-topbar-user-name">{{ tb_name }}</span>
+        <span class="tkt-topbar-user-role">{{ tb_role }}</span>
+      </span>
+    </button>
+
+    <button class="tkt-topbar-iconbtn" id="logoutBtn" type="button" title="Logout" aria-label="Logout">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 9V5.25A2.25 2.25 0 0 1 10.5 3h6a2.25 2.25 0 0 1 2.25 2.25v13.5A2.25 2.25 0 0 1 16.5 21h-6a2.25 2.25 0 0 1-2.25-2.25V15m-3 0-3-3m0 0 3-3m-3 3h12.75" />
+      </svg>
+    </button>
+  </div>
+</header>
+
+{% include 'partials/profile_modal.html' %}
+{% include 'partials/assistant_widget.html' %}
