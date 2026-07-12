@@ -61,8 +61,12 @@ from module_hr.hr_commencement_reporting import (
 from .print_utils import render_form_for_print
 from .docx_service import generate_hr_docx, get_supported_docx_forms
 from .pdf_service import generate_hr_pdf, get_supported_pdf_forms
+from .hiring_documents import register_hiring_document_routes
 
 hr_bp = Blueprint('hr', __name__, template_folder='templates')
+
+# Hiring Document Tracker (standalone checklist under /hr/hiring)
+register_hiring_document_routes(hr_bp)
 
 
 @hr_bp.context_processor

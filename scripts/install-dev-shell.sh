@@ -14,16 +14,33 @@ fi
 cat >> "$ZSHRC" <<'EOF'
 
 # Injaaz-App: put project venv on PATH when inside the repo (no recursive source)
+_injaaz_update_branch_label() {
+  if [[ -f "$PWD/Injaaz.py" ]] && git -C "$PWD" rev-parse --git-dir >/dev/null 2>&1; then
+    local branch
+    branch="$(git -C "$PWD" branch --show-current 2>/dev/null)"
+    if [[ -n "$branch" ]]; then
+      export INJAAZ_BRANCH="$branch"
+      print -Pn "\e]0;Injaaz · ${branch}\a"
+    else
+      unset INJAAZ_BRANCH
+    fi
+  else
+    unset INJAAZ_BRANCH
+  fi
+}
+
 _injaaz_auto_venv() {
   if [[ "${INJAAZ_ENV_LOADED:-}" == "$PWD" ]]; then
+    _injaaz_update_branch_label
     return 0
   fi
   if [[ -f "$PWD/Injaaz.py" && -x "$PWD/venv/bin/python" ]]; then
     export INJAAZ_ENV_LOADED="$PWD"
     export VIRTUAL_ENV="$PWD/venv"
     export PATH="$PWD/venv/bin:$PWD/bin:${PATH}"
+    _injaaz_update_branch_label
   else
-    unset INJAAZ_ENV_LOADED VIRTUAL_ENV
+    unset INJAAZ_ENV_LOADED VIRTUAL_ENV INJAAZ_BRANCH
   fi
 }
 typeset -ga chpwd_functions 2>/dev/null || true

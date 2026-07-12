@@ -7,6 +7,8 @@ import os
 import logging
 from datetime import datetime, timezone
 
+from module_ticketing.tz_utils import to_gst
+
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -197,8 +199,8 @@ def build_ticket_pdf(ticket, notes, images, materials, manpower_entries, output_
 
     # ── Ticket Info ──────────────────────────────────────────────────────────
     story += _section_header('Ticket Information', heading)
-    created_str = ticket.created_at.strftime('%d %b %Y %H:%M') if ticket.created_at else '—'
-    closed_str = ticket.closed_at.strftime('%d %b %Y %H:%M') if ticket.closed_at else '—'
+    created_str = to_gst(ticket.created_at).strftime('%d %b %Y %H:%M') + ' GST' if ticket.created_at else '—'
+    closed_str = to_gst(ticket.closed_at).strftime('%d %b %Y %H:%M') + ' GST' if ticket.closed_at else '—'
     story.append(_kv_table([
         ('Project', ticket.project),
         ('Service Group', ticket.service_group),
@@ -211,7 +213,6 @@ def build_ticket_pdf(ticket, notes, images, materials, manpower_entries, output_
         ('Technician', ticket.technician.full_name if getattr(ticket, 'technician', None) else 'Not assigned'),
         ('Created', created_str),
         ('Closed', closed_str),
-        ('Chargeable', 'Yes' if ticket.is_chargeable else 'No'),
     ], normal, bold))
     story.append(Spacer(1, 6))
 
@@ -281,9 +282,7 @@ def build_ticket_pdf(ticket, notes, images, materials, manpower_entries, output_
     mat_total = sum(m.total_price or 0 for m in materials)
     base_cost = mp_total + mat_total
 
-    overhead_pct = ticket.overhead_pct if getattr(ticket, 'overhead_pct', None) is not None else 10.0
-    overhead_amt = round(base_cost * overhead_pct / 100.0, 2)
-    actual_price = round(base_cost + overhead_amt, 2)
+    actual_price = round(base_cost, 2)
 
     markup_pct  = getattr(ticket, 'markup_pct', None)
     actual_stored = getattr(ticket, 'actual_price', None) or actual_price
@@ -292,9 +291,7 @@ def build_ticket_pdf(ticket, notes, images, materials, manpower_entries, output_
     cost_data = [
         ['Manpower Total',  f'AED {mp_total:.2f}'],
         ['Materials Total', f'AED {mat_total:.2f}'],
-        ['Base Cost (MP + Materials)', f'AED {base_cost:.2f}'],
-        [f'Overhead ({overhead_pct:.0f}%)', f'AED {overhead_amt:.2f}'],
-        ['Actual Price', f'AED {actual_price:.2f}'],
+        ['Actual Price (MP + Materials)', f'AED {actual_price:.2f}'],
     ]
     if ticket.projected_cost:
         cost_data.insert(0, ['Projected Cost', f'AED {ticket.projected_cost:.2f}'])
@@ -364,7 +361,6 @@ def build_ticket_pdf(ticket, notes, images, materials, manpower_entries, output_
         story.append(_kv_table([
             ('Supervisor', sup_name),
             ('Technician', tech_name),
-            ('Chargeable', 'Yes' if ticket.is_chargeable else 'No'),
         ], normal, bold))
     story.append(Spacer(1, 6))
 
@@ -372,7 +368,7 @@ def build_ticket_pdf(ticket, notes, images, materials, manpower_entries, output_
     if notes:
         story += _section_header('Activity Log', heading)
         for note in notes:
-            dt_str = note.created_at.strftime('%d %b %Y %H:%M') if note.created_at else ''
+            dt_str = to_gst(note.created_at).strftime('%d %b %Y %H:%M') if note.created_at else ''
             author = note.author.full_name if note.author else 'Unknown'
             story.append(Paragraph(
                 f'<b>{author}</b> <font color="#9ca3af">{dt_str}</font>',

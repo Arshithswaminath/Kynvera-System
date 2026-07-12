@@ -9,7 +9,7 @@ This document describes how to run Injaaz on [Render](https://render.com/) in tw
 - **Web service** — Runs `gunicorn` (see `render.yaml` `startCommand`). The Flask app loads configuration from environment variables (see root `config.py` and `Injaaz.py`).
 - **`GENERATED_DIR`** — Root directory for generated Excel/PDF, DocHub cache, MMR uploads and JSON config, module uploads under `uploads/`, and job folders. On Render’s default filesystem this path is **ephemeral** unless you attach a persistent disk (Phase 2).
 - **Database** — Production expects **PostgreSQL** via `DATABASE_URL` (SQLite is not used when `FLASK_ENV` is production and `DATABASE_URL` is required).
-- **Outbound email** — Render **free** web services **block SMTP** (ports 25, 465, 587). Use **`BREVO_API_KEY`** + **`MAIL_DEFAULT_SENDER`** (Brevo HTTPS API). Paid Render instances can use SMTP (e.g. Gmail) again.
+- **Outbound email** — Render **free** web services **block SMTP** (ports 25, 465, 587). Use **`MAILJET_API_KEY`** + **`MAILJET_SECRET_KEY`** + **`MAIL_DEFAULT_SENDER`** (Mailjet HTTPS API). Paid Render instances can use SMTP (e.g. Gmail) again.
 
 ---
 
@@ -60,8 +60,9 @@ Set these in the web service **Environment** tab (or via Blueprint / `render.yam
 | `MMR_SCHEDULE_ENABLED` | Optional | `true` or `false` — keeps MMR **schedule intent** across redeploys when JSON on disk is wiped. |
 | `MMR_SCHEDULE_HOUR` | Optional | `0`–`23` (UTC matches server; scheduler uses server local time — confirm behavior in `module_mmr/scheduler.py`). |
 | `MMR_SCHEDULE_MINUTE` | Optional | `0`–`59` |
-| `BREVO_API_KEY` | **Yes for email on free Render** | Brevo API key (`xkeysib-...`). Render free blocks SMTP; Gmail will not work. |
-| `MAIL_DEFAULT_SENDER` | With Brevo | Address verified in Brevo (e.g. `noreply@injaaz.ae` or your domain). |
+| `MAILJET_API_KEY` | **Yes for email on free Render** | Mailjet API key. Render free blocks SMTP; Gmail will not work. |
+| `MAILJET_SECRET_KEY` | With Mailjet API key | Mailjet secret key. |
+| `MAIL_DEFAULT_SENDER` | With Mailjet | Address verified in Mailjet (e.g. `noreply@injaaz.ae` or your domain). |
 | `MAIL_*` | Optional (local / paid Render) | SMTP: Gmail, Office 365, etc. Not on Render free. |
 
 **Session / cookies:** If you use HTTPS on Render, set `SESSION_COOKIE_SECURE=true` (and JWT cookie settings as your security model requires).

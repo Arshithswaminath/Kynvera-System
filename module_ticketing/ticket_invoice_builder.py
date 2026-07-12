@@ -10,6 +10,8 @@ import base64
 import logging
 from datetime import datetime
 
+from module_ticketing.tz_utils import to_gst
+
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
@@ -269,9 +271,9 @@ def build_invoice_pdf(ticket, materials, manpower_entries, output_stream):
     story.append(Spacer(1, 4))
 
     # ── 2. META ROW: invoice details left, address right ─────────────────────
-    closed_str   = ticket.closed_at.strftime('%d %B %Y') if ticket.closed_at else \
-                   datetime.utcnow().strftime('%d %B %Y')
-    created_str  = ticket.created_at.strftime('%d %B %Y') if ticket.created_at else '—'
+    closed_str   = to_gst(ticket.closed_at).strftime('%d %B %Y') if ticket.closed_at else \
+                   to_gst(datetime.utcnow()).strftime('%d %B %Y')
+    created_str  = to_gst(ticket.created_at).strftime('%d %B %Y') if ticket.created_at else '—'
 
     meta_left = Table([
         [_p('INVOICE NO:',  8, bold=True, color=MUTED), _p(invoice_no, 8, bold=True, color=INK)],
@@ -291,10 +293,6 @@ def build_invoice_pdf(ticket, materials, manpower_entries, output_stream):
     meta_right = Table([
         [_p('PROJECT:', 8, bold=True, color=MUTED), _p(ticket.project or '—', 8, color=INK)],
         [_p('LOCATION:', 8, bold=True, color=MUTED), _p(location_str, 8, color=INK)],
-        [_p('CHARGEABLE:', 8, bold=True, color=MUTED),
-         _p('YES' if ticket.is_chargeable else 'NO', 8,
-            bold=True,
-            color=ACCENT if ticket.is_chargeable else MUTED)],
     ], colWidths=[24*mm, AVAIL_W * 0.38 - 24*mm])
     meta_right.setStyle(TableStyle([
         ('TOPPADDING',   (0,0),(-1,-1), 2),
@@ -366,9 +364,7 @@ def build_invoice_pdf(ticket, materials, manpower_entries, output_stream):
     elif getattr(ticket, 'actual_price', None):
         invoice_total = ticket.actual_price
     else:
-        # Fallback: apply 10 % overhead to be consistent with the model default
-        overhead = getattr(ticket, 'overhead_pct', None) or 10.0
-        invoice_total = round(base_total * (1 + overhead / 100.0), 2)
+        invoice_total = round(base_total, 2)
 
     # ── 5. Unified itemised table (Materials first, then Manpower) ───────────
     story.append(_p('ITEMS', 9, bold=True, color=BRAND))

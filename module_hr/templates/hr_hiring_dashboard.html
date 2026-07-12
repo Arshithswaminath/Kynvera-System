@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+  <meta name="theme-color" content="#125435">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Hiring — Documents · Injaaz</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-hiring.css') }}?v=36">
+  {% set active_page = 'hr' %}
+</head>
+<body class="hh-page">
+  {% include 'partials/hr_embed_optional_navbar.html' %}
+
+  <div class="hh-shell" id="hhListRoot">
+    {% include 'partials/hr_hiring_sidebar.html' %}
+
+    <main class="hh-main">
+      <div class="hh-topbar">
+        <div>
+          <h1 class="hh-title">Hiring — Documents</h1>
+          <p class="hh-subtitle">Track onboarding documents for each candidate</p>
+        </div>
+      </div>
+
+      <div class="hh-toolbar">
+        <div class="hh-search">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+          </svg>
+          <input type="search" id="hhSearch" placeholder="Search candidates…" autocomplete="off" aria-label="Search candidates">
+        </div>
+        <div class="hh-filters" role="group" aria-label="Document status filter">
+          <button type="button" class="hh-filter-btn active" data-status="all">All</button>
+          <button type="button" class="hh-filter-btn" data-status="pending">Pending</button>
+          <button type="button" class="hh-filter-btn" data-status="complete">Complete</button>
+        </div>
+        <select id="hhPipelineFilter" class="hh-select hh-pipeline-filter" aria-label="Pipeline stage filter">
+          <option value="all">All stages</option>
+          <option value="interview_completed">Interview completed</option>
+          <option value="gathering_documents">Gathering documents</option>
+          <option value="offer_letter_prepared">Offer letter prepared</option>
+          <option value="offer_letter_signed">Offer letter signed</option>
+          <option value="md_signed_offer_received">MD signed offer received</option>
+          <option value="visa_process_started">Visa process started</option>
+        </select>
+        <div class="hh-excel-actions">
+          <button type="button" class="hh-btn hh-btn-secondary hh-btn-sm" id="hhExcelTemplate" title="Download blank Excel template">
+            Template
+          </button>
+          <button type="button" class="hh-btn hh-btn-secondary hh-btn-sm" id="hhExcelExport" title="Export candidates to Excel">
+            Export
+          </button>
+          <button type="button" class="hh-btn hh-btn-secondary hh-btn-sm" id="hhExcelImport" title="Import Excel to create or update candidates">
+            Import Excel
+          </button>
+          <input type="file" id="hhExcelFile" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" hidden>
+        </div>
+        <button type="button" class="hh-btn hh-btn-primary hh-add-btn hh-add-btn-toolbar" id="hhAddBtnToolbar" aria-label="Add candidate">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+          </svg>
+          Add Candidate
+        </button>
+      </div>
+
+      <div id="hhImportResult" class="hh-import-result" hidden></div>
+
+      <div class="hh-list" id="hhCandidateList">
+        <div class="hh-loading"><div class="hh-spinner"></div>Loading candidates…</div>
+      </div>
+      <div class="hh-pagination" id="hhPagination"></div>
+    </main>
+  </div>
+
+  <div class="hh-modal-backdrop" id="hhAddModal" role="dialog" aria-modal="true" aria-labelledby="hhAddTitle">
+    <div class="hh-modal hh-modal-wide">
+      <h2 id="hhAddTitle">Add Candidate</h2>
+      <p class="hh-modal-sub">Enter candidate details, or import name and role from an Interview Assessment already in the system.</p>
+
+      <div class="hh-import-block">
+        <label class="hh-import-label" for="hhInterviewPick">Import from Interview Assessment</label>
+        <div class="hh-import-row">
+          <select id="hhInterviewPick" class="hh-select">
+            <option value="">Loading assessments…</option>
+          </select>
+          <button type="button" class="hh-btn hh-btn-secondary hh-btn-sm" id="hhInterviewApply" disabled>Use</button>
+        </div>
+        <p class="hh-import-hint">Uses structured form fields (candidate name, position) — the app does not read or OCR uploaded PDF scans.</p>
+      </div>
+
+      <form id="hhAddForm">
+        <div class="hh-field">
+          <label for="hhFullName">Full name *</label>
+          <input id="hhFullName" name="full_name" type="text" required autocomplete="name" placeholder="As on passport">
+        </div>
+        <div class="hh-field">
+          <label for="hhRole">Role / position *</label>
+          <input id="hhRole" name="role" type="text" required autocomplete="organization-title" placeholder="e.g. Product Designer">
+        </div>
+        <div class="hh-field">
+          <label for="hhDept">Department</label>
+          <input id="hhDept" name="department" type="text" placeholder="e.g. Operations">
+        </div>
+        <div class="hh-field-row">
+          <div class="hh-field">
+            <label for="hhPhone">Phone</label>
+            <input id="hhPhone" name="phone" type="tel" autocomplete="tel" placeholder="+971 …">
+          </div>
+          <div class="hh-field">
+            <label for="hhEmail">Email</label>
+            <input id="hhEmail" name="email" type="email" autocomplete="email" placeholder="name@example.com">
+          </div>
+        </div>
+        <div class="hh-field-row">
+          <div class="hh-field">
+            <label for="hhReplacementName">Replacement name</label>
+            <input id="hhReplacementName" name="replacement_name" type="text" autocomplete="name" placeholder="Employee being replaced">
+          </div>
+          <div class="hh-field">
+            <label for="hhReplacementEmpId">Replacement employee ID</label>
+            <input id="hhReplacementEmpId" name="replacement_employee_id" type="text" autocomplete="off" placeholder="e.g. EMP-01234">
+          </div>
+        </div>
+        <div class="hh-field">
+          <label for="hhComments">Any comments</label>
+          <textarea id="hhComments" name="comments" rows="3" maxlength="4000" placeholder="Optional notes for HR…"></textarea>
+        </div>
+        <div class="hh-modal-actions">
+          <button type="button" class="hh-btn hh-btn-ghost" data-close>Cancel</button>
+          <button type="submit" class="hh-btn hh-btn-primary">Create checklist</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/hr-hiring.js') }}?v=36"></script>
+</body>
+</html>

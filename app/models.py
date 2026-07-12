@@ -47,6 +47,8 @@ class User(db.Model):
     access_submitted_forms = db.Column(db.Boolean, default=False)  # "My submitted forms" workflow hub
     access_ticketing = db.Column(db.Boolean, default=False)  # Ticketing / Work Order module
     access_qhsi = db.Column(db.Boolean, default=False)  # QHSI — quality, hospitality, safety & inspections
+    # Pre-designated department representative allowed to appear in the ticket "Reported By" list.
+    is_ticket_reporter = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=_utcnow)
     last_login = db.Column(db.DateTime)
     # First day with the company (for tenure on dashboard); editable in Profile / admin Manage profile
@@ -144,6 +146,7 @@ class User(db.Model):
             'access_submitted_forms': getattr(self, 'access_submitted_forms', False) if self.role != 'admin' else True,
             'access_ticketing': getattr(self, 'access_ticketing', False) if self.role != 'admin' else True,
             'access_qhsi': getattr(self, 'access_qhsi', False) if self.role != 'admin' else True,
+            'is_ticket_reporter': getattr(self, 'is_ticket_reporter', False),
             'password_changed': self.password_changed if hasattr(self, 'password_changed') else True,
             'designation': self.designation if hasattr(self, 'designation') else None,
             'default_signature': self.default_signature if hasattr(self, 'default_signature') else None,
@@ -947,6 +950,12 @@ class TicketProject(db.Model):
     sort_order = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=_utcnow)
 
+    # Client-side (e.g. municipality) contacts for the closing invoice email.
+    # Comma/semicolon-separated address lists — kept simple since this is per-project config,
+    # not a full contacts model. Falls back to internal admin/ops recipients when unset.
+    finance_emails = db.Column(db.String(500), nullable=True)
+    ops_emails = db.Column(db.String(500), nullable=True)
+
     properties = db.relationship('TicketProperty', backref='project',
                                  lazy='dynamic', cascade='all, delete-orphan',
                                  order_by='TicketProperty.name')
@@ -973,6 +982,8 @@ class TicketProject(db.Model):
             'project_value': float(self.project_value) if self.project_value is not None else None,
             'is_active': self.is_active, 'sort_order': self.sort_order,
             'created_at': self.created_at.isoformat() if self.created_at else None,
+            'finance_emails': self.finance_emails,
+            'ops_emails': self.ops_emails,
         }
         if with_property_count:
             d['properties_count'] = self.properties.filter_by(is_active=True).count()
@@ -1154,10 +1165,10 @@ class Ticket(db.Model):
     projected_cost = db.Column(db.Float, nullable=True)
     total_cost = db.Column(db.Float, nullable=True)
 
-    # Pricing with overhead + markup (supervisor sets these before closing)
-    overhead_pct = db.Column(db.Float, default=10.0)      # always 10 %; stored for audit
-    markup_pct = db.Column(db.Float, nullable=True)        # 0 / 10 / 20 / 30
-    actual_price = db.Column(db.Float, nullable=True)      # (mp + mat) * (1 + overhead/100)
+    # Pricing (supervisor sets markup before closing)
+    overhead_pct = db.Column(db.Float, default=10.0)      # legacy/unused — kept to avoid a migration
+    markup_pct = db.Column(db.Float, nullable=True)        # 0 / 5 / 10 / 15 / 20 / 25
+    actual_price = db.Column(db.Float, nullable=True)      # mp + mat (no overhead applied)
     selling_price = db.Column(db.Float, nullable=True)     # actual_price * (1 + markup/100)
 
     # Narrative fields
@@ -1168,17 +1179,30 @@ class Ticket(db.Model):
     # Status: open → pending_supervisor → in_progress → pending_parts → pending_verification → closed
     status = db.Column(db.String(30), default='open', index=True)
 
-    # Closing info
+    # Closing info — Stage 1: service-provider supervisor verification (`supervisor-close`)
     close_notes = db.Column(db.Text, nullable=True)
     close_signature = db.Column(db.Text, nullable=True)   # base64 data-URL
     close_signed_by = db.Column(db.String(160), nullable=True)
     close_signed_role = db.Column(db.String(120), nullable=True)
+
+    # Closing info — Stage 2: client operations final approval (`ops-close`)
+    ops_close_notes = db.Column(db.Text, nullable=True)
+    ops_close_signature = db.Column(db.Text, nullable=True)   # base64 data-URL
+    ops_close_signed_by = db.Column(db.String(160), nullable=True)
+    ops_close_signed_role = db.Column(db.String(120), nullable=True)
 
     # Timestamps
     created_at = db.Column(db.DateTime, default=_utcnow, index=True)
     updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
     resolved_at = db.Column(db.DateTime, nullable=True)
     closed_at = db.Column(db.DateTime, nullable=True)
+
+    # Email intake (draft tickets created from inbound email; see TicketEmailIntake)
+    source = db.Column(db.String(20), default='manual', index=True)  # 'manual', 'email'
+    source_sender_email = db.Column(db.String(255), nullable=True)   # raw From address, even if matched to a User
+    source_sender_name = db.Column(db.String(255), nullable=True)    # raw From display name
+    source_subject = db.Column(db.String(500), nullable=True)        # original email subject
+    source_message_id = db.Column(db.String(255), nullable=True, index=True)  # inbound Message-Id, for de-dupe
 
     # Relationships
     reporter = db.relationship('User', foreign_keys=[reporter_id],
@@ -1233,6 +1257,10 @@ class Ticket(db.Model):
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
             'closed_at': self.closed_at.isoformat() if self.closed_at else None,
+            'source': self.source or 'manual',
+            'source_sender_email': self.source_sender_email,
+            'source_sender_name': self.source_sender_name,
+            'source_subject': self.source_subject,
         }
 
     def __repr__(self):
@@ -1359,6 +1387,46 @@ class TicketManpower(db.Model):
 
     def __repr__(self):
         return f'<TicketManpower {self.id} {self.worker_name} {self.hours}h>'
+
+
+class TicketEmailIntake(db.Model):
+    """Audit log of every inbound email received at the ticket intake address.
+
+    One row per webhook call, regardless of whether it resulted in a draft ticket.
+    Kept so failed/unmatched parses are visible without needing server log access.
+    """
+    __tablename__ = 'ticket_email_intakes'
+
+    id = db.Column(db.Integer, primary_key=True)
+    received_at = db.Column(db.DateTime, default=_utcnow, index=True)
+    from_email = db.Column(db.String(255), nullable=True)
+    from_name = db.Column(db.String(255), nullable=True)
+    to_email = db.Column(db.String(255), nullable=True)
+    subject = db.Column(db.String(500), nullable=True)
+    raw_body = db.Column(db.Text, nullable=True)
+    message_id = db.Column(db.String(255), nullable=True, index=True)
+    # 'processed', 'duplicate', 'error', 'rejected'
+    status = db.Column(db.String(20), default='processed', index=True)
+    error_message = db.Column(db.Text, nullable=True)
+    ticket_id = db.Column(db.Integer, db.ForeignKey('tickets.id', ondelete='SET NULL'), nullable=True)
+
+    ticket = db.relationship('Ticket', backref=db.backref('email_intake_logs', lazy='dynamic'))
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'received_at': self.received_at.isoformat() if self.received_at else None,
+            'from_email': self.from_email,
+            'from_name': self.from_name,
+            'to_email': self.to_email,
+            'subject': self.subject,
+            'status': self.status,
+            'error_message': self.error_message,
+            'ticket_id': self.ticket_id,
+        }
+
+    def __repr__(self):
+        return f'<TicketEmailIntake {self.id} from={self.from_email} status={self.status}>'
 
 
 class Notification(db.Model):
@@ -1563,3 +1631,322 @@ class QhseStaffComplianceRow(db.Model):
             'item_label': self.item_label,
             'condition': self.condition,
         }
+
+
+# ── Hiring Document Tracker (HR module) ──────────────────────────────────────
+
+# Phase 1 — collected first (candidate identity / clearance)
+HIRING_PHASE1_DOC_TYPES = (
+    'passport',
+    'emirates_id',
+    'photograph',
+    'pcc',
+    'education_certificate',
+)
+
+# Phase 2 — unlocked only after Phase 1 is complete
+HIRING_PHASE2_DOC_TYPES = (
+    'offer_letter',
+    'insurance',
+    'e_visa',
+    'contract',
+)
+
+HIRING_DOC_TYPES = HIRING_PHASE1_DOC_TYPES + HIRING_PHASE2_DOC_TYPES
+
+HIRING_DOC_PHASE = {
+    **{dt: 1 for dt in HIRING_PHASE1_DOC_TYPES},
+    **{dt: 2 for dt in HIRING_PHASE2_DOC_TYPES},
+}
+
+HIRING_DOC_LABELS = {
+    'passport': 'Passport Copy (Colour)',
+    'emirates_id': 'Emirates ID Copy (Colour)',
+    'photograph': 'Photograph (White Background, PDF)',
+    'pcc': 'PCC — Attested',
+    'education_certificate': 'Education Certificate (PDF)',
+    'offer_letter': 'Offer Letter (Department Signed)',
+    'insurance': 'Insurance Paper',
+    'e_visa': 'E-Visa',
+    'contract': 'Employment Contract',
+}
+
+HIRING_DOC_ALLOWED_EXT = {
+    'passport': {'pdf', 'jpg', 'jpeg', 'png'},
+    'emirates_id': {'pdf', 'jpg', 'jpeg', 'png'},
+    'photograph': {'pdf'},
+    'pcc': {'pdf'},
+    'education_certificate': {'pdf'},
+    'offer_letter': {'pdf'},
+    'insurance': {'pdf', 'jpg', 'jpeg', 'png'},
+    'e_visa': {'pdf', 'jpg', 'jpeg', 'png'},
+    'contract': {'pdf'},
+}
+
+# Docs that unlock only after pipeline reaches visa_process_started
+HIRING_VISA_GATED_DOC_TYPES = frozenset({'insurance', 'e_visa', 'contract'})
+
+HIRING_PIPELINE_STATUSES = (
+    'interview_completed',
+    'gathering_documents',
+    'offer_letter_prepared',
+    'offer_letter_signed',
+    'md_signed_offer_received',
+    'visa_process_started',
+)
+
+HIRING_PIPELINE_LABELS = {
+    'interview_completed': 'Interview completed',
+    'gathering_documents': 'Gathering documents',
+    'offer_letter_prepared': 'Offer letter prepared',
+    'offer_letter_signed': 'Offer letter signed',
+    'md_signed_offer_received': 'Signed offer letter from MD received',
+    'visa_process_started': 'Visa process started',
+}
+
+HIRING_PIPELINE_DEFAULT = 'interview_completed'
+
+
+class HiringCandidate(db.Model):
+    """Candidate / new-hire tracked for onboarding document collection."""
+    __tablename__ = 'hiring_candidates'
+
+    id = db.Column(db.Integer, primary_key=True)
+    full_name = db.Column(db.String(200), nullable=False, index=True)
+    role = db.Column(db.String(120))  # position / job title
+    department = db.Column(db.String(120))
+    phone = db.Column(db.String(40))
+    email = db.Column(db.String(120))
+    replacement_name = db.Column(db.String(200))
+    replacement_employee_id = db.Column(db.String(80))
+    comments = db.Column(db.Text)
+    pipeline_status = db.Column(
+        db.String(40),
+        default=HIRING_PIPELINE_DEFAULT,
+        index=True,
+    )
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=_utcnow, index=True)
+    updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow, index=True)
+
+    creator = db.relationship('User', foreign_keys=[created_by],
+                              backref=db.backref('hiring_candidates_created', lazy='dynamic'))
+    documents = db.relationship(
+        'HiringDocument',
+        back_populates='candidate',
+        cascade='all, delete-orphan',
+        lazy='joined',
+    )
+
+    @staticmethod
+    def doc_is_complete(doc) -> bool:
+        """Whether a document counts as done for progress."""
+        if not doc:
+            return False
+        if doc.doc_type == 'pcc':
+            return doc.status in ('attested', 'verified')
+        return doc.status in ('uploaded', 'attested', 'verified')
+
+    def _docs_by_type(self):
+        return {d.doc_type: d for d in (self.documents or [])}
+
+    def phase_progress(self, doc_types):
+        by_type = self._docs_by_type()
+        total = len(doc_types)
+        completed = sum(1 for dt in doc_types if self.doc_is_complete(by_type.get(dt)))
+        return completed, total
+
+    def phase1_complete(self) -> bool:
+        completed, total = self.phase_progress(HIRING_PHASE1_DOC_TYPES)
+        return completed >= total
+
+    def normalized_pipeline_status(self) -> str:
+        status = (self.pipeline_status or HIRING_PIPELINE_DEFAULT).strip()
+        if status not in HIRING_PIPELINE_STATUSES:
+            return HIRING_PIPELINE_DEFAULT
+        return status
+
+    def pipeline_index(self) -> int:
+        try:
+            return HIRING_PIPELINE_STATUSES.index(self.normalized_pipeline_status())
+        except ValueError:
+            return 0
+
+    def visa_docs_unlocked(self) -> bool:
+        """Insurance, e-visa, and contract unlock at visa_process_started."""
+        visa_idx = HIRING_PIPELINE_STATUSES.index('visa_process_started')
+        return self.pipeline_index() >= visa_idx
+
+    def pipeline_steps(self):
+        current = self.normalized_pipeline_status()
+        current_idx = self.pipeline_index()
+        steps = []
+        for i, key in enumerate(HIRING_PIPELINE_STATUSES):
+            steps.append({
+                'key': key,
+                'label': HIRING_PIPELINE_LABELS.get(key, key),
+                'done': i < current_idx,
+                'current': key == current,
+            })
+        return steps
+
+    def progress(self):
+        """Overall progress across both phases (all 9 documents)."""
+        p1_done, p1_total = self.phase_progress(HIRING_PHASE1_DOC_TYPES)
+        p2_done, p2_total = self.phase_progress(HIRING_PHASE2_DOC_TYPES)
+        completed = p1_done + p2_done
+        total = p1_total + p2_total
+
+        if completed <= 0:
+            status = 'not_started'
+        elif completed >= total:
+            status = 'complete'
+        else:
+            status = 'in_progress'
+        return completed, total, status
+
+    def initials(self) -> str:
+        parts = (self.full_name or '').strip().split()
+        if not parts:
+            return '?'
+        if len(parts) == 1:
+            return parts[0][:2].upper()
+        return (parts[0][0] + parts[-1][0]).upper()
+
+    def _placeholder_doc(self, dt):
+        return {
+            'id': None,
+            'candidate_id': self.id,
+            'doc_type': dt,
+            'label': HIRING_DOC_LABELS.get(dt, dt),
+            'phase': HIRING_DOC_PHASE.get(dt, 1),
+            'status': 'missing',
+            'filename': None,
+            'mime_type': None,
+            'file_size': None,
+            'uploaded_at': None,
+            'uploaded_by': None,
+            'has_file': False,
+            'is_complete': False,
+            'file_url': None,
+            'allowed_extensions': sorted(HIRING_DOC_ALLOWED_EXT.get(dt, set())),
+        }
+
+    def to_dict(self, include_documents=True):
+        completed, total, status = self.progress()
+        p1_done, p1_total = self.phase_progress(HIRING_PHASE1_DOC_TYPES)
+        p2_done, p2_total = self.phase_progress(HIRING_PHASE2_DOC_TYPES)
+        pipeline = self.normalized_pipeline_status()
+        visa_unlocked = self.visa_docs_unlocked()
+        d = {
+            'id': self.id,
+            'full_name': self.full_name,
+            'role': self.role or '',
+            'department': self.department or '',
+            'phone': self.phone or '',
+            'email': self.email or '',
+            'replacement_name': self.replacement_name or '',
+            'replacement_employee_id': self.replacement_employee_id or '',
+            'comments': self.comments or '',
+            'initials': self.initials(),
+            'completed': completed,
+            'total': total,
+            'progress_label': f'{completed}/{total}',
+            'status': status,
+            'pipeline_status': pipeline,
+            'pipeline_label': HIRING_PIPELINE_LABELS.get(pipeline, pipeline),
+            'pipeline_steps': self.pipeline_steps(),
+            'visa_docs_unlocked': visa_unlocked,
+            'phase1_completed': p1_done,
+            'phase1_total': p1_total,
+            'phase2_completed': p2_done,
+            'phase2_total': p2_total,
+            'phase2_unlocked': True,
+            'created_by': self.created_by,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+        if include_documents:
+            by_type = self._docs_by_type()
+            docs = []
+            for dt in HIRING_DOC_TYPES:
+                doc = by_type.get(dt)
+                if doc:
+                    item = doc.to_dict()
+                else:
+                    item = self._placeholder_doc(dt)
+                item['upload_locked'] = (
+                    dt in HIRING_VISA_GATED_DOC_TYPES and not visa_unlocked
+                )
+                docs.append(item)
+            d['documents'] = docs
+            d['phase1_documents'] = [x for x in docs if x.get('phase') == 1]
+            d['phase2_documents'] = [x for x in docs if x.get('phase') == 2]
+        return d
+
+    def __repr__(self):
+        return f'<HiringCandidate {self.id} {self.full_name}>'
+
+
+class HiringDocument(db.Model):
+    """One onboarding document slot for a hiring candidate."""
+    __tablename__ = 'hiring_documents'
+
+    id = db.Column(db.Integer, primary_key=True)
+    candidate_id = db.Column(
+        db.Integer,
+        db.ForeignKey('hiring_candidates.id', ondelete='CASCADE'),
+        nullable=False,
+        index=True,
+    )
+    doc_type = db.Column(db.String(40), nullable=False, index=True)
+    filename = db.Column(db.String(255))
+    file_path = db.Column(db.String(500))
+    cloud_url = db.Column(db.String(500))
+    mime_type = db.Column(db.String(100))
+    file_size = db.Column(db.Integer)
+    status = db.Column(db.String(20), default='missing', index=True)  # missing|uploaded|attested|verified
+    uploaded_at = db.Column(db.DateTime)
+    uploaded_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+
+    __table_args__ = (
+        db.UniqueConstraint('candidate_id', 'doc_type', name='uq_hiring_candidate_doc_type'),
+    )
+
+    candidate = db.relationship('HiringCandidate', back_populates='documents')
+    uploader = db.relationship('User', foreign_keys=[uploaded_by],
+                               backref=db.backref('hiring_documents_uploaded', lazy='dynamic'))
+
+    def has_file(self) -> bool:
+        return bool(self.cloud_url or self.file_path)
+
+    def file_url(self):
+        if self.id and self.has_file():
+            return f'/hr/api/hiring/documents/{self.id}/file'
+        return None
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'candidate_id': self.candidate_id,
+            'doc_type': self.doc_type,
+            'label': HIRING_DOC_LABELS.get(self.doc_type, self.doc_type),
+            'phase': HIRING_DOC_PHASE.get(self.doc_type, 1),
+            'filename': self.filename,
+            'mime_type': self.mime_type,
+            'file_size': self.file_size,
+            'status': self.status or 'missing',
+            'uploaded_at': self.uploaded_at.isoformat() if self.uploaded_at else None,
+            'uploaded_by': self.uploaded_by,
+            'uploader_name': (
+                self.uploader.full_name or self.uploader.username
+                if self.uploader else None
+            ),
+            'has_file': self.has_file(),
+            'is_complete': HiringCandidate.doc_is_complete(self),
+            'file_url': self.file_url(),
+            'allowed_extensions': sorted(HIRING_DOC_ALLOWED_EXT.get(self.doc_type, set())),
+        }
+
+    def __repr__(self):
+        return f'<HiringDocument {self.id} {self.doc_type} cand={self.candidate_id}>'

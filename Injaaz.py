@@ -387,6 +387,7 @@ def create_app():
                     ('access_submitted_forms', 'BOOLEAN DEFAULT FALSE'),
                     ('access_ticketing', 'BOOLEAN DEFAULT FALSE'),
                     ('access_qhsi', 'BOOLEAN DEFAULT FALSE'),
+                    ('is_ticket_reporter', 'BOOLEAN DEFAULT FALSE'),
                     ('last_login', 'TIMESTAMP'),
                     ('employment_start_date', 'DATE'),
                     ('job_designation', 'VARCHAR(160)'),
@@ -514,6 +515,42 @@ def create_app():
                             with db.engine.begin() as conn:
                                 conn.execute(text(f"ALTER TABLE dochub_documents ADD COLUMN {col_name} {col_def}"))
                             logger.info(f"✅ Added {col_name} to dochub_documents")
+                        except Exception as col_error:
+                            err = str(col_error).lower()
+                            if 'already exists' in err or 'duplicate' in err:
+                                logger.info(f"Column {col_name} already exists")
+                            else:
+                                logger.warning(f"Could not add {col_name}: {col_error}")
+
+            if 'hiring_candidates' in inspector.get_table_names():
+                hc_cols = [col['name'] for col in inspector.get_columns('hiring_candidates')]
+                if 'pipeline_status' not in hc_cols:
+                    try:
+                        with db.engine.begin() as conn:
+                            conn.execute(text(
+                                "ALTER TABLE hiring_candidates "
+                                "ADD COLUMN pipeline_status VARCHAR(40) "
+                                "DEFAULT 'interview_completed'"
+                            ))
+                        logger.info("✅ Added pipeline_status to hiring_candidates")
+                    except Exception as col_error:
+                        err = str(col_error).lower()
+                        if 'already exists' in err or 'duplicate' in err:
+                            logger.info("Column pipeline_status already exists")
+                        else:
+                            logger.warning(f"Could not add pipeline_status: {col_error}")
+                for col_name, col_sql in (
+                    ('replacement_name', 'VARCHAR(200)'),
+                    ('replacement_employee_id', 'VARCHAR(80)'),
+                    ('comments', 'TEXT'),
+                ):
+                    if col_name not in hc_cols:
+                        try:
+                            with db.engine.begin() as conn:
+                                conn.execute(text(
+                                    f"ALTER TABLE hiring_candidates ADD COLUMN {col_name} {col_sql}"
+                                ))
+                            logger.info(f"✅ Added {col_name} to hiring_candidates")
                         except Exception as col_error:
                             err = str(col_error).lower()
                             if 'already exists' in err or 'duplicate' in err:

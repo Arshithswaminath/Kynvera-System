@@ -39,14 +39,17 @@ services:
       # If you add a disk mount, set to e.g. /var/data/generated
       - key: GENERATED_DIR
         sync: false
-      # HTTPS email: use Brevo OR Mailjet on Render when SMTP is blocked (see docs/EMAIL_SMTP_OPTIONS.md).
-      - key: BREVO_API_KEY
-        sync: false
+      # HTTPS email: Mailjet on Render when SMTP is blocked (see docs/EMAIL_SMTP_OPTIONS.md).
       - key: MAILJET_API_KEY
         sync: false
       - key: MAILJET_SECRET_KEY
         sync: false
       - key: MAIL_DEFAULT_SENDER
+        sync: false
+      # Ticket email intake (Mailjet Parse API)
+      - key: TICKET_INBOUND_WEBHOOK_SECRET
+        sync: false
+      - key: TICKET_INTAKE_EMAIL
         sync: false
 
 databases:

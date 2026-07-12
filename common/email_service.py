@@ -2,8 +2,8 @@
 Email service for sending emails (password resets, notifications)
 
 SMTP works locally and on hosts that allow outbound 587. Render *free* web services block
-outbound SMTP (see Render changelog); use HTTPS instead: BREVO_API_KEY (Brevo) or Mailjet
-credentials (MAILJET_API_KEY + MAILJET_SECRET_KEY, or MAIL_* with in-v3.mailjet.com on Render).
+outbound SMTP (see Render changelog); use HTTPS instead: Mailjet credentials
+(MAILJET_API_KEY + MAILJET_SECRET_KEY, or MAIL_* with in-v3.mailjet.com on Render).
 """
 import base64
 import smtplib
@@ -20,7 +20,6 @@ import requests
 
 logger = logging.getLogger(__name__)
 
-BREVO_SEND_URL = "https://api.brevo.com/v3/smtp/email"
 MAILJET_SEND_URL = "https://api.mailjet.com/v3.1/send"
 
 
@@ -32,22 +31,6 @@ def _normalize_secret_env(value):
     return s or None
 
 
-def _brevo_api_key(app):
-    k = (
-        app.config.get("BREVO_API_KEY")
-        or os.environ.get("BREVO_API_KEY")
-        or os.environ.get("SENDINBLUE_API_KEY")
-    )
-    return _normalize_secret_env(k)
-
-
-def _looks_like_brevo_smtp_host(mail_server):
-    if not mail_server:
-        return False
-    m = mail_server.lower().strip()
-    return "brevo" in m or "sendinblue" in m
-
-
 def _looks_like_mailjet_smtp_host(mail_server):
     if not mail_server:
         return False
@@ -55,22 +38,23 @@ def _looks_like_mailjet_smtp_host(mail_server):
     return "mailjet" in m or "in-v3.mailjet" in m
 
 
-def _mailjet_credentials(app):
+def mailjet_credentials(app=None):
     """API key + secret key (same values as Mailjet SMTP username/password)."""
+    a = app if app is not None else current_app._get_current_object()
     k = _normalize_secret_env(
-        app.config.get("MAILJET_API_KEY") or os.environ.get("MAILJET_API_KEY")
+        a.config.get("MAILJET_API_KEY") or os.environ.get("MAILJET_API_KEY")
     )
     s = _normalize_secret_env(
-        app.config.get("MAILJET_SECRET_KEY") or os.environ.get("MAILJET_SECRET_KEY")
+        a.config.get("MAILJET_SECRET_KEY") or os.environ.get("MAILJET_SECRET_KEY")
     )
     if k and s:
         return (k, s)
-    if _looks_like_mailjet_smtp_host(app.config.get("MAIL_SERVER")):
+    if _looks_like_mailjet_smtp_host(a.config.get("MAIL_SERVER")):
         u = _normalize_secret_env(
-            app.config.get("MAIL_USERNAME") or os.environ.get("MAIL_USERNAME")
+            a.config.get("MAIL_USERNAME") or os.environ.get("MAIL_USERNAME")
         )
         p = _normalize_secret_env(
-            app.config.get("MAIL_PASSWORD") or os.environ.get("MAIL_PASSWORD")
+            a.config.get("MAIL_PASSWORD") or os.environ.get("MAIL_PASSWORD")
         )
         if u and p:
             return (u, p)
@@ -98,12 +82,9 @@ def _running_on_render():
 
 
 def is_email_configured(app=None):
-    """True if the app can send mail (SMTP or Brevo / Mailjet HTTP)."""
+    """True if the app can send mail (Mailjet HTTP or SMTP)."""
     a = app if app is not None else current_app._get_current_object()
-    key = _brevo_api_key(a)
-    if key:
-        return bool(a.config.get("MAIL_DEFAULT_SENDER") or a.config.get("MAIL_USERNAME"))
-    mj = _mailjet_credentials(a)
+    mj = mailjet_credentials(a)
     if mj:
         if _should_send_mailjet_via_rest(a, mj):
             return bool(a.config.get("MAIL_DEFAULT_SENDER") or a.config.get("MAIL_USERNAME"))
@@ -112,10 +93,6 @@ def is_email_configured(app=None):
             and (a.config.get("MAIL_DEFAULT_SENDER") or a.config.get("MAIL_USERNAME"))
         )
     ms = a.config.get("MAIL_SERVER")
-    # On Render, Brevo SMTP usually times out; require HTTPS API key instead of MAIL_SERVER alone.
-    if ms and _looks_like_brevo_smtp_host(ms) and not key and _running_on_render():
-        return False
-    # Mailjet host but no credentials → cannot send on Render.
     if ms and _looks_like_mailjet_smtp_host(ms) and not mj and _running_on_render():
         return False
     return bool(ms)
@@ -163,74 +140,6 @@ class SMTP_SSL_IPv4(SMTPIPv4, smtplib.SMTP_SSL):
     """SMTP_SSL over IPv4 only."""
 
     pass
-
-
-def _send_email_brevo_http(app, recipient, subject, body, html_body, cc, attachments, api_key):
-    """Send via Brevo REST API (HTTPS). Required on Render free tier where SMTP ports are blocked."""
-    mail_sender = app.config.get("MAIL_DEFAULT_SENDER") or app.config.get("MAIL_USERNAME")
-    if not mail_sender:
-        logger.error("Brevo: set MAIL_DEFAULT_SENDER to a sender verified in Brevo")
-        return False
-    to_list = recipient if isinstance(recipient, (list, tuple)) else [recipient]
-    payload = {
-        "sender": {"email": mail_sender.strip(), "name": "Injaaz"},
-        "to": [{"email": e.strip()} for e in to_list if e and str(e).strip()],
-        "subject": subject,
-        "textContent": (body or "").rstrip(),
-    }
-    if html_body:
-        payload["htmlContent"] = html_body
-    if cc:
-        cc_list = cc if isinstance(cc, (list, tuple)) else [cc]
-        payload["cc"] = [{"email": e.strip()} for e in cc_list if e and str(e).strip()]
-    att_out = []
-    for item in attachments or []:
-        try:
-            if isinstance(item, str):
-                path = item
-                if not os.path.exists(path):
-                    logger.warning("Brevo: attachment not found: %s", path)
-                    continue
-                with open(path, "rb") as fh:
-                    data = fh.read()
-                filename = os.path.basename(path)
-            elif isinstance(item, dict):
-                data = item.get("content")
-                filename = item.get("filename")
-                if not data or not filename:
-                    continue
-            else:
-                continue
-            att_out.append(
-                {"name": filename, "content": base64.b64encode(data).decode("ascii")}
-            )
-        except Exception:
-            logger.error("Brevo: failed to read attachment", exc_info=True)
-    if att_out:
-        payload["attachment"] = att_out
-    try:
-        r = requests.post(
-            BREVO_SEND_URL,
-            json=payload,
-            headers={"api-key": api_key, "Accept": "application/json"},
-            timeout=120,
-        )
-        if r.status_code in (200, 201):
-            logger.info("Email sent via Brevo API to %s", recipient)
-            return True
-        if r.status_code == 401:
-            logger.error(
-                "Brevo API 401 (key rejected): %s — Regenerate the key in Brevo (SMTP & API → API keys), "
-                "paste the full v3 key into Render env BREVO_API_KEY only (no quotes/spaces). "
-                "If you rotated the key after exposing it, the old value in Render must be updated.",
-                r.text[:500],
-            )
-        else:
-            logger.error("Brevo API HTTP %s: %s", r.status_code, r.text[:4000])
-        return False
-    except Exception as e:
-        logger.error("Brevo API request failed: %s", e, exc_info=True)
-        return False
 
 
 def _send_email_mailjet_http(
@@ -316,29 +225,15 @@ def _send_email_mailjet_http(
 
 def send_email(recipient, subject, body, html_body=None, cc=None, attachments=None):
     """
-    Send email using SMTP configuration from app config
-    
-    Args:
-        recipient: Email address or list of addresses
-        subject: Email subject
-        body: Plain text body
-        html_body: Optional HTML body
-        cc: Optional CC email(s)
-        attachments: Optional list of file paths or dicts with bytes
-    
+    Send email using Mailjet HTTPS API or SMTP configuration from app config.
+
     Returns:
         bool: True if sent successfully, False otherwise
     """
     try:
         app = current_app._get_current_object()
 
-        brevo_key = _brevo_api_key(app)
-        if brevo_key:
-            return _send_email_brevo_http(
-                app, recipient, subject, body, html_body, cc, attachments, brevo_key
-            )
-
-        mj = _mailjet_credentials(app)
+        mj = mailjet_credentials(app)
         if mj and _should_send_mailjet_via_rest(app, mj):
             return _send_email_mailjet_http(
                 app, recipient, subject, body, html_body, cc, attachments, mj[0], mj[1]
@@ -352,25 +247,17 @@ def send_email(recipient, subject, body, html_body=None, cc=None, attachments=No
         mail_sender = app.config.get('MAIL_DEFAULT_SENDER', mail_user or 'noreply@injaaz.com')
 
         if not mail_server or not mail_port:
-            logger.warning("Mail server/port not configured; cannot send email (or set BREVO_API_KEY)")
-            return False
-
-        if _looks_like_brevo_smtp_host(mail_server) and _running_on_render():
-            logger.error(
-                "Email: Outbound SMTP to %s is blocked or unreliable on Render. "
-                "Add BREVO_API_KEY (Brevo → SMTP & API → API keys, permission: Send emails) and "
-                "MAIL_DEFAULT_SENDER (verified sender). The app will use https://api.brevo.com instead of SMTP. "
-                "See docs/EMAIL_SMTP_OPTIONS.md",
-                mail_server,
+            logger.warning(
+                "Mail server/port not configured; cannot send email "
+                "(set MAILJET_API_KEY + MAILJET_SECRET_KEY + MAIL_DEFAULT_SENDER)"
             )
             return False
 
         if _looks_like_mailjet_smtp_host(mail_server) and _running_on_render() and not mj:
             logger.error(
-                "Email: Mailjet on Render needs API credentials. Set MAIL_USERNAME + MAIL_PASSWORD "
-                "(Mailjet API key + secret key) with MAIL_SERVER=in-v3.mailjet.com, or set "
-                "MAILJET_API_KEY + MAILJET_SECRET_KEY + MAIL_DEFAULT_SENDER. The app will use HTTPS. "
-                "See docs/EMAIL_SMTP_OPTIONS.md",
+                "Email: Mailjet on Render needs API credentials. Set MAILJET_API_KEY + "
+                "MAILJET_SECRET_KEY + MAIL_DEFAULT_SENDER (HTTPS), or MAIL_USERNAME + "
+                "MAIL_PASSWORD with MAIL_SERVER=in-v3.mailjet.com. See docs/EMAIL_SMTP_OPTIONS.md",
             )
             return False
 
@@ -381,7 +268,7 @@ def send_email(recipient, subject, body, html_body=None, cc=None, attachments=No
             msg['To'] = ', '.join(recipient)
         else:
             msg['To'] = recipient
-        
+
         if cc:
             if isinstance(cc, (list, tuple)):
                 msg['Cc'] = ', '.join(cc)
@@ -419,8 +306,7 @@ def send_email(recipient, subject, body, html_body=None, cc=None, attachments=No
                     msg.add_attachment(data, maintype=maintype, subtype=subtype, filename=filename)
             except Exception:
                 logger.error("Failed to attach file", exc_info=True)
-        
-        # Send email (IPv4 SMTP — see SMTPIPv4 docstring)
+
         if mail_use_tls:
             context = ssl.create_default_context()
             with SMTPIPv4(mail_server, mail_port) as server:
@@ -434,29 +320,19 @@ def send_email(recipient, subject, body, html_body=None, cc=None, attachments=No
                 if mail_user and mail_pass:
                     server.login(mail_user, mail_pass)
                 server.send_message(msg)
-        
-        logger.info(f"Email sent successfully to {recipient}")
+
+        logger.info("Email sent successfully to %s", recipient)
         return True
-        
+
     except Exception as e:
-        logger.error(f"Failed to send email: {str(e)}", exc_info=True)
+        logger.error("Failed to send email: %s", e, exc_info=True)
         return False
 
 
 def send_password_reset_email(user_email, username, temp_password):
-    """
-    Send password reset email with temporary password
-    
-    Args:
-        user_email: User's email address
-        username: Username
-        temp_password: Temporary password to send
-    
-    Returns:
-        bool: True if sent successfully
-    """
+    """Send password reset email with temporary password."""
     subject = "Your Injaaz Account Password Has Been Reset"
-    
+
     body = f"""
 Hello {username},
 
@@ -471,7 +347,7 @@ If you did not request this password reset, please contact support immediately.
 Best regards,
 Injaaz Team
 """
-    
+
     html_body = f"""
 <html>
 <body>
@@ -485,6 +361,5 @@ Injaaz Team
 </body>
 </html>
 """
-    
-    return send_email(user_email, subject, body, html_body)
 
+    return send_email(user_email, subject, body, html_body)

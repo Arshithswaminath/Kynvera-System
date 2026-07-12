@@ -1,5 +1,5 @@
 # Legacy stub kept for backwards compatibility. The production email pipeline
-# lives in common/email_service.py (Brevo / Mailjet / SMTP); this module just
+# lives in common/email_service.py (Mailjet / SMTP); this module just
 # logs and returns success so any old call sites do not raise.
 import logging
 

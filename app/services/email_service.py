@@ -20,7 +20,6 @@ def _minimal_mail_app():
         MAIL_PASSWORD=os.getenv("MAIL_PASSWORD"),
         MAIL_USE_TLS=os.getenv("MAIL_USE_TLS", "true").lower() == "true",
         MAIL_DEFAULT_SENDER=os.getenv("MAIL_DEFAULT_SENDER", "noreply@injaaz.com"),
-        BREVO_API_KEY=os.getenv("BREVO_API_KEY"),
         MAILJET_API_KEY=os.getenv("MAILJET_API_KEY"),
         MAILJET_SECRET_KEY=os.getenv("MAILJET_SECRET_KEY"),
     )
@@ -30,7 +29,7 @@ def _minimal_mail_app():
 def send_outlook_email(subject, body, attachments, recipient):
     """
     Send an email via the shared service in common/email_service.py
-    (Brevo/Mailjet HTTPS or SMTP, whichever is configured).
+    (Mailjet HTTPS or SMTP, whichever is configured).
     Return a tuple (status_bool, message).
     """
     try:

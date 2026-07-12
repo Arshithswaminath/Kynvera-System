@@ -551,6 +551,8 @@
         });
       }
     }
+    const reporterCb = document.getElementById('isTicketReporter');
+    if (reporterCb) reporterCb.checked = !!user.is_ticket_reporter;
 
     document.getElementById('profileDefaultComment').value = user.default_comment || '';
     profileSignatureDataUrl = user.default_signature || '';
@@ -831,6 +833,8 @@
           payload.access_submitted_forms = document.getElementById('accessSubmittedForms').checked;
           const tgx = document.getElementById('accessTicketing');
           payload.access_ticketing = !!(tgx && tgx.checked);
+          const reporterCb = document.getElementById('isTicketReporter');
+          payload.is_ticket_reporter = !!(reporterCb && reporterCb.checked);
         }
 
         try {
