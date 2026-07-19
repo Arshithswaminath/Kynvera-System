@@ -3,175 +3,49 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
-  
+
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
-<title>Properties — Procurement</title>
+<title>Properties — Store</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="/static/animations.css">
   <link rel="stylesheet" href="/static/css/dashboard.css">
   <link rel="stylesheet" href="/static/mobile_responsive.css">
+  <link rel="stylesheet" href="/static/css/store.css">
   <style>
-    *, *::before, *::after { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; box-sizing: border-box; }
-    :root {
-      --brand: #d21725; --brand-mid: #e8323f; --brand-light: #10b981;
-      --brand-pale: #f0fdf4; --bg: #f4f6f5;
-      --text: #0f172a; --muted: #64748b; --border: #e2e8f0;
-    }
-    body { background: var(--bg); min-height: 100vh; }
-
-    /* ── Banner ── */
-    .page-banner {
-      background: linear-gradient(135deg, #0a3d26, #d21725 55%, #e8323f);
-      padding: 2.5rem 2.5rem 2rem; position: relative; overflow: hidden;
-    }
-    .page-banner::before {
-      content: ''; position: absolute; inset: 0;
-      background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-    }
-    .page-banner::after {
-      content: ''; position: absolute; right: -5%; top: -30%;
-      width: 40%; height: 160%;
-      background: radial-gradient(circle, rgba(16,185,129,0.15) 0%, transparent 70%);
-    }
-    .banner-inner { position: relative; z-index: 1; display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
-    .back-link { display: inline-flex; align-items: center; gap: .4rem; color: rgba(255,255,255,.65); text-decoration: none; font-size: .82rem; font-weight: 500; margin-bottom: .6rem; transition: color .2s; }
-    .back-link:hover { color: #fff; }
-    .banner-title { font-size: 1.7rem; font-weight: 800; color: #fff; margin: 0; }
-    .banner-sub   { font-size: .85rem; color: rgba(255,255,255,.6); margin: .2rem 0 0; }
-    .btn-add-prop {
-      display: inline-flex; align-items: center; gap: .4rem;
-      background: #fff; color: var(--brand); border: none;
-      padding: .65rem 1.3rem; border-radius: 10px; font-size: .85rem; font-weight: 700;
-      cursor: pointer; transition: all .2s; box-shadow: 0 2px 8px rgba(0,0,0,.12); white-space: nowrap;
-    }
-    .btn-add-prop:hover { background: var(--brand-pale); transform: translateY(-1px); }
-    .btn-add-prop svg { width: 15px; height: 15px; stroke: var(--brand); }
-
-    /* ── Content wrapper ── */
-    .content { max-width: 1400px; margin: 2.5rem auto; padding: 0 2rem; }
-
-    /* ── Grid ── */
-    .props-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 1.5rem;
-    }
-
-    /* ── Property card ── */
-    .prop-card {
-      background: #fff; border-radius: 20px; overflow: hidden;
-      border: 1px solid var(--border); box-shadow: 0 2px 12px rgba(0,0,0,.06);
-      text-decoration: none; display: flex; flex-direction: column;
-      transition: all .28s;
-    }
-    .prop-card:hover { transform: translateY(-6px); box-shadow: 0 18px 44px rgba(0,0,0,.11); }
-
-    .prop-card-top {
-      padding: 1.75rem 1.5rem; position: relative; overflow: hidden;
-      display: flex; flex-direction: column;
-    }
-    .prop-card-top::after {
-      content: ''; position: absolute; right: -15%; bottom: -40%;
-      width: 60%; height: 60%; border-radius: 50%;
-      background: rgba(255,255,255,0.1); pointer-events: none;
-    }
-    .prop-card-badge {
-      display: inline-block; background: rgba(255,255,255,.18);
-      border: 1px solid rgba(255,255,255,.28); border-radius: 100px;
-      padding: .2rem .7rem; font-size: .67rem; font-weight: 700;
-      color: rgba(255,255,255,.9); text-transform: uppercase; letter-spacing: .07em;
-      margin-bottom: .9rem; align-self: flex-start;
-    }
-    .prop-icon-wrap {
-      width: 54px; height: 54px; border-radius: 14px;
-      background: rgba(255,255,255,.18); border: 1.5px solid rgba(255,255,255,.25);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 1.4rem; margin-bottom: 1rem;
-    }
-    .prop-name { font-size: 1.15rem; font-weight: 800; color: #fff; margin: 0; line-height: 1.2; }
-
-    .prop-card-body { padding: 1.25rem 1.5rem; }
-    .prop-stats { display: grid; grid-template-columns: repeat(3,1fr); gap: .75rem; }
-    .prop-stat { text-align: center; background: #f8fafc; border-radius: 10px; padding: .7rem .5rem; }
-    .prop-stat-val { font-size: 1.3rem; font-weight: 800; color: var(--text); line-height: 1; }
-    .prop-stat-lbl { font-size: .65rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-top: .2rem; }
-
-    .prop-card-foot {
-      padding: .9rem 1.5rem; border-top: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: space-between;
-      background: #fafcfb;
-    }
-    .prop-foot-note { font-size: .78rem; color: var(--muted); }
-    .prop-foot-btn {
-      display: inline-flex; align-items: center; gap: .35rem;
-      padding: .4rem .9rem; border-radius: 7px;
-      font-size: .78rem; font-weight: 700; color: white; transition: opacity .2s;
-    }
-    .prop-foot-btn:hover { opacity: .85; }
-    .prop-foot-btn svg { width: 13px; height: 13px; stroke: white; }
-
-    /* ── Add card ── */
-    .add-card {
-      background: #fff; border: 2px dashed #cbd5e1; border-radius: 20px;
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      padding: 3rem 2rem; cursor: pointer; min-height: 280px;
-      transition: all .28s; text-decoration: none;
-    }
-    .add-card:hover { border-color: var(--brand-light); background: var(--brand-pale); transform: translateY(-4px); }
-    .add-card-icon {
-      width: 64px; height: 64px; border-radius: 16px; background: #f1f5f9;
-      display: flex; align-items: center; justify-content: center; margin-bottom: 1.1rem;
-      transition: background .28s;
-    }
-    .add-card:hover .add-card-icon { background: rgba(16,185,129,.15); }
-    .add-card-icon svg { width: 28px; height: 28px; stroke: #94a3b8; transition: stroke .28s; }
-    .add-card:hover .add-card-icon svg { stroke: var(--brand); }
-    .add-card-label { font-size: .95rem; font-weight: 700; color: #64748b; transition: color .28s; }
-    .add-card:hover .add-card-label { color: var(--brand); }
-    .add-card-sub { font-size: .8rem; color: #94a3b8; margin-top: .3rem; transition: color .28s; }
-
-    /* ── Loading / empty ── */
-    .loading-state { text-align: center; padding: 5rem 2rem; color: var(--muted); }
-    .empty-state { text-align: center; padding: 5rem 2rem; }
-    .empty-state svg { width: 80px; height: 80px; stroke: #cbd5e1; margin-bottom: 1.25rem; }
-
-    /* ── Modal ── */
-    .proc-modal .modal-content {
-      border-radius: 20px; border: none; overflow: hidden;
-      box-shadow: 0 24px 64px rgba(0,0,0,.14);
-    }
-    .proc-modal .modal-header { background: linear-gradient(135deg,#d21725,#e8323f); color: white; border: none; padding: 1.5rem 2rem; }
-    .proc-modal .modal-body   { padding: 1.75rem 2rem; }
-    .proc-modal .modal-footer { border: none; padding: 0 2rem 1.75rem; }
-    .proc-modal .form-control, .proc-modal .form-select { border-radius: 10px; padding: .7rem 1rem; border-color: #d1d5db; }
-    .proc-modal .form-control:focus, .proc-modal .form-select:focus { border-color: var(--brand-light); box-shadow: 0 0 0 3px rgba(16,185,129,.12); }
-    .proc-modal .form-label { font-weight: 600; font-size: .85rem; color: #374151; }
+    .props-body { max-width: 1400px; margin: 2.25rem auto; padding: 0 2rem; }
+    @media (max-width: 768px) { .props-body { margin: 1.5rem auto; padding: 0 1rem; } }
+    .props-loading, .props-empty { text-align: center; padding: 5rem 2rem; color: var(--proc-muted); }
+    .props-empty svg { width: 80px; height: 80px; stroke: #cbd5e1; margin-bottom: 1.25rem; }
   </style>
 </head>
-<body>
+<body class="has-main-nav proc-subpage">
+  {% set active_page = 'store' %}
+  {% include 'partials/main_navbar.html' with context %}
 
-  <!-- Banner -->
-  <div class="page-banner">
-    <div class="banner-inner">
+  <!-- Hero -->
+  <header class="proc-subhero">
+    <div class="proc-subhero-inner">
       <div>
-        <a href="/procurement/" class="back-link">
+        <a href="/store/" class="back-link">
           <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-          Back to Procurement
+          Back to Store
         </a>
-        <div class="banner-title">Property Management</div>
-        <div class="banner-sub">Organize and track materials by site or location</div>
+        <h1 class="proc-subhero-title">Property Management</h1>
+        <p class="proc-subhero-sub">Organize and track materials by site or location</p>
       </div>
-      <button class="btn-add-prop" onclick="showAddPropertyModal()">
-        <svg fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
-        Add Property
-      </button>
+      <div class="proc-subhero-actions">
+        <button class="btn-proc btn-proc-light" onclick="showAddPropertyModal()">
+          <svg fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+          Add Property
+        </button>
+      </div>
     </div>
-  </div>
+  </header>
 
   <!-- Content -->
-  <div class="content">
+  <div class="props-body">
     <div id="propertiesContainer">
-      <div class="loading-state">
+      <div class="props-loading">
         <div class="spinner-border text-secondary mb-3"></div>
         <p>Loading properties…</p>
       </div>
@@ -183,7 +57,7 @@
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title" style="font-weight:700;font-size:1.05rem;">Add New Property</h5>
+          <h5 class="modal-title">Add New Property</h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
@@ -202,32 +76,20 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-light" data-bs-dismiss="modal" style="border-radius:10px;font-weight:600;">Cancel</button>
-          <button type="button" class="btn" style="background:linear-gradient(135deg,#d21725,#e8323f);color:white;border-radius:10px;font-weight:600;padding:.6rem 1.5rem;" onclick="addProperty()">Add Property</button>
+          <button type="button" class="btn-proc btn-proc-primary" onclick="addProperty()">Add Property</button>
         </div>
       </div>
     </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="{{ url_for('static', filename='js/store-common.js') }}"></script>
   <script>
     const token = localStorage.getItem('access_token');
 
-    const propGradients = [
-      'linear-gradient(135deg,#6366f1,#4f46e5)',
-      'linear-gradient(135deg,#ec4899,#be185d)',
-      'linear-gradient(135deg,#f59e0b,#d97706)',
-      'linear-gradient(135deg,#3b82f6,#1d4ed8)',
-      'linear-gradient(135deg,#8b5cf6,#6d28d9)',
-      'linear-gradient(135deg,#14b8a6,#0d9488)',
-      'linear-gradient(135deg,#f43f5e,#e11d48)',
-      'linear-gradient(135deg,#10b981,#047857)',
-    ];
-    const propBtnColors = ['#4f46e5','#be185d','#d97706','#1d4ed8','#6d28d9','#0d9488','#e11d48','#047857'];
-    const propIcons = ['🏢','🏠','🏗️','🏭','🏛️','🏨','🏪','🏬'];
-
     async function loadProperties() {
       try {
-        const response = await fetch('/procurement/api/properties', {
+        const response = await fetch('/store/api/properties', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await response.json();
@@ -240,69 +102,65 @@
             return b.materials_count - a.materials_count;
           });
 
-          let html = '<div class="props-grid">';
-          sorted.forEach((prop, idx) => {
+          let html = '<div class="proc-card-grid cols-auto">';
+          sorted.forEach((prop) => {
             const isUnassigned = prop.name === 'Unassigned';
-            const gradient = isUnassigned ? 'linear-gradient(135deg,#94a3b8,#64748b)' : propGradients[idx % propGradients.length];
-            const btnColor  = isUnassigned ? '#64748b' : propBtnColors[idx % propBtnColors.length];
-            const icon      = isUnassigned ? '📦' : propIcons[idx % propIcons.length];
+            const acc = ProcCommon.propertyAccent(prop.name);
+            const icon = ProcCommon.propertyIconSvg(prop.name);
             const valK = prop.total_value >= 1000
               ? (prop.total_value / 1000).toFixed(1) + 'K'
               : (prop.total_value || 0).toFixed(0);
 
             html += `
-              <a href="/procurement/property/${encodeURIComponent(prop.name)}" class="prop-card">
-                <div class="prop-card-top" style="background:${gradient}">
-                  <span class="prop-card-badge">${isUnassigned ? 'Unassigned' : 'Property'}</span>
-                  <div class="prop-icon-wrap">${icon}</div>
-                  <h3 class="prop-name">${esc(prop.name)}</h3>
+              <a href="/store/property/${encodeURIComponent(prop.name)}" class="proc-card" style="--proc-accent:${acc.accent};--proc-accent-dark:${acc.dark};">
+                <div class="proc-card-top" style="min-height:auto;padding-bottom:1.1rem;">
+                  <span class="proc-card-badge">${isUnassigned ? 'Unassigned' : 'Property'}</span>
+                  <div class="proc-card-icon">${icon}</div>
+                  <div class="proc-card-name">${ProcCommon.esc(prop.name)}</div>
                 </div>
-                <div class="prop-card-body">
-                  <div class="prop-stats">
-                    <div class="prop-stat">
-                      <div class="prop-stat-val">${prop.materials_count}</div>
-                      <div class="prop-stat-lbl">Materials</div>
+                <div class="proc-card-body">
+                  <div class="proc-card-stats">
+                    <div class="proc-card-stat">
+                      <div class="proc-card-stat-val">${prop.materials_count}</div>
+                      <div class="proc-card-stat-lbl">Materials</div>
                     </div>
-                    <div class="prop-stat">
-                      <div class="prop-stat-val">${Math.round(prop.total_quantity || 0).toLocaleString()}</div>
-                      <div class="prop-stat-lbl">Items</div>
+                    <div class="proc-card-stat">
+                      <div class="proc-card-stat-val">${Math.round(prop.total_quantity || 0).toLocaleString()}</div>
+                      <div class="proc-card-stat-lbl">Items</div>
                     </div>
-                    <div class="prop-stat">
-                      <div class="prop-stat-val">${valK}</div>
-                      <div class="prop-stat-lbl">AED Value</div>
+                    <div class="proc-card-stat">
+                      <div class="proc-card-stat-val">${valK}</div>
+                      <div class="proc-card-stat-lbl">AED Value</div>
                     </div>
                   </div>
                 </div>
-                <div class="prop-card-foot">
-                  <span class="prop-foot-note">${isUnassigned ? 'Needs assignment' : 'Click to view'}</span>
-                  <span class="prop-foot-btn" style="background:${btnColor}">
-                    View
-                    <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
-                  </span>
+                <div class="proc-card-bottom">
+                  <span class="proc-card-count" style="font-size:.78rem;">${isUnassigned ? 'Needs assignment' : 'Click to view'}</span>
+                  <div class="proc-card-arr">
+                    <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg>
+                  </div>
                 </div>
               </a>`;
           });
 
           html += `
-            <div class="add-card" onclick="showAddPropertyModal()">
-              <div class="add-card-icon"><svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg></div>
-              <div class="add-card-label">Add New Property</div>
-              <div class="add-card-sub">Create a new site or location</div>
+            <div class="proc-add-card" onclick="showAddPropertyModal()">
+              <div class="proc-add-card-icon"><svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg></div>
+              <div class="proc-add-card-label">Add New Property</div>
+              <div class="proc-add-card-sub">Create a new site or location</div>
             </div>
           </div>`;
 
           container.innerHTML = html;
         } else {
           container.innerHTML = `
-            <div class="empty-state">
+            <div class="props-empty">
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.3" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
               </svg>
               <h4 style="font-weight:700;margin-bottom:.5rem;">No Properties Yet</h4>
               <p class="text-muted mb-4">Create your first property to organize materials by location</p>
-              <button class="btn" style="background:linear-gradient(135deg,#d21725,#e8323f);color:white;border-radius:10px;font-weight:600;padding:.65rem 1.75rem;" onclick="showAddPropertyModal()">
-                Add First Property
-              </button>
+              <button class="btn-proc btn-proc-primary" onclick="showAddPropertyModal()">Add First Property</button>
             </div>`;
         }
       } catch (error) {
@@ -320,7 +178,7 @@
       const description = document.getElementById('propertyDescription').value.trim();
       if (!name) { alert('Property name is required'); return; }
       try {
-        const response = await fetch('/procurement/api/properties', {
+        const response = await fetch('/store/api/properties', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify({ name, address, description })
@@ -336,14 +194,7 @@
       } catch (error) { alert('Error: ' + error.message); }
     }
 
-    function esc(s) {
-      const d = document.createElement('div');
-      d.textContent = String(s || '');
-      return d.innerHTML;
-    }
-
     loadProperties();
   </script>
 </body>
 </html>
-

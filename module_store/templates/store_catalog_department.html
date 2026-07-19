@@ -1,558 +1,544 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
-  
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
-<title>{{ department }} Catalog — Injaaz Procurement</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
-  <style>
-    *, *::before, *::after { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; box-sizing: border-box; }
-    :root {
-      --dc: {{ meta.color }};
-      --dg: {{ meta.gradient }};
-      --bg: #f4f6f5; --surface: #fff;
-      --text: #0f172a; --muted: #64748b; --border: #e2e8f0;
-    }
-    body { background: var(--bg); min-height: 100vh; }
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover"
+    />
 
-    /* ── Navbar spacer (main_navbar is included) ── */
-    /* ── Hero banner ── */
-    .cat-hero {
-      background: var(--dg); padding: 7.5rem 0 3rem;
-      position: relative; overflow: hidden;
-    }
-    .cat-hero::before {
-      content: ''; position: absolute; inset: 0;
-      background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-    }
-    .cat-hero::after {
-      content: ''; position: absolute; right: -8%; top: -30%;
-      width: 50%; height: 160%;
-      background: radial-gradient(ellipse, rgba(255,255,255,0.12) 0%, transparent 68%);
-      pointer-events: none;
-    }
-    .cat-hero-inner { max-width: 1400px; margin: 0 auto; padding: 0 2.5rem; position: relative; z-index: 1; }
-    .back-btn {
-      display: inline-flex; align-items: center; gap:.4rem;
-      color: rgba(255,255,255,.7); text-decoration: none;
-      font-size: .82rem; font-weight: 500; margin-bottom: 1.5rem;
-      transition: color .2s;
-    }
-    .back-btn:hover { color: #fff; }
-    .cat-hero-tag {
-      display: inline-flex; align-items: center; gap:.5rem;
-      background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.22);
-      border-radius: 100px; padding: .28rem .9rem;
-      font-size: .7rem; font-weight: 700; color: rgba(255,255,255,.9);
-      letter-spacing: .08em; text-transform: uppercase; margin-bottom: .9rem;
-    }
-    .cat-hero-tag .dot { width: 6px; height: 6px; background: rgba(255,255,255,.9); border-radius: 50%; }
-    .cat-hero-title {
-      font-size: clamp(1.75rem, 4vw, 2.75rem); font-weight: 800;
-      color: #fff; line-height: 1.12; margin-bottom: .5rem; letter-spacing: -.02em;
-    }
-    .cat-hero-sub { font-size: .95rem; color: rgba(255,255,255,.68); max-width: 520px; }
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/design-tokens.css') }}"
+    />
+    <title>{{ department }} Catalog — Amaan Store</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='animations.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/dashboard.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='mobile_responsive.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/store.css') }}"
+    />
+    <style>
+      body.has-main-nav.proc-subpage {
+        background: var(--proc-bg);
+      }
+      .cat-body {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 2.5rem 2.5rem 4rem;
+      }
+      @media (max-width: 768px) {
+        .cat-body {
+          padding: 1.75rem 1rem 3rem;
+        }
+      }
+    </style>
+  </head>
+  <body
+    class="has-main-nav proc-subpage"
+    style="--proc-accent:{{ meta.color }};--proc-accent-dark:{{ meta.color }};"
+  >
+    {% set active_page = 'store' %} {% include 'partials/main_navbar.html' with
+    context %}
 
-    /* ── KPI strip ── */
-    .kpi-strip {
-      display: grid; grid-template-columns: repeat(4, 1fr);
-      gap: 1rem; max-width: 1400px; margin: -2.5rem auto 0;
-      padding: 0 2.5rem; position: relative; z-index: 10;
-    }
-    @media (max-width: 900px) { .kpi-strip { grid-template-columns: repeat(4, minmax(100px, 1fr)); gap: 0.6rem; padding: 0 1rem; } }
-    @media (max-width: 600px) { .kpi-strip { grid-template-columns: repeat(4, minmax(80px, 1fr)); gap: 0.5rem; padding: 0 0.75rem; overflow-x: auto; -webkit-overflow-scrolling: touch; } .kpi-card { padding: 0.9rem 0.75rem; min-width: 0; } .kpi-card-icon { width: 36px; height: 36px; font-size: 1rem; } .kpi-card-lbl { font-size: 0.6rem; } .kpi-card-val { font-size: 1.35rem; } }
-    .kpi-card {
-      background: #fff; border-radius: 16px; padding: 1.3rem 1.5rem;
-      border: 1px solid var(--border); box-shadow: 0 8px 28px rgba(0,0,0,.08);
-      display: flex; align-items: center; gap: .9rem;
-    }
-    .kpi-card-icon {
-      width: 46px; height: 46px; border-radius: 12px; flex-shrink: 0;
-      background: color-mix(in srgb, var(--dc) 12%, white);
-      display: flex; align-items: center; justify-content: center; font-size: 1.2rem;
-    }
-    .kpi-card-lbl { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
-    .kpi-card-val { font-size: 1.75rem; font-weight: 800; color: var(--dc); line-height: 1; }
-    .kpi-card-icon-aed .kpi-currency-aed {
-      font-size: 0.68rem; font-weight: 800; letter-spacing: 0.05em; color: var(--dc); line-height: 1;
-    }
-
-    /* ── Main body ── */
-    .cat-body { max-width: 1400px; margin: 0 auto; padding: 2.75rem 2.5rem 4rem; }
-    @media (max-width: 768px) { .cat-body { padding: 2rem 1rem 3rem; } }
-
-    /* ── Toolbar ── */
-    .cat-toolbar {
-      background: #fff; border: 1px solid var(--border); border-radius: 14px;
-      padding: 1rem 1.25rem; display: flex; align-items: center;
-      gap: .75rem; flex-wrap: wrap; margin-bottom: 1.25rem;
-      box-shadow: 0 2px 8px rgba(0,0,0,.04);
-    }
-    .cat-search-wrap { position: relative; flex: 1; min-width: 200px; max-width: 400px; }
-    .cat-search-wrap svg {
-      position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
-      width: 14px; height: 14px; stroke: #94a3b8; fill: none; stroke-width: 2;
-      stroke-linecap: round; stroke-linejoin: round; pointer-events: none;
-    }
-    .cat-search {
-      width: 100%; padding: .58rem .85rem .58rem 2.1rem;
-      border: 1.5px solid var(--border); border-radius: 9px; font-size: .875rem;
-      outline: none; transition: border-color .15s; background: #f8fafc;
-    }
-    .cat-search:focus {
-      border-color: var(--dc); background: #fff;
-      box-shadow: 0 0 0 3px color-mix(in srgb, var(--dc) 12%, transparent);
-    }
-    .cat-count-badge {
-      background: color-mix(in srgb, var(--dc) 10%, white);
-      color: var(--dc);
-      border: 1.5px solid color-mix(in srgb, var(--dc) 25%, white);
-      border-radius: 20px; padding: .28rem .85rem;
-      font-size: .78rem; font-weight: 700; white-space: nowrap;
-    }
-    .btn-export-csv {
-      display: inline-flex; align-items: center; gap:.4rem;
-      background: var(--dg); color: #fff; border: none;
-      border-radius: 9px; padding: .55rem 1.1rem;
-      font-size: .82rem; font-weight: 700; cursor: pointer; transition: opacity .2s;
-    }
-    .btn-export-csv:hover { opacity: .85; }
-    .btn-export-csv svg { width: 14px; height: 14px; stroke: white; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-
-    .btn-add-mat {
-      display: inline-flex; align-items: center; gap:.45rem;
-      background: #fff; color: var(--text); border: 1.5px solid var(--border);
-      border-radius: 9px; padding: .55rem 1.05rem;
-      font-size: .82rem; font-weight: 800; cursor: pointer;
-      transition: border-color .15s, box-shadow .15s, transform .15s;
-      white-space: nowrap;
-    }
-    .btn-add-mat:hover {
-      border-color: color-mix(in srgb, var(--dc) 55%, var(--border));
-      box-shadow: 0 8px 22px rgba(0,0,0,.06);
-      transform: translateY(-1px);
-    }
-    .btn-add-mat svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
-
-    .row-actions { text-align: right; white-space: nowrap; width: 80px; }
-    .btn-edit, .btn-del-row {
-      border: 1.5px solid var(--border);
-      background: #fff;
-      border-radius: 10px;
-      width: 34px; height: 34px;
-      display: inline-flex; align-items: center; justify-content: center;
-      cursor: pointer;
-      transition: border-color .15s, transform .12s, box-shadow .15s;
-    }
-    .btn-edit:hover {
-      border-color: color-mix(in srgb, var(--dc) 65%, var(--border));
-      box-shadow: 0 8px 20px rgba(0,0,0,.06);
-      transform: translateY(-1px);
-    }
-    .btn-del-row:hover {
-      border-color: #fca5a5; background: #fff5f5;
-      box-shadow: 0 8px 20px rgba(239,68,68,.10);
-      transform: translateY(-1px);
-    }
-    .btn-edit svg, .btn-del-row svg { width: 15px; height: 15px; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-    .btn-edit svg { stroke: #334155; }
-    .btn-del-row svg { stroke: #ef4444; }
-    /* Delete button inside modal footer */
-    .btn-modal-delete {
-      display: inline-flex; align-items: center; gap: .35rem;
-      background: #fff5f5; color: #dc2626;
-      border: 1.5px solid #fecaca; border-radius: 10px;
-      padding: .45rem .9rem; font-size: .82rem; font-weight: 700;
-      cursor: pointer; transition: background .15s, border-color .15s;
-      margin-right: auto;
-    }
-    .btn-modal-delete:hover { background: #fee2e2; border-color: #fca5a5; }
-    .btn-modal-delete svg { width: 14px; height: 14px; stroke: #dc2626; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-
-    .cat-modal .modal-content { border-radius: 18px; border: none; overflow: hidden; box-shadow: 0 24px 64px rgba(0,0,0,0.14); }
-    /* Open modal near the top (below fixed navbar) */
-    .cat-modal .modal-dialog { margin-top: 90px; }
-    @media (max-width: 768px) { .cat-modal .modal-dialog { margin-top: 72px; } }
-    .cat-modal .modal-header {
-      background: var(--dg);
-      color: white; border: none; padding: 1.25rem 1.5rem;
-    }
-    .cat-modal .modal-title { font-weight: 800; font-size: 1.05rem; }
-    .cat-modal .modal-body { padding: 1.25rem 1.5rem; }
-    .cat-modal .modal-footer { border: none; padding: 0 1.5rem 1.25rem; gap: .5rem; }
-    .cat-modal .form-label { font-weight: 700; font-size: .82rem; color: #334155; }
-    .cat-modal .form-control, .cat-modal .form-select { border-radius: 10px; padding: .7rem .95rem; border-color: #d1d5db; }
-    .cat-modal .form-control:focus, .cat-modal .form-select:focus {
-      border-color: var(--dc);
-      box-shadow: 0 0 0 3px color-mix(in srgb, var(--dc) 14%, transparent);
-    }
-    .btn-save {
-      background: var(--dg);
-      color: white;
-      border: none;
-      border-radius: 10px;
-      font-weight: 800;
-      padding: .65rem 1.25rem;
-    }
-    .btn-save:disabled { opacity: .6; }
-
-    /* ── Table ── */
-    .cat-table-card {
-      background: #fff; border-radius: 16px; border: 1px solid var(--border);
-      overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,.05);
-    }
-    .cat-table { width: 100%; border-collapse: collapse; }
-    .cat-table thead th {
-      background: #f8fafc; padding: .85rem 1.1rem;
-      font-size: .7rem; font-weight: 700; text-transform: uppercase;
-      letter-spacing: .07em; color: #64748b; border-bottom: 1.5px solid var(--border);
-      white-space: nowrap;
-    }
-    .cat-table tbody tr { border-bottom: 1px solid #f1f5f9; transition: background .12s; }
-    .cat-table tbody tr:last-child { border-bottom: none; }
-    .cat-table tbody tr:hover { background: color-mix(in srgb, var(--dc) 4%, white); }
-    .cat-table td { padding: .8rem 1.1rem; font-size: .875rem; color: var(--text); vertical-align: middle; }
-    .sno-cell  { color: #94a3b8; font-size: .75rem; font-weight: 600; width: 48px; }
-    .name-cell { font-weight: 600; color: var(--text); }
-    .tag {
-      display: inline-block; padding: .18rem .6rem; border-radius: 20px;
-      font-size: .7rem; font-weight: 700;
-    }
-    .brand-tag { background: #ede9fe; color: #5b21b6; }
-    .uom-tag   { background: #e0f2fe; color: #0369a1; }
-    .price-cell { font-weight: 700; color: var(--text); white-space: nowrap; }
-    .price-na   { color: #94a3b8; font-style: italic; }
-
-    /* ── Pagination ── */
-    .cat-pag {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: .85rem 1.1rem; border-top: 1px solid #f1f5f9; background: #fafafa;
-    }
-    .cat-pag-info { font-size: .78rem; color: var(--muted); }
-    .cat-pag-btns { display: flex; gap: .3rem; }
-    .cat-pag-btn {
-      padding: 4px 12px; border-radius: 8px; border: 1.5px solid var(--border);
-      background: #fff; font-size: .78rem; font-weight: 600; color: #475569;
-      cursor: pointer; transition: all .15s;
-    }
-    .cat-pag-btn:hover:not(:disabled) { border-color: var(--dc); color: var(--dc); }
-    .cat-pag-btn:disabled { opacity: .35; cursor: default; }
-    .cat-pag-btn.active { background: var(--dc); border-color: var(--dc); color: #fff; }
-
-    /* ── Empty / loading ── */
-    .cat-empty { text-align: center; padding: 4rem 1rem; color: var(--muted); }
-    .cat-empty svg { width: 52px; height: 52px; stroke: #cbd5e1; fill: none; stroke-width: 1.4; margin-bottom: .75rem; }
-    .skeleton-row td {
-      height: 44px;
-      background: linear-gradient(90deg,#f1f5f9 25%,#e2e8f0 50%,#f1f5f9 75%);
-      background-size: 200% 100%;
-      animation: shimmer 1.2s infinite;
-    }
-    @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
-  </style>
-</head>
-<body>
-  {% set active_page = 'procurement' %}
-  {% include 'partials/main_navbar.html' with context %}
-
-  <!-- Hero -->
-  <header class="cat-hero">
-    <div class="cat-hero-inner">
-      <a href="/procurement/" class="back-btn">
-        <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-        </svg>
-        Back to Procurement
-      </a>
-      <div class="cat-hero-tag"><span class="dot"></span> Department Catalog</div>
-      <h1 class="cat-hero-title">{{ department }} <br>Materials Catalog</h1>
-      <p class="cat-hero-sub">{{ meta.desc }}</p>
-    </div>
-  </header>
-
-  <!-- KPI Strip -->
-  <div class="kpi-strip">
-    <div class="kpi-card">
-      <div class="kpi-card-icon">📦</div>
-      <div><div class="kpi-card-lbl">Total Items</div><div class="kpi-card-val" id="kpiTotal">—</div></div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-card-icon">💰</div>
-      <div><div class="kpi-card-lbl">Items with Price</div><div class="kpi-card-val" id="kpiPriced">—</div></div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-card-icon">🏷️</div>
-      <div><div class="kpi-card-lbl">Brands</div><div class="kpi-card-val" id="kpiBrands">—</div></div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-card-icon kpi-card-icon-aed" aria-hidden="true"><span class="kpi-currency-aed">AED</span></div>
-      <div><div class="kpi-card-lbl">Total Value (AED)</div><div class="kpi-card-val" id="kpiValue">—</div></div>
-    </div>
-  </div>
-
-  <!-- Body -->
-  <div class="cat-body">
-
-    <!-- Toolbar -->
-    <div class="cat-toolbar">
-      <div class="cat-search-wrap">
-        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input class="cat-search" id="catSearch" type="text" placeholder="Search by name or brand…" autocomplete="off">
-      </div>
-      <span class="cat-count-badge" id="catBadge">Loading…</span>
-      <button class="btn-add-mat" onclick="openAddModal()">
-        <svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
-        Add Material
-      </button>
-      <button class="btn-export-csv" onclick="exportCSV()">
-        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        Export CSV
-      </button>
-    </div>
-
-    <!-- Table -->
-    <div class="cat-table-card">
-      <div class="table-responsive">
-        <table class="cat-table">
-          <thead>
-            <tr>
-              <th style="width:48px">#</th>
-              <th>Item Name</th>
-              <th>Brand</th>
-              <th>UOM</th>
-              <th style="text-align:right">Unit Price (AED)</th>
-              <th class="row-actions">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="catTableBody">
-            {% for _ in range(8) %}
-            <tr class="skeleton-row"><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-      <div class="cat-pag" id="catPag" style="display:none">
-        <span class="cat-pag-info" id="paginationInfo">–</span>
-        <div class="cat-pag-btns" id="pageButtons"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Add/Edit Modal -->
-  <div class="modal fade cat-modal" id="catalogMaterialModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header">
-          <div>
-            <div style="font-size:.72rem;opacity:.85;font-weight:800;letter-spacing:.08em;text-transform:uppercase;">{{ department }} catalog</div>
-            <h5 class="modal-title" id="catalogMaterialModalTitle">Add Material</h5>
+    <!-- Hero -->
+    <header class="proc-subhero" style="background:{{ meta.gradient }};">
+      <div class="proc-subhero-inner">
+        <div>
+          <a href="/store/" class="back-link">
+            <svg
+              width="15"
+              height="15"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M15 19l-7-7 7-7"
+              />
+            </svg>
+            Back to Store
+          </a>
+          <div class="proc-subhero-tag">
+            <span class="dot"></span> Department Catalog
           </div>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          <h1 class="proc-subhero-title">{{ department }} Materials Catalog</h1>
+          <p class="proc-subhero-sub">{{ meta.desc }}</p>
         </div>
-        <div class="modal-body">
-          <div class="mb-3">
-            <label class="form-label">Item Name *</label>
-            <input type="text" class="form-control" id="cmName" placeholder="e.g., Copper Pipe 1/2 inch">
-          </div>
-          <div class="row g-3">
-            <div class="col-md-6">
-              <label class="form-label">Brand</label>
-              <input type="text" class="form-control" id="cmBrand" placeholder="Optional">
+      </div>
+    </header>
+
+    <!-- KPI Strip -->
+    <div class="proc-kpi-strip proc-kpi-float">
+      <div class="proc-kpi-pill k-accent">
+        <div class="proc-kpi-icon">
+          <svg
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="1.8"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="m20.25 7.5-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z"
+            />
+          </svg>
+        </div>
+        <div class="proc-kpi-body">
+          <div class="proc-kpi-lbl">Total Items</div>
+          <div class="proc-kpi-val" id="kpiTotal">—</div>
+        </div>
+      </div>
+      <div class="proc-kpi-pill k-accent">
+        <div class="proc-kpi-icon">
+          <svg
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="1.8"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-1.5"
+            />
+          </svg>
+        </div>
+        <div class="proc-kpi-body">
+          <div class="proc-kpi-lbl">Items with Price</div>
+          <div class="proc-kpi-val" id="kpiPriced">—</div>
+        </div>
+      </div>
+      <div class="proc-kpi-pill k-accent">
+        <div class="proc-kpi-icon">
+          <svg
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="1.8"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 0 0 5.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 0 0 9.568 3Z"
+            />
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M6 6h.008v.008H6V6Z"
+            />
+          </svg>
+        </div>
+        <div class="proc-kpi-body">
+          <div class="proc-kpi-lbl">Brands</div>
+          <div class="proc-kpi-val" id="kpiBrands">—</div>
+        </div>
+      </div>
+      <div class="proc-kpi-pill k-accent">
+        <div class="proc-kpi-icon proc-kpi-icon-aed" aria-hidden="true">
+          <span class="proc-kpi-currency-aed">AED</span>
+        </div>
+        <div class="proc-kpi-body">
+          <div class="proc-kpi-lbl">Total Value (AED)</div>
+          <div class="proc-kpi-val" id="kpiValue">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Body -->
+    <div class="cat-body">
+      <!-- Toolbar -->
+      <div class="proc-toolbar">
+        <div class="proc-search-wrap">
+          <svg viewBox="0 0 24 24">
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+          <input
+            class="proc-search"
+            id="catSearch"
+            type="text"
+            placeholder="Search by name or brand…"
+            autocomplete="off"
+          />
+        </div>
+        <span class="proc-count-badge" id="catBadge">Loading…</span>
+        <button class="btn-proc btn-proc-outline" onclick="openAddModal()">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke-width="2.2"
+            stroke="currentColor"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14" />
+          </svg>
+          Add Material
+        </button>
+        <button class="btn-proc btn-proc-accent" onclick="exportCSV()">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke-width="2"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"
+            />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
+          Export CSV
+        </button>
+      </div>
+
+      <!-- Table -->
+      <div class="proc-table-card">
+        <div class="table-responsive">
+          <table class="proc-table proc-table-responsive-cards">
+            <thead>
+              <tr>
+                <th style="width: 48px">#</th>
+                <th>Item Name</th>
+                <th>Brand</th>
+                <th>UOM</th>
+                <th style="text-align: right">Unit Price (AED)</th>
+                <th class="proc-row-actions">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="catTableBody">
+              {% for _ in range(8) %}
+              <tr class="proc-skeleton-row">
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="proc-pag" id="catPag" style="display: none">
+          <span class="proc-pag-info" id="paginationInfo">–</span>
+          <div class="proc-pag-btns" id="pageButtons"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add/Edit Modal -->
+    <div
+      class="modal fade proc-modal"
+      id="catalogMaterialModal"
+      tabindex="-1"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <div>
+              <div
+                style="
+                  font-size: 0.72rem;
+                  opacity: 0.85;
+                  font-weight: 800;
+                  letter-spacing: 0.08em;
+                "
+              >
+                {{ department }} catalog
+              </div>
+              <h5 class="modal-title" id="catalogMaterialModalTitle">
+                Add Material
+              </h5>
             </div>
-            <div class="col-md-6">
-              <label class="form-label">UOM</label>
-              <select class="form-select" id="cmUom">
-                <option value="PCS">PCS</option>
-                <option value="NOS">NOS</option>
-                <option value="MTR">MTR</option>
-                <option value="ROLL">ROLL</option>
-                <option value="SET">SET</option>
-                <option value="BOX">BOX</option>
-                <option value="LTR">LTR</option>
-                <option value="KG">KG</option>
-              </select>
+            <button
+              type="button"
+              class="btn-close btn-close-white"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label">Item Name *</label>
+              <input
+                type="text"
+                class="form-control"
+                id="cmName"
+                placeholder="e.g., Copper Pipe 1/2 inch"
+              />
             </div>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label">Brand</label>
+                <input
+                  type="text"
+                  class="form-control"
+                  id="cmBrand"
+                  placeholder="Optional"
+                />
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">UOM</label>
+                <select class="form-select" id="cmUom">
+                  <option value="PCS">PCS</option>
+                  <option value="NOS">NOS</option>
+                  <option value="MTR">MTR</option>
+                  <option value="ROLL">ROLL</option>
+                  <option value="SET">SET</option>
+                  <option value="BOX">BOX</option>
+                  <option value="LTR">LTR</option>
+                  <option value="KG">KG</option>
+                </select>
+              </div>
+            </div>
+            <div class="mb-3 mt-3">
+              <label class="form-label">Unit Price (AED)</label>
+              <input
+                type="number"
+                class="form-control"
+                id="cmPrice"
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+              />
+            </div>
+            <div
+              id="cmError"
+              style="
+                display: none;
+                margin-top: 0.5rem;
+                color: #b91c1c;
+                font-weight: 600;
+                font-size: 0.85rem;
+              "
+            ></div>
           </div>
-          <div class="mb-3 mt-3">
-            <label class="form-label">Unit Price (AED)</label>
-            <input type="number" class="form-control" id="cmPrice" min="0" step="0.01" placeholder="0.00">
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn-proc btn-proc-danger"
+              id="cmDeleteBtn"
+              style="display: none"
+              onclick="deleteCatalogMaterial()"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke-width="2"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"
+                />
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M10 11v6M14 11v6"
+                />
+              </svg>
+              Delete
+            </button>
+            <button
+              type="button"
+              class="btn btn-light"
+              data-bs-dismiss="modal"
+              style="border-radius: 10px; font-weight: 700; margin-left: auto"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              class="btn-proc btn-proc-accent"
+              id="cmSaveBtn"
+              onclick="saveCatalogMaterial()"
+            >
+              Save
+            </button>
           </div>
-          <div id="cmError" style="display:none;margin-top:.5rem;color:#b91c1c;font-weight:600;font-size:.85rem;"></div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn-modal-delete" id="cmDeleteBtn" style="display:none" onclick="deleteCatalogMaterial()">
-            <svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
-            Delete
-          </button>
-          <button type="button" class="btn btn-light" data-bs-dismiss="modal" style="border-radius:10px;font-weight:700;">Cancel</button>
-          <button type="button" class="btn-save" id="cmSaveBtn" onclick="saveCatalogMaterial()">Save</button>
         </div>
       </div>
     </div>
-  </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="{{ url_for('static', filename='api-client.js') }}"></script>
-  <script>
-    const TOKEN     = localStorage.getItem('access_token');
-    const DEPT      = {{ department | tojson }};
-    const PAGE_SIZE = 50;
-    let allItems  = [];
-    let filtered  = [];
-    let currentPage = 1;
-    let editingId = null;
-    let cmModal = null;
-    let loadReqSeq = 0;
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='api-client.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/store-common.js') }}"></script>
+    <script>
+      const TOKEN = localStorage.getItem('access_token');
+      const DEPT = {{ department | tojson }};
+      const PAGE_SIZE = 50;
+      let allItems = [];
+      let filtered = [];
+      let currentPage = 1;
+      let editingId = null;
+      let cmModal = null;
+      let loadReqSeq = 0;
 
-    async function loadCatalog(forceFresh = false) {
+      async function loadCatalog(forceFresh = false) {
       const reqId = ++loadReqSeq;
       try {
-        const stamp = forceFresh ? `&_ts=${Date.now()}` : '';
-        const res = await fetch(`/procurement/api/catalog/materials?department=${encodeURIComponent(DEPT)}${stamp}`, {
-          cache: 'no-store',
-          headers: { 'Authorization': `Bearer ${TOKEN}` }
-        });
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const data = await res.json();
-        if (reqId !== loadReqSeq) return;
-        allItems = (data.materials || {})[DEPT] || [];
-        filtered = allItems;
-        updateKPIs();
-        renderTable();
-        updateBadge();
+      const stamp = forceFresh ? `&_ts=${Date.now()}` : '';
+      const res = await fetch(`/store/api/catalog/materials?department=${encodeURIComponent(DEPT)}${stamp}`, {
+      cache: 'no-store',
+      headers: { 'Authorization': `Bearer ${TOKEN}` }
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      if (reqId !== loadReqSeq) return;
+      allItems = (data.materials || {})[DEPT] || [];
+      filtered = allItems;
+      updateKPIs();
+      renderTable();
+      updateBadge();
       } catch(e) {
-        document.getElementById('catTableBody').innerHTML = `
-          <tr><td colspan="6"><div class="cat-empty">
-            <svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-            <div style="font-weight:600;color:#475569">Failed to load catalog</div>
-            <div style="font-size:.8rem">${e.message}</div>
-          </div></td></tr>`;
-        document.getElementById('catBadge').textContent = 'Error';
+      document.getElementById('catTableBody').innerHTML = `
+      <tr><td colspan="6"><div class="proc-empty">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <div class="proc-empty-title">Failed to load catalog</div>
+      <div class="proc-empty-sub">${e.message}</div>
+      </div></td></tr>`;
+      document.getElementById('catBadge').textContent = 'Error';
       }
-    }
+      }
 
-    function updateKPIs() {
-      document.getElementById('kpiTotal').textContent  = allItems.length;
+      function updateKPIs() {
+      document.getElementById('kpiTotal').textContent = allItems.length;
       document.getElementById('kpiPriced').textContent = allItems.filter(i => i.unit_price > 0).length;
       const brands = new Set(allItems.map(i => i.brand).filter(Boolean));
       document.getElementById('kpiBrands').textContent = brands.size;
       const totalValue = allItems.reduce((sum, i) => sum + (parseFloat(i.unit_price) || 0), 0);
-      document.getElementById('kpiValue').textContent = totalValue.toLocaleString('en-AE', {
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0
-      });
-    }
+      document.getElementById('kpiValue').textContent = ProcCommon.formatAED(totalValue);
+      }
 
-    function updateBadge() {
+      function updateBadge() {
       document.getElementById('catBadge').textContent = filtered.length + ' item' + (filtered.length !== 1 ? 's' : '');
-    }
+      }
 
-    function renderTable() {
+      function renderTable() {
       const tbody = document.getElementById('catTableBody');
       const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
       currentPage = Math.min(currentPage, totalPages);
       const start = (currentPage - 1) * PAGE_SIZE;
-      const page  = filtered.slice(start, start + PAGE_SIZE);
+      const page = filtered.slice(start, start + PAGE_SIZE);
 
       if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6"><div class="cat-empty">
-          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <div style="font-weight:600;color:#475569">No items match your search</div>
-          <div style="font-size:.8rem">Try a different keyword</div>
-        </div></td></tr>`;
-        document.getElementById('catPag').style.display = 'none';
-        return;
+      tbody.innerHTML = `<tr><td colspan="6"><div class="proc-empty">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <div class="proc-empty-title">No items match your search</div>
+      <div class="proc-empty-sub">Try a different keyword</div>
+      </div></td></tr>`;
+      document.getElementById('catPag').style.display = 'none';
+      return;
       }
 
       tbody.innerHTML = page.map((item, idx) => {
-        const n = start + idx + 1;
-        const price = item.unit_price > 0
-          ? `<span class="price-cell">AED ${parseFloat(item.unit_price).toFixed(2)}</span>`
-          : `<span class="price-na">—</span>`;
-        return `<tr>
-          <td class="sno-cell">${n}</td>
-          <td class="name-cell">${esc(item.name)}</td>
-          <td>${item.brand ? `<span class="tag brand-tag">${esc(item.brand)}</span>` : '<span class="price-na">—</span>'}</td>
-          <td>${item.uom  ? `<span class="tag uom-tag">${esc(item.uom)}</span>`   : '—'}</td>
-          <td style="text-align:right">${price}</td>
-          <td class="row-actions">
-            <button
-              class="btn-edit js-edit"
-              type="button"
-              title="Edit"
-              data-id="${esc(item.id)}"
-              data-name="${esc(item.name)}"
-              data-brand="${esc(item.brand || '')}"
-              data-uom="${esc(item.uom || 'PCS')}"
-              data-unit-price="${esc(item.unit_price || 0)}">
-              <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
-            </button>
-            <button
-              class="btn-del-row js-delete"
-              type="button"
-              title="Delete"
-              data-id="${esc(item.id)}"
-              data-name="${esc(item.name)}">
-              <svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
-            </button>
-          </td>
-        </tr>`;
+      const n = start + idx + 1;
+      const esc = ProcCommon.esc;
+      const price = item.unit_price > 0
+      ? `<span class="proc-price">AED ${parseFloat(item.unit_price).toFixed(2)}</span>`
+      : `<span class="proc-price-na">—</span>`;
+      return `<tr>
+      <td class="proc-sno" data-label="#">${n}</td>
+      <td class="proc-mat-name" data-label="Item">${esc(item.name)}</td>
+      <td data-label="Brand">${item.brand ? `<span class="proc-tag tag-brand">${esc(item.brand)}</span>` : '<span class="proc-price-na">—</span>'}</td>
+      <td data-label="UOM">${item.uom ? `<span class="proc-tag tag-uom">${esc(item.uom)}</span>` : '—'}</td>
+      <td data-label="Price" style="text-align:right">${price}</td>
+      <td class="proc-row-actions" data-label="">
+      <button
+      class="icon-btn-proc js-edit"
+      type="button"
+      title="Edit"
+      data-id="${esc(item.id)}"
+      data-name="${esc(item.name)}"
+      data-brand="${esc(item.brand || '')}"
+      data-uom="${esc(item.uom || 'PCS')}"
+      data-unit-price="${esc(item.unit_price || 0)}">
+      <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+      </button>
+      <button
+      class="icon-btn-proc danger js-delete"
+      type="button"
+      title="Delete"
+      data-id="${esc(item.id)}"
+      data-name="${esc(item.name)}">
+      <svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+      </button>
+      </td>
+      </tr>`;
       }).join('');
 
       const pag = document.getElementById('catPag');
       pag.style.display = filtered.length > PAGE_SIZE ? 'flex' : 'none';
       document.getElementById('paginationInfo').textContent =
-        `Showing ${start + 1}–${Math.min(start + PAGE_SIZE, filtered.length)} of ${filtered.length}`;
+      `Showing ${start + 1}–${Math.min(start + PAGE_SIZE, filtered.length)} of ${filtered.length}`;
       renderPageButtons(totalPages);
-    }
+      }
 
-    function renderPageButtons(totalPages) {
+      function renderPageButtons(totalPages) {
       const container = document.getElementById('pageButtons');
-      let html = `<button class="cat-pag-btn" onclick="goPage(${currentPage-1})" ${currentPage===1?'disabled':''}>‹ Prev</button>`;
+      let html = `<button class="proc-pag-btn" onclick="goPage(${currentPage-1})" ${currentPage===1?'disabled':''}>‹ Prev</button>`;
       const pages = [];
       for (let i = 1; i <= totalPages; i++) {
-        if (i === 1 || i === totalPages || Math.abs(i - currentPage) <= 2) pages.push(i);
-        else if (pages[pages.length-1] !== '…') pages.push('…');
+      if (i === 1 || i === totalPages || Math.abs(i - currentPage) <= 2) pages.push(i);
+      else if (pages[pages.length-1] !== '…') pages.push('…');
       }
       pages.forEach(p => {
-        if (p === '…') html += `<span style="padding:4px 6px;color:#94a3b8">…</span>`;
-        else html += `<button class="cat-pag-btn${p===currentPage?' active':''}" onclick="goPage(${p})">${p}</button>`;
+      if (p === '…') html += `<span style="padding:4px 6px;color:#94a3b8">…</span>`;
+      else html += `<button class="proc-pag-btn${p===currentPage?' active':''}" onclick="goPage(${p})">${p}</button>`;
       });
-      html += `<button class="cat-pag-btn" onclick="goPage(${currentPage+1})" ${currentPage===totalPages?'disabled':''}>Next ›</button>`;
+      html += `<button class="proc-pag-btn" onclick="goPage(${currentPage+1})" ${currentPage===totalPages?'disabled':''}>Next ›</button>`;
       container.innerHTML = html;
-    }
+      }
 
-    function goPage(p) {
+      function goPage(p) {
       const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
       if (p < 1 || p > totalPages) return;
       currentPage = p;
       renderTable();
       window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+      }
 
-    document.getElementById('catSearch').addEventListener('input', function() {
+      document.getElementById('catSearch').addEventListener('input', function() {
       const q = this.value.trim().toLowerCase();
       filtered = q
-        ? allItems.filter(i => i.name.toLowerCase().includes(q) || (i.brand || '').toLowerCase().includes(q))
-        : allItems;
+      ? allItems.filter(i => i.name.toLowerCase().includes(q) || (i.brand || '').toLowerCase().includes(q))
+      : allItems;
       currentPage = 1;
       renderTable();
       updateBadge();
-    });
+      });
 
-    function exportCSV() {
+      function exportCSV() {
       const headers = ['#', 'Item Name', 'Brand', 'UOM', 'Unit Price (AED)'];
       const rows = filtered.map((item, i) => [
-        i + 1,
-        `"${(item.name || '').replace(/"/g, '""')}"`,
-        `"${(item.brand || '').replace(/"/g, '""')}"`,
-        item.uom || '',
-        item.unit_price > 0 ? parseFloat(item.unit_price).toFixed(2) : ''
+      i + 1,
+      `"${(item.name || '').replace(/"/g, '""')}"`,
+      `"${(item.brand || '').replace(/"/g, '""')}"`,
+      item.uom || '',
+      item.unit_price > 0 ? parseFloat(item.unit_price).toFixed(2) : ''
       ]);
       const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -560,27 +546,21 @@
       a.href = URL.createObjectURL(blob);
       a.download = `${DEPT}_materials_catalog.csv`;
       a.click();
-    }
+      }
 
-    function esc(s) {
-      const d = document.createElement('div');
-      d.textContent = String(s || '');
-      return d.innerHTML;
-    }
-
-    function ensureModal() {
+      function ensureModal() {
       if (!cmModal) cmModal = new bootstrap.Modal(document.getElementById('catalogMaterialModal'));
       return cmModal;
-    }
+      }
 
-    function setModalError(msg) {
+      function setModalError(msg) {
       const el = document.getElementById('cmError');
       if (!msg) { el.style.display = 'none'; el.textContent = ''; return; }
       el.style.display = 'block';
       el.textContent = msg;
-    }
+      }
 
-    function openAddModal() {
+      function openAddModal() {
       editingId = null;
       document.getElementById('catalogMaterialModalTitle').textContent = 'Add Material';
       document.getElementById('cmName').value = '';
@@ -591,9 +571,9 @@
       setModalError('');
       ensureModal().show();
       setTimeout(() => document.getElementById('cmName').focus(), 150);
-    }
+      }
 
-    function openEditModal(id, name, brand, uom, unitPrice) {
+      function openEditModal(id, name, brand, uom, unitPrice) {
       editingId = id;
       document.getElementById('catalogMaterialModalTitle').textContent = 'Edit Material';
       document.getElementById('cmName').value = name || '';
@@ -604,58 +584,58 @@
       setModalError('');
       ensureModal().show();
       setTimeout(() => document.getElementById('cmName').focus(), 150);
-    }
+      }
 
-    document.getElementById('catTableBody').addEventListener('click', function(e) {
+      document.getElementById('catTableBody').addEventListener('click', function(e) {
       const editBtn = e.target.closest('.js-edit');
       if (editBtn) {
-        openEditModal(
-          editBtn.dataset.id,
-          editBtn.dataset.name,
-          editBtn.dataset.brand,
-          editBtn.dataset.uom,
-          editBtn.dataset.unitPrice
-        );
-        return;
+      openEditModal(
+      editBtn.dataset.id,
+      editBtn.dataset.name,
+      editBtn.dataset.brand,
+      editBtn.dataset.uom,
+      editBtn.dataset.unitPrice
+      );
+      return;
       }
       const delBtn = e.target.closest('.js-delete');
       if (delBtn) {
-        confirmDeleteMaterial(delBtn.dataset.id, delBtn.dataset.name);
+      confirmDeleteMaterial(delBtn.dataset.id, delBtn.dataset.name);
       }
-    });
+      });
 
-    function confirmDeleteMaterial(id, name) {
+      function confirmDeleteMaterial(id, name) {
       if (!confirm(`Delete "${name}"?\n\nThis cannot be undone.`)) return;
       doDeleteMaterial(id);
-    }
+      }
 
-    async function deleteCatalogMaterial() {
+      async function deleteCatalogMaterial() {
       if (!editingId) return;
       const name = document.getElementById('cmName').value.trim() || 'this item';
       if (!confirm(`Delete "${name}"?\n\nThis cannot be undone.`)) return;
       ensureModal().hide();
       doDeleteMaterial(editingId);
-    }
-
-    async function doDeleteMaterial(id) {
-      try {
-        const res = await fetch(`/procurement/api/catalog/materials/${encodeURIComponent(id)}`, {
-          method: 'DELETE',
-          headers: { 'Authorization': `Bearer ${TOKEN}` }
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok || data.success === false) throw new Error(data.error || `HTTP ${res.status}`);
-        allItems = allItems.filter(i => i.id !== id);
-        filtered = filtered.filter(i => i.id !== id);
-        renderTable();
-        document.getElementById('kpiTotal').textContent  = allItems.length;
-        document.getElementById('kpiPriced').textContent = allItems.filter(i => i.unit_price > 0).length;
-      } catch (err) {
-        alert('Delete failed: ' + err.message);
       }
-    }
 
-    async function saveCatalogMaterial() {
+      async function doDeleteMaterial(id) {
+      try {
+      const res = await fetch(`/store/api/catalog/materials/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${TOKEN}` }
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.success === false) throw new Error(data.error || `HTTP ${res.status}`);
+      allItems = allItems.filter(i => i.id !== id);
+      filtered = filtered.filter(i => i.id !== id);
+      renderTable();
+      document.getElementById('kpiTotal').textContent = allItems.length;
+      document.getElementById('kpiPriced').textContent = allItems.filter(i => i.unit_price > 0).length;
+      } catch (err) {
+      alert('Delete failed: ' + err.message);
+      }
+      }
+
+      async function saveCatalogMaterial() {
       const btn = document.getElementById('cmSaveBtn');
       btn.disabled = true;
       setModalError('');
@@ -666,66 +646,66 @@
       const unit_price = document.getElementById('cmPrice').value.trim();
 
       if (!material_name) {
-        setModalError('Item name is required.');
-        btn.disabled = false;
-        return;
+      setModalError('Item name is required.');
+      btn.disabled = false;
+      return;
       }
 
       const payload = {
-        department: DEPT,
-        material_name,
-        brand,
-        uom,
-        unit_price: unit_price === '' ? 0 : Number(unit_price),
+      department: DEPT,
+      material_name,
+      brand,
+      uom,
+      unit_price: unit_price === '' ? 0 : Number(unit_price),
       };
 
       try {
-        const url = editingId
-          ? `/procurement/api/catalog/materials/${encodeURIComponent(editingId)}`
-          : `/procurement/api/catalog/materials`;
-        const method = editingId ? 'PUT' : 'POST';
-        const res = await fetch(url, {
-          method,
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${TOKEN}`
-          },
-          body: JSON.stringify(payload)
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok || data.success === false) {
-          throw new Error(data.error || `HTTP ${res.status}`);
-        }
-        if (data.material && data.material.id) {
-          const updated = {
-            id: data.material.id,
-            name: data.material.name || material_name,
-            brand: data.material.brand || '',
-            uom: data.material.uom || uom,
-            unit_price: Number(data.material.unit_price || 0),
-          };
-          const idx = allItems.findIndex(i => i.id === updated.id);
-          if (idx >= 0) allItems[idx] = updated;
-          else allItems.push(updated);
-          const q = document.getElementById('catSearch').value.trim().toLowerCase();
-          filtered = q
-            ? allItems.filter(i => (i.name || '').toLowerCase().includes(q) || (i.brand || '').toLowerCase().includes(q))
-            : allItems;
-          currentPage = 1;
-          updateKPIs();
-          renderTable();
-          updateBadge();
-        }
-        ensureModal().hide();
-        await loadCatalog(true);
-      } catch (e) {
-        setModalError(e.message || 'Failed to save.');
-      } finally {
-        btn.disabled = false;
+      const url = editingId
+      ? `/store/api/catalog/materials/${encodeURIComponent(editingId)}`
+      : `/store/api/catalog/materials`;
+      const method = editingId ? 'PUT' : 'POST';
+      const res = await fetch(url, {
+      method,
+      headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${TOKEN}`
+      },
+      body: JSON.stringify(payload)
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.success === false) {
+      throw new Error(data.error || `HTTP ${res.status}`);
       }
-    }
+      if (data.material && data.material.id) {
+      const updated = {
+      id: data.material.id,
+      name: data.material.name || material_name,
+      brand: data.material.brand || '',
+      uom: data.material.uom || uom,
+      unit_price: Number(data.material.unit_price || 0),
+      };
+      const idx = allItems.findIndex(i => i.id === updated.id);
+      if (idx >= 0) allItems[idx] = updated;
+      else allItems.push(updated);
+      const q = document.getElementById('catSearch').value.trim().toLowerCase();
+      filtered = q
+      ? allItems.filter(i => (i.name || '').toLowerCase().includes(q) || (i.brand || '').toLowerCase().includes(q))
+      : allItems;
+      currentPage = 1;
+      updateKPIs();
+      renderTable();
+      updateBadge();
+      }
+      ensureModal().hide();
+      await loadCatalog(true);
+      } catch (e) {
+      setModalError(e.message || 'Failed to save.');
+      } finally {
+      btn.disabled = false;
+      }
+      }
 
-    loadCatalog();
-  </script>
-</body>
+      loadCatalog();
+    </script>
+  </body>
 </html>

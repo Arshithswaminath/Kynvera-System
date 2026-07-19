@@ -51,7 +51,7 @@
       <h2 class="modules-section-label">Operations</h2>
       <div class="modules-grid">
 
-        <a href="/operations/overtime" class="module-card">
+        <a href="/operations/overtime" class="module-card" id="ops-tile-overtime" style="display: none;">
           <div class="card-body">
             <span class="module-number">Operations</span>
             <div class="module-icon">
@@ -63,7 +63,7 @@
           </div>
         </a>
 
-        <a href="/operations/invoices" class="module-card">
+        <a href="/operations/invoices" class="module-card" id="ops-tile-invoices" style="display: none;">
           <div class="card-body">
             <span class="module-number">Operations</span>
             <div class="module-icon">
@@ -75,7 +75,7 @@
           </div>
         </a>
 
-        <a href="/operations/clients" class="module-card">
+        <a href="/operations/clients" class="module-card" id="ops-tile-clients" style="display: none;">
           <div class="card-body">
             <span class="module-number">Operations</span>
             <div class="module-icon">
@@ -84,6 +84,18 @@
             <h2 class="module-title">Clients</h2>
             <p class="module-description">Manage the customer master used when creating trading invoices.</p>
             <span class="module-arrow">Open Clients <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
+          </div>
+        </a>
+
+        <a href="/operations/cheques" class="module-card" id="ops-tile-cheques" style="display: none;">
+          <div class="card-body">
+            <span class="module-number">Operations</span>
+            <div class="module-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z" /></svg>
+            </div>
+            <h2 class="module-title">Cheque Preparation</h2>
+            <p class="module-description">Track cheque requests through verification, approval, preparation and submission, with email alerts on every status change.</p>
+            <span class="module-arrow">Open Cheques <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
           </div>
         </a>
 
@@ -106,7 +118,7 @@
 
   <footer class="footer">
     <div class="footer-inner">
-      <div class="footer-brand">Amaan</div>
+      <div class="footer-brand">Amaan Systems</div>
       <p class="footer-copy">© {{ now().year }} Amaan Application / built by <span class="footer-built-by-name">Arshith Swaminath P</span></p>
     </div>
   </footer>
@@ -116,23 +128,43 @@
   <script src="{{ url_for('static', filename='api-client.js') }}"></script>
   <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
   <script>
-    // Reveal the Email Automation tile only for users with Email-Automation access.
     (function () {
-      function applyEmailTile(user) {
-        var tile = document.getElementById('ops-tile-email');
-        if (!tile || !user) return;
-        var show = (typeof userHasReportGenerationNavAccess === 'function')
-          ? userHasReportGenerationNavAccess(user)
-          : (user.role === 'admin' || user.access_report_generation === true);
-        tile.style.display = show ? 'block' : 'none';
+      function hasOpsSub(user, key) {
+        if (!user) return false;
+        if (user.role === 'admin') return true;
+        if (user[key]) return true;
+        // Legacy hub-only: show all subs when hub is on and no sub flags are set
+        var anySub = !!(user.access_operations_overtime || user.access_operations_invoices
+          || user.access_operations_clients || user.access_operations_cheques);
+        return !!user.access_operations && !anySub;
+      }
+      function applyOpsTiles(user) {
+        if (!user) return;
+        var map = [
+          ['ops-tile-overtime', 'access_operations_overtime'],
+          ['ops-tile-invoices', 'access_operations_invoices'],
+          ['ops-tile-clients', 'access_operations_clients'],
+          ['ops-tile-cheques', 'access_operations_cheques'],
+        ];
+        map.forEach(function (pair) {
+          var tile = document.getElementById(pair[0]);
+          if (tile) tile.style.display = hasOpsSub(user, pair[1]) ? 'block' : 'none';
+        });
+        var email = document.getElementById('ops-tile-email');
+        if (email) {
+          var show = (typeof userHasReportGenerationNavAccess === 'function')
+            ? userHasReportGenerationNavAccess(user)
+            : (user.role === 'admin' || user.access_report_generation === true);
+          email.style.display = show ? 'block' : 'none';
+        }
       }
       var userStr = localStorage.getItem('user');
       if (userStr) {
-        try { applyEmailTile(JSON.parse(userStr)); return; } catch (e) {}
+        try { applyOpsTiles(JSON.parse(userStr)); return; } catch (e) {}
       }
       fetch('/api/auth/me', { headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('access_token') || '') } })
         .then(function (r) { return r.ok ? r.json() : null; })
-        .then(function (data) { if (data && data.user) applyEmailTile(data.user); })
+        .then(function (data) { if (data && data.user) applyOpsTiles(data.user); })
         .catch(function () {});
     })();
   </script>

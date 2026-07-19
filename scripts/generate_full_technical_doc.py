@@ -199,7 +199,7 @@ def build(path):
         ("14", "Civil Works Module — module_civil/"),
         ("15", "Cleaning Module — module_cleaning/"),
         ("16", "Inspection Module — module_inspection/"),
-        ("17", "Procurement Module — module_procurement/"),
+        ("17", "Store Module — module_store/"),
         ("18", "MMR Reporting — module_mmr/"),
         ("19", "Business Development — app/bd/"),
         ("20", "DocHub — app/docs/"),
@@ -237,7 +237,7 @@ def build(path):
         ["Cleaning",          "/cleaning",      "module_cleaning/routes.py"],
         ["Inspection",        "/inspection",    "module_inspection/routes.py"],
         ["HR",                "/hr",            "module_hr/routes.py"],
-        ["Procurement",       "/procurement",   "module_procurement/routes.py"],
+        ["Store",             "/store",         "module_store/routes.py"],
         ["MMR / Reporting",   "/admin/mmr",     "module_mmr/routes.py"],
         ["Business Dev",      "/bd",            "app/bd/routes.py"],
         ["DocHub",            "/api/docs",      "app/docs/routes.py"],
@@ -851,16 +851,16 @@ def build(path):
         "redirects to the appropriate trade module or shows a combined view.", s["body"]))
 
     # ══════════════════════════════════════════════════════════════════════
-    # 17. PROCUREMENT
+    # 17. STORE
     # ══════════════════════════════════════════════════════════════════════
     story.append(PageBreak())
-    story.append(_sec("17", "Procurement Module — module_procurement/", s))
+    story.append(_sec("17", "Store Module — module_store/", s))
     story.append(Paragraph(
-        "Blueprint prefix: <b>/procurement</b>. All routes require JWT + access_procurement_module. "
+        "Blueprint prefix: <b>/store</b>. All routes require JWT + access_procurement_module. "
         "Manages a materials catalogue, properties, and per-property material assignments.", s["body"]))
     story.append(_tbl([
         ["Function group","Routes","Description"],
-        ["Dashboard & pages",         "/procurement/, /materials, /add-material",  "HTML dashboard pages."],
+        ["Dashboard & pages",         "/store/, /materials, /add-material",  "HTML dashboard pages."],
         ["Materials CRUD",            "/api/materials (GET, POST, DELETE)",         "List, add, delete materials. Includes recent activity feed."],
         ["Excel import/export",       "/api/import-excel, /export-excel, /sample-excel","Bulk import from Excel; export current catalogue; download a sample template."],
         ["Properties",                "/api/properties (GET, POST)",               "List and create property records."],

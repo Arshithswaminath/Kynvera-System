@@ -1,0 +1,83 @@
+{# ── Finance Module Sidebar ───────────────────────────────────────
+   Include: {% include 'partials/finance_sidebar.html' with context %}
+   Expects: user
+──────────────────────────────────────────────────────────────── #}
+{% set ep = request.endpoint %}
+
+{% if user is defined and user %}
+  {% set _parts = (user.full_name or '')|trim %}
+  {% set _words = _parts.split() %}
+  {% set sb_name = _parts or 'User' %}
+  {% set sb_initial = (_words[0][0] if _words else 'U')|upper %}
+  {% set sb_role = (user.role or 'User')|replace('_', ' ')|capitalize %}
+{% else %}
+  {% set sb_name = 'User' %}
+  {% set sb_initial = 'U' %}
+  {% set sb_role = 'User' %}
+{% endif %}
+
+<aside class="dh-sidebar" id="finSidebar" aria-label="Finance menu">
+  <a href="{{ url_for('finance.dashboard') }}" class="sb-brand" style="text-decoration:none;color:inherit;cursor:pointer;" title="Finance home">
+    <div class="sb-brand-text">
+      <span class="name">Finance</span>
+      <span class="tagline">Finance &amp; Invoicing</span>
+    </div>
+  </a>
+
+  <nav class="sb-nav">
+    <div class="dh-sb-section">
+      <div class="sb-section-label">Overview</div>
+      <a href="{{ url_for('finance.dashboard') }}"
+         class="sb-nav-item{% if ep == 'finance.dashboard' %} active{% endif %}">
+        Invoice Queue
+      </a>
+      <a href="{{ url_for('finance.contracts_page') }}"
+         class="sb-nav-item{% if ep == 'finance.contracts_page' %} active{% endif %}">
+        Contracts
+      </a>
+      <a href="{{ url_for('finance.reports_page') }}"
+         class="sb-nav-item{% if ep == 'finance.reports_page' %} active{% endif %}">
+        Monthly Reports
+      </a>
+    </div>
+
+    <div class="dh-sb-section">
+      <div class="sb-section-label">Finance</div>
+      <a href="{{ url_for('finance.processing_page') }}"
+         class="sb-nav-item{% if ep == 'finance.processing_page' %} active{% endif %}">
+        Invoice Processing
+      </a>
+      <a href="{{ url_for('finance.contracts_page') }}"
+         class="sb-nav-item{% if ep == 'finance.contracts_page' %} active{% endif %}">
+        Contract Management
+      </a>
+      <a href="{{ url_for('ticketing.dashboard') }}"
+         class="sb-nav-item">
+        Service Tickets
+      </a>
+    </div>
+
+    <div class="dh-sb-section">
+      <div class="sb-section-label">Reports</div>
+      <a href="{{ url_for('finance.settings_page') }}"
+         class="sb-nav-item{% if ep == 'finance.settings_page' %} active{% endif %}">
+        Settings
+      </a>
+    </div>
+  </nav>
+
+  <div class="sb-footer">
+    <div
+      class="sb-user-row"
+      onclick="if (typeof openProfileModal === 'function') { openProfileModal(); }"
+      role="button"
+      tabindex="0"
+    >
+      <div class="sb-avatar" id="finUserAv">{{ sb_initial }}</div>
+      <div class="sb-user-text">
+        <div class="sb-user-name">{{ sb_name }}</div>
+        <div class="sb-user-role">{{ sb_role }}</div>
+      </div>
+    </div>
+  </div>
+</aside>

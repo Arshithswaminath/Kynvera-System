@@ -1279,6 +1279,49 @@
     else runHydrate();
   }
 
+  function scrollPageToTop() {
+    try {
+      if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+      window.scrollTo(0, 0);
+      if (document.documentElement) document.documentElement.scrollTop = 0;
+      if (document.body) document.body.scrollTop = 0;
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
+  /**
+   * Open wizard on Step 1 when viewing a saved submission.
+   * Avoid goToStep1()'s scrollIntoView so the page stays at the top (banners / back link).
+   */
+  function enterWizardStep1() {
+    var bar = document.getElementById('submitBar');
+    var keep = bar ? bar.style.display : '';
+    var p1 = document.getElementById('step1Panel');
+    var p2 = document.getElementById('step2Panel');
+    var b1 = document.getElementById('step1Badge');
+    var b2 = document.getElementById('step2Badge');
+    var conn = document.getElementById('connector1');
+    if (p2) p2.classList.remove('active');
+    if (p1) p1.classList.add('active');
+    if (b1) {
+      b1.className = 'step-item active';
+      var num = b1.querySelector('.num');
+      if (num) num.textContent = '1';
+    }
+    if (b2) {
+      b2.className = 'step-item';
+      b2.classList.remove('locked');
+    }
+    if (conn) conn.classList.remove('done');
+    if (bar && keep) bar.style.display = keep;
+    scrollPageToTop();
+    requestAnimationFrame(function () {
+      scrollPageToTop();
+      setTimeout(scrollPageToTop, 50);
+    });
+  }
+
   var api = (global.HrGenericFormEdit = global.HrGenericFormEdit || {});
   api.attach = attach;
   api.showRevisionBanner = showRevisionBanner;
@@ -1288,6 +1331,7 @@
   api.startSignoffActivityPoll = startSignoffActivityPoll;
   api.stopSignoffActivityPoll = stopSignoffActivityPoll;
   api.bootSignoffActivitySidebar = bootSignoffActivitySidebar;
+  api.enterWizardStep1 = enterWizardStep1;
   api.canModifySig = function (formId, slotKey) {
     var f = document.getElementById(formId);
     if (!f) return true;

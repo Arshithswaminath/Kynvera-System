@@ -1,1435 +1,1840 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
-  
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
-<title>Submitted Forms - Amaan Application</title>
-<link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
-  
-  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
-  
-  <!-- Bootstrap CSS -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  
-  <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
-  
-  <style>
-    :root {
-      --primary: #d21725;
-      --primary-light: #e8323f;
-      --primary-dark: #a8121e;
-      --secondary: #fdeaec;
-      --text-dark: #1a1a1a;
-      --text-light: #6b7280;
-      --background: #ffffff;
-      --surface: #f9fafb;
-      --border: #e5e7eb;
-    }
-    
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-    
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
-      background: var(--surface);
-      color: var(--text-dark);
-      line-height: 1.6;
-      padding-top: 5.5rem;
-    }
-    @media (max-width: 600px) {
-      body { padding-top: 4.5rem; }
-    }
-    
-    .container-custom {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 2.5rem 1.5rem;
-    }
-    
-    .page-header {
-      margin-bottom: 2rem;
-      text-align: left;
-    }
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover"
+    />
 
-    .page-header-top {
-      margin-bottom: 0.75rem;
-    }
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/design-tokens.css') }}"
+    />
+    <title>Submitted Forms - Amaan Application</title>
+    <link
+      rel="icon"
+      type="image/png"
+      href="{{ url_for('static', filename='favicon.png') }}"
+    />
 
-    .back-link {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-      color: var(--primary);
-      text-decoration: none;
-      font-weight: 600;
-      font-size: 0.875rem;
-      padding: 0.45rem 0.9rem;
-      border-radius: 999px;
-      background: white;
-      border: 1px solid var(--border);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-      transition: all 0.18s ease;
-    }
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='mobile_responsive.css') }}"
+    />
 
-    .back-link:hover {
-      color: var(--primary-light);
-      transform: translateX(-2px);
-      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
-    }
+    <!-- Bootstrap CSS -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
 
-    .sf-live-banner {
-      display: none;
-      align-items: center;
-      justify-content: space-between;
-      gap: 0.75rem;
-      flex-wrap: wrap;
-      margin-bottom: 1rem;
-      padding: 0.65rem 0.9rem;
-      border-radius: 10px;
-      background: linear-gradient(90deg, #ecfdf5 0%, #f0fdf4 100%);
-      border: 1px solid #a7f3d0;
-      color: #065f46;
-      font-size: 0.875rem;
-    }
-    .sf-live-banner.visible { display: flex; }
-    .sf-live-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #10b981;
-      box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.55);
-      animation: sfLivePulse 1.8s infinite;
-      flex-shrink: 0;
-    }
-    @keyframes sfLivePulse {
-      0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.55); }
-      70% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
-    }
-    .sf-activity-panel {
-      display: none;
-      margin-bottom: 1.25rem;
-      background: #fff;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      overflow: hidden;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-    }
-    .sf-activity-panel.visible { display: block; }
-    .sf-activity-panel-hd {
-      padding: 0.75rem 1rem;
-      border-bottom: 1px solid var(--border);
-      font-weight: 700;
-      color: var(--primary);
-      font-size: 0.92rem;
-    }
-    .sf-activity-list {
-      list-style: none;
-      margin: 0;
-      padding: 0;
-      max-height: 220px;
-      overflow-y: auto;
-    }
-    .sf-activity-item {
-      padding: 0.65rem 1rem;
-      border-bottom: 1px solid #f1f5f9;
-      font-size: 0.84rem;
-      line-height: 1.45;
-    }
-    .sf-activity-item:last-child { border-bottom: none; }
-    .sf-activity-item time { color: var(--text-light); font-size: 0.78rem; }
-    .sf-activity-item a {
-      color: var(--primary);
-      font-weight: 600;
-      text-decoration: none;
-    }
-    .sf-activity-item a:hover { text-decoration: underline; }
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='animations.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/dashboard.css') }}"
+    />
 
-    /* Two-column layout: submissions (left) + live activity sidebar (right) */
-    .sf-layout {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(300px, 350px);
-      gap: 1.5rem;
-      align-items: start;
-    }
-    .sf-side { position: sticky; top: 1rem; }
-    .sf-side .sf-activity-panel { margin-bottom: 0; }
-    .sf-side .sf-activity-list { max-height: calc(100vh - 9rem); }
-    @media (max-width: 992px) {
-      .sf-layout { grid-template-columns: 1fr; }
-      .sf-side { position: static; }
-      .sf-side .sf-activity-list { max-height: 220px; }
-    }
+    <style>
+      :root {
+        --primary: #d21725;
+        --primary-light: #e8323f;
+        --primary-dark: #a8121e;
+        --secondary: #fdeaec;
+        --text-dark: #1a1a1a;
+        --text-light: #6b7280;
+        --background: #ffffff;
+        --surface: #f9fafb;
+        --border: #e5e7eb;
+      }
 
-    .sf-card-activity {
-      margin: 0 0 0.85rem;
-      padding: 0.55rem 0.75rem;
-      border-radius: 8px;
-      background: #f8fafc;
-      font-size: 0.84rem;
-      color: #334155;
-    }
-    
-    .page-header h1 {
-      font-size: 2.5rem;
-      font-weight: 700;
-      color: var(--primary);
-      margin-bottom: 0.5rem;
-    }
-    
-    .page-header p {
-      font-size: 1.1rem;
-      color: var(--text-light);
-    }
-    
-    .sf-modal-veil {
-      display: none;
-      /* Viewport-locked overlay (not centered in document / flex column flow) */
-      position: fixed !important;
-      top: 0 !important;
-      left: 0 !important;
-      right: 0 !important;
-      bottom: 0 !important;
-      width: 100% !important;
-      max-width: none !important;
-      min-height: 100vh !important;
-      min-height: 100dvh !important;
-      margin: 0 !important;
-      z-index: 10050;
-      align-items: center;
-      justify-content: center;
-      padding: max(1rem, env(safe-area-inset-top)) 1rem max(1rem, env(safe-area-inset-bottom));
-      background: rgba(15, 23, 42, 0.48);
-      backdrop-filter: blur(5px);
-      -webkit-backdrop-filter: blur(5px);
-      box-sizing: border-box;
-      overflow-x: hidden;
-      overflow-y: auto;
-      overscroll-behavior: contain;
-    }
-    .sf-modal-veil.is-open {
-      display: flex;
-    }
-    .sf-modal {
-      background: var(--background);
-      border-radius: 16px;
-      box-shadow: 0 24px 56px rgba(0, 0, 0, 0.2);
-      width: 100%;
-      max-width: 440px;
-      flex: 0 0 auto;
-      padding: 1.5rem 1.5rem 1.25rem;
-      text-align: left;
-      border: 1px solid var(--border);
-      animation: sf-modal-in 0.22s ease-out;
-    }
-    @keyframes sf-modal-in {
-      from { opacity: 0; transform: translateY(10px) scale(0.98); }
-      to { opacity: 1; transform: translateY(0) scale(1); }
-    }
-    .sf-modal-title {
-      font-size: 1.2rem;
-      font-weight: 700;
-      color: var(--primary);
-      margin: 0 0 0.85rem;
-      line-height: 1.3;
-    }
-    .sf-modal-body {
-      font-size: 0.95rem;
-      color: var(--text-dark);
-      line-height: 1.55;
-      margin: 0 0 1.35rem;
-    }
-    .sf-modal-body p {
-      margin: 0 0 0.65rem;
-    }
-    .sf-modal-body p:last-child {
-      margin-bottom: 0;
-    }
-    .sf-modal-body .sf-muted {
-      color: var(--text-light);
-      font-size: 0.9rem;
-    }
-    .sf-modal-actions {
-      display: flex;
-      gap: 0.75rem;
-      justify-content: flex-end;
-      flex-wrap: wrap;
-    }
-    .sf-btn {
-      font-size: 0.95rem;
-      font-weight: 600;
-      padding: 0.55rem 1.15rem;
-      border-radius: 10px;
-      cursor: pointer;
-      border: none;
-      min-height: 44px;
-      transition: opacity 0.15s, transform 0.1s;
-    }
-    .sf-btn:disabled {
-      opacity: 0.55;
-      cursor: not-allowed;
-    }
-    .sf-btn-secondary {
-      background: var(--surface);
-      color: var(--text-dark);
-      border: 1px solid var(--border);
-    }
-    .sf-btn-secondary:hover:not(:disabled) {
-      background: var(--border);
-    }
-    .sf-btn-primary {
-      background: var(--primary);
-      color: #fff;
-    }
-    .sf-btn-primary:hover:not(:disabled) {
-      filter: brightness(1.06);
-    }
-    .sf-btn-danger {
-      background: #b91c1c;
-      color: #fff;
-    }
-    .sf-btn-danger:hover:not(:disabled) {
-      filter: brightness(1.08);
-    }
-    
-    .submissions-container {
-      background: var(--background);
-      border-radius: 12px;
-      padding: 2rem;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    }
-    
-    .submission-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 1.5rem;
-      margin-bottom: 1rem;
-      transition: all 0.3s ease;
-      position: relative;
-    }
-    
-    .submission-card:hover {
-      box-shadow: 0 4px 12px rgba(210, 23, 37, 0.1);
-      border-color: var(--primary);
-    }
-    
-    .submission-card.submission-card--highlight {
-      outline: 2px solid var(--primary);
-      outline-offset: 2px;
-      box-shadow: 0 0 0 4px rgba(210, 23, 37, 0.12);
-    }
-    
-    .submission-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 1rem;
-      flex-wrap: wrap;
-      gap: 1rem;
-    }
-    
-    .submission-title {
-      font-size: 1.25rem;
-      font-weight: 600;
-      color: var(--text-dark);
-      margin-bottom: 0.25rem;
-    }
-    
-    .submission-module {
-      font-size: 0.9rem;
-      color: var(--text-light);
-    }
-    
-    .submission-status {
-      display: inline-block;
-      padding: 0.4rem 1rem;
-      border-radius: 20px;
-      font-size: 0.85rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    
-    .status-pending {
-      background: #fff4e5;
-      color: #ff9800;
-    }
-    
-    .status-reviewing {
-      background: #e3f2fd;
-      color: #2196f3;
-    }
-    
-    .status-approved {
-      background: #e8f5e9;
-      color: #4caf50;
-    }
-    
-    .status-completed {
-      background: #f3e5f5;
-      color: #9c27b0;
-    }
-    
-    .status-rejected {
-      background: #ffebee;
-      color: #f44336;
-    }
-    
-    .status-draft {
-      background: #fff8e1;
-      color: #f57f17;
-    }
-    
-    .draft-card {
-      border-left: 4px solid #f57f17;
-    }
-    
-    .btn-danger-custom {
-      background: #ef4444;
-      color: white;
-      border: 1px solid #ef4444;
-    }
-    
-    .btn-danger-custom:hover {
-      background: #dc2626;
-      border-color: #dc2626;
-    }
-    
-    .submission-details {
-      display: flex;
-      gap: 2rem;
-      flex-wrap: wrap;
-      margin-bottom: 1rem;
-      font-size: 0.9rem;
-      color: var(--text-light);
-    }
-    
-    .submission-detail-item {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-    
-    .submission-actions {
-      display: flex;
-      gap: 0.75rem;
-      flex-wrap: wrap;
-    }
-    
-    .btn-custom {
-      padding: 0.6rem 1.2rem;
-      border-radius: 6px;
-      font-weight: 600;
-      text-decoration: none;
-      transition: all 0.3s ease;
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      border: none;
-      cursor: pointer;
-      font-size: 0.9rem;
-    }
-    
-    .btn-primary-custom {
-      background: var(--primary);
-      color: white;
-    }
-    
-    .btn-primary-custom:hover {
-      background: var(--primary-light);
-      color: white;
-    }
-    
-    .btn-outline-custom {
-      background: transparent;
-      color: var(--primary);
-      border: 2px solid var(--primary);
-    }
-    
-    .btn-outline-custom:hover {
-      background: var(--primary);
-      color: white;
-    }
-    
-    .btn-danger-custom {
-      background: #f44336;
-      color: white;
-    }
-    
-    .btn-danger-custom:hover {
-      background: #d32f2f;
-      color: white;
-    }
-    
-    .empty-state {
-      text-align: center;
-      padding: 4rem 2rem;
-      color: var(--text-light);
-    }
-    
-    .empty-state-icon {
-      font-size: 4rem;
-      margin-bottom: 1rem;
-      opacity: 0.5;
-    }
-    
-    .empty-state h3 {
-      font-size: 1.5rem;
-      color: var(--text-dark);
-      margin-bottom: 0.5rem;
-    }
-    
-    .loading-spinner {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      padding: 4rem;
-    }
-    
-    .spinner {
-      border: 4px solid var(--border);
-      border-top: 4px solid var(--primary);
-      border-radius: 50%;
-      width: 50px;
-      height: 50px;
-      animation: spin 1s linear infinite;
-    }
-    
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-    
-    @media (max-width: 768px) {
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+          system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+        background: var(--surface);
+        color: var(--text-dark);
+        line-height: 1.6;
+        padding-top: 5.5rem;
+      }
+      @media (max-width: 600px) {
+        body {
+          padding-top: 4.5rem;
+        }
+      }
+
       .container-custom {
-        padding: 0.75rem 0.875rem !important;
-        margin: 0 !important;
-        max-width: 100% !important;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2.5rem 1.5rem;
       }
 
       .page-header {
-        padding: 0.5rem 0 0.75rem;
+        margin-bottom: 2rem;
         text-align: left;
       }
 
+      .page-header-top {
+        margin-bottom: 0.75rem;
+      }
+
+      .back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        color: var(--primary);
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.875rem;
+        padding: 0.25rem 0;
+        background: transparent;
+        border: none;
+        box-shadow: none;
+        transition: color 0.18s ease;
+      }
+
+      .back-link:hover {
+        color: var(--primary-light);
+      }
+
+      .sf-live-banner {
+        display: none;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        margin-bottom: 1rem;
+        padding: 0.65rem 0.9rem;
+        border-radius: 10px;
+        background: linear-gradient(90deg, #ecfdf5 0%, #f0fdf4 100%);
+        border: 1px solid #a7f3d0;
+        color: #065f46;
+        font-size: 0.875rem;
+      }
+      .sf-live-banner.visible {
+        display: flex;
+      }
+      .sf-live-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #10b981;
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.55);
+        animation: sfLivePulse 1.8s infinite;
+        flex-shrink: 0;
+      }
+      @keyframes sfLivePulse {
+        0% {
+          box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.55);
+        }
+        70% {
+          box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
+        }
+        100% {
+          box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+        }
+      }
+      .sf-activity-panel {
+        display: none;
+        margin-bottom: 1.25rem;
+        background: #fff;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+      }
+      .sf-activity-panel.visible {
+        display: block;
+      }
+      .sf-activity-panel-hd {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid var(--border);
+        font-weight: 700;
+        color: var(--primary);
+        font-size: 0.92rem;
+      }
+      .sf-activity-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        max-height: 220px;
+        overflow-y: auto;
+      }
+      .sf-activity-item {
+        padding: 0.65rem 1rem;
+        border-bottom: 1px solid #f1f5f9;
+        font-size: 0.84rem;
+        line-height: 1.45;
+      }
+      .sf-activity-item:last-child {
+        border-bottom: none;
+      }
+      .sf-activity-item time {
+        color: var(--text-light);
+        font-size: 0.78rem;
+      }
+      .sf-activity-item a {
+        color: var(--primary);
+        font-weight: 600;
+        text-decoration: none;
+      }
+      .sf-activity-item a:hover {
+        text-decoration: underline;
+      }
+
+      /* Two-column layout: submissions (left) + live activity sidebar (right) */
+      .sf-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(300px, 350px);
+        gap: 1.5rem;
+        align-items: start;
+      }
+      .sf-side {
+        position: sticky;
+        top: 1rem;
+      }
+      .sf-side .sf-activity-panel {
+        margin-bottom: 0;
+      }
+      .sf-side .sf-activity-list {
+        max-height: calc(100vh - 9rem);
+      }
+      @media (max-width: 992px) {
+        .sf-layout {
+          grid-template-columns: 1fr;
+        }
+        .sf-side {
+          position: static;
+        }
+        .sf-side .sf-activity-list {
+          max-height: 220px;
+        }
+      }
+
+      .sf-card-activity {
+        margin: 0 0 0.85rem;
+        padding: 0.55rem 0.75rem;
+        border-radius: 8px;
+        background: #f8fafc;
+        font-size: 0.84rem;
+        color: #334155;
+      }
+
       .page-header h1 {
-        font-size: 1.3rem;
-        margin-bottom: 0.25rem;
-      }
-
-      .page-header p {
-        font-size: 0.85rem;
-      }
-
-      .filter-section {
-        flex-direction: column !important;
-        align-items: stretch !important;
-        gap: 0.5rem !important;
-      }
-
-      .filter-section select {
-        width: 100% !important;
-        min-width: 0 !important;
-      }
-
-      .submission-card {
-        padding: 0.875rem !important;
-        margin-bottom: 0.75rem !important;
-        border-radius: 10px !important;
-      }
-
-      .submission-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.5rem;
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: var(--primary);
         margin-bottom: 0.5rem;
       }
 
-      .submission-header h4 {
-        font-size: 1rem;
+      .page-header p {
+        font-size: 1.1rem;
+        color: var(--text-light);
       }
 
-      .submission-details {
-        flex-direction: column;
-        gap: 0.375rem;
+      .sf-modal-veil {
+        display: none;
+        /* Viewport-locked overlay (not centered in document / flex column flow) */
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        width: 100% !important;
+        max-width: none !important;
+        min-height: 100vh !important;
+        min-height: 100dvh !important;
+        margin: 0 !important;
+        z-index: 10050;
+        align-items: center;
+        justify-content: center;
+        padding: max(1rem, env(safe-area-inset-top)) 1rem
+          max(1rem, env(safe-area-inset-bottom));
+        background: rgba(15, 23, 42, 0.48);
+        backdrop-filter: blur(5px);
+        -webkit-backdrop-filter: blur(5px);
+        box-sizing: border-box;
+        overflow-x: hidden;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+      }
+      .sf-modal-veil.is-open {
+        display: flex;
+      }
+      .sf-modal {
+        background: var(--background);
+        border-radius: 16px;
+        box-shadow: 0 24px 56px rgba(0, 0, 0, 0.2);
         width: 100%;
-        margin-bottom: 0.625rem;
+        max-width: 440px;
+        flex: 0 0 auto;
+        padding: 1.5rem 1.5rem 1.25rem;
+        text-align: left;
+        border: 1px solid var(--border);
+        animation: sf-modal-in 0.22s ease-out;
       }
-
-      .submission-details span {
-        font-size: 0.8rem;
+      @keyframes sf-modal-in {
+        from {
+          opacity: 0;
+          transform: translateY(10px) scale(0.98);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+      .sf-modal-title {
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: var(--primary);
+        margin: 0 0 0.85rem;
+        line-height: 1.3;
+      }
+      .sf-modal-body {
+        font-size: 0.95rem;
+        color: var(--text-dark);
+        line-height: 1.55;
+        margin: 0 0 1.35rem;
+      }
+      .sf-modal-body p {
+        margin: 0 0 0.65rem;
+      }
+      .sf-modal-body p:last-child {
+        margin-bottom: 0;
+      }
+      .sf-modal-body .sf-muted {
+        color: var(--text-light);
+        font-size: 0.9rem;
+      }
+      .sf-modal-actions {
+        display: flex;
+        gap: 0.75rem;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+      }
+      .sf-btn {
+        font-size: 0.95rem;
+        font-weight: 600;
+        padding: 0.55rem 1.15rem;
+        border-radius: 10px;
+        cursor: pointer;
+        border: none;
+        min-height: 44px;
+        transition:
+          opacity 0.15s,
+          transform 0.1s;
+      }
+      .sf-btn:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+      }
+      .sf-btn-secondary {
+        background: var(--surface);
+        color: var(--text-dark);
+        border: 1px solid var(--border);
+      }
+      .sf-btn-secondary:hover:not(:disabled) {
+        background: var(--border);
+      }
+      .sf-btn-primary {
+        background: var(--primary);
+        color: #fff;
+      }
+      .sf-btn-primary:hover:not(:disabled) {
+        filter: brightness(1.06);
+      }
+      .sf-btn-danger {
+        background: #b91c1c;
+        color: #fff;
+      }
+      .sf-btn-danger:hover:not(:disabled) {
+        filter: brightness(1.08);
       }
 
       .submissions-container {
-        padding: 0;
-        border-radius: 10px;
+        background: var(--background);
+        border-radius: 12px;
+        padding: 2rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
       }
 
-      .submission-actions {
+      .submission-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        transition: all 0.3s ease;
+        position: relative;
+      }
+
+      .submission-card:hover {
+        box-shadow: 0 4px 12px rgba(210, 23, 37, 0.1);
+        border-color: var(--primary);
+      }
+
+      .submission-card.submission-card--highlight {
+        outline: 2px solid var(--primary);
+        outline-offset: 2px;
+        box-shadow: 0 0 0 4px rgba(210, 23, 37, 0.12);
+      }
+
+      .submission-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 1rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+      }
+
+      .submission-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--text-dark);
+        margin-bottom: 0.25rem;
+      }
+
+      .submission-module {
+        font-size: 0.9rem;
+        color: var(--text-light);
+      }
+
+      .submission-status {
+        display: inline-block;
+        padding: 0.4rem 1rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+
+        letter-spacing: 0.5px;
+      }
+
+      .status-pending {
+        background: #fff4e5;
+        color: #ff9800;
+      }
+
+      .status-reviewing {
+        background: #e3f2fd;
+        color: #2196f3;
+      }
+
+      .status-approved {
+        background: #e8f5e9;
+        color: #4caf50;
+      }
+
+      .status-completed {
+        background: #f3e5f5;
+        color: #9c27b0;
+      }
+
+      .status-rejected {
+        background: #ffebee;
+        color: #f44336;
+      }
+
+      .status-draft {
+        background: #fff8e1;
+        color: #f57f17;
+      }
+
+      .draft-card {
+        border-left: 4px solid #f57f17;
+      }
+
+      .btn-danger-custom {
+        background: #ef4444;
+        color: white;
+        border: 1px solid #ef4444;
+      }
+
+      .btn-danger-custom:hover {
+        background: #dc2626;
+        border-color: #dc2626;
+      }
+
+      .submission-details {
+        display: flex;
+        gap: 2rem;
+        flex-wrap: wrap;
+        margin-bottom: 1rem;
+        font-size: 0.9rem;
+        color: var(--text-light);
+      }
+
+      .submission-detail-item {
+        display: flex;
+        align-items: center;
         gap: 0.5rem;
       }
 
+      .submission-actions {
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+      }
+
       .btn-custom {
-        padding: 0.6rem 0.875rem !important;
-        font-size: 0.85rem !important;
-        min-height: 38px !important;
+        padding: 0.6rem 1.2rem;
+        border-radius: 6px;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        border: none;
+        cursor: pointer;
+        font-size: 0.9rem;
       }
 
-      .status-badge {
-        font-size: 0.72rem;
-        padding: 0.3rem 0.625rem;
+      .btn-primary-custom {
+        background: var(--primary);
+        color: white;
       }
 
-      .status-message {
-        font-size: 0.85rem;
-        padding: 0.625rem;
+      .btn-primary-custom:hover {
+        background: var(--primary-light);
+        color: white;
       }
-    }
-    
-    @media (max-width: 480px) {
-      .page-header h1 {
-        font-size: 1.35rem;
-      }
-      
-      .submission-card {
-        border-radius: 12px !important;
-      }
-    }
-  </style>
-</head>
-<body class="submitted-forms-page">
-  {% set active_page = 'submitted-forms' %}
-  {% include 'partials/main_navbar.html' with context %}
-  <div class="container-custom">
-    <div class="page-header">
-      <div class="page-header-top">
-        <a href="/dashboard" class="back-link">
-          <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
-          Back to Dashboard
-        </a>
-      </div>
-      <h1>My Submitted Forms</h1>
-      <p>View, edit, and resubmit your HR and inspection forms</p>
-    </div>
-    
-    <!-- Filter Section -->
-    <div class="filter-section" style="margin-bottom: 1.5rem; display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
-      <label style="font-weight: 600; color: var(--text-dark);">Filter by:</label>
-      <select id="statusFilter" class="form-select" style="width: auto; min-width: 180px; padding: 0.625rem 2.5rem 0.625rem 1rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem; background: white; cursor: pointer;">
-        <option value="all">All Forms</option>
-        <option value="submitted">Submitted Only</option>
-        <option value="draft">Drafts Only</option>
-      </select>
-      <span id="filterCount" style="color: var(--text-light); font-size: 0.9rem;"></span>
-    </div>
 
-    <div id="sfLiveBanner" class="sf-live-banner" aria-live="polite">
-      <div style="display:flex;align-items:center;gap:0.5rem;">
-        <span class="sf-live-dot" aria-hidden="true"></span>
-        <span id="sfLiveBannerText">Live — organization-wide submissions refresh automatically.</span>
-      </div>
-      <span id="sfLastRefreshed" style="color:#047857;font-size:0.8rem;font-weight:600;"></span>
-    </div>
+      .btn-outline-custom {
+        background: transparent;
+        color: var(--primary);
+        border: 2px solid var(--primary);
+      }
 
-    <div class="sf-layout">
-      <div class="sf-main">
-    <div class="submissions-container">
-      <div id="loadingSpinner" class="loading-spinner">
-        <div class="spinner"></div>
-      </div>
-      
-      <div id="submissionsList" style="display: none;"></div>
-      
-      <div id="emptyState" class="empty-state" style="display: none;">
-        <div class="empty-state-icon">📋</div>
-        <h3>No Submitted Forms</h3>
-        <p>You don't have submissions in this module yet.</p>
-      </div>
-    </div>
-      </div><!-- /.sf-main -->
-      <aside class="sf-side">
-        <div id="sfActivityPanel" class="sf-activity-panel" aria-label="Recent submission activity">
-          <div class="sf-activity-panel-hd">Recent activity across all submissions</div>
-          <ul id="sfActivityList" class="sf-activity-list"></ul>
+      .btn-outline-custom:hover {
+        background: var(--primary);
+        color: white;
+      }
+
+      .btn-danger-custom {
+        background: #f44336;
+        color: white;
+      }
+
+      .btn-danger-custom:hover {
+        background: #d32f2f;
+        color: white;
+      }
+
+      .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: var(--text-light);
+      }
+
+      .empty-state-icon {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+      }
+
+      .empty-state h3 {
+        font-size: 1.5rem;
+        color: var(--text-dark);
+        margin-bottom: 0.5rem;
+      }
+
+      .loading-spinner {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 4rem;
+      }
+
+      .spinner {
+        border: 4px solid var(--border);
+        border-top: 4px solid var(--primary);
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      @media (max-width: 768px) {
+        .container-custom {
+          padding: 0.75rem 0.875rem !important;
+          margin: 0 !important;
+          max-width: 100% !important;
+        }
+
+        .page-header {
+          padding: 0.5rem 0 0.75rem;
+          text-align: left;
+        }
+
+        .page-header h1 {
+          font-size: 1.3rem;
+          margin-bottom: 0.25rem;
+        }
+
+        .page-header p {
+          font-size: 0.85rem;
+        }
+
+        .filter-section {
+          flex-direction: column !important;
+          align-items: stretch !important;
+          gap: 0.5rem !important;
+        }
+
+        .filter-section select {
+          width: 100% !important;
+          min-width: 0 !important;
+        }
+
+        .submission-card {
+          padding: 0.875rem !important;
+          margin-bottom: 0.75rem !important;
+          border-radius: 10px !important;
+        }
+
+        .submission-header {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 0.5rem;
+          margin-bottom: 0.5rem;
+        }
+
+        .submission-header h4 {
+          font-size: 1rem;
+        }
+
+        .submission-details {
+          flex-direction: column;
+          gap: 0.375rem;
+          width: 100%;
+          margin-bottom: 0.625rem;
+        }
+
+        .submission-details span {
+          font-size: 0.8rem;
+        }
+
+        .submissions-container {
+          padding: 0;
+          border-radius: 10px;
+        }
+
+        .submission-actions {
+          gap: 0.5rem;
+        }
+
+        .btn-custom {
+          padding: 0.6rem 0.875rem !important;
+          font-size: 0.85rem !important;
+          min-height: 38px !important;
+        }
+
+        .status-badge {
+          font-size: 0.72rem;
+          padding: 0.3rem 0.625rem;
+        }
+
+        .status-message {
+          font-size: 0.85rem;
+          padding: 0.625rem;
+        }
+      }
+
+      @media (max-width: 480px) {
+        .page-header h1 {
+          font-size: 1.35rem;
+        }
+
+        .submission-card {
+          border-radius: 12px !important;
+        }
+      }
+    </style>
+  </head>
+  <body class="submitted-forms-page">
+    {% set active_page = 'submitted-forms' %} {% include
+    'partials/main_navbar.html' with context %}
+    <div class="container-custom">
+      <div class="page-header">
+        <div class="page-header-top">
+          <a href="/dashboard" class="back-link">
+            <svg
+              width="14"
+              height="14"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2.5"
+                d="M15 19l-7-7 7-7"
+              />
+            </svg>
+            Back to Dashboard
+          </a>
         </div>
-      </aside>
-    </div><!-- /.sf-layout -->
-  </div>
+        <h1>My Submitted Forms</h1>
+        <p>View, edit, and resubmit your HR and inspection forms</p>
+      </div>
 
-  <div id="sfConfirmModal" class="sf-modal-veil" role="presentation" aria-hidden="true">
-    <div class="sf-modal" role="dialog" aria-modal="true" aria-labelledby="sfConfirmTitle" onclick="event.stopPropagation()">
-      <h2 id="sfConfirmTitle" class="sf-modal-title"></h2>
-      <div id="sfConfirmBody" class="sf-modal-body"></div>
-      <div class="sf-modal-actions">
-        <button type="button" class="sf-btn sf-btn-secondary" id="sfConfirmCancel">Cancel</button>
-        <button type="button" class="sf-btn sf-btn-primary" id="sfConfirmOk"></button>
+      <!-- Filter Section -->
+      <div
+        class="filter-section"
+        style="
+          margin-bottom: 1.5rem;
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          flex-wrap: wrap;
+        "
+      >
+        <label style="font-weight: 600; color: var(--text-dark)"
+          >Filter by:</label
+        >
+        <select
+          id="statusFilter"
+          class="form-select"
+          style="
+            width: auto;
+            min-width: 180px;
+            padding: 0.625rem 2.5rem 0.625rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.95rem;
+            background: white;
+            cursor: pointer;
+          "
+        >
+          <option value="all">All Forms</option>
+          <option value="submitted">Submitted Only</option>
+          <option value="draft">Drafts Only</option>
+        </select>
+        <span
+          id="filterCount"
+          style="color: var(--text-light); font-size: 0.9rem"
+        ></span>
+      </div>
+
+      <div id="sfLiveBanner" class="sf-live-banner" aria-live="polite">
+        <div style="display: flex; align-items: center; gap: 0.5rem">
+          <span class="sf-live-dot" aria-hidden="true"></span>
+          <span id="sfLiveBannerText"
+            >Live — organization-wide submissions refresh automatically.</span
+          >
+        </div>
+        <span
+          id="sfLastRefreshed"
+          style="color: #047857; font-size: 0.8rem; font-weight: 600"
+        ></span>
+      </div>
+
+      <div class="sf-layout">
+        <div class="sf-main">
+          <div class="submissions-container">
+            <div id="loadingSpinner" class="loading-spinner">
+              <div class="spinner"></div>
+            </div>
+
+            <div id="submissionsList" style="display: none"></div>
+
+            <div id="emptyState" class="empty-state" style="display: none">
+              <div class="empty-state-icon">📋</div>
+              <h3>No Submitted Forms</h3>
+              <p>You don't have submissions in this module yet.</p>
+            </div>
+          </div>
+        </div>
+        <!-- /.sf-main -->
+        <aside class="sf-side">
+          <div
+            id="sfActivityPanel"
+            class="sf-activity-panel"
+            aria-label="Recent submission activity"
+          >
+            <div class="sf-activity-panel-hd">
+              Recent activity across all submissions
+            </div>
+            <ul id="sfActivityList" class="sf-activity-list"></ul>
+          </div>
+        </aside>
+      </div>
+      <!-- /.sf-layout -->
+    </div>
+
+    <div
+      id="sfConfirmModal"
+      class="sf-modal-veil"
+      role="presentation"
+      aria-hidden="true"
+    >
+      <div
+        class="sf-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="sfConfirmTitle"
+        onclick="event.stopPropagation()"
+      >
+        <h2 id="sfConfirmTitle" class="sf-modal-title"></h2>
+        <div id="sfConfirmBody" class="sf-modal-body"></div>
+        <div class="sf-modal-actions">
+          <button
+            type="button"
+            class="sf-btn sf-btn-secondary"
+            id="sfConfirmCancel"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            class="sf-btn sf-btn-primary"
+            id="sfConfirmOk"
+          ></button>
+        </div>
       </div>
     </div>
-  </div>
-  
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="{{ url_for('static', filename='js/hr_submission_full_form_url.js') }}"></script>
 
-  <script>
-    // Get status display text and class
-    function getStatusDisplay(status) {
-      const statusMap = {
-        'draft': { text: '📝 Draft', class: 'status-draft', message: 'This form is saved as a draft. Continue editing and submit when ready.' },
-        'submitted': { text: 'Sent to Operations Manager', class: 'status-pending', message: 'Your form has been submitted and is pending review by the Operations Manager.' },
-        'operations_manager_review': { text: 'Operations Manager Reviewing', class: 'status-reviewing', message: 'Operations Manager is currently reviewing your form.' },
-        'operations_manager_approved': { text: 'Operations Manager Signed', class: 'status-approved', message: 'Operations Manager has signed your form. It has been sent to Business Development, Procurement, and General Manager.' },
-        'bd_procurement_review': { text: 'BD & Procurement Reviewing', class: 'status-reviewing', message: 'Business Development and Procurement are reviewing your form.' },
-        'general_manager_review': { text: 'General Manager Reviewing', class: 'status-reviewing', message: 'General Manager is reviewing your form for final approval.' },
-        'completed': { text: 'Fully Approved ✓', class: 'status-completed', message: 'Your form has been fully approved by all reviewers.' },
-        'rejected': { text: 'Returned for Revision', class: 'status-rejected', message: 'Your form has been returned and requires changes.' },
-        'hr_review': { text: 'HR review', class: 'status-reviewing', message: 'With HR for intake / review.' },
-        'replacement_signoff': { text: 'Colleague sign-offs', class: 'status-pending', message: 'Waiting for designated colleagues to sign digitally.' },
-        'hr_mgmt_supervisor': { text: 'Mgmt: Supervisor', class: 'status-reviewing', message: 'Management PDF chain — supervisor step.' },
-        'hr_mgmt_operations_manager': { text: 'Mgmt: Operations', class: 'status-reviewing', message: 'Management PDF chain — operations manager step.' },
-        'hr_mgmt_reporting_manager': { text: 'Mgmt: Reporting mgr', class: 'status-reviewing', message: 'Management PDF chain — reporting manager step.' },
-        'hr_mgmt_gm': { text: 'Mgmt: General Manager', class: 'status-reviewing', message: 'Management PDF chain — GM sign-off.' },
-        'hr_mgmt_hr_head_office': { text: 'Mgmt: HR (HO)', class: 'status-reviewing', message: 'Management PDF chain — HR head office step.' },
-        'gm_review': { text: 'GM review (HR)', class: 'status-reviewing', message: 'Awaiting General Manager approval on this HR request.' },
-        'approved': { text: 'Approved', class: 'status-approved', message: 'Approved through the workflow (awaiting completion / archive).' },
-        'withdrawn': { text: 'Withdrawn', class: 'status-rejected', message: 'You withdrew this request. It will not continue through approval.' },
-        'closed_by_admin': { text: 'Closed', class: 'status-draft', message: 'This submission was closed by an administrator.' }
-      };
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/hr_submission_full_form_url.js') }}"></script>
 
-      if (statusMap[status]) return statusMap[status];
-      const label = (status || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-      return { text: label || 'In progress', class: 'status-pending', message: '' };
-    }
-    
-    // Current filter value
-    let currentFilter = 'all';
-    let currentScope = 'all';
-    let pollIntervalMs = 30000;
-    let listScopeAll = false;
-    // Workflow status filter from URL ?workflow=pending|approved|rejected (client-side narrow)
-    let currentWorkflow = 'all';
-    (function initSubmittedScopeFromUrl() {
-      try {
-        const p = new URLSearchParams(window.location.search || '');
-        const raw = (p.get('scope') || 'all').toLowerCase();
-        currentScope = ['all', 'hr', 'inspection'].includes(raw) ? raw : 'all';
-        const wf = (p.get('workflow') || 'all').toLowerCase();
-        currentWorkflow = ['all', 'pending', 'approved', 'rejected'].includes(wf) ? wf : 'all';
-      } catch (_) {
-        currentScope = 'all';
-        currentWorkflow = 'all';
+    <script>
+      // Get status display text and class
+      function getStatusDisplay(status) {
+        const statusMap = {
+          draft: {
+            text: "📝 Draft",
+            class: "status-draft",
+            message:
+              "This form is saved as a draft. Continue editing and submit when ready.",
+          },
+          submitted: {
+            text: "Sent to Operations Manager",
+            class: "status-pending",
+            message:
+              "Your form has been submitted and is pending review by the Operations Manager.",
+          },
+          operations_manager_review: {
+            text: "Operations Manager Reviewing",
+            class: "status-reviewing",
+            message: "Operations Manager is currently reviewing your form.",
+          },
+          operations_manager_approved: {
+            text: "Operations Manager Signed",
+            class: "status-approved",
+            message:
+              "Operations Manager has signed your form. It has been sent to Business Development, Procurement, and General Manager.",
+          },
+          bd_procurement_review: {
+            text: "BD & Procurement Reviewing",
+            class: "status-reviewing",
+            message:
+              "Business Development and Procurement are reviewing your form.",
+          },
+          general_manager_review: {
+            text: "General Manager Reviewing",
+            class: "status-reviewing",
+            message:
+              "General Manager is reviewing your form for final approval.",
+          },
+          completed: {
+            text: "Fully Approved ✓",
+            class: "status-completed",
+            message: "Your form has been fully approved by all reviewers.",
+          },
+          rejected: {
+            text: "Returned for Revision",
+            class: "status-rejected",
+            message: "Your form has been returned and requires changes.",
+          },
+          hr_review: {
+            text: "HR review",
+            class: "status-reviewing",
+            message: "With HR for intake / review.",
+          },
+          replacement_signoff: {
+            text: "Colleague sign-offs",
+            class: "status-pending",
+            message: "Waiting for designated colleagues to sign digitally.",
+          },
+          hr_mgmt_supervisor: {
+            text: "Mgmt: Supervisor",
+            class: "status-reviewing",
+            message: "Management PDF chain — supervisor step.",
+          },
+          hr_mgmt_operations_manager: {
+            text: "Mgmt: Operations",
+            class: "status-reviewing",
+            message: "Management PDF chain — operations manager step.",
+          },
+          hr_mgmt_reporting_manager: {
+            text: "Mgmt: Reporting mgr",
+            class: "status-reviewing",
+            message: "Management PDF chain — reporting manager step.",
+          },
+          hr_mgmt_gm: {
+            text: "Mgmt: General Manager",
+            class: "status-reviewing",
+            message: "Management PDF chain — GM sign-off.",
+          },
+          hr_mgmt_hr_head_office: {
+            text: "Mgmt: HR (HO)",
+            class: "status-reviewing",
+            message: "Management PDF chain — HR head office step.",
+          },
+          gm_review: {
+            text: "GM review (HR)",
+            class: "status-reviewing",
+            message: "Awaiting General Manager approval on this HR request.",
+          },
+          approved: {
+            text: "Approved",
+            class: "status-approved",
+            message:
+              "Approved through the workflow (awaiting completion / archive).",
+          },
+          withdrawn: {
+            text: "Withdrawn",
+            class: "status-rejected",
+            message:
+              "You withdrew this request. It will not continue through approval.",
+          },
+          closed_by_admin: {
+            text: "Closed",
+            class: "status-draft",
+            message: "This submission was closed by an administrator.",
+          },
+        };
+
+        if (statusMap[status]) return statusMap[status];
+        const label = (status || "")
+          .replace(/_/g, " ")
+          .replace(/\b\w/g, (c) => c.toUpperCase());
+        return {
+          text: label || "In progress",
+          class: "status-pending",
+          message: "",
+        };
       }
-    })();
 
-    // Approved == terminal success per workflow rules.
-    const APPROVED_WORKFLOW_STATUSES = new Set([
-      'completed', 'approved', 'general_manager_approved'
-    ]);
-    const REJECTED_WORKFLOW_STATUSES = new Set(['rejected', 'closed_by_admin']);
+      // Current filter value
+      let currentFilter = "all";
+      let currentScope = "all";
+      let pollIntervalMs = 30000;
+      let listScopeAll = false;
+      // Workflow status filter from URL ?workflow=pending|approved|rejected (client-side narrow)
+      let currentWorkflow = "all";
+      (function initSubmittedScopeFromUrl() {
+        try {
+          const p = new URLSearchParams(window.location.search || "");
+          const raw = (p.get("scope") || "all").toLowerCase();
+          currentScope = ["all", "hr", "inspection"].includes(raw)
+            ? raw
+            : "all";
+          const wf = (p.get("workflow") || "all").toLowerCase();
+          currentWorkflow = ["all", "pending", "approved", "rejected"].includes(
+            wf,
+          )
+            ? wf
+            : "all";
+        } catch (_) {
+          currentScope = "all";
+          currentWorkflow = "all";
+        }
+      })();
 
-    function matchesWorkflowFilter(submission) {
-      if (currentWorkflow === 'all') return true;
-      const ws = String(submission.workflow_status || submission.status || '').toLowerCase();
-      if (currentWorkflow === 'approved') return APPROVED_WORKFLOW_STATUSES.has(ws);
-      if (currentWorkflow === 'rejected') return REJECTED_WORKFLOW_STATUSES.has(ws);
-      // pending = anything that's not approved, rejected, draft, or closed
-      if (currentWorkflow === 'pending') {
-        if (APPROVED_WORKFLOW_STATUSES.has(ws)) return false;
-        if (REJECTED_WORKFLOW_STATUSES.has(ws)) return false;
-        if (ws === 'draft') return false;
+      // Approved == terminal success per workflow rules.
+      const APPROVED_WORKFLOW_STATUSES = new Set([
+        "completed",
+        "approved",
+        "general_manager_approved",
+      ]);
+      const REJECTED_WORKFLOW_STATUSES = new Set([
+        "rejected",
+        "closed_by_admin",
+      ]);
+
+      function matchesWorkflowFilter(submission) {
+        if (currentWorkflow === "all") return true;
+        const ws = String(
+          submission.workflow_status || submission.status || "",
+        ).toLowerCase();
+        if (currentWorkflow === "approved")
+          return APPROVED_WORKFLOW_STATUSES.has(ws);
+        if (currentWorkflow === "rejected")
+          return REJECTED_WORKFLOW_STATUSES.has(ws);
+        // pending = anything that's not approved, rejected, draft, or closed
+        if (currentWorkflow === "pending") {
+          if (APPROVED_WORKFLOW_STATUSES.has(ws)) return false;
+          if (REJECTED_WORKFLOW_STATUSES.has(ws)) return false;
+          if (ws === "draft") return false;
+          return true;
+        }
         return true;
       }
-      return true;
-    }
-    
-    // Format date and time - Convert from UTC to Dubai time (GST)
-    function formatDateTime(dateString) {
-      if (!dateString) return 'N/A';
-      try {
-        // Ensure date string is treated as UTC (append 'Z' if not present)
-        let utcDateString = dateString;
-        if (!utcDateString.endsWith('Z') && !utcDateString.includes('+') && !utcDateString.includes('-', 10)) {
-          // If no timezone indicator, assume it's UTC and append 'Z'
-          utcDateString = utcDateString.endsWith('Z') ? utcDateString : utcDateString + 'Z';
-        }
-        const date = new Date(utcDateString);
-        return date.toLocaleString('en-US', {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-          timeZone: 'Asia/Dubai'
-        }) + ' (GST)';
-      } catch {
-        return dateString;
-      }
-    }
-    
-    function inspectionModuleSlug(moduleType) {
-      const m = (moduleType || '').trim();
-      const moduleMap = {
-        'hvac': 'hvac-mep',
-        'hvac_mep': 'hvac-mep',
-        'civil': 'civil',
-        'cleaning': 'cleaning'
-      };
-      return moduleMap[m] || m;
-    }
 
-    // Base path for "edit/view this submission" links (HR uses /hr/... routes, not /{slug}/form)
-    function submissionFormEditHref(moduleType, submissionId) {
-      const m = (moduleType || '').trim();
-      if (m.startsWith('hr_')) {
-        if (typeof getHrSubmissionFullFormViewUrl === 'function') {
-          return getHrSubmissionFullFormViewUrl(m, submissionId);
+      // Format date and time - Convert from UTC to Dubai time (GST)
+      function formatDateTime(dateString) {
+        if (!dateString) return "N/A";
+        try {
+          // Ensure date string is treated as UTC (append 'Z' if not present)
+          let utcDateString = dateString;
+          if (
+            !utcDateString.endsWith("Z") &&
+            !utcDateString.includes("+") &&
+            !utcDateString.includes("-", 10)
+          ) {
+            // If no timezone indicator, assume it's UTC and append 'Z'
+            utcDateString = utcDateString.endsWith("Z")
+              ? utcDateString
+              : utcDateString + "Z";
+          }
+          const date = new Date(utcDateString);
+          return (
+            date.toLocaleString("en-US", {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+              timeZone: "Asia/Dubai",
+            }) + " (GST)"
+          );
+        } catch {
+          return dateString;
         }
-        return '/hr/print/' + encodeURIComponent(submissionId || '');
       }
-      const slug = inspectionModuleSlug(m);
-      return '/' + slug + '/form?edit=' + encodeURIComponent(submissionId || '');
-    }
-    
-    // Escape HTML to prevent XSS
-    function escapeHtml(text) {
-      if (!text) return '';
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
-    }
-    
-    // Store last update timestamp for polling
-    let lastUpdateTime = null;
-    let pollingInterval = null;
-    
-    // Helper function to refresh access token using refresh token
-    async function refreshAccessToken() {
-      try {
-        const refreshToken = localStorage.getItem('refresh_token');
-        if (!refreshToken) {
-          return null;
+
+      function inspectionModuleSlug(moduleType) {
+        const m = (moduleType || "").trim();
+        const moduleMap = {
+          hvac: "hvac-mep",
+          hvac_mep: "hvac-mep",
+          civil: "civil",
+          cleaning: "cleaning",
+        };
+        return moduleMap[m] || m;
+      }
+
+      // Base path for "edit/view this submission" links (HR uses /hr/... routes, not /{slug}/form)
+      function submissionFormEditHref(moduleType, submissionId) {
+        const m = (moduleType || "").trim();
+        if (m.startsWith("hr_")) {
+          if (typeof getHrSubmissionFullFormViewUrl === "function") {
+            return getHrSubmissionFullFormViewUrl(m, submissionId);
+          }
+          return "/hr/print/" + encodeURIComponent(submissionId || "");
         }
-        
-        const response = await fetch('/api/auth/refresh', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${refreshToken}`
-          },
-          credentials: 'include'
-        });
-        
-        if (!response.ok) {
-          // If refresh fails (401 = expired/invalid refresh token, 422 = malformed token), clear tokens
-          if (response.status === 401 || response.status === 422) {
-            localStorage.removeItem('access_token');
-            localStorage.removeItem('refresh_token');
-            localStorage.removeItem('user');
+        const slug = inspectionModuleSlug(m);
+        return (
+          "/" + slug + "/form?edit=" + encodeURIComponent(submissionId || "")
+        );
+      }
+
+      // Escape HTML to prevent XSS
+      function escapeHtml(text) {
+        if (!text) return "";
+        const div = document.createElement("div");
+        div.textContent = text;
+        return div.innerHTML;
+      }
+
+      // Store last update timestamp for polling
+      let lastUpdateTime = null;
+      let pollingInterval = null;
+
+      // Helper function to refresh access token using refresh token
+      async function refreshAccessToken() {
+        try {
+          const refreshToken = localStorage.getItem("refresh_token");
+          if (!refreshToken) {
+            return null;
+          }
+
+          const response = await fetch("/api/auth/refresh", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${refreshToken}`,
+            },
+            credentials: "include",
+          });
+
+          if (!response.ok) {
+            // If refresh fails (401 = expired/invalid refresh token, 422 = malformed token), clear tokens
+            if (response.status === 401 || response.status === 422) {
+              localStorage.removeItem("access_token");
+              localStorage.removeItem("refresh_token");
+              localStorage.removeItem("user");
+            }
+            return null;
+          }
+
+          const data = await response.json();
+          if (data.access_token) {
+            localStorage.setItem("access_token", data.access_token);
+            return data.access_token;
           }
           return null;
+        } catch (error) {
+          return null;
         }
-        
-        const data = await response.json();
-        if (data.access_token) {
-          localStorage.setItem('access_token', data.access_token);
-          return data.access_token;
-        }
-        return null;
-      } catch (error) {
-        return null;
       }
-    }
-    
-    // Helper function to make authenticated fetch with automatic token refresh
-    async function authenticatedFetch(url, options = {}) {
-      let token = localStorage.getItem('access_token');
-      if (!token) {
-        return { ok: false, status: 401 };
-      }
-      
-      // Make initial request
-      const response = await fetch(url, {
-        ...options,
-        headers: {
-          ...options.headers,
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      // If 401, try to refresh token and retry once
-      if (response.status === 401) {
-        const newToken = await refreshAccessToken();
-        if (newToken) {
-          // Retry with new token (must await so callers always get a Response)
-          return await fetch(url, {
-            ...options,
-            headers: {
-              ...options.headers,
-              'Authorization': `Bearer ${newToken}`
-            }
-          });
-        } else {
-          // Refresh failed, redirect to login
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('refresh_token');
-          localStorage.removeItem('user');
-          window.location.href = '/login';
+
+      // Helper function to make authenticated fetch with automatic token refresh
+      async function authenticatedFetch(url, options = {}) {
+        let token = localStorage.getItem("access_token");
+        if (!token) {
           return { ok: false, status: 401 };
         }
-      }
-      
-      return response;
-    }
-    
-    let _sfPendingConfirm = null;
-    function closeSfConfirm() {
-      const veil = document.getElementById('sfConfirmModal');
-      if (!veil) return;
-      veil.classList.remove('is-open');
-      veil.setAttribute('aria-hidden', 'true');
-      document.body.style.overflow = '';
-      _sfPendingConfirm = null;
-    }
-    function openSfConfirm(opts) {
-      const veil = document.getElementById('sfConfirmModal');
-      const titleEl = document.getElementById('sfConfirmTitle');
-      const bodyEl = document.getElementById('sfConfirmBody');
-      const btnOk = document.getElementById('sfConfirmOk');
-      const btnCancel = document.getElementById('sfConfirmCancel');
-      if (!veil || !titleEl || !bodyEl || !btnOk || !btnCancel) return;
-      const title = opts.title || 'Confirm';
-      const messages = Array.isArray(opts.messages) ? opts.messages : [opts.message || ''];
-      const confirmLabel = opts.confirmLabel || 'OK';
-      const variant = opts.confirmVariant === 'danger' ? 'danger' : 'primary';
-      document.body.appendChild(veil);
-      titleEl.textContent = title;
-      bodyEl.innerHTML = '';
-      messages.forEach((text, i) => {
-        const p = document.createElement('p');
-        p.textContent = text;
-        if (i > 0) p.classList.add('sf-muted');
-        bodyEl.appendChild(p);
-      });
-      btnOk.textContent = confirmLabel;
-      btnOk.className = 'sf-btn ' + (variant === 'danger' ? 'sf-btn-danger' : 'sf-btn-primary');
-      _sfPendingConfirm = opts.onConfirm || null;
-      veil.classList.add('is-open');
-      veil.setAttribute('aria-hidden', 'false');
-      document.body.style.overflow = 'hidden';
-      btnCancel.focus();
-    }
-    function showSfToast(message, kind) {
-      const isErr = kind === 'error';
-      const el = document.createElement('div');
-      el.setAttribute('role', 'status');
-      el.textContent = message;
-      el.style.cssText =
-        'position:fixed;top:max(20px,env(safe-area-inset-top));right:20px;max-width:min(380px,calc(100vw - 2rem));' +
-        'padding:12px 18px;border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.18);z-index:10060;font-size:.92rem;' +
-        'font-weight:500;line-height:1.45;' +
-        (isErr
-          ? 'background:#fef2f2;color:#991b1b;border:1px solid #fecaca;'
-          : 'background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0;');
-      document.body.appendChild(el);
-      setTimeout(() => {
-        el.style.transition = 'opacity 0.3s';
-        el.style.opacity = '0';
-        setTimeout(() => el.remove(), 300);
-      }, 4200);
-    }
-    (function initSfConfirmModal() {
-      const veil = document.getElementById('sfConfirmModal');
-      const btnOk = document.getElementById('sfConfirmOk');
-      const btnCancel = document.getElementById('sfConfirmCancel');
-      if (!veil || !btnOk || !btnCancel) return;
-      veil.addEventListener('click', (e) => {
-        if (e.target === veil) closeSfConfirm();
-      });
-      btnCancel.addEventListener('click', () => closeSfConfirm());
-      btnOk.addEventListener('click', async () => {
-        const fn = _sfPendingConfirm;
-        if (typeof fn !== 'function') {
-          closeSfConfirm();
-          return;
-        }
-        btnOk.disabled = true;
-        btnCancel.disabled = true;
-        try {
-          await Promise.resolve(fn());
-        } finally {
-          btnOk.disabled = false;
-          btnCancel.disabled = false;
-          closeSfConfirm();
-        }
-      });
-      document.addEventListener('keydown', (e) => {
-        if (e.key !== 'Escape') return;
-        if (!veil.classList.contains('is-open')) return;
-        e.preventDefault();
-        closeSfConfirm();
-      });
-    })();
-    
-    async function withdrawHrSubmission(submissionIdRaw) {
-      const sid = (submissionIdRaw != null ? String(submissionIdRaw) : '').trim();
-      if (!sid) return;
-      openSfConfirm({
-        title: 'Withdraw this HR request?',
-        messages: [
-          'Your reporting manager will be notified.',
-          'This cannot be undone from this page.',
-        ],
-        confirmLabel: 'Withdraw',
-        confirmVariant: 'danger',
-        onConfirm: async () => {
-          try {
-            const res = await authenticatedFetch(
-              `/api/workflow/submissions/${encodeURIComponent(sid)}/withdraw`,
-              { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }
-            );
-            const payload = await res.json().catch(() => ({}));
-            if (!res.ok) {
-              showSfToast(payload.error || payload.message || 'Could not withdraw this form.', 'error');
-              return;
-            }
-            showSfToast(payload.message || 'Request withdrawn.', 'success');
-            await loadSubmissions();
-          } catch (e) {
-            showSfToast('Network error — could not withdraw. Try again.', 'error');
-          }
-        },
-      });
-    }
 
-    function scrollHighlightSubmissionCard(listEl) {
-      try {
-        const want = (new URLSearchParams(window.location.search || '').get('submission') || '').trim();
-        if (!want || !listEl) return;
-        const cards = listEl.querySelectorAll('[data-sf-submission-id]');
-        for (const c of cards) {
-          if (c.getAttribute('data-sf-submission-id') === want) {
-            c.classList.add('submission-card--highlight');
-            c.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            window.setTimeout(() => { c.classList.remove('submission-card--highlight'); }, 4500);
-            break;
+        // Make initial request
+        const response = await fetch(url, {
+          ...options,
+          headers: {
+            ...options.headers,
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        // If 401, try to refresh token and retry once
+        if (response.status === 401) {
+          const newToken = await refreshAccessToken();
+          if (newToken) {
+            // Retry with new token (must await so callers always get a Response)
+            return await fetch(url, {
+              ...options,
+              headers: {
+                ...options.headers,
+                Authorization: `Bearer ${newToken}`,
+              },
+            });
+          } else {
+            // Refresh failed, redirect to login
+            localStorage.removeItem("access_token");
+            localStorage.removeItem("refresh_token");
+            localStorage.removeItem("user");
+            window.location.href = "/login";
+            return { ok: false, status: 401 };
           }
         }
-      } catch (e) { /* ignore */ }
-    }
 
-    function renderLiveActivityFeed(feed) {
-      const panel = document.getElementById('sfActivityPanel');
-      const list = document.getElementById('sfActivityList');
-      if (!panel || !list) return;
-      if (!listScopeAll || !Array.isArray(feed) || feed.length === 0) {
-        panel.classList.remove('visible');
-        list.innerHTML = '';
-        return;
+        return response;
       }
-      panel.classList.add('visible');
-      list.innerHTML = feed.map(row => {
-        const act = row.activity || {};
-        const sid = encodeURIComponent(row.submission_id || '');
-        const who = escapeHtml(row.submitted_by_display || act.actor || 'Someone');
-        const label = escapeHtml(act.label || 'Activity');
-        const mod = escapeHtml(row.module_name || 'Form');
-        const when = act.at ? formatDateTime(act.at) : '';
-        return `<li class="sf-activity-item">
-          <div><a href="#submission-${sid}" onclick="return sfScrollToSubmission('${sid}')">${mod}</a> · ${label}</div>
-          <div>${who}${when ? ` · <time>${when}</time>` : ''}</div>
-        </li>`;
-      }).join('');
-    }
 
-    function sfScrollToSubmission(sid) {
-      const el = document.querySelector(`[data-sf-submission-id="${CSS.escape(decodeURIComponent(sid))}"]`);
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        el.classList.add('submission-card--highlight');
-        window.setTimeout(() => el.classList.remove('submission-card--highlight'), 4500);
+      let _sfPendingConfirm = null;
+      function closeSfConfirm() {
+        const veil = document.getElementById("sfConfirmModal");
+        if (!veil) return;
+        veil.classList.remove("is-open");
+        veil.setAttribute("aria-hidden", "true");
+        document.body.style.overflow = "";
+        _sfPendingConfirm = null;
       }
-      return false;
-    }
-
-    function updateLiveBanner(orgWide, pollSeconds) {
-      const banner = document.getElementById('sfLiveBanner');
-      const refreshed = document.getElementById('sfLastRefreshed');
-      if (!banner) return;
-      if (orgWide) {
-        banner.classList.add('visible');
-        if (refreshed) {
-          refreshed.textContent = 'Updated ' + new Date().toLocaleTimeString('en-US', {
-            hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Asia/Dubai'
-          }) + ' GST';
-        }
-        const txt = document.getElementById('sfLiveBannerText');
-        if (txt) {
-          txt.textContent = `Live — all users' submissions refresh every ${pollSeconds || 15} seconds.`;
-        }
-      } else {
-        banner.classList.remove('visible');
+      function openSfConfirm(opts) {
+        const veil = document.getElementById("sfConfirmModal");
+        const titleEl = document.getElementById("sfConfirmTitle");
+        const bodyEl = document.getElementById("sfConfirmBody");
+        const btnOk = document.getElementById("sfConfirmOk");
+        const btnCancel = document.getElementById("sfConfirmCancel");
+        if (!veil || !titleEl || !bodyEl || !btnOk || !btnCancel) return;
+        const title = opts.title || "Confirm";
+        const messages = Array.isArray(opts.messages)
+          ? opts.messages
+          : [opts.message || ""];
+        const confirmLabel = opts.confirmLabel || "OK";
+        const variant = opts.confirmVariant === "danger" ? "danger" : "primary";
+        document.body.appendChild(veil);
+        titleEl.textContent = title;
+        bodyEl.innerHTML = "";
+        messages.forEach((text, i) => {
+          const p = document.createElement("p");
+          p.textContent = text;
+          if (i > 0) p.classList.add("sf-muted");
+          bodyEl.appendChild(p);
+        });
+        btnOk.textContent = confirmLabel;
+        btnOk.className =
+          "sf-btn " +
+          (variant === "danger" ? "sf-btn-danger" : "sf-btn-primary");
+        _sfPendingConfirm = opts.onConfirm || null;
+        veil.classList.add("is-open");
+        veil.setAttribute("aria-hidden", "false");
+        document.body.style.overflow = "hidden";
+        btnCancel.focus();
       }
-    }
-
-    // Load submissions
-    async function loadSubmissions() {
-      const loadingSpinner = document.getElementById('loadingSpinner');
-      const submissionsList = document.getElementById('submissionsList');
-      const emptyState = document.getElementById('emptyState');
-      const filterCount = document.getElementById('filterCount');
-      
-      try {
-        const response = await authenticatedFetch(`/api/workflow/submissions/my-submissions?status=${encodeURIComponent(currentFilter)}&scope=${encodeURIComponent(currentScope)}`);
-        
-        if (!response || !response.ok) {
-          // If response is null or not ok, token refresh will handle redirect if needed
-          if (response && response.status === 401) {
-            loadingSpinner.style.display = 'none';
-            // Already handled by authenticatedFetch - will redirect to login
+      function showSfToast(message, kind) {
+        const isErr = kind === "error";
+        const el = document.createElement("div");
+        el.setAttribute("role", "status");
+        el.textContent = message;
+        el.style.cssText =
+          "position:fixed;top:max(20px,env(safe-area-inset-top));right:20px;max-width:min(380px,calc(100vw - 2rem));" +
+          "padding:12px 18px;border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.18);z-index:10060;font-size:.92rem;" +
+          "font-weight:500;line-height:1.45;" +
+          (isErr
+            ? "background:#fef2f2;color:#991b1b;border:1px solid #fecaca;"
+            : "background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0;");
+        document.body.appendChild(el);
+        setTimeout(() => {
+          el.style.transition = "opacity 0.3s";
+          el.style.opacity = "0";
+          setTimeout(() => el.remove(), 300);
+        }, 4200);
+      }
+      (function initSfConfirmModal() {
+        const veil = document.getElementById("sfConfirmModal");
+        const btnOk = document.getElementById("sfConfirmOk");
+        const btnCancel = document.getElementById("sfConfirmCancel");
+        if (!veil || !btnOk || !btnCancel) return;
+        veil.addEventListener("click", (e) => {
+          if (e.target === veil) closeSfConfirm();
+        });
+        btnCancel.addEventListener("click", () => closeSfConfirm());
+        btnOk.addEventListener("click", async () => {
+          const fn = _sfPendingConfirm;
+          if (typeof fn !== "function") {
+            closeSfConfirm();
             return;
           }
-          let detail = 'Failed to load submissions';
+          btnOk.disabled = true;
+          btnCancel.disabled = true;
           try {
-            if (response && response.clone) {
-              const errBody = await response.clone().json();
-              if (errBody && errBody.error) {
-                detail = errBody.error;
+            await Promise.resolve(fn());
+          } finally {
+            btnOk.disabled = false;
+            btnCancel.disabled = false;
+            closeSfConfirm();
+          }
+        });
+        document.addEventListener("keydown", (e) => {
+          if (e.key !== "Escape") return;
+          if (!veil.classList.contains("is-open")) return;
+          e.preventDefault();
+          closeSfConfirm();
+        });
+      })();
+
+      async function withdrawHrSubmission(submissionIdRaw) {
+        const sid = (
+          submissionIdRaw != null ? String(submissionIdRaw) : ""
+        ).trim();
+        if (!sid) return;
+        openSfConfirm({
+          title: "Withdraw this HR request?",
+          messages: [
+            "Your reporting manager will be notified.",
+            "This cannot be undone from this page.",
+          ],
+          confirmLabel: "Withdraw",
+          confirmVariant: "danger",
+          onConfirm: async () => {
+            try {
+              const res = await authenticatedFetch(
+                `/api/workflow/submissions/${encodeURIComponent(sid)}/withdraw`,
+                {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: "{}",
+                },
+              );
+              const payload = await res.json().catch(() => ({}));
+              if (!res.ok) {
+                showSfToast(
+                  payload.error ||
+                    payload.message ||
+                    "Could not withdraw this form.",
+                  "error",
+                );
+                return;
               }
+              showSfToast(payload.message || "Request withdrawn.", "success");
+              await loadSubmissions();
+            } catch (e) {
+              showSfToast(
+                "Network error — could not withdraw. Try again.",
+                "error",
+              );
             }
-          } catch (e) { /* ignore */ }
-          throw new Error(detail);
-        }
-        
-        const data = await response.json();
-        const allSubmissions = data.submissions || [];
-        // Apply client-side workflow filter (pending / approved / rejected) coming from the
-        // inspection hero stat cards via ?workflow=… deep-link.
-        const submissions = allSubmissions.filter(matchesWorkflowFilter);
-        listScopeAll = data.list_scope === 'all' || data.org_wide === true;
-        const pollSeconds = Number(data.poll_interval_seconds) || (listScopeAll ? 15 : 30);
-        pollIntervalMs = pollSeconds * 1000;
-        renderLiveActivityFeed(data.live_activity_feed || []);
-        updateLiveBanner(listScopeAll, pollSeconds);
-        const moduleFlags = (data && data.visible_modules) || {};
-        const hasHrModule = moduleFlags.hr === true;
-        const hasInspectionModule = moduleFlags.inspection === true;
-        const moduleLabel = hasHrModule && hasInspectionModule
-          ? 'HR and inspection'
-          : (hasHrModule ? 'HR' : (hasInspectionModule ? 'inspection' : 'workflow'));
+          },
+        });
+      }
 
-        const ph1 = document.querySelector('.page-header h1');
-        const ph2 = document.querySelector('.page-header p');
-        const wfHeadingMap = { pending: 'Pending', approved: 'Approved', rejected: 'Rejected' };
-        const wfHeading = wfHeadingMap[currentWorkflow] || '';
-        const scopeLabel = currentScope === 'inspection' ? 'inspection'
-                          : currentScope === 'hr' ? 'HR'
-                          : moduleLabel;
-        if (ph1 && ph2) {
-          if (wfHeading) {
-            ph1.textContent = `${wfHeading} ${scopeLabel} forms`;
-            ph2.textContent = `${wfHeading} ${scopeLabel} submissions only. Click any card to open the form, status, and PDF/Excel reports.`;
-          } else if (listScopeAll) {
-            ph1.textContent = currentScope === 'hr' ? 'All submitted HR forms' : (currentScope === 'inspection' ? 'All submitted inspection forms' : 'All submitted forms');
-            ph2.textContent = `Every user's ${moduleLabel} submissions and live workflow activity. List refreshes automatically.`;
-          } else {
-            ph1.textContent = 'My submitted forms';
-            ph2.textContent = 'Forms you submitted appear here. Open a card to view status, PDFs, and details.';
-          }
-        }
-
-        // Update last update time for polling
-        const currentUpdateTime = submissions.length > 0 ? submissions[0].updated_at : null;
-        const hasUpdates = lastUpdateTime && currentUpdateTime && currentUpdateTime !== lastUpdateTime;
-        lastUpdateTime = currentUpdateTime;
-        
-        loadingSpinner.style.display = 'none';
-        
-        // Update filter count (with workflow narrowing if any)
-        const filterLabels = { all: 'All', submitted: 'Submitted', draft: 'Drafts' };
-        const workflowLabels = { all: '', pending: ' pending', approved: ' approved', rejected: ' rejected' };
-        const baseLbl = filterLabels[currentFilter] || '';
-        const wfLbl = workflowLabels[currentWorkflow] || '';
-        filterCount.textContent = `Showing ${submissions.length}${wfLbl ? wfLbl : (baseLbl ? ' ' + baseLbl : '')} form(s)`;
-        
-        if (submissions.length === 0) {
-          emptyState.style.display = 'block';
-          submissionsList.style.display = 'none';
-          if (listScopeAll) {
-            emptyState.querySelector('h3').textContent = currentFilter === 'draft' ? 'No drafts match filter' : 'No submissions match filter';
-            emptyState.querySelector('p').textContent = currentFilter === 'draft'
-              ? 'Try “All forms” or “Submitted only”, or add users and submissions from Admin / modules.'
-              : 'There are no submissions for this filter yet—or none exist in the database.';
-          } else {
-            emptyState.querySelector('h3').textContent = currentFilter === 'draft' ? 'No Drafts' : 'No Submitted Forms';
-            emptyState.querySelector('p').textContent = currentFilter === 'draft'
-              ? `You don\'t have any ${moduleLabel} draft forms yet.`
-              : `You don\'t have any ${moduleLabel} submissions for this filter yet.`;
-          }
-          return;
-        }
-        
-        emptyState.style.display = 'none';
-        submissionsList.style.display = 'block';
-        startPolling();
-        
-        // Show notification if there are updates
-        if (hasUpdates && document.visibilityState === 'visible') {
-          // Show a subtle notification that the page has been updated
-          const notification = document.createElement('div');
-          notification.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #10b981; color: white; padding: 12px 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 10000; font-size: 0.9rem;';
-          notification.innerHTML = '🔄 Form updated!';
-          document.body.appendChild(notification);
-          setTimeout(() => {
-            notification.style.transition = 'opacity 0.3s';
-            notification.style.opacity = '0';
-            setTimeout(() => notification.remove(), 300);
-          }, 3000);
-        }
-        
-        // Check if current user is admin (for showing Reviewer Comments)
-        const userStr = localStorage.getItem('user');
-        let isAdmin = false;
+      function scrollHighlightSubmissionCard(listEl) {
         try {
-          if (userStr) {
-            const user = JSON.parse(userStr);
-            isAdmin = user.role === 'admin';
+          const want = (
+            new URLSearchParams(window.location.search || "").get(
+              "submission",
+            ) || ""
+          ).trim();
+          if (!want || !listEl) return;
+          const cards = listEl.querySelectorAll("[data-sf-submission-id]");
+          for (const c of cards) {
+            if (c.getAttribute("data-sf-submission-id") === want) {
+              c.classList.add("submission-card--highlight");
+              c.scrollIntoView({ behavior: "smooth", block: "center" });
+              window.setTimeout(() => {
+                c.classList.remove("submission-card--highlight");
+              }, 4500);
+              break;
+            }
           }
         } catch (e) {
-          console.error('Error parsing user data:', e);
+          /* ignore */
         }
-        
-        // Render submissions
-        submissionsList.innerHTML = submissions.map(submission => {
-          const isDraft = submission.status === 'draft' || submission.workflow_status === 'draft';
-          const statusInfo = getStatusDisplay(isDraft ? 'draft' : (submission.workflow_status || submission.status));
-          const formHref = submissionFormEditHref(submission.module, submission.submission_id);
-          const mod = submission.module || '';
-          const isHrSubmission = mod.startsWith('hr_');
-          const canEdit = submission.workflow_status === 'rejected' || submission.status === 'rejected' || isDraft;
-          const encodedSid = encodeURIComponent(submission.submission_id || '');
-          const downloadsBlock = isHrSubmission ? `
-                  <a href="/hr/download-pdf/${encodedSid}" class="btn-custom btn-outline-custom" target="_blank">
-                    PDF
-                  </a>
-                  <a href="/hr/download-docx/${encodedSid}" class="btn-custom btn-outline-custom" target="_blank">
-                    Word
-                  </a>
-                ` : (submission.latest_job_id ? `
-                    <a href="/${inspectionModuleSlug(mod)}/download/${submission.latest_job_id}/pdf" class="btn-custom btn-outline-custom" target="_blank">
-                      PDF
-                    </a>
-                    <a href="/${inspectionModuleSlug(mod)}/download/${submission.latest_job_id}/excel" class="btn-custom btn-outline-custom" target="_blank">
-                      Excel
-                    </a>
-                  ` : '');
-          const hrWithdrawBtn = (!isDraft && isHrSubmission && submission.can_withdraw_hr)
-            ? `<button type="button" class="btn-custom btn-outline-custom" style="border-color:#b91c1c;color:#b91c1c" onclick='withdrawHrSubmission(${JSON.stringify(submission.submission_id || '')})'>Withdraw</button>`
-            : '';
+      }
 
-          return `
-            <div class="submission-card ${isDraft ? 'draft-card' : ''}" data-sf-submission-id="${escapeHtml(submission.submission_id || '')}">
-              <div class="submission-header">
-                <div>
-                  <div class="submission-title">${submission.site_name || 'Untitled Draft'}</div>
-                  <div class="submission-module">${submission.module_name || submission.module}</div>
-                </div>
-                <span class="submission-status ${statusInfo.class}">${statusInfo.text}</span>
-              </div>
-              
-              ${statusInfo.message ? `
-                <div class="alert ${isDraft ? 'alert-warning' : 'alert-info'}" style="margin-bottom: 1rem; font-size: 0.9rem; ${isDraft ? 'background: #fff8e1; border: 1px solid #ffe082; color: #f57f17;' : 'background: #e3f2fd; border: 1px solid #90caf9; color: #1565c0;'}">
-                  <strong>${isDraft ? '📝' : '📋'} Status:</strong> ${statusInfo.message}
-                </div>
-              ` : ''}
-              
-              <div class="submission-details">
-                <div class="submission-detail-item">
-                  <span>📅</span>
-                  <span><strong>${isDraft ? 'Created:' : 'Submitted:'}</strong> ${formatDateTime(submission.created_at)}</span>
-                </div>
-                <div class="submission-detail-item">
-                  <span>🔄</span>
-                  <span><strong>Last Updated:</strong> ${formatDateTime(submission.updated_at)}</span>
-                </div>
-                <div class="submission-detail-item">
-                  <span>📝</span>
-                  <span><strong>Form ID:</strong> ${submission.submission_id}</span>
-                </div>
-                ${listScopeAll && submission.submitted_by_display ? `
-                <div class="submission-detail-item">
-                  <span>👤</span>
-                  <span><strong>Submitted by:</strong> ${escapeHtml(submission.submitted_by_display)}${submission.submitted_by_username ? ` <span style="color:#64748b;font-weight:500;">(@${escapeHtml(submission.submitted_by_username)})</span>` : ''}</span>
-                </div>
-                ` : ''}
-              </div>
-              
-              ${submission.latest_activity && submission.latest_activity.label ? `
-                <div class="sf-card-activity">
-                  <strong>Latest activity:</strong> ${escapeHtml(submission.latest_activity.label)}
-                  ${submission.latest_activity.actor ? ` · ${escapeHtml(submission.latest_activity.actor)}` : ''}
-                  ${submission.latest_activity.at ? ` · ${formatDateTime(submission.latest_activity.at)}` : ''}
-                </div>
-              ` : ''}
-              
-              ${submission.rejection_reason ? `
-                <div class="alert alert-danger" style="margin-bottom: 1rem; font-size: 0.9rem;">
-                  <strong>⚠️ Rejection Reason:</strong> ${submission.rejection_reason}
-                </div>
-              ` : ''}
-              
-              ${isAdmin && submission.reviewers && submission.reviewers.length > 0 ? `
-                <div class="reviewers-section" style="margin-top: 1rem; margin-bottom: 1rem; padding: 1rem; background: #f8faf9; border-radius: 8px; border: 1px solid #e5e7eb;">
-                  <h6 style="color: var(--primary); font-weight: 600; margin-bottom: 0.75rem; font-size: 0.95rem;">📋 Reviewer Comments</h6>
-                  ${submission.reviewers.map((reviewer, index) => {
-                    const isLast = index === submission.reviewers.length - 1;
-                    return `
-                    <div class="reviewer-item" style="margin-bottom: ${isLast ? '0' : '1rem'}; padding-bottom: ${isLast ? '0' : '1rem'}; ${isLast ? '' : 'border-bottom: 1px solid #e5e7eb;'}">
-                      <div>
-                        <strong style="color: var(--primary); font-size: 0.9rem;">${reviewer.role}:</strong>
-                        ${reviewer.comments ? `
-                          <div style="margin-top: 0.5rem; padding: 0.75rem; background: white; border-radius: 4px; border-left: 3px solid var(--primary); font-size: 0.875rem; color: #374151;">
-                            ${escapeHtml(reviewer.comments)}
-                          </div>
-                        ` : '<div style="margin-top: 0.25rem; font-size: 0.85rem; color: #6b7280; font-style: italic;">No comments provided</div>'}
-                        ${reviewer.approved_at ? `
-                          <div style="margin-top: 0.5rem; font-size: 0.8rem; color: #6b7280;">
-                            ✓ Approved on ${formatDateTime(reviewer.approved_at)}
-                          </div>
-                        ` : ''}
-                      </div>
-                    </div>
-                  `;
-                  }).join('')}
-                </div>
-              ` : ''}
-              
-              <div class="submission-actions">
-                ${isDraft ? `
-                  <a href="${formHref}" class="btn-custom btn-primary-custom">
-                    Continue Editing
-                  </a>
-                  <button onclick="deleteDraft('${submission.submission_id}')" class="btn-custom btn-danger-custom">
-                    Delete Draft
-                  </button>
-                ` : `
-                  <a href="${formHref}" class="btn-custom btn-primary-custom">
-                    View Form
-                  </a>
-                  ${canEdit ? `
-                    <a href="${formHref}" class="btn-custom btn-outline-custom">
-                      Edit & Resubmit
-                    </a>
-                  ` : ''}
-                  ${downloadsBlock}
-                  ${hrWithdrawBtn}
-                `}
-              </div>
-            </div>
-          `;
-        }).join('');
-        scrollHighlightSubmissionCard(submissionsList);
-        
-      } catch (error) {
-        console.error('Error loading submissions:', error);
-        loadingSpinner.style.display = 'none';
-        submissionsList.style.display = 'block';
-        submissionsList.innerHTML = `
-          <div class="alert alert-danger" role="alert">
-            <h5 class="alert-heading">⚠️ Error Loading Submissions</h5>
-            <p>${error.message || 'Failed to load your submitted forms. Please try again.'}</p>
-            <hr>
-            <button class="btn btn-primary" onclick="loadSubmissions()">Retry</button>
-          </div>
-        `;
-      }
-    }
-    
-    // Start polling for updates (15s org-wide, 30s personal)
-    function startPolling() {
-      // Clear any existing interval
-      if (pollingInterval) {
-        clearInterval(pollingInterval);
-      }
-      
-      pollingInterval = setInterval(() => {
-        if (document.visibilityState === 'visible') {
-          loadSubmissions();
+      function renderLiveActivityFeed(feed) {
+        const panel = document.getElementById("sfActivityPanel");
+        const list = document.getElementById("sfActivityList");
+        if (!panel || !list) return;
+        if (!listScopeAll || !Array.isArray(feed) || feed.length === 0) {
+          panel.classList.remove("visible");
+          list.innerHTML = "";
+          return;
         }
-      }, pollIntervalMs);
-    }
-    
-    // Stop polling when page is hidden, resume when visible
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') {
-        // Reload immediately when page becomes visible
-        loadSubmissions();
-        startPolling();
-      } else {
-        // Stop polling when page is hidden
-        if (pollingInterval) {
-          clearInterval(pollingInterval);
-          pollingInterval = null;
+        panel.classList.add("visible");
+        list.innerHTML = feed
+          .map((row) => {
+            const act = row.activity || {};
+            const sid = encodeURIComponent(row.submission_id || "");
+            const who = escapeHtml(
+              row.submitted_by_display || act.actor || "Someone",
+            );
+            const label = escapeHtml(act.label || "Activity");
+            const mod = escapeHtml(row.module_name || "Form");
+            const when = act.at ? formatDateTime(act.at) : "";
+            return `<li class="sf-activity-item">
+ <div><a href="#submission-${sid}" onclick="return sfScrollToSubmission('${sid}')">${mod}</a> · ${label}</div>
+ <div>${who}${when ? ` · <time>${when}</time>` : ""}</div>
+ </li>`;
+          })
+          .join("");
+      }
+
+      function sfScrollToSubmission(sid) {
+        const el = document.querySelector(
+          `[data-sf-submission-id="${CSS.escape(decodeURIComponent(sid))}"]`,
+        );
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          el.classList.add("submission-card--highlight");
+          window.setTimeout(
+            () => el.classList.remove("submission-card--highlight"),
+            4500,
+          );
+        }
+        return false;
+      }
+
+      function updateLiveBanner(orgWide, pollSeconds) {
+        const banner = document.getElementById("sfLiveBanner");
+        const refreshed = document.getElementById("sfLastRefreshed");
+        if (!banner) return;
+        if (orgWide) {
+          banner.classList.add("visible");
+          if (refreshed) {
+            refreshed.textContent =
+              "Updated " +
+              new Date().toLocaleTimeString("en-US", {
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+                timeZone: "Asia/Dubai",
+              }) +
+              " GST";
+          }
+          const txt = document.getElementById("sfLiveBannerText");
+          if (txt) {
+            txt.textContent = `Live — all users' submissions refresh every ${pollSeconds || 15} seconds.`;
+          }
+        } else {
+          banner.classList.remove("visible");
         }
       }
-    });
-    
-    // Load submissions on page load and start polling
-    document.addEventListener('DOMContentLoaded', () => {
-      loadSubmissions();
-      startPolling();
-      
-      // Filter change handler
-      document.getElementById('statusFilter').addEventListener('change', (e) => {
-        currentFilter = e.target.value;
-        loadSubmissions();
-      });
-    });
-    
-    // Clean up polling on page unload
-    window.addEventListener('beforeunload', () => {
-      if (pollingInterval) {
-        clearInterval(pollingInterval);
-      }
-    });
-    
-    // Delete draft function
-    function deleteDraft(submissionId) {
-      openSfConfirm({
-        title: 'Delete this draft?',
-        messages: [
-          'This permanently removes the draft.',
-          'This action cannot be undone.',
-        ],
-        confirmLabel: 'Delete draft',
-        confirmVariant: 'danger',
-        onConfirm: async () => {
-          try {
-            const response = await authenticatedFetch(`/api/workflow/submissions/draft/${submissionId}`, {
-              method: 'DELETE',
-            });
-            if (response.ok) {
-              showSfToast('Draft deleted successfully.', 'success');
-              await loadSubmissions();
+
+      // Load submissions
+      async function loadSubmissions() {
+        const loadingSpinner = document.getElementById("loadingSpinner");
+        const submissionsList = document.getElementById("submissionsList");
+        const emptyState = document.getElementById("emptyState");
+        const filterCount = document.getElementById("filterCount");
+
+        try {
+          const response = await authenticatedFetch(
+            `/api/workflow/submissions/my-submissions?status=${encodeURIComponent(currentFilter)}&scope=${encodeURIComponent(currentScope)}`,
+          );
+
+          if (!response || !response.ok) {
+            // If response is null or not ok, token refresh will handle redirect if needed
+            if (response && response.status === 401) {
+              loadingSpinner.style.display = "none";
+              // Already handled by authenticatedFetch - will redirect to login
               return;
             }
-            const data = await response.json().catch(() => ({}));
-            showSfToast(data.error || 'Failed to delete draft.', 'error');
-          } catch (error) {
-            console.error('Error deleting draft:', error);
-            showSfToast('Failed to delete draft. Please try again.', 'error');
+            let detail = "Failed to load submissions";
+            try {
+              if (response && response.clone) {
+                const errBody = await response.clone().json();
+                if (errBody && errBody.error) {
+                  detail = errBody.error;
+                }
+              }
+            } catch (e) {
+              /* ignore */
+            }
+            throw new Error(detail);
           }
-        },
+
+          const data = await response.json();
+          const allSubmissions = data.submissions || [];
+          // Apply client-side workflow filter (pending / approved / rejected) coming from the
+          // inspection hero stat cards via ?workflow=… deep-link.
+          const submissions = allSubmissions.filter(matchesWorkflowFilter);
+          listScopeAll = data.list_scope === "all" || data.org_wide === true;
+          const pollSeconds =
+            Number(data.poll_interval_seconds) || (listScopeAll ? 15 : 30);
+          pollIntervalMs = pollSeconds * 1000;
+          renderLiveActivityFeed(data.live_activity_feed || []);
+          updateLiveBanner(listScopeAll, pollSeconds);
+          const moduleFlags = (data && data.visible_modules) || {};
+          const hasHrModule = moduleFlags.hr === true;
+          const hasInspectionModule = moduleFlags.inspection === true;
+          const moduleLabel =
+            hasHrModule && hasInspectionModule
+              ? "HR and inspection"
+              : hasHrModule
+                ? "HR"
+                : hasInspectionModule
+                  ? "inspection"
+                  : "workflow";
+
+          const ph1 = document.querySelector(".page-header h1");
+          const ph2 = document.querySelector(".page-header p");
+          const wfHeadingMap = {
+            pending: "Pending",
+            approved: "Approved",
+            rejected: "Rejected",
+          };
+          const wfHeading = wfHeadingMap[currentWorkflow] || "";
+          const scopeLabel =
+            currentScope === "inspection"
+              ? "inspection"
+              : currentScope === "hr"
+                ? "HR"
+                : moduleLabel;
+          if (ph1 && ph2) {
+            if (wfHeading) {
+              ph1.textContent = `${wfHeading} ${scopeLabel} forms`;
+              ph2.textContent = `${wfHeading} ${scopeLabel} submissions only. Click any card to open the form, status, and PDF/Excel reports.`;
+            } else if (listScopeAll) {
+              ph1.textContent =
+                currentScope === "hr"
+                  ? "All submitted HR forms"
+                  : currentScope === "inspection"
+                    ? "All submitted inspection forms"
+                    : "All submitted forms";
+              ph2.textContent = `Every user's ${moduleLabel} submissions and live workflow activity. List refreshes automatically.`;
+            } else {
+              ph1.textContent = "My submitted forms";
+              ph2.textContent =
+                "Forms you submitted appear here. Open a card to view status, PDFs, and details.";
+            }
+          }
+
+          // Update last update time for polling
+          const currentUpdateTime =
+            submissions.length > 0 ? submissions[0].updated_at : null;
+          const hasUpdates =
+            lastUpdateTime &&
+            currentUpdateTime &&
+            currentUpdateTime !== lastUpdateTime;
+          lastUpdateTime = currentUpdateTime;
+
+          loadingSpinner.style.display = "none";
+
+          // Update filter count (with workflow narrowing if any)
+          const filterLabels = {
+            all: "All",
+            submitted: "Submitted",
+            draft: "Drafts",
+          };
+          const workflowLabels = {
+            all: "",
+            pending: " pending",
+            approved: " approved",
+            rejected: " rejected",
+          };
+          const baseLbl = filterLabels[currentFilter] || "";
+          const wfLbl = workflowLabels[currentWorkflow] || "";
+          filterCount.textContent = `Showing ${submissions.length}${wfLbl ? wfLbl : baseLbl ? " " + baseLbl : ""} form(s)`;
+
+          if (submissions.length === 0) {
+            emptyState.style.display = "block";
+            submissionsList.style.display = "none";
+            if (listScopeAll) {
+              emptyState.querySelector("h3").textContent =
+                currentFilter === "draft"
+                  ? "No drafts match filter"
+                  : "No submissions match filter";
+              emptyState.querySelector("p").textContent =
+                currentFilter === "draft"
+                  ? "Try “All forms” or “Submitted only”, or add users and submissions from Admin / modules."
+                  : "There are no submissions for this filter yet—or none exist in the database.";
+            } else {
+              emptyState.querySelector("h3").textContent =
+                currentFilter === "draft" ? "No Drafts" : "No Submitted Forms";
+              emptyState.querySelector("p").textContent =
+                currentFilter === "draft"
+                  ? `You don\'t have any ${moduleLabel} draft forms yet.`
+                  : `You don\'t have any ${moduleLabel} submissions for this filter yet.`;
+            }
+            return;
+          }
+
+          emptyState.style.display = "none";
+          submissionsList.style.display = "block";
+          startPolling();
+
+          // Show notification if there are updates
+          if (hasUpdates && document.visibilityState === "visible") {
+            // Show a subtle notification that the page has been updated
+            const notification = document.createElement("div");
+            notification.style.cssText =
+              "position: fixed; top: 20px; right: 20px; background: #10b981; color: white; padding: 12px 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 10000; font-size: 0.9rem;";
+            notification.innerHTML = "🔄 Form updated!";
+            document.body.appendChild(notification);
+            setTimeout(() => {
+              notification.style.transition = "opacity 0.3s";
+              notification.style.opacity = "0";
+              setTimeout(() => notification.remove(), 300);
+            }, 3000);
+          }
+
+          // Check if current user is admin (for showing Reviewer Comments)
+          const userStr = localStorage.getItem("user");
+          let isAdmin = false;
+          try {
+            if (userStr) {
+              const user = JSON.parse(userStr);
+              isAdmin = user.role === "admin";
+            }
+          } catch (e) {
+            console.error("Error parsing user data:", e);
+          }
+
+          // Render submissions
+          submissionsList.innerHTML = submissions
+            .map((submission) => {
+              const isDraft =
+                submission.status === "draft" ||
+                submission.workflow_status === "draft";
+              const statusInfo = getStatusDisplay(
+                isDraft
+                  ? "draft"
+                  : submission.workflow_status || submission.status,
+              );
+              const formHref = submissionFormEditHref(
+                submission.module,
+                submission.submission_id,
+              );
+              const mod = submission.module || "";
+              const isHrSubmission = mod.startsWith("hr_");
+              const canEdit =
+                submission.workflow_status === "rejected" ||
+                submission.status === "rejected" ||
+                isDraft;
+              const encodedSid = encodeURIComponent(
+                submission.submission_id || "",
+              );
+              const downloadsBlock = isHrSubmission
+                ? `
+ <a href="/hr/download-pdf/${encodedSid}" class="btn-custom btn-outline-custom" target="_blank">
+ PDF
+ </a>
+ <a href="/hr/download-docx/${encodedSid}" class="btn-custom btn-outline-custom" target="_blank">
+ Word
+ </a>
+ `
+                : submission.latest_job_id
+                  ? `
+ <a href="/${inspectionModuleSlug(mod)}/download/${submission.latest_job_id}/pdf" class="btn-custom btn-outline-custom" target="_blank">
+ PDF
+ </a>
+ <a href="/${inspectionModuleSlug(mod)}/download/${submission.latest_job_id}/excel" class="btn-custom btn-outline-custom" target="_blank">
+ Excel
+ </a>
+ `
+                  : "";
+              const hrWithdrawBtn =
+                !isDraft && isHrSubmission && submission.can_withdraw_hr
+                  ? `<button type="button" class="btn-custom btn-outline-custom" style="border-color:#b91c1c;color:#b91c1c" onclick='withdrawHrSubmission(${JSON.stringify(submission.submission_id || "")})'>Withdraw</button>`
+                  : "";
+
+              return `
+ <div class="submission-card ${isDraft ? "draft-card" : ""}" data-sf-submission-id="${escapeHtml(submission.submission_id || "")}">
+ <div class="submission-header">
+ <div>
+ <div class="submission-title">${submission.site_name || "Untitled Draft"}</div>
+ <div class="submission-module">${submission.module_name || submission.module}</div>
+ </div>
+ <span class="submission-status ${statusInfo.class}">${statusInfo.text}</span>
+ </div>
+
+ ${
+   statusInfo.message
+     ? `
+ <div class="alert ${isDraft ? "alert-warning" : "alert-info"}" style="margin-bottom: 1rem; font-size: 0.9rem; ${isDraft ? "background: #fff8e1; border: 1px solid #ffe082; color: #f57f17;" : "background: #e3f2fd; border: 1px solid #90caf9; color: #1565c0;"}">
+ <strong>${isDraft ? "📝" : "📋"} Status:</strong> ${statusInfo.message}
+ </div>
+ `
+     : ""
+ }
+
+ <div class="submission-details">
+ <div class="submission-detail-item">
+ <span>📅</span>
+ <span><strong>${isDraft ? "Created:" : "Submitted:"}</strong> ${formatDateTime(submission.created_at)}</span>
+ </div>
+ <div class="submission-detail-item">
+ <span>🔄</span>
+ <span><strong>Last Updated:</strong> ${formatDateTime(submission.updated_at)}</span>
+ </div>
+ <div class="submission-detail-item">
+ <span>📝</span>
+ <span><strong>Form ID:</strong> ${submission.submission_id}</span>
+ </div>
+ ${
+   listScopeAll && submission.submitted_by_display
+     ? `
+ <div class="submission-detail-item">
+ <span>👤</span>
+ <span><strong>Submitted by:</strong> ${escapeHtml(submission.submitted_by_display)}${submission.submitted_by_username ? ` <span style="color:#64748b;font-weight:500;">(@${escapeHtml(submission.submitted_by_username)})</span>` : ""}</span>
+ </div>
+ `
+     : ""
+ }
+ </div>
+
+ ${
+   submission.latest_activity && submission.latest_activity.label
+     ? `
+ <div class="sf-card-activity">
+ <strong>Latest activity:</strong> ${escapeHtml(submission.latest_activity.label)}
+ ${submission.latest_activity.actor ? ` · ${escapeHtml(submission.latest_activity.actor)}` : ""}
+ ${submission.latest_activity.at ? ` · ${formatDateTime(submission.latest_activity.at)}` : ""}
+ </div>
+ `
+     : ""
+ }
+
+ ${
+   submission.rejection_reason
+     ? `
+ <div class="alert alert-danger" style="margin-bottom: 1rem; font-size: 0.9rem;">
+ <strong>⚠️ Rejection Reason:</strong> ${submission.rejection_reason}
+ </div>
+ `
+     : ""
+ }
+
+ ${
+   isAdmin && submission.reviewers && submission.reviewers.length > 0
+     ? `
+ <div class="reviewers-section" style="margin-top: 1rem; margin-bottom: 1rem; padding: 1rem; background: #f8faf9; border-radius: 8px; border: 1px solid #e5e7eb;">
+ <h6 style="color: var(--primary); font-weight: 600; margin-bottom: 0.75rem; font-size: 0.95rem;">📋 Reviewer Comments</h6>
+ ${submission.reviewers
+   .map((reviewer, index) => {
+     const isLast = index === submission.reviewers.length - 1;
+     return `
+ <div class="reviewer-item" style="margin-bottom: ${isLast ? "0" : "1rem"}; padding-bottom: ${isLast ? "0" : "1rem"}; ${isLast ? "" : "border-bottom: 1px solid #e5e7eb;"}">
+ <div>
+ <strong style="color: var(--primary); font-size: 0.9rem;">${reviewer.role}:</strong>
+ ${
+   reviewer.comments
+     ? `
+ <div style="margin-top: 0.5rem; padding: 0.75rem; background: white; border-radius: 4px; border-left: 3px solid var(--primary); font-size: 0.875rem; color: #374151;">
+ ${escapeHtml(reviewer.comments)}
+ </div>
+ `
+     : '<div style="margin-top: 0.25rem; font-size: 0.85rem; color: #6b7280; font-style: italic;">No comments provided</div>'
+ }
+ ${
+   reviewer.approved_at
+     ? `
+ <div style="margin-top: 0.5rem; font-size: 0.8rem; color: #6b7280;">
+ ✓ Approved on ${formatDateTime(reviewer.approved_at)}
+ </div>
+ `
+     : ""
+ }
+ </div>
+ </div>
+ `;
+   })
+   .join("")}
+ </div>
+ `
+     : ""
+ }
+
+ <div class="submission-actions">
+ ${
+   isDraft
+     ? `
+ <a href="${formHref}" class="btn-custom btn-primary-custom">
+ Continue Editing
+ </a>
+ <button onclick="deleteDraft('${submission.submission_id}')" class="btn-custom btn-danger-custom">
+ Delete Draft
+ </button>
+ `
+     : `
+ <a href="${formHref}" class="btn-custom btn-primary-custom">
+ View Form
+ </a>
+ ${
+   canEdit
+     ? `
+ <a href="${formHref}" class="btn-custom btn-outline-custom">
+ Edit & Resubmit
+ </a>
+ `
+     : ""
+ }
+ ${downloadsBlock}
+ ${hrWithdrawBtn}
+ `
+ }
+ </div>
+ </div>
+ `;
+            })
+            .join("");
+          scrollHighlightSubmissionCard(submissionsList);
+        } catch (error) {
+          console.error("Error loading submissions:", error);
+          loadingSpinner.style.display = "none";
+          submissionsList.style.display = "block";
+          submissionsList.innerHTML = `
+ <div class="alert alert-danger" role="alert">
+ <h5 class="alert-heading">⚠️ Error Loading Submissions</h5>
+ <p>${error.message || "Failed to load your submitted forms. Please try again."}</p>
+ <hr>
+ <button class="btn btn-primary" onclick="loadSubmissions()">Retry</button>
+ </div>
+ `;
+        }
+      }
+
+      // Start polling for updates (15s org-wide, 30s personal)
+      function startPolling() {
+        // Clear any existing interval
+        if (pollingInterval) {
+          clearInterval(pollingInterval);
+        }
+
+        pollingInterval = setInterval(() => {
+          if (document.visibilityState === "visible") {
+            loadSubmissions();
+          }
+        }, pollIntervalMs);
+      }
+
+      // Stop polling when page is hidden, resume when visible
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") {
+          // Reload immediately when page becomes visible
+          loadSubmissions();
+          startPolling();
+        } else {
+          // Stop polling when page is hidden
+          if (pollingInterval) {
+            clearInterval(pollingInterval);
+            pollingInterval = null;
+          }
+        }
       });
-    }
-  </script>
-  <script src="{{ url_for('static', filename='api-client.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
-  <script src="{{ url_for('static', filename='mobile_utils.js') }}" defer></script>
-</body>
+
+      // Load submissions on page load and start polling
+      document.addEventListener("DOMContentLoaded", () => {
+        loadSubmissions();
+        startPolling();
+
+        // Filter change handler
+        document
+          .getElementById("statusFilter")
+          .addEventListener("change", (e) => {
+            currentFilter = e.target.value;
+            loadSubmissions();
+          });
+      });
+
+      // Clean up polling on page unload
+      window.addEventListener("beforeunload", () => {
+        if (pollingInterval) {
+          clearInterval(pollingInterval);
+        }
+      });
+
+      // Delete draft function
+      function deleteDraft(submissionId) {
+        openSfConfirm({
+          title: "Delete this draft?",
+          messages: [
+            "This permanently removes the draft.",
+            "This action cannot be undone.",
+          ],
+          confirmLabel: "Delete draft",
+          confirmVariant: "danger",
+          onConfirm: async () => {
+            try {
+              const response = await authenticatedFetch(
+                `/api/workflow/submissions/draft/${submissionId}`,
+                {
+                  method: "DELETE",
+                },
+              );
+              if (response.ok) {
+                showSfToast("Draft deleted successfully.", "success");
+                await loadSubmissions();
+                return;
+              }
+              const data = await response.json().catch(() => ({}));
+              showSfToast(data.error || "Failed to delete draft.", "error");
+            } catch (error) {
+              console.error("Error deleting draft:", error);
+              showSfToast("Failed to delete draft. Please try again.", "error");
+            }
+          },
+        });
+      }
+    </script>
+    <script src="{{ url_for('static', filename='api-client.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+    <script
+      src="{{ url_for('static', filename='mobile_utils.js') }}"
+      defer
+    ></script>
+  </body>
 </html>

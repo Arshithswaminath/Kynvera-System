@@ -289,7 +289,7 @@ function showConnectionStatus(message, color, duration) {
     color: white;
     padding: 12px 24px;
     border-radius: 8px;
-    font-family: 'Inter', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", sans-serif;
     font-size: 14px;
     font-weight: 500;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);

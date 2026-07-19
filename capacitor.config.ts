@@ -2,7 +2,7 @@ import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.injaaz.app',
-  appName: 'Amaan',
+  appName: 'Amaan Systems',
   webDir: 'static',
   server: {
     // For development - uncomment and set your Render URL to test against live server

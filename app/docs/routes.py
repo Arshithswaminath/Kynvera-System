@@ -19,7 +19,7 @@ from flask_jwt_extended import get_jwt_identity
 from werkzeug.utils import secure_filename
 
 from app.middleware import token_required
-from app.models import DocHubAccess, DocHubDocument, User, db
+from app.models import DocHubAccess, DocHubDocument, DocHubStar, User, db
 from common.error_responses import error_response, success_response
 from common.datetime_utils import utc_now_naive
 
@@ -251,6 +251,39 @@ def _has_dochub_access(user):
     return bool(row.can_access)
 
 
+def _is_admin(user):
+    return bool(user and user.role == 'admin')
+
+
+def _admin_denied():
+    return error_response(
+        'Only administrators can manage DocHub documents',
+        status_code=403,
+        error_code='ACCESS_DENIED',
+    )
+
+
+def _can_view_document(user, doc):
+    """Admins see all statuses; other users only published documents."""
+    if not user or not doc:
+        return False
+    if _is_admin(user):
+        return True
+    return (doc.status or '').strip().lower() == 'published'
+
+
+def _starred_document_ids(user_id):
+    if not user_id:
+        return set()
+    rows = DocHubStar.query.filter_by(user_id=user_id).with_entities(DocHubStar.document_id).all()
+    return {r[0] for r in rows}
+
+
+def _doc_to_dict(doc, user):
+    uid = user.id if user else None
+    return doc.to_dict(user_id=uid)
+
+
 @docs_bp.route('/access-check', methods=['GET'])
 @token_required(locations=['headers'])
 def access_check():
@@ -259,7 +292,7 @@ def access_check():
         return error_response('User not found', status_code=404, error_code='NOT_FOUND')
     return success_response({
         'allowed': _has_dochub_access(user),
-        'is_admin': user.role == 'admin'
+        'is_admin': _is_admin(user)
     })
 
 
@@ -273,6 +306,8 @@ def upload_inline_editor_image():
     user = _get_current_user()
     if not _has_dochub_access(user):
         return error_response('DocHub access denied', status_code=403, error_code='ACCESS_DENIED')
+    if not _is_admin(user):
+        return _admin_denied()
 
     if 'file' not in request.files:
         return error_response('No file', status_code=400, error_code='VALIDATION_ERROR')
@@ -313,6 +348,8 @@ def upload_inline_reference():
     user = _get_current_user()
     if not _has_dochub_access(user):
         return error_response('DocHub access denied', status_code=403, error_code='ACCESS_DENIED')
+    if not _is_admin(user):
+        return _admin_denied()
 
     if 'file' not in request.files:
         return error_response('No file', status_code=400, error_code='VALIDATION_ERROR')
@@ -381,7 +418,7 @@ def upload_inline_reference():
         {
             'url': url,
             'filename': safe_name,
-            'feed_document': feed_doc.to_dict(),
+            'feed_document': _doc_to_dict(feed_doc, user),
             'feed_document_id': feed_doc.id,
         },
         message='Reference file uploaded',
@@ -432,14 +469,14 @@ def list_documents():
         return error_response('DocHub access denied', status_code=403, error_code='ACCESS_DENIED')
 
     # Omit rows created only for "additional documents" / inline reference uploads (still reachable by id for DELETE).
-    docs = (
-        DocHubDocument.query.filter(
-            or_(DocHubDocument.inline_asset.is_(False), DocHubDocument.inline_asset.is_(None))
-        )
-        .order_by(DocHubDocument.updated_at.desc())
-        .all()
+    q = DocHubDocument.query.filter(
+        or_(DocHubDocument.inline_asset.is_(False), DocHubDocument.inline_asset.is_(None))
     )
-    docs_data = [d.to_dict() for d in docs]
+    if not _is_admin(user):
+        q = q.filter(DocHubDocument.status == 'published')
+    docs = q.order_by(DocHubDocument.updated_at.desc()).all()
+    starred_ids = _starred_document_ids(user.id if user else None)
+    docs_data = [d.to_dict(user_id=user.id, starred=(d.id in starred_ids)) for d in docs]
     return success_response({'documents': docs_data, 'count': len(docs_data)})
 
 
@@ -450,6 +487,8 @@ def create_document():
     user = _get_current_user()
     if not _has_dochub_access(user):
         return error_response('DocHub access denied', status_code=403, error_code='ACCESS_DENIED')
+    if not _is_admin(user):
+        return _admin_denied()
 
     data = request.get_json() or {}
     title = (data.get('title') or data.get('name') or '').strip()
@@ -478,7 +517,7 @@ def create_document():
     )
     db.session.add(doc)
     db.session.commit()
-    return success_response({'document': doc.to_dict()}, message='Document created', status_code=201)
+    return success_response({'document': _doc_to_dict(doc, user)}, message='Document created', status_code=201)
 
 
 @docs_bp.route('/upload', methods=['POST'])
@@ -487,6 +526,8 @@ def upload_documents():
     user = _get_current_user()
     if not _has_dochub_access(user):
         return error_response('DocHub access denied', status_code=403, error_code='ACCESS_DENIED')
+    if not _is_admin(user):
+        return _admin_denied()
 
     incoming = []
     if 'files' in request.files:
@@ -571,7 +612,7 @@ def upload_documents():
             db.session.commit()
 
     return success_response({
-        'documents': [d.to_dict() for d in created],
+        'documents': [_doc_to_dict(d, user) for d in created],
         'count': len(created)
     }, message=f'Uploaded {len(created)} document(s)', status_code=201)
 
@@ -584,7 +625,9 @@ def get_document(doc_id):
         return error_response('DocHub access denied', status_code=403, error_code='ACCESS_DENIED')
 
     doc = DocHubDocument.query.get_or_404(doc_id)
-    return success_response({'document': doc.to_dict()})
+    if not _can_view_document(user, doc):
+        return error_response('Document not found', status_code=404, error_code='NOT_FOUND')
+    return success_response({'document': _doc_to_dict(doc, user)})
 
 
 @docs_bp.route('/<int:doc_id>/download', methods=['GET'])
@@ -595,6 +638,8 @@ def download_document(doc_id):
         return error_response('DocHub access denied', status_code=403, error_code='ACCESS_DENIED')
 
     doc = DocHubDocument.query.get_or_404(doc_id)
+    if not _can_view_document(user, doc):
+        return error_response('Document not found', status_code=404, error_code='NOT_FOUND')
     if (doc.doc_type or 'upload') == 'content':
         return error_response('Content documents cannot be downloaded as files', status_code=400, error_code='INVALID_TYPE')
     if not doc.stored_path:
@@ -625,6 +670,8 @@ def preview_upload_as_pdf(doc_id):
         return error_response('DocHub access denied', status_code=403, error_code='ACCESS_DENIED')
 
     doc = DocHubDocument.query.get_or_404(doc_id)
+    if not _can_view_document(user, doc):
+        return error_response('Document not found', status_code=404, error_code='NOT_FOUND')
     if (doc.doc_type or '') != 'upload':
         return error_response('Preview is only for uploaded files', status_code=400, error_code='INVALID_TYPE')
     if (_ext_of(doc.filename or '') or (doc.file_type or '').lower()) != 'docx':
@@ -678,12 +725,45 @@ def preview_upload_as_pdf(doc_id):
     )
 
 
+@docs_bp.route('/<int:doc_id>/star', methods=['POST', 'DELETE'])
+@token_required(locations=['headers'])
+def star_document(doc_id):
+    """Toggle per-user star. POST stars; DELETE unstars. Does not bump document updated_at."""
+    user = _get_current_user()
+    if not _has_dochub_access(user):
+        return error_response('DocHub access denied', status_code=403, error_code='ACCESS_DENIED')
+
+    doc = DocHubDocument.query.get_or_404(doc_id)
+    if not _can_view_document(user, doc):
+        return error_response('Document not found', status_code=404, error_code='NOT_FOUND')
+
+    existing = DocHubStar.query.filter_by(user_id=user.id, document_id=doc.id).first()
+    if request.method == 'POST':
+        if not existing:
+            db.session.add(DocHubStar(user_id=user.id, document_id=doc.id))
+            db.session.commit()
+        return success_response(
+            {'document': doc.to_dict(user_id=user.id, starred=True)},
+            message='Document starred',
+        )
+
+    if existing:
+        db.session.delete(existing)
+        db.session.commit()
+    return success_response(
+        {'document': doc.to_dict(user_id=user.id, starred=False)},
+        message='Document unstarred',
+    )
+
+
 @docs_bp.route('/<int:doc_id>', methods=['PATCH'])
 @token_required(locations=['headers'])
 def update_document(doc_id):
     user = _get_current_user()
     if not _has_dochub_access(user):
         return error_response('DocHub access denied', status_code=403, error_code='ACCESS_DENIED')
+    if not _is_admin(user):
+        return _admin_denied()
 
     doc = DocHubDocument.query.get_or_404(doc_id)
     data = request.get_json() or {}
@@ -700,8 +780,14 @@ def update_document(doc_id):
         tag = (data.get('tag') or '').strip()
         if tag:
             doc.category = tag
+    # Legacy clients may still send "starred"; prefer /star. Ignore global is_starred.
     if 'starred' in data:
-        doc.is_starred = bool(data.get('starred'))
+        want = bool(data.get('starred'))
+        existing = DocHubStar.query.filter_by(user_id=user.id, document_id=doc.id).first()
+        if want and not existing:
+            db.session.add(DocHubStar(user_id=user.id, document_id=doc.id))
+        elif not want and existing:
+            db.session.delete(existing)
     if 'content' in data and doc.doc_type == 'content':
         doc.content = data.get('content') or ''
     if 'reference_attachments' in data and doc.doc_type == 'content':
@@ -713,7 +799,7 @@ def update_document(doc_id):
 
     doc.updated_at = utc_now_naive()
     db.session.commit()
-    return success_response({'document': doc.to_dict()}, message='Document updated')
+    return success_response({'document': _doc_to_dict(doc, user)}, message='Document updated')
 
 
 @docs_bp.route('/<int:doc_id>', methods=['DELETE'])
@@ -722,11 +808,10 @@ def delete_document(doc_id):
     user = _get_current_user()
     if not _has_dochub_access(user):
         return error_response('DocHub access denied', status_code=403, error_code='ACCESS_DENIED')
+    if not _is_admin(user):
+        return _admin_denied()
 
     doc = DocHubDocument.query.get_or_404(doc_id)
-    # Owner or admin can delete
-    if user.role != 'admin' and (doc.author_id != user.id):
-        return error_response('Only owner/admin can delete this document', status_code=403, error_code='ACCESS_DENIED')
 
     path = doc.stored_path
     shared_inline = bool(getattr(doc, 'inline_asset', False))

@@ -243,7 +243,6 @@ function goToStep2(){
   document.getElementById('step2Badge').className='step-item active';
   document.getElementById('step2Badge').classList.remove('locked');
   document.getElementById('connector1').classList.add('done');
-  document.getElementById('step2Panel').scrollIntoView({behavior:'smooth',block:'start'});
 }
 function goToStep1(){
   document.getElementById('step2Panel').classList.remove('active');
@@ -253,14 +252,13 @@ function goToStep1(){
   document.getElementById('step1Badge').querySelector('.num').textContent='1';
   document.getElementById('step2Badge').className='step-item locked';
   document.getElementById('connector1').classList.remove('done');
-  document.getElementById('step1Panel').scrollIntoView({behavior:'smooth',block:'start'});
 }
 
 let pad=null,target=null;
 const bg=document.getElementById('sigBg'),cv=document.getElementById('sigCanvas');
 const sigCfg={employee:{prev:'empSigPrev',img:'empSigImg',data:'empSigData',rm:'empSigRm',title:'Employee Signature'}};
 
-function openSig(t){target=t;const c=sigCfg[t];if(!c)return;document.getElementById('sigTitle').textContent=c.title;bg.classList.add('open');document.body.style.overflow='hidden';requestAnimationFrame(()=>{const r=window.devicePixelRatio||1,w=cv.offsetWidth;cv.width=w*r;cv.height=180*r;cv.getContext('2d').scale(r,r);cv.style.height='180px';if(pad)pad.off();pad=new SignaturePad(cv,{backgroundColor:'rgb(250,250,250)',penColor:'#0d1f14',minWidth:1.2,maxWidth:2.8})})}
+function openSig(t){target=t;const c=sigCfg[t];if(!c)return;document.getElementById('sigTitle').textContent=c.title;bg.classList.add('open');document.body.style.overflow='hidden';requestAnimationFrame(()=>{const r=window.devicePixelRatio||1,w=cv.offsetWidth;cv.width=w*r;cv.height=180*r;cv.getContext('2d').scale(r,r);cv.style.height='180px';if(pad)pad.off();pad=new SignaturePad(cv,{backgroundColor:'rgba(0,0,0,0)',penColor:'#0d1f14',minWidth:1.2,maxWidth:2.8})})}
 function closeSig(){bg.classList.remove('open');document.body.style.overflow='';target=null}
 function clearModalPad(){if(pad)pad.clear()}
 function applySig(){if(!pad||pad.isEmpty()){alert('Please draw your signature first.');return}const url=pad.toDataURL('image/png'),c=sigCfg[target];if(!c)return;const img=document.getElementById(c.img),ph=document.querySelector('#'+c.prev+' .sig-ph'),inp=document.getElementById(c.data),rm=document.getElementById(c.rm);if(img){img.src=url;img.style.display='block'}if(ph)ph.style.display='none';if(inp)inp.value=url;if(rm)rm.style.display='inline-flex';closeSig()}
@@ -307,7 +305,7 @@ document.getElementById('hrForm').addEventListener('submit',async e=>{
       formId: 'hrForm',
       moduleTypes: ['hr_commencement'],
       submitBarSelector: '#submitBar',
-      onEnterEditUi: function () { goToStep2(); },
+      onEnterEditUi: function () { HrGenericFormEdit.enterWizardStep1(); },
       appendToPayload: function () {
         return { reporting_officer_signer_ids: reporting_officer_signer_ids.slice() };
       },

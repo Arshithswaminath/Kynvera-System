@@ -12,35 +12,52 @@ logger = logging.getLogger(__name__)
 
 # ── Job-type mapping ──────────────────────────────────────────────────────────
 
-_MAINTENANCE_TYPES = {
+_PPM_TYPES = {
     'Preventive Maintenance (PPM)',
     'Corrective Maintenance',
-    'Annual Inspection',
 }
-_INSTALLATION_TYPES = {
-    'Installation',
-    'Commissioning',
+_INSPECTION_TYPES = {
+    'Annual Inspection',
     'Testing & Certification',
-    'Upgrade / Modification',
+    'Compliance Audit',
 }
 _OTHERS_TYPES = {
     'False Alarm Investigation',
     'Emergency Response',
-    'Compliance Audit',
     'Other',
     'Breakdown / Fault',
+    'Installation',
+    'Commissioning',
+    'Upgrade / Modification',
+}
+
+# Accepted job_type values on the service report (PDF + UI)
+VALID_JOB_TYPES = {'ppm', 'inspection', 'rectification', 'others'}
+# Older saved reports used maintenance/installation
+_JOB_TYPE_ALIASES = {
+    'maintenance': 'ppm',
+    'installation': 'inspection',
 }
 
 
+def normalize_job_type(value: str) -> str:
+    """Map legacy or raw job_type values to ppm|inspection|rectification|others."""
+    v = (value or '').strip().lower()
+    v = _JOB_TYPE_ALIASES.get(v, v)
+    return v if v in VALID_JOB_TYPES else 'others'
+
+
 def map_job_type(ticket) -> str:
-    """Return one of maintenance|installation|rectification|others from ticket data."""
+    """Return one of ppm|inspection|rectification|others from ticket data."""
     if ticket.source_inspection_notif_id:
         return 'rectification'
     ft = (ticket.fault_type or '').strip()
-    if ft in _MAINTENANCE_TYPES:
-        return 'maintenance'
-    if ft in _INSTALLATION_TYPES:
-        return 'installation'
+    if ft in _PPM_TYPES or 'PPM' in ft.upper():
+        return 'ppm'
+    if ft in _INSPECTION_TYPES or 'inspection' in ft.lower():
+        return 'inspection'
+    if ft in _OTHERS_TYPES:
+        return 'others'
     return 'others'
 
 
@@ -168,6 +185,7 @@ def build_service_report_defaults(ticket, materials) -> dict:
         },
         'job_type': map_job_type(ticket),
         'job_type_other': '',
+        'job_name': (ticket.title or '').strip(),
         'comments': comments,
         'parts_required': [],
         'customer_remarks': '',
@@ -198,6 +216,9 @@ def merge_service_report_data(ticket, materials) -> dict:
     for key, saved_val in saved.items():
         if key == '_auto':
             continue
+        if key == 'job_name':
+            # Always prefer live ticket title (not a user-editable SR field)
+            continue
         if key in ('fire_alarm', 'fire_fighting', 'time_arrive', 'time_left',
                    'travel_time', 'total_time'):
             # Nested dict: merge key-by-key so auto-fills still apply to untouched sub-keys
@@ -210,19 +231,38 @@ def merge_service_report_data(ticket, materials) -> dict:
         elif saved_val not in (None, ''):
             merged[key] = saved_val
 
+    # Keep job_name in sync with the ticket title
+    merged['job_name'] = (ticket.title or '').strip() or merged.get('job_name', '')
+
     return merged
 
 
 def get_or_assign_service_report_no(ticket) -> int:
-    """Assign and persist a sequential SRN if the ticket doesn't have one yet."""
+    """
+    Assign and persist a sequential SRN if the ticket doesn't have one yet.
+
+    Format: YYNNN where YY is the 2-digit year and NNN is a sequence
+    starting at 001 (e.g. 2026 → 26001, 26002, …).
+    """
     if ticket.service_report_no:
         return ticket.service_report_no
 
-    from app import db
-    from app.models import Ticket as TicketModel
-    # Find the current max SRN
-    max_row = db.session.query(db.func.max(TicketModel.service_report_no)).scalar()
-    next_no = (max_row or 46000) + 1
+    from app.models import db, Ticket as TicketModel
+
+    yy = datetime.now().year % 100
+    year_floor = yy * 1000          # 2026 → 26000
+    year_start = year_floor + 1     # first SRN of the year → 26001
+    year_ceil = year_floor + 1000   # exclusive upper bound → 27000
+
+    max_in_year = (
+        db.session.query(db.func.max(TicketModel.service_report_no))
+        .filter(
+            TicketModel.service_report_no >= year_floor,
+            TicketModel.service_report_no < year_ceil,
+        )
+        .scalar()
+    )
+    next_no = (max_in_year + 1) if max_in_year else year_start
     ticket.service_report_no = next_no
     db.session.commit()
     return next_no

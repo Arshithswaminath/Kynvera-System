@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}">
+  {% include 'partials/caveat_font.html' ignore missing %}
+  <title>Settings — Finance — Amaan</title>
+  <meta name="theme-color" content="#d21725">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
+  <style>
+    :root {
+      --fin-accent: #d21725;
+      --fin-accent-dark: #a8121e;
+      --fin-accent-soft: rgba(210, 23, 37, 0.08);
+      --fin-bg: #f5f6f8;
+      --fin-surface: #ffffff;
+      --fin-border: #e5e7eb;
+      --fin-text: #0f172a;
+      --fin-muted: #64748b;
+      --nav-top: 73px;
+      --fin-font:
+        -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+        system-ui, "Segoe UI", Roboto, "Helvetica Neue", Helvetica, Arial,
+        sans-serif;
+      --sticky-h: 68px;
+    }
+    * { box-sizing: border-box; }
+    body.has-main-nav {
+      padding-top: var(--nav-top);
+      font-family: var(--fin-font);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      background: var(--fin-bg);
+      color: var(--fin-text);
+    }
+    body.has-main-nav.dochub-page-v2 {
+      height: auto !important;
+      min-height: 100dvh !important;
+      overflow-y: auto !important;
+      --sb-bg: #d21725 !important;
+    }
+    body.has-main-nav.dochub-page-v2 .dh-sidebar { background: #d21725 !important; }
+    body.has-main-nav.dochub-page-v2 .dh-main { overflow-y: auto; }
+
+    .fin-wrap {
+      max-width: none;
+      padding: 24px 28px calc(var(--sticky-h) + 36px) 20px;
+    }
+
+    .fin-breadcrumb {
+      display: inline-block;
+      color: var(--fin-accent);
+      text-decoration: none;
+      font-size: 0.82rem;
+      font-weight: 500;
+    }
+    .fin-breadcrumb:hover { text-decoration: underline; color: var(--fin-accent-dark); }
+    .fin-title {
+      font-size: 1.5rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin: 6px 0 4px;
+    }
+    .fin-sub {
+      color: var(--fin-muted);
+      font-size: 0.88rem;
+      margin: 0 0 16px;
+      max-width: 560px;
+    }
+
+    .fin-nav {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin: 0 0 18px;
+    }
+    .fin-nav a {
+      padding: 7px 16px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-decoration: none;
+      color: #374151;
+      background: #fff;
+      border: 1.5px solid var(--fin-border);
+      transition: all 0.18s;
+    }
+    .fin-nav a:hover,
+    .fin-nav a.active {
+      background: var(--fin-accent);
+      color: #fff;
+      border-color: var(--fin-accent);
+    }
+
+    .status-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: #fff;
+      border: 1px solid var(--fin-border);
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #334155;
+    }
+    .chip-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--fin-accent);
+      flex-shrink: 0;
+    }
+    .chip-dot.ok { background: #16a34a; }
+    .chip-dot.warn { background: #d97706; }
+    .chip-label { color: var(--fin-muted); font-weight: 600; }
+    .chip-value { color: var(--fin-text); font-weight: 800; }
+
+    .bento {
+      display: grid;
+      grid-template-columns: 1.45fr 1fr;
+      gap: 14px;
+      align-items: start;
+    }
+    .bento-main,
+    .bento-rail {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .card {
+      background: var(--fin-surface);
+      border: 1px solid var(--fin-border);
+      border-radius: 14px;
+      padding: 0;
+      overflow: hidden;
+      position: relative;
+      transition: border-color 0.18s, box-shadow 0.18s;
+    }
+    .card:focus-within {
+      border-color: rgba(210, 23, 37, 0.35);
+      box-shadow: 0 0 0 3px var(--fin-accent-soft);
+    }
+    .card-inner { padding: 18px 20px 20px; }
+    .card-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .card-head-left {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      min-width: 0;
+    }
+    .icon-tile {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: var(--fin-accent-soft);
+      color: var(--fin-accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .icon-tile svg { width: 20px; height: 20px; }
+    .card-title {
+      font-size: 0.98rem;
+      font-weight: 800;
+      margin: 0 0 3px;
+      letter-spacing: -0.01em;
+    }
+    .card-sub {
+      font-size: 0.8rem;
+      color: var(--fin-muted);
+      margin: 0;
+      line-height: 1.4;
+    }
+    .lock-note {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: #92400e;
+      background: #fef3c7;
+      padding: 4px 9px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #475569;
+      margin-bottom: 6px;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+    .form-hint {
+      display: block;
+      font-size: 0.72rem;
+      color: #94a3b8;
+      margin-top: 5px;
+    }
+    .form-input,
+    .form-select {
+      border: 1.5px solid #d1d5db;
+      border-radius: 9px;
+      padding: 10px 12px;
+      font-size: 0.9rem;
+      width: 100%;
+      background: #fff;
+      color: var(--fin-text);
+      font-family: inherit;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .form-input:focus,
+    .form-select:focus {
+      outline: none;
+      border-color: var(--fin-accent);
+      box-shadow: 0 0 0 3px var(--fin-accent-soft);
+    }
+    .form-input:disabled,
+    .form-select:disabled {
+      background: #f8fafc;
+      color: #94a3b8;
+    }
+    .field { margin-bottom: 14px; }
+    .field:last-child { margin-bottom: 0; }
+    .field-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .margin-control {
+      display: grid;
+      grid-template-columns: 120px 1fr;
+      gap: 14px;
+      align-items: end;
+    }
+    .margin-value {
+      font-size: 1.75rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      padding: 8px 12px;
+      text-align: center;
+    }
+    .range-wrap { padding-bottom: 4px; }
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 999px;
+      background: #e2e8f0;
+      outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--fin-accent);
+      cursor: pointer;
+      border: 2px solid #fff;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.18);
+    }
+    input[type="range"]:disabled { opacity: 0.45; }
+
+    .erp-preview {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 10px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      background: #0f172a;
+      color: #f8fafc;
+      font-size: 0.82rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.02em;
+    }
+    .erp-preview span { color: #94a3b8; font-weight: 600; font-size: 0.72rem; }
+
+    .toggle {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 12px 14px;
+      border: 1px solid var(--fin-border);
+      border-radius: 10px;
+      background: #fafbfc;
+      cursor: pointer;
+      user-select: none;
+    }
+    .toggle.disabled { opacity: 0.65; cursor: not-allowed; }
+    .toggle input { position: absolute; opacity: 0; width: 0; height: 0; }
+    .toggle-track {
+      width: 42px;
+      height: 24px;
+      border-radius: 999px;
+      background: #cbd5e1;
+      position: relative;
+      flex-shrink: 0;
+      margin-top: 1px;
+      transition: background 0.18s;
+    }
+    .toggle-track::after {
+      content: "";
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+      transition: transform 0.18s;
+    }
+    .toggle input:checked + .toggle-track { background: var(--fin-accent); }
+    .toggle input:checked + .toggle-track::after { transform: translateX(18px); }
+    .toggle input:focus-visible + .toggle-track {
+      box-shadow: 0 0 0 3px var(--fin-accent-soft);
+    }
+    .toggle-text strong {
+      display: block;
+      font-size: 0.86rem;
+      font-weight: 700;
+      margin-bottom: 2px;
+    }
+    .toggle-text span {
+      font-size: 0.76rem;
+      color: var(--fin-muted);
+      line-height: 1.35;
+    }
+
+    .meta-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 11px 0;
+      border-bottom: 1px solid #f1f5f9;
+      font-size: 0.86rem;
+    }
+    .meta-row:last-child { border-bottom: none; padding-bottom: 0; }
+    .meta-label { color: var(--fin-muted); font-weight: 600; }
+    .meta-value { color: var(--fin-text); font-weight: 800; }
+    .quick-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 9px 16px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      text-decoration: none;
+      font-family: inherit;
+      min-height: 40px;
+    }
+    .btn-primary { background: var(--fin-accent); color: #fff; }
+    .btn-primary:hover { background: var(--fin-accent-dark); }
+    .btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
+    .btn-outline {
+      background: #fff;
+      border: 1.5px solid #d1d5db;
+      color: #374151;
+    }
+    .btn-outline:hover { background: #f8fafc; }
+
+    .sticky-bar {
+      position: sticky;
+      bottom: 0;
+      z-index: 40;
+      margin: 0 -28px -36px -20px;
+      padding: 12px 28px 14px 20px;
+      background: transparent;
+      border-top: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .sticky-bar .btn-outline {
+      background: transparent;
+    }
+    .sticky-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      min-width: 0;
+    }
+    .dirty-flag {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #92400e;
+      background: #fef3c7;
+      padding: 5px 10px;
+      border-radius: 999px;
+      opacity: 0;
+      transform: translateY(4px);
+      transition: opacity 0.18s, transform 0.18s;
+    }
+    .dirty-flag.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .sticky-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .bar-toast {
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 5px 10px;
+      border-radius: 999px;
+      display: none;
+    }
+    .bar-toast.open { display: inline-flex; }
+    .bar-toast.ok { background: #dcfce7; color: #166534; }
+    .bar-toast.err { background: #fee2e2; color: #991b1b; }
+
+    @media (max-width: 900px) {
+      .bento { grid-template-columns: 1fr; }
+      .margin-control { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 640px) {
+      .fin-wrap { padding: 16px 16px calc(var(--sticky-h) + 28px); }
+      .sticky-bar { margin: 0 -16px -28px; padding: 12px 16px; }
+      .field-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body class="has-main-nav dochub-page-v2">
+  {% set active_page = 'finance' %}
+  {% include 'partials/main_navbar.html' with context %}
+
+  <button type="button" class="dh-sidebar-toggle" id="finSidebarToggle"
+          onclick="document.getElementById('finSidebar').classList.toggle('open')"
+          aria-label="Open Finance menu" title="Menu">☰</button>
+
+  <div class="dh-page-root">
+    {% include 'partials/finance_sidebar.html' with context %}
+
+    <div class="dh-main">
+      <div class="fin-wrap">
+        <a href="/dashboard" class="fin-breadcrumb">← Dashboard</a>
+        <h1 class="fin-title">Finance Settings</h1>
+        <p class="fin-sub">
+          Billing rules for this module — margins, ERP invoice refs, notifications, and contract defaults.
+        </p>
+
+        <nav class="fin-nav" aria-label="Finance shortcuts">
+          <a href="{{ url_for('finance.dashboard') }}">Invoice Queue</a>
+          <a href="{{ url_for('finance.contracts_page') }}">Contracts</a>
+          <a href="{{ url_for('finance.reports_page') }}">Monthly Reports</a>
+          <a href="{{ url_for('finance.settings_page') }}" class="active">Settings</a>
+        </nav>
+
+        <div class="status-chips" aria-live="polite">
+          <div class="chip">
+            <span class="chip-dot" id="chipMarginDot"></span>
+            <span class="chip-label">Margin</span>
+            <span class="chip-value" id="chipMargin">{{ settings.margin_threshold if settings else margin_threshold }}%</span>
+          </div>
+          <div class="chip">
+            <span class="chip-dot {% if settings and settings.require_erp_ref %}warn{% else %}ok{% endif %}" id="chipErpDot"></span>
+            <span class="chip-label">ERP ref</span>
+            <span class="chip-value" id="chipErp">{% if settings and settings.require_erp_ref %}Required{% else %}Optional{% endif %}</span>
+          </div>
+          <div class="chip">
+            <span class="chip-dot" id="chipNotifyDot"></span>
+            <span class="chip-label">Notify To</span>
+            <span class="chip-value" id="chipNotify">Not set</span>
+          </div>
+        </div>
+
+        <div class="bento">
+          <div class="bento-main">
+            <!-- Margin -->
+            <section class="card">
+              <div class="card-inner">
+                <div class="card-head">
+                  <div class="card-head-left">
+                    <div class="icon-tile" aria-hidden="true">
+                      <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18L9 11.25l4.306 4.306a11.95 11.95 0 015.814-5.518l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <h2 class="card-title">Margin policy</h2>
+                      <p class="card-sub">Jobs below this profit margin need GM approval before Finance can close them.</p>
+                    </div>
+                  </div>
+                  {% if not can_edit_admin_settings %}
+                    <span class="lock-note">Admin / GM</span>
+                  {% endif %}
+                </div>
+                <div class="margin-control">
+                  <div class="field" style="margin:0;">
+                    <label class="form-label" for="setMargin">Threshold %</label>
+                    <input type="number" class="form-input margin-value" id="setMargin"
+                           min="0" max="100" step="0.1"
+                           value="{{ settings.margin_threshold if settings else margin_threshold }}"
+                           {% if not can_edit_admin_settings %}disabled{% endif %}>
+                  </div>
+                  <div class="field range-wrap" style="margin:0;">
+                    <label class="form-label" for="setMarginRange">Quick adjust (0–40)</label>
+                    <input type="range" id="setMarginRange" min="0" max="40" step="0.5"
+                           value="{{ settings.margin_threshold if settings else margin_threshold }}"
+                           {% if not can_edit_admin_settings %}disabled{% endif %}>
+                    <span class="form-hint">Synced with the threshold field above.</span>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- ERP -->
+            <section class="card">
+              <div class="card-inner">
+                <div class="card-head">
+                  <div class="card-head-left">
+                    <div class="icon-tile" aria-hidden="true">
+                      <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <h2 class="card-title">ERP invoice reference</h2>
+                      <p class="card-sub">Rules applied when Finance logs an ERP invoice on the Invoice Queue.</p>
+                    </div>
+                  </div>
+                  {% if not can_edit_admin_settings %}
+                    <span class="lock-note">Admin / GM</span>
+                  {% endif %}
+                </div>
+                <div class="field-row">
+                  <div class="field">
+                    <label class="form-label" for="setErpPrefix">Reference prefix</label>
+                    <input type="text" class="form-input" id="setErpPrefix" maxlength="20"
+                           value="{{ settings.erp_ref_prefix if settings else 'INV' }}"
+                           {% if not can_edit_admin_settings %}disabled{% endif %}>
+                    <div class="erp-preview" id="erpPreview">
+                      <span>Preview</span>
+                      <strong id="erpHint">INV-2026-00001</strong>
+                    </div>
+                  </div>
+                  <div class="field">
+                    <label class="form-label">Confirmation rule</label>
+                    <label class="toggle{% if not can_edit_admin_settings %} disabled{% endif %}">
+                      <input type="checkbox" id="setRequireErp"
+                             {% if settings and settings.require_erp_ref %}checked{% endif %}
+                             {% if not can_edit_admin_settings %}disabled{% endif %}>
+                      <span class="toggle-track" aria-hidden="true"></span>
+                      <span class="toggle-text">
+                        <strong>Require ERP ref before confirm</strong>
+                        <span>Block confirm if the invoice reference is empty.</span>
+                      </span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- Notifications -->
+            <section class="card">
+              <div class="card-inner">
+                <div class="card-head">
+                  <div class="card-head-left">
+                    <div class="icon-tile" aria-hidden="true">
+                      <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <h2 class="card-title">Invoice notification defaults</h2>
+                      <p class="card-sub">Shared To/CC when confirming invoices. Editable by anyone with Finance access.</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="field">
+                  <label class="form-label" for="setEmailTo">Default To</label>
+                  <input type="text" class="form-input" id="setEmailTo"
+                         value="{{ settings.invoice_email_to if settings else '' }}"
+                         placeholder="finance@injaaz.ae" autocomplete="email">
+                  <span class="form-hint">Comma-separated addresses used as the confirm dialog default.</span>
+                </div>
+                <div class="field">
+                  <label class="form-label" for="setEmailCc">Default CC</label>
+                  <input type="text" class="form-input" id="setEmailCc"
+                         value="{{ settings.invoice_email_cc if settings else '' }}"
+                         placeholder="ops@injaaz.ae, gm@injaaz.ae">
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <div class="bento-rail">
+            <!-- Reports -->
+            <section class="card">
+              <div class="card-inner">
+                <div class="card-head">
+                  <div class="card-head-left">
+                    <div class="icon-tile" aria-hidden="true">
+                      <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <h2 class="card-title">Monthly report delivery</h2>
+                      <p class="card-sub">Who receives “Send to Finance” emails.</p>
+                    </div>
+                  </div>
+                  {% if not can_edit_admin_settings %}
+                    <span class="lock-note">Admin / GM</span>
+                  {% endif %}
+                </div>
+                <div class="field">
+                  <label class="form-label" for="setReportRecipients">Report recipients</label>
+                  <input type="text" class="form-input" id="setReportRecipients"
+                         value="{{ settings.report_recipients if settings else '' }}"
+                         placeholder="finance@injaaz.ae, accounts@injaaz.ae"
+                         {% if not can_edit_admin_settings %}disabled{% endif %}>
+                  <span class="form-hint">Leave blank to fall back to Admin and General Manager accounts.</span>
+                </div>
+              </div>
+            </section>
+
+            <!-- Contracts -->
+            <section class="card">
+              <div class="card-inner">
+                <div class="card-head">
+                  <div class="card-head-left">
+                    <div class="icon-tile" aria-hidden="true">
+                      <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m5.231 13.481L15 17.25m-4.5-15H5.625c-.621 0-1.125.504-1.125 1.125v16.5c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9zm3.75 11.625a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <h2 class="card-title">Contract billing defaults</h2>
+                      <p class="card-sub">Pre-filled when creating a new contract.</p>
+                    </div>
+                  </div>
+                  {% if not can_edit_admin_settings %}
+                    <span class="lock-note">Admin / GM</span>
+                  {% endif %}
+                </div>
+                <div class="field-row">
+                  <div class="field">
+                    <label class="form-label" for="setBillingDay">Billing day</label>
+                    <input type="number" class="form-input" id="setBillingDay" min="1" max="28"
+                           value="{{ settings.default_billing_day if settings else 29 }}"
+                           {% if not can_edit_admin_settings %}disabled{% endif %}>
+                    <span class="form-hint">Day of month (1–28)</span>
+                  </div>
+                  <div class="field">
+                    <label class="form-label" for="setContractType">Contract type</label>
+                    <select class="form-select" id="setContractType"
+                            {% if not can_edit_admin_settings %}disabled{% endif %}>
+                      {% for ct in contract_types %}
+                        <option value="{{ ct }}"
+                          {% if settings and settings.default_contract_type == ct %}selected{% endif %}>
+                          {{ contract_type_labels[ct] }}
+                        </option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- Access -->
+            <section class="card">
+              <div class="card-inner">
+                <div class="card-head">
+                  <div class="card-head-left">
+                    <div class="icon-tile" aria-hidden="true">
+                      <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <h2 class="card-title">Access</h2>
+                      <p class="card-sub">Module visibility is managed in Admin profiles.</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="meta-row">
+                  <span class="meta-label">Your access</span>
+                  <span class="meta-value">
+                    {% if user and user.role == 'admin' %}Admin
+                    {% elif user and user.access_finance %}Finance module
+                    {% elif user and user.designation %}{{ user.designation|replace('_', ' ')|title }}
+                    {% else %}Granted{% endif %}
+                  </span>
+                </div>
+                <div class="meta-row">
+                  <span class="meta-label">Managed in</span>
+                  <span class="meta-value">Admin · access_finance</span>
+                </div>
+                <div class="quick-links">
+                  <a class="btn btn-outline" href="{{ url_for('finance.dashboard') }}">Invoice Queue</a>
+                  {% if user and user.role == 'admin' %}
+                    <a class="btn btn-outline" href="/admin/dashboard">Admin dashboard</a>
+                  {% endif %}
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+
+        <div class="sticky-bar" role="region" aria-label="Save settings">
+          <div class="sticky-left">
+            <span class="dirty-flag" id="dirtyFlag">Unsaved changes</span>
+            <span class="bar-toast" id="saveToast"></span>
+          </div>
+          <div class="sticky-actions">
+            <button type="button" class="btn btn-outline" id="resetBtn" onclick="resetSettings()">Reset</button>
+            <a class="btn btn-outline" href="{{ url_for('finance.dashboard') }}">Back to Queue</a>
+            <button type="button" class="btn btn-primary" id="saveBtn" onclick="saveSettings()">Save settings</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='api-client.js') }}"></script>
+  <script>
+    const CAN_EDIT_ADMIN = {{ 'true' if can_edit_admin_settings else 'false' }};
+    let baseline = null;
+    let dirty = false;
+
+    function countEmails(str) {
+      return String(str || '')
+        .split(/[,;]/)
+        .map((s) => s.trim())
+        .filter((s) => s && s.includes('@')).length;
+    }
+
+    function updateErpHint() {
+      const prefix = (document.getElementById('setErpPrefix').value || 'INV').trim().toUpperCase() || 'INV';
+      const year = new Date().getFullYear();
+      document.getElementById('erpHint').textContent = `${prefix}-${year}-00001`;
+    }
+
+    function updateChips() {
+      const margin = parseFloat(document.getElementById('setMargin').value);
+      const m = Number.isFinite(margin) ? margin : 15;
+      document.getElementById('chipMargin').textContent = `${m}%`;
+
+      const req = document.getElementById('setRequireErp').checked;
+      document.getElementById('chipErp').textContent = req ? 'Required' : 'Optional';
+      const erpDot = document.getElementById('chipErpDot');
+      erpDot.classList.toggle('warn', req);
+      erpDot.classList.toggle('ok', !req);
+
+      const n = countEmails(document.getElementById('setEmailTo').value);
+      document.getElementById('chipNotify').textContent = n ? `${n} address${n === 1 ? '' : 'es'}` : 'Not set';
+      document.getElementById('chipNotifyDot').classList.toggle('ok', n > 0);
+    }
+
+    function snapshotForm() {
+      return JSON.stringify(collectPayload());
+    }
+
+    function setDirty(isDirty) {
+      dirty = !!isDirty;
+      document.getElementById('dirtyFlag').classList.toggle('show', dirty);
+    }
+
+    function markDirty() {
+      if (baseline == null) return;
+      setDirty(snapshotForm() !== baseline);
+    }
+
+    function showToast(msg, ok) {
+      const el = document.getElementById('saveToast');
+      el.textContent = msg;
+      el.className = 'bar-toast open ' + (ok ? 'ok' : 'err');
+      setTimeout(() => { el.classList.remove('open'); }, 2800);
+    }
+
+    function collectPayload() {
+      const payload = {
+        invoice_email_to: document.getElementById('setEmailTo').value.trim(),
+        invoice_email_cc: document.getElementById('setEmailCc').value.trim(),
+      };
+      if (CAN_EDIT_ADMIN) {
+        payload.margin_threshold = parseFloat(document.getElementById('setMargin').value) || 0;
+        payload.erp_ref_prefix = document.getElementById('setErpPrefix').value.trim();
+        payload.require_erp_ref = document.getElementById('setRequireErp').checked;
+        payload.report_recipients = document.getElementById('setReportRecipients').value.trim();
+        payload.default_billing_day = parseInt(document.getElementById('setBillingDay').value, 10) || 29;
+        payload.default_contract_type = document.getElementById('setContractType').value;
+      }
+      return payload;
+    }
+
+    function syncMarginControls(fromRange) {
+      const num = document.getElementById('setMargin');
+      const range = document.getElementById('setMarginRange');
+      if (fromRange) {
+        num.value = range.value;
+      } else {
+        let v = parseFloat(num.value);
+        if (!Number.isFinite(v)) v = 15;
+        range.value = Math.min(40, Math.max(0, v));
+      }
+      updateErpHint();
+      updateChips();
+      markDirty();
+    }
+
+    function applySettings(s) {
+      if (!s) return;
+      document.getElementById('setMargin').value = s.margin_threshold ?? 15;
+      document.getElementById('setErpPrefix').value = s.erp_ref_prefix || 'INV';
+      document.getElementById('setRequireErp').checked = !!s.require_erp_ref;
+      document.getElementById('setEmailTo').value = s.invoice_email_to || '';
+      document.getElementById('setEmailCc').value = s.invoice_email_cc || '';
+      document.getElementById('setReportRecipients').value = s.report_recipients || '';
+      document.getElementById('setBillingDay').value = s.default_billing_day ?? 29;
+      if (s.default_contract_type) {
+        document.getElementById('setContractType').value = s.default_contract_type;
+      }
+      syncMarginControls(false);
+      baseline = snapshotForm();
+      setDirty(false);
+    }
+
+    async function apiJson(url, options) {
+      const res = await ApiClient.fetch(url, options || { method: 'GET' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || data.message || ('Request failed (' + res.status + ')'));
+      }
+      return data;
+    }
+
+    async function loadSettings() {
+      try {
+        const res = await apiJson('/finance/api/settings');
+        applySettings(res.settings || {});
+      } catch (e) {
+        updateErpHint();
+        updateChips();
+        baseline = snapshotForm();
+        setDirty(false);
+      }
+    }
+
+    async function saveSettings() {
+      const btn = document.getElementById('saveBtn');
+      btn.disabled = true;
+      try {
+        const res = await apiJson('/finance/api/settings', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(collectPayload()),
+        });
+        applySettings(res.settings || {});
+        showToast('Settings saved', true);
+      } catch (e) {
+        showToast(e.message || 'Failed to save settings.', false);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function resetSettings() {
+      if (baseline) {
+        try {
+          applySettings(JSON.parse(baseline));
+          await loadSettings();
+          showToast('Reset to saved values', true);
+        } catch (_) {
+          await loadSettings();
+        }
+        return;
+      }
+      await loadSettings();
+    }
+
+    function bindDirty(el, handler) {
+      if (!el) return;
+      el.addEventListener('input', handler || markDirty);
+      el.addEventListener('change', handler || markDirty);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      bindDirty(document.getElementById('setMargin'), () => syncMarginControls(false));
+      bindDirty(document.getElementById('setMarginRange'), () => syncMarginControls(true));
+      bindDirty(document.getElementById('setErpPrefix'), () => { updateErpHint(); updateChips(); markDirty(); });
+      bindDirty(document.getElementById('setRequireErp'), () => { updateChips(); markDirty(); });
+      bindDirty(document.getElementById('setEmailTo'), () => { updateChips(); markDirty(); });
+      bindDirty(document.getElementById('setEmailCc'));
+      bindDirty(document.getElementById('setReportRecipients'));
+      bindDirty(document.getElementById('setBillingDay'));
+      bindDirty(document.getElementById('setContractType'));
+      loadSettings();
+    });
+  </script>
+  <script src="{{ url_for('static', filename='mobile_utils.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}" defer></script>
+</body>
+</html>

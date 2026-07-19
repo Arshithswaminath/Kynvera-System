@@ -1,884 +1,1211 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en" class="register-root">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
-    <meta name="theme-color" content="#d21725">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#d21725" />
     <title>Sign Up — Amaan Application</title>
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
+    <link
+      rel="icon"
+      type="image/png"
+      href="{{ url_for('static', filename='favicon.png') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/design-tokens.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='mobile_responsive.css') }}"
+    />
     <style>
-        :root {
-            --lp-primary: #a8121e;
-            --lp-primary-container: #d21725;
-            --lp-on-primary: #ffffff;
-            --lp-on-primary-container: #fca5a5;
-            --lp-primary-fixed-dim: #fca5a5;
-            --lp-surface: #fafafa;
-            --lp-surface-lowest: #ffffff;
-            --lp-surface-highest: #e4e4e7;
-            --lp-surface-high: #f4f4f5;
-            --lp-on-surface: #18181b;
-            --lp-on-surface-variant: #3f3f46;
-            --lp-outline: #71717a;
-            --lp-outline-variant: #d4d4d8;
-            --lp-error: #ba1a1a;
-            --lp-error-bg: #ffdad6;
-            --lp-success-bg: #dcfce7;
-            --lp-success-text: #166534;
+      :root {
+        --lp-primary: #a8121e;
+        --lp-primary-container: #d21725;
+        --lp-on-primary: #ffffff;
+        --lp-on-primary-container: #fca5a5;
+        --lp-primary-fixed-dim: #fca5a5;
+        --lp-surface: #fafafa;
+        --lp-surface-lowest: #ffffff;
+        --lp-surface-highest: #e4e4e7;
+        --lp-surface-high: #f4f4f5;
+        --lp-on-surface: #18181b;
+        --lp-on-surface-variant: #3f3f46;
+        --lp-outline: #71717a;
+        --lp-outline-variant: #d4d4d8;
+        --lp-error: #ba1a1a;
+        --lp-error-bg: #ffdad6;
+        --lp-success-bg: #dcfce7;
+        --lp-success-text: #166534;
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      html.register-root {
+        height: 100%;
+      }
+
+      body.register-page {
+        margin: 0;
+        min-height: 100vh;
+        min-height: 100dvh;
+        font-family:
+          -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+          system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+        color: var(--lp-on-surface);
+        background: var(--lp-surface) !important;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: max(1.25rem, env(safe-area-inset-top, 0))
+          max(1.25rem, env(safe-area-inset-right, 0))
+          max(1.25rem, env(safe-area-inset-bottom, 0))
+          max(1.25rem, env(safe-area-inset-left, 0));
+      }
+
+      .register-page-wrap {
+        width: 100%;
+        max-width: 1080px;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .page-back-login {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        align-self: flex-start;
+        margin-bottom: 0.85rem;
+        padding: 0.45rem 0.65rem;
+        margin-left: 0.15rem;
+        border-radius: 0.45rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--lp-on-surface-variant);
+        text-decoration: none;
+        transition:
+          background 0.18s,
+          color 0.18s;
+      }
+
+      .page-back-login:hover {
+        background: var(--lp-surface-highest);
+        color: var(--lp-primary);
+      }
+
+      .page-back-login svg {
+        flex-shrink: 0;
+        width: 1.05rem;
+        height: 1.05rem;
+      }
+
+      .register-shell {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        min-height: 0;
+        border-radius: 0.875rem;
+        overflow: hidden;
+        background: var(--lp-surface-lowest);
+        box-shadow: 0 16px 56px rgba(168, 18, 30, 0.1);
+        border: 1px solid rgba(192, 201, 192, 0.45);
+      }
+
+      @media (min-width: 768px) {
+        .register-shell {
+          flex-direction: row;
+          min-height: 640px;
+          max-height: calc(100dvh - 2rem);
         }
+      }
 
-        *, *::before, *::after { box-sizing: border-box; }
+      /* ── Left progress panel (matches login hero) ── */
+      .register-progress {
+        position: relative;
+        overflow: hidden;
+        padding: 1.75rem 1.5rem 1.5rem;
+        background: linear-gradient(
+          135deg,
+          var(--lp-primary) 0%,
+          var(--lp-primary-container) 100%
+        );
+        flex: 0 0 auto;
+        color: var(--lp-on-primary);
+      }
 
-        html.register-root { height: 100%; }
+      @media (min-width: 768px) {
+        .register-progress {
+          flex: 0 0 420px;
+          width: 420px;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          padding: 2.75rem 2rem;
+        }
+      }
 
+      .register-progress::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background-image: radial-gradient(
+          var(--lp-on-primary-container) 1px,
+          transparent 1px
+        );
+        background-size: 24px 24px;
+        opacity: 0.1;
+        pointer-events: none;
+      }
+
+      .register-progress::after {
+        content: "";
+        position: absolute;
+        bottom: -4rem;
+        left: -4rem;
+        width: 16rem;
+        height: 16rem;
+        border-radius: 50%;
+        background: var(--lp-primary-fixed-dim);
+        opacity: 0.06;
+        filter: blur(40px);
+        pointer-events: none;
+      }
+
+      .progress-brand,
+      .progress-copy,
+      .step-cards {
+        position: relative;
+        z-index: 1;
+      }
+
+      .progress-brand {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 0;
+        margin-bottom: 1.35rem;
+      }
+
+      .progress-brand img {
+        width: 140px;
+        height: 140px;
+        flex-shrink: 0;
+        margin-left: -0.5rem;
+        border-radius: 0;
+        object-fit: contain;
+        filter: brightness(0) invert(1);
+      }
+
+      .progress-brand span {
+        font-weight: 700;
+        font-size: 1.35rem;
+        letter-spacing: 0.02em;
+        white-space: nowrap;
+        flex-shrink: 0;
+        line-height: 1.1;
+        margin-left: -1.75rem;
+      }
+
+      .progress-kicker {
+        font-size: 0.7rem;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+
+        color: var(--lp-on-primary-container);
+        margin: 0 0 0.65rem;
+      }
+
+      .progress-copy {
+        margin-bottom: 1.25rem;
+      }
+
+      @media (min-width: 768px) {
+        .progress-copy {
+          margin-bottom: 0;
+        }
+      }
+
+      .progress-copy h1 {
+        margin: 0 0 0.65rem;
+        font-size: clamp(1.65rem, 3vw, 2.1rem);
+        font-weight: 800;
+        line-height: 1.15;
+        letter-spacing: -0.02em;
+        color: var(--lp-on-primary);
+      }
+
+      .progress-copy h1 span {
+        color: var(--lp-primary-fixed-dim);
+      }
+
+      .progress-copy p {
+        margin: 0;
+        color: rgba(255, 255, 255, 0.88);
+        font-size: 0.95rem;
+        line-height: 1.55;
+        max-width: 20rem;
+      }
+
+      .step-cards {
+        display: flex;
+        flex-direction: column;
+        gap: 0.55rem;
+      }
+
+      @media (max-width: 767px) {
+        .step-cards {
+          flex-direction: row;
+          overflow-x: auto;
+          gap: 0.5rem;
+          padding-bottom: 0.25rem;
+          scrollbar-width: none;
+        }
+        .step-cards::-webkit-scrollbar {
+          display: none;
+        }
+      }
+
+      .step-card {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.85rem 1rem;
+        border-radius: 0.75rem;
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        transition:
+          background 0.25s,
+          border-color 0.25s,
+          transform 0.25s;
+        flex-shrink: 0;
+        width: 100%;
+        text-align: left;
+        font: inherit;
+        color: inherit;
+        cursor: pointer;
+        appearance: none;
+        -webkit-appearance: none;
+      }
+
+      .step-card:hover:not(.active):not(:disabled) {
+        background: rgba(255, 255, 255, 0.16);
+        border-color: rgba(255, 255, 255, 0.28);
+      }
+
+      .step-card:disabled {
+        cursor: not-allowed;
+        opacity: 0.55;
+      }
+
+      .step-card:focus-visible {
+        outline: 2px solid rgba(255, 255, 255, 0.85);
+        outline-offset: 2px;
+      }
+
+      @media (max-width: 767px) {
+        .step-card {
+          min-width: 168px;
+          padding: 0.55rem 0.75rem;
+        }
+      }
+
+      .step-card.active {
+        background: var(--lp-surface-lowest);
+        border-color: var(--lp-surface-lowest);
+        color: var(--lp-primary);
+        transform: translateX(4px);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+      }
+
+      @media (max-width: 767px) {
+        .step-card.active {
+          transform: translateY(-2px);
+        }
+      }
+
+      .step-card.done {
+        background: rgba(255, 255, 255, 0.16);
+        border-color: rgba(255, 255, 255, 0.22);
+      }
+
+      .step-num {
+        flex-shrink: 0;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        font-size: 0.875rem;
+        background: rgba(255, 255, 255, 0.18);
+        color: var(--lp-on-primary);
+      }
+
+      .step-card.active .step-num {
+        background: var(--lp-primary-container);
+        color: var(--lp-on-primary);
+      }
+
+      .step-card.done .step-num {
+        background: rgba(255, 255, 255, 0.28);
+      }
+
+      .step-label {
+        font-size: 0.875rem;
+        font-weight: 600;
+        line-height: 1.3;
+      }
+
+      .step-card:not(.active) .step-label {
+        color: rgba(255, 255, 255, 0.92);
+      }
+
+      /* ── Right form panel (matches login canvas + card) ── */
+      .register-form-panel {
+        flex: 1;
+        min-width: 0;
+        background: var(--lp-surface);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1.5rem 2rem 2.25rem;
+        overflow-y: auto;
+      }
+
+      @media (min-width: 768px) {
+        .register-form-panel {
+          padding: 2.5rem 3rem 2.75rem;
+        }
+      }
+
+      .form-column {
+        width: 100%;
+        max-width: 480px;
+      }
+
+      .form-inner {
+        width: 100%;
+      }
+
+      .form-header {
+        margin-bottom: 1.75rem;
+      }
+
+      .form-header h2 {
+        margin: 0 0 0.45rem;
+        font-size: 1.45rem;
+        font-weight: 700;
+        color: var(--lp-primary);
+        letter-spacing: -0.01em;
+      }
+
+      .form-header p {
+        margin: 0;
+        color: var(--lp-on-surface-variant);
+        font-size: 0.875rem;
+        line-height: 1.5;
+      }
+
+      .wizard-step {
+        display: none;
+        animation: fadeSlide 0.35s ease;
+      }
+
+      .wizard-step.active {
+        display: block;
+      }
+
+      @keyframes fadeSlide {
+        from {
+          opacity: 0;
+          transform: translateY(8px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .field-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem;
+      }
+
+      @media (max-width: 480px) {
+        .field-row {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .field {
+        margin-bottom: 1rem;
+      }
+
+      .field label {
+        display: block;
+        margin-bottom: 0.35rem;
+        font-size: 0.6875rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+
+        color: var(--lp-outline);
+      }
+
+      .field label .optional-hint {
+        font-weight: 500;
+        letter-spacing: 0.02em;
+        text-transform: none;
+        opacity: 0.75;
+      }
+
+      .field input,
+      .field select {
+        width: 100%;
+        padding: 0.8rem 1rem;
+        min-height: 48px;
+        font-size: 16px;
+        font-family: inherit;
+        color: var(--lp-on-surface);
+        background: var(--lp-surface-highest);
+        border: none;
+        border-radius: 0.45rem;
+        outline: none;
+        transition:
+          box-shadow 0.2s,
+          background 0.2s;
+      }
+
+      .field input::placeholder {
+        color: rgba(112, 121, 114, 0.55);
+      }
+
+      .field input:focus,
+      .field select:focus {
+        background: var(--lp-surface-lowest);
+        box-shadow: 0 0 0 2px var(--lp-primary-fixed-dim);
+      }
+
+      .field-hint {
+        margin-top: 0.35rem;
+        font-size: 0.72rem;
+        color: var(--lp-on-surface-variant);
+        line-height: 1.45;
+      }
+
+      .alert {
+        display: none;
+        padding: 0.75rem 1rem;
+        border-radius: 0.5rem;
+        font-size: 0.875rem;
+        margin-bottom: 1rem;
+        line-height: 1.45;
+      }
+
+      .alert.error {
+        display: block;
+        background: var(--lp-error-bg);
+        color: #93000a;
+      }
+
+      .form-actions {
+        display: flex;
+        gap: 0.65rem;
+        margin-top: 0.35rem;
+      }
+
+      .btn {
+        flex: 1;
+        min-height: 48px;
+        padding: 0.8rem 1.35rem;
+        border: none;
+        border-radius: 0.5rem;
+        font-size: 0.9375rem;
+        font-weight: 700;
+        font-family: inherit;
+        cursor: pointer;
+        transition:
+          opacity 0.2s,
+          transform 0.15s;
+      }
+
+      .btn:active {
+        transform: scale(0.98);
+      }
+      .btn:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+      }
+
+      .btn-primary {
+        background: var(--lp-primary-container);
+        color: var(--lp-on-primary);
+        box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.1);
+      }
+
+      .btn-primary:hover:not(:disabled) {
+        opacity: 0.92;
+      }
+
+      .btn-ghost {
+        flex: 0 0 auto;
+        background: var(--lp-surface-lowest);
+        color: var(--lp-on-surface-variant);
+        border: 1px solid var(--lp-outline-variant);
+      }
+
+      .btn-ghost:hover:not(:disabled) {
+        border-color: var(--lp-outline);
+        color: var(--lp-primary);
+      }
+
+      .form-footer {
+        margin-top: 1.25rem;
+        text-align: center;
+        font-size: 0.8125rem;
+        color: var(--lp-on-surface-variant);
+      }
+
+      .form-footer a {
+        color: var(--lp-primary-container);
+        text-decoration: none;
+        font-weight: 700;
+      }
+
+      .form-footer a:hover {
+        text-decoration: underline;
+      }
+
+      /* ── Success step ── */
+      .success-panel {
+        text-align: center;
+        padding: 0.25rem 0 0.5rem;
+      }
+
+      .success-icon {
+        width: 64px;
+        height: 64px;
+        margin: 0 auto 1rem;
+        border-radius: 50%;
+        background: var(--lp-success-bg);
+        color: var(--lp-success-text);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.75rem;
+        font-weight: 800;
+      }
+
+      .success-panel h2 {
+        margin: 0 0 0.4rem;
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: var(--lp-primary);
+      }
+
+      .success-panel .lead {
+        color: var(--lp-on-surface-variant);
+        font-size: 0.8125rem;
+        line-height: 1.55;
+        margin: 0 0 1.25rem;
+      }
+
+      .credential-card {
+        text-align: left;
+        background: var(--lp-surface-lowest);
+        border: 1px solid var(--lp-outline-variant);
+        border-radius: 0.65rem;
+        padding: 1rem 1.1rem;
+        margin-bottom: 1rem;
+      }
+
+      .credential-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.45rem 0;
+        border-bottom: 1px solid var(--lp-surface-highest);
+      }
+
+      .credential-row:last-child {
+        border-bottom: none;
+      }
+
+      .credential-row span:first-child {
+        font-size: 0.625rem;
+
+        letter-spacing: 0.08em;
+        color: var(--lp-outline);
+        font-weight: 700;
+      }
+
+      .credential-row span:last-child,
+      .credential-row code {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--lp-on-surface);
+        word-break: break-all;
+        text-align: right;
+      }
+
+      .credential-row code {
+        background: var(--lp-surface-highest);
+        padding: 0.2rem 0.45rem;
+        border-radius: 0.35rem;
+        font-family: ui-monospace, monospace;
+      }
+
+      .success-note {
+        font-size: 0.8125rem;
+        color: var(--lp-success-text);
+        line-height: 1.55;
+        margin-bottom: 1.25rem;
+        text-align: left;
+        background: var(--lp-success-bg);
+        border-radius: 0.5rem;
+        padding: 0.75rem 0.875rem;
+      }
+
+      .success-note strong {
+        color: var(--lp-primary-container);
+      }
+
+      .btn-login {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        text-decoration: none;
+      }
+
+      .loading-text {
+        display: none;
+        text-align: center;
+        color: var(--lp-on-surface-variant);
+        font-size: 0.8125rem;
+        margin-top: 0.65rem;
+      }
+
+      .loading-text.show {
+        display: block;
+      }
+
+      @media (max-width: 767px) {
+        html.register-root,
         body.register-page {
-            margin: 0;
-            min-height: 100vh;
-            min-height: 100dvh;
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
-            color: var(--lp-on-surface);
-            background: var(--lp-surface) !important;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: max(1.25rem, env(safe-area-inset-top, 0))
-                     max(1.25rem, env(safe-area-inset-right, 0))
-                     max(1.25rem, env(safe-area-inset-bottom, 0))
-                     max(1.25rem, env(safe-area-inset-left, 0));
-        }
-
-        .register-page-wrap {
-            width: 100%;
-            max-width: 1080px;
-            display: flex;
-            flex-direction: column;
-            align-items: stretch;
-        }
-
-        .page-back-login {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.4rem;
-            align-self: flex-start;
-            margin-bottom: 0.85rem;
-            padding: 0.45rem 0.65rem;
-            margin-left: 0.15rem;
-            border-radius: 0.45rem;
-            font-size: 0.875rem;
-            font-weight: 600;
-            color: var(--lp-on-surface-variant);
-            text-decoration: none;
-            transition: background 0.18s, color 0.18s;
-        }
-
-        .page-back-login:hover {
-            background: var(--lp-surface-highest);
-            color: var(--lp-primary);
-        }
-
-        .page-back-login svg {
-            flex-shrink: 0;
-            width: 1.05rem;
-            height: 1.05rem;
+          overflow-x: hidden !important;
+          overflow-y: auto !important;
+          height: auto !important;
+          min-height: 100dvh !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
         }
 
         .register-shell {
-            display: flex;
-            flex-direction: column;
-            width: 100%;
-            min-height: 0;
-            border-radius: 0.875rem;
-            overflow: hidden;
-            background: var(--lp-surface-lowest);
-            box-shadow: 0 16px 56px rgba(168, 18, 30, 0.1);
-            border: 1px solid rgba(192, 201, 192, 0.45);
+          max-width: 100%;
+          border-radius: 0.65rem;
         }
-
-        @media (min-width: 768px) {
-            .register-shell {
-                flex-direction: row;
-                min-height: 640px;
-                max-height: calc(100dvh - 2rem);
-            }
-        }
-
-        /* ── Left progress panel (matches login hero) ── */
-        .register-progress {
-            position: relative;
-            overflow: hidden;
-            padding: 1.75rem 1.5rem 1.5rem;
-            background: linear-gradient(135deg, var(--lp-primary) 0%, var(--lp-primary-container) 100%);
-            flex: 0 0 auto;
-            color: var(--lp-on-primary);
-        }
-
-        @media (min-width: 768px) {
-            .register-progress {
-                flex: 0 0 380px;
-                width: 380px;
-                display: flex;
-                flex-direction: column;
-                justify-content: space-between;
-                padding: 2.75rem 2.25rem;
-            }
-        }
-
-        .register-progress::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background-image: radial-gradient(var(--lp-on-primary-container) 1px, transparent 1px);
-            background-size: 24px 24px;
-            opacity: 0.1;
-            pointer-events: none;
-        }
-
-        .register-progress::after {
-            content: '';
-            position: absolute;
-            bottom: -4rem;
-            left: -4rem;
-            width: 16rem;
-            height: 16rem;
-            border-radius: 50%;
-            background: var(--lp-primary-fixed-dim);
-            opacity: 0.06;
-            filter: blur(40px);
-            pointer-events: none;
-        }
-
-        .progress-brand,
-        .progress-copy,
-        .step-cards {
-            position: relative;
-            z-index: 1;
-        }
-
-        .progress-brand {
-            display: flex;
-            align-items: center;
-            gap: 0.65rem;
-            margin-bottom: 1.25rem;
-        }
-
-        .progress-brand img {
-            width: 44px;
-            height: 44px;
-            border-radius: 0;
-            object-fit: contain;
-            filter: brightness(0) invert(1);
-        }
-
-        .progress-brand span {
-            font-weight: 700;
-            font-size: 1.05rem;
-            letter-spacing: 0.02em;
-        }
-
-        .progress-kicker {
-            font-size: 0.7rem;
-            font-weight: 600;
-            letter-spacing: 0.12em;
-            text-transform: uppercase;
-            color: var(--lp-on-primary-container);
-            margin: 0 0 0.65rem;
-        }
-
-        .progress-copy { margin-bottom: 1.25rem; }
-
-        @media (min-width: 768px) {
-            .progress-copy { margin-bottom: 0; }
-        }
-
-        .progress-copy h1 {
-            margin: 0 0 0.65rem;
-            font-size: clamp(1.65rem, 3vw, 2.1rem);
-            font-weight: 800;
-            line-height: 1.15;
-            letter-spacing: -0.02em;
-            color: var(--lp-on-primary);
-        }
-
-        .progress-copy h1 span {
-            color: var(--lp-primary-fixed-dim);
-        }
-
-        .progress-copy p {
-            margin: 0;
-            color: rgba(255, 255, 255, 0.88);
-            font-size: 0.95rem;
-            line-height: 1.55;
-            max-width: 20rem;
-        }
-
-        .step-cards {
-            display: flex;
-            flex-direction: column;
-            gap: 0.55rem;
-        }
-
-        @media (max-width: 767px) {
-            .step-cards {
-                flex-direction: row;
-                overflow-x: auto;
-                gap: 0.5rem;
-                padding-bottom: 0.25rem;
-                scrollbar-width: none;
-            }
-            .step-cards::-webkit-scrollbar { display: none; }
-        }
-
-        .step-card {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            padding: 0.85rem 1rem;
-            border-radius: 0.75rem;
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.14);
-            transition: background 0.25s, border-color 0.25s, transform 0.25s;
-            flex-shrink: 0;
-        }
-
-        @media (max-width: 767px) {
-            .step-card {
-                min-width: 168px;
-                padding: 0.55rem 0.75rem;
-            }
-        }
-
-        .step-card.active {
-            background: var(--lp-surface-lowest);
-            border-color: var(--lp-surface-lowest);
-            color: var(--lp-primary);
-            transform: translateX(4px);
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-        }
-
-        @media (max-width: 767px) {
-            .step-card.active { transform: translateY(-2px); }
-        }
-
-        .step-card.done {
-            background: rgba(255, 255, 255, 0.16);
-            border-color: rgba(255, 255, 255, 0.22);
-        }
-
-        .step-num {
-            flex-shrink: 0;
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 800;
-            font-size: 0.875rem;
-            background: rgba(255, 255, 255, 0.18);
-            color: var(--lp-on-primary);
-        }
-
-        .step-card.active .step-num {
-            background: var(--lp-primary-container);
-            color: var(--lp-on-primary);
-        }
-
-        .step-card.done .step-num {
-            background: rgba(255, 255, 255, 0.28);
-        }
-
-        .step-label {
-            font-size: 0.875rem;
-            font-weight: 600;
-            line-height: 1.3;
-        }
-
-        .step-card:not(.active) .step-label {
-            color: rgba(255, 255, 255, 0.92);
-        }
-
-        /* ── Right form panel (matches login canvas + card) ── */
-        .register-form-panel {
-            flex: 1;
-            min-width: 0;
-            background: var(--lp-surface);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 1.5rem 2rem 2.25rem;
-            overflow-y: auto;
-        }
-
-        @media (min-width: 768px) {
-            .register-form-panel {
-                padding: 2.5rem 3rem 2.75rem;
-            }
-        }
-
-        .form-column {
-            width: 100%;
-            max-width: 480px;
-        }
-
-        .form-inner {
-            width: 100%;
-        }
-
-        .form-header { margin-bottom: 1.75rem; }
-
-        .form-header h2 {
-            margin: 0 0 0.45rem;
-            font-size: 1.45rem;
-            font-weight: 700;
-            color: var(--lp-primary);
-            letter-spacing: -0.01em;
-        }
-
-        .form-header p {
-            margin: 0;
-            color: var(--lp-on-surface-variant);
-            font-size: 0.875rem;
-            line-height: 1.5;
-        }
-
-        .wizard-step {
-            display: none;
-            animation: fadeSlide 0.35s ease;
-        }
-
-        .wizard-step.active { display: block; }
-
-        @keyframes fadeSlide {
-            from { opacity: 0; transform: translateY(8px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .field-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 0.75rem;
-        }
-
-        @media (max-width: 480px) {
-            .field-row { grid-template-columns: 1fr; }
-        }
-
-        .field { margin-bottom: 1rem; }
-
-        .field label {
-            display: block;
-            margin-bottom: 0.35rem;
-            font-size: 0.6875rem;
-            font-weight: 700;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-            color: var(--lp-outline);
-        }
-
-        .field input,
-        .field select {
-            width: 100%;
-            padding: 0.8rem 1rem;
-            min-height: 48px;
-            font-size: 16px;
-            font-family: inherit;
-            color: var(--lp-on-surface);
-            background: var(--lp-surface-highest);
-            border: none;
-            border-radius: 0.45rem;
-            outline: none;
-            transition: box-shadow 0.2s, background 0.2s;
-        }
-
-        .field input::placeholder {
-            color: rgba(112, 121, 114, 0.55);
-        }
-
-        .field input:focus,
-        .field select:focus {
-            background: var(--lp-surface-lowest);
-            box-shadow: 0 0 0 2px var(--lp-primary-fixed-dim);
-        }
-
-        .field-hint {
-            margin-top: 0.35rem;
-            font-size: 0.72rem;
-            color: var(--lp-on-surface-variant);
-            line-height: 1.45;
-        }
-
-        .alert {
-            display: none;
-            padding: 0.75rem 1rem;
-            border-radius: 0.5rem;
-            font-size: 0.875rem;
-            margin-bottom: 1rem;
-            line-height: 1.45;
-        }
-
-        .alert.error {
-            display: block;
-            background: var(--lp-error-bg);
-            color: #93000a;
-        }
-
-        .form-actions {
-            display: flex;
-            gap: 0.65rem;
-            margin-top: 0.35rem;
-        }
-
-        .btn {
-            flex: 1;
-            min-height: 48px;
-            padding: 0.8rem 1.35rem;
-            border: none;
-            border-radius: 0.5rem;
-            font-size: 0.9375rem;
-            font-weight: 700;
-            font-family: inherit;
-            cursor: pointer;
-            transition: opacity 0.2s, transform 0.15s;
-        }
-
-        .btn:active { transform: scale(0.98); }
-        .btn:disabled { opacity: 0.55; cursor: not-allowed; }
-
-        .btn-primary {
-            background: var(--lp-primary-container);
-            color: var(--lp-on-primary);
-            box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.1);
-        }
-
-        .btn-primary:hover:not(:disabled) { opacity: 0.92; }
-
-        .btn-ghost {
-            flex: 0 0 auto;
-            background: var(--lp-surface-lowest);
-            color: var(--lp-on-surface-variant);
-            border: 1px solid var(--lp-outline-variant);
-        }
-
-        .btn-ghost:hover:not(:disabled) {
-            border-color: var(--lp-outline);
-            color: var(--lp-primary);
-        }
-
-        .form-footer {
-            margin-top: 1.25rem;
-            text-align: center;
-            font-size: 0.8125rem;
-            color: var(--lp-on-surface-variant);
-        }
-
-        .form-footer a {
-            color: var(--lp-primary-container);
-            text-decoration: none;
-            font-weight: 700;
-        }
-
-        .form-footer a:hover { text-decoration: underline; }
-
-        /* ── Success step ── */
-        .success-panel {
-            text-align: center;
-            padding: 0.25rem 0 0.5rem;
-        }
-
-        .success-icon {
-            width: 64px;
-            height: 64px;
-            margin: 0 auto 1rem;
-            border-radius: 50%;
-            background: var(--lp-success-bg);
-            color: var(--lp-success-text);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.75rem;
-            font-weight: 800;
-        }
-
-        .success-panel h2 {
-            margin: 0 0 0.4rem;
-            font-size: 1.15rem;
-            font-weight: 700;
-            color: var(--lp-primary);
-        }
-
-        .success-panel .lead {
-            color: var(--lp-on-surface-variant);
-            font-size: 0.8125rem;
-            line-height: 1.55;
-            margin: 0 0 1.25rem;
-        }
-
-        .credential-card {
-            text-align: left;
-            background: var(--lp-surface-lowest);
-            border: 1px solid var(--lp-outline-variant);
-            border-radius: 0.65rem;
-            padding: 1rem 1.1rem;
-            margin-bottom: 1rem;
-        }
-
-        .credential-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 1rem;
-            padding: 0.45rem 0;
-            border-bottom: 1px solid var(--lp-surface-highest);
-        }
-
-        .credential-row:last-child { border-bottom: none; }
-
-        .credential-row span:first-child {
-            font-size: 0.625rem;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            color: var(--lp-outline);
-            font-weight: 700;
-        }
-
-        .credential-row span:last-child,
-        .credential-row code {
-            font-size: 0.875rem;
-            font-weight: 600;
-            color: var(--lp-on-surface);
-            word-break: break-all;
-            text-align: right;
-        }
-
-        .credential-row code {
-            background: var(--lp-surface-highest);
-            padding: 0.2rem 0.45rem;
-            border-radius: 0.35rem;
-            font-family: ui-monospace, monospace;
-        }
-
-        .success-note {
-            font-size: 0.8125rem;
-            color: var(--lp-success-text);
-            line-height: 1.55;
-            margin-bottom: 1.25rem;
-            text-align: left;
-            background: var(--lp-success-bg);
-            border-radius: 0.5rem;
-            padding: 0.75rem 0.875rem;
-        }
-
-        .success-note strong {
-            color: var(--lp-primary-container);
-        }
-
-        .btn-login {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 100%;
-            text-decoration: none;
-        }
-
-        .loading-text {
-            display: none;
-            text-align: center;
-            color: var(--lp-on-surface-variant);
-            font-size: 0.8125rem;
-            margin-top: 0.65rem;
-        }
-
-        .loading-text.show { display: block; }
-
-        @media (max-width: 767px) {
-            html.register-root,
-            body.register-page {
-                overflow-x: hidden !important;
-                overflow-y: auto !important;
-                height: auto !important;
-                min-height: 100dvh !important;
-                display: flex !important;
-                align-items: center !important;
-                justify-content: center !important;
-            }
-
-            .register-shell {
-                max-width: 100%;
-                border-radius: 0.65rem;
-            }
-        }
+      }
     </style>
-</head>
-<body class="register-page">
+  </head>
+  <body class="register-page">
     <div class="register-page-wrap">
-        <a href="{{ url_for('login_page') }}" class="page-back-login" aria-label="Back to login page">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M19 12H5M12 19l-7-7 7-7"/>
-            </svg>
-            Back to login
-        </a>
-    <div class="register-shell">
+      <a
+        href="{{ url_for('login_page') }}"
+        class="page-back-login"
+        aria-label="Back to login page"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.25"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M19 12H5M12 19l-7-7 7-7" />
+        </svg>
+        Back to login
+      </a>
+      <div class="register-shell">
         <aside class="register-progress" aria-label="Registration progress">
-            <div>
-                <div class="progress-brand">
-                    <img src="{{ url_for('static', filename='logo.png') }}" alt="Amaan">
-                    <span>Amaan</span>
-                </div>
-                <div class="progress-copy">
-                    <h1>Get Started <span>with Us</span></h1>
-                    <p>Complete these easy steps to register your account and join the team.</p>
-                </div>
+          <div>
+            <div class="progress-brand">
+              <img
+                src="{{ url_for('static', filename='logo.png') }}"
+                alt="Amaan"
+              />
+              <span>Amaan Systems</span>
             </div>
-            <div class="step-cards" role="list">
-                <div class="step-card active" data-step-indicator="1" role="listitem">
-                    <div class="step-num">1</div>
-                    <div class="step-label">Your details</div>
-                </div>
-                <div class="step-card" data-step-indicator="2" role="listitem">
-                    <div class="step-num">2</div>
-                    <div class="step-label">Your project &amp; role</div>
-                </div>
-                <div class="step-card" data-step-indicator="3" role="listitem">
-                    <div class="step-num">3</div>
-                    <div class="step-label">Account ready</div>
-                </div>
+            <div class="progress-copy">
+              <h1>Get Started <span>with Us</span></h1>
+              <p>
+                Complete these easy steps to register your account and join the
+                team.
+              </p>
             </div>
+          </div>
+          <div class="step-cards" role="list">
+            <button
+              type="button"
+              class="step-card active"
+              data-step-indicator="1"
+              role="listitem"
+              aria-current="step"
+            >
+              <div class="step-num">1</div>
+              <div class="step-label">Your details</div>
+            </button>
+            <button
+              type="button"
+              class="step-card"
+              data-step-indicator="2"
+              role="listitem"
+            >
+              <div class="step-num">2</div>
+              <div class="step-label">Your project &amp; role</div>
+            </button>
+            <button
+              type="button"
+              class="step-card"
+              data-step-indicator="3"
+              role="listitem"
+              disabled
+              aria-disabled="true"
+            >
+              <div class="step-num">3</div>
+              <div class="step-label">Account ready</div>
+            </button>
+          </div>
         </aside>
 
         <main class="register-form-panel">
-            <div class="form-column">
+          <div class="form-column">
             <div class="form-inner">
-                <div id="error-message" class="alert" role="alert"></div>
+              <div id="error-message" class="alert" role="alert"></div>
 
-                <!-- Step 1: Personal -->
-                <section class="wizard-step active" data-step="1" aria-labelledby="step1-title">
-                    <header class="form-header">
-                        <h2 id="step1-title">Sign Up Account</h2>
-                        <p>Enter your personal details so we can identify you.</p>
-                    </header>
-                    <form id="step1-form" novalidate>
-                        <div class="field-row">
-                            <div class="field">
-                                <label for="first_name">First Name</label>
-                                <input type="text" id="first_name" name="first_name" placeholder="eg. John" required autocomplete="given-name">
-                            </div>
-                            <div class="field">
-                                <label for="last_name">Last Name</label>
-                                <input type="text" id="last_name" name="last_name" placeholder="eg. Franklin" required autocomplete="family-name">
-                            </div>
-                        </div>
-                        <div class="field">
-                            <label for="email">Email Address</label>
-                            <input type="email" id="email" name="email" placeholder="company or personal email" required autocomplete="email">
-                            <p class="field-hint">Use your company email if you have one — otherwise your personal email works too.</p>
-                        </div>
-                        <div class="field">
-                            <label for="mobile_number">Mobile Number</label>
-                            <input type="tel" id="mobile_number" name="mobile_number" placeholder="eg. +971 50 123 4567" required autocomplete="tel">
-                        </div>
-                        <div class="form-actions">
-                            <button type="submit" class="btn btn-primary">Continue</button>
-                        </div>
-                    </form>
-                    <p class="form-footer">Already have an account? <a href="{{ url_for('login_page') }}">Log in</a></p>
-                </section>
-
-                <!-- Step 2: Work -->
-                <section class="wizard-step" data-step="2" aria-labelledby="step2-title">
-                    <header class="form-header">
-                        <h2 id="step2-title">Your Project &amp; Role</h2>
-                        <p>Tell us where you work and what you do.</p>
-                    </header>
-                    <form id="step2-form" novalidate>
-                        <div class="field">
-                            <label for="project_name">Project Name</label>
-                            <input type="text" id="project_name" name="project_name" placeholder="eg. Marina Tower FM" required>
-                        </div>
-                        <div class="field">
-                            <label for="job_designation">Designation</label>
-                            <input type="text" id="job_designation" name="job_designation" placeholder="eg. HVAC Technician" required>
-                        </div>
-                        <div class="field">
-                            <label for="employment_start_date">Date Joined Company</label>
-                            <input type="date" id="employment_start_date" name="employment_start_date" required>
-                        </div>
-                        <div class="form-actions">
-                            <button type="button" class="btn btn-ghost" id="back-to-1">Back</button>
-                            <button type="submit" class="btn btn-primary" id="submit-register">Create Account</button>
-                        </div>
-                        <p class="loading-text" id="loading">Creating your account…</p>
-                    </form>
-                    <p class="form-footer">Already have an account? <a href="{{ url_for('login_page') }}">Log in</a></p>
-                </section>
-
-                <!-- Step 3: Success -->
-                <section class="wizard-step" data-step="3" aria-labelledby="step3-title">
-                    <div class="success-panel">
-                        <div class="success-icon" aria-hidden="true">✓</div>
-                        <h2 id="step3-title">Your Account Is Ready!</h2>
-                        <p class="lead">Welcome aboard. You can sign in now with the credentials below.</p>
-
-                        <div class="credential-card">
-                            <div class="credential-row">
-                                <span>Sign in with</span>
-                                <span id="success-email">—</span>
-                            </div>
-                            <div class="credential-row">
-                                <span>Default password</span>
-                                <code id="success-password">{{ default_password }}</code>
-                            </div>
-                        </div>
-
-                        <p class="success-note">
-                            For your security, go to <strong>Profile</strong> after logging in and <strong>reset your password</strong> to something only you know.
-                        </p>
-
-                        <a href="{{ url_for('login_page') }}" class="btn btn-primary btn-login">Go to Log In</a>
+              <!-- Step 1: Personal -->
+              <section
+                class="wizard-step active"
+                data-step="1"
+                aria-labelledby="step1-title"
+              >
+                <header class="form-header">
+                  <h2 id="step1-title">Sign Up Account</h2>
+                  <p>Enter your personal details so we can identify you.</p>
+                </header>
+                <form id="step1-form" novalidate>
+                  <div class="field-row">
+                    <div class="field">
+                      <label for="first_name">First Name</label>
+                      <input
+                        type="text"
+                        id="first_name"
+                        name="first_name"
+                        placeholder="eg. John"
+                        required
+                        autocomplete="given-name"
+                      />
                     </div>
-                </section>
+                    <div class="field">
+                      <label for="last_name">Last Name <span class="optional-hint">(optional)</span></label>
+                      <input
+                        type="text"
+                        id="last_name"
+                        name="last_name"
+                        placeholder="eg. Franklin"
+                        autocomplete="family-name"
+                      />
+                    </div>
+                  </div>
+                  <div class="field">
+                    <label for="email">Email Address</label>
+                    <input
+                      type="email"
+                      id="email"
+                      name="email"
+                      placeholder="company or personal email"
+                      required
+                      autocomplete="email"
+                    />
+                    <p class="field-hint">
+                      Use your company email if you have one — otherwise your
+                      personal email works too.
+                    </p>
+                  </div>
+                  <div class="field">
+                    <label for="mobile_number">Mobile Number</label>
+                    <input
+                      type="tel"
+                      id="mobile_number"
+                      name="mobile_number"
+                      placeholder="eg. +971 50 123 4567"
+                      required
+                      autocomplete="tel"
+                    />
+                  </div>
+                  <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">
+                      Continue
+                    </button>
+                  </div>
+                </form>
+                <p class="form-footer">
+                  Already have an account?
+                  <a href="{{ url_for('login_page') }}">Log in</a>
+                </p>
+              </section>
+
+              <!-- Step 2: Work -->
+              <section
+                class="wizard-step"
+                data-step="2"
+                aria-labelledby="step2-title"
+              >
+                <header class="form-header">
+                  <h2 id="step2-title">Your Project &amp; Role</h2>
+                  <p>Tell us where you work and what you do.</p>
+                </header>
+                <form id="step2-form" novalidate>
+                  <div class="field">
+                    <label for="project_name">Project Name</label>
+                    <input
+                      type="text"
+                      id="project_name"
+                      name="project_name"
+                      placeholder="eg. Marina Tower FM"
+                      required
+                    />
+                  </div>
+                  <div class="field">
+                    <label for="job_designation">Designation</label>
+                    <input
+                      type="text"
+                      id="job_designation"
+                      name="job_designation"
+                      placeholder="eg. HVAC Technician"
+                      required
+                    />
+                  </div>
+                  <div class="field">
+                    <label for="employment_start_date"
+                      >Date Joined Company</label
+                    >
+                    <input
+                      type="date"
+                      id="employment_start_date"
+                      name="employment_start_date"
+                      required
+                    />
+                  </div>
+                  <div class="form-actions">
+                    <button type="button" class="btn btn-ghost" id="back-to-1">
+                      Back
+                    </button>
+                    <button
+                      type="submit"
+                      class="btn btn-primary"
+                      id="submit-register"
+                    >
+                      Create Account
+                    </button>
+                  </div>
+                  <p class="loading-text" id="loading">
+                    Creating your account…
+                  </p>
+                </form>
+                <p class="form-footer">
+                  Already have an account?
+                  <a href="{{ url_for('login_page') }}">Log in</a>
+                </p>
+              </section>
+
+              <!-- Step 3: Success -->
+              <section
+                class="wizard-step"
+                data-step="3"
+                aria-labelledby="step3-title"
+              >
+                <div class="success-panel">
+                  <div class="success-icon" aria-hidden="true">✓</div>
+                  <h2 id="step3-title">Your Account Is Ready!</h2>
+                  <p class="lead">
+                    Welcome aboard. You can sign in now with the credentials
+                    below.
+                  </p>
+
+                  <div class="credential-card">
+                    <div class="credential-row">
+                      <span>Sign in with</span>
+                      <span id="success-email">—</span>
+                    </div>
+                    <div class="credential-row">
+                      <span>Default password</span>
+                      <code id="success-password">{{ default_password }}</code>
+                    </div>
+                  </div>
+
+                  <p class="success-note">
+                    For your security, go to <strong>Profile</strong> after
+                    logging in and <strong>reset your password</strong> to
+                    something only you know.
+                  </p>
+
+                  <a
+                    href="{{ url_for('login_page') }}"
+                    class="btn btn-primary btn-login"
+                    >Go to Log In</a
+                  >
+                </div>
+              </section>
             </div>
-            </div>
+          </div>
         </main>
-    </div>
+      </div>
     </div>
 
     <script>
-        (function () {
-            const STEPS = 3;
-            let currentStep = 1;
+      (function () {
+        let currentStep = 1;
+        let highestReached = 1;
+        let registrationComplete = false;
 
-            const stepPanels = document.querySelectorAll('.wizard-step');
-            const stepIndicators = document.querySelectorAll('[data-step-indicator]');
-            const errorEl = document.getElementById('error-message');
-            const loadingEl = document.getElementById('loading');
-            const submitBtn = document.getElementById('submit-register');
+        const stepPanels = document.querySelectorAll(".wizard-step");
+        const stepIndicators = document.querySelectorAll(
+          "[data-step-indicator]",
+        );
+        const errorEl = document.getElementById("error-message");
+        const loadingEl = document.getElementById("loading");
+        const submitBtn = document.getElementById("submit-register");
 
-            const formData = {
-                first_name: '',
-                last_name: '',
-                email: '',
-                mobile_number: '',
-                project_name: '',
-                job_designation: '',
-                employment_start_date: ''
-            };
+        const formData = {
+          first_name: "",
+          last_name: "",
+          email: "",
+          mobile_number: "",
+          project_name: "",
+          job_designation: "",
+          employment_start_date: "",
+        };
 
-            function showError(msg) {
-                errorEl.textContent = msg;
-                errorEl.className = 'alert error';
+        function showError(msg) {
+          errorEl.textContent = msg;
+          errorEl.className = "alert error";
+        }
+
+        function clearError() {
+          errorEl.textContent = "";
+          errorEl.className = "alert";
+        }
+
+        function syncStep1Fields() {
+          formData.first_name = document
+            .getElementById("first_name")
+            .value.trim();
+          formData.last_name = document
+            .getElementById("last_name")
+            .value.trim();
+          formData.email = document.getElementById("email").value.trim();
+          formData.mobile_number = document
+            .getElementById("mobile_number")
+            .value.trim();
+        }
+
+        function syncStep2Fields() {
+          formData.project_name = document
+            .getElementById("project_name")
+            .value.trim();
+          formData.job_designation = document
+            .getElementById("job_designation")
+            .value.trim();
+          formData.employment_start_date = document.getElementById(
+            "employment_start_date",
+          ).value;
+        }
+
+        function validateStep1() {
+          syncStep1Fields();
+          if (!formData.first_name) {
+            showError("Please enter your first name.");
+            return false;
+          }
+          if (
+            !formData.email ||
+            !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)
+          ) {
+            showError("Please enter a valid email address.");
+            return false;
+          }
+          const digits = formData.mobile_number.replace(/[\s\-().+]/g, "");
+          if (
+            !formData.mobile_number ||
+            digits.length < 7 ||
+            !/^\d+$/.test(digits)
+          ) {
+            showError("Please enter a valid mobile number.");
+            return false;
+          }
+          return true;
+        }
+
+        function goToStep(step) {
+          currentStep = step;
+          if (step > highestReached) highestReached = step;
+
+          stepPanels.forEach(function (panel) {
+            panel.classList.toggle(
+              "active",
+              Number(panel.dataset.step) === step,
+            );
+          });
+          stepIndicators.forEach(function (card) {
+            const n = Number(card.dataset.stepIndicator);
+            card.classList.remove("active", "done");
+            if (n === step) {
+              card.classList.add("active");
+              card.setAttribute("aria-current", "step");
+            } else {
+              card.removeAttribute("aria-current");
+              if (n < step || (registrationComplete && n < 3)) {
+                card.classList.add("done");
+              }
             }
 
-            function clearError() {
-                errorEl.textContent = '';
-                errorEl.className = 'alert';
+            const locked = n === 3 && !registrationComplete;
+            card.disabled = locked;
+            card.setAttribute("aria-disabled", locked ? "true" : "false");
+          });
+          clearError();
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+
+        function tryGoToStep(step) {
+          if (step === currentStep) return;
+
+          if (step === 3 && !registrationComplete) {
+            showError("Finish registration to open Account ready.");
+            return;
+          }
+
+          if (registrationComplete && step < 3) {
+            showError("Your account is already created. Please log in.");
+            return;
+          }
+
+          if (currentStep === 1) syncStep1Fields();
+          if (currentStep === 2) syncStep2Fields();
+
+          if (step > currentStep && step === 2 && !validateStep1()) {
+            return;
+          }
+
+          if (step > highestReached + 1) {
+            showError("Please complete the earlier steps first.");
+            return;
+          }
+
+          goToStep(step);
+        }
+
+        stepIndicators.forEach(function (card) {
+          card.addEventListener("click", function () {
+            const step = Number(card.dataset.stepIndicator);
+            if (!step || card.disabled) return;
+            tryGoToStep(step);
+          });
+        });
+
+        document
+          .getElementById("step1-form")
+          .addEventListener("submit", function (e) {
+            e.preventDefault();
+            clearError();
+            if (!validateStep1()) return;
+            goToStep(2);
+          });
+
+        document
+          .getElementById("back-to-1")
+          .addEventListener("click", function () {
+            syncStep2Fields();
+            goToStep(1);
+          });
+
+        document
+          .getElementById("step2-form")
+          .addEventListener("submit", async function (e) {
+            e.preventDefault();
+            clearError();
+
+            syncStep2Fields();
+
+            if (!formData.project_name) {
+              showError("Please enter your project name.");
+              return;
+            }
+            if (!formData.job_designation) {
+              showError("Please enter your designation.");
+              return;
+            }
+            if (!formData.employment_start_date) {
+              showError("Please select your join date.");
+              return;
             }
 
-            function goToStep(step) {
-                currentStep = step;
-                stepPanels.forEach(function (panel) {
-                    panel.classList.toggle('active', Number(panel.dataset.step) === step);
-                });
-                stepIndicators.forEach(function (card) {
-                    const n = Number(card.dataset.stepIndicator);
-                    card.classList.remove('active', 'done');
-                    if (n === step) card.classList.add('active');
-                    else if (n < step) card.classList.add('done');
-                });
-                clearError();
-                window.scrollTo({ top: 0, behavior: 'smooth' });
+            submitBtn.disabled = true;
+            loadingEl.classList.add("show");
+
+            try {
+              const response = await fetch("/api/auth/register", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(formData),
+              });
+              const data = await response.json();
+
+              if (response.ok) {
+                document.getElementById("success-email").textContent =
+                  data.login_hint || formData.email;
+                if (data.default_password) {
+                  document.getElementById("success-password").textContent =
+                    data.default_password;
+                }
+                registrationComplete = true;
+                goToStep(3);
+              } else {
+                showError(
+                  data.error || "Registration failed. Please try again.",
+                );
+                submitBtn.disabled = false;
+              }
+            } catch (err) {
+              showError(
+                "Network error. Please check your connection and try again.",
+              );
+              submitBtn.disabled = false;
+            } finally {
+              loadingEl.classList.remove("show");
             }
-
-            document.getElementById('step1-form').addEventListener('submit', function (e) {
-                e.preventDefault();
-                clearError();
-
-                const first = document.getElementById('first_name').value.trim();
-                const last = document.getElementById('last_name').value.trim();
-                const email = document.getElementById('email').value.trim();
-                const mobile = document.getElementById('mobile_number').value.trim();
-
-                if (!first || !last) {
-                    showError('Please enter your first and last name.');
-                    return;
-                }
-                if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-                    showError('Please enter a valid email address.');
-                    return;
-                }
-                const digits = mobile.replace(/[\s\-().+]/g, '');
-                if (!mobile || digits.length < 7 || !/^\d+$/.test(digits)) {
-                    showError('Please enter a valid mobile number.');
-                    return;
-                }
-
-                formData.first_name = first;
-                formData.last_name = last;
-                formData.email = email;
-                formData.mobile_number = mobile;
-                goToStep(2);
-            });
-
-            document.getElementById('back-to-1').addEventListener('click', function () {
-                goToStep(1);
-            });
-
-            document.getElementById('step2-form').addEventListener('submit', async function (e) {
-                e.preventDefault();
-                clearError();
-
-                const project = document.getElementById('project_name').value.trim();
-                const designation = document.getElementById('job_designation').value.trim();
-                const joinDate = document.getElementById('employment_start_date').value;
-
-                if (!project) {
-                    showError('Please enter your project name.');
-                    return;
-                }
-                if (!designation) {
-                    showError('Please enter your designation.');
-                    return;
-                }
-                if (!joinDate) {
-                    showError('Please select your join date.');
-                    return;
-                }
-
-                formData.project_name = project;
-                formData.job_designation = designation;
-                formData.employment_start_date = joinDate;
-
-                submitBtn.disabled = true;
-                loadingEl.classList.add('show');
-
-                try {
-                    const response = await fetch('/api/auth/register', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(formData)
-                    });
-                    const data = await response.json();
-
-                    if (response.ok) {
-                        document.getElementById('success-email').textContent = data.login_hint || formData.email;
-                        if (data.default_password) {
-                            document.getElementById('success-password').textContent = data.default_password;
-                        }
-                        goToStep(3);
-                    } else {
-                        showError(data.error || 'Registration failed. Please try again.');
-                        submitBtn.disabled = false;
-                    }
-                } catch (err) {
-                    showError('Network error. Please check your connection and try again.');
-                    submitBtn.disabled = false;
-                } finally {
-                    loadingEl.classList.remove('show');
-                }
-            });
-        })();
+          });
+      })();
     </script>
-    <script src="{{ url_for('static', filename='mobile_utils.js') }}" defer></script>
-</body>
+    <script
+      src="{{ url_for('static', filename='mobile_utils.js') }}"
+      defer
+    ></script>
+  </body>
 </html>

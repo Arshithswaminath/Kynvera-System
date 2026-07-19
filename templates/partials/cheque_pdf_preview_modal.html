@@ -1,0 +1,32 @@
+{# Shared Cheque Preparation/Request Form preview modal. Requires cheque_pdf_preview.css + cheque_pdf_preview.js + ApiClient. #}
+<div class="cpm-bg" id="cpmBg" aria-hidden="true">
+  <div class="cpm-modal" role="dialog" aria-modal="true" aria-labelledby="cpmTitle">
+    <div class="cpm-hd">
+      <div class="cpm-hd-text">
+        <h3 id="cpmTitle">Cheque Preparation Form</h3>
+        <p class="cpm-sub" id="cpmSub">—</p>
+      </div>
+      <div class="cpm-hd-actions">
+        <button type="button" class="cpm-btn cpm-btn-ghost" id="cpmRefresh" title="Refresh preview">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
+          Refresh
+        </button>
+        <button type="button" class="cpm-btn cpm-btn-primary" id="cpmDownload">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M7.5 12l4.5 4.5m0 0 4.5-4.5m-4.5 4.5V3"/></svg>
+          Download PDF
+        </button>
+        <button type="button" class="cpm-x" id="cpmClose" aria-label="Close">&times;</button>
+      </div>
+    </div>
+    <div class="cpm-body">
+      <div class="cpm-loading" id="cpmLoading" hidden>
+        <span class="cpm-spinner"></span>
+        Loading preview…
+      </div>
+      <p class="cpm-error" id="cpmError" hidden></p>
+      <div class="cpm-scroll" id="cpmScroll">
+        <article class="cpm-paper" id="cpmPaper" aria-label="Cheque preparation form preview"></article>
+      </div>
+    </div>
+  </div>
+</div>

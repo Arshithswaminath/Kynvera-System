@@ -33,7 +33,7 @@ C_MUTED = colors.HexColor("#6b7280")
 C_LIGHT = colors.HexColor("#cccccc")
 C_WHITE = colors.white
 # Increment when footer/branding/signature-box layout changes (visible in PDF footer).
-HR_PDF_LAYOUT_VERSION = "2026.10"
+HR_PDF_LAYOUT_VERSION = "2026.15"
 
 _W, _H = A4
 _LM = 1.2 * cm
@@ -47,10 +47,11 @@ _MGMT_CHAIN_START_NEXT_PAGE = frozenset({
     "station_clearance",
 })
 
-LOGO_PATH = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-    "static", "logo.png",
-)
+_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# Square tight logo — static/logo.png is a tall portrait and misaligns with the headline.
+LOGO_PATH = os.path.join(_ROOT, "static", "icons", "Amaan-logo-tight.png")
+if not os.path.exists(LOGO_PATH):
+    LOGO_PATH = os.path.join(_ROOT, "static", "logo.png")
 
 
 def _dubai_tz():
@@ -209,9 +210,6 @@ class HRPDFCanvas(canvas.Canvas):
 
     def _draw_decorations(self, total):
         w, h = _W, _H
-        self.setStrokeColor(C_BLACK)
-        self.setLineWidth(0.3)
-        self.line(0, h - 0.08 * cm, w, h - 0.08 * cm)
         self.setStrokeColor(C_LIGHT)
         self.setLineWidth(0.3)
         self.line(_LM, 1.3 * cm, w - _RM, 1.3 * cm)
@@ -256,44 +254,67 @@ def _get_styles():
 # ── Reusable layout components ───────────────────────────────────────────────
 
 def _header_table(form_name, styles, show_bottom_line=True):
-    """Logo right, headline: AMAAN FACILITY MANAGEMENT (small) + form name (bold). Matches reference design."""
+    """Logo right, headline left — larger logo, more top space, middle-aligned."""
+    logo_size = 0.62 * inch
     logo_cell = ""
     if os.path.exists(LOGO_PATH):
         try:
-            # Logo: proportional scaling, proper size for PDF header
-            logo_cell = Image(LOGO_PATH, width=0.7 * inch, height=0.7 * inch, kind="proportional")
+            logo_cell = Image(LOGO_PATH, width=logo_size, height=logo_size, kind="proportional")
+            logo_cell.hAlign = "RIGHT"
         except Exception:
             pass
     if not logo_cell:
         logo_cell = Paragraph(
             "<b>AMAAN</b>",
-            ParagraphStyle("HL", fontSize=10, textColor=C_BLACK, fontName="Helvetica-Bold", alignment=TA_RIGHT),
+            ParagraphStyle("HL", fontSize=11, textColor=C_BLACK, fontName="Helvetica-Bold", alignment=TA_RIGHT),
         )
-    # Amaan Facility Management - a little bigger, bold (stays gray)
     sub = Paragraph(
-        '<font size="8" color="#666666"><b>Amaan Facility Management</b></font>',
-        ParagraphStyle("HSub", fontSize=8, textColor=C_GRAY, fontName="Helvetica-Bold", alignment=TA_LEFT, spaceAfter=3),
+        '<font size="8" color="#666666"><b>Amaan Systems</b></font>',
+        ParagraphStyle(
+            "HSub",
+            fontSize=8,
+            textColor=C_GRAY,
+            fontName="Helvetica-Bold",
+            alignment=TA_LEFT,
+            spaceBefore=0,
+            spaceAfter=2,
+            leading=10,
+        ),
     )
-    # Form name - headline, compact
     ttl = Paragraph(
         f'<font size="14" color="#000000"><b>{form_name.title()}</b></font>',
-        ParagraphStyle("HT", fontSize=14, textColor=C_BLACK, fontName="Helvetica-Bold", alignment=TA_LEFT, spaceAfter=0),
+        ParagraphStyle(
+            "HT",
+            fontSize=14,
+            textColor=C_BLACK,
+            fontName="Helvetica-Bold",
+            alignment=TA_LEFT,
+            spaceBefore=0,
+            spaceAfter=0,
+            leading=17,
+        ),
     )
-    title_block = Table([[sub], [ttl]], colWidths=[CONTENT_W * 0.68])
+    title_w = CONTENT_W * 0.78
+    logo_w = CONTENT_W * 0.22
+    title_block = Table([[sub], [ttl]], colWidths=[title_w])
     title_block.setStyle(TableStyle([
         ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
         ("TOPPADDING", (0, 0), (-1, -1), 0),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
     ]))
-    t = Table([[title_block, logo_cell]], colWidths=[CONTENT_W * 0.68, CONTENT_W * 0.32])
+    t = Table([[title_block, logo_cell]], colWidths=[title_w, logo_w])
     header_style = [
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
         ("ALIGN", (0, 0), (0, -1), "LEFT"),
         ("ALIGN", (1, 0), (1, -1), "RIGHT"),
         ("LEFTPADDING", (0, 0), (0, -1), 0),
-        ("RIGHTPADDING", (0, 0), (0, -1), 12),
-        ("LEFTPADDING", (1, 0), (1, -1), 16),
-        ("TOPPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (0, -1), 8),
+        ("LEFTPADDING", (1, 0), (1, -1), 0),
+        ("RIGHTPADDING", (1, 0), (1, -1), 0),
+        ("TOPPADDING", (0, 0), (-1, -1), 2),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
     ]
     if show_bottom_line:
@@ -907,31 +928,31 @@ def _build_leave(story, fd, styles):
     chk_yes = "[&#10003;] YES" if hr_chk in ("yes", "checked", "verified") else "[ ] YES"
     chk_no  = "[&#10003;] NO"  if hr_chk in ("no",)                        else "[ ] NO"
 
-    # Signature helpers
-    def _sig_cell(label, img_data, date_val):
+    # Signature helpers — label above ink, left-aligned, sized to fit column width
+    def _sig_cell(label, img_data, date_val, col_w=None):
         """
-        Compact signature cell: label inline with signature image (no bordered / padded box).
-        Matches the earlier leave PDF layout before tinted signature areas were added.
+        Compact signature cell: label on top, signature image left-aligned below.
+        Sized to stay inside the parent column (avoids spilling past the form box).
         """
-        img = _sig_to_image(img_data, w_mm=36, h_mm=13)
+        avail = (col_w if col_w is not None else (CONTENT_W / 3.0)) - 8
+        img_w_mm = min(28, max(18, (avail / mm) - 2))
+        img = _sig_to_image(img_data, w_mm=img_w_mm, h_mm=11)
         lbl = Paragraph(f"<b>{label}:</b>", SIG_LBL)
         if img:
             inner = Table(
-                [[lbl, img]],
-                colWidths=[38 * mm, 34 * mm],
-                rowHeights=[13 * mm],
+                [[lbl], [img]],
+                colWidths=[avail],
             )
             inner.setStyle(TableStyle([
                 ("BACKGROUND",    (0, 0), (-1, -1), C_WHITE),
-                ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
-                ("ALIGN",         (0, 0), (0, 0),   "LEFT"),
-                ("ALIGN",         (1, 0), (1, 0),   "RIGHT"),
-                ("LEFTPADDING",   (0, 0), (0, 0),   0),
-                ("RIGHTPADDING",  (0, 0), (0, 0),   3),
-                ("LEFTPADDING",   (1, 0), (1, 0),   3),
-                ("RIGHTPADDING",  (1, 0), (1, 0),   0),
-                ("TOPPADDING",    (0, 0), (-1, -1), 0),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+                ("VALIGN",        (0, 0), (-1, -1), "TOP"),
+                ("ALIGN",         (0, 0), (-1, -1), "LEFT"),
+                ("LEFTPADDING",   (0, 0), (-1, -1), 0),
+                ("RIGHTPADDING",  (0, 0), (-1, -1), 0),
+                ("TOPPADDING",    (0, 0), (0, 0),   0),
+                ("BOTTOMPADDING", (0, 0), (0, 0),   2),
+                ("TOPPADDING",    (0, 1), (0, 1),   0),
+                ("BOTTOMPADDING", (0, 1), (0, 1),   0),
             ]))
             return inner
         return lbl
@@ -941,19 +962,20 @@ def _build_leave(story, fd, styles):
         from xml.sax.saxutils import escape as _xml_esc
 
         sp = fd.get("replacement_signers") if isinstance(fd.get("replacement_signers"), list) else []
-        w_inner = (CONTENT_W / 3.0) - 14
+        w_inner = (CONTENT_W / 3.0) - 10
         if sp:
             cells = []
             multi = len(sp) > 1
             for s in sp:
                 nm = _xml_esc(str(s.get("display_name") or s.get("username") or "Colleague"))
                 label = ("Colleague — " + nm) if multi else "Colleague signature"
-                cells.append([_sig_cell(label, s.get("signature"), s.get("signed_at"))])
+                cells.append([_sig_cell(label, s.get("signature"), s.get("signed_at"), col_w=CONTENT_W / 3.0)])
             inner = Table(cells, colWidths=[w_inner])
             inner.setStyle(
                 TableStyle(
                     [
                         ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                        ("ALIGN", (0, 0), (-1, -1), "LEFT"),
                         ("LEFTPADDING", (0, 0), (-1, -1), 0),
                         ("RIGHTPADDING", (0, 0), (-1, -1), 0),
                         ("TOPPADDING", (0, 0), (-1, -1), 1),
@@ -963,7 +985,7 @@ def _build_leave(story, fd, styles):
             )
             return inner
         if fd.get("replacement_signature"):
-            return _sig_cell("Colleague signature", fd.get("replacement_signature"), None)
+            return _sig_cell("Colleague signature", fd.get("replacement_signature"), None, col_w=CONTENT_W / 3.0)
         return Paragraph(
             "<b>Colleague / replacement signature</b><br/>"
             '<font size="8" color="#64748b"><i>Coverage colleague sign-offs appear here after '
@@ -1038,9 +1060,9 @@ def _build_leave(story, fd, styles):
     triple_sig = Table(
         [
             [
-                _sig_cell("Employee Signature", fd.get("employee_signature"), fd.get("today_date")),
+                _sig_cell("Employee Signature", fd.get("employee_signature"), fd.get("today_date"), col_w=w3),
                 replacement_mid_flowable(),
-                _sig_cell("Manager Signature", fd.get("gm_signature"), None),
+                _sig_cell("Manager Signature", fd.get("gm_signature"), None, col_w=w3),
             ]
         ],
         colWidths=[w3, w3, w3],
@@ -1050,10 +1072,10 @@ def _build_leave(story, fd, styles):
             [
                 ("VALIGN", (0, 0), (-1, -1), "TOP"),
                 ("ALIGN", (0, 0), (-1, -1), "LEFT"),
-                ("LEFTPADDING", (0, 0), (-1, -1), 4),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-                ("TOPPADDING", (0, 0), (-1, -1), 4),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                ("LEFTPADDING", (0, 0), (-1, -1), 3),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 3),
+                ("TOPPADDING", (0, 0), (-1, -1), 3),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
             ]
         )
     )
@@ -1078,7 +1100,7 @@ def _build_leave(story, fd, styles):
         [_lv2("Paid",   _fd(fd, "hr_paid")),
          _lv2("Unpaid", _fd(fd, "hr_unpaid"))],
         # r28 : HR Signature | Date
-        [_sig_cell("HR Signature", fd.get("hr_signature"), fd.get("hr_date")),
+        [_sig_cell("HR Signature", fd.get("hr_signature"), fd.get("hr_date"), col_w=L),
          _lv2("Date", _fd(fd, "hr_date"))],
     ]
 
@@ -1192,30 +1214,27 @@ def _fchk(val, label, compare=None):
 
 def _fsig(label, img_data):
     """
-    Inline signature cell for form tables: bold label + image on white (same theme as leave PDF).
-    No tinted signature box — table grid provides structure.
+    Inline signature cell: bold label above left-aligned ink (fits parent column).
     """
     LBL, _, _, _, _ = _fstyles()
     lbl = Paragraph(f"<b>{label}:</b>", LBL)
-    img = _sig_to_image(img_data, w_mm=36, h_mm=13)
+    img = _sig_to_image(img_data, w_mm=28, h_mm=11)
     if not img:
         return lbl
     inner = Table(
-        [[lbl, img]],
-        colWidths=[38 * mm, 34 * mm],
-        rowHeights=[13 * mm],
+        [[lbl], [img]],
+        colWidths=[54 * mm],
     )
     inner.setStyle(TableStyle([
         ("BACKGROUND",    (0, 0), (-1, -1), C_WHITE),
-        ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
-        ("ALIGN",         (0, 0), (0, 0),   "LEFT"),
-        ("ALIGN",         (1, 0), (1, 0),   "RIGHT"),
-        ("LEFTPADDING",   (0, 0), (0, 0),   0),
-        ("RIGHTPADDING",  (0, 0), (0, 0),   3),
-        ("LEFTPADDING",   (1, 0), (1, 0),   3),
-        ("RIGHTPADDING",  (1, 0), (1, 0),   0),
-        ("TOPPADDING",    (0, 0), (-1, -1), 0),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+        ("VALIGN",        (0, 0), (-1, -1), "TOP"),
+        ("ALIGN",         (0, 0), (-1, -1), "LEFT"),
+        ("LEFTPADDING",   (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING",  (0, 0), (-1, -1), 0),
+        ("TOPPADDING",    (0, 0), (0, 0),   0),
+        ("BOTTOMPADDING", (0, 0), (0, 0),   2),
+        ("TOPPADDING",    (0, 1), (0, 1),   0),
+        ("BOTTOMPADDING", (0, 1), (0, 1),   0),
     ]))
     return inner
 
@@ -2717,7 +2736,7 @@ def build_hr_pdf(form_type, form_data, output_stream, submission_id=None):
     doc = SimpleDocTemplate(
         buf, pagesize=A4,
         leftMargin=_LM, rightMargin=_RM,
-        topMargin=0.5 * cm, bottomMargin=1.0 * cm,
+        topMargin=0.85 * cm, bottomMargin=1.0 * cm,
     )
     doc.build(story, canvasmaker=lambda *a, **k: HRPDFCanvas(*a, form_title=title, **k))
 

@@ -40,10 +40,19 @@
     }
     .hr-dashboard-content {
       padding-top: 0;
+      overflow: visible;
     }
-    /* Tighter space between workflow strip and HR form cards */
+    /*
+      dashboard.css .modules-section uses margin-top: -3rem + translateY animation to tuck
+      under the main dashboard hero — that clips the Workflows label and card tops on /hr/.
+    */
     .hr-dashboard .hr-modules-section {
-      padding-top: 1rem;
+      margin-top: 0 !important;
+      padding-top: 1.75rem;
+      overflow: visible;
+      opacity: 1;
+      transform: none;
+      animation: none;
     }
     /* Remove divider line - match main dashboard clean look */
     .hr-modules-section::before {
@@ -52,6 +61,8 @@
     /* Whole HR module: consistent #F8FAF8 background */
     .hr-dashboard {
       background: #F8FAF8;
+      overflow-x: hidden;
+      overflow-y: visible;
     }
     .hr-dashboard .modules-section {
       background: #F8FAF8 !important;
@@ -59,8 +70,12 @@
     /* dashboard.css gives .modules-section margin-top: -3rem to tuck under the hero; that
        must not apply to the second section or "Recent Submissions" overlaps the last form row. */
     .hr-dashboard .hr-modules-section + .modules-section {
-      margin-top: 0;
+      margin-top: 0 !important;
       padding-top: 2.5rem;
+      overflow: visible;
+      opacity: 1;
+      transform: none;
+      animation: none;
     }
     /* Workflow cards — match module-card grid alignment below */
     .hr-hero .hero-content {
@@ -79,18 +94,24 @@
     .hr-workflow-cards {
       width: 100%;
       margin-bottom: 1.5rem;
+      overflow: visible;
     }
     .hr-wf-strip {
       display: flex;
       flex-direction: column;
       gap: 0.75rem;
       width: 100%;
+      overflow: visible;
     }
     .hr-wf-strip .modules-section-label {
       margin-bottom: 0;
     }
     .hr-wf-grid {
       margin-bottom: 0;
+      overflow: visible;
+      /* Room for card hover lift / shadow so tops are not clipped */
+      padding-top: 0.2rem;
+      padding-bottom: 0.4rem;
     }
     .hr-wf-grid > div {
       display: flex;
@@ -152,7 +173,7 @@
       color: var(--text-muted, #6b7c6f);
       font-weight: 600;
       letter-spacing: 0.1em;
-      text-transform: uppercase;
+      
       margin-bottom: 0.2rem;
       display: block;
     }
@@ -175,17 +196,17 @@
       flex-shrink: 0;
     }
     .hr-wf-badge {
-      background: #ef4444;
-      color: #fff;
-      font-size: 0.65rem;
+      background: none;
+      color: #64748b;
+      font-size: 0.85rem;
       font-weight: 700;
-      border-radius: 10px;
-      padding: 0.15em 0.5em;
-      min-width: 18px;
+      border-radius: 0;
+      padding: 0;
+      min-width: 0;
       text-align: center;
-      line-height: 1.5;
-      border: 2px solid #fff;
-      box-shadow: 0 2px 6px rgba(239, 68, 68, 0.35);
+      line-height: 1.2;
+      border: none;
+      box-shadow: none;
     }
     .hr-wf-arrow {
       width: 14px;
@@ -421,7 +442,7 @@
     .status-rejected { background: #fee2e2; color: #dc2626; }
     .status-submitted { background: #e0e7ff; color: #4338ca; }
     
-    .form-type-badge { padding: 0.25rem 0.5rem; border-radius: 6px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; background: #e5e7eb; color: #374151; }
+    .form-type-badge { padding: 0.25rem 0.5rem; border-radius: 6px; font-size: 0.7rem; font-weight: 600;  background: #e5e7eb; color: #374151; }
     .type-leave, .type-leave_application { background: #d1fae5; color: #047857; }
     .type-termination { background: #fee2e2; color: #dc2626; }
     .type-long_vacation { background: #dbeafe; color: #2563eb; }
@@ -482,6 +503,217 @@
       .detail-row { flex-direction: column !important; gap: 0.25rem !important; }
       .detail-label { width: 100% !important; font-size: 0.8rem !important; }
       .detail-value { width: 100% !important; font-size: 0.9rem !important; }
+    }
+
+    /* My Forms right drawer */
+    .my-forms-drawer-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(17, 24, 39, 0.4);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.22s ease;
+      z-index: 5000;
+    }
+    .my-forms-drawer-overlay.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .my-forms-drawer {
+      position: fixed;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: min(440px, 100vw);
+      background: #fff;
+      box-shadow: -12px 0 40px rgba(0, 0, 0, 0.18);
+      transform: translateX(100%);
+      transition: transform 0.25s ease;
+      display: flex;
+      flex-direction: column;
+      z-index: 5001;
+    }
+    .my-forms-drawer-overlay.open .my-forms-drawer {
+      transform: translateX(0);
+    }
+    .my-forms-drawer-head {
+      padding: 1.15rem 1.25rem 0.85rem;
+      border-bottom: 1px solid #e5e7eb;
+      flex-shrink: 0;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.75rem;
+    }
+    .my-forms-drawer-head h2 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #1e293b;
+      margin: 0 0 0.3rem;
+      letter-spacing: -0.02em;
+    }
+    .my-forms-drawer-sub {
+      margin: 0;
+      font-size: 0.8rem;
+      color: #64748b;
+      line-height: 1.4;
+      max-width: 20rem;
+    }
+    .my-forms-drawer-close {
+      border: none;
+      background: #f1f5f9;
+      color: #64748b;
+      width: 2rem;
+      height: 2rem;
+      border-radius: 10px;
+      font-size: 1.35rem;
+      line-height: 1;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background 0.15s, color 0.15s;
+    }
+    .my-forms-drawer-close:hover {
+      background: rgba(210, 23, 37, 0.1);
+      color: #d21725;
+    }
+    .my-forms-drawer-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+      padding: 0.85rem 1.25rem 0.35rem;
+      flex-shrink: 0;
+    }
+    .my-forms-drawer-tab {
+      border: 1px solid #e2e8f0;
+      background: #f8fafc;
+      color: #475569;
+      border-radius: 999px;
+      padding: 0.4rem 0.85rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+    .my-forms-drawer-tab:hover {
+      border-color: rgba(210, 23, 37, 0.35);
+      color: #d21725;
+    }
+    .my-forms-drawer-tab.active {
+      background: #d21725;
+      border-color: #d21725;
+      color: #fff;
+    }
+    .my-forms-tab-count {
+      font-size: 0.72rem;
+      font-weight: 700;
+      min-width: 1.15rem;
+      height: 1.15rem;
+      padding: 0 0.3rem;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(15, 23, 42, 0.08);
+      color: inherit;
+    }
+    .my-forms-drawer-tab.active .my-forms-tab-count {
+      background: rgba(255, 255, 255, 0.22);
+      color: #fff;
+    }
+    .my-forms-drawer-body {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      padding: 0.75rem 1.25rem 1.5rem;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(210, 23, 37, 0.25) transparent;
+    }
+    .my-forms-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    a.my-forms-item {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      padding: 1rem 1.1rem;
+      border-radius: 12px;
+      border: 1px solid #e5e7eb;
+      background: #fff;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+      text-decoration: none;
+      color: inherit;
+      transition: box-shadow 0.2s, border-color 0.2s;
+    }
+    a.my-forms-item:hover {
+      border-color: rgba(210, 23, 37, 0.28);
+      box-shadow: 0 4px 12px rgba(210, 23, 37, 0.08);
+    }
+    .my-forms-item-top {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      align-items: center;
+    }
+    .my-forms-item .form-type-badge {
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 0.2rem 0.55rem;
+      border-radius: 999px;
+      letter-spacing: 0.02em;
+    }
+    .my-forms-item-submitted {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      padding: 0.2rem 0.5rem;
+      border-radius: 999px;
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+    .my-forms-item-title {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #0f172a;
+      margin: 0;
+      word-break: break-word;
+      line-height: 1.35;
+    }
+    .my-forms-item-meta {
+      margin: 0;
+      font-size: 0.78rem;
+      color: #64748b;
+      line-height: 1.4;
+    }
+    .my-forms-item-status {
+      margin-top: 0.15rem;
+      font-size: 0.78rem;
+      color: #64748b;
+    }
+    .my-forms-empty {
+      text-align: center;
+      padding: 2.5rem 1rem;
+      color: #64748b;
+      font-size: 0.9rem;
+    }
+    .my-forms-empty h4 {
+      font-weight: 600;
+      color: #1e293b;
+      margin: 0 0 0.35rem;
+      font-size: 1rem;
+    }
+    @media (max-width: 520px) {
+      .my-forms-drawer {
+        width: 100vw;
+      }
     }
   </style>
 </head>
@@ -557,6 +789,41 @@
                     <h2 class="module-title">Approved Forms</h2>
                   </div>
                   <div class="hr-wf-meta">
+                    <svg class="hr-wf-arrow" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
+                  </div>
+                </div>
+              </a>
+            </div>
+            <!-- Personal tracking (own forms only — opens right drawer) -->
+            <div id="myPendingCard" style="display: none;">
+              <a href="#" class="hr-wf-card" data-nav="my-pending" id="myPendingCardLink" role="button" aria-haspopup="dialog">
+                <div class="hr-wf-card-inner">
+                  <div class="hr-wf-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  </div>
+                  <div class="hr-wf-info">
+                    <span class="module-number">My forms</span>
+                    <h2 class="module-title">My Pending Forms</h2>
+                  </div>
+                  <div class="hr-wf-meta">
+                    <span class="hr-wf-badge" id="myPendingBadge" style="display: none;">0</span>
+                    <svg class="hr-wf-arrow" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
+                  </div>
+                </div>
+              </a>
+            </div>
+            <div id="myApprovedCard" style="display: none;">
+              <a href="#" class="hr-wf-card" data-nav="my-approved" id="myApprovedCardLink" role="button" aria-haspopup="dialog">
+                <div class="hr-wf-card-inner">
+                  <div class="hr-wf-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  </div>
+                  <div class="hr-wf-info">
+                    <span class="module-number">My forms</span>
+                    <h2 class="module-title">My Approved Forms</h2>
+                  </div>
+                  <div class="hr-wf-meta">
+                    <span class="hr-wf-badge" id="myApprovedBadge" style="display: none;">0</span>
                     <svg class="hr-wf-arrow" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
                   </div>
                 </div>
@@ -694,9 +961,32 @@
 
   </main>
 
+  <!-- My Forms side drawer -->
+  <div class="my-forms-drawer-overlay" id="myFormsDrawerOverlay" aria-hidden="true">
+    <aside class="my-forms-drawer" role="dialog" aria-modal="true" aria-labelledby="myFormsDrawerTitle">
+      <div class="my-forms-drawer-head">
+        <div>
+          <h2 id="myFormsDrawerTitle">My Forms</h2>
+          <p class="my-forms-drawer-sub" id="myFormsDrawerSub">Your own HR forms.</p>
+        </div>
+        <button type="button" class="my-forms-drawer-close" id="myFormsDrawerClose" aria-label="Close">&times;</button>
+      </div>
+      <div class="my-forms-drawer-tabs" id="myFormsDrawerTabs" role="tablist" aria-label="Filter my HR forms">
+        <button type="button" class="my-forms-drawer-tab" data-view="pending" role="tab">Pending <span class="my-forms-tab-count" id="myFormsTabPending">0</span></button>
+        <button type="button" class="my-forms-drawer-tab" data-view="approved" role="tab">Approved <span class="my-forms-tab-count" id="myFormsTabApproved">0</span></button>
+        <button type="button" class="my-forms-drawer-tab" data-view="all" role="tab">All <span class="my-forms-tab-count" id="myFormsTabAll">0</span></button>
+      </div>
+      <div class="my-forms-drawer-body">
+        <div class="my-forms-list" id="myFormsDrawerList">
+          <div class="my-forms-empty"><p>Loading…</p></div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
   <footer class="footer">
     <div class="footer-inner">
-      <div class="footer-brand">Injaaz</div>
+      <div class="footer-brand">Amaan Systems</div>
       <p class="footer-copy">© {{ now().year }} Amaan Application / built by <span class="footer-built-by-name">Arshith Swaminath P</span></p>
     </div>
   </footer>
@@ -704,23 +994,36 @@
   <!-- Profile & Contact modals are in main_navbar partial -->
   
   <script src="{{ url_for('static', filename='js/injaaz-uae-datetime.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/hr_submission_full_form_url.js') }}"></script>
   <script>
     const token = localStorage.getItem('access_token');
+    let myFormsDrawerView = 'pending';
     
     function getStatusLabel(status) {
       const labels = {
-        'hr_review': 'Pending HR Review',
-        'replacement_signoff': 'Replacement signatures',
-        'gm_review': 'Pending GM Approval',
-        'approved': 'Approved',
-        'rejected': 'Rejected',
-        'submitted': 'Submitted'
+        hr_review: 'Pending HR Review',
+        replacement_signoff: 'Teammate signatures',
+        gm_review: 'Pending GM Approval',
+        hr_mgmt_supervisor: 'Management: Supervisor',
+        hr_mgmt_operations_manager: 'Management: Operations mgr',
+        hr_mgmt_reporting_manager: 'Management: Reporting mgr',
+        hr_mgmt_routing_approver: 'Management: Next approver',
+        hr_mgmt_gm: 'Management: GM',
+        hr_mgmt_hr_head_office: 'Management: HR (HO)',
+        approved: 'Approved',
+        rejected: 'Rejected',
+        submitted: 'Submitted',
       };
       return labels[status] || status;
     }
     
     function getFormTypeLabel(type) {
       return type.replace('hr_', '').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    }
+
+    function getFormTypeClass(type) {
+      const t = (type || '').replace('hr_', '');
+      return 'type-' + t;
     }
     
     function escapeHtml(text) {
@@ -729,6 +1032,172 @@
       div.textContent = text;
       return div.innerHTML;
     }
+
+    function updateMyFormsBadges(counts) {
+      const pBadge = document.getElementById('myPendingBadge');
+      const aBadge = document.getElementById('myApprovedBadge');
+      if (pBadge) {
+        if (counts.pending > 0) {
+          pBadge.textContent = counts.pending;
+          pBadge.style.display = 'inline';
+        } else {
+          pBadge.style.display = 'none';
+        }
+      }
+      if (aBadge) {
+        if (counts.approved > 0) {
+          aBadge.textContent = counts.approved;
+          aBadge.style.display = 'inline';
+        } else {
+          aBadge.style.display = 'none';
+        }
+      }
+    }
+
+    function syncMyFormsDrawerChrome() {
+      const title = document.getElementById('myFormsDrawerTitle');
+      const sub = document.getElementById('myFormsDrawerSub');
+      if (title) {
+        title.textContent =
+          myFormsDrawerView === 'pending'
+            ? 'My Pending Forms'
+            : myFormsDrawerView === 'approved'
+              ? 'My Approved Forms'
+              : 'My Forms';
+      }
+      if (sub) {
+        sub.textContent =
+          myFormsDrawerView === 'pending'
+            ? 'Your HR forms that are still waiting for signatures or approval.'
+            : myFormsDrawerView === 'approved'
+              ? 'Your HR forms that have been fully approved.'
+              : 'All of your submitted HR forms.';
+      }
+      document.querySelectorAll('#myFormsDrawerTabs .my-forms-drawer-tab').forEach((btn) => {
+        btn.classList.toggle('active', btn.getAttribute('data-view') === myFormsDrawerView);
+      });
+    }
+
+    async function loadMyFormsDrawerList() {
+      const list = document.getElementById('myFormsDrawerList');
+      if (!list) return;
+      list.innerHTML = '<div class="my-forms-empty"><p>Loading…</p></div>';
+      syncMyFormsDrawerChrome();
+      try {
+        const response = await fetch(
+          '/hr/api/my-submissions?view=' + encodeURIComponent(myFormsDrawerView),
+          { headers: { Authorization: 'Bearer ' + token } }
+        );
+        if (!response.ok) throw new Error('Failed to load');
+        const data = await response.json();
+        const counts = data.counts || {};
+        const elP = document.getElementById('myFormsTabPending');
+        const elA = document.getElementById('myFormsTabApproved');
+        const elAll = document.getElementById('myFormsTabAll');
+        if (elP) elP.textContent = String(counts.pending || 0);
+        if (elA) elA.textContent = String(counts.approved || 0);
+        if (elAll) elAll.textContent = String(counts.total || 0);
+        updateMyFormsBadges(counts);
+
+        if (data.submissions && data.submissions.length > 0) {
+          list.innerHTML = data.submissions
+            .map((s) => {
+              const href =
+                (typeof getHrSubmissionFullFormViewUrl === 'function'
+                  ? getHrSubmissionFullFormViewUrl(s.module_type, s.submission_id)
+                  : null) ||
+                '/hr/print/' + encodeURIComponent(s.submission_id || '');
+              const emp =
+                s.form_data && s.form_data.employee_name
+                  ? escapeHtml(s.form_data.employee_name)
+                  : '';
+              const dateStr =
+                typeof InjaazDateTimeUAE !== 'undefined'
+                  ? InjaazDateTimeUAE.formatDateMed(s.created_at)
+                  : '';
+              return `
+            <a class="my-forms-item" href="${href}" aria-label="Open form ${escapeHtml(s.submission_id)}">
+              <div class="my-forms-item-top">
+                <span class="form-type-badge ${getFormTypeClass(s.module_type)}">${getFormTypeLabel(s.module_type)}</span>
+                <span class="my-forms-item-submitted">Submitted</span>
+              </div>
+              <h3 class="my-forms-item-title">${escapeHtml(s.submission_id)}</h3>
+              <p class="my-forms-item-meta">${dateStr}${emp ? ' · ' + emp : ''}</p>
+              <div class="my-forms-item-status">${escapeHtml(getStatusLabel(s.workflow_status))}</div>
+            </a>`;
+            })
+            .join('');
+        } else {
+          const emptyMsg =
+            myFormsDrawerView === 'pending'
+              ? 'No pending HR forms right now.'
+              : myFormsDrawerView === 'approved'
+                ? 'No approved HR forms yet.'
+                : 'No HR forms submitted yet.';
+          list.innerHTML = `
+            <div class="my-forms-empty">
+              <h4>No requests here</h4>
+              <p>${emptyMsg}</p>
+            </div>`;
+        }
+      } catch (err) {
+        console.error(err);
+        list.innerHTML =
+          '<div class="my-forms-empty" style="color:#dc2626;"><p>Error loading your forms.</p></div>';
+      }
+    }
+
+    function openMyFormsDrawer(view) {
+      myFormsDrawerView =
+        view === 'approved' || view === 'all' || view === 'pending' ? view : 'pending';
+      const overlay = document.getElementById('myFormsDrawerOverlay');
+      if (!overlay) return;
+      overlay.classList.add('open');
+      overlay.setAttribute('aria-hidden', 'false');
+      document.body.style.overflow = 'hidden';
+      loadMyFormsDrawerList();
+    }
+
+    function closeMyFormsDrawer() {
+      const overlay = document.getElementById('myFormsDrawerOverlay');
+      if (!overlay) return;
+      overlay.classList.remove('open');
+      overlay.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
+    }
+
+    function setMyFormsDrawerView(view) {
+      if (!view || view === myFormsDrawerView) return;
+      myFormsDrawerView = view;
+      loadMyFormsDrawerList();
+    }
+
+    (function wireMyFormsDrawer() {
+      document.getElementById('myPendingCardLink')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        openMyFormsDrawer('pending');
+      });
+      document.getElementById('myApprovedCardLink')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        openMyFormsDrawer('approved');
+      });
+      document.getElementById('myFormsDrawerClose')?.addEventListener('click', closeMyFormsDrawer);
+      document.getElementById('myFormsDrawerOverlay')?.addEventListener('click', (e) => {
+        if (e.target === e.currentTarget) closeMyFormsDrawer();
+      });
+      document.getElementById('myFormsDrawerTabs')?.addEventListener('click', (e) => {
+        const btn = e.target.closest('.my-forms-drawer-tab');
+        if (!btn) return;
+        const view = btn.getAttribute('data-view');
+        if (view) setMyFormsDrawerView(view);
+      });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          const overlay = document.getElementById('myFormsDrawerOverlay');
+          if (overlay && overlay.classList.contains('open')) closeMyFormsDrawer();
+        }
+      });
+    })();
     
     // Load recent submissions
     async function loadSubmissions() {
@@ -767,21 +1236,21 @@
     // Load user permissions first, then load pending counts only for allowed endpoints
     async function loadPendingCounts() {
       try {
-        // First, get user permissions
         const permResponse = await fetch('/hr/api/user-permissions', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (!permResponse.ok) return;
-        
+
         const permData = await permResponse.json();
         const perms = permData.permissions || {};
         let hasAnyAccess = false;
-        
-        // Only load HR pending if user has HR review access
+
+        // Org-wide: HR Manager / admin / people with items awaiting their review
         if (perms.can_review_hr) {
           hasAnyAccess = true;
-          document.getElementById('hrReviewCard').style.display = 'block';
-          
+          const hrCard = document.getElementById('hrReviewCard');
+          if (hrCard) hrCard.style.display = '';
+
           const hrResponse = await fetch('/hr/api/pending-hr-review', {
             headers: { 'Authorization': `Bearer ${token}` }
           });
@@ -794,12 +1263,13 @@
             }
           }
         }
-        
-        // Only load GM pending if user has GM approval access
+
+        // Org-wide: GM / admin
         if (perms.can_approve_gm) {
           hasAnyAccess = true;
-          document.getElementById('gmApprovalCard').style.display = 'block';
-          
+          const gmCard = document.getElementById('gmApprovalCard');
+          if (gmCard) gmCard.style.display = '';
+
           const gmResponse = await fetch('/hr/api/pending-gm-approval', {
             headers: { 'Authorization': `Bearer ${token}` }
           });
@@ -814,12 +1284,34 @@
             }
           }
         }
-        
-        // Show the quick actions row and individual cards if user has any access
-        if (hasAnyAccess) {
-          document.getElementById('quickActionsRow').style.display = 'block';
+
+        if (perms.can_review_hr || perms.can_approve_gm) {
           const approvedCol = document.getElementById('approvedFormsCol');
-          if (approvedCol) approvedCol.style.display = 'block';
+          if (approvedCol) approvedCol.style.display = '';
+          hasAnyAccess = true;
+        }
+
+        // Personal: own pending + approved only (e.g. Arshith)
+        if (perms.show_my_forms_tracking) {
+          hasAnyAccess = true;
+          const myPending = document.getElementById('myPendingCard');
+          const myApproved = document.getElementById('myApprovedCard');
+          // Clear inline display:none so .hr-wf-grid > div { display:flex } applies
+          if (myPending) myPending.style.display = '';
+          if (myApproved) myApproved.style.display = '';
+
+          const mineRes = await fetch('/hr/api/my-submissions?view=all', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (mineRes.ok) {
+            const mineData = await mineRes.json();
+            updateMyFormsBadges(mineData.counts || {});
+          }
+        }
+
+        if (hasAnyAccess) {
+          const qa = document.getElementById('quickActionsRow');
+          if (qa) qa.style.display = '';
           const wfContainer = document.getElementById('hrWorkflowCards');
           if (wfContainer) wfContainer.style.display = 'block';
         } else {

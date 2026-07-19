@@ -22,6 +22,70 @@
     .hr-hero .hero-content { gap: 2.5rem; align-items: stretch; }
     .hr-hero .hero-left { flex: 0 0 auto; max-width: 280px; }
     .hr-hero .hero-right { flex: 1; min-width: 0; display: flex; justify-content: flex-end; }
+    /* Focused Pending/Approved: compact stack under back link */
+    body.hr-my-req-focused .hr-hero {
+      padding-top: calc(max(4.5rem, calc(64px + env(safe-area-inset-top, 0px) + 0.35rem)) + 0.85rem);
+      padding-bottom: 0.35rem;
+    }
+    body.hr-my-req-focused .hr-hero .hero-content {
+      gap: 0;
+    }
+    body.hr-my-req-focused .hr-hero .hero-left {
+      max-width: min(100%, 52rem);
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    body.hr-my-req-focused .hr-hero .back-btn {
+      margin-bottom: 0.65rem;
+    }
+    body.hr-my-req-focused #myReqHeroTitle {
+      white-space: nowrap;
+      font-size: clamp(1.55rem, 4vw, 2.4rem);
+      margin: 0;
+      opacity: 1;
+      animation: none;
+    }
+    body.hr-my-req-focused #myReqHeroSub {
+      margin: 0.4rem 0 0.85rem !important;
+      max-width: 40rem;
+    }
+    body.hr-my-req-focused #myReqHeroTabs {
+      display: flex !important;
+      margin: 0 0 0.15rem;
+    }
+    body.hr-my-req-focused #myReqListHeading,
+    body.hr-my-req-focused #myReqListLead,
+    body.hr-my-req-focused #myReqSectionTabs {
+      display: none !important;
+    }
+    body.hr-my-req-focused .hr-modules-section {
+      margin-top: 0 !important;
+      padding-top: 0.65rem !important;
+      padding-bottom: 3rem !important;
+      transform: none !important;
+      animation: none !important;
+      opacity: 1 !important;
+    }
+    body.hr-my-req-focused .hr-modules-section,
+    body.hr-my-req-focused .modules-inner {
+      background: transparent !important;
+    }
+    body.hr-my-req-focused .my-req-view-tab {
+      border-color: transparent;
+      background: rgba(255, 255, 255, 0.55);
+    }
+    body.hr-my-req-focused .my-req-view-tab.active {
+      background: #d21725;
+      border-color: #d21725;
+    }
+    #myReqHeroTabs { display: none; }
+    @media (max-width: 420px) {
+      body.hr-my-req-focused #myReqHeroTitle {
+        font-size: 1.45rem;
+      }
+    }
     .status-badge { padding: 0.35rem 0.75rem; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
     .status-hr_review { background: #fef3c7; color: #b45309; }
     .status-replacement_signoff { background: #e9d5ff; color: #5b21b6; }
@@ -37,7 +101,7 @@
     .status-approved { background: #d1fae5; color: #047857; }
     .status-rejected { background: #fee2e2; color: #dc2626; }
     .status-submitted { background: #e0e7ff; color: #4338ca; }
-    .form-type-badge { padding: 0.25rem 0.5rem; border-radius: 6px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; }
+    .form-type-badge { padding: 0.25rem 0.5rem; border-radius: 6px; font-size: 0.7rem; font-weight: 600;  }
     .type-leave, .type-leave_application { background: #d1fae5; color: #047857; }
     .type-termination { background: #fee2e2; color: #dc2626; }
     .type-long_vacation { background: #dbeafe; color: #2563eb; }
@@ -53,27 +117,113 @@
     .type-station_clearance { background: #a5f3fc; color: #0e7490; }
     .type-interview_assessment { background: #fef9c3; color: #ca8a04; }
     .type-other { background: #e5e7eb; color: #374151; }
-    .request-card {
-      background: white; border-radius: 14px; padding: 1.25rem 1.5rem; margin-bottom: 0.75rem;
-      border: 1px solid #e2e8f0; cursor: pointer; transition: all 0.25s ease;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    .my-requests-section { margin-top: 2rem; }
+    .my-requests-list {
+      background: transparent;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 1rem;
+    }
+    body.hr-my-req-focused .my-requests-list {
+      grid-template-columns: repeat(auto-fill, minmax(200px, 220px));
+      justify-content: start;
     }
     a.request-card {
-      text-decoration: none; color: inherit;
-      display: flex; align-items: stretch; justify-content: space-between; gap: 0.75rem;
+      text-decoration: none;
+      color: inherit;
+      display: flex;
+      flex-direction: column;
+      aspect-ratio: 1;
+      min-height: 200px;
+      padding: 1.15rem 1.1rem;
+      border-radius: 18px;
+      border: none;
+      background: rgba(255, 255, 255, 0.72);
+      box-shadow: none;
+      cursor: pointer;
+      transition: background 0.2s ease, transform 0.2s ease;
+      box-sizing: border-box;
     }
-    .request-card-main { flex: 1; min-width: 0; }
-    .request-card-go {
-      flex-shrink: 0; display: flex; align-items: center; align-self: center;
-      color: var(--primary); font-size: 0.72rem; font-weight: 700;
-      text-transform: uppercase; letter-spacing: 0.05em; gap: 0.35rem; white-space: nowrap;
+    a.request-card:hover {
+      background: rgba(255, 255, 255, 0.95);
+      transform: translateY(-2px);
+      box-shadow: none;
     }
-    .request-card-go svg { width: 1.2rem; height: 1.2rem; flex-shrink: 0; }
-    .request-card:hover {
-      transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.08); border-color: rgba(210,23,37,0.25);
+    .request-card-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.4rem;
+      margin-bottom: 0.65rem;
     }
-    .my-requests-section { margin-top: 2rem; }
-    .my-requests-list { background: transparent; }
+    .request-card .form-type-badge {
+      font-size: 0.7rem;
+      padding: 0.28rem 0.5rem;
+      line-height: 1.2;
+    }
+    .request-card-submitted {
+      font-size: 0.66rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #d21725;
+      background: rgba(210, 23, 37, 0.08);
+      padding: 0.22rem 0.45rem;
+      border-radius: 6px;
+      white-space: nowrap;
+    }
+    .request-card-title {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #1e293b;
+      margin: 0 0 0.4rem;
+      line-height: 1.3;
+      word-break: break-word;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .request-card-meta {
+      font-size: 0.78rem;
+      color: #64748b;
+      margin: 0;
+      line-height: 1.4;
+    }
+    .request-card-status {
+      margin-top: auto;
+      padding-top: 0.75rem;
+      font-size: 0.74rem;
+      font-weight: 600;
+      color: #475569;
+      line-height: 1.35;
+    }
+    .request-card-empty {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 2.5rem 1rem;
+      color: #64748b;
+      background: transparent;
+      border: none;
+    }
+    .my-req-view-tabs {
+      display: flex; flex-wrap: wrap; gap: 0.45rem; margin: 0 0 1rem;
+    }
+    .my-req-view-tab {
+      appearance: none; border: 1px solid #e2e8f0; background: #fff; color: #475569;
+      font: inherit; font-size: 0.8rem; font-weight: 600; padding: 0.45rem 0.85rem;
+      border-radius: 999px; cursor: pointer; display: inline-flex; align-items: center; gap: 0.4rem;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
+    }
+    .my-req-view-tab:hover { border-color: rgba(210,23,37,0.35); color: #d21725; }
+    .my-req-view-tab.active {
+      background: #d21725; border-color: #d21725; color: #fff;
+    }
+    .my-req-tab-count {
+      font-size: 0.7rem; font-weight: 700; min-width: 1.25rem; text-align: center;
+      padding: 0.1rem 0.4rem; border-radius: 999px; background: rgba(15,23,42,0.08);
+    }
+    .my-req-view-tab.active .my-req-tab-count { background: rgba(255,255,255,0.22); color: #fff; }
     .detail-overlay {
       position: fixed; top: 0; left: 0; right: 0; bottom: 0;
       background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center;
@@ -231,25 +381,32 @@
   {% set active_page = 'hr' %}
   {% include 'partials/hr_embed_optional_navbar.html' %}
 
-  <!-- Hero: same as hr_dashboard -->
+  <!-- Hero: catalog mode vs focused pending/approved list -->
   <header class="hero hero-split hr-hero">
     <div class="hero-content hero-split-inner">
       <div class="hero-left">
-        <a href="/dashboard" class="back-btn">
+        <a href="/dashboard" class="back-btn" id="myReqBackLink">
           <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
           </svg>
-          Back to Dashboard
+          <span id="myReqBackLabel">Back to Dashboard</span>
         </a>
-        <h1 class="hero-title">HR <span class="hero-title-accent">Forms</span></h1>
+        <h1 class="hero-title" id="myReqHeroTitle">HR <span class="hero-title-accent">Forms</span></h1>
+        <p id="myReqHeroSub" style="display:none;margin:0.35rem 0 0;font-size:0.9rem;color:#64748b;max-width:36rem;"></p>
+        <div class="my-req-view-tabs" id="myReqHeroTabs" role="tablist" aria-label="Filter my HR forms">
+          <button type="button" class="my-req-view-tab" data-view="pending" role="tab">Pending <span class="my-req-tab-count" id="tabCountPendingHero">0</span></button>
+          <button type="button" class="my-req-view-tab" data-view="approved" role="tab">Approved <span class="my-req-tab-count" id="tabCountApprovedHero">0</span></button>
+          <button type="button" class="my-req-view-tab" data-view="all" role="tab">All <span class="my-req-tab-count" id="tabCountAllHero">0</span></button>
+        </div>
       </div>
       <div class="hero-right"></div>
     </div>
   </header>
 
   <!-- HR Forms (same module-card style as hr_dashboard) -->
-  <section class="modules-section hr-modules-section" id="modules">
+  <section class="modules-section hr-modules-section" id="hrMyRequestsSection">
     <div class="modules-inner">
+      <div id="hrFormsCatalogBlock">
       <h2 class="modules-section-label">HR Forms (from HR Documents)</h2>
       <div class="modules-grid" id="hrFormsGrid">
         <a href="/hr/leave-application-form" class="module-card"><div class="card-body"><span class="module-number">01 &mdash; HR</span><div class="module-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div><h2 class="module-title">Leave Application</h2><p class="module-description">Submit leave application (annual, sick, emergency)</p><span class="module-arrow">Open Form <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg></span></div></a>
@@ -264,11 +421,18 @@
         <a href="/hr/station-clearance-form" class="module-card"><div class="card-body"><span class="module-number">10 &mdash; HR</span><div class="module-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg></div><h2 class="module-title">Station Clearance</h2><p class="module-description">Exit formalities</p><span class="module-arrow">Open Form <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg></span></div></a>
         <a href="/hr/visa-renewal-form" class="module-card"><div class="card-body"><span class="module-number">11 &mdash; HR</span><div class="module-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg></div><h2 class="module-title">Visa Renewal</h2><p class="module-description">Visa renewal or cancellation</p><span class="module-arrow">Open Form <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg></span></div></a>
       </div>
+      </div>
 
       <div id="replacementSignBanner" style="display:none;margin-bottom:1rem"></div>
       <div id="mgmtChainBanner" style="display:none;margin-bottom:1rem"></div>
 
-      <h2 class="modules-section-label" style="margin-top: 2.5rem;">My Submitted Requests</h2>
+      <h2 class="modules-section-label" id="myReqListHeading" style="margin-top: 2.5rem;">My Submitted Requests</h2>
+      <p id="myReqListLead" style="font-size: 0.8rem; color: #64748b; margin: -0.35rem 0 0.85rem;">Only your own HR forms. Pending = still in approval; Approved = completed.</p>
+      <div class="my-req-view-tabs" id="myReqSectionTabs" role="tablist" aria-label="Filter my HR forms">
+        <button type="button" class="my-req-view-tab" data-view="pending" role="tab">Pending <span class="my-req-tab-count" id="tabCountPending">0</span></button>
+        <button type="button" class="my-req-view-tab" data-view="approved" role="tab">Approved <span class="my-req-tab-count" id="tabCountApproved">0</span></button>
+        <button type="button" class="my-req-view-tab" data-view="all" role="tab">All <span class="my-req-tab-count" id="tabCountAll">0</span></button>
+      </div>
       <div id="requestsList" class="my-requests-list">
         <div style="text-align: center; padding: 3rem; color: #64748b;">
           <div style="font-size: 2rem; margin-bottom: 1rem;">⏳</div>
@@ -291,6 +455,63 @@
     })();
 
     const token = localStorage.getItem('access_token');
+    let currentView = 'all';
+    try {
+      const sp = new URLSearchParams(window.location.search || '');
+      const v = (sp.get('view') || '').trim().toLowerCase();
+      if (v === 'pending' || v === 'approved' || v === 'all' || v === 'rejected') currentView = v;
+      else if (!v) currentView = 'all';
+    } catch (e) {}
+
+    function applyFocusedListMode() {
+      const focused = currentView === 'pending' || currentView === 'approved';
+      document.body.classList.toggle('hr-my-req-focused', focused);
+      const catalog = document.getElementById('hrFormsCatalogBlock');
+      const back = document.getElementById('myReqBackLink');
+      const backLabel = document.getElementById('myReqBackLabel');
+      const title = document.getElementById('myReqHeroTitle');
+      const sub = document.getElementById('myReqHeroSub');
+      const heading = document.getElementById('myReqListHeading');
+      const lead = document.getElementById('myReqListLead');
+      if (catalog) catalog.style.display = focused ? 'none' : '';
+      if (back) back.setAttribute('href', focused ? '/hr/' : '/dashboard');
+      if (backLabel) backLabel.textContent = focused ? 'Back to HR Module' : 'Back to Dashboard';
+      if (title) {
+        if (currentView === 'pending') {
+          title.innerHTML = 'My <span class="hero-title-accent">Pending</span>&nbsp;Forms';
+        } else if (currentView === 'approved') {
+          title.innerHTML = 'My <span class="hero-title-accent">Approved</span>&nbsp;Forms';
+        } else {
+          title.innerHTML = 'HR <span class="hero-title-accent">Forms</span>';
+        }
+      }
+      if (sub) {
+        if (focused) {
+          sub.style.display = 'block';
+          sub.textContent =
+            currentView === 'pending'
+              ? 'Your HR forms that are still waiting for signatures or approval.'
+              : 'Your HR forms that have been fully approved.';
+        } else {
+          sub.style.display = 'none';
+          sub.textContent = '';
+        }
+      }
+      if (heading) {
+        heading.textContent = 'My Submitted Requests';
+        heading.style.marginTop = '2.5rem';
+      }
+      if (lead) {
+        lead.textContent =
+          'Only your own HR forms. Pending = still in approval; Approved = completed.';
+      }
+      if (focused) {
+        const rb = document.getElementById('replacementSignBanner');
+        const mb = document.getElementById('mgmtChainBanner');
+        if (rb) rb.style.display = 'none';
+        if (mb) mb.style.display = 'none';
+      }
+    }
 
     function getStatusLabel(status) {
       const labels = {
@@ -313,44 +534,87 @@
     function getFormTypeClass(type) { const t = type.replace('hr_', ''); return `type-${t}`; }
     function escapeHtml(text) { if (!text) return ''; const div = document.createElement('div'); div.textContent = text; return div.innerHTML; }
 
-    function submittedFormsHrefForSubmission(submissionId) {
-      return '/workflow/submitted-forms?scope=hr&submission=' + encodeURIComponent(submissionId || '');
+    function hrFormHrefForSubmission(submissionId) {
+      return '/hr/print/' + encodeURIComponent(submissionId || '');
+    }
+
+    function syncViewTabs() {
+      document.querySelectorAll('.my-req-view-tab').forEach((btn) => {
+        btn.classList.toggle('active', btn.getAttribute('data-view') === currentView);
+      });
+    }
+
+    function setView(view) {
+      currentView = view;
+      syncViewTabs();
+      applyFocusedListMode();
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.set('view', view);
+        window.history.replaceState({}, '', url.toString());
+      } catch (e) {}
+      loadRequests();
     }
 
     async function loadRequests() {
       try {
-        const response = await fetch('/hr/api/my-submissions', { headers: { 'Authorization': `Bearer ${token}` } });
+        syncViewTabs();
+        applyFocusedListMode();
+        const response = await fetch('/hr/api/my-submissions?view=' + encodeURIComponent(currentView), {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
         const data = await response.json();
         const container = document.getElementById('requestsList');
+        const counts = data.counts || {};
+        const countIds = [
+          'tabCountPending',
+          'tabCountApproved',
+          'tabCountAll',
+          'tabCountPendingHero',
+          'tabCountApprovedHero',
+          'tabCountAllHero',
+        ];
+        const values = [
+          counts.pending || 0,
+          counts.approved || 0,
+          counts.total || 0,
+          counts.pending || 0,
+          counts.approved || 0,
+          counts.total || 0,
+        ];
+        countIds.forEach((id, i) => {
+          const el = document.getElementById(id);
+          if (el) el.textContent = String(values[i]);
+        });
 
         if (data.submissions && data.submissions.length > 0) {
+          container.className = 'my-requests-list';
           container.innerHTML = data.submissions.map((s) => {
-            const sfHref = submittedFormsHrefForSubmission(s.submission_id);
+            const href = hrFormHrefForSubmission(s.submission_id);
+            const emp = (s.form_data && s.form_data.employee_name) ? escapeHtml(s.form_data.employee_name) : '';
             return `
-            <a class="request-card" href="${sfHref}" aria-label="Open in Submitted forms: ${escapeHtml(s.submission_id)}">
-              <div class="request-card-main">
-                <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.75rem;">
-                  <div>
-                    <span class="form-type-badge ${getFormTypeClass(s.module_type)}">${getFormTypeLabel(s.module_type)}</span>
-                    <h3 style="font-size: 1.05rem; font-weight: 600; margin: 0.5rem 0 0.25rem; color: #1e293b;">${escapeHtml(s.submission_id)}</h3>
-                    <p style="font-size: 0.875rem; color: #64748b; margin: 0;">Submitted: ${InjaazDateTimeUAE.formatDateMed(s.created_at)}</p>
-                  </div>
-                  <span class="status-badge status-${s.workflow_status}">${getStatusLabel(s.workflow_status)}</span>
-                </div>
-                ${s.form_data?.employee_name ? `<p style="margin: 0.75rem 0 0; font-size: 0.9rem;"><strong>Employee:</strong> ${escapeHtml(s.form_data.employee_name)}</p>` : ''}
+            <a class="request-card" href="${href}" aria-label="Open submitted form ${escapeHtml(s.submission_id)}">
+              <div class="request-card-top">
+                <span class="form-type-badge ${getFormTypeClass(s.module_type)}">${getFormTypeLabel(s.module_type)}</span>
+                <span class="request-card-submitted">Submitted</span>
               </div>
-              <span class="request-card-go" aria-hidden="true">
-                Submitted forms
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
-              </span>
+              <h3 class="request-card-title">${escapeHtml(s.submission_id)}</h3>
+              <p class="request-card-meta">${InjaazDateTimeUAE.formatDateMed(s.created_at)}${emp ? '<br>' + emp : ''}</p>
+              <div class="request-card-status">${escapeHtml(getStatusLabel(s.workflow_status))}</div>
             </a>`;
           }).join('');
         } else {
+          const emptyMsg =
+            currentView === 'pending'
+              ? 'No pending HR forms right now.'
+              : currentView === 'approved'
+                ? 'No approved HR forms yet.'
+                : 'Use the forms above to submit your first HR request';
+          container.className = 'my-requests-list';
           container.innerHTML = `
-            <div style="text-align: center; padding: 3rem; background: white; border-radius: 14px; border: 1px solid #e2e8f0;">
-              <div style="font-size: 3rem; margin-bottom: 1rem;">📋</div>
-              <h4 style="font-weight: 600; margin-bottom: 0.5rem; color: #1e293b;">No requests yet</h4>
-              <p style="color: #64748b;">Use the forms above to submit your first HR request</p>
+            <div class="request-card-empty">
+              <h4 style="font-weight: 600; margin-bottom: 0.35rem; color: #1e293b;">No requests here</h4>
+              <p style="margin:0;">${emptyMsg}</p>
             </div>
           `;
         }
@@ -359,6 +623,15 @@
         document.getElementById('requestsList').innerHTML = '<div style="padding: 1.5rem; background: #fee2e2; color: #dc2626; border-radius: 12px;">Error loading requests</div>';
       }
     }
+
+    function onViewTabClick(ev) {
+      const btn = ev.target.closest('.my-req-view-tab');
+      if (!btn) return;
+      const view = btn.getAttribute('data-view');
+      if (view) setView(view);
+    }
+    document.getElementById('myReqHeroTabs')?.addEventListener('click', onViewTabClick);
+    document.getElementById('myReqSectionTabs')?.addEventListener('click', onViewTabClick);
 
     async function loadMgmtChainBanner(){
       const wrap = document.getElementById('mgmtChainBanner');
@@ -393,8 +666,11 @@
       } catch(e){ wrap.style.display='none'; }
     }
 
-    loadReplacementBanner();
-    loadMgmtChainBanner();
+    applyFocusedListMode();
+    if (currentView !== 'pending' && currentView !== 'approved') {
+      loadReplacementBanner();
+      loadMgmtChainBanner();
+    }
     loadRequests();
   </script>
   <script src="{{ url_for('static', filename='api-client.js') }}"></script>

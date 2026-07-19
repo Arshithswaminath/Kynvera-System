@@ -1,924 +1,1694 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Service tickets — Injaaz</title>
-  {% include 'partials/caveat_font.html' ignore missing %}
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}?v=3">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/ticketing.css') }}">
-  <style>
-    /* ── Ticketing hero variant (blue) ── */
-    .hero.tkt-hero {
-      background:
-        radial-gradient(ellipse 70% 60% at 0% 50%, rgba(30,58,95,.09) 0%, transparent 70%),
-        radial-gradient(ellipse 40% 40% at 100% 10%, rgba(210,23,37,.06) 0%, transparent 60%),
-        linear-gradient(180deg, #eef2ff 0%, #f4f7ff 40%, #f8fafc 100%);
-      padding-bottom: 5rem;
-    }
-    /* Page behind the hero picks up the same end colour so there is zero visible seam.
-       (.tkt-page covers the plain pages; .tkt-dh-page-root is this sidebar layout's panel,
-       which otherwise paints dochub's #fafafa and draws a faint line at the hero's bottom edge.) */
-    .tkt-page { background: #f8fafc; }
-    body.tkt-dh-page .tkt-dh-page-root,
-    body.tkt-dh-page { background: #f8fafc; }
-    /* Default hero red glow blob clashes with the lavender variant (reads as a second bg) */
-    .hero.tkt-hero::after { display: none; }
-    .hero.tkt-hero::before {
-      background-image:
-        linear-gradient(rgba(210,23,37,.04) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(210,23,37,.04) 1px, transparent 1px);
-      background-size: 48px 48px;
-      mask-image: linear-gradient(to bottom, black 0%, black 45%, transparent 95%);
-      -webkit-mask-image: linear-gradient(to bottom, black 0%, black 45%, transparent 95%);
-    }
-    .hero.tkt-hero .hero-tagline {
-      color: #a8121e;
-      background: rgba(210,23,37,.08);
-      border-color: rgba(210,23,37,.2);
-    }
-    .hero.tkt-hero .hero-tagline::before { background: #d21725; }
-    .hero.tkt-hero .hero-title-accent {
-      background: linear-gradient(125deg, #a8121e 0%, #d21725 40%, #e8323f 70%, #a8121e 100%);
-      background-size: 200% auto;
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-    .hero.tkt-hero .hero-title-accent::after {
-      background: linear-gradient(90deg, #a8121e, #e8323f);
-    }
-    .hero.tkt-hero .hero-cta-stat-dot { background: #d21725; box-shadow: 0 0 0 3px rgba(210,23,37,.2); }
-
-    /* ── Ticketing hero widget (right) ── */
-    /* ── Hero Widget ── */
-    .tkt-hero-widget {
-      background: rgba(255,255,255,.97);
-      border: 1px solid rgba(255,255,255,.5);
-      border-radius: 20px;
-      box-shadow: 0 8px 40px rgba(30,12,14,.14), 0 2px 8px rgba(210,23,37,.08);
-      overflow: hidden;
-      min-width: 340px;
-      backdrop-filter: blur(8px);
-    }
-    .tkt-hw-top {
-      background: linear-gradient(135deg, #a8121e 0%, #d21725 100%);
-      padding: 18px 20px 14px;
-      display: flex; align-items: center; justify-content: space-between;
-    }
-    .tkt-hw-top-left { display: flex; flex-direction: column; gap: 2px; }
-    .tkt-hw-top-label {
-      font-size: .68rem; font-weight: 700; letter-spacing: .1em;
-      text-transform: uppercase; color: rgba(255,255,255,.6);
-    }
-    .tkt-hw-total-num {
-      font-size: 2.6rem; font-weight: 900; color: #fff; line-height: 1;
-    }
-    .tkt-hw-total-sub { font-size: .78rem; color: rgba(255,255,255,.65); margin-top: 2px; }
-    .tkt-hw-donut-wrap {
-      position: relative; width: 72px; height: 72px;
-    }
-    .tkt-hw-donut-wrap svg { transform: rotate(-90deg); }
-    .tkt-hw-donut-center {
-      position: absolute; inset: 0; display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-    }
-    .tkt-hw-donut-pct { font-size: .9rem; font-weight: 800; color: #fff; line-height: 1; }
-    .tkt-hw-donut-lbl { font-size: .55rem; color: rgba(255,255,255,.6); letter-spacing:.04em; text-transform:uppercase; }
-
-    /* Stat tiles */
-    .tkt-hw-tiles {
-      display: grid; grid-template-columns: repeat(3, 1fr);
-      gap: 10px; padding: 14px 16px 4px;
-    }
-    .tkt-hw-tile {
-      display: flex; align-items: center; gap: 10px;
-      background: #f8fafc; border: 1px solid #e8edf4;
-      border-radius: 12px; padding: 10px 12px;
-      transition: transform .15s, box-shadow .15s;
-      cursor: default;
-    }
-    .tkt-hw-tile:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,.06); }
-    .tkt-hw-tile-icon {
-      width: 34px; height: 34px; border-radius: 9px;
-      display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0;
-    }
-    .tkt-hw-tile-body { display: flex; flex-direction: column; min-width: 0; }
-    .tkt-hw-tile-num {
-      font-size: 1.35rem; font-weight: 800; line-height: 1; color: #0f172a;
-    }
-    .tkt-hw-tile-lbl {
-      font-size: .67rem; font-weight: 600; color: #94a3b8;
-      text-transform: uppercase; letter-spacing: .05em; margin-top: 2px;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
-
-    /* Priority row */
-    .tkt-hw-priority {
-      display: grid; grid-template-columns: repeat(3, 1fr);
-      gap: 8px; padding: 6px 16px 4px;
-    }
-    .tkt-hw-prio-pill {
-      display: flex; align-items: center; justify-content: center; gap: 6px;
-      border-radius: 8px; padding: 7px 8px;
-      font-size: .78rem; font-weight: 700; border: 1px solid transparent;
-    }
-    .tkt-hw-prio-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-
-    /* Footer */
-    .tkt-hw-footer {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 10px 18px 14px; margin-top: 2px;
-    }
-    .tkt-hw-live {
-      display: flex; align-items: center; gap: 5px;
-      font-size: .72rem; color: #d21725; font-weight: 600;
-    }
-    .tkt-hw-live-dot {
-      width: 6px; height: 6px; border-radius: 50%; background: #22c55e;
-      box-shadow: 0 0 0 3px rgba(34,197,94,.25);
-      animation: liveDotPulse 2s ease-out infinite;
-    }
-    .tkt-hw-footer-link {
-      font-size: .75rem; font-weight: 600; color: #d21725;
-      text-decoration: none; display: flex; align-items: center; gap: 3px;
-    }
-    .tkt-hw-footer-link:hover { text-decoration: underline; }
-
-    /* ── Page body (match .hero-split .hero-content width + centering — avoids a narrow left-aligned card) ── */
-    .tkt-body {
-      width: 100%;
-      max-width: 1400px;
-      margin-left: auto;
-      margin-right: auto;
-      padding: 24px 3rem 48px;
-      box-sizing: border-box;
-    }
-    .tkt-container { max-width: 1400px; margin-left: auto; margin-right: auto; padding-left: 0; padding-right: 0; }
-
-    /* Hero full-bleed inside the scroll column — negative top cancels tkt-content padding */
-    .tkt-dh-main .hero.tkt-hero {
-      margin-top: -1.25rem;
-      margin-left: -1.25rem;
-      margin-right: -1.5rem;
-      border-radius: 0;
-    }
-
-    /* ── Body actions row ── */
-    .tkt-actions-row {
-      display: flex; align-items: center; justify-content: space-between;
-      flex-wrap: wrap; gap: 12px; margin-bottom: 18px;
-    }
-    .tkt-actions-title {
-      font-size: .95rem; font-weight: 700; letter-spacing: -.01em;
-      color: #1e293b; display: flex; align-items: center; gap: 8px;
-    }
-
-    /* ── Ticket row cards ── */
-    .tkt-row-list { display: flex; flex-direction: column; gap: 0; }
-    /* Header + rows share one scrollport so scrollbar width doesn't offset columns */
-    .tkt-recent-scroll--cap {
-      --recent-row-cap: 76px;
-      --tkt-recent-head-h: 44px;
-      max-height: calc(var(--tkt-recent-head-h) + 5 * var(--recent-row-cap));
-      overflow-x: hidden;
-      overflow-y: auto;
-      overscroll-behavior: contain;
-      -webkit-overflow-scrolling: touch;
-      scrollbar-gutter: stable;
-    }
-    .tkt-recent-scroll--cap::-webkit-scrollbar { width: 8px; }
-    .tkt-recent-scroll--cap::-webkit-scrollbar-thumb {
-      background: rgba(15, 23, 42, 0.12);
-      border-radius: 6px;
-    }
-    .tkt-recent-scroll--cap::-webkit-scrollbar-track { background: transparent; }
-    .tkt-recent-scroll--cap .tkt-row {
-      min-height: var(--recent-row-cap);
-      align-items: center;
-      flex-shrink: 0;
-      box-sizing: border-box;
-    }
-    .tkt-row-header--sticky {
-      position: sticky;
-      top: 0;
-      z-index: 3;
-      box-shadow: 0 2px 0 #e8edf2;
-      min-height: var(--tkt-recent-head-h);
-      box-sizing: border-box;
-    }
-    .tkt-row {
-      display: grid;
-      /* Wider Priority/Status mins so pills are not clipped; Status may wrap to two lines */
-      grid-template-columns:
-        minmax(108px, 0.68fr)
-        minmax(0, 1.92fr)
-        minmax(100px, 1fr)
-        minmax(104px, 0.94fr)
-        minmax(110px, 0.72fr)
-        minmax(200px, 1.45fr)
-        minmax(128px, 1fr)
-        minmax(120px, 0.82fr);
-      align-items: center; gap: 12px;
-      padding: 18px 24px;
-      border-bottom: 1px solid #f1f5f9;
-      cursor: pointer;
-      transition: background .12s;
-      text-decoration: none; color: inherit;
-    }
-    .tkt-row:last-child { border-bottom: none; }
-    .tkt-row:hover { background: #f8faff; }
-    .tkt-row-header {
-      display: grid;
-      grid-template-columns:
-        minmax(108px, 0.68fr)
-        minmax(0, 1.92fr)
-        minmax(100px, 1fr)
-        minmax(104px, 0.94fr)
-        minmax(110px, 0.72fr)
-        minmax(200px, 1.45fr)
-        minmax(128px, 1fr)
-        minmax(120px, 0.82fr);
-      align-items: center;
-      gap: 12px;
-      padding: 11px 24px;
-      background: #f8fafc;
-      border-bottom: 1px solid #e2e8f0;
-      border-radius: 0;
-    }
-    .tkt-col-head {
-      font-size: .75rem; font-weight: 700; text-transform: uppercase;
-      letter-spacing: .06em; color: #94a3b8;
-    }
-    .tkt-row-id {
-      font-family: "SF Mono", "Fira Code", "Fira Mono", monospace;
-      font-size: .82rem; font-weight: 700; color: #d21725;
-      background: #eff6ff; padding: 4px 10px; border-radius: 7px;
-      white-space: nowrap; display: inline-block;
-      max-width: 100%;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      vertical-align: middle;
-    }
-    .tkt-row-title {
-      display: block;
-      width: 100%;
-      max-width: 100%;
-      min-width: 0;
-      font-size: 1rem; font-weight: 600; color: #1e293b;
-      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-    }
-    .tkt-row > *:nth-child(7) {
-      justify-self: start;
-      min-width: 0;
-    }
-
-    .tkt-row-meta {
-      display: block;
-      width: 100%;
-      max-width: 100%;
-      min-width: 0;
-      font-size: .9rem; color: #64748b;
-      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-    }
-    .tkt-row-sg {
-      display: block;
-      width: 100%;
-      max-width: 100%;
-      min-width: 0;
-      font-size: .9rem; color: #475569;
-      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-    }
-    .tkt-row-header > .tkt-col-head:nth-child(1),
-    .tkt-row-header > .tkt-col-head:nth-child(2),
-    .tkt-row-header > .tkt-col-head:nth-child(3),
-    .tkt-row-header > .tkt-col-head:nth-child(4) {
-      justify-self: start;
-      text-align: left;
-    }
-
-    /* Priority + status — centered under headers; status text can wrap (no mid-word ellipsis) */
-    .tkt-row-header > .tkt-col-head:nth-child(5),
-    .tkt-row-header > .tkt-col-head:nth-child(6) {
-      text-align: center;
-      justify-self: center;
-      width: 100%;
-      max-width: 100%;
-    }
-    .tkt-row > *:nth-child(5),
-    .tkt-row > *:nth-child(6) {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      justify-self: stretch;
-      min-width: 0;
-      max-width: 100%;
-      width: 100%;
-      overflow: visible;
-    }
-    .tkt-row > *:nth-child(5) .tkt-badge {
-      max-width: 100%;
-      min-width: 0;
-      white-space: nowrap;
-      flex-shrink: 0;
-    }
-    .tkt-row > *:nth-child(6) .tkt-badge {
-      max-width: 100%;
-      box-sizing: border-box;
-      white-space: normal;
-      overflow: visible;
-      text-overflow: clip;
-      text-align: center;
-      line-height: 1.2;
-      word-break: break-word;
-      hyphens: manual;
-      padding: 5px 10px;
-      justify-content: center;
-    }
-
-    .tkt-row-assignee {
-      font-size: .92rem; color: #374151; font-weight: 500;
-      display: flex; align-items: center; gap: 8px;
-      justify-self: start;
-      min-width: 0;
-      max-width: 100%;
-      overflow: hidden;
-      text-align: left;
-    }
-    .tkt-row-assignee > span:not(.tkt-row-avatar) {
-      min-width: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .tkt-row-header > .tkt-col-head:nth-child(7) {
-      white-space: nowrap;
-      text-align: left;
-      justify-self: start;
-    }
-    .tkt-row-header > .tkt-col-head:nth-child(8) {
-      text-align: right;
-      justify-self: end;
-    }
-    .tkt-row > *:nth-child(1) {
-      justify-self: start;
-      min-width: 0;
-      max-width: 100%;
-      overflow: hidden;
-    }
-    .tkt-row > *:nth-child(2),
-    .tkt-row > *:nth-child(3),
-    .tkt-row > *:nth-child(4) {
-      justify-self: stretch;
-      align-self: center;
-      text-align: left;
-      min-width: 0;
-      max-width: 100%;
-      overflow: hidden;
-    }
-    .tkt-row-avatar {
-      width: 28px; height: 28px; border-radius: 50%;
-      background: linear-gradient(135deg, #d21725, #7c3aed);
-      display: inline-flex; align-items: center; justify-content: center;
-      font-size: .72rem; font-weight: 700; color: #fff; flex-shrink: 0;
-    }
-    .tkt-row-date {
-      font-size: .85rem; color: #94a3b8; white-space: nowrap;
-      display: inline-flex;
-      align-items: center;
-      justify-content: flex-end;
-      justify-self: stretch;
-      min-width: 0;
-      max-width: 100%;
-      gap: 4px;
-      text-align: right;
-      overflow: hidden;
-    }
-    .tkt-row-date svg {
-      flex-shrink: 0;
-      display: block;
-    }
-
-    /* ── Section card wrapper ── */
-    .tkt-section-card {
-      background: #fff;
-      border: 1px solid #e8edf2;
-      border-radius: 14px;
-      box-shadow: 0 1px 4px rgba(30,58,95,.04), 0 4px 20px rgba(30,58,95,.04);
-      overflow: hidden;
-    }
-    .tkt-section-head {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 18px 24px 16px;
-      border-bottom: 1px solid #f1f5f9;
-    }
-    .tkt-section-head h2 {
-      font-size: 1rem; font-weight: 700; color: #1e293b;
-      display: flex; align-items: center; gap: 9px; margin: 0;
-    }
-
-    @media (max-width: 1024px) {
-      .tkt-body { padding-left: 2rem; padding-right: 2rem; }
-    }
-    @media (max-width: 900px) {
-      .tkt-body { padding-left: 1.25rem; padding-right: 1.25rem; }
-      .tkt-row, .tkt-row-header {
-        grid-template-columns: 110px 1fr 100px auto;
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Service tickets — Amaan</title>
+    {% include 'partials/caveat_font.html' ignore missing %}
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/design-tokens.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='animations.css') }}?v=3"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/dashboard.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/dochub-page.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/ticketing.css') }}"
+    />
+    <style>
+      /* ── Ticketing hero variant (red) ── */
+      .hero.tkt-hero {
+        background:
+          radial-gradient(
+            ellipse 70% 60% at 0% 50%,
+            rgba(210, 23, 37, 0.08) 0%,
+            transparent 70%
+          ),
+          radial-gradient(
+            ellipse 40% 40% at 100% 10%,
+            rgba(210, 23, 37, 0.05) 0%,
+            transparent 60%
+          ),
+          linear-gradient(180deg, #fff5f5 0%, #fef7f7 40%, #faf8f8 100%);
+        padding-bottom: 2rem;
       }
-      .tkt-row > *:nth-child(3),
-      .tkt-row > *:nth-child(4),
-      .tkt-row > *:nth-child(6),
-      .tkt-row > *:nth-child(8),
-      .tkt-row-header > *:nth-child(3),
-      .tkt-row-header > *:nth-child(4),
-      .tkt-row-header > *:nth-child(6),
-      .tkt-row-header > *:nth-child(8) { display: none; }
-    }
+      /* Page behind the hero picks up the same end colour so there is zero visible seam.
+ (.tkt-page covers the plain pages; .tkt-dh-page-root is this sidebar layout's panel,
+ which otherwise paints dochub's #fafafa and draws a faint line at the hero's bottom edge.) */
+      .tkt-page {
+        background: #faf8f8;
+      }
+      body.tkt-dh-page .tkt-dh-page-root,
+      body.tkt-dh-page {
+        background: #faf8f8;
+      }
+      .hero.tkt-hero::after {
+        display: none;
+      }
+      .hero.tkt-hero::before {
+        background-image:
+          linear-gradient(rgba(210, 23, 37, 0.04) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(210, 23, 37, 0.04) 1px, transparent 1px);
+        background-size: 48px 48px;
+        mask-image: linear-gradient(
+          to bottom,
+          black 0%,
+          black 45%,
+          transparent 95%
+        );
+        -webkit-mask-image: linear-gradient(
+          to bottom,
+          black 0%,
+          black 45%,
+          transparent 95%
+        );
+      }
+      .hero.tkt-hero .hero-tagline {
+        color: #a8121e;
+        background: rgba(210, 23, 37, 0.08);
+        border-color: rgba(210, 23, 37, 0.2);
+      }
+      .hero.tkt-hero .hero-tagline::before {
+        background: #d21725;
+      }
+      .hero.tkt-hero .hero-title-accent {
+        background: linear-gradient(
+          125deg,
+          #a8121e 0%,
+          #d21725 40%,
+          #e8323f 70%,
+          #a8121e 100%
+        );
+        background-size: 200% auto;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+      .hero.tkt-hero .hero-title-accent::after {
+        background: linear-gradient(90deg, #a8121e, #e8323f);
+      }
+      .hero.tkt-hero .hero-cta-stat-dot {
+        background: #d21725;
+        box-shadow: 0 0 0 3px rgba(210, 23, 37, 0.2);
+      }
 
-    /* ── Civil Defense "convert to ticket" card — top-right, in-flow element that
-       scrolls with the page, sitting above the hero stats widget. ── */
-    .tkt-cdw {
-      width: 248px;
-      max-width: 100%;
-      margin: 0 0 1rem auto; /* margin-left:auto pins it to the right of the column */
-    }
-    .tkt-cdw[hidden] { display: none; }
+      /* ── Ticketing hero widget (right) ── */
+      /* ── Hero Widget ── */
+      .tkt-hero-widget {
+        background: rgba(255, 255, 255, 0.97);
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        border-radius: 20px;
+        box-shadow:
+          0 8px 40px rgba(30, 12, 14, 0.14),
+          0 2px 8px rgba(210, 23, 37, 0.08);
+        overflow: hidden;
+        min-width: 340px;
+        backdrop-filter: blur(8px);
+      }
+      .tkt-hw-top {
+        background: linear-gradient(135deg, #a8121e 0%, #d21725 100%);
+        padding: 18px 20px 14px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .tkt-hw-top-left {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .tkt-hw-top-label {
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        color: rgba(255, 255, 255, 0.6);
+      }
+      .tkt-hw-total-num {
+        font-size: 2.6rem;
+        font-weight: 900;
+        color: #fff;
+        line-height: 1;
+      }
+      .tkt-hw-total-sub {
+        font-size: 0.78rem;
+        color: rgba(255, 255, 255, 0.65);
+        margin-top: 2px;
+      }
+      .tkt-hw-donut-wrap {
+        position: relative;
+        width: 72px;
+        height: 72px;
+      }
+      .tkt-hw-donut-wrap svg {
+        transform: rotate(-90deg);
+      }
+      .tkt-hw-donut-center {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+      .tkt-hw-donut-pct {
+        font-size: 0.9rem;
+        font-weight: 800;
+        color: #fff;
+        line-height: 1;
+      }
+      .tkt-hw-donut-lbl {
+        font-size: 0.55rem;
+        color: rgba(255, 255, 255, 0.6);
+        letter-spacing: 0.04em;
+      }
 
-    .tkt-cdw-card {
-      position: relative;
-      width: 100%;
-      display: flex;
-      align-items: center;
-      gap: 13px;
-      padding: 11px 14px;
-      background: #fff;
-      border: 1px solid #eef1f5;
-      border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(15,23,42,.08);
-      cursor: pointer;
-      text-align: left;
-      transition: transform .15s ease, box-shadow .15s ease;
-    }
-    .tkt-cdw-card:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(15,23,42,.12); }
-    .tkt-cdw-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 auto; }
-    .tkt-cdw-title {
-      font-size: .84rem; font-weight: 700; color: #0f172a; line-height: 1.25;
-    }
-    .tkt-cdw-sub {
-      font-size: .7rem; color: #94a3b8; line-height: 1.25;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
-    /* Count badge — notification bubble at the top-right corner of the card */
-    .tkt-cdw-badge {
-      position: absolute;
-      top: -8px; right: -8px;
-      min-width: 22px; height: 22px;
-      padding: 0 6px;
-      display: grid; place-items: center;
-      background: #dc2626; color: #fff;
-      font-size: .72rem; font-weight: 800; line-height: 1;
-      border-radius: 999px;
-      border: 2px solid #fff;
-    }
+      /* Stat tiles */
+      .tkt-hw-tiles {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+        padding: 14px 16px 4px;
+      }
+      .tkt-hw-tile {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: #f8fafc;
+        border: 1px solid #e8edf4;
+        border-radius: 12px;
+        padding: 10px 12px;
+        transition:
+          transform 0.15s,
+          box-shadow 0.15s;
+        cursor: pointer;
+        text-decoration: none;
+        color: inherit;
+      }
+      .tkt-hw-tile:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+      }
+      .tkt-hw-tile-icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 9px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      .tkt-hw-tile-body {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+      }
+      .tkt-hw-tile-num {
+        font-size: 1.35rem;
+        font-weight: 800;
+        line-height: 1;
+        color: #0f172a;
+      }
+      .tkt-hw-tile-lbl {
+        font-size: 0.67rem;
+        font-weight: 600;
+        color: #94a3b8;
+        letter-spacing: 0.05em;
+        margin-top: 2px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
 
-    @media (max-width: 900px) {
-      .tkt-cdw { width: 100%; }
-      .tkt-cdw-title { font-size: .8rem; }
-    }
+      /* Priority row */
+      .tkt-hw-priority {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        padding: 6px 16px 4px;
+      }
+      .tkt-hw-prio-pill {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        border-radius: 8px;
+        padding: 7px 8px;
+        font-size: 0.78rem;
+        font-weight: 700;
+        border: 1px solid transparent;
+        cursor: pointer;
+        text-decoration: none;
+        color: inherit;
+        transition:
+          transform 0.15s,
+          box-shadow 0.15s;
+      }
+      .tkt-hw-prio-pill:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+      }
+      .tkt-hw-prio-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        flex-shrink: 0;
+      }
 
-    /* ── CD modal ── */
-    .tkt-cd-overlay {
-      position: fixed; inset: 0; z-index: 1000;
-      background: rgba(15,23,42,.55); backdrop-filter: blur(2px);
-      display: flex; align-items: center; justify-content: center; padding: 20px;
-      opacity: 0; pointer-events: none; transition: opacity .2s ease;
-    }
-    .tkt-cd-overlay.open { opacity: 1; pointer-events: auto; }
-    .tkt-cd-modal {
-      background: #fff; border-radius: 16px; width: 100%; max-width: 640px;
-      max-height: 86vh; display: flex; flex-direction: column; overflow: hidden;
-      box-shadow: 0 24px 60px rgba(15,23,42,.3); transform: translateY(8px) scale(.98);
-      transition: transform .2s ease;
-    }
-    .tkt-cd-overlay.open .tkt-cd-modal { transform: none; }
-    .tkt-cd-modal-head { display:flex; align-items:center; gap:12px; padding:18px 20px; border-bottom:1px solid #eef0f3; background:#d21725; color:#fff; }
-    .tkt-cd-modal-head h3 { margin:0; font-size:1.02rem; font-weight:700; flex:1 1 auto; }
-    .tkt-cd-modal-head .tkt-cd-sub { font-size:.78rem; color:rgba(255,255,255,.85); font-weight:500; }
-    .tkt-cd-close { background:rgba(255,255,255,.18); border:none; color:#fff; width:30px; height:30px; border-radius:8px; cursor:pointer; font-size:1.1rem; line-height:1; display:grid; place-items:center; }
-    .tkt-cd-close:hover { background:rgba(255,255,255,.32); }
-    .tkt-cd-list { padding:14px 18px; overflow-y:auto; display:flex; flex-direction:column; gap:12px; }
-    .tkt-cd-card { border:1px solid #e5e7eb; border-radius:12px; padding:14px; }
-    .tkt-cd-card.is-overdue { border-color:#fecaca; background:#fef2f2; }
-    .tkt-cd-card-top { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:6px; }
-    .tkt-cd-ref { font-weight:700; color:#0f172a; font-size:.92rem; }
-    .tkt-cd-site { color:#475569; font-size:.86rem; }
-    .tkt-cd-pill { font-size:.7rem; font-weight:700; padding:2px 8px; border-radius:999px; text-transform:uppercase; letter-spacing:.02em; }
-    .tkt-cd-pill.pending { background:#fef9c3; color:#a16207; }
-    .tkt-cd-pill.scheduled { background:#dbeafe; color:#1d4ed8; }
-    .tkt-cd-pill.completed { background:#dcfce7; color:#15803d; }
-    .tkt-cd-pill.overdue { background:#fee2e2; color:#b91c1c; }
-    .tkt-cd-pill.converted { background:#ede9fe; color:#6d28d9; }
-    .tkt-cd-meta { font-size:.8rem; color:#64748b; margin:4px 0 8px; }
-    .tkt-cd-meta strong { color:#334155; }
-    .tkt-cd-notes { font-size:.84rem; color:#334155; background:#f8fafc; border-radius:8px; padding:8px 10px; margin:0 0 10px; white-space:pre-wrap; }
-    .tkt-cd-card-actions { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
-    .tkt-cd-convert { display:inline-flex; align-items:center; gap:6px; background:#d21725; color:#fff; border:none; padding:8px 16px; border-radius:9px; font-size:.84rem; font-weight:700; cursor:pointer; text-decoration:none; }
-    .tkt-cd-convert:hover { background:#b3121f; }
-    .tkt-cd-converted-note { font-size:.78rem; color:#6d28d9; font-weight:600; }
-    .tkt-cd-converted-note a { color:#6d28d9; }
-    .tkt-cd-empty { padding:50px 20px; text-align:center; color:#94a3b8; font-size:.9rem; }
-  </style>
-</head>
-<body class="tkt-dh-page has-main-nav">
-<div class="tkt-dh-app-root">
-{% set active_page = 'ticketing' %}
-{% include 'partials/main_navbar.html' with context %}
-<div class="dh-page-root tkt-dh-page-root">
-{% include 'partials/tkt_sidebar.html' with context %}
-<div class="tkt-dh-main"><div class="tkt-content">
+      /* Footer */
+      .tkt-hw-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 18px 14px;
+        margin-top: 2px;
+      }
+      .tkt-hw-live {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 0.72rem;
+        color: #d21725;
+        font-weight: 600;
+      }
+      .tkt-hw-live-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #22c55e;
+        box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.25);
+        animation: liveDotPulse 2s ease-out infinite;
+      }
+      .tkt-hw-footer-link {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #d21725;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 3px;
+      }
+      .tkt-hw-footer-link:hover {
+        text-decoration: underline;
+      }
 
-<!-- ── Hero ── -->
-<header class="hero hero-split tkt-hero">
-  <div class="hero-content hero-split-inner">
-    <div class="hero-left">
-      <h1 class="hero-title">Track Every Job.<br><span class="hero-title-accent">Close Every Issue.</span></h1>
-      <p class="hero-subtitle">Log complaints, assign technicians, track progress from open to closed — with full cost tracking and PDF reports.</p>
-      <div class="hero-cta-row">
-          <span class="hero-cta-stat">{{ stats.total }} total service tickets</span>
-        <span class="hero-cta-divider"></span>
-        <span class="hero-cta-stat">{{ stats.open + stats.in_progress }} active</span>
-      </div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:2rem;animation:heroFadeIn .8s ease both .75s;opacity:0;">
-        <a href="{{ url_for('ticketing.new_ticket_form') }}" class="tkt-btn tkt-btn-primary" style="padding:10px 22px;font-size:.9rem;">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
-          New service ticket
-        </a>
-        <a href="{{ url_for('ticketing.ticket_list') }}" class="tkt-btn tkt-btn-outline" style="padding:10px 22px;font-size:.9rem;">View All Tickets</a>
-        <a href="{{ url_for('ticketing.settings_page') }}" class="tkt-btn tkt-btn-outline" style="padding:10px 22px;font-size:.9rem;">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg>
-          Settings
-        </a>
-      </div>
-    </div>
+      /* ── Page body (match .hero-split .hero-content width + centering — avoids a narrow left-aligned card) ── */
+      .tkt-body {
+        width: 100%;
+        max-width: 1400px;
+        margin-left: auto;
+        margin-right: auto;
+        padding: 12px 3rem 48px;
+        box-sizing: border-box;
+      }
+      .tkt-container {
+        max-width: 1400px;
+        margin-left: auto;
+        margin-right: auto;
+        padding-left: 0;
+        padding-right: 0;
+      }
 
-    <!-- Stats widget -->
-    <div class="hero-right">
+      /* Hero full-bleed inside the scroll column — negative top cancels tkt-content padding */
+      .tkt-dh-main .hero.tkt-hero {
+        margin-top: -1.25rem;
+        margin-left: -1.25rem;
+        margin-right: -1.5rem;
+        border-radius: 0;
+      }
 
-      <!-- Civil Defense notifications — top-right, in-flow card that scrolls with the page -->
-      <div class="tkt-cdw" id="tktCdWidget" hidden>
-        <button type="button" class="tkt-cdw-card" id="tktCdwCard" onclick="tktCdOpen()">
-          <span class="tkt-cdw-text">
-            <span class="tkt-cdw-title">Convert to service ticket</span>
-            <span class="tkt-cdw-sub">From Civil Defense notifications</span>
-          </span>
-          <span class="tkt-cdw-badge" id="tktCdwBadge">0</span>
-        </button>
-      </div>
+      /* ── Body actions row ── */
+      .tkt-actions-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 18px;
+      }
+      .tkt-actions-title {
+        font-size: 0.95rem;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        color: #1e293b;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
 
-      {% set circ = 188 %}
-      {% set dash = (stats.closed_pct / 100 * circ) | round(2) %}
-      <div class="tkt-hero-widget">
+      /* ── Ticket row cards ── */
+      .tkt-row-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+      }
+      /* Shared column track for header + rows so everything lines up */
+      .tkt-recent-scroll--cap {
+        --tkt-recent-cols: 142px minmax(160px, 1.7fr) minmax(120px, 1.05fr)
+          minmax(120px, 1.05fr) 96px minmax(148px, 1.15fr) 96px 118px;
+        --tkt-recent-gap: 16px;
+        --recent-row-cap: 68px;
+        --tkt-recent-head-h: 42px;
+        max-height: calc(var(--tkt-recent-head-h) + 10 * var(--recent-row-cap));
+        overflow-x: auto;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-gutter: stable;
+      }
+      .tkt-recent-scroll--cap::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      .tkt-recent-scroll--cap::-webkit-scrollbar-thumb {
+        background: rgba(15, 23, 42, 0.12);
+        border-radius: 6px;
+      }
+      .tkt-recent-scroll--cap::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .tkt-recent-scroll--cap .tkt-row {
+        min-height: var(--recent-row-cap);
+        align-items: center;
+        flex-shrink: 0;
+        box-sizing: border-box;
+      }
+      .tkt-row-header--sticky {
+        position: sticky;
+        top: 0;
+        z-index: 3;
+        box-shadow: 0 2px 0 #e8edf2;
+        min-height: var(--tkt-recent-head-h);
+        box-sizing: border-box;
+      }
+      .tkt-row,
+      .tkt-row-header {
+        display: grid;
+        grid-template-columns: var(--tkt-recent-cols);
+        gap: var(--tkt-recent-gap);
+        align-items: center;
+        column-gap: var(--tkt-recent-gap);
+        min-width: 980px;
+      }
+      .tkt-row {
+        padding: 14px 20px;
+        border-bottom: 1px solid #f1f5f9;
+        cursor: pointer;
+        transition: background 0.12s;
+        text-decoration: none;
+        color: inherit;
+      }
+      .tkt-row:last-child {
+        border-bottom: none;
+      }
+      .tkt-row:hover {
+        background: #fff5f5;
+      }
+      .tkt-row-header {
+        padding: 11px 20px;
+        background: #f8fafc;
+        border-bottom: 1px solid #e2e8f0;
+        border-radius: 0;
+      }
+      .tkt-col-head {
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        color: #94a3b8;
+        text-align: left;
+        justify-self: start;
+        white-space: nowrap;
+      }
+      .tkt-row > * {
+        justify-self: start;
+        align-self: center;
+        min-width: 0;
+        max-width: 100%;
+        text-align: left;
+      }
+      .tkt-row-id {
+        font-family: "SF Mono", "Fira Code", "Fira Mono", monospace;
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: #d21725;
+        background: #fff0f1;
+        padding: 4px 9px;
+        border-radius: 7px;
+        white-space: nowrap;
+        display: inline-block;
+        vertical-align: middle;
+      }
+      .tkt-row-title {
+        display: block;
+        width: 100%;
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: #1e293b;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .tkt-row-meta,
+      .tkt-row-sg {
+        display: block;
+        width: 100%;
+        font-size: 0.88rem;
+        color: #64748b;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .tkt-row-sg {
+        color: #475569;
+      }
+      .tkt-row > *:nth-child(5),
+      .tkt-row > *:nth-child(6) {
+        display: flex;
+        justify-content: flex-start;
+        align-items: center;
+        overflow: visible;
+      }
+      .tkt-row > *:nth-child(5) .tkt-badge {
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+      .tkt-row > *:nth-child(6) .tkt-badge {
+        box-sizing: border-box;
+        white-space: nowrap;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        line-height: 1.2;
+        padding: 5px 9px;
+        justify-content: flex-start;
+        text-align: left;
+      }
+      .tkt-row-assignee {
+        font-size: 0.9rem;
+        color: #374151;
+        font-weight: 500;
+        display: block;
+        width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .tkt-row-date {
+        font-size: 0.85rem;
+        color: #94a3b8;
+        white-space: nowrap;
+        display: inline-flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 6px;
+        width: 100%;
+      }
+      .tkt-row-date svg {
+        flex-shrink: 0;
+        display: block;
+        margin-left: auto;
+      }
 
-        <!-- Top bar: total + donut -->
-        <div class="tkt-hw-top">
-          <div class="tkt-hw-top-left">
-            <span class="tkt-hw-top-label">Service tickets</span>
-            <span class="tkt-hw-total-num">{{ stats.total }}</span>
-            <span class="tkt-hw-total-sub">{{ stats.open + stats.in_progress }} active &nbsp;·&nbsp; {{ stats.closed }} closed{% if stats.total %} ({{ stats.closed_pct }}%){% endif %}</span>
-          </div>
-          <div class="tkt-hw-donut-wrap">
-            <svg width="72" height="72" viewBox="0 0 72 72">
-              <circle cx="36" cy="36" r="30" fill="none" stroke="rgba(255,255,255,.15)" stroke-width="7"/>
-              <circle cx="36" cy="36" r="30" fill="none" stroke="#e8323f" stroke-width="7"
+      /* ── Section card wrapper ── */
+      .tkt-section-card {
+        background: #fff;
+        border: 1px solid #e8edf2;
+        border-radius: 14px;
+        box-shadow:
+          0 1px 4px rgba(30, 58, 95, 0.04),
+          0 4px 20px rgba(30, 58, 95, 0.04);
+        overflow: hidden;
+      }
+      .tkt-section-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 18px 24px 16px;
+        border-bottom: 1px solid #f1f5f9;
+      }
+      .tkt-section-head h2 {
+        font-size: 1rem;
+        font-weight: 700;
+        color: #1e293b;
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        margin: 0;
+      }
+
+      @media (max-width: 1024px) {
+        .tkt-body {
+          padding-left: 2rem;
+          padding-right: 2rem;
+        }
+      }
+      @media (max-width: 900px) {
+        .tkt-body {
+          padding-left: 1.25rem;
+          padding-right: 1.25rem;
+        }
+        .tkt-row,
+        .tkt-row-header {
+          grid-template-columns: 110px 1fr 100px auto;
+        }
+        .tkt-row > *:nth-child(3),
+        .tkt-row > *:nth-child(4),
+        .tkt-row > *:nth-child(6),
+        .tkt-row > *:nth-child(8),
+        .tkt-row-header > *:nth-child(3),
+        .tkt-row-header > *:nth-child(4),
+        .tkt-row-header > *:nth-child(6),
+        .tkt-row-header > *:nth-child(8) {
+          display: none;
+        }
+      }
+
+      /* ── Civil Defense "convert to ticket" card — top-right, in-flow element that
+ scrolls with the page, sitting above the hero stats widget. ── */
+      .tkt-cdw {
+        width: 248px;
+        max-width: 100%;
+        margin: 0 0 1rem auto; /* margin-left:auto pins it to the right of the column */
+      }
+      .tkt-cdw[hidden] {
+        display: none;
+      }
+
+      .tkt-cdw-card {
+        position: relative;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 13px;
+        padding: 11px 14px;
+        background: #fff;
+        border: 1px solid #eef1f5;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+        cursor: pointer;
+        text-align: left;
+        transition:
+          transform 0.15s ease,
+          box-shadow 0.15s ease;
+      }
+      .tkt-cdw-card:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+      }
+      .tkt-cdw-text {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+        flex: 1 1 auto;
+      }
+      .tkt-cdw-title {
+        font-size: 0.84rem;
+        font-weight: 700;
+        color: #0f172a;
+        line-height: 1.25;
+      }
+      .tkt-cdw-sub {
+        font-size: 0.7rem;
+        color: #94a3b8;
+        line-height: 1.25;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      /* Count badge — notification bubble at the top-right corner of the card */
+      .tkt-cdw-badge {
+        position: absolute;
+        top: -8px;
+        right: -8px;
+        min-width: 22px;
+        height: 22px;
+        padding: 0 6px;
+        display: grid;
+        place-items: center;
+        background: #dc2626;
+        color: #fff;
+        font-size: 0.72rem;
+        font-weight: 800;
+        line-height: 1;
+        border-radius: 999px;
+        border: 2px solid #fff;
+      }
+
+      @media (max-width: 900px) {
+        .tkt-cdw {
+          width: 100%;
+        }
+        .tkt-cdw-title {
+          font-size: 0.8rem;
+        }
+      }
+
+      /* ── CD modal ── */
+      .tkt-cd-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        background: rgba(15, 23, 42, 0.55);
+        backdrop-filter: blur(2px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s ease;
+      }
+      .tkt-cd-overlay.open {
+        opacity: 1;
+        pointer-events: auto;
+      }
+      .tkt-cd-modal {
+        background: #fff;
+        border-radius: 16px;
+        width: 100%;
+        max-width: 640px;
+        max-height: 86vh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        box-shadow: 0 24px 60px rgba(15, 23, 42, 0.3);
+        transform: translateY(8px) scale(0.98);
+        transition: transform 0.2s ease;
+      }
+      .tkt-cd-overlay.open .tkt-cd-modal {
+        transform: none;
+      }
+      .tkt-cd-modal-head {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 18px 20px;
+        border-bottom: 1px solid #eef0f3;
+        background: #d21725;
+        color: #fff;
+      }
+      .tkt-cd-modal-head h3 {
+        margin: 0;
+        font-size: 1.02rem;
+        font-weight: 700;
+        flex: 1 1 auto;
+      }
+      .tkt-cd-modal-head .tkt-cd-sub {
+        font-size: 0.78rem;
+        color: rgba(255, 255, 255, 0.85);
+        font-weight: 500;
+      }
+      .tkt-cd-close {
+        background: rgba(255, 255, 255, 0.18);
+        border: none;
+        color: #fff;
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 1.1rem;
+        line-height: 1;
+        display: grid;
+        place-items: center;
+      }
+      .tkt-cd-close:hover {
+        background: rgba(255, 255, 255, 0.32);
+      }
+      .tkt-cd-list {
+        padding: 14px 18px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .tkt-cd-card {
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 14px;
+      }
+      .tkt-cd-card.is-overdue {
+        border-color: #fecaca;
+        background: #fef2f2;
+      }
+      .tkt-cd-card-top {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-bottom: 6px;
+      }
+      .tkt-cd-ref {
+        font-weight: 700;
+        color: #0f172a;
+        font-size: 0.92rem;
+      }
+      .tkt-cd-site {
+        color: #475569;
+        font-size: 0.86rem;
+      }
+      .tkt-cd-pill {
+        font-size: 0.7rem;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 999px;
+        letter-spacing: 0.02em;
+      }
+      .tkt-cd-pill.pending {
+        background: #fef9c3;
+        color: #a16207;
+      }
+      .tkt-cd-pill.scheduled {
+        background: #dbeafe;
+        color: #1d4ed8;
+      }
+      .tkt-cd-pill.completed {
+        background: #dcfce7;
+        color: #15803d;
+      }
+      .tkt-cd-pill.overdue {
+        background: #fee2e2;
+        color: #b91c1c;
+      }
+      .tkt-cd-pill.converted {
+        background: #ede9fe;
+        color: #6d28d9;
+      }
+      .tkt-cd-meta {
+        font-size: 0.8rem;
+        color: #64748b;
+        margin: 4px 0 8px;
+      }
+      .tkt-cd-meta strong {
+        color: #334155;
+      }
+      .tkt-cd-notes {
+        font-size: 0.84rem;
+        color: #334155;
+        background: #f8fafc;
+        border-radius: 8px;
+        padding: 8px 10px;
+        margin: 0 0 10px;
+        white-space: pre-wrap;
+      }
+      .tkt-cd-card-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .tkt-cd-convert {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: #d21725;
+        color: #fff;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 9px;
+        font-size: 0.84rem;
+        font-weight: 700;
+        cursor: pointer;
+        text-decoration: none;
+      }
+      .tkt-cd-convert:hover {
+        background: #b3121f;
+      }
+      .tkt-cd-converted-note {
+        font-size: 0.78rem;
+        color: #6d28d9;
+        font-weight: 600;
+      }
+      .tkt-cd-converted-note a {
+        color: #6d28d9;
+      }
+      .tkt-cd-empty {
+        padding: 50px 20px;
+        text-align: center;
+        color: #94a3b8;
+        font-size: 0.9rem;
+      }
+    </style>
+  </head>
+  <body class="tkt-dh-page has-main-nav">
+    <div class="tkt-dh-app-root">
+      {% set active_page = 'ticketing' %} {% include 'partials/main_navbar.html'
+      with context %}
+      <div class="dh-page-root tkt-dh-page-root">
+        {% include 'partials/tkt_sidebar.html' with context %}
+        <div class="tkt-dh-main">
+          <div class="tkt-content">
+            <!-- ── Hero ── -->
+            <header class="hero hero-split tkt-hero">
+              <div class="hero-content hero-split-inner">
+                <div class="hero-left">
+                  <h1 class="hero-title">
+                    Track Every Job.<br /><span class="hero-title-accent"
+                      >Close Every Issue.</span
+                    >
+                  </h1>
+                  <p class="hero-subtitle">
+                    Log complaints, assign technicians, track progress from open
+                    to closed — with full cost tracking and PDF reports.
+                  </p>
+                  <div class="hero-cta-row">
+                    <span class="hero-cta-stat"
+                      >{{ stats.total }} total service tickets</span
+                    >
+                    <span class="hero-cta-divider"></span>
+                    <span class="hero-cta-stat"
+                      >{{ stats.open + stats.in_progress }} active</span
+                    >
+                  </div>
+                  <div
+                    style="
+                      display: flex;
+                      gap: 10px;
+                      flex-wrap: wrap;
+                      margin-top: 2rem;
+                      animation: heroFadeIn 0.8s ease both 0.75s;
+                      opacity: 0;
+                    "
+                  >
+                    <a
+                      href="{{ url_for('ticketing.new_ticket_form') }}"
+                      class="tkt-btn tkt-btn-primary"
+                      style="padding: 10px 22px; font-size: 0.9rem"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke-width="2.5"
+                        stroke="currentColor"
+                        width="16"
+                        height="16"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          d="M12 4.5v15m7.5-7.5h-15"
+                        />
+                      </svg>
+                      New service ticket
+                    </a>
+                    <a
+                      href="{{ url_for('ticketing.ticket_list') }}"
+                      class="tkt-btn tkt-btn-outline"
+                      style="padding: 10px 22px; font-size: 0.9rem"
+                      >View All Tickets</a
+                    >
+                    <a
+                      href="{{ url_for('ticketing.settings_page') }}"
+                      class="tkt-btn tkt-btn-outline"
+                      style="padding: 10px 22px; font-size: 0.9rem"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke-width="2"
+                        stroke="currentColor"
+                        width="15"
+                        height="15"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z"
+                        />
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
+                        />
+                      </svg>
+                      Settings
+                    </a>
+                  </div>
+                </div>
+
+                <!-- Stats widget -->
+                <div class="hero-right">
+                  <!-- Civil Defense notifications — top-right, in-flow card that scrolls with the page -->
+                  <div class="tkt-cdw" id="tktCdWidget" hidden>
+                    <button
+                      type="button"
+                      class="tkt-cdw-card"
+                      id="tktCdwCard"
+                      onclick="tktCdOpen()"
+                    >
+                      <span class="tkt-cdw-text">
+                        <span class="tkt-cdw-title"
+                          >Convert to service ticket</span
+                        >
+                        <span class="tkt-cdw-sub"
+                          >From Civil Defense notifications</span
+                        >
+                      </span>
+                      <span class="tkt-cdw-badge" id="tktCdwBadge">0</span>
+                    </button>
+                  </div>
+
+                  {% set circ = 188 %} {% set dash = (stats.closed_pct / 100 *
+                  circ) | round(2) %}
+                  <div class="tkt-hero-widget">
+                    <!-- Top bar: total + donut -->
+                    <div class="tkt-hw-top">
+                      <div class="tkt-hw-top-left">
+                        <span class="tkt-hw-top-label">Service tickets</span>
+                        <span class="tkt-hw-total-num">{{ stats.total }}</span>
+                        <span class="tkt-hw-total-sub"
+                          >{{ stats.open + stats.in_progress }} active
+                          &nbsp;·&nbsp; {{ stats.closed }} closed{% if
+                          stats.total %} ({{ stats.closed_pct }}%){% endif
+                          %}</span
+                        >
+                      </div>
+                      <div class="tkt-hw-donut-wrap">
+                        <svg width="72" height="72" viewBox="0 0 72 72">
+                          <circle
+                            cx="36"
+                            cy="36"
+                            r="30"
+                            fill="none"
+                            stroke="rgba(255,255,255,.15)"
+                            stroke-width="7"
+                          />
+                          <circle
+                            cx="36"
+                            cy="36"
+                            r="30"
+                            fill="none"
+                            stroke="#e8323f"
+                            stroke-width="7"
+                            stroke-linecap="round"
+                            stroke-dasharray="{{ dash }} {{ circ }}"
+                            style="transition: stroke-dasharray 0.6s ease"
+                          />
+                        </svg>
+                        <div class="tkt-hw-donut-center">
+                          <span class="tkt-hw-donut-pct"
+                            >{{ stats.closed_pct }}%</span
+                          >
+                          <span class="tkt-hw-donut-lbl">Closed</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Status tiles: 2 rows × 3 cols -->
+                    <div class="tkt-hw-tiles">
+                      <a
+                        class="tkt-hw-tile"
+                        href="{{ url_for('ticketing.ticket_list', status='open') }}"
+                      >
+                        <div
+                          class="tkt-hw-tile-icon"
+                          style="background: #fdf2f2"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke-width="2"
+                            stroke="#b5373f"
+                            width="17"
+                            height="17"
+                          >
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25ZM6.75 12h.008v.008H6.75V12Zm0 3h.008v.008H6.75V15Zm0 3h.008v.008H6.75V18Z"
+                            />
+                          </svg>
+                        </div>
+                        <div class="tkt-hw-tile-body">
+                          <span class="tkt-hw-tile-num" style="color: #b5373f"
+                            >{{ stats.open }}</span
+                          >
+                          <span class="tkt-hw-tile-lbl">Open</span>
+                        </div>
+                      </a>
+
+                      <a
+                        class="tkt-hw-tile"
+                        href="{{ url_for('ticketing.ticket_list', status='in_progress') }}"
+                      >
+                        <div
+                          class="tkt-hw-tile-icon"
+                          style="background: #fff0f1"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke-width="2"
+                            stroke="#d21725"
+                            width="17"
+                            height="17"
+                          >
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              d="M11.42 15.17 17.25 21A2.652 2.652 0 0 0 21 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 1 1-3.586-3.586l5.654-4.654m5.18-5.615-8.576 8.576"
+                            />
+                          </svg>
+                        </div>
+                        <div class="tkt-hw-tile-body">
+                          <span class="tkt-hw-tile-num" style="color: #d21725"
+                            >{{ stats.in_progress }}</span
+                          >
+                          <span class="tkt-hw-tile-lbl">In Progress</span>
+                        </div>
+                      </a>
+
+                      <a
+                        class="tkt-hw-tile"
+                        href="{{ url_for('ticketing.ticket_list', status='resolved') }}"
+                      >
+                        <div
+                          class="tkt-hw-tile-icon"
+                          style="background: #f0f7f3"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke-width="2"
+                            stroke="#2e7d5e"
+                            width="17"
+                            height="17"
+                          >
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+                            />
+                          </svg>
+                        </div>
+                        <div class="tkt-hw-tile-body">
+                          <span class="tkt-hw-tile-num" style="color: #2e7d5e"
+                            >{{ stats.resolved }}</span
+                          >
+                          <span class="tkt-hw-tile-lbl">Resolved</span>
+                        </div>
+                      </a>
+
+                      <a
+                        class="tkt-hw-tile"
+                        href="{{ url_for('ticketing.ticket_list', status='closed') }}"
+                      >
+                        <div
+                          class="tkt-hw-tile-icon"
+                          style="background: #f1f5f9"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke-width="2"
+                            stroke="#64748b"
+                            width="17"
+                            height="17"
+                          >
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              d="M6 18 18 6M6 6l12 12"
+                            />
+                          </svg>
+                        </div>
+                        <div class="tkt-hw-tile-body">
+                          <span class="tkt-hw-tile-num" style="color: #64748b"
+                            >{{ stats.closed }}</span
+                          >
+                          <span class="tkt-hw-tile-lbl">Closed</span>
+                        </div>
+                      </a>
+
+                      <a
+                        class="tkt-hw-tile"
+                        href="{{ url_for('ticketing.ticket_list', status='pending_parts') }}"
+                      >
+                        <div
+                          class="tkt-hw-tile-icon"
+                          style="background: #fdf5ee"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke-width="2"
+                            stroke="#b86020"
+                            width="17"
+                            height="17"
+                          >
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+                            />
+                          </svg>
+                        </div>
+                        <div class="tkt-hw-tile-body">
+                          <span class="tkt-hw-tile-num" style="color: #b86020"
+                            >{{ stats.pending_parts }}</span
+                          >
+                          <span class="tkt-hw-tile-lbl">Pending Parts</span>
+                        </div>
+                      </a>
+
+                      <a
+                        class="tkt-hw-tile"
+                        href="{{ url_for('ticketing.ticket_list', priority='high') }}"
+                      >
+                        <div
+                          class="tkt-hw-tile-icon"
+                          style="background: #fdf8ec"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke-width="2"
+                            stroke="#9b7a1f"
+                            width="17"
+                            height="17"
+                          >
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"
+                            />
+                          </svg>
+                        </div>
+                        <div class="tkt-hw-tile-body">
+                          <span class="tkt-hw-tile-num" style="color: #9b7a1f"
+                            >{{ stats.high }}</span
+                          >
+                          <span class="tkt-hw-tile-lbl">High Priority</span>
+                        </div>
+                      </a>
+                    </div>
+
+                    <!-- Priority pills -->
+                    <div class="tkt-hw-priority">
+                      <a
+                        class="tkt-hw-prio-pill"
+                        href="{{ url_for('ticketing.ticket_list', priority='critical') }}"
+                        style="
+                          background: #fdf2f2;
+                          border-color: #f0c4c6;
+                          color: #b5373f;
+                        "
+                      >
+                        <span
+                          class="tkt-hw-prio-dot"
+                          style="background: #b5373f"
+                        ></span>
+                        {{ stats.critical }} Critical
+                      </a>
+                      <a
+                        class="tkt-hw-prio-pill"
+                        href="{{ url_for('ticketing.ticket_list', priority='high') }}"
+                        style="
+                          background: #fdf5ee;
+                          border-color: #f0d5bb;
+                          color: #b86020;
+                        "
+                      >
+                        <span
+                          class="tkt-hw-prio-dot"
+                          style="background: #b86020"
+                        ></span>
+                        {{ stats.high }} High
+                      </a>
+                      <a
+                        class="tkt-hw-prio-pill"
+                        href="{{ url_for('ticketing.ticket_list', priority='normal') }}"
+                        style="
+                          background: #f0f7f3;
+                          border-color: #b8d8ca;
+                          color: #2e7d5e;
+                        "
+                      >
+                        <span
+                          class="tkt-hw-prio-dot"
+                          style="background: #2e7d5e"
+                        ></span>
+                        {{ stats.total - stats.critical - stats.high }} Normal
+                      </a>
+                    </div>
+
+                    <!-- Footer -->
+                    <div
+                      class="tkt-hw-footer"
+                      style="justify-content: flex-end"
+                    >
+                      <a
+                        href="{{ url_for('ticketing.ticket_list') }}"
+                        class="tkt-hw-footer-link"
+                      >
+                        View all
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke-width="2.5"
+                          stroke="currentColor"
+                          width="12"
+                          height="12"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"
+                          />
+                        </svg>
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </header>
+
+            <!-- ── Main body ── -->
+            <div class="tkt-body">
+              <!-- Recent tickets -->
+              <div class="tkt-section-card">
+                <div class="tkt-section-head">
+                  <h2>Recent service tickets</h2>
+                  <a
+                    href="{{ url_for('ticketing.ticket_list') }}"
+                    style="
+                      font-size: 0.8rem;
+                      font-weight: 600;
+                      color: #d21725;
+                      text-decoration: none;
+                      display: flex;
+                      align-items: center;
+                      gap: 4px;
+                    "
+                  >
+                    View all
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke-width="2.5"
+                      stroke="currentColor"
+                      width="13"
+                      height="13"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="m8.25 4.5 7.5 7.5-7.5 7.5"
+                      />
+                    </svg>
+                  </a>
+                </div>
+
+                {% if recent_tickets %} {% set tkt_status_labels = {
+                'open':'Open','assigned':'Assigned','site_attended':'Site
+                Attended','work_started':'Work Started','work_completed':'Work
+                Completed','verification':'Verification','on_hold':'On
+                Hold','cancelled':'Cancelled','closed':'Closed','in_progress':'In
+                Progress','pending_parts':'Pending
+                Parts','resolved':'Resolved','pending_supervisor':'Supervisor
+                Queue','pending_verification':'Pending verification' } %} {# No
+                whitespace/newlines between spans: stray text nodes become extra
+                grid tracks and misalign columns. #}
+                <div class="tkt-recent-scroll tkt-recent-scroll--cap">
+                  <div class="tkt-row-header tkt-row-header--sticky">
+                    <span class="tkt-col-head">ID</span
+                    ><span class="tkt-col-head">Title</span
+                    ><span class="tkt-col-head">Project</span
+                    ><span class="tkt-col-head">Service Group</span
+                    ><span class="tkt-col-head">Priority</span
+                    ><span class="tkt-col-head">Status</span
+                    ><span class="tkt-col-head">Assigned to</span
+                    ><span class="tkt-col-head">Created</span>
+                  </div>
+                  <div class="tkt-row-list">
+                    {% for t in recent_tickets %} {% set st_lbl =
+                    tkt_status_labels.get(t.status, t.status.replace('_','
+                    ')|title) %}
+                    <a
+                      href="{{ url_for('ticketing.ticket_detail', ticket_id=t.ticket_id) }}"
+                      class="tkt-row"
+                      ><span class="tkt-row-id">{{ t.ticket_id }}</span
+                      ><span class="tkt-row-title" title="{{ t.title|e }}"
+                        >{{ t.title }}</span
+                      ><span class="tkt-row-meta" title="{{ t.project|e }}"
+                        >{{ t.project }}</span
+                      ><span class="tkt-row-sg" title="{{ t.service_group|e }}"
+                        >{{ t.service_group }}</span
+                      ><span
+                        ><span class="tkt-badge badge-priority-{{ t.priority }}"
+                          >{{ t.priority|capitalize }}</span
+                        ></span
+                      ><span
+                        ><span
+                          class="tkt-badge badge-status-{{ t.status }}"
+                          title="{{ st_lbl|e }}"
+                          >{{ st_lbl }}</span
+                        ></span
+                      ><span class="tkt-row-assignee"
+                        >{% if t.assigned_to %}<span
+                          >{{ t.assigned_to.full_name.split()[0] }}</span
+                        >{% else %}<span style="color: #cbd5e1">—</span>{% endif
+                        %}</span
+                      ><span class="tkt-row-date"
+                        ><span
+                          >{{ t.created_at.strftime('%d %b %Y') if t.created_at
+                          else '—' }}</span
+                        ><svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke-width="2.5"
+                          stroke="#d1d5db"
+                          width="11"
+                          height="11"
+                          aria-hidden="true"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            d="m8.25 4.5 7.5 7.5-7.5 7.5"
+                          /></svg></span
+                    ></a>
+                    {% endfor %}
+                  </div>
+                </div>
+
+                {% else %}
+                <div
+                  style="
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    padding: 60px 20px;
+                    gap: 14px;
+                  "
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke-width="1.2"
+                    stroke="#d1d5db"
+                    width="56"
+                    height="56"
+                  >
+                    <path
                       stroke-linecap="round"
-                      stroke-dasharray="{{ dash }} {{ circ }}"
-                      style="transition:stroke-dasharray .6s ease;"/>
-            </svg>
-            <div class="tkt-hw-donut-center">
-              <span class="tkt-hw-donut-pct">{{ stats.closed_pct }}%</span>
-              <span class="tkt-hw-donut-lbl">Closed</span>
+                      stroke-linejoin="round"
+                      d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25Z"
+                    />
+                  </svg>
+                  <p style="color: #94a3b8; font-size: 0.9rem; margin: 0">
+                    No service tickets yet.
+                  </p>
+                  <a
+                    href="{{ url_for('ticketing.new_ticket_form') }}"
+                    class="tkt-btn tkt-btn-primary"
+                    >Create your first service ticket</a
+                  >
+                </div>
+                {% endif %}
+              </div>
             </div>
+            {# tkt-body #}
           </div>
         </div>
+        {# tkt-dh-main / tkt-content #}
+      </div>
+    </div>
+    {# tkt-dh-page-root / tkt-dh-app-root #}
 
-        <!-- Status tiles: 2 rows × 3 cols -->
-        <div class="tkt-hw-tiles">
-
-          <div class="tkt-hw-tile">
-            <div class="tkt-hw-tile-icon" style="background:#fdf2f2;">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="#b5373f" width="17" height="17"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25ZM6.75 12h.008v.008H6.75V12Zm0 3h.008v.008H6.75V15Zm0 3h.008v.008H6.75V18Z"/></svg>
-            </div>
-            <div class="tkt-hw-tile-body">
-              <span class="tkt-hw-tile-num" style="color:#b5373f;">{{ stats.open }}</span>
-              <span class="tkt-hw-tile-lbl">Open</span>
-            </div>
+    <!-- ── Civil Defense notifications modal ── -->
+    <div
+      class="tkt-cd-overlay"
+      id="tktCdOverlay"
+      onclick="if (event.target === this) tktCdClose();"
+    >
+      <div
+        class="tkt-cd-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="tktCdModalTitle"
+      >
+        <div class="tkt-cd-modal-head">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="1.8"
+            stroke="currentColor"
+            width="22"
+            height="22"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M12 2.25 4.5 5.25v5.25c0 4.4 3.2 8.5 7.5 9.75 4.3-1.25 7.5-5.35 7.5-9.75V5.25L12 2.25Z"
+            />
+          </svg>
+          <div style="flex: 1 1 auto">
+            <h3 id="tktCdModalTitle">Civil Defense notifications</h3>
+            <span class="tkt-cd-sub" id="tktCdModalSub"></span>
           </div>
-
-          <div class="tkt-hw-tile">
-            <div class="tkt-hw-tile-icon" style="background:#f0f2fa;">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="#5060a0" width="17" height="17"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17 17.25 21A2.652 2.652 0 0 0 21 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 1 1-3.586-3.586l5.654-4.654m5.18-5.615-8.576 8.576"/></svg>
-            </div>
-            <div class="tkt-hw-tile-body">
-              <span class="tkt-hw-tile-num" style="color:#5060a0;">{{ stats.in_progress }}</span>
-              <span class="tkt-hw-tile-lbl">In Progress</span>
-            </div>
-          </div>
-
-          <div class="tkt-hw-tile">
-            <div class="tkt-hw-tile-icon" style="background:#f0f7f3;">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="#2e7d5e" width="17" height="17"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
-            </div>
-            <div class="tkt-hw-tile-body">
-              <span class="tkt-hw-tile-num" style="color:#2e7d5e;">{{ stats.resolved }}</span>
-              <span class="tkt-hw-tile-lbl">Resolved</span>
-            </div>
-          </div>
-
-          <div class="tkt-hw-tile">
-            <div class="tkt-hw-tile-icon" style="background:#f1f5f9;">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="#64748b" width="17" height="17"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
-            </div>
-            <div class="tkt-hw-tile-body">
-              <span class="tkt-hw-tile-num" style="color:#64748b;">{{ stats.closed }}</span>
-              <span class="tkt-hw-tile-lbl">Closed</span>
-            </div>
-          </div>
-
-          <div class="tkt-hw-tile">
-            <div class="tkt-hw-tile-icon" style="background:#fdf5ee;">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="#b86020" width="17" height="17"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
-            </div>
-            <div class="tkt-hw-tile-body">
-              <span class="tkt-hw-tile-num" style="color:#b86020;">{{ stats.pending_parts }}</span>
-              <span class="tkt-hw-tile-lbl">Pending Parts</span>
-            </div>
-          </div>
-
-          <div class="tkt-hw-tile">
-            <div class="tkt-hw-tile-icon" style="background:#fdf8ec;">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="#9b7a1f" width="17" height="17"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/></svg>
-            </div>
-            <div class="tkt-hw-tile-body">
-              <span class="tkt-hw-tile-num" style="color:#9b7a1f;">{{ stats.high }}</span>
-              <span class="tkt-hw-tile-lbl">High Priority</span>
-            </div>
-          </div>
-
+          <button
+            type="button"
+            class="tkt-cd-close"
+            onclick="tktCdClose()"
+            aria-label="Close"
+          >
+            &times;
+          </button>
         </div>
-
-        <!-- Priority pills -->
-        <div class="tkt-hw-priority">
-          <div class="tkt-hw-prio-pill" style="background:#fdf2f2;border-color:#f0c4c6;color:#b5373f;">
-            <span class="tkt-hw-prio-dot" style="background:#b5373f;"></span>
-            {{ stats.critical }} Critical
-          </div>
-          <div class="tkt-hw-prio-pill" style="background:#fdf5ee;border-color:#f0d5bb;color:#b86020;">
-            <span class="tkt-hw-prio-dot" style="background:#b86020;"></span>
-            {{ stats.high }} High
-          </div>
-          <div class="tkt-hw-prio-pill" style="background:#f0f7f3;border-color:#b8d8ca;color:#2e7d5e;">
-            <span class="tkt-hw-prio-dot" style="background:#2e7d5e;"></span>
-            {{ stats.total - stats.critical - stats.high }} Normal
-          </div>
+        <div class="tkt-cd-list" id="tktCdListBody">
+          <div class="tkt-cd-empty">Loading…</div>
         </div>
-
-        <!-- Footer -->
-        <div class="tkt-hw-footer" style="justify-content:flex-end;">
-          <a href="{{ url_for('ticketing.ticket_list') }}" class="tkt-hw-footer-link">
-            View all
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" width="12" height="12"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg>
-          </a>
-        </div>
-
       </div>
     </div>
-  </div>
-</header>
 
-<!-- ── Main body ── -->
-<div class="tkt-body">
+    <button
+      type="button"
+      class="dh-sidebar-toggle"
+      id="tktDhSidebarToggle"
+      onclick="tktToggleMobileSidebar()"
+      aria-label="Open service tickets menu"
+      title="Menu"
+    >
+      &#9776;
+    </button>
 
-    <!-- Recent tickets -->
-    <div class="tkt-section-card">
-      <div class="tkt-section-head">
-        <h2>
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="16" height="16" style="color:#d21725;"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
-          Recent service tickets
-        </h2>
-        <a href="{{ url_for('ticketing.ticket_list') }}"
-           style="font-size:.8rem;font-weight:600;color:#d21725;text-decoration:none;display:flex;align-items:center;gap:4px;">
-          View all
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
-        </a>
-      </div>
+    <script
+      src="{{ url_for('static', filename='js/ticketing.js') }}"
+      defer
+    ></script>
+    <script
+      src="{{ url_for('static', filename='js/dashboard.js') }}"
+      defer
+    ></script>
+    <script>
+      function tktOpenMobileSidebar() {
+        const s = document.getElementById("tktDhSidebar");
+        if (s) s.classList.add("open");
+      }
+      function tktCloseMobileSidebar() {
+        const s = document.getElementById("tktDhSidebar");
+        if (s) s.classList.remove("open");
+      }
+      function tktToggleMobileSidebar() {
+        const s = document.getElementById("tktDhSidebar");
+        if (!s) return;
+        if (s.classList.contains("open")) tktCloseMobileSidebar();
+        else tktOpenMobileSidebar();
+      }
+      // Close sidebar on outside click (mobile)
+      document.addEventListener("click", function (e) {
+        const s = document.getElementById("tktDhSidebar");
+        const btn = document.getElementById("tktDhSidebarToggle");
+        if (
+          s &&
+          s.classList.contains("open") &&
+          !s.contains(e.target) &&
+          btn &&
+          !btn.contains(e.target)
+        ) {
+          tktCloseMobileSidebar();
+        }
+      });
 
-      {% if recent_tickets %}
-      {% set tkt_status_labels = {
-        'open':'Open','assigned':'Assigned','site_attended':'Site Attended','work_started':'Work Started','work_completed':'Work Completed','verification':'Verification','on_hold':'On Hold','cancelled':'Cancelled','closed':'Closed','in_progress':'In Progress','pending_parts':'Pending Parts','resolved':'Resolved','pending_supervisor':'Supervisor Queue','pending_verification':'Pending verification'
-      } %}
-      {# No whitespace/newlines between spans: stray text nodes become extra grid tracks and misalign columns. #}
-      <div class="tkt-recent-scroll tkt-recent-scroll--cap">
-      <div class="tkt-row-header tkt-row-header--sticky"><span class="tkt-col-head">ID</span><span class="tkt-col-head">Title</span><span class="tkt-col-head">Project</span><span class="tkt-col-head">Service Group</span><span class="tkt-col-head">Priority</span><span class="tkt-col-head">Status</span><span class="tkt-col-head">Assigned to</span><span class="tkt-col-head">Created</span></div>
-      <div class="tkt-row-list">
-        {% for t in recent_tickets %}
-        {% set initials = (t.assigned_to.full_name.split()[0][0] + t.assigned_to.full_name.split()[-1][0])|upper if t.assigned_to and t.assigned_to.full_name else '?' %}
-        {% set st_lbl = tkt_status_labels.get(t.status, t.status.replace('_',' ')|title) %}
-        <a href="{{ url_for('ticketing.ticket_detail', ticket_id=t.ticket_id) }}" class="tkt-row"><span class="tkt-row-id">{{ t.ticket_id }}</span><span class="tkt-row-title" title="{{ t.title|e }}">{{ t.title }}</span><span class="tkt-row-meta" title="{{ t.project|e }}">{{ t.project }}</span><span class="tkt-row-sg" title="{{ t.service_group|e }}">{{ t.service_group }}</span><span><span class="tkt-badge badge-priority-{{ t.priority }}">{{ t.priority|capitalize }}</span></span><span><span class="tkt-badge badge-status-{{ t.status }}" title="{{ st_lbl|e }}">{{ st_lbl }}</span></span><span class="tkt-row-assignee">{% if t.assigned_to %}<span class="tkt-row-avatar">{{ initials }}</span><span>{{ t.assigned_to.full_name.split()[0] }}</span>{% else %}<span style="color:#cbd5e1;">—</span>{% endif %}</span><span class="tkt-row-date"><span>{{ t.created_at.strftime('%d %b %Y') if t.created_at else '—' }}</span><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="#d1d5db" width="11" height="11" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg></span></a>
-        {% endfor %}
-      </div>
-      </div>
+      // ── Civil Defense notifications feed + modal ──
+      const TKT_CD_FEED_URL =
+        "{{ url_for('ticketing.cd_notifications_feed') }}";
+      const TKT_CD_NEW_URL = "{{ url_for('ticketing.new_ticket_form') }}";
+      let tktCdLoaded = false;
 
-      {% else %}
-      <div style="display:flex;flex-direction:column;align-items:center;padding:60px 20px;gap:14px;">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.2" stroke="#d1d5db" width="56" height="56"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25Z"/></svg>
-        <p style="color:#94a3b8;font-size:.9rem;margin:0;">No service tickets yet.</p>
-        <a href="{{ url_for('ticketing.new_ticket_form') }}" class="tkt-btn tkt-btn-primary">Create your first service ticket</a>
-      </div>
-      {% endif %}
-    </div>
-
-</div>{# tkt-body #}
-
-</div></div>{# tkt-dh-main / tkt-content #}
-</div></div>{# tkt-dh-page-root / tkt-dh-app-root #}
-
-<!-- ── Civil Defense notifications modal ── -->
-<div class="tkt-cd-overlay" id="tktCdOverlay" onclick="if(event.target===this)tktCdClose()">
-  <div class="tkt-cd-modal" role="dialog" aria-modal="true" aria-labelledby="tktCdModalTitle">
-    <div class="tkt-cd-modal-head">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" width="22" height="22"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2.25 4.5 5.25v5.25c0 4.4 3.2 8.5 7.5 9.75 4.3-1.25 7.5-5.35 7.5-9.75V5.25L12 2.25Z"/></svg>
-      <div style="flex:1 1 auto;">
-        <h3 id="tktCdModalTitle">Civil Defense notifications</h3>
-        <span class="tkt-cd-sub" id="tktCdModalSub"></span>
-      </div>
-      <button type="button" class="tkt-cd-close" onclick="tktCdClose()" aria-label="Close">&times;</button>
-    </div>
-    <div class="tkt-cd-list" id="tktCdListBody">
-      <div class="tkt-cd-empty">Loading…</div>
-    </div>
-  </div>
-</div>
-
-<button type="button" class="dh-sidebar-toggle" id="tktDhSidebarToggle"
-        onclick="tktToggleMobileSidebar()" aria-label="Open service tickets menu" title="Menu">&#9776;</button>
-
-<script src="{{ url_for('static', filename='js/ticketing.js') }}" defer></script>
-<script src="{{ url_for('static', filename='js/dashboard.js') }}" defer></script>
-<script>
-  function tktOpenMobileSidebar() {
-    const s = document.getElementById('tktDhSidebar');
-    if (s) s.classList.add('open');
-  }
-  function tktCloseMobileSidebar() {
-    const s = document.getElementById('tktDhSidebar');
-    if (s) s.classList.remove('open');
-  }
-  function tktToggleMobileSidebar() {
-    const s = document.getElementById('tktDhSidebar');
-    if (!s) return;
-    if (s.classList.contains('open')) tktCloseMobileSidebar();
-    else tktOpenMobileSidebar();
-  }
-  // Close sidebar on outside click (mobile)
-  document.addEventListener('click', function(e) {
-    const s = document.getElementById('tktDhSidebar');
-    const btn = document.getElementById('tktDhSidebarToggle');
-    if (s && s.classList.contains('open') && !s.contains(e.target) && btn && !btn.contains(e.target)) {
-      tktCloseMobileSidebar();
-    }
-  });
-
-  // ── Civil Defense notifications feed + modal ──
-  const TKT_CD_FEED_URL = "{{ url_for('ticketing.cd_notifications_feed') }}";
-  const TKT_CD_NEW_URL = "{{ url_for('ticketing.new_ticket_form') }}";
-  let tktCdLoaded = false;
-
-  function tktEsc(s) {
-    return String(s == null ? '' : s).replace(/[&<>"']/g, c => (
-      {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]
-    ));
-  }
-  function tktFmtDate(iso) {
-    if (!iso) return '—';
-    const d = new Date(iso + 'T00:00:00');
-    if (isNaN(d)) return iso;
-    return d.toLocaleDateString(undefined, {day:'2-digit', month:'short', year:'numeric'});
-  }
-
-  async function tktCdRefreshBox() {
-    const widget = document.getElementById('tktCdWidget');
-    try {
-      const res = await fetch(TKT_CD_FEED_URL, {credentials:'same-origin'});
-      const data = await res.json();
-      if (!data.success) throw new Error(data.error || 'load failed');
-      window.__tktCdData = data;
-
-      const s = data.summary || {open:0, overdue:0, total:0};
-
-      // Nothing to convert → keep the corner clean.
-      if (!s.total) {
-        if (widget) widget.hidden = true;
-        tktCdLoaded = true;
-        return data;
+      function tktEsc(s) {
+        return String(s == null ? "" : s).replace(
+          /[&<>"']/g,
+          (c) =>
+            ({
+              "&": "&amp;",
+              "<": "&lt;",
+              ">": "&gt;",
+              '"': "&quot;",
+              "'": "&#39;",
+            })[c],
+        );
+      }
+      function tktFmtDate(iso) {
+        if (!iso) return "—";
+        const d = new Date(iso + "T00:00:00");
+        if (isNaN(d)) return iso;
+        return d.toLocaleDateString(undefined, {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        });
       }
 
-      document.getElementById('tktCdwBadge').textContent = s.total > 99 ? '99+' : s.total;
-      widget.hidden = false;
-      tktCdLoaded = true;
-      return data;
-    } catch (err) {
-      if (widget) widget.hidden = true;
-      console.error('CD feed error', err);
-    }
-  }
+      async function tktCdRefreshBox() {
+        const widget = document.getElementById("tktCdWidget");
+        try {
+          const res = await fetch(TKT_CD_FEED_URL, {
+            credentials: "same-origin",
+          });
+          const data = await res.json();
+          if (!data.success) throw new Error(data.error || "load failed");
+          window.__tktCdData = data;
 
-  function tktCdRender(data) {
-    const body = document.getElementById('tktCdListBody');
-    const modalSub = document.getElementById('tktCdModalSub');
-    const rows = (data && data.notifications) || [];
-    const s = (data && data.summary) || {open:0, overdue:0, total:0};
-    modalSub.textContent = `${s.total} total · ${s.open} awaiting action${s.overdue ? ` · ${s.overdue} overdue` : ''}`;
+          const s = data.summary || { open: 0, overdue: 0, total: 0 };
 
-    if (!rows.length) {
-      body.innerHTML = '<div class="tkt-cd-empty">No Civil Defense notifications have been registered yet.</div>';
-      return;
-    }
+          // Nothing to convert → keep the corner clean.
+          if (!s.total) {
+            if (widget) widget.hidden = true;
+            tktCdLoaded = true;
+            return data;
+          }
 
-    body.innerHTML = rows.map(n => {
-      const ref = tktEsc(n.civil_defense_ref || n.notif_id);
-      const isOverdue = n.status === 'overdue';
-      const statusPill = `<span class="tkt-cd-pill ${tktEsc(n.status)}">${tktEsc(n.status)}</span>`;
-      const convertedPill = n.converted ? '<span class="tkt-cd-pill converted">Converted ✓</span>' : '';
-      const days = (n.days_remaining != null)
-        ? `<strong>${n.days_remaining < 0 ? Math.abs(n.days_remaining)+' days overdue' : n.days_remaining+' days left'}</strong>`
-        : '';
-      const notes = n.notes ? `<p class="tkt-cd-notes">${tktEsc(n.notes)}</p>` : '';
-      const convertedLinks = (n.converted_tickets || []).map(t =>
-        `<a href="/tickets/${tktEsc(t.ticket_id)}">${tktEsc(t.ticket_id)}</a>`
-      ).join(', ');
-      const convertedNote = n.converted
-        ? `<span class="tkt-cd-converted-note">Already converted → ${convertedLinks}</span>`
-        : '';
-      const convertUrl = `${TKT_CD_NEW_URL}?from_cd=${encodeURIComponent(n.id)}`;
-
-      // A service ticket is only allowed for a failed inspection that Amaan must rectify.
-      let actionBlock;
-      if (n.can_convert) {
-        actionBlock = `
-            <a class="tkt-cd-convert" href="${convertUrl}">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
-              Convert to service ticket
-            </a>
-            ${convertedNote}`;
-      } else if (n.outcome === 'pass') {
-        actionBlock = `<span class="tkt-cd-converted-note">Inspection passed — no service ticket required.</span>`;
-      } else if (n.outcome === 'fail' && n.rectify_by === 'civil_defense') {
-        actionBlock = `<span class="tkt-cd-converted-note">Failed — Civil Defense to rectify; re-inspection pending. No service ticket.</span>`;
-      } else {
-        actionBlock = `<span class="tkt-cd-converted-note">Awaiting inspection result. A service ticket can be created once a failed inspection is recorded.</span>`;
+          document.getElementById("tktCdwBadge").textContent =
+            s.total > 99 ? "99+" : s.total;
+          widget.hidden = false;
+          tktCdLoaded = true;
+          return data;
+        } catch (err) {
+          if (widget) widget.hidden = true;
+          console.error("CD feed error", err);
+        }
       }
 
-      return `
-        <div class="tkt-cd-card${isOverdue ? ' is-overdue' : ''}">
-          <div class="tkt-cd-card-top">
-            <span class="tkt-cd-ref">${ref}</span>
-            <span class="tkt-cd-site">· ${tktEsc(n.site_name)}</span>
-            ${statusPill}${convertedPill}
-          </div>
-          <div class="tkt-cd-meta">
-            ${n.inspection_type ? tktEsc(n.inspection_type) + ' · ' : ''}
-            received ${tktFmtDate(n.notification_date)} → due ${tktFmtDate(n.inspection_date)} ${days ? '· ' + days : ''}
-          </div>
-          ${notes}
-          <div class="tkt-cd-card-actions">
-            ${actionBlock}
-          </div>
-        </div>`;
-    }).join('');
-  }
+      function tktCdRender(data) {
+        const body = document.getElementById("tktCdListBody");
+        const modalSub = document.getElementById("tktCdModalSub");
+        const rows = (data && data.notifications) || [];
+        const s = (data && data.summary) || { open: 0, overdue: 0, total: 0 };
+        modalSub.textContent = `${s.total} total · ${s.open} awaiting action${s.overdue ? ` · ${s.overdue} overdue` : ""}`;
 
-  async function tktCdOpen() {
-    const ov = document.getElementById('tktCdOverlay');
-    ov.classList.add('open');
-    document.body.style.overflow = 'hidden';
-    const data = window.__tktCdData || await tktCdRefreshBox();
-    tktCdRender(data);
-  }
-  function tktCdClose() {
-    document.getElementById('tktCdOverlay').classList.remove('open');
-    document.body.style.overflow = '';
-  }
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') tktCdClose();
-  });
+        if (!rows.length) {
+          body.innerHTML =
+            '<div class="tkt-cd-empty">No Civil Defense notifications have been registered yet.</div>';
+          return;
+        }
 
-  // Initial load of the hero box summary
-  tktCdRefreshBox();
-</script>
-</body>
+        body.innerHTML = rows
+          .map((n) => {
+            const ref = tktEsc(n.civil_defense_ref || n.notif_id);
+            const isOverdue = n.status === "overdue";
+            const statusPill = `<span class="tkt-cd-pill ${tktEsc(n.status)}">${tktEsc(n.status)}</span>`;
+            const convertedPill = n.converted
+              ? '<span class="tkt-cd-pill converted">Converted ✓</span>'
+              : "";
+            const days =
+              n.days_remaining != null
+                ? `<strong>${n.days_remaining < 0 ? Math.abs(n.days_remaining) + " days overdue" : n.days_remaining + " days left"}</strong>`
+                : "";
+            const notes = n.notes
+              ? `<p class="tkt-cd-notes">${tktEsc(n.notes)}</p>`
+              : "";
+            const convertedLinks = (n.converted_tickets || [])
+              .map(
+                (t) =>
+                  `<a href="/tickets/${tktEsc(t.ticket_id)}">${tktEsc(t.ticket_id)}</a>`,
+              )
+              .join(", ");
+            const convertedNote = n.converted
+              ? `<span class="tkt-cd-converted-note">Already converted → ${convertedLinks}</span>`
+              : "";
+            const convertUrl = `${TKT_CD_NEW_URL}?from_cd=${encodeURIComponent(n.id)}`;
+
+            // A service ticket is only allowed for a failed inspection that Amaan must rectify.
+            let actionBlock;
+            if (n.can_convert) {
+              actionBlock = `
+ <a class="tkt-cd-convert" href="${convertUrl}">
+ <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+ Convert to service ticket
+ </a>
+ ${convertedNote}`;
+            } else if (n.outcome === "pass") {
+              actionBlock = `<span class="tkt-cd-converted-note">Inspection passed — no service ticket required.</span>`;
+            } else if (
+              n.outcome === "fail" &&
+              n.rectify_by === "civil_defense"
+            ) {
+              actionBlock = `<span class="tkt-cd-converted-note">Failed — Civil Defense to rectify; re-inspection pending. No service ticket.</span>`;
+            } else {
+              actionBlock = `<span class="tkt-cd-converted-note">Awaiting inspection result. A service ticket can be created once a failed inspection is recorded.</span>`;
+            }
+
+            return `
+ <div class="tkt-cd-card${isOverdue ? " is-overdue" : ""}">
+ <div class="tkt-cd-card-top">
+ <span class="tkt-cd-ref">${ref}</span>
+ <span class="tkt-cd-site">· ${tktEsc(n.site_name)}</span>
+ ${statusPill}${convertedPill}
+ </div>
+ <div class="tkt-cd-meta">
+ ${n.inspection_type ? tktEsc(n.inspection_type) + " · " : ""}
+ received ${tktFmtDate(n.notification_date)} → due ${tktFmtDate(n.inspection_date)} ${days ? "· " + days : ""}
+ </div>
+ ${notes}
+ <div class="tkt-cd-card-actions">
+ ${actionBlock}
+ </div>
+ </div>`;
+          })
+          .join("");
+      }
+
+      async function tktCdOpen() {
+        const ov = document.getElementById("tktCdOverlay");
+        ov.classList.add("open");
+        document.body.style.overflow = "hidden";
+        const data = window.__tktCdData || (await tktCdRefreshBox());
+        tktCdRender(data);
+      }
+      function tktCdClose() {
+        document.getElementById("tktCdOverlay").classList.remove("open");
+        document.body.style.overflow = "";
+      }
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") tktCdClose();
+      });
+
+      // Initial load of the hero box summary
+      tktCdRefreshBox();
+    </script>
+  </body>
 </html>

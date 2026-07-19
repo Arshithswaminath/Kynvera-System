@@ -1,303 +1,2115 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}">
-  {% include 'partials/caveat_font.html' ignore missing %}
-  <title>Contracts — Finance — Amaan</title>
-  <meta name="theme-color" content="#d21725">
-  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
-  <style>
-    :root { --accent: #d21725; --nav-top: 73px; }
-    body.has-main-nav { padding-top: var(--nav-top); }
-    .fin-wrap { max-width: none; padding: 24px 28px 60px 20px; }
-    .fin-nav { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 28px; }
-    .fin-nav a { padding: 7px 16px; border-radius: 8px; font-size: .85rem; font-weight: 600; text-decoration: none; color: #374151; background: #fff; border: 1.5px solid #e5e7eb; }
-    .fin-nav a.active, .fin-nav a:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
-    .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
-    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px; border-radius: 8px; font-size: .85rem; font-weight: 600; cursor: pointer; border: none; }
-    .btn-primary { background: var(--accent); color: #fff; }
-    .btn-primary:hover { background: #b91c1c; }
-    .btn-outline { background: #fff; border: 1.5px solid #d1d5db; color: #374151; }
-    .btn-outline:hover { background: #f3f4f6; }
-    .btn-sm { padding: 5px 10px; font-size: .75rem; }
-    /* filter tabs */
-    .filter-bar { display: flex; gap: 6px; margin-bottom: 16px; }
-    .filter-chip { padding: 5px 14px; border-radius: 999px; border: 1.5px solid #e5e7eb; background: #fff; font-size: .78rem; font-weight: 600; cursor: pointer; }
-    .filter-chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
-    /* table */
-    .ct-table { width: 100%; border-collapse: collapse; font-size: .88rem; background: #fff; border-radius: 12px; overflow: hidden; border: 1px solid #e5e7eb; }
-    .ct-table th { background: #f9fafb; padding: 10px 14px; text-align: left; font-size: .72rem; font-weight: 700; text-transform: uppercase; color: #9ca3af; border-bottom: 1.5px solid #e5e7eb; }
-    .ct-table td { padding: 12px 14px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
-    .ct-table tr:last-child td { border-bottom: none; }
-    .ct-table tr:hover td { background: #fafafa; }
-    .badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 999px; font-size: .7rem; font-weight: 700; }
-    .badge-active   { background: #d1fae5; color: #065f46; }
-    .badge-expired  { background: #f3f4f6; color: #374151; }
-    .badge-cancelled{ background: #fee2e2; color: #dc2626; }
-    .badge-quarterly   { background: #dbeafe; color: #1d4ed8; }
-    .badge-semi_annual { background: #e0e7ff; color: #3730a3; }
-    .badge-annual      { background: #fef3c7; color: #92400e; }
-    .badge-monthly     { background: #f0fdf4; color: #16a34a; }
-    .badge-one_time    { background: #f3f4f6; color: #374151; }
-    /* modal */
-    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
-    .modal-overlay.open { display: flex; }
-    .modal-box { background: #fff; border-radius: 14px; width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; }
-    .modal-header { padding: 20px 24px; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: space-between; }
-    .modal-header h2 { font-size: 1.05rem; font-weight: 800; margin: 0; }
-    .modal-close { background: none; border: none; cursor: pointer; color: #9ca3af; font-size: 1.4rem; }
-    .modal-body { padding: 22px 24px; }
-    .modal-footer { padding: 14px 24px; border-top: 1px solid #e5e7eb; display: flex; justify-content: flex-end; gap: 10px; }
-    .form-row { margin-bottom: 14px; }
-    .form-label { display: block; font-size: .78rem; font-weight: 600; color: #374151; margin-bottom: 5px; }
-    .form-input, .form-select, .form-textarea { width: 100%; border: 1.5px solid #d1d5db; border-radius: 8px; padding: 9px 11px; font-size: .88rem; box-sizing: border-box; }
-    .form-input:focus, .form-select:focus { outline: none; border-color: var(--accent); }
-    .form-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .empty-state { text-align: center; padding: 60px 20px; color: #9ca3af; }
-  
-    /* Finance sidebar: ensure red bg visible on dochub layout */
-    body.has-main-nav.dochub-page-v2 {
-      height: auto !important;
-      min-height: 100dvh !important;
-      overflow-y: auto !important;
-      --sb-bg: #d21725 !important;
-    }
-    body.has-main-nav.dochub-page-v2 .dh-sidebar {
-      background: #d21725 !important;
-    }
-    body.has-main-nav.dochub-page-v2 .dh-main {
-      overflow-y: auto;
-    }
-</style>
-</head>
-<body class="has-main-nav dochub-page-v2">
-  {% set active_page = 'finance' %}
-  {% include 'partials/main_navbar.html' with context %}
-
-  <button type="button" class="dh-sidebar-toggle" id="finSidebarToggle" onclick="document.getElementById('finSidebar').classList.toggle('open')" aria-label="Open Finance menu" title="Menu">☰</button>
-
-  <div class="dh-page-root">
-    <aside class="dh-sidebar" id="finSidebar">
-      <div class="sb-brand">
-        <div class="sb-brand-text">
-          <span class="name">Finance</span>
-          <span class="tagline">Finance &amp; Invoicing</span>
-        </div>
-      </div>
-      <nav class="sb-nav">
-        <div class="dh-sb-section">
-          <div class="sb-section-label">Overview</div>
-          <a href="/finance/" class="sb-nav-item">Invoice Queue</a>
-          <a href="/finance/contracts" class="sb-nav-item active">Contracts</a>
-          <a href="/finance/reports" class="sb-nav-item">Monthly Reports</a>
-        </div>
-        <div class="dh-sb-section">
-          <div class="sb-section-label">Finance</div>
-          <a href="/finance/" class="sb-nav-item">Invoice Processing</a>
-          <a href="/finance/contracts" class="sb-nav-item">Contract Management</a>
-          <a href="/tickets/" class="sb-nav-item">Service Tickets</a>
-        </div>
-        <div class="dh-sb-section">
-          <div class="sb-section-label">Reports</div>
-          <a href="/finance/reports" class="sb-nav-item">Billing Reports</a>
-          <a href="/admin/dashboard" class="sb-nav-item">Settings</a>
-        </div>
-      </nav>
-      <div class="sb-footer">
-        <div class="sb-user-row" onclick="if(typeof openProfileModal==='function'){openProfileModal();}" role="button" tabindex="0">
-          <div class="sb-avatar">{{ user.full_name[0]|upper if user and user.full_name else 'U' }}</div>
-          <div class="sb-user-text">
-            <div class="sb-user-name">{{ user.full_name if user else 'User' }}</div>
-            <div class="sb-user-role">{{ user.role|capitalize if user else 'User' }}</div>
-          </div>
-        </div>
-      </div>
-    </aside>
-
-    <div class="dh-main">
-  <div class="fin-wrap">
-    <a href="/dashboard" style="color:var(--accent);text-decoration:none;font-size:.82rem;">← Dashboard</a>
-    <h1 style="font-size:1.5rem;font-weight:800;margin:6px 0 4px;">Finance — Contracts</h1>
-    <p style="color:#6b7280;font-size:.88rem;margin-bottom:20px;">Manage AMC and service contracts.</p>
-
-    <nav class="fin-nav">
-      <a href="/finance/">Overview</a>
-      <a href="/finance/contracts" class="active">Contracts</a>
-      <a href="/finance/reports">Monthly Reports</a>
-    </nav>
-
-    <div class="topbar">
-      <div class="filter-bar">
-        <button class="filter-chip active" onclick="setFilter(this,'active')">Active</button>
-        <button class="filter-chip" onclick="setFilter(this,'expired')">Expired</button>
-        <button class="filter-chip" onclick="setFilter(this,'')">All</button>
-      </div>
-      <button class="btn btn-primary" onclick="openModal()">
-        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-        Add Contract
-      </button>
-    </div>
-
-    <div id="contractsTable">
-      <div style="text-align:center;padding:40px;color:#9ca3af;">Loading…</div>
-    </div>
-  </div>
-
-  <!-- Add Contract Modal -->
-  <div class="modal-overlay" id="addModal">
-    <div class="modal-box">
-      <div class="modal-header">
-        <h2>Add Contract</h2>
-        <button class="modal-close" onclick="closeModal()">×</button>
-      </div>
-      <div class="modal-body">
-        <div class="form-row">
-          <label class="form-label">Client Name *</label>
-          <input type="text" class="form-input" id="f-client" placeholder="Client / company name">
-        </div>
-        <div class="form-2col">
-          <div class="form-row">
-            <label class="form-label">Property</label>
-            <input type="text" class="form-input" id="f-property" placeholder="Building / site name">
-          </div>
-          <div class="form-row">
-            <label class="form-label">Service Type</label>
-            <input type="text" class="form-input" id="f-service" placeholder="e.g. HVAC AMC">
-          </div>
-        </div>
-        <div class="form-row">
-          <label class="form-label">Contract Type *</label>
-          <select class="form-select" id="f-type">
-            {% for ct in contract_types %}
-            <option value="{{ ct }}">{{ contract_type_labels[ct] }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="form-2col">
-          <div class="form-row">
-            <label class="form-label">Start Date *</label>
-            <input type="date" class="form-input" id="f-start">
-          </div>
-          <div class="form-row">
-            <label class="form-label">End Date *</label>
-            <input type="date" class="form-input" id="f-end">
-          </div>
-        </div>
-        <div class="form-2col">
-          <div class="form-row">
-            <label class="form-label">Contract Value (AED)</label>
-            <input type="number" class="form-input" id="f-value" min="0" step="0.01">
-          </div>
-          <div class="form-row">
-            <label class="form-label">Billing Day of Month</label>
-            <input type="number" class="form-input" id="f-billing" value="29" min="1" max="31">
-          </div>
-        </div>
-        <div class="form-row">
-          <label class="form-label">Notes</label>
-          <textarea class="form-input form-textarea" id="f-notes" rows="2"></textarea>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
-        <button class="btn btn-primary" onclick="submitContract()">Add Contract</button>
-      </div>
-    </div>
-  </div>
-
-  <script src="{{ url_for('static', filename='api-client.js') }}"></script>
-  <script>
-    let currentFilter = 'active';
-
-    function setFilter(el, filter) {
-      currentFilter = filter;
-      document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
-      el.classList.add('active');
-      loadContracts();
-    }
-
-    async function loadContracts() {
-      try {
-        const url = `/finance/api/contracts${currentFilter ? '?status=' + currentFilter : ''}`;
-        const res = await apiClient.get(url);
-        renderTable(res.contracts || []);
-      } catch(e) {
-        document.getElementById('contractsTable').innerHTML = '<div style="text-align:center;padding:40px;color:#9ca3af;">Failed to load.</div>';
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/design-tokens.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/dochub-page.css') }}"
+    />
+    {% include 'partials/caveat_font.html' ignore missing %}
+    <title>Contracts — Finance — Amaan</title>
+    <meta name="theme-color" content="#d21725" />
+    <link
+      rel="icon"
+      type="image/png"
+      href="{{ url_for('static', filename='favicon.png') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/dashboard.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='mobile_responsive.css') }}"
+    />
+    <style>
+      :root {
+        --accent: #d21725;
+        --nav-top: 73px;
+        --fin-font:
+          -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+          system-ui, "Segoe UI", Roboto, "Helvetica Neue", Helvetica, Arial,
+          sans-serif;
       }
-    }
-
-    function renderTable(contracts) {
-      const el = document.getElementById('contractsTable');
-      if (!contracts.length) {
-        el.innerHTML = '<div class="empty-state"><h3>No contracts found</h3><p>Add your first contract above.</p></div>';
-        return;
+      body.has-main-nav {
+        padding-top: var(--nav-top);
+        font-family: var(--fin-font);
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
       }
-      const typeColors = {quarterly:'badge-quarterly', semi_annual:'badge-semi_annual', annual:'badge-annual', monthly:'badge-monthly', one_time:'badge-one_time'};
-      const typeLabels = {quarterly:'Quarterly', semi_annual:'Semi-Annual', annual:'Annual', monthly:'Monthly', one_time:'One-Time'};
-      el.innerHTML = `<table class="ct-table">
-        <thead><tr><th>ID</th><th>Client</th><th>Property</th><th>Type</th><th>Period</th><th>Value (AED)</th><th>Status</th><th></th></tr></thead>
-        <tbody>${contracts.map(c => `<tr>
-          <td style="font-weight:700;color:#374151;font-size:.78rem;">${c.contract_id}</td>
-          <td style="font-weight:600;">${escHtml(c.client_name)}</td>
-          <td style="color:#6b7280;">${escHtml(c.property_name||'—')}</td>
-          <td><span class="badge ${typeColors[c.contract_type]||''}">${typeLabels[c.contract_type]||c.contract_type}</span></td>
-          <td style="font-size:.8rem;color:#374151;">${fmtDate(c.start_date)} → ${fmtDate(c.end_date)}</td>
-          <td>${c.contract_value ? 'AED ' + Number(c.contract_value).toLocaleString('en-AE',{minimumFractionDigits:2}) : '—'}</td>
-          <td><span class="badge ${c.status==='active'?'badge-active':c.status==='expired'?'badge-expired':'badge-cancelled'}">${c.status}</span></td>
-          <td>
-            <button class="btn btn-outline btn-sm" onclick="toggleStatus(${c.id}, '${c.status}')">${c.status==='active'?'Expire':'Activate'}</button>
-          </td>
-        </tr>`).join('')}</tbody>
-      </table>`;
-    }
+      body.has-main-nav,
+      body.has-main-nav button,
+      body.has-main-nav input,
+      body.has-main-nav select,
+      body.has-main-nav textarea,
+      body.has-main-nav .btn,
+      body.has-main-nav .filter-chip,
+      body.has-main-nav .fin-nav a,
+      body.has-main-nav .form-input,
+      body.has-main-nav .form-select,
+      body.has-main-nav .form-textarea,
+      body.has-main-nav .form-label,
+      body.has-main-nav .modal-box,
+      body.has-main-nav .modal-header h2,
+      body.has-main-nav .ct-table,
+      body.has-main-nav .import-panel {
+        font-family: var(--fin-font);
+      }
+      .fin-wrap {
+        max-width: none;
+        padding: 24px 28px 60px 20px;
+      }
+      .fin-nav {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin-bottom: 28px;
+      }
+      .fin-nav a {
+        padding: 7px 16px;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-decoration: none;
+        color: #374151;
+        background: #fff;
+        border: 1.5px solid #e5e7eb;
+      }
+      .fin-nav a.active,
+      .fin-nav a:hover {
+        background: var(--accent);
+        color: #fff;
+        border-color: var(--accent);
+      }
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 9px 18px;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        border: none;
+      }
+      .btn-primary {
+        background: var(--accent);
+        color: #fff;
+      }
+      .btn-primary:hover {
+        background: #b91c1c;
+      }
+      .btn-outline {
+        background: #fff;
+        border: 1.5px solid #d1d5db;
+        color: #374151;
+      }
+      .btn-outline:hover {
+        background: #f3f4f6;
+      }
+      .btn-sm {
+        padding: 5px 10px;
+        font-size: 0.75rem;
+      }
+      .row-actions {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 8px;
+        white-space: nowrap;
+      }
+      .btn-icon-danger {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 34px;
+        height: 34px;
+        min-width: 34px;
+        padding: 0;
+        border-radius: 8px;
+        border: 1.5px solid #fecaca;
+        background: #fff;
+        color: #dc2626;
+        cursor: pointer;
+        transition: background 0.15s, border-color 0.15s;
+      }
+      .btn-icon-danger:hover {
+        background: #fef2f2;
+        border-color: #f87171;
+        color: #b91c1c;
+      }
+      .btn-icon-danger svg {
+        width: 16px;
+        height: 16px;
+      }
+      .btn-danger {
+        background: #dc2626;
+        color: #fff;
+      }
+      .btn-danger:hover {
+        background: #b91c1c;
+      }
+      .btn-danger:disabled {
+        opacity: 0.65;
+        cursor: not-allowed;
+      }
+      .app-dialog-msg {
+        margin: 0;
+        font-size: 0.9rem;
+        color: #374151;
+        line-height: 1.5;
+        white-space: pre-wrap;
+      }
+      .app-dialog-msg strong {
+        color: #111827;
+      }
 
-    async function toggleStatus(id, currentStatus) {
-      const newStatus = currentStatus === 'active' ? 'expired' : 'active';
-      try {
-        await apiClient.patch(`/finance/api/contracts/${id}`, { status: newStatus });
-        loadContracts();
-      } catch(e) { alert('Failed to update.'); }
-    }
+      /* Polished result / confirm dialogs */
+      .modal-overlay.fin-dialog-overlay {
+        background: rgba(15, 23, 42, 0.45);
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+        z-index: 1100;
+        animation: finFadeIn 0.18s ease-out;
+      }
+      @keyframes finFadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      @keyframes finPopIn {
+        from { opacity: 0; transform: translateY(10px) scale(0.97); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+      }
+      .fin-result-card {
+        width: 100%;
+        max-width: 400px;
+        background: #fff;
+        border-radius: 20px;
+        padding: 28px 28px 22px;
+        text-align: center;
+        box-shadow: 0 24px 48px rgba(15, 23, 42, 0.18);
+        animation: finPopIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+        position: relative;
+      }
+      .fin-result-close {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        width: 32px;
+        height: 32px;
+        border: none;
+        border-radius: 8px;
+        background: transparent;
+        color: #9ca3af;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+        line-height: 1;
+      }
+      .fin-result-close:hover {
+        background: #f3f4f6;
+        color: #4b5563;
+      }
+      .fin-result-icon {
+        width: 64px;
+        height: 64px;
+        margin: 4px auto 16px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .fin-result-icon svg {
+        width: 30px;
+        height: 30px;
+      }
+      .fin-result-card.is-success .fin-result-icon {
+        background: #ecfdf5;
+        color: #059669;
+        box-shadow: 0 0 0 8px #f0fdf4;
+      }
+      .fin-result-card.is-error .fin-result-icon {
+        background: #fef2f2;
+        color: #dc2626;
+        box-shadow: 0 0 0 8px #fff5f5;
+      }
+      .fin-result-card.is-info .fin-result-icon {
+        background: #fff1f2;
+        color: #d21725;
+        box-shadow: 0 0 0 8px #fff7f7;
+      }
+      .fin-result-title {
+        margin: 0 0 8px;
+        font-size: 1.2rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        color: #111827;
+      }
+      .fin-result-stat {
+        display: none;
+        margin: 4px 0 10px;
+        font-size: 2rem;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        line-height: 1.1;
+        color: #059669;
+      }
+      .fin-result-card.is-success .fin-result-stat.is-visible {
+        display: block;
+      }
+      .fin-result-msg {
+        margin: 0;
+        font-size: 0.92rem;
+        color: #6b7280;
+        line-height: 1.5;
+        white-space: pre-wrap;
+      }
+      .fin-result-details {
+        display: none;
+        margin-top: 14px;
+        padding: 12px 14px;
+        text-align: left;
+        background: #f9fafb;
+        border: 1px solid #eef2f7;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        color: #4b5563;
+        line-height: 1.45;
+        max-height: 140px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+      }
+      .fin-result-details.is-visible {
+        display: block;
+      }
+      .fin-result-actions {
+        margin-top: 22px;
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+      }
+      .fin-result-actions .btn {
+        min-width: 120px;
+        justify-content: center;
+        border-radius: 10px;
+        padding: 11px 20px;
+        font-size: 0.9rem;
+      }
+      .fin-result-card.is-success .btn-primary {
+        background: #059669;
+        border-color: #059669;
+      }
+      .fin-result-card.is-success .btn-primary:hover {
+        background: #047857;
+      }
+      .fin-result-card.is-error .btn-primary {
+        background: #dc2626;
+      }
+      .fin-result-card.is-error .btn-primary:hover {
+        background: #b91c1c;
+      }
 
-    function openModal() { document.getElementById('addModal').classList.add('open'); }
-    function closeModal() { document.getElementById('addModal').classList.remove('open'); }
+      .fin-confirm-card {
+        width: 100%;
+        max-width: 420px;
+        background: #fff;
+        border-radius: 20px;
+        padding: 28px 28px 22px;
+        text-align: center;
+        box-shadow: 0 24px 48px rgba(15, 23, 42, 0.18);
+        animation: finPopIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+        position: relative;
+      }
+      .fin-confirm-icon {
+        width: 64px;
+        height: 64px;
+        margin: 4px auto 16px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #fef2f2;
+        color: #dc2626;
+        box-shadow: 0 0 0 8px #fff5f5;
+      }
+      .fin-confirm-icon svg {
+        width: 28px;
+        height: 28px;
+      }
+      .fin-confirm-title {
+        margin: 0 0 8px;
+        font-size: 1.15rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        color: #111827;
+      }
+      .fin-confirm-msg {
+        margin: 0;
+        font-size: 0.92rem;
+        color: #6b7280;
+        line-height: 1.5;
+      }
+      .fin-confirm-msg strong {
+        color: #111827;
+        font-weight: 650;
+      }
+      .fin-confirm-actions {
+        margin-top: 22px;
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+      }
+      .fin-confirm-actions .btn {
+        min-width: 110px;
+        justify-content: center;
+        border-radius: 10px;
+        padding: 11px 18px;
+      }
 
-    async function submitContract() {
-      const client = document.getElementById('f-client').value.trim();
-      const start  = document.getElementById('f-start').value;
-      const end    = document.getElementById('f-end').value;
-      if (!client || !start || !end) { alert('Client name, start date and end date are required.'); return; }
-      try {
-        await apiClient.post('/finance/api/contracts', {
-          client_name:   client,
-          property_name: document.getElementById('f-property').value.trim(),
-          service_type:  document.getElementById('f-service').value.trim(),
-          contract_type: document.getElementById('f-type').value,
-          start_date:    start,
-          end_date:      end,
-          contract_value: parseFloat(document.getElementById('f-value').value) || 0,
-          billing_day:   parseInt(document.getElementById('f-billing').value) || 29,
-          notes:         document.getElementById('f-notes').value.trim(),
-        });
-        closeModal();
-        loadContracts();
-      } catch(e) { alert(e.message || 'Failed to save.'); }
-    }
+      /* Contract form modal (add / edit) */
+      .fin-form-overlay {
+        z-index: 1050;
+        background: rgba(15, 23, 42, 0.45);
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+      }
+      .fin-form-card {
+        width: 100%;
+        max-width: 860px;
+        max-height: 92vh;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        background: #fff;
+        border-radius: 20px;
+        box-shadow: 0 24px 48px rgba(15, 23, 42, 0.18);
+        animation: finPopIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      .fin-form-hero {
+        padding: 22px 24px 18px;
+        background: linear-gradient(135deg, #fff5f5 0%, #ffffff 55%);
+        border-bottom: 1px solid #f3f4f6;
+        position: relative;
+      }
+      .fin-form-hero-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .fin-form-kicker {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: #d21725;
+        margin-bottom: 6px;
+      }
+      .fin-form-title {
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        color: #111827;
+      }
+      .fin-form-sub {
+        margin: 6px 0 0;
+        font-size: 0.84rem;
+        color: #6b7280;
+        line-height: 1.4;
+      }
+      .fin-form-id-chip {
+        display: none;
+        margin-top: 12px;
+        padding: 8px 12px;
+        border-radius: 10px;
+        background: #fff;
+        border: 1px solid #fee2e2;
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: #991b1b;
+        width: fit-content;
+      }
+      .fin-form-card.is-edit .fin-form-id-chip {
+        display: inline-flex;
+      }
+      .fin-form-hero-actions {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-shrink: 0;
+      }
+      .fin-form-icon-btn {
+        width: 36px;
+        height: 36px;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        background: #fff;
+        color: #6b7280;
+        cursor: pointer;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        transition: background 0.15s, color 0.15s, border-color 0.15s;
+      }
+      .fin-form-icon-btn svg {
+        width: 18px;
+        height: 18px;
+      }
+      .fin-form-icon-btn:hover {
+        background: #fff5f5;
+        border-color: #fecaca;
+        color: #d21725;
+      }
+      .fin-form-icon-btn.is-active {
+        background: #fff5f5;
+        border-color: #d21725;
+        color: #d21725;
+      }
+      .fin-form-card.is-edit .fin-form-edit-btn {
+        display: inline-flex;
+      }
+      .fin-form-close-btn {
+        width: 36px;
+        height: 36px;
+        border: none;
+        border-radius: 10px;
+        background: transparent;
+        color: #9ca3af;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.4rem;
+        line-height: 1;
+        padding: 0;
+      }
+      .fin-form-close-btn:hover {
+        background: #f3f4f6;
+        color: #4b5563;
+      }
+      .fin-form-body {
+        padding: 20px 24px;
+        overflow-y: auto;
+        flex: 1;
+      }
+      .fin-form-card.is-edit .import-panel,
+      .fin-form-card.is-edit .or-divider {
+        display: none;
+      }
+      /* View mode — fields look read-only until pencil unlocks edit */
+      .fin-form-card.is-view .form-input,
+      .fin-form-card.is-view .form-select,
+      .fin-form-card.is-view .form-textarea {
+        background: transparent;
+        border-color: transparent;
+        box-shadow: none;
+        color: #111827;
+        cursor: default;
+        padding-left: 0;
+        padding-right: 0;
+        pointer-events: none;
+        -webkit-appearance: none;
+        appearance: none;
+      }
+      .fin-form-card.is-view .form-select {
+        background-image: none;
+      }
+      .fin-form-card.is-view .status-pill {
+        pointer-events: none;
+        cursor: default;
+      }
+      .fin-form-card.is-view .status-pill:not(.is-on) {
+        opacity: 0.45;
+      }
+      .fin-form-card.is-view #formSubmitBtn {
+        display: none;
+      }
+      .fin-form-card.is-view #formCancelBtn {
+        min-width: 110px;
+      }
+      .fin-form-section {
+        margin-bottom: 0;
+      }
+      .fin-form-section-label {
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: #9ca3af;
+        margin: 0 0 12px;
+      }
+      .fin-form-footer {
+        padding: 14px 24px;
+        border-top: 1px solid #f3f4f6;
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        background: #fafafa;
+      }
+      .fin-form-footer .btn {
+        border-radius: 10px;
+        min-width: 110px;
+        justify-content: center;
+      }
+      #formSubmitBtn.is-saved {
+        background: #059669;
+        border-color: #059669;
+        pointer-events: none;
+      }
+      #formSubmitBtn.is-saved:hover {
+        background: #047857;
+      }
+      .status-pills {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .status-pill {
+        appearance: none;
+        border: 1.5px solid #e5e7eb;
+        background: #fff;
+        color: #374151;
+        border-radius: 999px;
+        padding: 7px 14px;
+        font-size: 0.8rem;
+        font-weight: 650;
+        cursor: pointer;
+        font-family: inherit;
+      }
+      .status-pill.is-on {
+        border-color: #d21725;
+        background: #fff5f5;
+        color: #b91c1c;
+      }
+      .status-pill[data-status="active"].is-on {
+        border-color: #059669;
+        background: #ecfdf5;
+        color: #047857;
+      }
+      .status-pill[data-status="expired"].is-on {
+        border-color: #9ca3af;
+        background: #f3f4f6;
+        color: #374151;
+      }
+      #editStatusRow {
+        display: none;
+      }
+      .fin-form-card.is-edit #editStatusRow {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      /* filter tabs */
+      .filter-bar {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 16px;
+      }
+      .filter-chip {
+        padding: 5px 14px;
+        border-radius: 8px;
+        border: 1.5px solid #e5e7eb;
+        background: #fff;
+        font-size: 0.78rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .filter-chip.active {
+        background: var(--accent);
+        color: #fff;
+        border-color: var(--accent);
+      }
+      /* table */
+      .ct-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.88rem;
+        background: #fff;
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid #e5e7eb;
+      }
+      .ct-table th {
+        background: #f9fafb;
+        padding: 10px 14px;
+        text-align: left;
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: #9ca3af;
+        border-bottom: 1.5px solid #e5e7eb;
+      }
+      .ct-table td {
+        padding: 12px 14px;
+        border-bottom: 1px solid #f3f4f6;
+        vertical-align: middle;
+      }
+      .ct-table tr:last-child td {
+        border-bottom: none;
+      }
+      .ct-table tr:hover td {
+        background: #fafafa;
+      }
+      .ct-table tr.ct-row-clickable {
+        cursor: pointer;
+      }
+      .ct-table tr.ct-row-clickable:hover td {
+        background: #fff5f5;
+      }
+      .ct-id-link {
+        color: var(--accent);
+        font-weight: 700;
+        font-size: 0.78rem;
+      }
+      .ct-table tr.ct-row-clickable:hover .ct-id-link {
+        text-decoration: underline;
+      }
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 3px 10px;
+        border-radius: 999px;
+        font-size: 0.7rem;
+        font-weight: 700;
+      }
+      .badge-active {
+        background: #d1fae5;
+        color: #065f46;
+      }
+      .badge-expired {
+        background: #f3f4f6;
+        color: #374151;
+      }
+      .badge-cancelled {
+        background: #fee2e2;
+        color: #dc2626;
+      }
+      .badge-quarterly {
+        background: #dbeafe;
+        color: #1d4ed8;
+      }
+      .badge-semi_annual {
+        background: #e0e7ff;
+        color: #3730a3;
+      }
+      .badge-annual {
+        background: #fef3c7;
+        color: #92400e;
+      }
+      .badge-monthly {
+        background: #f0fdf4;
+        color: #16a34a;
+      }
+      .badge-one_time {
+        background: #f3f4f6;
+        color: #374151;
+      }
+      /* modal */
+      .modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+      .modal-overlay.open {
+        display: flex;
+      }
+      .modal-box {
+        background: #fff;
+        border-radius: 14px;
+        width: 100%;
+        max-width: 560px;
+        max-height: 90vh;
+        overflow-y: auto;
+      }
+      .modal-header {
+        padding: 20px 24px;
+        border-bottom: 1px solid #e5e7eb;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .modal-header h2 {
+        font-size: 1.05rem;
+        font-weight: 800;
+        margin: 0;
+      }
+      .modal-close {
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: #9ca3af;
+        font-size: 1.4rem;
+      }
+      .modal-body {
+        padding: 22px 24px;
+      }
+      .modal-footer {
+        padding: 14px 24px;
+        border-top: 1px solid #e5e7eb;
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+      }
+      .form-row {
+        margin-bottom: 0;
+      }
+      .form-label {
+        display: block;
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 5px;
+      }
+      .form-input,
+      .form-select,
+      .form-textarea {
+        width: 100%;
+        border: 1.5px solid #d1d5db;
+        border-radius: 8px;
+        padding: 9px 11px;
+        font-size: 0.88rem;
+        box-sizing: border-box;
+        font-family: inherit;
+        background: #fff;
+      }
+      #f-notes.form-textarea {
+        min-height: 0;
+        line-height: 1.5;
+        resize: vertical;
+        padding: 10px 12px;
+        overflow: hidden;
+        field-sizing: content;
+      }
+      .fin-form-card.is-view #f-notes.form-textarea {
+        resize: none;
+        overflow: hidden;
+        min-height: 0;
+        padding: 0;
+        white-space: pre-wrap;
+      }
+      .fin-form-card.is-view .fin-form-notes-panel {
+        background: transparent;
+        border: none;
+        border-radius: 0;
+        padding: 4px 0 0;
+        gap: 8px;
+      }
+      .fin-form-card:not(.is-view) #f-notes.form-textarea {
+        min-height: 110px;
+        overflow-y: auto;
+      }
+      .form-input:focus,
+      .form-select:focus,
+      .form-textarea:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(210, 23, 37, 0.1);
+      }
+      .form-2col {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      .fin-form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        align-items: stretch;
+      }
+      .fin-form-panel {
+        background: #f9fafb;
+        border: 1px solid #eef0f3;
+        border-radius: 14px;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        min-height: 100%;
+      }
+      .fin-form-panel .fin-form-section-label {
+        margin-bottom: 0;
+      }
+      .fin-form-panel-fields {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        flex: 1;
+      }
+      .fin-form-span {
+        grid-column: 1 / -1;
+      }
+      .fin-form-notes-panel {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .fin-form-status-row {
+        margin-top: auto;
+        padding-top: 12px;
+        border-top: 1px solid #e5e7eb;
+      }
+      @media (max-width: 720px) {
+        .fin-form-card {
+          max-width: 100%;
+        }
+        .fin-form-grid,
+        .form-2col {
+          grid-template-columns: 1fr;
+        }
+      }
+      .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #9ca3af;
+      }
+      .import-panel {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+        padding: 14px 16px;
+        margin-bottom: 18px;
+        border: 1.5px dashed #f0a8ae;
+        border-radius: 10px;
+        background: #fff5f5;
+      }
+      .import-panel strong {
+        display: block;
+        font-size: 0.88rem;
+        color: #1f2937;
+        margin-bottom: 2px;
+      }
+      .import-panel p {
+        margin: 0;
+        font-size: 0.78rem;
+        color: #6b7280;
+        line-height: 1.4;
+      }
+      .import-panel-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .or-divider {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin: 0 0 16px;
+        color: #9ca3af;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      .or-divider::before,
+      .or-divider::after {
+        content: "";
+        flex: 1;
+        height: 1px;
+        background: #e5e7eb;
+      }
 
-    function fmtDate(d) { return d ? new Date(d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : '—'; }
-    function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+      /* Finance sidebar: ensure red bg visible on dochub layout */
+      body.has-main-nav.dochub-page-v2 {
+        height: auto !important;
+        min-height: 100dvh !important;
+        overflow-y: auto !important;
+        --sb-bg: #d21725 !important;
+      }
+      body.has-main-nav.dochub-page-v2 .dh-sidebar {
+        background: #d21725 !important;
+      }
+      body.has-main-nav.dochub-page-v2 .dh-main {
+        overflow-y: auto;
+      }
+    </style>
+  </head>
+  <body class="has-main-nav dochub-page-v2">
+    {% set active_page = 'finance' %} {% include 'partials/main_navbar.html'
+    with context %}
 
-    document.addEventListener('DOMContentLoaded', loadContracts);
-  </script>
-    </div>{# /dh-main #}
-  </div>{# /dh-page-root #}
-  <script src="{{ url_for('static', filename='api-client.js') }}"></script>
-  <script src="{{ url_for('static', filename='mobile_utils.js') }}" defer></script>
-  <script src="{{ url_for('static', filename='js/dashboard.js') }}" defer></script>
-</body>
+    <button
+      type="button"
+      class="dh-sidebar-toggle"
+      id="finSidebarToggle"
+      onclick="document.getElementById('finSidebar').classList.toggle('open')"
+      aria-label="Open Finance menu"
+      title="Menu"
+    >
+      ☰
+    </button>
+
+    <div class="dh-page-root">
+      {% include 'partials/finance_sidebar.html' with context %}
+
+      <div class="dh-main">
+        <div class="fin-wrap">
+          <a
+            href="/dashboard"
+            style="
+              color: var(--accent);
+              text-decoration: none;
+              font-size: 0.82rem;
+            "
+            >← Dashboard</a
+          >
+          <h1 style="font-size: 1.5rem; font-weight: 800; margin: 6px 0 4px">
+            Finance — Contracts
+          </h1>
+          <p style="color: #6b7280; font-size: 0.88rem; margin-bottom: 20px">
+            Manage AMC and service contracts.
+          </p>
+
+          <nav class="fin-nav">
+            <a href="/finance/">Overview</a>
+            <a href="/finance/contracts" class="active">Contracts</a>
+            <a href="/finance/reports">Monthly Reports</a>
+          </nav>
+
+          <div class="topbar">
+            <div class="filter-bar">
+              <button
+                class="filter-chip active"
+                onclick="setFilter(this, 'active')"
+              >
+                Active
+              </button>
+              <button class="filter-chip" onclick="setFilter(this, 'expired')">
+                Expired
+              </button>
+              <button class="filter-chip" onclick="setFilter(this, '')">
+                All
+              </button>
+            </div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center">
+              <button
+                type="button"
+                class="btn btn-outline"
+                id="downloadTemplateBtn"
+                onclick="downloadContractTemplate()"
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"
+                  />
+                </svg>
+                Download Template
+              </button>
+              <button
+                type="button"
+                class="btn btn-outline"
+                id="importExcelBtn"
+                onclick="triggerContractImport()"
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 4v12m0-12l-4 4m4-4l4 4"
+                  />
+                </svg>
+                Import Excel
+              </button>
+              <button class="btn btn-primary" onclick="openModal()">
+                <svg
+                  width="14"
+                  height="14"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M12 4v16m8-8H4"
+                  />
+                </svg>
+                Add Contract
+              </button>
+            </div>
+            <input
+              type="file"
+              id="contractImportFile"
+              accept=".xlsx,.xls"
+              style="display: none"
+              onchange="onContractImportFile(event)"
+            />
+          </div>
+
+          <div id="contractsTable">
+            <div style="text-align: center; padding: 40px; color: #9ca3af">
+              Loading…
+            </div>
+          </div>
+        </div>
+
+        <!-- Add / Edit Contract Modal -->
+        <div class="modal-overlay fin-form-overlay" id="addModal">
+          <div class="fin-form-card" id="contractFormCard">
+            <div class="fin-form-hero">
+              <div class="fin-form-hero-top">
+                <div>
+                  <div class="fin-form-kicker" id="formKicker">New contract</div>
+                  <h2 class="fin-form-title" id="formTitle">Add Contract</h2>
+                  <p class="fin-form-sub" id="formSub">
+                    Create an AMC or service contract, or import several from Excel.
+                  </p>
+                  <div class="fin-form-id-chip" id="formIdChip">—</div>
+                </div>
+                <div class="fin-form-hero-actions">
+                  <button
+                    type="button"
+                    class="fin-form-icon-btn fin-form-edit-btn"
+                    id="formEditBtn"
+                    onclick="enableContractEditing()"
+                    title="Edit contract"
+                    aria-label="Edit contract"
+                  >
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16.862 3.487a2.25 2.25 0 113.182 3.182L8.25 18.463 3 19.5l1.037-5.25L16.862 3.487z"/>
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    class="fin-form-close-btn"
+                    onclick="closeModal()"
+                    aria-label="Close"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="fin-form-body">
+              <div class="import-panel">
+                <div>
+                  <strong>Import from Excel</strong>
+                  <p>
+                    Upload the contracts template to add multiple contracts at
+                    once.
+                  </p>
+                </div>
+                <div class="import-panel-actions">
+                  <button
+                    type="button"
+                    class="btn btn-outline"
+                    onclick="downloadContractTemplate()"
+                  >
+                    Template
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-outline"
+                    onclick="triggerContractImport()"
+                  >
+                    Import Excel
+                  </button>
+                </div>
+              </div>
+              <div class="or-divider">or add manually</div>
+
+              <div class="fin-form-grid">
+                <div class="fin-form-panel">
+                  <div class="fin-form-section-label">Project &amp; site</div>
+                  <div class="fin-form-panel-fields">
+                    <div class="form-row">
+                      <label class="form-label">Project Name *</label>
+                      <input
+                        type="text"
+                        class="form-input"
+                        id="f-client"
+                        placeholder="e.g. Corniche Plaza MEP"
+                      />
+                    </div>
+                    <div class="form-row">
+                      <label class="form-label">Property / Location</label>
+                      <input
+                        type="text"
+                        class="form-input"
+                        id="f-property"
+                        placeholder="Building / site — Emirate"
+                      />
+                    </div>
+                    <div class="form-2col">
+                      <div class="form-row">
+                        <label class="form-label">Account Handler</label>
+                        <input
+                          type="text"
+                          class="form-input"
+                          id="f-handler"
+                          placeholder="Injaaz staff name"
+                        />
+                      </div>
+                      <div class="form-row">
+                        <label class="form-label">Service Type</label>
+                        <input
+                          type="text"
+                          class="form-input"
+                          id="f-service"
+                          placeholder="e.g. HVAC AMC"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="fin-form-panel">
+                  <div class="fin-form-section-label">Terms</div>
+                  <div class="fin-form-panel-fields">
+                    <div class="form-row">
+                      <label class="form-label">Contract Type *</label>
+                      <select class="form-select" id="f-type">
+                        {% for ct in contract_types %}
+                        <option value="{{ ct }}">
+                          {{ contract_type_labels[ct] }}
+                        </option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    <div class="form-2col">
+                      <div class="form-row">
+                        <label class="form-label">Start Date *</label>
+                        <input type="date" class="form-input" id="f-start" />
+                      </div>
+                      <div class="form-row">
+                        <label class="form-label">End Date *</label>
+                        <input type="date" class="form-input" id="f-end" />
+                      </div>
+                    </div>
+                    <div class="form-2col">
+                      <div class="form-row">
+                        <label class="form-label">Contract Value (AED)</label>
+                        <input
+                          type="number"
+                          class="form-input"
+                          id="f-value"
+                          min="0"
+                          step="0.01"
+                          placeholder="0.00"
+                        />
+                      </div>
+                      <div class="form-row">
+                        <label class="form-label">Billing Day</label>
+                        <input
+                          type="number"
+                          class="form-input"
+                          id="f-billing"
+                          value="29"
+                          min="1"
+                          max="31"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div class="fin-form-status-row" id="editStatusRow">
+                    <div class="fin-form-section-label">Status</div>
+                    <div class="status-pills" id="statusPills">
+                      <button
+                        type="button"
+                        class="status-pill"
+                        data-status="active"
+                        onclick="setEditStatus('active')"
+                      >
+                        Active
+                      </button>
+                      <button
+                        type="button"
+                        class="status-pill"
+                        data-status="expired"
+                        onclick="setEditStatus('expired')"
+                      >
+                        Expired
+                      </button>
+                      <button
+                        type="button"
+                        class="status-pill"
+                        data-status="cancelled"
+                        onclick="setEditStatus('cancelled')"
+                      >
+                        Cancelled
+                      </button>
+                    </div>
+                    <input type="hidden" id="f-status" value="active" />
+                  </div>
+                </div>
+
+                <div class="fin-form-notes-panel fin-form-span">
+                  <div class="fin-form-section-label">Notes</div>
+                  <textarea
+                    class="form-input form-textarea"
+                    id="f-notes"
+                    rows="3"
+                    placeholder="Payment method, special terms…"
+                    oninput="autoSizeNotes()"
+                  ></textarea>
+                </div>
+              </div>
+            </div>
+            <div class="fin-form-footer">
+              <button
+                type="button"
+                class="btn btn-outline"
+                id="formCancelBtn"
+                onclick="closeModal()"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                class="btn btn-primary"
+                id="formSubmitBtn"
+                onclick="submitContract()"
+              >
+                Add Contract
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- App result dialog (success / error / info) -->
+        <div
+          class="modal-overlay fin-dialog-overlay"
+          id="appAlertModal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="appAlertTitle"
+        >
+          <div class="fin-result-card is-success" id="appAlertCard">
+            <button
+              type="button"
+              class="fin-result-close"
+              onclick="closeAppAlert()"
+              aria-label="Close"
+            >
+              ×
+            </button>
+            <div class="fin-result-icon" id="appAlertIcon" aria-hidden="true">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2.5"
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+            </div>
+            <h2 class="fin-result-title" id="appAlertTitle">Import complete</h2>
+            <div class="fin-result-stat" id="appAlertStat"></div>
+            <p class="fin-result-msg" id="appAlertMessage"></p>
+            <div class="fin-result-details" id="appAlertDetails"></div>
+            <div class="fin-result-actions">
+              <button
+                type="button"
+                class="btn btn-primary"
+                id="appAlertOkBtn"
+                onclick="closeAppAlert()"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Delete confirmation dialog -->
+        <div
+          class="modal-overlay fin-dialog-overlay"
+          id="deleteConfirmModal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="deleteConfirmTitle"
+        >
+          <div class="fin-confirm-card">
+            <button
+              type="button"
+              class="fin-result-close"
+              onclick="closeDeleteConfirm()"
+              aria-label="Close"
+            >
+              ×
+            </button>
+            <div class="fin-confirm-icon" aria-hidden="true">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3m-7 0h8M4 7h16"
+                />
+              </svg>
+            </div>
+            <h2 class="fin-confirm-title" id="deleteConfirmTitle">
+              Delete contract
+            </h2>
+            <p class="fin-confirm-msg" id="deleteConfirmMessage">
+              Delete this contract? This cannot be undone.
+            </p>
+            <div class="fin-confirm-actions">
+              <button
+                type="button"
+                class="btn btn-outline"
+                onclick="closeDeleteConfirm()"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                class="btn btn-danger"
+                id="deleteConfirmBtn"
+                onclick="confirmDeleteContract()"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <script src="{{ url_for('static', filename='api-client.js') }}"></script>
+        <script>
+          let currentFilter = "active";
+          let pendingDeleteId = null;
+          let appAlertResolver = null;
+          let contractsById = {};
+          let editingContractId = null;
+
+          function showAppAlert(message, title, type) {
+            const modal = document.getElementById("appAlertModal");
+            const card = document.getElementById("appAlertCard");
+            const titleEl = document.getElementById("appAlertTitle");
+            const msgEl = document.getElementById("appAlertMessage");
+            const statEl = document.getElementById("appAlertStat");
+            const detailsEl = document.getElementById("appAlertDetails");
+            const iconEl = document.getElementById("appAlertIcon");
+            const okBtn = document.getElementById("appAlertOkBtn");
+
+            const kind =
+              type ||
+              (title && /fail|error/i.test(title)
+                ? "error"
+                : title && /complete|success|imported/i.test(title)
+                  ? "success"
+                  : "info");
+
+            if (card) {
+              card.classList.remove("is-success", "is-error", "is-info");
+              card.classList.add("is-" + kind);
+            }
+
+            const icons = {
+              success:
+                '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>',
+              error:
+                '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 6l12 12M18 6L6 18"/></svg>',
+              info:
+                '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M12 22a10 10 0 100-20 10 10 0 000 20z"/></svg>',
+            };
+            if (iconEl) iconEl.innerHTML = icons[kind] || icons.info;
+
+            const raw = String(message || "");
+            const parts = raw.split(/\n\n/);
+            const mainLine = (parts[0] || "").trim();
+            const detailText = parts.slice(1).join("\n\n").trim();
+            const countMatch = mainLine.match(/^(\d+)\s+contract/i);
+
+            if (titleEl) {
+              titleEl.textContent =
+                title ||
+                (kind === "success"
+                  ? "Success"
+                  : kind === "error"
+                    ? "Something went wrong"
+                    : "Notice");
+            }
+
+            if (statEl) {
+              if (kind === "success" && countMatch) {
+                statEl.textContent = countMatch[1];
+                statEl.classList.add("is-visible");
+                if (msgEl) {
+                  msgEl.textContent =
+                    Number(countMatch[1]) === 1
+                      ? "contract imported successfully"
+                      : "contracts imported successfully";
+                }
+              } else {
+                statEl.textContent = "";
+                statEl.classList.remove("is-visible");
+                if (msgEl) msgEl.textContent = mainLine;
+              }
+            } else if (msgEl) {
+              msgEl.textContent = mainLine;
+            }
+
+            if (detailsEl) {
+              if (detailText) {
+                detailsEl.textContent = detailText;
+                detailsEl.classList.add("is-visible");
+              } else {
+                detailsEl.textContent = "";
+                detailsEl.classList.remove("is-visible");
+              }
+            }
+
+            if (okBtn) {
+              okBtn.textContent = kind === "success" ? "Done" : "OK";
+            }
+
+            if (modal) modal.classList.add("open");
+            return new Promise((resolve) => {
+              appAlertResolver = resolve;
+            });
+          }
+
+          function closeAppAlert() {
+            const modal = document.getElementById("appAlertModal");
+            if (modal) modal.classList.remove("open");
+            if (appAlertResolver) {
+              const resolve = appAlertResolver;
+              appAlertResolver = null;
+              resolve();
+            }
+          }
+
+          function openDeleteConfirm(id, clientName, contractId) {
+            pendingDeleteId = id;
+            const msg = document.getElementById("deleteConfirmMessage");
+            if (msg) {
+              msg.innerHTML =
+                "Delete contract <strong>" +
+                escHtml(contractId || "") +
+                "</strong>" +
+                (clientName
+                  ? " for <strong>" + escHtml(clientName) + "</strong>"
+                  : "") +
+                "? This cannot be undone.";
+            }
+            const btn = document.getElementById("deleteConfirmBtn");
+            if (btn) {
+              btn.disabled = false;
+              btn.textContent = "Delete";
+            }
+            document.getElementById("deleteConfirmModal").classList.add("open");
+          }
+
+          function closeDeleteConfirm() {
+            pendingDeleteId = null;
+            const modal = document.getElementById("deleteConfirmModal");
+            if (modal) modal.classList.remove("open");
+          }
+
+          async function confirmDeleteContract() {
+            if (!pendingDeleteId) return;
+            const id = pendingDeleteId;
+            const btn = document.getElementById("deleteConfirmBtn");
+            if (btn) {
+              btn.disabled = true;
+              btn.textContent = "Deleting…";
+            }
+            try {
+              const res = await ApiClient.fetch(
+                `/finance/api/contracts/${id}`,
+                { method: "DELETE" },
+              );
+              const data = await res.json().catch(() => ({}));
+              if (!res.ok) throw new Error(data.error || "Failed to delete");
+              closeDeleteConfirm();
+              loadContracts();
+            } catch (e) {
+              if (btn) {
+                btn.disabled = false;
+                btn.textContent = "Delete";
+              }
+              await showAppAlert(e.message || "Failed to delete.", "Error", "error");
+            }
+          }
+
+          async function downloadContractTemplate() {
+            const btn = document.getElementById("downloadTemplateBtn");
+            if (btn) btn.disabled = true;
+            try {
+              const res = await ApiClient.fetch(
+                "/finance/api/contracts/template",
+                { method: "GET" },
+              );
+              if (!res.ok) throw new Error("Could not download template");
+              const blob = await res.blob();
+              const a = document.createElement("a");
+              a.href = URL.createObjectURL(blob);
+              a.download = "finance_contracts_sample_template.xlsx";
+              document.body.appendChild(a);
+              a.click();
+              a.remove();
+              URL.revokeObjectURL(a.href);
+            } catch (err) {
+              await showAppAlert(
+                err.message || "Could not download template.",
+                "Error",
+                "error",
+              );
+            } finally {
+              if (btn) btn.disabled = false;
+            }
+          }
+
+          function triggerContractImport() {
+            const input = document.getElementById("contractImportFile");
+            if (input) {
+              input.value = "";
+              input.click();
+            }
+          }
+
+          async function onContractImportFile(event) {
+            const file = event.target.files && event.target.files[0];
+            if (!file) return;
+            const btn = document.getElementById("importExcelBtn");
+            if (btn) btn.disabled = true;
+            try {
+              const fd = new FormData();
+              fd.append("file", file);
+              const res = await ApiClient.fetch(
+                "/finance/api/contracts/import-excel",
+                { method: "POST", body: fd },
+              );
+              const data = await res.json().catch(() => ({}));
+              if (!res.ok || data.success === false) {
+                let msg = data.error || "Import failed";
+                if (data.errors && data.errors.length) {
+                  msg += "\n\n" + data.errors.slice(0, 8).join("\n");
+                }
+                throw new Error(msg);
+              }
+              let msg = (data.created || 0) + " contract(s) imported.";
+              if (data.errors && data.errors.length) {
+                msg +=
+                  "\n\nSome rows were skipped:\n" +
+                  data.errors.slice(0, 8).join("\n");
+              }
+              await showAppAlert(msg, "Import complete", "success");
+              closeModal();
+              loadContracts();
+            } catch (err) {
+              await showAppAlert(
+                err.message || "Import failed.",
+                "Import failed",
+                "error",
+              );
+            } finally {
+              if (btn) btn.disabled = false;
+              event.target.value = "";
+            }
+          }
+
+          function setFilter(el, filter) {
+            currentFilter = filter;
+            document
+              .querySelectorAll(".filter-chip")
+              .forEach((c) => c.classList.remove("active"));
+            el.classList.add("active");
+            loadContracts();
+          }
+
+          let _finContractDefaults = {
+            default_billing_day: 29,
+            default_contract_type: "monthly",
+          };
+
+          async function loadFinanceDefaults() {
+            try {
+              const res = await ApiClient.fetch("/finance/api/settings", {
+                method: "GET",
+              });
+              const data = await res.json().catch(() => ({}));
+              if (res.ok && data.settings) {
+                _finContractDefaults = {
+                  default_billing_day:
+                    data.settings.default_billing_day || 29,
+                  default_contract_type:
+                    data.settings.default_contract_type || "monthly",
+                };
+              }
+            } catch (_) {
+              /* keep defaults */
+            }
+          }
+
+          async function loadContracts() {
+            try {
+              const url = `/finance/api/contracts${currentFilter ? "?status=" + currentFilter : ""}`;
+              const res = await ApiClient.fetch(url, { method: "GET" });
+              const data = await res.json();
+              if (!res.ok) throw new Error(data.error || "Failed to load");
+              renderTable(data.contracts || []);
+            } catch (e) {
+              document.getElementById("contractsTable").innerHTML =
+                '<div style="text-align:center;padding:40px;color:#9ca3af;">Failed to load.</div>';
+            }
+          }
+
+          function renderTable(contracts) {
+            const el = document.getElementById("contractsTable");
+            contractsById = {};
+            (contracts || []).forEach((c) => {
+              contractsById[c.id] = c;
+            });
+            if (!contracts.length) {
+              el.innerHTML =
+                '<div class="empty-state"><h3>No contracts found</h3><p>Add your first contract above.</p></div>';
+              return;
+            }
+            const typeColors = {
+              quarterly: "badge-quarterly",
+              semi_annual: "badge-semi_annual",
+              annual: "badge-annual",
+              monthly: "badge-monthly",
+              one_time: "badge-one_time",
+            };
+            const typeLabels = {
+              quarterly: "Quarterly",
+              semi_annual: "Semi-Annual",
+              annual: "Annual",
+              monthly: "Monthly",
+              one_time: "One-Time",
+            };
+            el.innerHTML = `<table class="ct-table">
+ <thead><tr><th>ID</th><th>Project Name</th><th>Property / Location</th><th>Type</th><th>Period</th><th>Value (AED)</th><th>Status</th><th></th></tr></thead>
+ <tbody>${contracts
+   .map(
+     (c) => `<tr class="ct-row-clickable" data-edit-id="${c.id}" title="Click to edit">
+ <td><span class="ct-id-link">${escHtml(c.contract_id)}</span></td>
+ <td style="font-weight:600;">${escHtml(c.project_name || c.client_name)}</td>
+ <td style="color:#6b7280;">${escHtml(c.property_name || "—")}</td>
+ <td><span class="badge ${typeColors[c.contract_type] || ""}">${typeLabels[c.contract_type] || c.contract_type}</span></td>
+ <td style="font-size:.8rem;color:#374151;">${fmtDate(c.start_date)} → ${fmtDate(c.end_date)}</td>
+ <td>${c.contract_value ? "AED " + Number(c.contract_value).toLocaleString("en-AE", { minimumFractionDigits: 2 }) : "—"}</td>
+ <td><span class="badge ${c.status === "active" ? "badge-active" : c.status === "expired" ? "badge-expired" : "badge-cancelled"}">${escHtml(c.status)}</span></td>
+ <td>
+ <div class="row-actions" data-stop-row-edit="1">
+ <button type="button" class="btn btn-outline btn-sm" onclick="toggleStatus(${c.id}, '${escHtml(c.status)}')">${c.status === "active" ? "Expire" : "Activate"}</button>
+ <button type="button" class="btn-icon-danger" title="Delete contract" aria-label="Delete contract" data-id="${c.id}" data-client="${escAttr(c.project_name || c.client_name)}" data-cid="${escAttr(c.contract_id)}" onclick="askDeleteContract(this)">
+ <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 6l12 12M18 6L6 18"/></svg>
+ </button>
+ </div>
+ </td>
+ </tr>`,
+   )
+   .join("")}</tbody>
+ </table>`;
+
+            el.querySelectorAll("tr.ct-row-clickable").forEach((row) => {
+              row.addEventListener("click", function (e) {
+                if (e.target.closest("[data-stop-row-edit]")) return;
+                const id = Number(row.getAttribute("data-edit-id"));
+                if (id) openEditModal(id);
+              });
+            });
+          }
+
+          function toInputDate(value) {
+            if (!value) return "";
+            const s = String(value);
+            if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+            const d = new Date(s);
+            if (Number.isNaN(d.getTime())) return "";
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, "0");
+            const dd = String(d.getDate()).padStart(2, "0");
+            return `${yyyy}-${mm}-${dd}`;
+          }
+
+          function setEditStatus(status) {
+            const input = document.getElementById("f-status");
+            if (input) input.value = status || "active";
+            document.querySelectorAll("#statusPills .status-pill").forEach((btn) => {
+              btn.classList.toggle(
+                "is-on",
+                btn.getAttribute("data-status") === status,
+              );
+            });
+          }
+
+          function autoSizeNotes() {
+            const el = document.getElementById("f-notes");
+            if (!el) return;
+            el.style.height = "auto";
+            const minH =
+              document
+                .getElementById("contractFormCard")
+                ?.classList.contains("is-view")
+                ? 0
+                : 110;
+            el.style.height = Math.max(minH, el.scrollHeight) + "px";
+          }
+
+          function setFormEditable(editable) {
+            const card = document.getElementById("contractFormCard");
+            const fields = [
+              "f-client",
+              "f-property",
+              "f-handler",
+              "f-service",
+              "f-type",
+              "f-start",
+              "f-end",
+              "f-value",
+              "f-billing",
+              "f-notes",
+            ];
+            fields.forEach((id) => {
+              const el = document.getElementById(id);
+              if (!el) return;
+              if (el.tagName === "SELECT") {
+                el.disabled = !editable;
+              } else {
+                el.readOnly = !editable;
+              }
+            });
+            document.querySelectorAll("#statusPills .status-pill").forEach((btn) => {
+              btn.disabled = !editable;
+            });
+            if (card) {
+              card.classList.toggle("is-view", !editable && !!editingContractId);
+            }
+            const editBtn = document.getElementById("formEditBtn");
+            if (editBtn) {
+              editBtn.classList.toggle("is-active", !!editable && !!editingContractId);
+              editBtn.title = editable ? "Editing" : "Edit contract";
+              editBtn.setAttribute(
+                "aria-label",
+                editable ? "Editing" : "Edit contract",
+              );
+            }
+            const cancelBtn = document.getElementById("formCancelBtn");
+            if (cancelBtn) {
+              cancelBtn.textContent =
+                !editable && editingContractId ? "Close" : "Cancel";
+            }
+            if (editable && editingContractId) {
+              document.getElementById("formKicker").textContent = "Edit contract";
+              document.getElementById("formSub").textContent =
+                "Update contract details, value, dates, or status.";
+              document.getElementById("formSubmitBtn").textContent =
+                "Save changes";
+            } else if (editingContractId) {
+              document.getElementById("formKicker").textContent = "Contract details";
+              document.getElementById("formSub").textContent =
+                "View contract details. Click the pencil to make changes.";
+            }
+            requestAnimationFrame(autoSizeNotes);
+          }
+
+          function enableContractEditing() {
+            if (!editingContractId) return;
+            setFormEditable(true);
+            const first = document.getElementById("f-client");
+            if (first) first.focus();
+          }
+
+          function resetContractForm() {
+            editingContractId = null;
+            const card = document.getElementById("contractFormCard");
+            if (card) {
+              card.classList.remove("is-edit", "is-view");
+            }
+            document.getElementById("formKicker").textContent = "New contract";
+            document.getElementById("formTitle").textContent = "Add Contract";
+            document.getElementById("formSub").textContent =
+              "Create an AMC or service contract, or import several from Excel.";
+            document.getElementById("formIdChip").textContent = "—";
+            document.getElementById("formSubmitBtn").textContent = "Add Contract";
+            document.getElementById("f-client").value = "";
+            document.getElementById("f-property").value = "";
+            document.getElementById("f-handler").value = "";
+            document.getElementById("f-service").value = "";
+            document.getElementById("f-type").value =
+              (_finContractDefaults &&
+                _finContractDefaults.default_contract_type) ||
+              "monthly";
+            document.getElementById("f-start").value = "";
+            document.getElementById("f-end").value = "";
+            document.getElementById("f-value").value = "";
+            document.getElementById("f-billing").value = String(
+              (_finContractDefaults &&
+                _finContractDefaults.default_billing_day) ||
+                29,
+            );
+            document.getElementById("f-notes").value = "";
+            const notesEl = document.getElementById("f-notes");
+            if (notesEl) notesEl.style.height = "";
+            setEditStatus("active");
+            setFormEditable(true);
+          }
+
+          function openEditModal(id) {
+            const c = contractsById[id];
+            if (!c) return;
+            editingContractId = c.id;
+            const card = document.getElementById("contractFormCard");
+            if (card) card.classList.add("is-edit");
+            document.getElementById("formTitle").textContent =
+              c.project_name || c.client_name || "Contract";
+            document.getElementById("formIdChip").textContent =
+              c.contract_id || "—";
+            document.getElementById("formSubmitBtn").textContent =
+              "Save changes";
+            document.getElementById("f-client").value =
+              c.project_name || c.client_name || "";
+            document.getElementById("f-property").value = c.property_name || "";
+            document.getElementById("f-handler").value = c.account_handler || "";
+            document.getElementById("f-service").value = c.service_type || "";
+            document.getElementById("f-type").value =
+              c.contract_type || "monthly";
+            document.getElementById("f-start").value = toInputDate(c.start_date);
+            document.getElementById("f-end").value = toInputDate(c.end_date);
+            document.getElementById("f-value").value =
+              c.contract_value != null ? c.contract_value : "";
+            document.getElementById("f-billing").value = c.billing_day || 29;
+            document.getElementById("f-notes").value = c.notes || "";
+            setEditStatus(c.status || "active");
+            setFormEditable(false);
+            document.getElementById("addModal").classList.add("open");
+            requestAnimationFrame(autoSizeNotes);
+          }
+
+          function askDeleteContract(btn) {
+            const id = Number(btn.getAttribute("data-id"));
+            if (!id) return;
+            openDeleteConfirm(
+              id,
+              btn.getAttribute("data-client") || "",
+              btn.getAttribute("data-cid") || "",
+            );
+          }
+
+          async function toggleStatus(id, currentStatus) {
+            const newStatus = currentStatus === "active" ? "expired" : "active";
+            try {
+              const res = await ApiClient.fetch(
+                `/finance/api/contracts/${id}`,
+                {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ status: newStatus }),
+                },
+              );
+              const data = await res.json().catch(() => ({}));
+              if (!res.ok) throw new Error(data.error || "Failed to update");
+              loadContracts();
+            } catch (e) {
+              await showAppAlert(e.message || "Failed to update.", "Error", "error");
+            }
+          }
+
+          function openModal() {
+            resetContractForm();
+            document.getElementById("addModal").classList.add("open");
+          }
+          function closeModal() {
+            document.getElementById("addModal").classList.remove("open");
+            editingContractId = null;
+            const card = document.getElementById("contractFormCard");
+            if (card) card.classList.remove("is-edit", "is-view");
+            setFormEditable(true);
+          }
+
+          async function submitContract() {
+            const projectName = document.getElementById("f-client").value.trim();
+            const start = document.getElementById("f-start").value;
+            const end = document.getElementById("f-end").value;
+            if (!projectName || !start || !end) {
+              await showAppAlert(
+                "Project name, start date and end date are required.",
+                "Missing fields",
+                "info",
+              );
+              return;
+            }
+            const payload = {
+              project_name: projectName,
+              client_name: projectName,
+              property_name: document
+                .getElementById("f-property")
+                .value.trim(),
+              account_handler: document
+                .getElementById("f-handler")
+                .value.trim(),
+              service_type: document.getElementById("f-service").value.trim(),
+              contract_type: document.getElementById("f-type").value,
+              start_date: start,
+              end_date: end,
+              contract_value:
+                parseFloat(document.getElementById("f-value").value) || 0,
+              billing_day:
+                parseInt(document.getElementById("f-billing").value) || 29,
+              notes: document.getElementById("f-notes").value.trim(),
+            };
+            if (editingContractId) {
+              payload.status =
+                document.getElementById("f-status").value || "active";
+            }
+
+            const btn = document.getElementById("formSubmitBtn");
+            const wasEdit = !!editingContractId;
+            if (btn) {
+              btn.disabled = true;
+              btn.classList.remove("is-saved");
+            }
+            try {
+              const url = wasEdit
+                ? `/finance/api/contracts/${editingContractId}`
+                : "/finance/api/contracts";
+              const res = await ApiClient.fetch(url, {
+                method: wasEdit ? "PATCH" : "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+              });
+              const data = await res.json().catch(() => ({}));
+              if (!res.ok) throw new Error(data.error || "Failed to save");
+
+              if (wasEdit) {
+                const saved = data.contract || {};
+                if (saved.id) {
+                  contractsById[saved.id] = {
+                    ...(contractsById[saved.id] || {}),
+                    ...saved,
+                  };
+                }
+                document.getElementById("formTitle").textContent =
+                  saved.project_name ||
+                  saved.client_name ||
+                  projectName ||
+                  "Contract";
+                document.getElementById("formIdChip").textContent =
+                  saved.contract_id ||
+                  document.getElementById("formIdChip").textContent;
+                if (btn) {
+                  btn.textContent = "Saved";
+                  btn.classList.add("is-saved");
+                  btn.disabled = true;
+                }
+                loadContracts();
+                clearTimeout(window.__finSaveHintTimer);
+                window.__finSaveHintTimer = setTimeout(() => {
+                  if (btn) {
+                    btn.classList.remove("is-saved");
+                    btn.textContent = "Save changes";
+                    btn.disabled = false;
+                  }
+                  // Turn edit mode off after the Saved hint
+                  if (editingContractId) setFormEditable(false);
+                }, 1200);
+              } else {
+                closeModal();
+                loadContracts();
+              }
+            } catch (e) {
+              await showAppAlert(e.message || "Failed to save.", "Error", "error");
+              if (btn) {
+                btn.disabled = false;
+                btn.classList.remove("is-saved");
+                btn.textContent = wasEdit ? "Save changes" : "Add Contract";
+              }
+            } finally {
+              if (btn && !wasEdit) btn.disabled = false;
+            }
+          }
+
+          function fmtDate(d) {
+            return d
+              ? new Date(d).toLocaleDateString("en-GB", {
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                })
+              : "—";
+          }
+          function escHtml(s) {
+            return String(s || "")
+              .replace(/&/g, "&amp;")
+              .replace(/</g, "&lt;")
+              .replace(/>/g, "&gt;")
+              .replace(/"/g, "&quot;");
+          }
+          function escAttr(s) {
+            return String(s || "")
+              .replace(/&/g, "&amp;")
+              .replace(/"/g, "&quot;")
+              .replace(/</g, "&lt;")
+              .replace(/>/g, "&gt;");
+          }
+
+          document.getElementById("appAlertModal").addEventListener("click", function (e) {
+            if (e.target === this) closeAppAlert();
+          });
+          document.getElementById("deleteConfirmModal").addEventListener("click", function (e) {
+            if (e.target === this) closeDeleteConfirm();
+          });
+
+          document.addEventListener("DOMContentLoaded", async () => {
+            await loadFinanceDefaults();
+            loadContracts();
+          });
+        </script>
+      </div>
+      {# /dh-main #}
+    </div>
+    {# /dh-page-root #}
+    <script src="{{ url_for('static', filename='api-client.js') }}"></script>
+    <script
+      src="{{ url_for('static', filename='mobile_utils.js') }}"
+      defer
+    ></script>
+    <script
+      src="{{ url_for('static', filename='js/dashboard.js') }}"
+      defer
+    ></script>
+  </body>
 </html>

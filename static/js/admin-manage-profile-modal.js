@@ -6,8 +6,8 @@
   'use strict';
 
   const DEFAULT_RESET_DISPLAY_PASSWORD = 'Injaaz@123';
-  const ADMIN_PROFILE_LAYOUT_KEY = 'injaaz_admin_profile_layout';
-
+  const PROTECT_UNLOCK_STORAGE_KEY = 'adminProtectUnlock';
+  const PROTECT_UNLOCK_HEADER = 'X-Admin-Protect-Unlock';
   const CFG = {
     notify: function (msg, type, persist) {
       if (msg) window.alert(msg);
@@ -20,6 +20,58 @@
     },
     reloadDirectory: async function () {},
   };
+
+  /** Session unlock token for editing protected admin accounts (30 min). */
+  const AdminProtectUnlock = {
+    STORAGE_KEY: PROTECT_UNLOCK_STORAGE_KEY,
+    HEADER: PROTECT_UNLOCK_HEADER,
+    get: function () {
+      try {
+        const raw = sessionStorage.getItem(PROTECT_UNLOCK_STORAGE_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (!parsed || !parsed.token || !parsed.expiresAt) return null;
+        if (Date.now() >= Number(parsed.expiresAt)) {
+          sessionStorage.removeItem(PROTECT_UNLOCK_STORAGE_KEY);
+          return null;
+        }
+        return parsed;
+      } catch (_) {
+        return null;
+      }
+    },
+    isValid: function () {
+      return !!AdminProtectUnlock.get();
+    },
+    save: function (token, expiresInSeconds) {
+      const exp = Date.now() + Math.max(0, Number(expiresInSeconds) || 0) * 1000;
+      sessionStorage.setItem(
+        PROTECT_UNLOCK_STORAGE_KEY,
+        JSON.stringify({ token: String(token), expiresAt: exp }),
+      );
+    },
+    clear: function () {
+      try {
+        sessionStorage.removeItem(PROTECT_UNLOCK_STORAGE_KEY);
+      } catch (_) { /* ignore */ }
+    },
+    headerValue: function () {
+      const u = AdminProtectUnlock.get();
+      return u ? u.token : '';
+    },
+  };
+  w.AdminProtectUnlock = AdminProtectUnlock;
+
+  function relockAdminProtect() {
+    AdminProtectUnlock.clear();
+    // Refresh staff badges immediately (Cancel / Save / Esc / backdrop).
+    if (typeof CFG.onProtectRelock === 'function') {
+      try {
+        CFG.onProtectRelock();
+      } catch (_) { /* ignore */ }
+    }
+  }
+  w.relockAdminProtect = relockAdminProtect;
 
   let bindingsDone = false;
   let passwordResetConfirmContext = null;
@@ -151,42 +203,54 @@
     return accessToken || '';
   }
 
+  function withAuthHeaders(options, accessToken) {
+    const headers = Object.assign({}, options.headers || {}, {
+      Authorization: 'Bearer ' + accessToken,
+    });
+    const unlock = AdminProtectUnlock.headerValue();
+    if (unlock) headers[PROTECT_UNLOCK_HEADER] = unlock;
+    return Object.assign({}, options, { headers: headers });
+  }
+
   async function profileAuthenticatedFetch(url, options = {}) {
     let accessToken = getInitialAccessToken();
     if (!accessToken) {
       return new Response(null, { status: 401 });
     }
 
-    let response = await fetch(url, {
-      ...options,
-      headers: {
-        ...options.headers,
-        Authorization: 'Bearer ' + accessToken,
-      },
-    });
+    let response = await fetch(url, withAuthHeaders(options, accessToken));
 
     if (response.status !== 401) return response;
 
     const newToken = await refreshAccessToken();
     if (!newToken) return response;
 
-    return fetch(url, {
-      ...options,
-      headers: {
-        ...options.headers,
-        Authorization: 'Bearer ' + newToken,
-      },
-    });
+    return fetch(url, withAuthHeaders(options, newToken));
   }
 
   function handleUnauthorized(response) {
-    if (!(response.status === 401 || response.status === 403)) return false;
+    // Only force re-login on auth failure; business 403s (e.g. PROTECTED_ACCOUNT) are handled by callers.
+    if (response.status !== 401) return false;
     if (typeof CFG.onUnauthorized === 'function' && CFG.onUnauthorized(response)) return true;
     CFG.notify('Access denied. Please log in again.', 'error', true);
     setTimeout(() => {
       w.location.href = '/login';
     }, 900);
     return true;
+  }
+
+  function notifyProtectedAccountError(data) {
+    if (data && data.error_code === 'PROTECTED_ACCOUNT') {
+      relockAdminProtect();
+      notify(
+        (data && (data.error || data.message)) ||
+          'Admin protect unlock expired. Enter your PIN again.',
+        'error',
+        true,
+      );
+      return true;
+    }
+    return false;
   }
 
   function notify(msg, type = 'success', persistent = false) {
@@ -268,7 +332,8 @@
     activatePortalModal(modal);
   };
 
-  w.closePasswordResetConfirmModal = function closePasswordResetConfirmModal() {
+  w.closePasswordResetConfirmModal = function closePasswordResetConfirmModal(opts) {
+    opts = opts || {};
     const modal = document.getElementById('passwordResetConfirmModal');
     if (modal) modal.classList.remove('active');
     passwordResetConfirmContext = null;
@@ -276,6 +341,7 @@
     if (!resOpen || !resOpen.classList.contains('active')) {
       document.body.style.overflow = '';
     }
+    if (!opts.keepUnlock) relockAdminProtect();
   };
 
   w.submitPasswordResetConfirm = async function submitPasswordResetConfirm() {
@@ -283,8 +349,10 @@
     if (!ctx) return;
     const uid = ctx.userId;
     const username = ctx.username;
-    closePasswordResetConfirmModal();
+    closePasswordResetConfirmModal({ keepUnlock: true });
     await runAdminPasswordReset(uid, username);
+    const res = document.getElementById('passwordResetResultModal');
+    if (!res || !res.classList.contains('active')) relockAdminProtect();
   };
 
   async function runAdminPasswordReset(userId, username) {
@@ -306,7 +374,7 @@
         const pw = data.temp_password || DEFAULT_RESET_DISPLAY_PASSWORD;
         patchDirectoryUserPassword(userId, pw);
         openPasswordResetResultModal(username, pw);
-      } else {
+      } else if (!notifyProtectedAccountError(data)) {
         notify(data.error || 'Failed to reset password', 'error');
       }
     } catch (error) {
@@ -332,6 +400,7 @@
     const modal = document.getElementById('passwordResetResultModal');
     if (modal) modal.classList.remove('active');
     document.body.style.overflow = '';
+    relockAdminProtect();
   };
 
   w.copyPasswordResetResult = function copyPasswordResetResult() {
@@ -357,68 +426,94 @@
 
   async function toggleUserActiveRemote(userId, currentStatus) {
     const action = currentStatus ? 'deactivate' : 'activate';
-    if (!confirm('Are you sure you want to ' + action + ' this user?')) return;
+    if (!confirm('Are you sure you want to ' + action + ' this user?')) {
+      relockAdminProtect();
+      return;
+    }
 
     try {
       const response = await profileAuthenticatedFetch('/api/admin/users/' + userId + '/toggle-active', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });
-      if (handleUnauthorized(response)) return;
+      if (handleUnauthorized(response)) {
+        relockAdminProtect();
+        return;
+      }
       const data = await response.json();
       if (data.success) {
         notify(data.message || 'Updated', 'success');
         await CFG.reloadDirectory();
-      } else {
+      } else if (!notifyProtectedAccountError(data)) {
         notify(data.error || 'Failed', 'error');
       }
     } catch (e) {
       console.error(e);
       notify('Error updating status', 'error');
+    } finally {
+      relockAdminProtect();
     }
   }
 
   w.profileModalResetPassword = function profileModalResetPassword() {
     const uid = parseInt(document.getElementById('profileUserId').value, 10);
     const u = directoryUsers().find(function (x) { return Number(x.id) === uid; });
-    closeUserProfileModal();
+    closeUserProfileModal({ keepUnlock: true });
     if (Number.isFinite(uid)) openPasswordResetConfirmModal(uid, u ? u.username : '');
+    else relockAdminProtect();
+  };
+
+  w.profileModalUnlockPassword = async function profileModalUnlockPassword() {
+    const uid = parseInt(document.getElementById('profileUserId').value, 10);
+    const u = directoryUsers().find(function (x) { return Number(x.id) === uid; });
+    if (!Number.isFinite(uid)) return;
+    if (!confirm('Unlock this account and issue a new temporary password?')) return;
+    try {
+      const response = await profileAuthenticatedFetch('/api/admin/users/' + uid + '/unlock-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (handleUnauthorized(response)) return;
+      const data = await response.json();
+      if (data.success) {
+        const pw = data.temp_password || DEFAULT_RESET_DISPLAY_PASSWORD;
+        patchDirectoryUserPassword(uid, pw);
+        if (u) u.password_locked = false;
+        closeUserProfileModal({ keepUnlock: true });
+        openPasswordResetResultModal(u ? u.username : '', pw);
+        const intro = document.getElementById('passwordResetResultIntro');
+        if (intro) {
+          intro.textContent = 'Password unlocked for "' + (u ? u.username : 'user')
+            + '". Share the temporary password below securely with the user.';
+        }
+        await CFG.reloadDirectory();
+      } else if (!notifyProtectedAccountError(data)) {
+        notify(data.error || data.message || 'Failed to unlock password', 'error');
+      }
+    } catch (e) {
+      console.error(e);
+      notify('Error unlocking password', 'error');
+    }
   };
 
   w.profileModalViewActivity = function profileModalViewActivity() {
     const uid = parseInt(document.getElementById('profileUserId').value, 10);
-    closeUserProfileModal();
+    closeUserProfileModal({ keepUnlock: true });
     if (Number.isFinite(uid)) openUserActivityModal(uid);
+    else relockAdminProtect();
   };
 
   w.profileModalToggleActive = async function profileModalToggleActive() {
     const uid = parseInt(document.getElementById('profileUserId').value, 10);
     const u = directoryUsers().find(function (x) { return Number(x.id) === uid; });
     if (!u || !Number.isFinite(uid)) return;
-    closeUserProfileModal();
+    closeUserProfileModal({ keepUnlock: true });
     await toggleUserActiveRemote(uid, u.is_active);
   };
 
-  function getAdminProfileLayoutMode() {
-    return localStorage.getItem(ADMIN_PROFILE_LAYOUT_KEY) || 'cards';
-  }
-
   function applyAdminProfileLayout() {
     const modal = document.getElementById('accessModal');
-    if (!modal) return;
-    const isLine = getAdminProfileLayoutMode() === 'line';
-    modal.classList.toggle('admin-profile-shell--v2', isLine);
-    const btn = document.getElementById('adminProfileLayoutToggle');
-    if (btn) {
-      btn.textContent = isLine ? 'Cards' : 'Line';
-      btn.setAttribute('aria-pressed', isLine ? 'true' : 'false');
-    }
-  }
-
-  function toggleAdminProfileLayout() {
-    const next = getAdminProfileLayoutMode() === 'line' ? 'cards' : 'line';
-    localStorage.setItem(ADMIN_PROFILE_LAYOUT_KEY, next);
-    applyAdminProfileLayout();
+    if (modal) modal.classList.remove('admin-profile-shell--v2');
   }
 
   function fillReportingManagerDropdown(selectEl, excludeUserId) {
@@ -453,6 +548,18 @@
       return Number(u.id) === Number(uid);
     });
     if (!user) return;
+
+    if (
+      String(user.role || '').toLowerCase() === 'admin' &&
+      !AdminProtectUnlock.isValid()
+    ) {
+      notify(
+        'System administrator accounts are protected. Click Protected and enter your PIN to edit.',
+        'error',
+        true,
+      );
+      return;
+    }
 
     const modal = document.getElementById('accessModal');
     if (!modal) return;
@@ -521,7 +628,7 @@
       if (isAdminTarget) {
         modNote.hidden = false;
         modNote.textContent = 'Administrators have full access to all modules by policy.';
-        ['accessHvac', 'accessCivil', 'accessCleaning', 'accessHr', 'accessProcurement', 'accessBusinessDev', 'accessDocHub', 'accessReportGen', 'accessSubmittedForms', 'accessTicketing', 'accessOperations', 'accessOperationsManage'].forEach(function (id) {
+        ['accessFireInspection', 'accessHr', 'accessProcurement', 'accessBusinessDev', 'accessDocHub', 'accessReportGen', 'accessSubmittedForms', 'accessTicketing', 'accessOperations', 'accessOpsOvertime', 'accessOpsInvoices', 'accessOpsClients', 'accessOpsCheques', 'accessFinance'].forEach(function (id) {
           const cb = document.getElementById(id);
           if (cb) {
             cb.checked = true;
@@ -531,9 +638,10 @@
       } else {
         modNote.hidden = true;
         modNote.textContent = '';
-        document.getElementById('accessHvac').checked = !!user.access_hvac;
-        document.getElementById('accessCivil').checked = !!user.access_civil;
-        document.getElementById('accessCleaning').checked = !!user.access_cleaning;
+        const fireEl = document.getElementById('accessFireInspection');
+        if (fireEl) {
+          fireEl.checked = !!(user.access_hvac || user.access_civil || user.access_cleaning);
+        }
         document.getElementById('accessHr').checked = !!user.access_hr;
         document.getElementById('accessProcurement').checked = !!user.access_procurement_module;
         const bd = document.getElementById('accessBusinessDev');
@@ -547,28 +655,58 @@
         const tkt = document.getElementById('accessTicketing');
         if (tkt) tkt.checked = !!user.access_ticketing;
         const ops = document.getElementById('accessOperations');
-        if (ops) ops.checked = !!user.access_operations;
-        const opsManage = document.getElementById('accessOperationsManage');
-        if (opsManage) opsManage.checked = !!user.access_operations_manage;
+        const opsSubs = [
+          document.getElementById('accessOpsOvertime'),
+          document.getElementById('accessOpsInvoices'),
+          document.getElementById('accessOpsClients'),
+          document.getElementById('accessOpsCheques'),
+        ];
+        const opsSubVals = [
+          !!user.access_operations_overtime,
+          !!user.access_operations_invoices,
+          !!user.access_operations_clients,
+          !!user.access_operations_cheques,
+        ];
+        const anySub = opsSubVals.some(Boolean);
+        // Legacy hub-only users: treat as all subs on
+        const legacyAll = !!user.access_operations && !anySub;
+        opsSubs.forEach(function (el, i) {
+          if (el) el.checked = legacyAll ? true : opsSubVals[i];
+        });
+        if (ops) ops.checked = !!user.access_operations || anySub || legacyAll;
+        const fin = document.getElementById('accessFinance');
+        if (fin) fin.checked = !!user.access_finance;
         modWrap.querySelectorAll('input[type="checkbox"]').forEach(function (cb) {
           cb.disabled = false;
         });
-        // Reset manage flag when Operations access is unchecked.
-        function syncOperationsManage() {
-          if (!ops || !opsManage) return;
-          if (!ops.checked) { opsManage.checked = false; }
+        function anyOpsSubChecked() {
+          return opsSubs.some(function (el) { return el && el.checked; });
+        }
+        function setAllOpsSubs(on) {
+          opsSubs.forEach(function (el) { if (el) el.checked = !!on; });
+        }
+        function syncOpsFromParent() {
+          if (!ops) return;
+          if (ops.checked) {
+            if (!anyOpsSubChecked()) setAllOpsSubs(true);
+          } else {
+            setAllOpsSubs(false);
+          }
+        }
+        function syncOpsFromSubs() {
+          if (!ops) return;
+          ops.checked = anyOpsSubChecked();
         }
         if (ops && !ops.dataset.opsManageBound) {
           ops.dataset.opsManageBound = '1';
-          ops.addEventListener('change', syncOperationsManage);
+          ops.addEventListener('change', syncOpsFromParent);
         }
-        // "View only" pill click → uncheck manage so CSS switches active pill
-        const opsLevelView = document.getElementById('opsLevelView');
-        if (opsLevelView && !opsLevelView.dataset.bound) {
-          opsLevelView.dataset.bound = '1';
-          opsLevelView.addEventListener('click', () => { if (opsManage) opsManage.checked = false; });
-        }
-        syncOperationsManage();
+        opsSubs.forEach(function (el) {
+          if (el && !el.dataset.opsSubBound) {
+            el.dataset.opsSubBound = '1';
+            el.addEventListener('change', syncOpsFromSubs);
+          }
+        });
       }
     }
 
@@ -581,12 +719,18 @@
     const tbtn = document.getElementById('profileQuickToggleBtn');
     setProfileQuickToggleButton(tbtn, user.is_active);
 
+    const unlockBtn = document.getElementById('profileUnlockPasswordBtn');
+    if (unlockBtn) {
+      unlockBtn.style.display = user.password_locked ? '' : 'none';
+    }
+
     activatePortalModal(modal);
   };
 
   w.openAccessModal = w.openUserProfileModal;
 
-  w.closeUserProfileModal = function closeUserProfileModal() {
+  w.closeUserProfileModal = function closeUserProfileModal(opts) {
+    opts = opts || {};
     const modal = document.getElementById('accessModal');
     if (modal) modal.classList.remove('active');
     const pr = document.getElementById('passwordResetResultModal');
@@ -594,6 +738,8 @@
     const pu = pr && pr.classList.contains('active');
     const pcc = pc && pc.classList.contains('active');
     if (!pu && !pcc) document.body.style.overflow = '';
+    // Relock as soon as the manage-profile popup is dismissed (Cancel / backdrop / Esc).
+    if (!opts.keepUnlock) relockAdminProtect();
   };
 
   /* ── Activity modal ───────────────────────────────────────── */
@@ -750,6 +896,7 @@
   w.closeUserActivityModal = function closeUserActivityModal() {
     const modal = document.getElementById('userActivityModal');
     if (modal) modal.classList.remove('active');
+    relockAdminProtect();
   };
 
   function bindOnce() {
@@ -841,9 +988,11 @@
           return String(x.id) === String(userId);
         });
         if (u && u.role !== 'admin') {
-          payload.access_hvac = document.getElementById('accessHvac').checked;
-          payload.access_civil = document.getElementById('accessCivil').checked;
-          payload.access_cleaning = document.getElementById('accessCleaning').checked;
+          const fireOn = !!(document.getElementById('accessFireInspection') && document.getElementById('accessFireInspection').checked);
+          // Fire system inspection is the only inspection product; keep legacy flags in sync.
+          payload.access_hvac = fireOn;
+          payload.access_civil = false;
+          payload.access_cleaning = false;
           payload.access_hr = document.getElementById('accessHr').checked;
           payload.access_procurement_module = document.getElementById('accessProcurement').checked;
           payload.access_business_development = document.getElementById('accessBusinessDev').checked;
@@ -851,10 +1000,22 @@
           payload.access_submitted_forms = document.getElementById('accessSubmittedForms').checked;
           const tgx = document.getElementById('accessTicketing');
           payload.access_ticketing = !!(tgx && tgx.checked);
+          const opOt = document.getElementById('accessOpsOvertime');
+          const opInv = document.getElementById('accessOpsInvoices');
+          const opCli = document.getElementById('accessOpsClients');
+          const opChq = document.getElementById('accessOpsCheques');
+          payload.access_operations_overtime = !!(opOt && opOt.checked);
+          payload.access_operations_invoices = !!(opInv && opInv.checked);
+          payload.access_operations_clients = !!(opCli && opCli.checked);
+          payload.access_operations_cheques = !!(opChq && opChq.checked);
           const opx = document.getElementById('accessOperations');
-          payload.access_operations = !!(opx && opx.checked);
-          const opmx = document.getElementById('accessOperationsManage');
-          payload.access_operations_manage = !!(opx && opx.checked) && !!(opmx && opmx.checked);
+          payload.access_operations = !!(opx && opx.checked) || payload.access_operations_overtime
+            || payload.access_operations_invoices || payload.access_operations_clients
+            || payload.access_operations_cheques;
+          // View/Full level UI removed — Operations access always includes manage.
+          payload.access_operations_manage = !!payload.access_operations;
+          const finx = document.getElementById('accessFinance');
+          payload.access_finance = !!(finx && finx.checked);
         }
 
         try {
@@ -898,7 +1059,7 @@
             notify(data.message || 'Profile saved successfully', 'success');
             closeUserProfileModal();
             await CFG.reloadDirectory();
-          } else {
+          } else if (!notifyProtectedAccountError(data)) {
             notify((data && (data.error || data.message)) || 'Failed to save profile', 'error');
           }
         } catch (err) {
@@ -918,14 +1079,6 @@
       if (pwCopy && !pwCopy.dataset.bound) {
         pwCopy.dataset.bound = '1';
         pwCopy.addEventListener('click', w.copyProfilePassword);
-      }
-    } catch (_) { /* ignore */ }
-
-    try {
-      const lt = document.getElementById('adminProfileLayoutToggle');
-      if (lt && !lt.dataset.layoutBound) {
-        lt.dataset.layoutBound = '1';
-        lt.addEventListener('click', toggleAdminProfileLayout);
       }
     } catch (_) { /* ignore */ }
 
@@ -967,6 +1120,9 @@
       if (opts.onUnauthorized) CFG.onUnauthorized = opts.onUnauthorized;
       if (opts.getUsersDirectory) CFG.getUsersDirectory = opts.getUsersDirectory;
       if (opts.reloadDirectory) CFG.reloadDirectory = opts.reloadDirectory;
+      if (typeof opts.onProtectRelock === 'function') {
+        CFG.onProtectRelock = opts.onProtectRelock;
+      }
       bindOnce();
     },
     init: bindOnce,

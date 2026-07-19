@@ -306,11 +306,21 @@
 
     if (navBtn) {
       root.classList.add('has-nav-trigger');
-      navBtn.addEventListener('click', togglePanel);
+      // Coming-soon: keep the nav button visible but do not open the assistant
+      if (!navBtn.disabled && navBtn.getAttribute('data-coming-soon') !== 'true') {
+        navBtn.addEventListener('click', togglePanel);
+      }
     }
 
     if (fab) {
-      fab.addEventListener('click', togglePanel);
+      if (navBtn && (navBtn.disabled || navBtn.getAttribute('data-coming-soon') === 'true')) {
+        fab.classList.add('is-hidden');
+        fab.disabled = true;
+        fab.setAttribute('aria-disabled', 'true');
+        fab.title = 'Ask Amaan — Coming soon';
+      } else {
+        fab.addEventListener('click', togglePanel);
+      }
     }
 
     closeBtn.addEventListener('click', closePanel);

@@ -443,6 +443,27 @@ def send_email(recipient, subject, body, html_body=None, cc=None, attachments=No
         return False
 
 
+def is_deliverable_user_email(email):
+    """True when email looks real (not missing / placeholder @amaan.local)."""
+    e = (email or "").strip().lower()
+    if not e or "@" not in e:
+        return False
+    if e.endswith("@amaan.local"):
+        return False
+    return True
+
+
+def _app_login_url():
+    """Public login URL from APP_BASE_URL, or empty string if unset."""
+    try:
+        base = (current_app.config.get("APP_BASE_URL") or os.environ.get("APP_BASE_URL") or "").strip().rstrip("/")
+    except RuntimeError:
+        base = (os.environ.get("APP_BASE_URL") or "").strip().rstrip("/")
+    if not base:
+        return ""
+    return f"{base}/login"
+
+
 def send_password_reset_email(user_email, username, temp_password):
     """
     Send password reset email with temporary password
@@ -486,6 +507,170 @@ Amaan Team
 </html>
 """
     
+    return send_email(user_email, subject, body, html_body)
+
+
+def send_welcome_email(user_email, username, temp_password, full_name=None):
+    """
+    Send account-created email with username and temporary password.
+
+    Skips placeholder emails (@amaan.local) and missing addresses.
+    """
+    if not is_deliverable_user_email(user_email):
+        logger.info("Skipping welcome email — no deliverable address for %s", username)
+        return False
+
+    name = (full_name or username or "User").strip() or "User"
+    login_url = _app_login_url()
+    login_line = f"\nLog in here: {login_url}\n" if login_url else "\n"
+    login_html = (
+        f'<p><a href="{login_url}" style="color: #a8121e;">Log in to Amaan</a></p>'
+        if login_url
+        else ""
+    )
+
+    subject = "Your Amaan account has been created"
+    body = f"""
+Hello {name},
+
+Your Amaan account has been created.
+
+Username: {username}
+Temporary password: {temp_password}
+{login_line}
+Please log in and change your password immediately for security.
+
+If you did not expect this account, please contact support.
+
+Best regards,
+Amaan Team
+"""
+    html_body = f"""
+<html>
+<body style="font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif; color: #18181b;">
+  <h2 style="color: #a8121e; margin-bottom: 0.5rem;">Welcome to Amaan</h2>
+  <p>Hello {name},</p>
+  <p>Your Amaan account has been created.</p>
+  <p>
+    <strong>Username:</strong> <code style="background: #f4f4f5; padding: 0.2rem 0.45rem; border-radius: 6px;">{username}</code><br>
+    <strong>Temporary password:</strong> <code style="background: #f4f4f5; padding: 0.2rem 0.45rem; border-radius: 6px;">{temp_password}</code>
+  </p>
+  {login_html}
+  <p>Please log in and change your password immediately for security.</p>
+  <p style="color: #71717a; font-size: 0.9rem;">If you did not expect this account, please contact support.</p>
+  <p>Best regards,<br>Amaan Team</p>
+</body>
+</html>
+"""
+    return send_email(user_email, subject, body, html_body)
+
+
+def send_username_changed_email(user_email, old_username, new_username, full_name=None):
+    """Notify the user that their login username was changed."""
+    if not is_deliverable_user_email(user_email):
+        logger.info(
+            "Skipping username-change email — no deliverable address for %s",
+            new_username,
+        )
+        return False
+
+    name = (full_name or new_username or "User").strip() or "User"
+    login_url = _app_login_url()
+    login_line = f"\nLog in here: {login_url}\n" if login_url else "\n"
+    login_html = (
+        f'<p><a href="{login_url}" style="color: #a8121e;">Log in to Amaan</a></p>'
+        if login_url
+        else ""
+    )
+
+    subject = "Your Amaan username was updated"
+    body = f"""
+Hello {name},
+
+Your Amaan login username was changed.
+
+Previous username: {old_username}
+New username: {new_username}
+{login_line}
+Use your new username (or email) the next time you sign in. Your password is unchanged.
+
+If you did not make this change, please contact support immediately.
+
+Best regards,
+Amaan Team
+"""
+    html_body = f"""
+<html>
+<body style="font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif; color: #18181b;">
+  <h2 style="color: #a8121e; margin-bottom: 0.5rem;">Username updated</h2>
+  <p>Hello {name},</p>
+  <p>Your Amaan login username was changed.</p>
+  <p>
+    <strong>Previous username:</strong> <code style="background: #f4f4f5; padding: 0.2rem 0.45rem; border-radius: 6px;">{old_username}</code><br>
+    <strong>New username:</strong> <code style="background: #f4f4f5; padding: 0.2rem 0.45rem; border-radius: 6px;">{new_username}</code>
+  </p>
+  {login_html}
+  <p>Use your new username (or email) the next time you sign in. Your password is unchanged.</p>
+  <p style="color: #71717a; font-size: 0.9rem;">If you did not make this change, please contact support immediately.</p>
+  <p>Best regards,<br>Amaan Team</p>
+</body>
+</html>
+"""
+    return send_email(user_email, subject, body, html_body)
+
+
+def send_otp_email(user_email, username, code, purpose_label, expires_minutes=10):
+    """
+    Send a one-time verification code (protect PIN reset, password reset, etc.).
+
+    Args:
+        user_email: Recipient
+        username: Display name
+        code: Plain OTP (shown only in this email)
+        purpose_label: Short human label, e.g. "Password reset"
+        expires_minutes: Validity window for copy
+
+    Returns:
+        bool: True if sent successfully
+    """
+    subject = f"Your Amaan verification code — {purpose_label}"
+    mins = int(expires_minutes) if expires_minutes else 10
+    name = (username or "User").strip() or "User"
+    label = (purpose_label or "Verification").strip() or "Verification"
+
+    body = f"""
+Hello {name},
+
+You requested a verification code for: {label}
+
+Your code is: {code}
+
+This code expires in {mins} minutes. Do not share it with anyone.
+
+If you did not request this, you can ignore this email — your account stays secure.
+
+Best regards,
+Amaan Team
+"""
+
+    html_body = f"""
+<html>
+<body style="font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif; color: #18181b;">
+  <h2 style="color: #a8121e; margin-bottom: 0.5rem;">Amaan verification code</h2>
+  <p>Hello {name},</p>
+  <p>You requested a verification code for: <strong>{label}</strong></p>
+  <p style="font-size: 1.75rem; letter-spacing: 0.25em; font-weight: 700; margin: 1.25rem 0;">
+    <code style="background: #f4f4f5; padding: 0.5rem 0.85rem; border-radius: 8px;">{code}</code>
+  </p>
+  <p>This code expires in <strong>{mins} minutes</strong>. Do not share it with anyone.</p>
+  <p style="color: #71717a; font-size: 0.9rem;">
+    If you did not request this, you can ignore this email — your account stays secure.
+  </p>
+  <p>Best regards,<br>Amaan Team</p>
+</body>
+</html>
+"""
+
     return send_email(user_email, subject, body, html_body)
 
 

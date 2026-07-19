@@ -1,0 +1,1725 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/design-tokens.css') }}"
+    />
+    {% include 'partials/caveat_font.html' %}
+    <title>Cheque Preparation - Operations</title>
+    <meta name="theme-color" content="#d21725" />
+    <link
+      rel="icon"
+      type="image/png"
+      href="{{ url_for('static', filename='favicon.png') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='animations.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='mobile_responsive.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/dashboard.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/cheque_pdf_preview.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/signature_modal.css') }}"
+    />
+    <style>
+      :root {
+        --primary: #d21725;
+        --primary-light: #e8323f;
+        --primary-pale: #fde8ea;
+        --ops-ink: #0f172a;
+        --ops-muted: #64748b;
+        --ops-rule: #e2e8f0;
+        --sidebar-w: 260px;
+        --nav-top: 73px;
+        --font-sans:
+          -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+          system-ui, "Segoe UI", "Helvetica Neue", sans-serif;
+      }
+      body.has-main-nav {
+        font-family: var(--font-sans);
+        background: #faf8f8;
+        margin: 0;
+        padding-top: var(--nav-top);
+      }
+      .chq-shell {
+        display: flex;
+        min-height: calc(100vh - var(--nav-top));
+        background: #faf8f8;
+      }
+      /* Sidebar */
+      .chq-sidebar {
+        width: var(--sidebar-w);
+        flex-shrink: 0;
+        background: var(--primary);
+        color: #fff;
+        padding: 28px 0 24px;
+        position: sticky;
+        top: var(--nav-top);
+        height: calc(100vh - var(--nav-top));
+        overflow-y: auto;
+      }
+      .chq-sidebar-brand {
+        padding: 0 24px 20px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        margin-bottom: 16px;
+      }
+      .chq-sidebar-brand .brand-title {
+        font-size: 1.05rem;
+        font-weight: 800;
+        letter-spacing: 0.02em;
+      }
+      .chq-sidebar-brand .brand-sub {
+        font-size: 0.78rem;
+        opacity: 0.75;
+        margin-top: 2px;
+      }
+      .chq-sidebar-nav a {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 24px;
+        font-size: 0.92rem;
+        color: rgba(255, 255, 255, 0.85);
+        text-decoration: none;
+        transition: background 0.15s;
+      }
+      .chq-sidebar-nav a:hover,
+      .chq-sidebar-nav a.active {
+        background: rgba(255, 255, 255, 0.15);
+        color: #fff;
+      }
+      .chq-sidebar-stats {
+        margin: 20px 16px 0;
+        background: rgba(255, 255, 255, 0.12);
+        border-radius: 10px;
+        padding: 14px 16px;
+      }
+      .chq-sidebar-stats .stat-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 6px 0;
+        font-size: 0.82rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      .chq-sidebar-stats .stat-row:last-child {
+        border-bottom: none;
+      }
+      .chq-sidebar-stats .stat-row.total-row {
+        font-weight: 700;
+      }
+      .chq-sidebar-stats .stat-val {
+        font-weight: 700;
+        font-size: 1rem;
+      }
+      /* Main */
+      .chq-main {
+        flex: 1;
+        padding: 32px 36px;
+        overflow: auto;
+      }
+      @media (max-width: 900px) {
+        .chq-sidebar {
+          display: none;
+        }
+        .chq-main {
+          padding: 20px 16px;
+        }
+      }
+      .chq-topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+      .chq-topbar h1 {
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: var(--ops-ink);
+        margin: 0;
+      }
+      .chq-topbar-actions {
+        display: flex;
+        gap: 0.6rem;
+        flex-wrap: wrap;
+      }
+      .btn-primary {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: var(--primary);
+        color: #fff;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+        font-family: inherit;
+        text-decoration: none;
+      }
+      .btn-primary:hover {
+        background: var(--primary-light);
+      }
+      .btn-ghost {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: none;
+        border: 1px solid #d1d5db;
+        color: #374151;
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        font-family: inherit;
+      }
+      .btn-ghost:hover {
+        background: #f3f4f6;
+      }
+      /* Combined filter + search toolbar (single row on desktop) */
+      .chq-toolbar {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        flex-wrap: wrap;
+        margin-bottom: 20px;
+      }
+      .filter-bar {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        flex: 1 1 auto;
+        min-width: 0;
+      }
+      .filter-chip {
+        padding: 6px 14px;
+        border-radius: 999px;
+        border: 1.5px solid #e5e7eb;
+        background: #fff;
+        font-size: 0.8rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s;
+        font-family: inherit;
+        white-space: nowrap;
+      }
+      .filter-chip:hover {
+        border-color: var(--primary-light);
+      }
+      .filter-chip.active {
+        background: var(--primary);
+        color: #fff;
+        border-color: var(--primary);
+      }
+      /* Search */
+      .chq-search {
+        flex: 0 1 280px;
+        min-width: 200px;
+        position: relative;
+      }
+      .chq-search svg {
+        position: absolute;
+        left: 0.8rem;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 16px;
+        height: 16px;
+        color: #94a3b8;
+        pointer-events: none;
+      }
+      .chq-search input {
+        width: 100%;
+        box-sizing: border-box;
+        border: 1px solid var(--ops-rule);
+        border-radius: 11px;
+        background: #fff;
+        padding: 0.62rem 0.9rem 0.62rem 2.4rem;
+        font-size: 0.9rem;
+        font-family: inherit;
+      }
+      .chq-search input:focus {
+        outline: none;
+        border-color: var(--primary-light);
+        box-shadow: 0 0 0 3px rgba(210, 23, 37, 0.1);
+      }
+      .chq-count {
+        font-size: 0.82rem;
+        color: var(--ops-muted);
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+      @media (max-width: 1100px) {
+        .chq-toolbar {
+          flex-wrap: wrap;
+        }
+        .filter-bar {
+          flex: 1 1 100%;
+          order: 1;
+        }
+        .chq-search {
+          flex: 1 1 auto;
+          order: 2;
+        }
+        .chq-count {
+          order: 3;
+        }
+      }
+      /* Status badges (shared with detail page) */
+      .badge-chq {
+        display: inline-block;
+        padding: 0.22rem 0.65rem;
+        border-radius: 999px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        white-space: nowrap;
+      }
+      .badge-chq.requested {
+        background: #e0e7ff;
+        color: #3730a3;
+      }
+      .badge-chq.verified {
+        background: #fef3c7;
+        color: #92400e;
+      }
+      .badge-chq.approved {
+        background: #cffafe;
+        color: #155e75;
+      }
+      .badge-chq.prepared {
+        background: #f3e8ff;
+        color: #6b21a8;
+      }
+      .badge-chq.submitted {
+        background: #dbeafe;
+        color: #1e40af;
+      }
+      .badge-chq.cleared {
+        background: #dcfce7;
+        color: #166534;
+      }
+      .badge-chq.rejected {
+        background: #fee2e2;
+        color: #991b1b;
+      }
+      .badge-chq.cancelled {
+        background: #f1f5f9;
+        color: #64748b;
+      }
+      /* Card grid */
+      .chq-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 16px;
+      }
+      .chq-card {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 20px;
+        transition: box-shadow 0.15s;
+        cursor: pointer;
+      }
+      .chq-card:hover {
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+      }
+      .chq-card-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        margin-bottom: 12px;
+        gap: 8px;
+      }
+      .chq-card-ref {
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: #9ca3af;
+        letter-spacing: 0.04em;
+      }
+      .chq-card-amount {
+        font-size: 1.15rem;
+        font-weight: 800;
+        color: var(--ops-ink);
+        margin-bottom: 2px;
+      }
+      .chq-card-dept {
+        font-size: 0.8rem;
+        color: #6b7280;
+        margin-bottom: 14px;
+      }
+      .chq-card-dates {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+      .chq-date-box {
+        background: #f9fafb;
+        border-radius: 8px;
+        padding: 10px 12px;
+        min-width: 0;
+      }
+      .chq-date-label {
+        font-size: 0.68rem;
+        font-weight: 600;
+        color: #9ca3af;
+        letter-spacing: 0.04em;
+        margin-bottom: 4px;
+      }
+      .chq-date-val {
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: #374151;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .chq-card-suppliers {
+        font-size: 0.8rem;
+        color: #374151;
+        margin-bottom: 8px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .chq-card-suppliers strong {
+        color: var(--ops-ink);
+        font-weight: 700;
+      }
+      .chq-card-remarks {
+        font-size: 0.78rem;
+        color: #9ca3af;
+        margin-bottom: 10px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .chq-card-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 12px;
+        flex-wrap: wrap;
+      }
+      .chq-card-actions button {
+        font-size: 0.78rem;
+        padding: 5px 12px;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        border: 1px solid #d1d5db;
+        background: #fff;
+        color: #374151;
+        font-family: inherit;
+      }
+      .chq-card-actions button:hover {
+        background: #f3f4f6;
+      }
+      .chq-card-actions button.danger:hover {
+        background: #fef2f2;
+        border-color: #fca5a5;
+        color: #b91c1c;
+      }
+      /* Empty state */
+      .chq-empty {
+        text-align: center;
+        padding: 60px 20px;
+        color: #9ca3af;
+        grid-column: 1/-1;
+      }
+      .chq-empty svg {
+        width: 56px;
+        height: 56px;
+        margin-bottom: 16px;
+        opacity: 0.4;
+      }
+      .chq-empty h3 {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #374151;
+        margin-bottom: 6px;
+      }
+      .chq-empty .btn-primary {
+        margin-top: 14px;
+      }
+      .clear-link {
+        color: var(--primary);
+        cursor: pointer;
+        font-weight: 600;
+        text-decoration: underline;
+        background: none;
+        border: none;
+        font-size: inherit;
+        font-family: inherit;
+      }
+      /* New / Edit + Notification modals (unchanged patterns) */
+      .ops-modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.45);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        padding: 1rem;
+      }
+      .ops-modal-backdrop.open {
+        display: flex;
+      }
+      .ops-modal {
+        background: #fff;
+        border-radius: 16px;
+        width: 100%;
+        max-width: 920px;
+        max-height: 94vh;
+        overflow: auto;
+        box-shadow: 0 20px 50px rgba(15, 23, 42, 0.25);
+      }
+      .ops-modal-head {
+        padding: 1.1rem 1.35rem;
+        border-bottom: 1px solid var(--ops-rule);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        position: sticky;
+        top: 0;
+        background: #fff;
+        z-index: 2;
+      }
+      .ops-modal-head h3 {
+        margin: 0;
+        font-size: 1.15rem;
+        color: var(--ops-ink);
+      }
+      .ops-modal-body {
+        padding: 1.35rem;
+      }
+      .ops-modal-foot {
+        padding: 1rem 1.35rem;
+        border-top: 1px solid var(--ops-rule);
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.6rem;
+        position: sticky;
+        bottom: 0;
+        background: #fff;
+      }
+      .ops-field {
+        margin-bottom: 1rem;
+      }
+      .ops-field label {
+        display: block;
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: #334155;
+        margin-bottom: 0.35rem;
+      }
+      .ops-field input,
+      .ops-field select,
+      .ops-field textarea {
+        width: 100%;
+        border: 1px solid #cbd5e1;
+        border-radius: 9px;
+        padding: 0.6rem 0.7rem;
+        font-size: 0.9rem;
+        font-family: inherit;
+        box-sizing: border-box;
+      }
+      .ops-field input:focus,
+      .ops-field select:focus,
+      .ops-field textarea:focus {
+        outline: none;
+        border-color: var(--primary-light);
+        box-shadow: 0 0 0 3px rgba(210, 23, 37, 0.12);
+      }
+      .ops-field textarea {
+        min-height: 120px;
+        resize: vertical;
+        line-height: 1.45;
+      }
+      .ops-field textarea.ops-textarea-lg {
+        min-height: 160px;
+      }
+      .ops-grid2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.85rem;
+      }
+      .ops-close {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        line-height: 1;
+        cursor: pointer;
+        color: #94a3b8;
+      }
+      .ops-toast {
+        position: fixed;
+        bottom: 1.5rem;
+        left: 50%;
+        transform: translateX(-50%);
+        background: var(--ops-ink);
+        color: #fff;
+        padding: 0.7rem 1.2rem;
+        border-radius: 10px;
+        font-size: 0.9rem;
+        z-index: 2000;
+        opacity: 0;
+        transition: opacity 0.2s;
+        pointer-events: none;
+      }
+      .ops-toast.show {
+        opacity: 1;
+      }
+      .ops-toast.err {
+        background: #b91c1c;
+      }
+      /* Line-items editor — 3 fields on top, remarks full-width below */
+      .chq-items-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.85rem;
+        margin-bottom: 0.5rem;
+      }
+      .chq-item {
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 0.75rem 0.85rem 0.85rem;
+        background: #fafbfc;
+      }
+      .chq-item-top {
+        display: grid;
+        grid-template-columns: 36px minmax(0, 1.4fr) 120px 140px 28px;
+        gap: 0.45rem 0.5rem;
+        align-items: end;
+      }
+      .chq-item-lbl {
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        color: var(--ops-muted);
+        margin-bottom: 0.25rem;
+      }
+      .chq-item-sn-wrap {
+        display: flex;
+        flex-direction: column;
+      }
+      .chq-sn {
+        font-size: 0.9rem;
+        color: var(--ops-muted);
+        padding: 0.55rem 0 0.2rem;
+        font-weight: 600;
+      }
+      .chq-item-field {
+        min-width: 0;
+      }
+      .chq-item input,
+      .chq-item textarea {
+        width: 100%;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        padding: 0.48rem 0.55rem;
+        font-size: 0.85rem;
+        font-family: inherit;
+        box-sizing: border-box;
+        background: #fff;
+      }
+      .chq-item textarea {
+        min-height: 88px;
+        resize: vertical;
+        line-height: 1.4;
+        margin-top: 0.25rem;
+      }
+      .chq-item input:focus,
+      .chq-item textarea:focus {
+        outline: none;
+        border-color: var(--primary-light);
+        box-shadow: 0 0 0 2px rgba(210, 23, 37, 0.1);
+      }
+      .chq-item-del {
+        background: none;
+        border: none;
+        color: #94a3b8;
+        cursor: pointer;
+        font-size: 1.15rem;
+        padding: 0.45rem 0.2rem;
+        line-height: 1;
+        align-self: end;
+      }
+      .chq-item-del:hover {
+        color: #b91c1c;
+      }
+      .chq-items-total {
+        text-align: right;
+        font-weight: 700;
+        color: var(--ops-ink);
+        font-size: 0.92rem;
+        padding: 0.3rem 0.35rem 0.8rem;
+      }
+      @media (max-width: 720px) {
+        .chq-item-top {
+          grid-template-columns: 36px 1fr 28px;
+        }
+        .chq-item-field-amount,
+        .chq-item-field-date {
+          grid-column: 1 / -2;
+        }
+      }
+      /* Signature capture card inside create/edit modal */
+      .sigc-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        margin-left: 0.4rem;
+        padding: 0.14rem 0.55rem 0.14rem 0.45rem;
+        border-radius: 999px;
+        background: #dcfce7;
+        color: #15803d;
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        vertical-align: middle;
+      }
+      .sigc .sigc-box {
+        position: relative;
+        border: 1.5px dashed #d3d9e2;
+        border-radius: 14px;
+        align-self: flex-start;
+        flex: none;
+        width: min(300px, 100%);
+        min-height: 132px;
+        background: #fbfcfe;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem 1.1rem;
+        box-sizing: border-box;
+        transition:
+          border-color 0.15s ease,
+          background 0.15s ease;
+        overflow: visible;
+      }
+      .sigc {
+        overflow: visible;
+      }
+      .sigc .sigc-box:hover {
+        border-color: #b6c0cf;
+      }
+      .sigc .sigc-empty {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.55rem;
+        font-style: normal;
+        text-align: center;
+      }
+      .sigc .sigc-pen {
+        color: #c2cad6;
+      }
+      .sigc .sigc-empty-text {
+        color: #8b95a5;
+        font-size: 0.84rem;
+      }
+      .sigc .sigc-sign-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        border: none;
+        cursor: pointer;
+        background: var(--primary);
+        color: #fff;
+        font-family: inherit;
+        font-weight: 700;
+        font-size: 0.85rem;
+        padding: 0.52rem 1.5rem;
+        border-radius: 999px;
+        margin-top: 0.15rem;
+        box-shadow: 0 3px 10px rgba(210, 23, 37, 0.25);
+        transition:
+          transform 0.12s ease,
+          box-shadow 0.12s ease;
+      }
+      .sigc .sigc-sign-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 16px rgba(210, 23, 37, 0.3);
+      }
+      /* Signed state — same box size, transparent ink, badge-style X on corner */
+      .sigc .sigc-box.has-sig {
+        border: 1px solid #dbe2ea;
+        background: transparent;
+      }
+      .sigc .sigc-box img {
+        max-width: 100%;
+        max-height: 88px;
+        object-fit: contain;
+        display: none;
+      }
+      .sigc .sigc-box.has-sig img {
+        display: block;
+        cursor: pointer;
+      }
+      .sigc .sigc-box.has-sig .sigc-empty {
+        display: none;
+      }
+      .sigc .sigc-clear-x {
+        position: absolute;
+        top: -11px;
+        right: -11px;
+        z-index: 2;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        border: 2px solid #fff;
+        background: #fff;
+        color: #64748b;
+        line-height: 0;
+        cursor: pointer;
+        padding: 0;
+        font-family: inherit;
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.2);
+        transition:
+          color 0.12s ease,
+          background 0.12s ease,
+          box-shadow 0.12s ease;
+      }
+      .sigc .sigc-clear-x svg {
+        display: block;
+        width: 12px;
+        height: 12px;
+      }
+      .sigc .sigc-box.has-sig .sigc-clear-x {
+        display: flex;
+      }
+      .sigc .sigc-clear-x:hover {
+        color: #b91c1c;
+        background: #fef2f2;
+        box-shadow: 0 2px 10px rgba(185, 28, 28, 0.25);
+      }
+      /* Notification settings — side drawer */
+      .drawer-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.45);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.22s ease;
+        z-index: 3000;
+      }
+      .drawer-overlay.open {
+        opacity: 1;
+        pointer-events: auto;
+      }
+      .drawer {
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: min(480px, 100vw);
+        background: #fff;
+        box-shadow: -12px 0 40px rgba(15, 23, 42, 0.18);
+        transform: translateX(100%);
+        transition: transform 0.25s ease;
+        display: flex;
+        flex-direction: column;
+        z-index: 3001;
+      }
+      .drawer-overlay.open .drawer {
+        transform: translateX(0);
+      }
+      .drawer-head {
+        padding: 1.15rem 1.35rem 1rem;
+        border-bottom: 1px solid var(--ops-rule);
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 0.8rem;
+        flex-shrink: 0;
+      }
+      .drawer-head-text h3 {
+        margin: 0;
+        font-size: 1.1rem;
+        color: var(--ops-ink);
+      }
+      .drawer-head-text p {
+        margin: 0.3rem 0 0;
+        font-size: 0.8rem;
+        color: var(--ops-muted);
+        line-height: 1.4;
+      }
+      .drawer-body {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        padding: 1.1rem 1.35rem;
+      }
+      .drawer-foot {
+        padding: 1rem 1.35rem;
+        border-top: 1px solid var(--ops-rule);
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.6rem;
+        flex-shrink: 0;
+        background: #fff;
+      }
+      /* Notification recipient card per status */
+      .ntf-row {
+        border: 1px solid var(--ops-rule);
+        border-radius: 12px;
+        padding: 0.85rem 0.95rem;
+        margin-bottom: 0.75rem;
+      }
+      .ntf-row-head {
+        margin-bottom: 0.6rem;
+      }
+      .ntf-field {
+        margin-bottom: 0.6rem;
+      }
+      .ntf-field:last-child {
+        margin-bottom: 0;
+      }
+      .ntf-field label {
+        display: block;
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        color: var(--ops-muted);
+        margin-bottom: 0.3rem;
+      }
+      .ntf-row input {
+        width: 100%;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        padding: 0.5rem 0.6rem;
+        font-size: 0.83rem;
+        font-family: inherit;
+        box-sizing: border-box;
+      }
+      .ntf-row input:focus {
+        outline: none;
+        border-color: var(--primary-light);
+        box-shadow: 0 0 0 2px rgba(210, 23, 37, 0.1);
+      }
+      .ntf-hint {
+        font-size: 0.78rem;
+        color: var(--ops-muted);
+        margin: 0 0 1rem;
+        line-height: 1.5;
+      }
+      @media (max-width: 640px) {
+        .ops-grid2 {
+          grid-template-columns: 1fr;
+        }
+        .drawer {
+          width: 100vw;
+        }
+        .chq-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body class="has-main-nav">
+    {% set active_page = 'operations' %} {% include 'partials/main_navbar.html'
+    with context %}
+    <script>
+      !(function () {
+        var nav = document.getElementById("nav");
+        function sync() {
+          if (!nav) return;
+          var h = nav.getBoundingClientRect().height;
+          document.documentElement.style.setProperty("--nav-top", h + "px");
+        }
+        sync();
+        requestAnimationFrame(sync);
+        window.addEventListener("load", sync);
+        window.addEventListener("resize", sync);
+        if (window.ResizeObserver) {
+          new ResizeObserver(sync).observe(nav);
+        }
+      })();
+    </script>
+
+    <div class="chq-shell">
+      <!-- Sidebar -->
+      <aside class="chq-sidebar">
+        <div class="chq-sidebar-brand">
+          <div class="brand-title">Operations</div>
+          <div class="brand-sub">Cheque Preparation</div>
+        </div>
+        <nav class="chq-sidebar-nav">
+          <a href="/operations/"
+            ><svg
+              width="16"
+              height="16"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+              /></svg
+            >Operations Hub</a
+          >
+          <a href="/operations/cheques" class="active"
+            ><svg
+              width="16"
+              height="16"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z"
+              /></svg
+            >Cheque Requests</a
+          >
+        </nav>
+        <div class="chq-sidebar-stats" id="sidebarStats">
+          <div class="stat-row total-row">
+            <span>Total</span><span class="stat-val" id="st-total">—</span>
+          </div>
+          <div class="stat-row">
+            <span>Requested</span
+            ><span class="stat-val" id="st-requested">—</span>
+          </div>
+          <div class="stat-row">
+            <span>Verified</span
+            ><span class="stat-val" id="st-verified">—</span>
+          </div>
+          <div class="stat-row">
+            <span>Approved</span
+            ><span class="stat-val" id="st-approved">—</span>
+          </div>
+          <div class="stat-row">
+            <span>Prepared</span
+            ><span class="stat-val" id="st-prepared">—</span>
+          </div>
+          <div class="stat-row">
+            <span>Submitted</span
+            ><span class="stat-val" id="st-submitted">—</span>
+          </div>
+          <div class="stat-row">
+            <span>Cleared</span
+            ><span class="stat-val" id="st-cleared" style="color: #bbf7d0"
+              >—</span
+            >
+          </div>
+          <div class="stat-row">
+            <span>Rejected</span
+            ><span class="stat-val" id="st-rejected" style="color: #fca5a5"
+              >—</span
+            >
+          </div>
+          <div class="stat-row">
+            <span>Cancelled</span
+            ><span class="stat-val" id="st-cancelled">—</span>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Main -->
+      <main class="chq-main">
+        <div class="chq-topbar">
+          <div>
+            <h1>Cheque Preparation</h1>
+            <p style="color: #6b7280; font-size: 0.85rem; margin: 4px 0 0">
+              Track cheque requests from preparation to clearance, with email
+              alerts on every status change.
+            </p>
+          </div>
+          {% if is_admin %}
+          <div class="chq-topbar-actions">
+            <button class="btn-ghost" id="notifBtn">
+              <svg
+                width="16"
+                height="16"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75"
+                />
+              </svg>
+              Notification Settings
+            </button>
+            <button class="btn-primary" id="addBtn">
+              <svg
+                width="16"
+                height="16"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 5v14M5 12h14"
+                />
+              </svg>
+              New Cheque Request
+            </button>
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- Filter pills + search combined in one row -->
+        <div class="chq-toolbar">
+          <div class="filter-bar" id="filterBar">
+            <button class="filter-chip active" data-status="all">All</button>
+            <button class="filter-chip" data-status="requested">
+              Requested
+            </button>
+            <button class="filter-chip" data-status="verified">Verified</button>
+            <button class="filter-chip" data-status="approved">Approved</button>
+            <button class="filter-chip" data-status="prepared">Prepared</button>
+            <button class="filter-chip" data-status="submitted">
+              Submitted
+            </button>
+            <button class="filter-chip" data-status="cleared">Cleared</button>
+            <button class="filter-chip" data-status="rejected">Rejected</button>
+            <button class="filter-chip" data-status="cancelled">
+              Cancelled
+            </button>
+          </div>
+          <div class="chq-search">
+            <svg
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
+              />
+            </svg>
+            <input
+              type="search"
+              id="searchInput"
+              placeholder="Search…"
+              autocomplete="off"
+            />
+          </div>
+          <span class="chq-count" id="countLabel"></span>
+        </div>
+
+        <!-- Card grid -->
+        <div class="chq-grid" id="chqGrid">
+          <div class="chq-empty"><h3>Loading…</h3></div>
+        </div>
+      </main>
+    </div>
+
+    <!-- New / Edit cheque modal (admin only) -->
+    <div class="ops-modal-backdrop" id="chqModal">
+      <div class="ops-modal">
+        <div class="ops-modal-head">
+          <h3 id="chqModalTitle">New Cheque Request</h3>
+          <button class="ops-close" data-close>&times;</button>
+        </div>
+        <div class="ops-modal-body">
+          <input type="hidden" id="f_ref" />
+          <div class="ops-grid2">
+            <div class="ops-field">
+              <label>Office</label
+              ><input type="text" id="f_office" placeholder="Head Office" />
+            </div>
+            <div class="ops-field">
+              <label>Department</label
+              ><input type="text" id="f_department" value="Finance" />
+            </div>
+          </div>
+          <div class="ops-grid2">
+            <div class="ops-field">
+              <label>Requested By</label
+              ><input
+                type="text"
+                id="f_requested_by"
+                placeholder="Defaults to you"
+              />
+            </div>
+            <div class="ops-field">
+              <label>Request Date</label
+              ><input type="date" id="f_requested_date" />
+            </div>
+          </div>
+          <div class="ops-field" style="margin-bottom: 0.4rem">
+            <label>Supplier Lines *</label>
+          </div>
+          <div class="chq-items-list" id="itemsBody"></div>
+          <div class="chq-items-total" id="itemsTotal">Total: AED 0.00</div>
+          <button
+            class="btn-ghost"
+            id="addItemBtn"
+            type="button"
+            style="padding: 0.4rem 0.7rem; font-size: 0.8rem"
+          >
+            <svg
+              width="14"
+              height="14"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 5v14M5 12h14"
+              />
+            </svg>
+            Add supplier line
+          </button>
+
+          <div class="ops-field" style="margin-top: 1.1rem">
+            <label>Attached Documents (one per line)</label
+            ><textarea
+              id="f_attached"
+              class="ops-textarea-lg"
+              rows="6"
+              placeholder="e.g. Supplier invoice&#10;LPO copy&#10;Delivery note&#10;Bank details"
+            ></textarea>
+          </div>
+
+          <div class="ops-field" style="margin-top: 1.1rem">
+            <label
+              >Requested By Signature *
+              <span
+                id="requestedSignatureHint"
+                class="sigc-badge"
+                style="display: none"
+              >
+                <svg
+                  width="11"
+                  height="11"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="3"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+                Signed</span
+              ></label
+            >
+            <div class="sig-field sigc" data-sig-field="requested">
+              <div class="sig-field-preview sigc-box" id="requestedSigPreview">
+                <div class="sig-field-ph sigc-empty">
+                  <svg
+                    class="sigc-pen"
+                    width="26"
+                    height="26"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.7"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M16.862 4.487l1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897l12.682-12.68Z"
+                    />
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M19.5 12v7.125A1.875 1.875 0 0 1 17.625 21H4.875A1.875 1.875 0 0 1 3 19.125V6.375A1.875 1.875 0 0 1 4.875 4.5H12"
+                    />
+                  </svg>
+                  <span class="sigc-empty-text"
+                    >Draw, type, or upload the requester's signature</span
+                  >
+                  <button
+                    type="button"
+                    class="sig-field-open sigc-sign-btn"
+                    data-title="Requested By Signature"
+                    data-input="f_requested_signature"
+                    data-preview="requestedSigImg"
+                    data-hint="requestedSignatureHint"
+                  >
+                    Sign now
+                  </button>
+                </div>
+                <img
+                  id="requestedSigImg"
+                  alt="Requested by signature"
+                  style="display: none"
+                  class="sig-field-open"
+                  data-title="Requested By Signature"
+                  data-input="f_requested_signature"
+                  data-preview="requestedSigImg"
+                  data-hint="requestedSignatureHint"
+                />
+                <button
+                  type="button"
+                  class="sig-field-clear sigc-clear-x"
+                  title="Remove signature"
+                  aria-label="Remove signature"
+                  data-input="f_requested_signature"
+                  data-preview="requestedSigImg"
+                  data-hint="requestedSignatureHint"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2.5"
+                    stroke-linecap="round"
+                  >
+                    <path d="M6 6l12 12M18 6L6 18" />
+                  </svg>
+                </button>
+              </div>
+              <input type="hidden" id="f_requested_signature" />
+            </div>
+          </div>
+        </div>
+        <div class="ops-modal-foot">
+          <button class="btn-ghost" data-close>Cancel</button>
+          <button class="btn-primary" id="saveBtn">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Notification settings side drawer (admin only) -->
+    <div class="drawer-overlay" id="notifDrawer">
+      <aside class="drawer">
+        <div class="drawer-head">
+          <div class="drawer-head-text">
+            <h3>Status Notification Recipients</h3>
+            <p>
+              An email is sent to the addresses below whenever a cheque request
+              enters that status. Separate multiple addresses with commas —
+              leave To empty to skip emails for a status.
+            </p>
+          </div>
+          <button class="ops-close" data-close>&times;</button>
+        </div>
+        <div class="drawer-body">
+          <div id="notifRows"></div>
+        </div>
+        <div class="drawer-foot">
+          <button class="btn-ghost" data-close>Cancel</button>
+          <button class="btn-primary" id="notifSaveBtn">Save Recipients</button>
+        </div>
+      </aside>
+    </div>
+
+    {% include 'partials/cheque_pdf_preview_modal.html' %} {% include
+    'partials/signature_modal.html' %}
+
+    <div class="ops-toast" id="toast"></div>
+
+    <script
+      src="{{ url_for('static', filename='pwa-install.js') }}"
+      defer
+    ></script>
+    <script
+      src="{{ url_for('static', filename='mobile_utils.js') }}"
+      defer
+    ></script>
+    <script src="{{ url_for('static', filename='api-client.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+    <script src="{{ url_for('static', filename='js/signature_modal.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/cheque_pdf_preview.js') }}"></script>
+    <script>
+       (function(){
+       const IS_ADMIN = {{ 'true' if is_admin else 'false' }};
+       const STATUSES = ['requested','verified','approved','prepared','submitted','cleared','rejected','cancelled'];
+       const LABELS = {requested:'Requested', verified:'Verified', approved:'Approved', prepared:'Prepared',
+       submitted:'Submitted', cleared:'Cleared', rejected:'Rejected', cancelled:'Cancelled'};
+
+       const grid = document.getElementById('chqGrid');
+       const modal = document.getElementById('chqModal');
+       const notifDrawer = document.getElementById('notifDrawer');
+       let cheques = [], counts = {};
+       let q = '', statusFilter = 'all';
+
+       function toast(msg, isErr){ const t=document.getElementById('toast'); t.textContent=msg; t.className='ops-toast show'+(isErr?' err':''); setTimeout(()=>t.className='ops-toast',3200); }
+       function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+       function fmtAED(n){ return 'AED ' + (Number(n)||0).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+       function fmtDate(d){ if(!d) return '—'; const dt=new Date(d); return dt.toLocaleDateString('en-GB', {day:'2-digit', month:'short', year:'numeric'}); }
+
+       async function load(){
+       try{
+       const res = await ApiClient.fetch('/operations/api/cheques', { method:'GET' });
+       const data = await res.json();
+       if(!res.ok || !data.success){ throw new Error(data.error||'Failed to load'); }
+       cheques = data.cheques || [];
+       counts = data.counts || {};
+       renderSidebarStats();
+       applyFilters();
+       maybeOpenEditFromUrl();
+       }catch(e){ grid.innerHTML='<div class="chq-empty"><h3>'+esc(e.message)+'</h3></div>'; }
+       }
+
+       function renderSidebarStats(){
+       const total = STATUSES.reduce((s,k)=>s+(counts[k]||0), 0);
+       document.getElementById('st-total').textContent = total;
+       STATUSES.forEach(s=>{ const el=document.getElementById('st-'+s); if(el) el.textContent = counts[s]||0; });
+       }
+
+       function applyFilters(){
+       const needle = q.toLowerCase();
+       const filtered = cheques.filter(c=>{
+       if(statusFilter !== 'all' && c.status !== statusFilter) return false;
+       if(!needle) return true;
+       const supplierNames = (c.items||[]).map(i=>i.supplier).join(' ');
+       return [c.reference_no, c.department, c.requested_by_name, supplierNames]
+       .some(v => v && String(v).toLowerCase().includes(needle));
+       });
+       document.getElementById('countLabel').textContent =
+       (filtered.length === cheques.length) ? cheques.length + ' request' + (cheques.length===1?'':'s')
+       : filtered.length + ' of ' + cheques.length + ' requests';
+       render(filtered);
+       }
+
+       function cardHTML(c){
+       const suppliers = (c.items||[]).map(i=>i.supplier).join(', ');
+       return `
+      <div class="chq-card" data-href="/operations/cheques/${esc(c.reference_no)}" tabindex="0">
+       <div class="chq-card-top">
+       <span class="chq-card-ref">${esc(c.reference_no)}</span>
+       <span class="badge-chq ${esc(c.status)}">${LABELS[c.status]||esc(c.status)}</span>
+       </div>
+       <div class="chq-card-amount">${fmtAED(c.total_amount)}</div>
+       <div class="chq-card-dept">${esc(c.department)||'—'}${c.office ? ' · '+esc(c.office) : ''}</div>
+       <div class="chq-card-dates">
+       <div class="chq-date-box">
+       <div class="chq-date-label">Requested By</div>
+       <div class="chq-date-val" title="${esc(c.requested_by_name)}">${esc(c.requested_by_name)||'—'}</div>
+       </div>
+       <div class="chq-date-box">
+       <div class="chq-date-label">Created</div>
+       <div class="chq-date-val">${fmtDate(c.created_at)}</div>
+       </div>
+       </div>
+       <div class="chq-card-suppliers" title="${esc(suppliers)}"><strong>Suppliers:</strong> ${esc(suppliers)||'—'}</div>
+       ${c.remarks ? `<div class="chq-card-remarks" title="${esc(c.remarks)}">${esc(c.remarks)}</div>` : ''}
+       <div class="chq-card-actions">
+       <button data-preview="${esc(c.reference_no)}">Preview / Print</button>
+       ${IS_ADMIN ? `<button data-edit="${esc(c.reference_no)}">Edit</button>
+       <button class="danger" data-del="${esc(c.reference_no)}">Delete</button>` : ''}
+       </div>
+      </div>`;
+       }
+
+       function render(rows){
+       if(!cheques.length){
+       grid.innerHTML = `<div class="chq-empty">
+       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z"/></svg>
+       <h3>No cheque requests yet</h3>
+       <p>${IS_ADMIN ? 'Create your first cheque preparation request.' : 'Cheque requests created by admins will appear here.'}</p>
+       ${IS_ADMIN ? '<button class="btn-primary" id="emptyAddBtn">New Cheque Request</button>' : ''}
+       </div>`;
+       const b = document.getElementById('emptyAddBtn');
+       if(b) b.addEventListener('click', ()=>openModal(null));
+       return;
+       }
+       if(!rows.length){
+       grid.innerHTML = `<div class="chq-empty"><h3>No requests match your filters</h3><p><button class="clear-link" id="clearFilters">Clear filters</button></p></div>`;
+       document.getElementById('clearFilters').addEventListener('click', ()=>{
+       q=''; statusFilter='all';
+       document.getElementById('searchInput').value='';
+       document.querySelectorAll('#filterBar .filter-chip').forEach(ch=>ch.classList.toggle('active', ch.dataset.status==='all'));
+       applyFilters();
+       });
+       return;
+       }
+       grid.innerHTML = rows.map(cardHTML).join('');
+       }
+
+       let editParamHandled = false;
+       function maybeOpenEditFromUrl(){
+       if(editParamHandled || !IS_ADMIN) return;
+       editParamHandled = true;
+       const ref = new URLSearchParams(window.location.search).get('edit');
+       if(!ref) return;
+       const c = cheques.find(x=>x.reference_no===ref);
+       if(c) openModal(c);
+       }
+
+       // ── Line-items editor ────────────────────────────────────────────────
+       function itemRow(item){
+       const el = document.createElement('div');
+       el.className = 'chq-item';
+       el.innerHTML = `
+       <div class="chq-item-top">
+       <div class="chq-item-sn-wrap">
+       <div class="chq-item-lbl">SN</div>
+       <div class="chq-sn"></div>
+       </div>
+       <div class="chq-item-field">
+       <div class="chq-item-lbl">Supplier</div>
+       <input type="text" class="it-supplier" placeholder="Supplier name" value="${esc(item?item.supplier:'')}">
+       </div>
+       <div class="chq-item-field chq-item-field-amount">
+       <div class="chq-item-lbl">Amount (AED)</div>
+       <input type="number" class="it-amount" min="0" step="0.01" placeholder="0.00" value="${item&&item.amount!=null?item.amount:''}">
+       </div>
+       <div class="chq-item-field chq-item-field-date">
+       <div class="chq-item-lbl">Cheque Date</div>
+       <input type="date" class="it-date" value="${esc(item?(item.cheque_date||''):'')}">
+       </div>
+       <button type="button" class="chq-item-del" title="Remove line">&times;</button>
+       </div>
+       <div class="chq-item-field" style="margin-top:.55rem;">
+       <div class="chq-item-lbl">Remarks</div>
+       <textarea class="it-remarks" rows="3" placeholder="Line remarks…">${esc(item?(item.remarks||''):'')}</textarea>
+       </div>`;
+       el.querySelector('.chq-item-del').addEventListener('click', ()=>{ el.remove(); renumber(); });
+       el.querySelector('.it-amount').addEventListener('input', updateTotal);
+       return el;
+       }
+       function renumber(){
+       document.querySelectorAll('#itemsBody .chq-item').forEach((el,i)=>{ el.querySelector('.chq-sn').textContent = i+1; });
+       updateTotal();
+       }
+       function updateTotal(){
+       let total = 0;
+       document.querySelectorAll('#itemsBody .it-amount').forEach(inp=>{ total += Number(inp.value)||0; });
+       document.getElementById('itemsTotal').textContent = 'Total: ' + fmtAED(total);
+       }
+       function collectItems(){
+       const rows = [];
+       for(const el of document.querySelectorAll('#itemsBody .chq-item')){
+       const supplier = el.querySelector('.it-supplier').value.trim();
+       const amount = el.querySelector('.it-amount').value;
+       const date = el.querySelector('.it-date').value;
+       const remarks = el.querySelector('.it-remarks').value.trim();
+       if(!supplier && !amount && !remarks) continue;
+       rows.push({ supplier, amount, cheque_date: date || null, remarks });
+       }
+       return rows;
+       }
+
+       // ── Signature field helpers ──────────────────────────────────────────
+       function setRequestedSig(dataUrl){
+       if(window.InjaazSignatureModal){
+       InjaazSignatureModal.applyToField('f_requested_signature', 'requestedSigImg', dataUrl || '', 'requestedSignatureHint');
+       } else {
+       const inp = document.getElementById('f_requested_signature');
+       const img = document.getElementById('requestedSigImg');
+       const hint = document.getElementById('requestedSignatureHint');
+       const preview = document.getElementById('requestedSigPreview');
+       if(inp) inp.value = dataUrl || '';
+       if(img){ if(dataUrl){ img.src=dataUrl; img.style.display='block'; } else { img.removeAttribute('src'); img.style.display='none'; } }
+       if(hint) hint.style.display = dataUrl ? '' : 'none';
+       if(preview) preview.classList.toggle('has-sig', !!dataUrl);
+       }
+       }
+       function initSigFieldUI(){
+       document.querySelectorAll('#chqModal .sig-field-open').forEach(btn=>{
+       btn.addEventListener('click', ()=>{
+       if(!window.InjaazSignatureModal){ alert('Signature modal failed to load. Please refresh.'); return; }
+       InjaazSignatureModal.open({
+       title: btn.getAttribute('data-title') || 'Signature',
+       targetInputId: btn.getAttribute('data-input'),
+       previewImgId: btn.getAttribute('data-preview'),
+       hintId: btn.getAttribute('data-hint'),
+       });
+       });
+       });
+       document.querySelectorAll('#chqModal .sig-field-clear').forEach(btn=>{
+       btn.addEventListener('click', ()=>{
+       if(window.InjaazSignatureModal){
+       InjaazSignatureModal.clearField(btn.getAttribute('data-input'), btn.getAttribute('data-preview'), btn.getAttribute('data-hint'));
+       } else setRequestedSig('');
+       });
+       });
+       // Load profile default signature for "Use Saved"
+       ApiClient.fetch('/api/auth/me', { method:'GET' }).then(async res=>{
+       if(!res.ok) return;
+       const data = await res.json();
+       const saved = data && data.user && data.user.default_signature;
+       if(saved && window.InjaazSignatureModal) InjaazSignatureModal.setSavedSignature(saved);
+       }).catch(()=>{});
+       }
+
+       // ── Create / edit modal ──────────────────────────────────────────────
+       function fillModal(c){
+       document.getElementById('chqModalTitle').textContent = c ? ('Edit ' + c.reference_no) : 'New Cheque Request';
+       const f = id=>document.getElementById(id);
+       f('f_ref').value = c ? c.reference_no : '';
+       f('f_office').value = c ? (c.office||'') : '';
+       f('f_department').value = c ? (c.department||'Finance') : 'Finance';
+       f('f_requested_by').value = c ? (c.requested_by_name||'') : '';
+       f('f_requested_date').value = c ? (c.requested_date||'') : new Date().toISOString().slice(0,10);
+       f('f_attached').value = c ? (c.attached_documents||'') : '';
+       setRequestedSig(c && c.requested_signature ? c.requested_signature : '');
+       const itemsBody = document.getElementById('itemsBody');
+       itemsBody.innerHTML = '';
+       const items = (c && c.items && c.items.length) ? c.items : [null];
+       items.forEach(it=>itemsBody.appendChild(itemRow(it)));
+       renumber();
+       modal.classList.add('open');
+       }
+       async function openModal(c){
+       if(!c){ fillModal(null); return; }
+       // List payload omits signature bytes — always fetch full record for edit
+       try{
+       const res = await ApiClient.fetch('/operations/api/cheques/'+encodeURIComponent(c.reference_no), { method:'GET' });
+       const data = await res.json();
+       if(res.ok && data.success && data.cheque) c = data.cheque;
+       }catch(e){ /* fall through with list row */ }
+       fillModal(c);
+       }
+       function closeModal(){ modal.classList.remove('open'); }
+
+       async function save(){
+       const f = id=>document.getElementById(id).value;
+       const ref = f('f_ref');
+       const items = collectItems();
+       if(!items.length){ toast('Add at least one supplier line', true); return; }
+       for(const it of items){
+       if(!it.supplier){ toast('Every line needs a supplier name', true); return; }
+       if(it.amount === '' || Number(it.amount) < 0 || isNaN(Number(it.amount))){ toast('Every line needs a valid amount', true); return; }
+       }
+       const requestedSig = (document.getElementById('f_requested_signature').value || '').trim();
+       if(!requestedSig){ toast('Please add the Requested-by signature', true); return; }
+       const payload = {
+       office: f('f_office').trim(), department: f('f_department').trim() || 'Finance',
+       requested_by_name: f('f_requested_by').trim(), requested_date: f('f_requested_date'),
+       requested_signature: requestedSig,
+       remarks: '', attached_documents: f('f_attached').trim(),
+       items,
+       };
+       const url = ref ? '/operations/api/cheques/'+encodeURIComponent(ref) : '/operations/api/cheques';
+       try{
+       const res = await ApiClient.fetch(url, { method: ref?'PUT':'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+       const data = await res.json();
+       if(!res.ok || !data.success){ throw new Error(data.error||'Save failed'); }
+       toast(data.message || (ref?'Cheque request updated':'Cheque request created'));
+       closeModal(); load();
+       if(data.cheque && data.cheque.reference_no) ChequePdfPreview.refreshIfOpen(data.cheque.reference_no);
+       }catch(e){ toast(e.message, true); }
+       }
+
+       async function del(ref){
+       if(!confirm('Delete cheque request '+ref+'? This also removes its status history.')) return;
+       try{
+       const res = await ApiClient.fetch('/operations/api/cheques/'+encodeURIComponent(ref), { method:'DELETE' });
+       const data = await res.json();
+       if(!res.ok || !data.success){ throw new Error(data.error||'Delete failed'); }
+       toast('Cheque request deleted'); load();
+       ChequePdfPreview.closeIfOpen(ref);
+       }catch(e){ toast(e.message, true); }
+       }
+
+       // ── Notification settings ────────────────────────────────────────────
+       async function openNotif(){
+       try{
+       const res = await ApiClient.fetch('/operations/api/cheques-notification-config', { method:'GET' });
+       const data = await res.json();
+       if(!res.ok || !data.success){ throw new Error(data.error||'Failed to load settings'); }
+       const rowsEl = document.getElementById('notifRows');
+       rowsEl.innerHTML = (data.config||[]).map(c=>`
+       <div class="ntf-row" data-status="${esc(c.status)}">
+       <div class="ntf-row-head"><span class="badge-chq ${esc(c.status)}">${LABELS[c.status]||esc(c.status)}</span></div>
+       <div class="ntf-field"><label>To</label><input type="text" class="ntf-to" placeholder="finance@injaaz.ae, accounts@injaaz.ae" value="${esc(c.to_emails)}"></div>
+       <div class="ntf-field"><label>CC</label><input type="text" class="ntf-cc" placeholder="CC (optional)" value="${esc(c.cc_emails)}"></div>
+       </div>`).join('');
+       notifDrawer.classList.add('open');
+       }catch(e){ toast(e.message, true); }
+       }
+       async function saveNotif(){
+       const config = [...document.querySelectorAll('#notifRows .ntf-row')].map(row=>({
+       status: row.dataset.status,
+       to_emails: row.querySelector('.ntf-to').value.trim(),
+       cc_emails: row.querySelector('.ntf-cc').value.trim(),
+       }));
+       try{
+       const res = await ApiClient.fetch('/operations/api/cheques-notification-config', { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({config}) });
+       const data = await res.json();
+       if(!res.ok || !data.success){ throw new Error(data.error||'Save failed'); }
+       toast('Notification recipients saved');
+       notifDrawer.classList.remove('open');
+       }catch(e){ toast(e.message, true); }
+       }
+
+       // ── Wiring ───────────────────────────────────────────────────────────
+       if(IS_ADMIN){
+       document.getElementById('addBtn').addEventListener('click', ()=>openModal(null));
+       document.getElementById('saveBtn').addEventListener('click', save);
+       document.getElementById('addItemBtn').addEventListener('click', ()=>{ document.getElementById('itemsBody').appendChild(itemRow(null)); renumber(); });
+       document.getElementById('notifBtn').addEventListener('click', openNotif);
+       document.getElementById('notifSaveBtn').addEventListener('click', saveNotif);
+       notifDrawer.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click', ()=>notifDrawer.classList.remove('open')));
+       notifDrawer.addEventListener('click', e=>{ if(e.target===notifDrawer) notifDrawer.classList.remove('open'); });
+       initSigFieldUI();
+       }
+       modal.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click', closeModal));
+       modal.addEventListener('click', e=>{ if(e.target===modal) closeModal(); });
+       document.addEventListener('keydown', e=>{
+       if(e.key !== 'Escape') return;
+       if(notifDrawer.classList.contains('open')) notifDrawer.classList.remove('open');
+       else if(modal.classList.contains('open')) closeModal();
+       });
+
+       document.getElementById('searchInput').addEventListener('input', e=>{ q = e.target.value.trim(); applyFilters(); });
+       document.getElementById('filterBar').addEventListener('click', e=>{
+       const chip = e.target.closest('.filter-chip'); if(!chip) return;
+       statusFilter = chip.dataset.status;
+       document.querySelectorAll('#filterBar .filter-chip').forEach(ch=>ch.classList.toggle('active', ch===chip));
+       applyFilters();
+       });
+
+       grid.addEventListener('click', e=>{
+       const pv=e.target.closest('[data-preview]'); const ed=e.target.closest('[data-edit]'); const dl=e.target.closest('[data-del]');
+       if(pv){ ChequePdfPreview.open(pv.getAttribute('data-preview')); return; }
+       if(ed){ openModal(cheques.find(x=>x.reference_no===ed.getAttribute('data-edit'))); return; }
+       if(dl){ del(dl.getAttribute('data-del')); return; }
+       if(e.target.closest('button')) return;
+       const card = e.target.closest('[data-href]');
+       if(card) window.location.href = card.dataset.href;
+       });
+       grid.addEventListener('keydown', e=>{
+       if(e.key !== 'Enter') return;
+       const card = e.target.closest('[data-href]');
+       if(card && !e.target.closest('button')) window.location.href = card.dataset.href;
+       });
+
+       load();
+       })();
+    </script>
+  </body>
+</html>

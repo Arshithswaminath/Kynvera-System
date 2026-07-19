@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>All Tickets — Injaaz</title>
+  <title>All Tickets — Amaan</title>
   {% include 'partials/caveat_font.html' ignore missing %}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
@@ -47,8 +47,15 @@
         ('assigned','Assigned'),
         ('site_attended','Site Attended'),
         ('work_started','Work Started'),
+        ('in_progress','In Progress'),
+        ('pending_parts','Pending Parts'),
         ('work_completed','Work Completed'),
         ('verification','Verification'),
+        ('pending_supervisor','Supervisor Queue'),
+        ('pending_verification','Pending Verification'),
+        ('pending_gm_approval','Pending GM Approval'),
+        ('pending_finance','Pending Finance'),
+        ('resolved','Resolved'),
         ('on_hold','On Hold'),
         ('cancelled','Cancelled'),
         ('closed','Closed'),
@@ -61,8 +68,8 @@
     <div class="tkt-filter-select-shell">
       <select name="priority" class="tkt-filter-select" aria-label="Priority">
       <option value="">All priorities</option>
-      {% for p in ['low','medium','high','critical'] %}
-      <option value="{{ p }}" {% if priority_filter == p %}selected{% endif %}>{{ p|capitalize }}</option>
+      {% for p, plabel in [('critical','Critical'),('high','High'),('normal','Normal'),('medium','Medium'),('low','Low')] %}
+      <option value="{{ p }}" {% if priority_filter == p %}selected{% endif %}>{{ plabel }}</option>
       {% endfor %}
       </select>
     </div>
@@ -80,28 +87,90 @@
     {% endif %}
   </form>
 
+  {% if tickets %}
+  <div class="tkt-filter-meta">
+    <span id="tktExcelCount">{{ tickets|length }} ticket{{ '' if tickets|length == 1 else 's' }}</span>
+    <button type="button" class="tkt-filter-meta-clear" id="tktExcelClearAll" hidden>Clear column filters</button>
+  </div>
+  {% endif %}
+
   <div class="tkt-card">
     <div class="tkt-card-body" style="padding:0;">
       {% if tickets %}
+      {% set _sl = {'open':'Open','assigned':'Assigned','site_attended':'Site Attended','work_started':'Work Started','work_completed':'Work Completed','verification':'Verification','on_hold':'On Hold','cancelled':'Cancelled','closed':'Closed','in_progress':'In Progress','pending_parts':'Pending Parts','resolved':'Resolved','pending_supervisor':'Supervisor Queue','pending_verification':'Pending Verification','pending_gm_approval':'Pending GM Approval','pending_finance':'Pending Finance'} %}
+      {% set _funnel %}
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M3 4.5h10M5 8h6M7 11.5h2"/></svg>
+      {% endset %}
       <div class="tkt-table-wrap">
-        <table class="tkt-table">
+        <table class="tkt-table" id="tktTicketsTable">
           <thead>
             <tr>
-              <th>Ticket ID</th>
-              <th>Title</th>
-              <th>Project</th>
-              <th>Service Group</th>
-              <th>Priority</th>
-              <th>Status</th>
-              <th>Reporter</th>
-              <th>Assigned To</th>
-              <th>Created</th>
+              <th class="tkt-th-filterable">
+                <span class="tkt-th-inner">Ticket ID <span class="tkt-col-sort-mark" hidden></span>
+                  <button type="button" class="tkt-col-filter-btn" data-col="ticketId" aria-label="Filter Ticket ID" title="Filter">{{ _funnel|safe }}</button>
+                </span>
+              </th>
+              <th class="tkt-th-filterable">
+                <span class="tkt-th-inner">Title <span class="tkt-col-sort-mark" hidden></span>
+                  <button type="button" class="tkt-col-filter-btn" data-col="title" aria-label="Filter Title" title="Filter">{{ _funnel|safe }}</button>
+                </span>
+              </th>
+              <th class="tkt-th-filterable">
+                <span class="tkt-th-inner">Project <span class="tkt-col-sort-mark" hidden></span>
+                  <button type="button" class="tkt-col-filter-btn" data-col="project" aria-label="Filter Project" title="Filter">{{ _funnel|safe }}</button>
+                </span>
+              </th>
+              <th class="tkt-th-filterable">
+                <span class="tkt-th-inner">Service Group <span class="tkt-col-sort-mark" hidden></span>
+                  <button type="button" class="tkt-col-filter-btn" data-col="serviceGroup" aria-label="Filter Service Group" title="Filter">{{ _funnel|safe }}</button>
+                </span>
+              </th>
+              <th class="tkt-th-filterable">
+                <span class="tkt-th-inner">Priority <span class="tkt-col-sort-mark" hidden></span>
+                  <button type="button" class="tkt-col-filter-btn" data-col="priority" aria-label="Filter Priority" title="Filter">{{ _funnel|safe }}</button>
+                </span>
+              </th>
+              <th class="tkt-th-filterable">
+                <span class="tkt-th-inner">Status <span class="tkt-col-sort-mark" hidden></span>
+                  <button type="button" class="tkt-col-filter-btn" data-col="status" aria-label="Filter Status" title="Filter">{{ _funnel|safe }}</button>
+                </span>
+              </th>
+              <th class="tkt-th-filterable">
+                <span class="tkt-th-inner">Reporter <span class="tkt-col-sort-mark" hidden></span>
+                  <button type="button" class="tkt-col-filter-btn" data-col="reporter" aria-label="Filter Reporter" title="Filter">{{ _funnel|safe }}</button>
+                </span>
+              </th>
+              <th class="tkt-th-filterable">
+                <span class="tkt-th-inner">Assigned To <span class="tkt-col-sort-mark" hidden></span>
+                  <button type="button" class="tkt-col-filter-btn" data-col="assigned" aria-label="Filter Assigned To" title="Filter">{{ _funnel|safe }}</button>
+                </span>
+              </th>
+              <th class="tkt-th-filterable">
+                <span class="tkt-th-inner">Created <span class="tkt-col-sort-mark" hidden></span>
+                  <button type="button" class="tkt-col-filter-btn" data-col="created" aria-label="Filter Created" title="Filter">{{ _funnel|safe }}</button>
+                </span>
+              </th>
               <th></th>
             </tr>
           </thead>
           <tbody>
             {% for t in tickets %}
-            <tr>
+            {% set status_label = _sl.get(t.status, t.status.replace('_',' ')|title) %}
+            {% set reporter_name = t.reporter.full_name if t.reporter else '' %}
+            {% set assigned_name = t.assigned_to.full_name if t.assigned_to else 'Unassigned' %}
+            {% set created_label = t.created_at.strftime('%d %b %Y') if t.created_at else '' %}
+            <tr
+              data-ticket-id="{{ t.ticket_id }}"
+              data-title="{{ t.title or '' }}"
+              data-project="{{ t.project or '' }}"
+              data-service-group="{{ t.service_group or '' }}"
+              data-priority="{{ (t.priority or '')|capitalize }}"
+              data-status="{{ status_label }}"
+              data-reporter="{{ reporter_name }}"
+              data-assigned="{{ assigned_name }}"
+              data-created="{{ created_label }}"
+              data-created-sort="{{ t.created_at.strftime('%Y-%m-%d') if t.created_at else '' }}"
+            >
               <td style="white-space:nowrap;font-weight:700;">
                 <a href="{{ url_for('ticketing.ticket_detail', ticket_id=t.ticket_id) }}">{{ t.ticket_id }}</a>
               </td>
@@ -115,12 +184,11 @@
               <td style="font-size:.82rem;">{{ t.service_group }}</td>
               <td><span class="tkt-badge badge-priority-{{ t.priority }}">{{ t.priority|capitalize }}</span></td>
               <td>
-                {% set _sl = {'open':'Open','assigned':'Assigned','site_attended':'Site Attended','work_started':'Work Started','work_completed':'Work Completed','verification':'Verification','on_hold':'On Hold','cancelled':'Cancelled','closed':'Closed','in_progress':'In Progress','pending_parts':'Pending Parts','resolved':'Resolved','pending_supervisor':'Supervisor Queue','pending_verification':'Pending Verification'} %}
-                <span class="tkt-badge badge-status-{{ t.status }}">{{ _sl.get(t.status, t.status.replace('_',' ')|title) }}</span>
+                <span class="tkt-badge badge-status-{{ t.status }}">{{ status_label }}</span>
               </td>
-              <td style="font-size:.82rem;">{{ t.reporter.full_name if t.reporter else '—' }}</td>
-              <td style="font-size:.82rem;">{{ t.assigned_to.full_name if t.assigned_to else '<span style="color:#9ca3af;">Unassigned</span>'|safe }}</td>
-              <td style="white-space:nowrap;font-size:.78rem;color:#64748b;">{{ t.created_at.strftime('%d %b %Y') if t.created_at else '—' }}</td>
+              <td style="font-size:.82rem;">{{ reporter_name or '—' }}</td>
+              <td style="font-size:.82rem;">{% if t.assigned_to %}{{ assigned_name }}{% else %}<span style="color:#9ca3af;">Unassigned</span>{% endif %}</td>
+              <td style="white-space:nowrap;font-size:.78rem;color:#64748b;">{{ created_label or '—' }}</td>
               <td>
                 <a href="{{ url_for('ticketing.ticket_detail', ticket_id=t.ticket_id) }}"
                    class="tkt-btn tkt-btn-outline tkt-btn-sm">View</a>
@@ -152,6 +220,14 @@
   function tktCloseMobileSidebar(){const s=document.getElementById('tktDhSidebar');if(s)s.classList.remove('open');}
   function tktToggleMobileSidebar(){const s=document.getElementById('tktDhSidebar');if(!s)return;s.classList.contains('open')?tktCloseMobileSidebar():tktOpenMobileSidebar();}
   document.addEventListener('click',function(e){const s=document.getElementById('tktDhSidebar'),btn=document.getElementById('tktDhSidebarToggle');if(s&&s.classList.contains('open')&&!s.contains(e.target)&&btn&&!btn.contains(e.target))tktCloseMobileSidebar();});
+  document.addEventListener('DOMContentLoaded', function () {
+    if (typeof tktInitExcelFilters === 'function') {
+      tktInitExcelFilters('tktTicketsTable', {
+        countEl: '#tktExcelCount',
+        clearAllBtn: '#tktExcelClearAll',
+      });
+    }
+  });
 </script>
 </body>
 </html>

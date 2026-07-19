@@ -28,7 +28,6 @@ hvac_mep_bp = None
 civil_bp = None
 cleaning_bp = None
 auth_bp = None
-bd_bp = None
 docs_bp = None
 
 try:
@@ -74,13 +73,6 @@ except Exception as e:
     workflow_bp = None
 
 try:
-    from app.bd.routes import bd_bp  # noqa: F401
-    logger.info("Imported app.bd.routes.bd_bp")
-except Exception as e:
-    logger.exception("Could not import app.bd.routes.bd_bp: %s", e)
-    bd_bp = None
-
-try:
     from app.docs.routes import docs_bp  # noqa: F401
     logger.info("Imported app.docs.routes.docs_bp")
 except Exception as e:
@@ -96,14 +88,14 @@ except Exception as e:
     logger.exception("Could not import module_hr.routes.hr_bp: %s", e)
     hr_bp = None
 
-# Procurement Module
-procurement_module_bp = None
+# Store Module
+store_module_bp = None
 try:
-    from module_procurement.routes import procurement_bp as procurement_module_bp  # noqa: F401
-    logger.info("Imported module_procurement.routes.procurement_bp")
+    from module_store.routes import store_bp as store_module_bp  # noqa: F401
+    logger.info("Imported module_store.routes.store_bp")
 except Exception as e:
-    logger.exception("Could not import module_procurement.routes.procurement_bp: %s", e)
-    procurement_module_bp = None
+    logger.exception("Could not import module_store.routes.store_bp: %s", e)
+    store_module_bp = None
 
 # Inspection Form Module (HVAC, Civil, Cleaning)
 inspection_bp = None
@@ -332,6 +324,15 @@ def create_app():
             # Step 1: Create all tables if they don't exist (fully automatic)
             logger.info("Ensuring all database tables exist...")
             try:
+                # Register models on metadata before create_all (includes Employee directory)
+                from app.models import (  # noqa: F401
+                    DocHubDocument,
+                    DocHubStar,
+                    EmailOtp,
+                    Employee,
+                    Technician,
+                    User,
+                )
                 db.create_all()
                 logger.info("✅ All database tables verified/created")
             except Exception as create_error:
@@ -361,6 +362,25 @@ def create_app():
                 if 'access_operations_manage' not in columns:
                     missing_columns.append(('access_operations_manage', 'BOOLEAN DEFAULT 0'))
 
+                if 'admin_visible_password' not in columns:
+                    missing_columns.append(('admin_visible_password', 'VARCHAR(255)'))
+                if 'password_changed_at' not in columns:
+                    missing_columns.append(('password_changed_at', 'TIMESTAMP'))
+                if 'password_locked' not in columns:
+                    missing_columns.append(('password_locked', 'BOOLEAN DEFAULT 0'))
+                if 'access_finance' not in columns:
+                    missing_columns.append(('access_finance', 'BOOLEAN DEFAULT 0'))
+                if 'access_operations_overtime' not in columns:
+                    missing_columns.append(('access_operations_overtime', 'BOOLEAN DEFAULT 0'))
+                if 'access_operations_invoices' not in columns:
+                    missing_columns.append(('access_operations_invoices', 'BOOLEAN DEFAULT 0'))
+                if 'access_operations_clients' not in columns:
+                    missing_columns.append(('access_operations_clients', 'BOOLEAN DEFAULT 0'))
+                if 'access_operations_cheques' not in columns:
+                    missing_columns.append(('access_operations_cheques', 'BOOLEAN DEFAULT 0'))
+                if 'admin_protect_pin_hash' not in columns:
+                    missing_columns.append(('admin_protect_pin_hash', 'VARCHAR(255)'))
+
                 if missing_columns:
                     logger.info(f"Adding missing columns to users table: {[col[0] for col in missing_columns]}")
                     try:
@@ -377,6 +397,27 @@ def create_app():
                                         logger.warning(f"Could not add {col_name}: {col_error}")
                     except Exception as e:
                         logger.warning(f"Could not add missing columns (non-critical): {e}")
+
+                try:
+                    from app.models import User as _UserBF
+                    dirty = False
+                    for _u in _UserBF.query.filter_by(access_operations=True).all():
+                        if not (
+                            getattr(_u, 'access_operations_overtime', False)
+                            or getattr(_u, 'access_operations_invoices', False)
+                            or getattr(_u, 'access_operations_clients', False)
+                            or getattr(_u, 'access_operations_cheques', False)
+                        ):
+                            _u.access_operations_overtime = True
+                            _u.access_operations_invoices = True
+                            _u.access_operations_clients = True
+                            _u.access_operations_cheques = True
+                            dirty = True
+                    if dirty:
+                        db.session.commit()
+                except Exception as e:
+                    db.session.rollback()
+                    logger.warning(f"Could not backfill operations sub-module access (non-critical): {e}")
             
             if 'submissions' in inspector.get_table_names():
                 columns = [col['name'] for col in inspector.get_columns('submissions')]
@@ -480,6 +521,52 @@ def create_app():
                                 logger.info(f"Column {col_name} already exists")
                             else:
                                 logger.warning(f"Could not add {col_name}: {col_error}")
+
+            # finance_contracts: account handler + shorter public ids
+            if 'finance_contracts' in inspector.get_table_names():
+                columns = [col['name'] for col in inspector.get_columns('finance_contracts')]
+                if 'account_handler' not in columns:
+                    logger.info("Adding account_handler column to finance_contracts table")
+                    try:
+                        with db.engine.begin() as conn:
+                            conn.execute(text(
+                                "ALTER TABLE finance_contracts ADD COLUMN account_handler VARCHAR(255)"
+                            ))
+                        logger.info("✅ Added account_handler to finance_contracts")
+                    except Exception as col_error:
+                        err = str(col_error).lower()
+                        if 'already exists' in err or 'duplicate' in err:
+                            logger.info("Column account_handler already exists")
+                        else:
+                            logger.warning(f"Could not add account_handler: {col_error}")
+                try:
+                    from app.models import FinanceContract as _FinCon
+                    import re as _re
+                    dirty = False
+                    contracts = _FinCon.query.all()
+                    used_ids = {(c.contract_id or '').upper() for c in contracts}
+                    for c in contracts:
+                        cid = (c.contract_id or '').strip().upper()
+                        if cid.startswith('FIN-CON-'):
+                            hex_part = cid[8:]
+                            candidate = f"FC-{hex_part[:5]}" if hex_part else ''
+                            if candidate and candidate not in used_ids:
+                                used_ids.discard(cid)
+                                used_ids.add(candidate)
+                                c.contract_id = candidate
+                                dirty = True
+                        notes = c.notes or ''
+                        if not (c.account_handler or '').strip() and notes:
+                            m = _re.search(r'(?im)^\s*PM:\s*(.+)$', notes)
+                            if m:
+                                c.account_handler = m.group(1).strip()[:255]
+                                dirty = True
+                    if dirty:
+                        db.session.commit()
+                        logger.info("✅ Migrated finance contract ids / account handlers")
+                except Exception as mig_err:
+                    db.session.rollback()
+                    logger.warning(f"Finance contract migration skipped: {mig_err}")
 
             # Step 3: Ensure default admin user exists (fully automatic for Render)
             try:
@@ -827,15 +914,6 @@ def create_app():
     else:
         logger.warning("⚠️  Workflow blueprint not available - check imports")
 
-    # Register BD email module blueprint
-    if bd_bp:
-        if hasattr(app, 'csrf') and app.csrf:
-            app.csrf.exempt(bd_bp)
-        app.register_blueprint(bd_bp)
-        logger.info("✅ Registered BD blueprint at /bd")
-    else:
-        logger.warning("⚠️  BD blueprint not available - check imports")
-
     # Register DocHub API blueprint
     if docs_bp:
         if hasattr(app, 'csrf') and app.csrf:
@@ -858,14 +936,14 @@ def create_app():
     else:
         logger.warning("⚠️  HR blueprint not available - check imports")
     
-    # Register Procurement module blueprint
-    if procurement_module_bp:
+    # Register Store module blueprint
+    if store_module_bp:
         if hasattr(app, 'csrf') and app.csrf:
-            app.csrf.exempt(procurement_module_bp)
-        app.register_blueprint(procurement_module_bp, url_prefix='/procurement')
-        logger.info("✅ Registered Procurement blueprint at /procurement")
+            app.csrf.exempt(store_module_bp)
+        app.register_blueprint(store_module_bp, url_prefix='/store')
+        logger.info("✅ Registered Store blueprint at /store")
     else:
-        logger.warning("⚠️  Procurement blueprint not available - check imports")
+        logger.warning("⚠️  Store blueprint not available - check imports")
     
     # Register Inspection Form blueprint
     if inspection_bp:
@@ -991,8 +1069,8 @@ def create_app():
 
     @app.route('/admin/email-notifications')
     def admin_email_notifications():
-        """Deep-link to the workflow email settings card (query param survives redirects reliably)."""
-        return redirect('/admin/dashboard?focus=email-notifications')
+        """Workflow email recipient settings now live on the Email Automation page."""
+        return redirect('/admin/mmr/')
 
     @app.route('/admin/devices')
     def admin_devices():
@@ -1001,7 +1079,7 @@ def create_app():
 
     @app.route('/admin/bd')
     def admin_bd():
-        """Business Development module - admin only"""
+        """Sales module - admin only"""
         return render_template('admin_bd_module.html', active_page='bd-module')
 
     @app.route('/admin/personal-progress')

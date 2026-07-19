@@ -144,7 +144,7 @@ def index():
         
         if not user or not user.is_active:
             return render_template('access_denied.html', 
-                                 module='HVAC & MEP',
+                                 module='Fire Systems',
                                  message='Your account is inactive. Please contact an administrator.'), 403
         
         # Allow admins, supervisors, and managers to edit submissions even if they don't have module access
@@ -157,7 +157,7 @@ def index():
             submission = Submission.query.filter_by(submission_id=edit_submission_id).first()
             if not submission:
                 return render_template('access_denied.html',
-                                     module='HVAC & MEP',
+                                     module='Fire Systems',
                                      message='Submission not found.'), 404
             
             # Allow editing/reviewing based on role and workflow status
@@ -275,7 +275,7 @@ def index():
             
             if not can_view:
                 return render_template('access_denied.html',
-                                     module='HVAC & MEP',
+                                     module='Fire Systems',
                                      message=f'You do not have permission to review this submission. Current status: {workflow_status}, Your role: {user_designation}'), 403
             
             # Load submission data for editing
@@ -428,7 +428,7 @@ def index():
             # Normal form access - check module access
             if not user.has_module_access('hvac_mep'):
                 return render_template('access_denied.html',
-                                     module='HVAC & MEP',
+                                     module='Fire Systems',
                                      message='You do not have access to this module. Please contact an administrator to grant access.'), 403
         
         # Pass user designation and role to template for signature field visibility

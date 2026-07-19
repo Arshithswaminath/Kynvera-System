@@ -639,9 +639,15 @@ def _send_ticket_email(subject: str, recipients: list, body_html: str):
     """Best-effort email via common email_service."""
     try:
         from common.email_service import send_email
+        plain = 'Please view this message in an HTML-capable email client.'
         for recipient in recipients:
             if recipient:
-                send_email(to_email=recipient, subject=subject, html_body=body_html)
+                send_email(
+                    recipient=recipient,
+                    subject=subject,
+                    body=plain,
+                    html_body=body_html,
+                )
     except Exception as exc:
         logger.warning("Ticket email send failed: %s", exc)
 
@@ -736,7 +742,7 @@ def dashboard():
         'completed_pct': int(round(100.0 * completed_ct / total_ct)) if total_ct else 0,
     }
 
-    recent = tickets_q[:10]
+    recent = tickets_q[:20]
     all_users = User.query.filter_by(is_active=True).order_by(User.full_name).all()
 
     return render_template(
@@ -826,7 +832,10 @@ def ticket_list():
     q = _visible_tickets_base_query(user)
     if status_filter:
         q = q.filter(Ticket.status == status_filter)
-    if priority_filter:
+    if priority_filter == 'normal':
+        # Dashboard "Normal" pill = everything that is not critical/high
+        q = q.filter(Ticket.priority.in_(['low', 'medium']))
+    elif priority_filter:
         q = q.filter(Ticket.priority == priority_filter)
     if project_filter:
         q = q.filter(Ticket.project.ilike(f'%{project_filter}%'))
@@ -2307,9 +2316,22 @@ def _send_completion_emails(ticket: Ticket, closed_by: User,
         </div>
         """
         final_body = custom_body or body
+        plain = (
+            f'Work order {ticket.ticket_id} has been closed. '
+            f'Title: {ticket.title}. View details in Amaan.'
+        )
         from common.email_service import send_email
+        cc_list = custom_cc or None
         for r in recipients:
-            send_email(r, subject=subject, html_body=final_body, cc=custom_cc or [])
+            if not r:
+                continue
+            send_email(
+                recipient=r,
+                subject=subject,
+                body=plain,
+                html_body=final_body,
+                cc=cc_list,
+            )
     except Exception as exc:
         logger.warning("Failed to send completion emails: %s", exc)
 
@@ -3434,10 +3456,12 @@ def save_service_report_data(ticket_id):
     # Remove _auto flag so we know user has edited this
     existing.pop('_auto', None)
 
-    # Validate job_type
-    valid_job_types = {'maintenance', 'installation', 'rectification', 'others'}
-    if 'job_type' in existing and existing['job_type'] not in valid_job_types:
-        return jsonify({'success': False, 'error': 'Invalid job_type'}), 400
+    # Validate job_type (accept legacy maintenance/installation aliases)
+    from module_ticketing.service_report import VALID_JOB_TYPES, normalize_job_type
+    if 'job_type' in existing:
+        existing['job_type'] = normalize_job_type(existing['job_type'])
+        if existing['job_type'] not in VALID_JOB_TYPES:
+            return jsonify({'success': False, 'error': 'Invalid job_type'}), 400
 
     # Strip empty parts_required rows
     if 'parts_required' in existing:
@@ -3476,7 +3500,7 @@ def download_service_report_pdf(ticket_id):
     build_service_report_pdf(ticket, sr_data, materials, buf)
     buf.seek(0)
     filename = f'ServiceReport_{ticket.ticket_id}.pdf'
-    return send_file(buf, mimetype='application/pdf', as_attachment=False, download_name=filename)
+    return send_file(buf, mimetype='application/pdf', as_attachment=True, download_name=filename)
 
 
 # ---------------------------------------------------------------------------
@@ -3656,6 +3680,23 @@ def finance_confirm_ticket(ticket_id):
     custom_to    = [e.strip() for e in (data.get('email_to') or '').split(',') if e.strip()] or None
     custom_cc    = [e.strip() for e in (data.get('email_cc') or '').split(',') if e.strip()] or None
     custom_body  = (data.get('email_body') or '').strip() or None
+
+    # Apply Finance Settings: ERP ref requirement + shared notification defaults
+    try:
+        from module_finance.routes import _get_finance_settings
+        fin_cfg = _get_finance_settings()
+    except Exception:
+        fin_cfg = {}
+    if fin_cfg.get('require_erp_ref') and not invoice_ref:
+        prefix = fin_cfg.get('erp_ref_prefix') or 'INV'
+        return jsonify({
+            'success': False,
+            'error': f'ERP invoice reference is required (e.g. {prefix}-2026-00001). Configure this in Finance Settings.',
+        }), 400
+    if not custom_to and fin_cfg.get('invoice_email_to'):
+        custom_to = [e.strip() for e in fin_cfg['invoice_email_to'].split(',') if e.strip()] or None
+    if not custom_cc and fin_cfg.get('invoice_email_cc'):
+        custom_cc = [e.strip() for e in fin_cfg['invoice_email_cc'].split(',') if e.strip()] or None
 
     ticket.finance_confirmed_at = datetime.now(timezone.utc).replace(tzinfo=None)
     ticket.finance_confirmed_by_id = user.id

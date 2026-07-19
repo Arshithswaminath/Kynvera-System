@@ -77,7 +77,7 @@ class MaterialsPicker {
     try {
       const params = new URLSearchParams();
       if (this.departments.length === 1) params.set('department', this.departments[0]);
-      const res = await fetch(`/procurement/api/catalog/materials?${params}`, {
+      const res = await fetch(`/store/api/catalog/materials?${params}`, {
         headers: { 'Authorization': `Bearer ${this._getJwt()}` }
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);

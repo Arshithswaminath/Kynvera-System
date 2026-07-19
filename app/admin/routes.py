@@ -7,7 +7,7 @@ from sqlalchemy.orm import joinedload
 from app.models import (
     db, User, AuditLog, Device, BDProject, BDFollowUp, BDContact, BDActivity,
     DocHubAccess, NotificationConfig, AdminPersonalProject, AdminPersonalProgressStep,
-    Technician, KnowledgeBaseEntry,
+    Technician, Employee, KnowledgeBaseEntry,
 )
 from app.middleware import admin_required
 from common.error_responses import error_response, success_response
@@ -66,6 +66,54 @@ def _coerce_optional_supervisor_user_id(data):
     if not _valid_roster_supervisor_user(uid):
         raise ValueError('Supervisor account not found or not eligible')
     return uid
+
+
+def _is_protected_admin_account(user):
+    """System admin accounts are visible in Users & Teams but not editable there."""
+    return bool(user) and (getattr(user, 'role', None) or '').lower() == 'admin'
+
+
+def _protect_unlock_valid_for_request():
+    """True when request carries a valid X-Admin-Protect-Unlock for the current admin."""
+    from common.admin_protect import UNLOCK_HEADER, verify_unlock_token
+
+    token = (request.headers.get(UNLOCK_HEADER) or '').strip()
+    if not token:
+        return False
+    admin_id = get_jwt_identity()
+    secret = current_app.config.get('SECRET_KEY') or current_app.config.get('JWT_SECRET_KEY')
+    if not secret:
+        return False
+    return verify_unlock_token(secret, token, admin_id)
+
+
+def _reject_protected_admin_mutation(user):
+    if not _is_protected_admin_account(user):
+        return None
+    if _protect_unlock_valid_for_request():
+        return None
+    return error_response(
+        'System administrator accounts cannot be edited or deleted from Users & Teams.',
+        status_code=403,
+        error_code='PROTECTED_ACCOUNT',
+    )
+
+
+def _get_limiter():
+    try:
+        return current_app.limiter
+    except (AttributeError, RuntimeError):
+        return None
+
+
+def _rate_limit_if_available(limit_str):
+    """Apply Flask-Limiter when configured (same pattern as auth routes)."""
+    def decorator(f):
+        limiter = _get_limiter()
+        if limiter:
+            return limiter.limit(limit_str)(f)
+        return f
+    return decorator
 
 
 def _merge_dochub_into_user_dict(user, data_dict, access_map=None):
@@ -197,6 +245,227 @@ def notification_config():
 DEFAULT_ADMIN_RESET_PASSWORD = 'Amaan@123'
 
 
+@admin_bp.route('/protect-pin/status', methods=['GET'])
+@jwt_required()
+@admin_required
+def protect_pin_status():
+    """Whether the signed-in admin has configured a protect PIN."""
+    admin = User.query.get(get_jwt_identity())
+    if not admin:
+        return error_response('Admin not found', status_code=404, error_code='NOT_FOUND')
+    configured = bool(getattr(admin, 'admin_protect_pin_hash', None))
+    return success_response({'configured': configured})
+
+
+@admin_bp.route('/protect-pin/set', methods=['POST'])
+@jwt_required()
+@admin_required
+def protect_pin_set():
+    """Set or change the signed-in admin's protect PIN (4–8 digits)."""
+    from common.admin_protect import validate_protect_pin_format
+
+    try:
+        admin_id = get_jwt_identity()
+        admin = User.query.get(admin_id)
+        if not admin:
+            return error_response('Admin not found', status_code=404, error_code='NOT_FOUND')
+
+        data = request.get_json(silent=True) or {}
+        pin = (data.get('pin') or '').strip()
+        confirm = (data.get('confirm_pin') or '').strip()
+        ok, msg = validate_protect_pin_format(pin)
+        if not ok:
+            return error_response(msg, status_code=400, error_code='VALIDATION_ERROR')
+        if pin != confirm:
+            return error_response('PIN confirmation does not match', status_code=400, error_code='VALIDATION_ERROR')
+
+        already = bool(getattr(admin, 'admin_protect_pin_hash', None))
+        if already:
+            current_pin = (data.get('current_pin') or '').strip()
+            if not admin.check_admin_protect_pin(current_pin):
+                return error_response('Current PIN is incorrect', status_code=403, error_code='INVALID_PIN')
+
+        admin.set_admin_protect_pin(pin)
+        db.session.commit()
+        log_audit(admin_id, 'admin_protect_pin_set', 'user', str(admin_id), {
+            'changed': already,
+        })
+        return success_response({'configured': True}, message='Protect PIN saved')
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'protect_pin_set: {e}', exc_info=True)
+        return error_response('Failed to save protect PIN', status_code=500, error_code='DATABASE_ERROR')
+
+
+@admin_bp.route('/protect-pin/unlock', methods=['POST'])
+@jwt_required()
+@admin_required
+@_rate_limit_if_available('5 per minute')
+def protect_pin_unlock():
+    """Verify protect PIN and issue a short-lived unlock token (30 minutes)."""
+    from common.admin_protect import (
+        UNLOCK_MAX_AGE_SECONDS,
+        issue_unlock_token,
+        validate_protect_pin_format,
+    )
+
+    try:
+        admin_id = get_jwt_identity()
+        admin = User.query.get(admin_id)
+        if not admin:
+            return error_response('Admin not found', status_code=404, error_code='NOT_FOUND')
+
+        if not getattr(admin, 'admin_protect_pin_hash', None):
+            return error_response(
+                'Protect PIN is not configured. Set a PIN first.',
+                status_code=400,
+                error_code='PIN_NOT_CONFIGURED',
+            )
+
+        data = request.get_json(silent=True) or {}
+        pin = (data.get('pin') or '').strip()
+        ok, msg = validate_protect_pin_format(pin)
+        if not ok:
+            return error_response(msg, status_code=400, error_code='VALIDATION_ERROR')
+        if not admin.check_admin_protect_pin(pin):
+            return error_response('Incorrect PIN', status_code=403, error_code='INVALID_PIN')
+
+        secret = current_app.config.get('SECRET_KEY') or current_app.config.get('JWT_SECRET_KEY')
+        if not secret:
+            return error_response('Server misconfigured', status_code=500, error_code='CONFIG_ERROR')
+
+        token, expires_in = issue_unlock_token(secret, admin_id, max_age=UNLOCK_MAX_AGE_SECONDS)
+        log_audit(admin_id, 'admin_protect_unlock', 'user', str(admin_id), {
+            'expires_in': expires_in,
+        })
+        return success_response({
+            'unlock_token': token,
+            'expires_in': expires_in,
+        }, message='Admin editing unlocked')
+    except Exception as e:
+        current_app.logger.error(f'protect_pin_unlock: {e}', exc_info=True)
+        return error_response('Failed to unlock', status_code=500, error_code='INTERNAL_ERROR')
+
+
+@admin_bp.route('/protect-pin/forgot/request-otp', methods=['POST'])
+@jwt_required()
+@admin_required
+@_rate_limit_if_available('5 per minute')
+def protect_pin_forgot_request_otp():
+    """Email an OTP so the signed-in admin can reset their protect PIN."""
+    from common.email_otp import PURPOSE_PROTECT_PIN_RESET, EmailOtpError, request_otp
+
+    try:
+        admin_id = get_jwt_identity()
+        admin = User.query.get(admin_id)
+        if not admin:
+            return error_response('Admin not found', status_code=404, error_code='NOT_FOUND')
+        if not getattr(admin, 'admin_protect_pin_hash', None):
+            return error_response(
+                'Protect PIN is not configured. Set a PIN first.',
+                status_code=400,
+                error_code='PIN_NOT_CONFIGURED',
+            )
+        result = request_otp(admin, PURPOSE_PROTECT_PIN_RESET, ip=request.remote_addr)
+        log_audit(admin_id, 'admin_protect_pin_otp_sent', 'user', str(admin_id), {
+            'masked_email': result.get('masked_email'),
+        })
+        return success_response(result, message='Verification code sent')
+    except EmailOtpError as e:
+        return error_response(e.message, status_code=e.status_code, error_code=e.error_code)
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'protect_pin_forgot_request_otp: {e}', exc_info=True)
+        return error_response('Failed to send verification code', status_code=500, error_code='INTERNAL_ERROR')
+
+
+@admin_bp.route('/protect-pin/forgot/verify-otp', methods=['POST'])
+@jwt_required()
+@admin_required
+@_rate_limit_if_available('10 per minute')
+def protect_pin_forgot_verify_otp():
+    """Verify email OTP and return a short-lived reset grant token."""
+    from common.email_otp import PURPOSE_PROTECT_PIN_RESET, EmailOtpError, verify_otp
+
+    try:
+        admin_id = get_jwt_identity()
+        admin = User.query.get(admin_id)
+        if not admin:
+            return error_response('Admin not found', status_code=404, error_code='NOT_FOUND')
+        data = request.get_json(silent=True) or {}
+        result = verify_otp(admin, PURPOSE_PROTECT_PIN_RESET, data.get('code') or '')
+        log_audit(admin_id, 'admin_protect_pin_otp_verified', 'user', str(admin_id))
+        return success_response(result, message='Code verified')
+    except EmailOtpError as e:
+        return error_response(e.message, status_code=e.status_code, error_code=e.error_code)
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'protect_pin_forgot_verify_otp: {e}', exc_info=True)
+        return error_response('Failed to verify code', status_code=500, error_code='INTERNAL_ERROR')
+
+
+@admin_bp.route('/protect-pin/forgot/reset', methods=['POST'])
+@jwt_required()
+@admin_required
+@_rate_limit_if_available('5 per minute')
+def protect_pin_forgot_reset():
+    """Set a new protect PIN after OTP grant, then issue unlock token."""
+    from common.admin_protect import (
+        UNLOCK_MAX_AGE_SECONDS,
+        issue_unlock_token,
+        validate_protect_pin_format,
+    )
+    from common.email_otp import PURPOSE_PROTECT_PIN_RESET, verify_reset_grant
+
+    try:
+        admin_id = get_jwt_identity()
+        admin = User.query.get(admin_id)
+        if not admin:
+            return error_response('Admin not found', status_code=404, error_code='NOT_FOUND')
+
+        data = request.get_json(silent=True) or {}
+        reset_token = (data.get('reset_token') or '').strip()
+        pin = (data.get('pin') or '').strip()
+        confirm = (data.get('confirm_pin') or '').strip()
+
+        secret = current_app.config.get('SECRET_KEY') or current_app.config.get('JWT_SECRET_KEY')
+        if not secret:
+            return error_response('Server misconfigured', status_code=500, error_code='CONFIG_ERROR')
+
+        grant_uid = verify_reset_grant(secret, reset_token, PURPOSE_PROTECT_PIN_RESET)
+        if grant_uid is None or str(grant_uid) != str(admin_id):
+            return error_response(
+                'Reset session expired. Request a new verification code.',
+                status_code=403,
+                error_code='RESET_TOKEN_INVALID',
+            )
+
+        ok, msg = validate_protect_pin_format(pin)
+        if not ok:
+            return error_response(msg, status_code=400, error_code='VALIDATION_ERROR')
+        if pin != confirm:
+            return error_response('PIN confirmation does not match', status_code=400, error_code='VALIDATION_ERROR')
+
+        admin.set_admin_protect_pin(pin)
+        db.session.commit()
+
+        unlock_token, expires_in = issue_unlock_token(
+            secret, admin_id, max_age=UNLOCK_MAX_AGE_SECONDS
+        )
+        log_audit(admin_id, 'admin_protect_pin_reset', 'user', str(admin_id), {
+            'expires_in': expires_in,
+        })
+        return success_response({
+            'configured': True,
+            'unlock_token': unlock_token,
+            'expires_in': expires_in,
+        }, message='Protect PIN updated. Admin editing unlocked.')
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'protect_pin_forgot_reset: {e}', exc_info=True)
+        return error_response('Failed to reset protect PIN', status_code=500, error_code='INTERNAL_ERROR')
+
+
 @admin_bp.route('/users', methods=['GET'])
 @jwt_required()
 @admin_required
@@ -223,28 +492,59 @@ def list_users():
         return error_response('Failed to fetch users', status_code=500, error_code='DATABASE_ERROR')
 
 
+def _next_numeric_username(start_at=10001):
+    """Return the next free all-digit username for application user IDs."""
+    used = set()
+    for (uname,) in db.session.query(User.username).all():
+        s = (uname or '').strip()
+        if s.isdigit():
+            used.add(int(s))
+    for (uname,) in db.session.query(Technician.username).filter(Technician.username.isnot(None)).all():
+        s = (uname or '').strip()
+        if s.isdigit():
+            used.add(int(s))
+    n = int(start_at)
+    while n in used:
+        n += 1
+    return str(n)
+
+
 @admin_bp.route('/users', methods=['POST'])
 @jwt_required()
 @admin_required
 def create_user_admin():
-    """Create a new user account (admin). Omit password to use the same default as password reset."""
+    """Create a new user account (admin). Omit password to use the same default as password reset.
+    Omit username to auto-assign a numeric application user ID."""
     try:
         from app.auth.routes import validate_email, validate_password
 
         admin_id = get_jwt_identity()
         data = request.get_json(force=True, silent=True) or {}
         username = (data.get('username') or '').strip()
+        auto_username = not username
+        if auto_username:
+            username = _next_numeric_username()
         email = (data.get('email') or '').strip().lower()
         full_name = (data.get('full_name') or '').strip() or None
 
-        if not username or not email:
-            return error_response('Username and email are required', status_code=400, error_code='VALIDATION_ERROR')
-        if not validate_email(email):
-            return error_response('Invalid email format', status_code=400, error_code='VALIDATION_ERROR')
+        if not username:
+            return error_response('Username is required', status_code=400, error_code='VALIDATION_ERROR')
+        if not full_name:
+            return error_response('Full name is required', status_code=400, error_code='VALIDATION_ERROR')
+        if email:
+            if not validate_email(email):
+                return error_response('Invalid email format', status_code=400, error_code='VALIDATION_ERROR')
+            if User.query.filter_by(email=email).first():
+                return error_response('Email already in use', status_code=409, error_code='DUPLICATE_EMAIL')
+        else:
+            # DB requires a unique email; generate a local placeholder when omitted.
+            email = f'{username}@amaan.local'
+            suffix = 1
+            while User.query.filter_by(email=email).first():
+                email = f'{username}.{suffix}@amaan.local'
+                suffix += 1
         if User.query.filter_by(username=username).first():
             return error_response('Username already exists', status_code=409, error_code='DUPLICATE_USERNAME')
-        if User.query.filter_by(email=email).first():
-            return error_response('Email already in use', status_code=409, error_code='DUPLICATE_EMAIL')
 
         raw_pw = (data.get('password') or '').strip()
         temp_password = raw_pw or (os.environ.get('ADMIN_RESET_PASSWORD') or '').strip() or DEFAULT_ADMIN_RESET_PASSWORD
@@ -257,11 +557,13 @@ def create_user_admin():
             if not ok:
                 temp_password = DEFAULT_ADMIN_RESET_PASSWORD
 
+        from common.password_policy import assign_user_password
+
         user = User(username=username, email=email, full_name=full_name, role='user')
         if data.get('role') == 'admin':
             user.role = 'admin'
-        user.set_password(temp_password)
-        user.password_changed = bool(raw_pw)
+        # Admin-created passwords are stored for admin view; user is prompted to change on login.
+        assign_user_password(user, temp_password, is_temp=True)
 
         valid_designations = {
             'supervisor', 'operations_manager', 'business_development',
@@ -307,9 +609,26 @@ def create_user_admin():
             user.access_report_generation = bool(data.get('access_report_generation', False))
             user.access_submitted_forms = bool(data.get('access_submitted_forms', False))
             user.access_ticketing = bool(data.get('access_ticketing', False))
-            user.access_operations = bool(data.get('access_operations', False))
+            ot = bool(data.get('access_operations_overtime', False))
+            inv = bool(data.get('access_operations_invoices', False))
+            cli = bool(data.get('access_operations_clients', False))
+            chq = bool(data.get('access_operations_cheques', False))
+            parent_ops = bool(data.get('access_operations', False))
+            # Hub-only grant (no sub keys): enable all subs
+            if parent_ops and not any(k in data for k in (
+                'access_operations_overtime', 'access_operations_invoices',
+                'access_operations_clients', 'access_operations_cheques',
+            )):
+                ot = inv = cli = chq = True
+            ops_on = parent_ops or ot or inv or cli or chq
+            user.access_operations = ops_on
+            user.access_operations_overtime = ops_on and ot
+            user.access_operations_invoices = ops_on and inv
+            user.access_operations_clients = ops_on and cli
+            user.access_operations_cheques = ops_on and chq
             # Operations full access only applies when they have operations access at all
-            user.access_operations_manage = bool(data.get('access_operations', False)) and bool(data.get('access_operations_manage', False))
+            user.access_operations_manage = ops_on and bool(data.get('access_operations_manage', False))
+            user.access_finance = bool(data.get('access_finance', False))
 
         db.session.add(user)
         db.session.flush()
@@ -325,9 +644,27 @@ def create_user_admin():
 
         log_audit(admin_id, 'create_user', 'user', str(user.id), {'username': username, 'email': email})
 
-        out = {'user': user.to_dict()}
-        if not raw_pw:
-            out['temp_password'] = temp_password
+        email_sent = False
+        try:
+            from common.email_service import send_welcome_email
+            email_sent = bool(send_welcome_email(
+                user_email=user.email,
+                username=user.username,
+                temp_password=temp_password,
+                full_name=user.full_name,
+            ))
+        except Exception as email_error:
+            current_app.logger.warning(f"Failed to send welcome email: {email_error}")
+
+        out = {
+            'user': user.to_dict(),
+            'username': username,
+            'user_id_number': username,
+            'temp_password': temp_password,
+            'email_sent': email_sent,
+        }
+        if auto_username:
+            out['auto_username'] = True
         return success_response(out, message='User created successfully')
     except Exception as e:
         db.session.rollback()
@@ -353,6 +690,39 @@ def get_user(user_id):
         return jsonify({'error': 'User not found'}), 404
 
 
+@admin_bp.route('/users/<int:user_id>/unlock-password', methods=['POST'])
+@jwt_required()
+@admin_required
+def unlock_user_password(user_id):
+    """Clear password-expiry lock, issue a new temp password, and restart the 65-day clock."""
+    try:
+        from common.password_policy import assign_user_password
+
+        admin_id = get_jwt_identity()
+        user = User.query.get_or_404(user_id)
+        blocked = _reject_protected_admin_mutation(user)
+        if blocked:
+            return blocked
+        raw_reset = (os.environ.get('ADMIN_RESET_PASSWORD') or '').strip()
+        temp_password = raw_reset or DEFAULT_ADMIN_RESET_PASSWORD
+        assign_user_password(user, temp_password, is_temp=True)
+        db.session.commit()
+
+        log_audit(admin_id, 'unlock_password', 'user', str(user_id), {
+            'target_user': user.username,
+        })
+        return success_response({
+            'user': user.to_dict(),
+            'username': user.username,
+            'user_id_number': user.username,
+            'temp_password': temp_password,
+        }, message='Password unlocked. Share the temporary password with the user.')
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'Error unlocking password: {e}', exc_info=True)
+        return error_response('Failed to unlock password', status_code=500, error_code='DATABASE_ERROR')
+
+
 @admin_bp.route('/users/<int:user_id>/reset-password', methods=['POST'])
 @jwt_required()
 @admin_required
@@ -361,11 +731,15 @@ def reset_user_password(user_id):
     try:
         admin_id = get_jwt_identity()
         user = User.query.get_or_404(user_id)
+        blocked = _reject_protected_admin_mutation(user)
+        if blocked:
+            return blocked
         
+        from common.password_policy import assign_user_password
+
         raw_reset = (os.environ.get('ADMIN_RESET_PASSWORD') or '').strip()
         temp_password = raw_reset or DEFAULT_ADMIN_RESET_PASSWORD
-        user.set_password(temp_password)
-        user.password_changed = False  # Force password change on next login
+        assign_user_password(user, temp_password, is_temp=True)
         
         db.session.commit()
         
@@ -422,9 +796,12 @@ def toggle_user_active(user_id):
     try:
         admin_id = get_jwt_identity()
         user = User.query.get_or_404(user_id)
+        blocked = _reject_protected_admin_mutation(user)
+        if blocked:
+            return blocked
         
         # Prevent deactivating yourself
-        if user_id == admin_id:
+        if str(user_id) == str(admin_id):
             return jsonify({'error': 'Cannot deactivate your own account'}), 400
         
         user.is_active = not user.is_active
@@ -524,16 +901,13 @@ def delete_user(user_id):
         admin_id = get_jwt_identity()
         
         # Prevent deleting yourself
-        if user_id == admin_id:
+        if str(user_id) == str(admin_id):
             return jsonify({'error': 'Cannot delete your own account'}), 400
         
         user = User.query.get_or_404(user_id)
-        
-        # Prevent deleting the last admin
-        if user.role == 'admin':
-            admin_count = User.query.filter_by(role='admin', is_active=True).count()
-            if admin_count <= 1:
-                return jsonify({'error': 'Cannot delete the last active admin user'}), 400
+        blocked = _reject_protected_admin_mutation(user)
+        if blocked:
+            return blocked
         
         username = user.username
 
@@ -651,7 +1025,10 @@ def update_user(user_id):
     try:
         admin_id = get_jwt_identity()
         user = User.query.get_or_404(user_id)
-        
+        blocked = _reject_protected_admin_mutation(user)
+        if blocked:
+            return blocked
+
         data = request.get_json()
         
         # Update allowed fields
@@ -726,6 +1103,16 @@ def update_user(user_id):
         except ValueError as ve:
             return jsonify({'error': str(ve)}), 400
 
+        if 'password' in data:
+            raw_pw = (data.get('password') or '').strip()
+            if raw_pw:
+                from app.auth.routes import validate_password
+                from common.password_policy import assign_user_password
+                ok, msg = validate_password(raw_pw)
+                if not ok:
+                    return jsonify({'error': msg}), 400
+                assign_user_password(user, raw_pw, is_temp=True)
+
         if user.role != 'admin':
             for key, col in (
                 ('access_hvac', 'access_hvac'),
@@ -737,14 +1124,39 @@ def update_user(user_id):
                 ('access_report_generation', 'access_report_generation'),
                 ('access_submitted_forms', 'access_submitted_forms'),
                 ('access_ticketing', 'access_ticketing'),
-                ('access_operations', 'access_operations'),
                 ('access_operations_manage', 'access_operations_manage'),
+                ('access_finance', 'access_finance'),
             ):
                 if key in data:
                     setattr(user, col, bool(data[key]))
-            # Full operations access requires operations access in the first place
+            ops_sub_keys = (
+                'access_operations_overtime',
+                'access_operations_invoices',
+                'access_operations_clients',
+                'access_operations_cheques',
+            )
+            if any(k in data for k in ops_sub_keys) or 'access_operations' in data:
+                ot = bool(data['access_operations_overtime']) if 'access_operations_overtime' in data else bool(getattr(user, 'access_operations_overtime', False))
+                inv = bool(data['access_operations_invoices']) if 'access_operations_invoices' in data else bool(getattr(user, 'access_operations_invoices', False))
+                cli = bool(data['access_operations_clients']) if 'access_operations_clients' in data else bool(getattr(user, 'access_operations_clients', False))
+                chq = bool(data['access_operations_cheques']) if 'access_operations_cheques' in data else bool(getattr(user, 'access_operations_cheques', False))
+                if 'access_operations' in data and not bool(data.get('access_operations')):
+                    ot = inv = cli = chq = False
+                elif 'access_operations' in data and bool(data.get('access_operations')) and not any(k in data for k in ops_sub_keys):
+                    # Parent turned on without sub payload → grant all subs
+                    ot = inv = cli = chq = True
+                ops_on = ot or inv or cli or chq
+                user.access_operations = ops_on
+                user.access_operations_overtime = ot
+                user.access_operations_invoices = inv
+                user.access_operations_clients = cli
+                user.access_operations_cheques = chq
             if not getattr(user, 'access_operations', False):
                 user.access_operations_manage = False
+                user.access_operations_overtime = False
+                user.access_operations_invoices = False
+                user.access_operations_clients = False
+                user.access_operations_cheques = False
 
         db.session.commit()
         
@@ -2237,70 +2649,151 @@ def _parse_excel_float(value, default=0.0):
         return float(default)
 
 
-def _seed_bd_data_if_empty(user_id):
-    if BDProject.query.count() > 0:
-        return
-
-    samples = [
-        {
-            'name': 'Nexus Corp Platform Deal',
-            'company': 'Nexus Corp',
-            'stage': 'proposal',
-            'status': 'active',
-            'priority': 'high',
-            'value_amount': 480000,
-            'progress': 72,
-            'owner': 'Rachel H.',
-            'next_action': 'Contract review',
-            'expected_close_date': utc_now_naive().date() + timedelta(days=3)
-        },
-        {
-            'name': 'Vertex Partners — SaaS Migration',
-            'company': 'Vertex Partners',
-            'stage': 'qualifying',
-            'status': 'proposal',
-            'priority': 'high',
-            'value_amount': 320000,
-            'progress': 45,
-            'owner': 'James P.',
-            'next_action': 'Proposal sent',
-            'expected_close_date': utc_now_naive().date() + timedelta(days=8)
-        },
-        {
-            'name': 'Archway Technologies',
-            'company': 'Archway Tech',
-            'stage': 'prospecting',
-            'status': 'prospect',
-            'priority': 'med',
-            'value_amount': 210000,
-            'progress': 15,
-            'owner': 'Tom R.',
-            'next_action': 'Intro meeting',
-            'expected_close_date': utc_now_naive().date() + timedelta(days=14)
-        }
+def _bd_demo_projects(user_id, now):
+    """Showcase deals across every stage/status for a filled Sales dashboard."""
+    return [
+        # Prospecting
+        {'name': 'Marina Gate FM Retainer', 'company': 'Marina Gate Properties', 'stage': 'prospecting', 'status': 'prospect', 'priority': 'med', 'value_amount': 185000, 'progress': 12, 'owner': 'Sara A.', 'next_action': 'Discovery call', 'expected_close_date': now.date() + timedelta(days=45), 'primary_contact_name': 'Hassan Alvi', 'primary_contact_email': 'hassan@marinagate.example'},
+        {'name': 'Al Zahra Tower Soft Services', 'company': 'Al Zahra Holdings', 'stage': 'prospecting', 'status': 'prospect', 'priority': 'low', 'value_amount': 96000, 'progress': 8, 'owner': 'Tom R.', 'next_action': 'Send capability deck', 'expected_close_date': now.date() + timedelta(days=60)},
+        {'name': 'Corniche Clinics Facility Care', 'company': 'Corniche Medical Group', 'stage': 'prospecting', 'status': 'prospect', 'priority': 'med', 'value_amount': 240000, 'progress': 18, 'owner': 'Sara A.', 'next_action': 'Site walkthrough', 'expected_close_date': now.date() + timedelta(days=40)},
+        # Qualifying
+        {'name': 'Vertex Partners — SaaS Migration', 'company': 'Vertex Partners', 'stage': 'qualifying', 'status': 'proposal', 'priority': 'high', 'value_amount': 320000, 'progress': 45, 'owner': 'James P.', 'next_action': 'Needs assessment workshop', 'expected_close_date': now.date() + timedelta(days=28)},
+        {'name': 'Bay Square MEP Annual', 'company': 'Bay Square LLC', 'stage': 'qualifying', 'status': 'active', 'priority': 'high', 'value_amount': 410000, 'progress': 38, 'owner': 'Rachel H.', 'next_action': 'Budget confirmation', 'expected_close_date': now.date() + timedelta(days=21)},
+        {'name': 'Horizon Mall Cleaning Scope', 'company': 'Horizon Retail', 'stage': 'qualifying', 'status': 'active', 'priority': 'med', 'value_amount': 175000, 'progress': 30, 'owner': 'James P.', 'next_action': 'Scope clarification', 'expected_close_date': now.date() + timedelta(days=35)},
+        # Proposal
+        {'name': 'Nexus Corp Platform Deal', 'company': 'Nexus Corp', 'stage': 'proposal', 'status': 'active', 'priority': 'high', 'value_amount': 480000, 'progress': 72, 'owner': 'Rachel H.', 'next_action': 'Contract review', 'expected_close_date': now.date() + timedelta(days=3), 'primary_contact_name': 'Marcus Johnson', 'primary_contact_email': 'marcus@nexus.example'},
+        {'name': 'Emirates Heights HVAC Upgrade', 'company': 'Emirates Heights', 'stage': 'proposal', 'status': 'active', 'priority': 'high', 'value_amount': 620000, 'progress': 65, 'owner': 'Sara A.', 'next_action': 'Present commercial offer', 'expected_close_date': now.date() + timedelta(days=12)},
+        {'name': 'City Walk Pest Control Bundle', 'company': 'City Walk Ops', 'stage': 'proposal', 'status': 'proposal', 'priority': 'med', 'value_amount': 88000, 'progress': 55, 'owner': 'Tom R.', 'next_action': 'Await legal markup', 'expected_close_date': now.date() + timedelta(days=18)},
+        # Negotiation
+        {'name': 'Ajman Port Logistics Facility', 'company': 'Ajman Port Authority', 'stage': 'negotiation', 'status': 'active', 'priority': 'high', 'value_amount': 890000, 'progress': 78, 'owner': 'Rachel H.', 'next_action': 'Final pricing round', 'expected_close_date': now.date() + timedelta(days=7)},
+        {'name': 'Palm Residences Concierge FM', 'company': 'Palm Residences', 'stage': 'negotiation', 'status': 'active', 'priority': 'high', 'value_amount': 540000, 'progress': 82, 'owner': 'James P.', 'next_action': 'SLA negotiation', 'expected_close_date': now.date() - timedelta(days=5)},  # stalled: past close
+        {'name': 'TechPark Campus Soft Services', 'company': 'TechPark Developments', 'stage': 'negotiation', 'status': 'active', 'priority': 'med', 'value_amount': 360000, 'progress': 70, 'owner': 'Sara A.', 'next_action': 'Stakeholder alignment', 'expected_close_date': now.date() + timedelta(days=10)},
+        # Closing
+        {'name': 'Royal Hospital Environmental Services', 'company': 'Royal Hospital Group', 'stage': 'closing', 'status': 'active', 'priority': 'high', 'value_amount': 750000, 'progress': 92, 'owner': 'Rachel H.', 'next_action': 'Signature chase', 'expected_close_date': now.date() + timedelta(days=2)},
+        {'name': 'Skyline Tower Fit-out Support', 'company': 'Skyline Developments', 'stage': 'closing', 'status': 'active', 'priority': 'med', 'value_amount': 215000, 'progress': 88, 'owner': 'Tom R.', 'next_action': 'Kickoff scheduling', 'expected_close_date': now.date() + timedelta(days=4)},
+        # Won / Lost
+        {'name': 'Museum District Annual FM', 'company': 'Museum District Trust', 'stage': 'closing', 'status': 'won', 'priority': 'high', 'value_amount': 680000, 'progress': 100, 'owner': 'Rachel H.', 'next_action': 'Handover to delivery', 'expected_close_date': now.date() - timedelta(days=40)},
+        {'name': 'Harbour View Soft Services', 'company': 'Harbour View RE', 'stage': 'closing', 'status': 'won', 'priority': 'med', 'value_amount': 295000, 'progress': 100, 'owner': 'James P.', 'next_action': 'Closed — won', 'expected_close_date': now.date() - timedelta(days=70)},
+        {'name': 'Desert Ridge Pilot Contract', 'company': 'Desert Ridge LLC', 'stage': 'proposal', 'status': 'lost', 'priority': 'med', 'value_amount': 150000, 'progress': 100, 'owner': 'Tom R.', 'next_action': 'Lost — price', 'expected_close_date': now.date() - timedelta(days=25)},
+        {'name': 'North Gate Security Bundle', 'company': 'North Gate Estates', 'stage': 'negotiation', 'status': 'lost', 'priority': 'low', 'value_amount': 110000, 'progress': 100, 'owner': 'Sara A.', 'next_action': 'Lost — incumbent', 'expected_close_date': now.date() - timedelta(days=55)},
     ]
 
-    for sample in samples:
-        db.session.add(BDProject(created_by=user_id, **sample))
 
-    db.session.add(BDContact(
-        name='Marcus Johnson',
-        title='VP of Technology',
-        company='Nexus Corp',
-        email='marcus@nexus.example',
-        tags=['Decision Maker', 'Champion'],
-        created_by=user_id
-    ))
-    db.session.add(BDFollowUp(
-        title='Call with Marcus – Q4 proposal review',
-        company='Nexus Corp',
-        followup_type='call',
-        due_at=utc_now_naive() + timedelta(hours=6),
-        status='open',
-        created_by=user_id
-    ))
-    _bd_activity('📌', 'BD workspace initialized', 'Created starter records for your team.', 'System', '#e8f0fb', user_id=user_id)
-    db.session.commit()
+def _bd_demo_contacts(user_id):
+    return [
+        BDContact(name='Marcus Johnson', title='VP of Technology', company='Nexus Corp', email='marcus@nexus.example', phone='+971 50 100 2001', tags=['Decision Maker', 'Champion'], created_by=user_id),
+        BDContact(name='Layla Rahman', title='Facilities Director', company='Emirates Heights', email='layla@emiratesheights.example', phone='+971 50 100 2002', tags=['Decision Maker'], created_by=user_id),
+        BDContact(name='Omar Faris', title='Procurement Lead', company='Ajman Port Authority', email='omar@ajmanport.example', phone='+971 50 100 2003', tags=['Procurement', 'Influencer'], created_by=user_id),
+        BDContact(name='Nadia Chen', title='Operations Manager', company='Palm Residences', email='nadia@palm.example', phone='+971 50 100 2004', tags=['Champion'], created_by=user_id),
+        BDContact(name='Hassan Alvi', title='Asset Manager', company='Marina Gate Properties', email='hassan@marinagate.example', phone='+971 50 100 2005', tags=['Prospect'], created_by=user_id),
+        BDContact(name='Priya Menon', title='Head of Soft Services', company='Royal Hospital Group', email='priya@royalhospital.example', phone='+971 50 100 2006', tags=['Decision Maker', 'Won'], created_by=user_id),
+    ]
+
+
+def _bd_demo_followups(user_id, now):
+    return [
+        BDFollowUp(title='Call with Marcus – proposal review', company='Nexus Corp', followup_type='call', due_at=now + timedelta(hours=3), status='open', details='Walk through commercial terms', created_by=user_id),
+        BDFollowUp(title='Send revised HVAC quote', company='Emirates Heights', followup_type='email', due_at=now.replace(hour=17, minute=0, second=0, microsecond=0), status='open', details='Include chiller option B', created_by=user_id),
+        BDFollowUp(title='Overdue: Palm Residences SLA reply', company='Palm Residences', followup_type='email', due_at=now - timedelta(days=2), status='open', details='Waiting on client legal', created_by=user_id),
+        BDFollowUp(title='Port Authority pricing workshop', company='Ajman Port Authority', followup_type='meeting', due_at=now + timedelta(days=1, hours=2), status='open', created_by=user_id),
+        BDFollowUp(title='Royal Hospital kickoff prep', company='Royal Hospital Group', followup_type='meeting', due_at=now + timedelta(days=2), status='open', created_by=user_id),
+        BDFollowUp(title='Overdue: Bay Square budget confirm', company='Bay Square LLC', followup_type='call', due_at=now - timedelta(days=1), status='open', created_by=user_id),
+        BDFollowUp(title='Marina Gate discovery notes', company='Marina Gate Properties', followup_type='note', due_at=now + timedelta(days=3), status='open', created_by=user_id),
+        BDFollowUp(title='TechPark stakeholder sync', company='TechPark Developments', followup_type='meeting', due_at=now + timedelta(days=4), status='open', created_by=user_id),
+    ]
+
+
+def _seed_bd_showcase_projects(user_id, now):
+    """Insert showcase deals if missing (by company+name), and age a few for stalled."""
+    created = 0
+    stalled_names = {
+        'Palm Residences Concierge FM',
+        'TechPark Campus Soft Services',
+        'Horizon Mall Cleaning Scope',
+    }
+    for sample in _bd_demo_projects(user_id, now):
+        exists = BDProject.query.filter_by(name=sample['name'], company=sample['company']).first()
+        if exists:
+            continue
+        project = BDProject(created_by=user_id, **sample)
+        db.session.add(project)
+        db.session.flush()
+        if sample['name'] in stalled_names:
+            # Stall: no movement for 35–50 days
+            project.updated_at = now - timedelta(days=35 + (created % 3) * 5)
+        elif sample.get('status') == 'won':
+            # Spread won deals across recent months for trend-like history
+            project.updated_at = now - timedelta(days=20 + created * 12)
+            project.created_at = project.updated_at - timedelta(days=40)
+        created += 1
+    return created
+
+
+def _seed_bd_demo_extras(user_id, now):
+    """Fill contacts / follow-ups / activities when the dashboard looks empty."""
+    added = False
+    if BDContact.query.count() < 6:
+        existing = {(c.name or '').lower() for c in BDContact.query.all()}
+        for contact in _bd_demo_contacts(user_id):
+            if (contact.name or '').lower() in existing:
+                continue
+            db.session.add(contact)
+            added = True
+
+    if BDFollowUp.query.count() < 6:
+        existing = {(f.title or '').lower() for f in BDFollowUp.query.all()}
+        for fu in _bd_demo_followups(user_id, now):
+            if (fu.title or '').lower() in existing:
+                continue
+            db.session.add(fu)
+            added = True
+
+    if BDActivity.query.count() < 8:
+        activities = [
+            ('📞', 'Call logged with Nexus Corp', 'Discussed Q4 proposal and close plan.', 'Call', '#e8f0fb', now - timedelta(hours=2)),
+            ('📧', 'Proposal sent — Emirates Heights', 'Commercial pack v2 emailed to Layla.', 'Email', '#fef6e4', now - timedelta(hours=5)),
+            ('🤝', 'Site visit — Ajman Port', 'Walked warehouse zones with Omar.', 'Meeting', '#e8f5ee', now - timedelta(days=1)),
+            ('✅', 'Deal won — Museum District', 'Annual FM contract signed.', 'Won', '#dcfce7', now - timedelta(days=3)),
+            ('⚠️', 'Follow-up overdue — Palm Residences', 'SLA reply still pending.', 'Alert', '#fdf0ee', now - timedelta(days=2)),
+            ('📝', 'Note added — Marina Gate', 'Prospect interested in soft services bundle.', 'Note', '#f3edfc', now - timedelta(days=4)),
+            ('🔄', 'Stage moved — Bay Square', 'Qualifying → deeper discovery.', 'Pipeline', '#e8f0fb', now - timedelta(days=5)),
+            ('📌', 'Sales workspace refreshed', 'Demo records loaded for pipeline briefing.', 'System', '#f5faf7', now - timedelta(minutes=10)),
+        ]
+        for icon, title, desc, badge, bg, when in activities:
+            if BDActivity.query.filter_by(title=title).first():
+                continue
+            _bd_activity(icon, title, desc, badge, bg, event_time=when, user_id=user_id)
+            added = True
+    return added
+
+
+def _seed_bd_data_if_empty(user_id):
+    """Seed or enrich BD/Sales demo data so the dashboard modules are populated."""
+    now = utc_now_naive()
+    changed = False
+
+    if BDProject.query.count() == 0:
+        for sample in _bd_demo_projects(user_id, now):
+            project = BDProject(created_by=user_id, **sample)
+            db.session.add(project)
+            db.session.flush()
+            if sample['name'] in (
+                'Palm Residences Concierge FM',
+                'TechPark Campus Soft Services',
+                'Horizon Mall Cleaning Scope',
+            ):
+                project.updated_at = now - timedelta(days=40)
+        changed = True
+    else:
+        # Existing import data: add showcase deals that fill empty stages / won-lost.
+        if _seed_bd_showcase_projects(user_id, now):
+            changed = True
+
+    if _seed_bd_demo_extras(user_id, now):
+        changed = True
+
+    if changed:
+        db.session.commit()
 
 
 @admin_bp.route('/bd/dashboard-data', methods=['GET'])
@@ -3099,6 +3592,861 @@ def personal_progress_delete_project(project_id):
 
 
 # ──────────────────────────────────────────────────────────────────────────────
+# Employees directory (employment info; optional linked User login)
+# ──────────────────────────────────────────────────────────────────────────────
+
+def _emp_parse_date(raw):
+    if not raw:
+        return None
+    if hasattr(raw, 'date'):
+        return raw.date()
+    for fmt in ('%Y-%m-%d', '%d/%m/%Y', '%d-%m-%Y', '%m/%d/%Y'):
+        try:
+            return datetime.strptime(str(raw).strip(), fmt).date()
+        except ValueError:
+            pass
+    return None
+
+
+def _emp_parse_leave(raw):
+    if raw in (None, ''):
+        return None
+    try:
+        n = int(raw)
+    except (TypeError, ValueError):
+        raise ValueError('Leave days must be a whole number')
+    if n < 0 or n > 366:
+        raise ValueError('Leave days must be between 0 and 366')
+    return n
+
+
+def _employee_from_payload(data, emp=None):
+    """Apply JSON payload onto a new or existing Employee. Raises ValueError on bad input."""
+    creating = emp is None
+    if creating:
+        emp = Employee()
+
+    emp_id = (data.get('employee_id') or (emp.employee_id if emp else '') or '').strip()
+    name = (data.get('full_name') or (emp.full_name if emp else '') or '').strip()
+    if creating or 'employee_id' in data:
+        if not emp_id:
+            raise ValueError('employee_id is required')
+        conflict = Employee.query.filter(Employee.employee_id == emp_id)
+        if not creating:
+            conflict = conflict.filter(Employee.id != emp.id)
+        if conflict.first():
+            raise ValueError(f'Employee ID "{emp_id}" already exists')
+        emp.employee_id = emp_id
+    if creating or 'full_name' in data:
+        if not name:
+            raise ValueError('full_name is required')
+        emp.full_name = name
+
+    if creating or 'email' in data:
+        emp.email = (data.get('email') or '').strip().lower() or None
+    if creating or 'phone' in data:
+        emp.phone = (data.get('phone') or '').strip() or None
+    if creating or 'job_title' in data:
+        emp.job_title = (data.get('job_title') or '').strip() or None
+    if creating or 'department' in data:
+        emp.department = (data.get('department') or '').strip() or None
+    if creating or 'designation' in data:
+        emp.designation = (data.get('designation') or '').strip() or None
+    if creating or 'joining_date' in data:
+        emp.joining_date = _emp_parse_date(data.get('joining_date'))
+    if creating or 'status' in data:
+        st = (data.get('status') or emp.status or 'active').strip().lower()
+        if st not in ('active', 'inactive', 'on_leave'):
+            raise ValueError('Invalid status')
+        emp.status = st
+    if creating or 'notes' in data:
+        emp.notes = (data.get('notes') or '').strip() or None
+    if creating or 'salary' in data:
+        if data.get('salary') in (None, ''):
+            emp.salary = None
+        else:
+            try:
+                emp.salary = float(data['salary'])
+            except (TypeError, ValueError):
+                raise ValueError('Salary must be a number')
+    if creating or 'annual_leave_days' in data:
+        emp.annual_leave_days = _emp_parse_leave(data.get('annual_leave_days'))
+    if creating or 'other_leave_days' in data:
+        emp.other_leave_days = _emp_parse_leave(data.get('other_leave_days'))
+    if creating or 'reporting_manager_user_id' in data:
+        raw_rm = data.get('reporting_manager_user_id')
+        if raw_rm in (None, '', 'null'):
+            emp.reporting_manager_user_id = None
+        else:
+            rid = int(raw_rm)
+            if not db.session.get(User, rid):
+                raise ValueError('Reporting manager not found')
+            emp.reporting_manager_user_id = rid
+    return emp
+
+
+@admin_bp.route('/employees', methods=['GET'])
+@jwt_required()
+@admin_required
+def list_employees():
+    status_filter = (request.args.get('status') or '').strip().lower()
+    q = Employee.query.options(
+        joinedload(Employee.user),
+        joinedload(Employee.reporting_manager),
+    )
+    if status_filter and status_filter != 'all':
+        q = q.filter(Employee.status == status_filter)
+    rows = q.order_by(Employee.full_name).all()
+    return success_response({'employees': [e.to_dict() for e in rows]})
+
+
+@admin_bp.route('/employees', methods=['POST'])
+@jwt_required()
+@admin_required
+def create_employee():
+    data = request.get_json(force=True, silent=True) or {}
+    try:
+        emp = _employee_from_payload(data, emp=None)
+        db.session.add(emp)
+        db.session.commit()
+        admin_id = get_jwt_identity()
+        log_audit(admin_id, 'create_employee', 'employee', str(emp.id), {'employee_id': emp.employee_id})
+        return success_response({'employee': emp.to_dict()}, message='Employee created', status_code=201)
+    except ValueError as ve:
+        db.session.rollback()
+        return error_response(str(ve), status_code=400, error_code='VALIDATION_ERROR')
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'create_employee: {e}', exc_info=True)
+        return error_response('Failed to create employee', status_code=500, error_code='DATABASE_ERROR')
+
+
+@admin_bp.route('/employees/<int:emp_id>', methods=['GET'])
+@jwt_required()
+@admin_required
+def get_employee(emp_id):
+    emp = Employee.query.options(
+        joinedload(Employee.user),
+        joinedload(Employee.reporting_manager),
+    ).get_or_404(emp_id)
+    return success_response({'employee': emp.to_dict()})
+
+
+@admin_bp.route('/employees/<int:emp_id>', methods=['PUT'])
+@jwt_required()
+@admin_required
+def update_employee(emp_id):
+    emp = Employee.query.get_or_404(emp_id)
+    data = request.get_json(force=True, silent=True) or {}
+    try:
+        _employee_from_payload(data, emp=emp)
+        db.session.commit()
+        admin_id = get_jwt_identity()
+        log_audit(admin_id, 'update_employee', 'employee', str(emp.id), {'employee_id': emp.employee_id})
+        return success_response({'employee': emp.to_dict()}, message='Employee updated')
+    except ValueError as ve:
+        db.session.rollback()
+        return error_response(str(ve), status_code=400, error_code='VALIDATION_ERROR')
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'update_employee: {e}', exc_info=True)
+        return error_response('Failed to update employee', status_code=500, error_code='DATABASE_ERROR')
+
+
+@admin_bp.route('/employees/<int:emp_id>/create-user', methods=['POST'])
+@jwt_required()
+@admin_required
+def create_user_for_employee(emp_id):
+    """Create a linked application User from employment details."""
+    from app.auth.routes import validate_email, validate_password
+
+    emp = Employee.query.get_or_404(emp_id)
+    if emp.user_id:
+        return error_response('This employee already has an application user account', status_code=409, error_code='ALREADY_LINKED')
+
+    data = request.get_json(force=True, silent=True) or {}
+    email = (data.get('email') or emp.email or '').strip().lower()
+    if not email:
+        return error_response('Email is required to create an application user', status_code=400, error_code='VALIDATION_ERROR')
+    if not validate_email(email):
+        return error_response('Invalid email format', status_code=400, error_code='VALIDATION_ERROR')
+    if User.query.filter_by(email=email).first():
+        return error_response('Email already in use', status_code=409, error_code='DUPLICATE_EMAIL')
+
+    username = _next_numeric_username()
+    raw_pw = (data.get('password') or '').strip()
+    temp_password = raw_pw or (os.environ.get('ADMIN_RESET_PASSWORD') or '').strip() or DEFAULT_ADMIN_RESET_PASSWORD
+    if raw_pw:
+        ok, msg = validate_password(raw_pw)
+        if not ok:
+            return error_response(msg, status_code=400, error_code='WEAK_PASSWORD')
+    else:
+        ok, msg = validate_password(temp_password)
+        if not ok:
+            temp_password = DEFAULT_ADMIN_RESET_PASSWORD
+
+    valid_designations = {
+        'supervisor', 'operations_manager', 'business_development',
+        'procurement', 'general_manager', 'hr_manager', 'employee',
+        'technician', 'admin',
+    }
+    des = (data.get('designation') or '').strip() or 'employee'
+    if des not in valid_designations:
+        return error_response('Invalid designation', status_code=400, error_code='VALIDATION_ERROR')
+
+    try:
+        from common.password_policy import assign_user_password
+
+        user = User(
+            username=username,
+            email=email,
+            full_name=emp.full_name,
+            role='user',
+            designation=des,
+            phone=emp.phone,
+            job_designation=emp.job_title,
+            employment_start_date=emp.joining_date,
+            annual_leave_days=emp.annual_leave_days,
+            other_leave_days=emp.other_leave_days,
+            reporting_manager_id=emp.reporting_manager_user_id,
+            is_active=True,
+        )
+        assign_user_password(user, temp_password, is_temp=True)
+        db.session.add(user)
+        db.session.flush()
+        emp.user_id = user.id
+        if not emp.email:
+            emp.email = email
+        db.session.commit()
+        admin_id = get_jwt_identity()
+        log_audit(admin_id, 'create_user_from_employee', 'employee', str(emp.id), {
+            'user_id': user.id, 'username': username,
+        })
+        email_sent = False
+        try:
+            from common.email_service import send_welcome_email
+            email_sent = bool(send_welcome_email(
+                user_email=user.email,
+                username=user.username,
+                temp_password=temp_password,
+                full_name=user.full_name,
+            ))
+        except Exception as email_error:
+            current_app.logger.warning(f"Failed to send welcome email: {email_error}")
+        out = {
+            'employee': emp.to_dict(),
+            'user': user.to_dict(),
+            'username': username,
+            'user_id_number': username,
+            'temp_password': temp_password,
+            'email_sent': email_sent,
+        }
+        return success_response(out, message='Application user account created', status_code=201)
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'create_user_for_employee: {e}', exc_info=True)
+        return error_response('Failed to create application user', status_code=500, error_code='DATABASE_ERROR')
+
+
+def _excel_header_index(header_row):
+    return {str(c or '').strip().lower().replace(' ', '_'): i for i, c in enumerate(header_row)}
+
+
+def _excel_cell(row, col_map, *keys):
+    for key in keys:
+        idx = col_map.get(key)
+        if idx is None:
+            continue
+        v = row[idx] if idx < len(row) else None
+        if v is None:
+            continue
+        if isinstance(v, bool):
+            return 'Yes' if v else 'No'
+        if isinstance(v, int):
+            return str(v)
+        if isinstance(v, float):
+            return str(int(v)) if v == int(v) else str(v)
+        if hasattr(v, 'strftime'):
+            try:
+                return v.strftime('%Y-%m-%d')
+            except Exception:
+                pass
+        s = str(v).strip()
+        if s:
+            return s
+    return None
+
+
+def _excel_bool(raw):
+    if raw is None:
+        return False
+    return str(raw).strip().lower() in ('1', 'true', 'yes', 'y', 'x')
+
+
+def _build_import_workbook(sheet_title, headers, col_widths, example_row, instructions_title, instruction_rows):
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = sheet_title
+
+    header_fill = PatternFill('solid', fgColor='125435')
+    header_font = Font(bold=True, color='FFFFFF', size=11)
+    header_align = Alignment(horizontal='center', vertical='center', wrap_text=True)
+    thin = Side(style='thin', color='AAAAAA')
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+
+    for col_idx, h in enumerate(headers, start=1):
+        cell = ws.cell(row=1, column=col_idx, value=h)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = header_align
+        cell.border = border
+
+    for i, w in enumerate(col_widths, start=1):
+        ws.column_dimensions[openpyxl.utils.get_column_letter(i)].width = w
+    ws.row_dimensions[1].height = 28
+
+    note_fill = PatternFill('solid', fgColor='F0FBF5')
+    note_font = Font(color='334433', size=10, italic=True)
+    for col_idx, v in enumerate(example_row, start=1):
+        cell = ws.cell(row=2, column=col_idx, value=v)
+        cell.fill = note_fill
+        cell.font = note_font
+        cell.alignment = Alignment(vertical='center')
+        cell.border = border
+
+    ws2 = wb.create_sheet('Instructions')
+    ws2['A1'] = instructions_title
+    ws2['A1'].font = Font(bold=True, size=13, color='125435')
+    for row_i, (col, desc) in enumerate(instruction_rows, start=3):
+        ws2.cell(row=row_i, column=1, value=col).font = Font(bold=True)
+        ws2.cell(row=row_i, column=2, value=desc)
+    ws2.column_dimensions['A'].width = 28
+    ws2.column_dimensions['B'].width = 72
+    return wb
+
+
+def _send_xlsx(wb, download_name):
+    buf = BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return send_file(
+        buf,
+        as_attachment=True,
+        download_name=download_name,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+
+
+@admin_bp.route('/employees/export-template', methods=['GET'])
+@jwt_required()
+@admin_required
+def export_employees_template():
+    """Blank Excel template for bulk employee directory import."""
+    try:
+        import openpyxl  # noqa: F401
+    except ImportError:
+        return error_response('openpyxl is required (pip install openpyxl)', status_code=500, error_code='DEPENDENCY_ERROR')
+
+    headers = [
+        'Employee ID', 'Full Name', 'Email', 'Phone', 'Job Title', 'Department',
+        'Designation', 'Joining Date', 'Status', 'Annual Leave Days', 'Other Leave Days',
+        'Salary', 'Reporting Manager User ID', 'Notes',
+    ]
+    example = [
+        'EMP-1001', 'Sara Al Mansoori', 'sara.mansoori@example.com', '+971-50-111-2222',
+        'HR Coordinator', 'Human Resources', 'Coordinator', '2024-03-01', 'active',
+        '30', '5', '8500', '', 'Sample row — replace with real data',
+    ]
+    notes = [
+        ('Employee ID', 'Required. Unique employment ID (e.g. EMP-1001). Duplicates are skipped.'),
+        ('Full Name', 'Required. Full legal / preferred name.'),
+        ('Email', 'Optional work email.'),
+        ('Phone', 'Optional mobile number.'),
+        ('Job Title', 'Role title (e.g. HR Coordinator).'),
+        ('Department', 'Department / team name.'),
+        ('Designation', 'Org designation label (free text).'),
+        ('Joining Date', 'Format: YYYY-MM-DD or DD/MM/YYYY.'),
+        ('Status', 'One of: active, inactive, on_leave. Defaults to active.'),
+        ('Annual Leave Days', 'Whole number 0–366.'),
+        ('Other Leave Days', 'Whole number 0–366.'),
+        ('Salary', 'Numbers only, no currency symbol.'),
+        ('Reporting Manager User ID', 'Numeric application user id from Users & Teams. Blank if unknown.'),
+        ('Notes', 'Optional notes.'),
+    ]
+    wb = _build_import_workbook(
+        'Employees', headers, [14, 26, 28, 16, 22, 18, 16, 14, 12, 16, 16, 12, 22, 32],
+        example, 'Employee Import — Instructions', notes,
+    )
+    return _send_xlsx(wb, 'employees_import_template.xlsx')
+
+
+@admin_bp.route('/employees/import-excel', methods=['POST'])
+@jwt_required()
+@admin_required
+def import_employees_excel():
+    """Import employees from an uploaded Excel file."""
+    try:
+        import openpyxl
+    except ImportError:
+        return error_response('openpyxl is required for Excel import (pip install openpyxl)', status_code=500, error_code='DEPENDENCY_ERROR')
+
+    if 'file' not in request.files:
+        return error_response('No file uploaded', status_code=400, error_code='VALIDATION_ERROR')
+    f = request.files['file']
+    if not f.filename:
+        return error_response('No file selected', status_code=400, error_code='VALIDATION_ERROR')
+
+    try:
+        wb = openpyxl.load_workbook(BytesIO(f.read()), read_only=True, data_only=True)
+        ws = wb.active
+        rows = list(ws.iter_rows(values_only=True))
+    except Exception as e:
+        return error_response(f'Could not read Excel file: {e}', status_code=400, error_code='PARSE_ERROR')
+
+    if not rows:
+        return error_response('Excel file is empty', status_code=400, error_code='VALIDATION_ERROR')
+
+    col_map = _excel_header_index(rows[0])
+    created, skipped, errors = 0, 0, []
+    admin_id = get_jwt_identity()
+
+    for row_num, row in enumerate(rows[1:], start=2):
+        if all(c is None or str(c).strip() == '' for c in row):
+            continue
+        emp_id = _excel_cell(row, col_map, 'employee_id')
+        name = _excel_cell(row, col_map, 'full_name', 'name')
+        if not emp_id or not name:
+            errors.append(f'Row {row_num}: employee_id and full_name are required — skipped')
+            continue
+        if Employee.query.filter_by(employee_id=emp_id).first():
+            skipped += 1
+            continue
+        try:
+            payload = {
+                'employee_id': emp_id,
+                'full_name': name,
+                'email': _excel_cell(row, col_map, 'email'),
+                'phone': _excel_cell(row, col_map, 'phone'),
+                'job_title': _excel_cell(row, col_map, 'job_title'),
+                'department': _excel_cell(row, col_map, 'department'),
+                'designation': _excel_cell(row, col_map, 'designation'),
+                'joining_date': _excel_cell(row, col_map, 'joining_date'),
+                'status': _excel_cell(row, col_map, 'status') or 'active',
+                'annual_leave_days': _excel_cell(row, col_map, 'annual_leave_days'),
+                'other_leave_days': _excel_cell(row, col_map, 'other_leave_days'),
+                'salary': _excel_cell(row, col_map, 'salary'),
+                'notes': _excel_cell(row, col_map, 'notes'),
+                'reporting_manager_user_id': _excel_cell(
+                    row, col_map, 'reporting_manager_user_id', 'reporting_manager_id'
+                ),
+            }
+            emp = _employee_from_payload(payload, emp=None)
+            db.session.add(emp)
+            created += 1
+        except ValueError as ve:
+            errors.append(f'Row {row_num}: {ve} — skipped')
+        except Exception as e:
+            errors.append(f'Row {row_num}: {e} — skipped')
+
+    try:
+        db.session.commit()
+        if created:
+            log_audit(admin_id, 'import_employees_excel', 'employee', 'bulk', {'created': created, 'skipped': skipped})
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'import_employees_excel commit: {e}', exc_info=True)
+        return error_response('Database error during import', status_code=500, error_code='DATABASE_ERROR')
+
+    return success_response({
+        'created': created,
+        'skipped': skipped,
+        'errors': errors,
+    }, message=f'{created} employee(s) imported, {skipped} skipped (duplicate ID).')
+
+
+def _normalize_app_user_type(raw):
+    """Map Excel User Type to office_staff | technician."""
+    s = (raw or 'office_staff').strip().lower().replace(' ', '_').replace('-', '_')
+    if s in ('technician', 'tech', 'technicians'):
+        return 'technician'
+    if s in ('office_staff', 'office', 'staff', 'application_user', 'user', ''):
+        return 'office_staff'
+    return None
+
+
+@admin_bp.route('/users/export-template', methods=['GET'])
+@jwt_required()
+@admin_required
+def export_users_template():
+    """Blank Excel template for bulk application user import (office staff + technicians)."""
+    try:
+        import openpyxl
+        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    except ImportError:
+        return error_response('openpyxl is required (pip install openpyxl)', status_code=500, error_code='DEPENDENCY_ERROR')
+
+    headers = [
+        'User Type', 'Email', 'Full Name', 'Username', 'Password', 'Role', 'Designation',
+        'Job Designation', 'Phone', 'Employment Start Date', 'Employee ID',
+        'Department', 'Specialization', 'Salary', 'Status', 'Supervisor User ID',
+        'Annual Leave Days', 'Other Leave Days', 'Reporting Manager User ID', 'Notes',
+        'Access HVAC', 'Access Civil', 'Access Cleaning', 'Access HR',
+        'Access Procurement', 'Access Ticketing', 'Access Operations',
+        'Access Finance', 'Access Submitted Forms', 'Access Report Generation',
+        'Access Business Development',
+    ]
+    # Row 2: office staff sample · Row 3: technician sample
+    staff_example = [
+        'office_staff', 'ahmed.hassan@example.com', 'Ahmed Hassan', '', '', 'user', 'employee',
+        'Site Engineer', '+971-55-333-4444', '2024-06-15', '',
+        'Operations', '', '', 'active', '',
+        '30', '5', '', 'Sample office staff — replace with real data',
+        'Yes', 'No', 'No', 'Yes',
+        'No', 'Yes', 'No',
+        'No', 'Yes', 'No',
+        'No',
+    ]
+    tech_example = [
+        'technician', 'john.smith@example.com', 'John Smith', '', '', 'user', 'HVAC Technician',
+        'Technician', '+971-50-000-0000', '2024-01-15', 'TECH-001',
+        'MEP', 'Air Conditioning', '5000', 'active', '',
+        '30', '5', '', 'Sample technician — replace with real data',
+        'No', 'No', 'No', 'No',
+        'No', 'Yes', 'No',
+        'No', 'No', 'No',
+        'No',
+    ]
+    notes = [
+        ('User Type', 'Required. office_staff (Office staff tab) or technician (Technicians tab).'),
+        ('Email', 'Optional. Auto-generated if blank (login can use User ID).'),
+        ('Full Name', 'Required for both types.'),
+        ('Employee ID', 'Required for technicians only. Unique ID (e.g. TECH-001).'),
+        ('Username', 'Optional. Leave blank to auto-assign a numeric User ID.'),
+        ('Password', 'Optional. Leave blank to use the default temporary password.'),
+        ('Role', 'office_staff only: user or admin. Defaults to user. Ignored for technicians.'),
+        ('Designation', 'office_staff: workflow designation (employee, supervisor, operations_manager, …). technician: job title (e.g. HVAC Technician).'),
+        ('Job Designation', 'HR job title (free text).'),
+        ('Department / Specialization / Salary / Status / Supervisor User ID', 'Used mainly for technicians.'),
+        ('Employment Start Date / Joining', 'Format: YYYY-MM-DD or DD/MM/YYYY.'),
+        ('Reporting Manager User ID', 'office_staff: manager user.id. Blank if unknown.'),
+        ('Access * columns', 'Yes / No. Module permissions for office_staff. Technicians get Ticketing by default.'),
+        ('Sample rows', 'Rows 2–3 are examples — delete or overwrite before importing.'),
+    ]
+    widths = [14, 28, 24, 12, 14, 10, 18, 18, 16, 18, 14, 14, 18, 12, 12, 18, 16, 16, 22, 28] + [14] * 11
+    wb = _build_import_workbook(
+        'Application Users', headers, widths, staff_example,
+        'Application User Import — Instructions', notes,
+    )
+    # Second sample row (technician)
+    ws = wb.active
+    thin = Side(style='thin', color='AAAAAA')
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+    note_fill = PatternFill('solid', fgColor='FFF8F0')
+    note_font = Font(color='334433', size=10, italic=True)
+    for col_idx, v in enumerate(tech_example, start=1):
+        cell = ws.cell(row=3, column=col_idx, value=v)
+        cell.fill = note_fill
+        cell.font = note_font
+        cell.alignment = Alignment(vertical='center')
+        cell.border = border
+    return _send_xlsx(wb, 'application_users_import_template.xlsx')
+
+
+@admin_bp.route('/users/import-excel', methods=['POST'])
+@jwt_required()
+@admin_required
+def import_users_excel():
+    """Import application users (office staff and/or technicians) from Excel."""
+    try:
+        import openpyxl
+    except ImportError:
+        return error_response('openpyxl is required for Excel import (pip install openpyxl)', status_code=500, error_code='DEPENDENCY_ERROR')
+
+    from app.auth.routes import validate_email, validate_password
+    from common.password_policy import assign_user_password
+
+    if 'file' not in request.files:
+        return error_response('No file uploaded', status_code=400, error_code='VALIDATION_ERROR')
+    f = request.files['file']
+    if not f.filename:
+        return error_response('No file selected', status_code=400, error_code='VALIDATION_ERROR')
+
+    try:
+        wb = openpyxl.load_workbook(BytesIO(f.read()), read_only=True, data_only=True)
+        ws = wb.active
+        rows = list(ws.iter_rows(values_only=True))
+    except Exception as e:
+        return error_response(f'Could not read Excel file: {e}', status_code=400, error_code='PARSE_ERROR')
+
+    if not rows:
+        return error_response('Excel file is empty', status_code=400, error_code='VALIDATION_ERROR')
+
+    col_map = _excel_header_index(rows[0])
+    created, skipped, errors = 0, 0, []
+    created_staff, created_tech = 0, 0
+    created_creds = []
+    admin_id = get_jwt_identity()
+    valid_designations = {
+        'supervisor', 'operations_manager', 'business_development',
+        'procurement', 'general_manager', 'hr_manager', 'employee',
+        'technician', 'admin',
+    }
+    _ensure_technicians_supervisor_column()
+
+    for row_num, row in enumerate(rows[1:], start=2):
+        if all(c is None or str(c).strip() == '' for c in row):
+            continue
+
+        user_type = _normalize_app_user_type(_excel_cell(row, col_map, 'user_type', 'type', 'account_type'))
+        if user_type is None:
+            errors.append(f'Row {row_num}: User Type must be office_staff or technician — skipped')
+            continue
+
+        full_name = _excel_cell(row, col_map, 'full_name', 'name')
+        if not full_name:
+            errors.append(f'Row {row_num}: full_name is required — skipped')
+            continue
+
+        email = (_excel_cell(row, col_map, 'email') or '').lower()
+        username = _excel_cell(row, col_map, 'username', 'user_id') or ''
+        if not username:
+            username = _next_numeric_username()
+        if User.query.filter_by(username=username).first() or Technician.query.filter_by(username=username).first():
+            errors.append(f'Row {row_num}: username "{username}" already exists — skipped')
+            continue
+
+        raw_pw = _excel_cell(row, col_map, 'password') or ''
+        temp_password = raw_pw or (os.environ.get('ADMIN_RESET_PASSWORD') or '').strip() or DEFAULT_ADMIN_RESET_PASSWORD
+        if raw_pw:
+            ok, msg = validate_password(raw_pw)
+            if not ok:
+                errors.append(f'Row {row_num}: {msg} — skipped')
+                continue
+        else:
+            ok, msg = validate_password(temp_password)
+            if not ok:
+                temp_password = DEFAULT_ADMIN_RESET_PASSWORD
+
+        # ── Technician path ──────────────────────────────────────────────
+        if user_type == 'technician':
+            emp_id = _excel_cell(row, col_map, 'employee_id')
+            if not emp_id:
+                errors.append(f'Row {row_num}: Employee ID is required for technicians — skipped')
+                continue
+            if Technician.query.filter_by(employee_id=emp_id).first():
+                skipped += 1
+                continue
+            if email:
+                if not validate_email(email):
+                    errors.append(f'Row {row_num}: invalid email — skipped')
+                    continue
+                if User.query.filter_by(email=email).first():
+                    skipped += 1
+                    continue
+            else:
+                email = f'{username}@amaan.local'
+                if User.query.filter_by(email=email).first():
+                    email = f'{username}.{row_num}@amaan.local'
+
+            sup_raw = _excel_cell(row, col_map, 'supervisor_user_id', 'supervisor_id')
+            supervisor_uid = None
+            if sup_raw:
+                try:
+                    supervisor_uid = int(str(sup_raw).strip().replace(',', '').split('.', 1)[0])
+                except ValueError:
+                    errors.append(f'Row {row_num}: invalid Supervisor User ID — skipped')
+                    continue
+                if not _valid_roster_supervisor_user(supervisor_uid):
+                    errors.append(f'Row {row_num}: Supervisor User ID not an active supervisor/manager — skipped')
+                    continue
+
+            salary_raw = _excel_cell(row, col_map, 'salary')
+            try:
+                salary = float(salary_raw) if salary_raw else None
+            except ValueError:
+                salary = None
+
+            try:
+                annual_leave = _parse_leave_days_field(_excel_cell(row, col_map, 'annual_leave_days'))
+                other_leave = _parse_leave_days_field(_excel_cell(row, col_map, 'other_leave_days'))
+            except ValueError as ve:
+                errors.append(f'Row {row_num}: {ve} — skipped')
+                continue
+
+            sheet_email = (_excel_cell(row, col_map, 'email') or '').lower() or None
+            t = Technician(
+                employee_id=emp_id,
+                full_name=full_name,
+                username=username,
+                designation=_excel_cell(row, col_map, 'designation'),
+                department=_excel_cell(row, col_map, 'department'),
+                specialization=_excel_cell(row, col_map, 'specialization'),
+                phone=_excel_cell(row, col_map, 'phone'),
+                email=sheet_email,
+                salary=salary,
+                joining_date=_emp_parse_date(_excel_cell(row, col_map, 'employment_start_date', 'joining_date')),
+                status=(_excel_cell(row, col_map, 'status') or 'active').lower(),
+                notes=_excel_cell(row, col_map, 'notes'),
+                job_title=_truncate_job_designation(_excel_cell(row, col_map, 'job_designation', 'job_title')),
+                annual_leave_days=annual_leave,
+                other_leave_days=other_leave,
+                supervisor_user_id=supervisor_uid,
+            )
+            t.set_password(temp_password)
+            t.admin_visible_password = temp_password
+            db.session.add(t)
+            db.session.flush()
+            _sync_technician_user(t, username, temp_password)
+            linked = User.query.filter_by(username=username).first()
+            if linked and sheet_email:
+                linked.email = sheet_email
+            created += 1
+            created_tech += 1
+            created_creds.append({
+                'row': row_num, 'username': username,
+                'email': sheet_email or (linked.email if linked else email),
+                'temp_password': temp_password, 'user_type': 'technician',
+            })
+            continue
+
+        # ── Office staff path ────────────────────────────────────────────
+        if email:
+            if not validate_email(email):
+                errors.append(f'Row {row_num}: invalid email — skipped')
+                continue
+            if User.query.filter_by(email=email).first():
+                skipped += 1
+                continue
+        else:
+            email = f'{username}@amaan.local'
+            if User.query.filter_by(email=email).first():
+                email = f'{username}.{row_num}@amaan.local'
+
+        role = (_excel_cell(row, col_map, 'role') or 'user').lower()
+        if role not in ('user', 'admin'):
+            errors.append(f'Row {row_num}: role must be user or admin — skipped')
+            continue
+
+        des = _excel_cell(row, col_map, 'designation')
+        if des in (None, ''):
+            designation = None
+        elif des in valid_designations:
+            designation = des
+        else:
+            errors.append(f'Row {row_num}: invalid designation "{des}" — skipped')
+            continue
+
+        try:
+            start_raw = _excel_cell(row, col_map, 'employment_start_date', 'joining_date')
+            employment_start = _emp_parse_date(start_raw) if start_raw else None
+            annual_leave = _parse_leave_days_field(_excel_cell(row, col_map, 'annual_leave_days'))
+            other_leave = _parse_leave_days_field(_excel_cell(row, col_map, 'other_leave_days'))
+            rm_id = _resolve_reporting_manager_id(
+                _excel_cell(row, col_map, 'reporting_manager_user_id', 'reporting_manager_id'),
+                exclude_user_id=None,
+            )
+        except ValueError as ve:
+            errors.append(f'Row {row_num}: {ve} — skipped')
+            continue
+
+        def _flag(*keys):
+            for k in keys:
+                raw = _excel_cell(row, col_map, k)
+                if raw is not None:
+                    return _excel_bool(raw)
+            return False
+
+        user = User(
+            username=username,
+            email=email,
+            full_name=full_name,
+            role=role,
+            designation=designation,
+            phone=_excel_cell(row, col_map, 'phone'),
+            job_designation=_truncate_job_designation(_excel_cell(row, col_map, 'job_designation', 'job_title')),
+            employment_start_date=employment_start,
+            annual_leave_days=annual_leave,
+            other_leave_days=other_leave,
+            reporting_manager_id=rm_id,
+            is_active=True,
+        )
+        assign_user_password(user, temp_password, is_temp=True)
+
+        if role != 'admin':
+            user.access_hvac = _flag('access_hvac')
+            user.access_civil = _flag('access_civil')
+            user.access_cleaning = _flag('access_cleaning')
+            user.access_hr = _flag('access_hr')
+            user.access_procurement_module = _flag('access_procurement', 'access_procurement_module')
+            user.access_ticketing = _flag('access_ticketing')
+            user.access_finance = _flag('access_finance')
+            user.access_submitted_forms = _flag('access_submitted_forms')
+            user.access_report_generation = _flag('access_report_generation')
+            user.access_business_development = _flag('access_business_development')
+            ops = _flag('access_operations')
+            user.access_operations = ops
+            user.access_operations_overtime = ops
+            user.access_operations_invoices = ops
+            user.access_operations_clients = ops
+            user.access_operations_cheques = ops
+
+        db.session.add(user)
+        db.session.flush()
+        created += 1
+        created_staff += 1
+        created_creds.append({
+            'row': row_num, 'username': username, 'email': email,
+            'temp_password': temp_password, 'user_type': 'office_staff',
+        })
+
+    try:
+        db.session.commit()
+        if created:
+            log_audit(admin_id, 'import_users_excel', 'user', 'bulk', {
+                'created': created, 'office_staff': created_staff,
+                'technicians': created_tech, 'skipped': skipped,
+            })
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'import_users_excel commit: {e}', exc_info=True)
+        return error_response('Database error during import', status_code=500, error_code='DATABASE_ERROR')
+
+    welcome_emails_sent = 0
+    if created_creds:
+        try:
+            from common.email_service import send_welcome_email
+            for cred in created_creds:
+                try:
+                    if send_welcome_email(
+                        user_email=cred.get('email'),
+                        username=cred.get('username'),
+                        temp_password=cred.get('temp_password'),
+                        full_name=None,
+                    ):
+                        welcome_emails_sent += 1
+                except Exception as email_error:
+                    current_app.logger.warning(
+                        'Welcome email failed for imported user %s: %s',
+                        cred.get('username'), email_error,
+                    )
+        except Exception as email_error:
+            current_app.logger.warning(f'Welcome email batch skipped: {email_error}')
+
+    return success_response({
+        'created': created,
+        'created_office_staff': created_staff,
+        'created_technicians': created_tech,
+        'skipped': skipped,
+        'errors': errors,
+        'credentials': created_creds[:25],
+        'welcome_emails_sent': welcome_emails_sent,
+    }, message=f'{created} application user(s) imported ({created_staff} office staff, {created_tech} technician), {skipped} skipped.')
+
+
+# ──────────────────────────────────────────────────────────────────────────────
 # Technicians CRUD + Excel import/export
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -3117,6 +4465,8 @@ def _tech_parse_date(raw):
 
 def _sync_technician_user(tech: 'Technician', username: str, raw_pw: str):
     """Create or update a User account linked to this technician so they can log in."""
+    from common.password_policy import assign_user_password
+
     linked = User.query.filter_by(username=username).first()
     if not linked:
         email = tech.email or f"{username}@amaan.local"
@@ -3127,7 +4477,6 @@ def _sync_technician_user(tech: 'Technician', username: str, raw_pw: str):
             role='user',
             designation='technician',  # keeps it out of the staff roster (staff excludes technicians)
             access_ticketing=True,
-            password_changed=True,
             is_active=True,
         )
         db.session.add(linked)
@@ -3135,7 +4484,8 @@ def _sync_technician_user(tech: 'Technician', username: str, raw_pw: str):
         linked.full_name = tech.full_name
         linked.designation = 'technician'
         linked.is_active = True
-    linked.set_password(raw_pw)
+    # Technician passwords are admin-managed temps until the tech changes them
+    assign_user_password(linked, raw_pw, is_temp=True)
 
 
 @admin_bp.route('/technicians', methods=['GET'])
@@ -3168,7 +4518,12 @@ def create_technician():
     if Technician.query.filter_by(employee_id=emp_id).first():
         return error_response(f'Employee ID "{emp_id}" already exists', status_code=409, error_code='DUPLICATE')
     username = (data.get('username') or '').strip() or None
+    auto_username = not username
+    if auto_username:
+        username = _next_numeric_username()
     if username and Technician.query.filter_by(username=username).first():
+        return error_response(f'Username "{username}" already in use', status_code=409, error_code='DUPLICATE')
+    if username and User.query.filter_by(username=username).first():
         return error_response(f'Username "{username}" already in use', status_code=409, error_code='DUPLICATE')
     try:
         t = Technician(
@@ -3198,7 +4553,30 @@ def create_technician():
         if username:
             _sync_technician_user(t, username, raw_pw)
         db.session.commit()
-        return success_response({'technician': t.to_dict()}, message='Technician created', status_code=201)
+        email_sent = False
+        if username:
+            try:
+                from common.email_service import send_welcome_email
+                linked = User.query.filter_by(username=username).first()
+                recip = (t.email or (linked.email if linked else '') or '').strip()
+                email_sent = bool(send_welcome_email(
+                    user_email=recip,
+                    username=username,
+                    temp_password=raw_pw,
+                    full_name=t.full_name,
+                ))
+            except Exception as email_error:
+                current_app.logger.warning(f"Failed to send welcome email: {email_error}")
+        out = {
+            'technician': t.to_dict(),
+            'username': username,
+            'user_id_number': username,
+            'temp_password': raw_pw,
+            'email_sent': email_sent,
+        }
+        if auto_username:
+            out['auto_username'] = True
+        return success_response(out, message='Technician created', status_code=201)
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f'create_technician: {e}', exc_info=True)
@@ -3471,7 +4849,7 @@ def export_technicians_template():
 
 KB_ALLOWED_EXTENSIONS = {'pdf', 'docx', 'txt', 'md'}
 KB_CATEGORIES = ['General', 'HR', 'Inspection', 'Procurement', 'Ticketing',
-                 'QHSI', 'Reports', 'Business Development', 'Policy', 'IT', 'Workflow']
+                 'Reports', 'Business Development', 'Policy', 'IT', 'Workflow']
 
 
 def _kb_invalidate_cache():

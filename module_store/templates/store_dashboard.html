@@ -3,474 +3,202 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
-  
+
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
-<title>Procurement — Injaaz</title>
+<title>Store — Amaan</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
-  <style>
-    *, *::before, *::after { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; box-sizing: border-box; }
-    :root {
-      --brand: #d21725; --brand-mid: #e8323f; --brand-light: #10b981;
-      --brand-pale: #f0fdf4; --surface: #ffffff; --bg: #f4f6f5;
-      --text: #0f172a; --muted: #64748b; --border: #e2e8f0;
-    }
-    /* One background for the whole page (match main dashboard feel) */
-    body.procurement-page {
-      background:
-        radial-gradient(ellipse 70% 60% at 0% 50%, rgba(210, 23, 37, 0.10) 0%, transparent 70%),
-        radial-gradient(ellipse 40% 40% at 100% 10%, rgba(210, 23, 37, 0.05) 0%, transparent 60%),
-        linear-gradient(160deg, #f5f9f6 0%, #fafbfa 50%, #f8faf8 100%);
-    }
-    body.procurement-page { min-height: 100vh; }
-
-    /* ─── Hero ─────────────────────────────────────────────── */
-    /* Use main dashboard hero background (dashboard.css). Keep only layout tweaks here. */
-    header.hero.proc-hero { padding-bottom: 5rem; background: transparent !important; }
-    body.procurement-page header.hero::before,
-    body.procurement-page header.hero::after { display: none !important; }
-    .proc-hero-inner {
-      max-width: 1400px; margin: 0 auto; padding: 0 2.5rem;
-      position: relative; z-index: 1;
-    }
-    /* .back-btn styling is global (static/css/dashboard.css) */
-
-    /* Match main dashboard headline system (hero-*) but tuned for dark hero background */
-    .proc-hero .hero-subtitle { max-width: 520px; }
-
-    /* ─── Floating KPI strip ──────────────────────────────── */
-    .proc-kpi-strip {
-      display: grid; grid-template-columns: repeat(4, 1fr);
-      gap: 1.5rem;
-      max-width: 1400px; margin: -2.75rem auto 0;
-      padding: 0 2.5rem; position: relative; z-index: 10;
-    }
-    @media (max-width: 900px) { .proc-kpi-strip { grid-template-columns: repeat(2,1fr); gap: 1rem; } }
-    @media (max-width: 768px) {
-      .proc-kpi-strip { padding: 0 1rem; gap: .625rem; margin-top: 0; max-width: 100%; width: 100%; box-sizing: border-box; }
-      header.hero.proc-hero { padding-bottom: 1.5rem; }
-      .kpi-pill { padding: .875rem 1rem; gap: .625rem; border-radius: 12px; min-width: 0; overflow: hidden; }
-      .kpi-pill-icon { width: 36px; height: 36px; border-radius: 9px; flex-shrink: 0; }
-      .kpi-pill-icon svg { width: 18px; height: 18px; }
-      .kpi-pill-val { font-size: 1.3rem; line-height: 1; }
-      .kpi-pill-lbl { font-size: .63rem; letter-spacing: .04em; line-height: 1.3; }
-      .proc-main { padding: 1.5rem 1rem 3rem; }
-    }
-    /* Single column on very small phones to avoid cramped tiles */
-    @media (max-width: 360px) { .proc-kpi-strip { grid-template-columns: 1fr; } }
-    @media (max-width: 480px) { .proc-kpi-strip { grid-template-columns: 1fr; } }
-    .kpi-pill {
-      background: #fff; border-radius: 16px; padding: 1.35rem 1.4rem;
-      border: 1px solid var(--border); box-shadow: 0 8px 30px rgba(0,0,0,0.09);
-      display: flex; align-items: center; gap: 1rem; min-width: 0;
-    }
-    .kpi-pill-icon {
-      width: 46px; height: 46px; border-radius: 12px; flex-shrink: 0;
-      display: flex; align-items: center; justify-content: center;
-    }
-    .kpi-pill-icon svg { width: 21px; height: 21px; }
-    .kpi-pill-lbl { font-size: 0.7rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 0.15rem; }
-    .kpi-pill-val { font-size: 1.65rem; font-weight: 800; line-height: 1; }
-    .kpi-g .kpi-pill-icon { background: #f0fdf4; } .kpi-g .kpi-pill-icon svg { stroke: #059669; } .kpi-g .kpi-pill-val { color: #059669; }
-    .kpi-b .kpi-pill-icon { background: #eff6ff; } .kpi-b .kpi-pill-icon svg { stroke: #2563eb; } .kpi-b .kpi-pill-val { color: #2563eb; }
-    .kpi-a .kpi-pill-icon { background: #fffbeb; } .kpi-a .kpi-pill-icon svg { stroke: #d97706; } .kpi-a .kpi-pill-val { color: #d97706; }
-    .kpi-p .kpi-pill-icon { background: #f5f3ff; } .kpi-p .kpi-pill-icon svg { stroke: #7c3aed; } .kpi-p .kpi-pill-val { color: #7c3aed; }
-    .kpi-p .kpi-pill-icon-aed .kpi-currency-aed {
-      font-size: 0.68rem; font-weight: 800; letter-spacing: 0.05em; color: #7c3aed; line-height: 1;
-    }
-
-    /* ─── Main content wrapper ───────────────────────────── */
-    .proc-main { max-width: 1400px; margin: 0 auto; padding: 3.5rem 2.5rem 4rem; background: transparent; }
-    .proc-sec-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); }
-    .proc-sec-title { font-size: 1.3rem; font-weight: 700; color: var(--text); margin: 0.25rem 0 1.5rem; }
-
-    /* ─── Dept catalog cards ─────────────────────────────── */
-    .dept-grid {
-      display: grid; grid-template-columns: repeat(4,1fr);
-      gap: 1.25rem; margin-bottom: 3rem;
-    }
-    @media (max-width: 1100px) { .dept-grid { grid-template-columns: repeat(2,1fr); } }
-    @media (max-width: 560px)  { .dept-grid { grid-template-columns: 1fr; } }
-    .dept-card {
-      border-radius: 20px; overflow: hidden; border: 1px solid var(--border);
-      box-shadow: 0 2px 12px rgba(0,0,0,0.05); text-decoration: none;
-      display: flex; flex-direction: column; background: #fff; transition: all 0.28s;
-    }
-    .dept-card:hover { transform: translateY(-6px); box-shadow: 0 18px 44px rgba(0,0,0,0.12); }
-    .dept-top {
-      padding: 1.75rem 1.5rem 1.5rem; position: relative; overflow: hidden; min-height: 160px;
-    }
-    .dept-top::after {
-      content: ''; position: absolute; right: -15%; bottom: -40%;
-      width: 65%; height: 65%; border-radius: 50%;
-      background: rgba(255,255,255,0.12); pointer-events: none;
-    }
-    .dept-badge {
-      display: inline-block; background: rgba(255,255,255,0.18);
-      border: 1px solid rgba(255,255,255,0.3); border-radius: 100px;
-      padding: 0.2rem 0.7rem; font-size: 0.67rem; font-weight: 700;
-      color: rgba(255,255,255,0.9); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.9rem;
-    }
-    .dept-icon {
-      width: 50px; height: 50px; border-radius: 13px;
-      background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3);
-      display: flex; align-items: center; justify-content: center; margin-bottom: 0.85rem;
-    }
-    .dept-icon svg { width: 24px; height: 24px; stroke: white; }
-    .dept-name { font-size: 1.05rem; font-weight: 700; color: white; margin-bottom: 0.3rem; }
-    .dept-sub  { font-size: 0.78rem; color: rgba(255,255,255,0.72); line-height: 1.4; }
-    .dept-bottom {
-      padding: 1.1rem 1.5rem; display: flex;
-      justify-content: space-between; align-items: center;
-    }
-    .dept-count { font-size: 0.82rem; color: var(--muted); }
-    .dept-count strong { color: var(--text); font-weight: 700; }
-    .dept-arr {
-      width: 32px; height: 32px; border-radius: 8px;
-      display: flex; align-items: center; justify-content: center; transition: all 0.2s;
-    }
-    .dept-arr svg { width: 15px; height: 15px; }
-    .dept-hvac       .dept-top { background: linear-gradient(135deg, #0284c7, #0369a1); }
-    .dept-hvac       .dept-arr { background: #e0f2fe; } .dept-hvac .dept-arr svg { stroke: #0284c7; }
-    .dept-hvac:hover .dept-arr { background: #0284c7; } .dept-hvac:hover .dept-arr svg { stroke: white; }
-    .dept-cleaning       .dept-top { background: linear-gradient(135deg, #059669, #047857); }
-    .dept-cleaning       .dept-arr { background: #d1fae5; } .dept-cleaning .dept-arr svg { stroke: #059669; }
-    .dept-cleaning:hover .dept-arr { background: #059669; } .dept-cleaning:hover .dept-arr svg { stroke: white; }
-    .dept-electrical       .dept-top { background: linear-gradient(135deg, #d97706, #b45309); }
-    .dept-electrical       .dept-arr { background: #fef3c7; } .dept-electrical .dept-arr svg { stroke: #d97706; }
-    .dept-electrical:hover .dept-arr { background: #d97706; } .dept-electrical:hover .dept-arr svg { stroke: white; }
-    .dept-plumbing       .dept-top { background: linear-gradient(135deg, #7c3aed, #6d28d9); }
-    .dept-plumbing       .dept-arr { background: #ede9fe; } .dept-plumbing .dept-arr svg { stroke: #7c3aed; }
-    .dept-plumbing:hover .dept-arr { background: #7c3aed; } .dept-plumbing:hover .dept-arr svg { stroke: white; }
-
-    /* ─── Inventory + Actions row ───────────────────────── */
-    .inv-actions-row {
-      display: grid; grid-template-columns: 5fr 7fr;
-      gap: 1.25rem; margin-bottom: 0;
-    }
-    @media (max-width: 900px) { .inv-actions-row { grid-template-columns: 1fr; } }
-    .inv-stack { display: flex; flex-direction: column; gap: 1.25rem; }
-    .inv-card {
-      background: #fff; border-radius: 20px; border: 1px solid var(--border);
-      box-shadow: 0 2px 12px rgba(0,0,0,0.05); text-decoration: none;
-      display: flex; flex-direction: column; transition: all 0.25s;
-    }
-    .inv-card:hover { transform: translateY(-4px); box-shadow: 0 14px 36px rgba(0,0,0,0.10); }
-    .inv-top {
-      padding: 1.6rem 1.75rem; display: flex; align-items: flex-start; gap: 1rem;
-      position: relative; overflow: hidden;
-    }
-    .inv-top.green-grad { background: linear-gradient(135deg, #d21725, #e8323f); }
-    .inv-top.blue-grad  { background: linear-gradient(135deg, #1d4ed8, #1e40af); }
-    .inv-top::after {
-      content: ''; position: absolute; right: -5%; top: -25%;
-      width: 55%; height: 150%;
-      background: radial-gradient(circle, rgba(255,255,255,0.09) 0%, transparent 70%);
-    }
-    .inv-icon {
-      width: 52px; height: 52px; border-radius: 13px;
-      background: rgba(255,255,255,0.16); border: 1px solid rgba(255,255,255,0.25);
-      display: flex; align-items: center; justify-content: center; flex-shrink: 0; z-index: 1;
-    }
-    .inv-icon svg { width: 24px; height: 24px; stroke: white; }
-    .inv-top-text { z-index: 1; }
-    .inv-top-text h3 { font-size: 1.05rem; font-weight: 700; color: white; margin: 0 0 0.25rem; }
-    .inv-top-text p  { font-size: 0.8rem; color: rgba(255,255,255,0.7); margin: 0; }
-    .inv-body { padding: 1.25rem 1.75rem; flex: 1; }
-    .inv-stats { display: flex; gap: 0.75rem; }
-    .inv-stat {
-      flex: 1; border-radius: 10px; padding: 0.75rem; text-align: center;
-    }
-    .inv-stat.g { background: #f0fdf4; }
-    .inv-stat.b { background: #eff6ff; }
-    .inv-stat-num { font-size: 1.4rem; font-weight: 800; line-height: 1; }
-    .inv-stat.g .inv-stat-num { color: var(--brand); }
-    .inv-stat.b .inv-stat-num { color: #1d4ed8; }
-    .inv-stat-lbl { font-size: 0.68rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-top: 0.2rem; }
-    .inv-foot {
-      padding: 0.9rem 1.75rem; border-top: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: space-between;
-    }
-    .inv-foot-note { font-size: 0.78rem; color: var(--muted); }
-    .btn-go {
-      display: inline-flex; align-items: center; gap: 0.4rem;
-      padding: 0.45rem 1.1rem; border-radius: 8px;
-      font-size: 0.8rem; font-weight: 600; text-decoration: none; transition: opacity 0.2s;
-    }
-    .btn-go:hover { opacity: 0.85; }
-    .btn-go svg { width: 14px; height: 14px; stroke: white; }
-    .btn-go.green { background: var(--brand); color: white; }
-    .btn-go.blue  { background: #1d4ed8; color: white; }
-
-    /* ─── Quick Actions panel ───────────────────────────── */
-    .actions-panel {
-      background: #fff; border-radius: 20px; border: 1px solid var(--border);
-      box-shadow: 0 2px 12px rgba(0,0,0,0.05); padding: 1.75rem;
-    }
-    .actions-panel-label {
-      font-size: 0.72rem; font-weight: 700; color: var(--muted);
-      text-transform: uppercase; letter-spacing: 0.09em; margin-bottom: 1.5rem;
-      display: flex; align-items: center; gap: 0.6rem;
-    }
-    .actions-panel-label::after {
-      content: ''; flex: 1; height: 1px;
-      background: linear-gradient(90deg, var(--border), transparent);
-    }
-    .actions-grid {
-      display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.75rem;
-    }
-    @media (max-width: 1100px) { .actions-grid { grid-template-columns: repeat(3, 1fr); } }
-    @media (max-width: 600px)  { .actions-grid { grid-template-columns: repeat(2, 1fr); } }
-    .action-tile {
-      border: 1.5px solid var(--border); border-radius: 14px; padding: 1.25rem 0.75rem;
-      display: flex; flex-direction: column; align-items: center; gap: 0.65rem;
-      text-align: center; cursor: pointer; text-decoration: none;
-      background: #fff; transition: all 0.22s;
-    }
-    .action-tile:hover {
-      border-color: var(--brand-light); background: var(--brand-pale);
-      transform: translateY(-3px); box-shadow: 0 8px 22px rgba(16,185,129,0.13);
-    }
-    .action-tile-icon {
-      width: 44px; height: 44px; border-radius: 12px;
-      background: var(--brand-pale); display: flex; align-items: center; justify-content: center;
-      transition: background 0.22s;
-    }
-    .action-tile-icon svg { width: 20px; height: 20px; stroke: var(--brand); transition: stroke 0.22s; }
-    .action-tile:hover .action-tile-icon { background: var(--brand); }
-    .action-tile:hover .action-tile-icon svg { stroke: white; }
-    .action-tile-lbl { font-size: 0.78rem; font-weight: 600; color: var(--text); }
-
-    /* ─── Modal ──────────────────────────────────────────── */
-    .proc-modal .modal-content {
-      border-radius: 20px; border: none; overflow: hidden;
-      box-shadow: 0 24px 64px rgba(0,0,0,0.14);
-    }
-    .proc-modal .modal-header {
-      background: linear-gradient(135deg, #d21725, #e8323f);
-      color: white; border: none; padding: 1.5rem 2rem;
-    }
-    .proc-modal .modal-body   { padding: 1.75rem 2rem; }
-    .proc-modal .modal-footer { border: none; padding: 0 2rem 1.75rem; }
-    .proc-modal .form-control,
-    .proc-modal .form-select  { border-radius: 10px; padding: 0.7rem 1rem; border-color: #d1d5db; }
-    .proc-modal .form-control:focus,
-    .proc-modal .form-select:focus {
-      border-color: var(--brand-light); box-shadow: 0 0 0 3px rgba(16,185,129,0.12);
-    }
-    .proc-modal .form-label { font-weight: 600; font-size: 0.85rem; color: #374151; }
-  </style>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/store.css') }}">
 </head>
-<body class="procurement-page">
-  {% set active_page = 'procurement' %}
+<body class="has-main-nav proc-subpage">
+  {% set active_page = 'store' %}
   {% include 'partials/main_navbar.html' with context %}
 
-  <!-- Hero -->
-  <header class="hero proc-hero">
-    <div class="proc-hero-inner">
-      <a href="/dashboard" class="back-btn">
-        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-        </svg>
-        Back to Dashboard
-      </a>
-      <h1 class="hero-title">Supply Chain &amp; <br><span class="hero-title-accent">Inventory Control</span></h1>
-      <p class="hero-subtitle">Complete material management, department catalogs, and property-wise inventory tracking.</p>
-    </div>
-  </header>
+  <div class="proc-main" style="padding-top:2rem;">
+    <a href="/dashboard" class="back-btn">
+      <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+      </svg>
+      Back to Dashboard
+    </a>
 
-  <!-- KPI Strip (floats over hero) -->
-  <div class="proc-kpi-strip">
-    <div class="kpi-pill kpi-g">
-      <div class="kpi-pill-icon">
-        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" d="m20.25 7.5-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z"/>
-        </svg>
+    <div class="store-bento">
+
+      <!-- Intro tile -->
+      <div class="store-bento-tile tile-intro span-3-col">
+        <div>
+          <h1 class="store-bento-headline">Supply Chain &amp; <span class="accent">Inventory Control</span></h1>
+          <p class="store-bento-sub">Fire &amp; life-safety material catalogs, inventory control, and property-wise tracking.</p>
+        </div>
+        <div class="store-bento-stat-row">
+          <div class="store-bento-stat"><div class="store-bento-stat-val" id="totalMaterials">—</div><div class="store-bento-stat-lbl">Catalog Items</div></div>
+          <div class="store-bento-stat"><div class="store-bento-stat-val" id="totalProperties">—</div><div class="store-bento-stat-lbl">Properties</div></div>
+          <div class="store-bento-stat"><div class="store-bento-stat-val" id="totalCategories">—</div><div class="store-bento-stat-lbl">Categories</div></div>
+          <div class="store-bento-stat"><div class="store-bento-stat-val" id="totalValue">—</div><div class="store-bento-stat-lbl">Total Value (AED)</div></div>
+        </div>
       </div>
-      <div><div class="kpi-pill-lbl">Total Materials</div><div class="kpi-pill-val" id="totalMaterials">—</div></div>
-    </div>
-    <div class="kpi-pill kpi-b">
-      <div class="kpi-pill-icon">
-        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21"/>
-        </svg>
-      </div>
-      <div><div class="kpi-pill-lbl">Properties</div><div class="kpi-pill-val" id="totalProperties">—</div></div>
-    </div>
-    <div class="kpi-pill kpi-a">
-      <div class="kpi-pill-icon">
-        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25Z"/>
-        </svg>
-      </div>
-      <div><div class="kpi-pill-lbl">Catalog Items</div><div class="kpi-pill-val" id="totalQuantity">—</div></div>
-    </div>
-    <div class="kpi-pill kpi-p">
-      <div class="kpi-pill-icon kpi-pill-icon-aed" aria-hidden="true">
-        <span class="kpi-currency-aed">AED</span>
-      </div>
-      <div><div class="kpi-pill-lbl">Total Value (AED)</div><div class="kpi-pill-val" id="totalValue">—</div></div>
-    </div>
-  </div>
 
-  <!-- Main -->
-  <div class="proc-main">
-
-    <!-- Department Catalogs -->
-    <div class="proc-sec-label">Department Catalogs</div>
-    <div class="proc-sec-title">Material Catalogs by Trade</div>
-    <div class="dept-grid">
-      <a href="/procurement/catalog/HVAC" class="dept-card dept-hvac">
-        <div class="dept-top">
-          <span class="dept-badge">Catalog</span>
-          <div class="dept-icon">
-            <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
-              <circle cx="12" cy="12" r="2.25"/>
-              <path stroke-linecap="round" d="M12 3v4.5M12 16.5V21M3 12h4.5M16.5 12H21"/>
-              <path stroke-linecap="round" d="M5.64 5.64l3.18 3.18M15.18 15.18l3.18 3.18M5.64 18.36l3.18-3.18M15.18 8.82l3.18-3.18"/>
-            </svg>
-          </div>
-          <div class="dept-name">HVAC Materials</div>
-          <div class="dept-sub">Compressors, refrigerants, AHUs, filters &amp; A/C spare parts</div>
+      <!-- Recent Activity tile -->
+      <div class="store-bento-tile tile-activity">
+        <div class="store-bento-chip">
+          <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6l4 2M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
         </div>
-        <div class="dept-bottom">
-          <div class="dept-count"><strong id="deptCount-HVAC">—</strong> items</div>
-          <div class="dept-arr"><svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg></div>
-        </div>
-      </a>
-
-      <a href="/procurement/catalog/Cleaning" class="dept-card dept-cleaning">
-        <div class="dept-top">
-          <span class="dept-badge">Catalog</span>
-          <div class="dept-icon">
-            <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
-              <path stroke-linecap="round" d="M12 3v9.5"/>
-              <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 12.5h9l1.6 5.8a.9.9 0 0 1-.87 1.2H6.77a.9.9 0 0 1-.87-1.2l1.6-5.8z"/>
-              <path stroke-linecap="round" d="M6 19.5h12"/>
-            </svg>
-          </div>
-          <div class="dept-name">Cleaning Materials</div>
-          <div class="dept-sub">Mops, buckets, chemicals, trolleys &amp; washroom supplies</div>
-        </div>
-        <div class="dept-bottom">
-          <div class="dept-count"><strong id="deptCount-Cleaning">—</strong> items</div>
-          <div class="dept-arr"><svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg></div>
-        </div>
-      </a>
-
-      <a href="/procurement/catalog/Electrical" class="dept-card dept-electrical">
-        <div class="dept-top">
-          <span class="dept-badge">Catalog</span>
-          <div class="dept-icon">
-            <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/>
-            </svg>
-          </div>
-          <div class="dept-name">Electrical Materials</div>
-          <div class="dept-sub">Switches, breakers, cables, lights, fans &amp; fittings</div>
-        </div>
-        <div class="dept-bottom">
-          <div class="dept-count"><strong id="deptCount-Electrical">—</strong> items</div>
-          <div class="dept-arr"><svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg></div>
-        </div>
-      </a>
-
-      <a href="/procurement/catalog/Plumbing" class="dept-card dept-plumbing">
-        <div class="dept-top">
-          <span class="dept-badge">Catalog</span>
-          <div class="dept-icon">
-            <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75a4.5 4.5 0 0 1-4.884 4.484c-1.076-.091-2.264.071-2.95.904l-7.152 8.684a2.548 2.548 0 1 1-3.586-3.586l8.684-7.152c.833-.686.995-1.874.904-2.95a4.5 4.5 0 0 1 6.336-4.486l-3.276 3.276a3.004 3.004 0 0 0 2.25 2.25l3.276-3.276c.256.565.398 1.192.398 1.852Z"/>
-            </svg>
-          </div>
-          <div class="dept-name">Plumbing Materials</div>
-          <div class="dept-sub">Mixers, WC sets, basins, pipes, valves &amp; sanitary fittings</div>
-        </div>
-        <div class="dept-bottom">
-          <div class="dept-count"><strong id="deptCount-Plumbing">—</strong> items</div>
-          <div class="dept-arr"><svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg></div>
-        </div>
-      </a>
-    </div>
-
-    <!-- Inventory + Actions -->
-    <div class="proc-sec-label">Inventory Management</div>
-    <div class="proc-sec-title">Stock &amp; Site Control</div>
-    <div class="inv-actions-row">
-
-      <!-- Inventory Cards -->
-      <div class="inv-stack">
-        <a href="/procurement/materials" class="inv-card">
-          <div class="inv-top green-grad">
-            <div class="inv-icon">
-              <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="m20.25 7.5-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z"/>
-              </svg>
-            </div>
-            <div class="inv-top-text"><h3>All Materials</h3><p>Master inventory across all properties</p></div>
-          </div>
-          <div class="inv-body">
-            <div class="inv-stats">
-              <div class="inv-stat g"><div class="inv-stat-num" id="allMaterialsCount">—</div><div class="inv-stat-lbl">Materials</div></div>
-              <div class="inv-stat g"><div class="inv-stat-num" id="allCategoriesCount">—</div><div class="inv-stat-lbl">Categories</div></div>
-            </div>
-          </div>
-          <div class="inv-foot">
-            <span class="inv-foot-note">Complete material database</span>
-            <span class="btn-go green">View All <svg fill="none" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg></span>
-          </div>
-        </a>
-
-        <a href="/procurement/properties" class="inv-card">
-          <div class="inv-top blue-grad">
-            <div class="inv-icon">
-              <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21"/>
-              </svg>
-            </div>
-            <div class="inv-top-text"><h3>Properties</h3><p>Site-wise inventory organization</p></div>
-          </div>
-          <div class="inv-body">
-            <div class="inv-stats">
-              <div class="inv-stat b"><div class="inv-stat-num" id="propertyCount">—</div><div class="inv-stat-lbl">Properties</div></div>
-              <div class="inv-stat b"><div class="inv-stat-num" id="assignedMaterials">—</div><div class="inv-stat-lbl">Assigned</div></div>
-            </div>
-          </div>
-          <div class="inv-foot">
-            <span class="inv-foot-note">By location &amp; site</span>
-            <span class="btn-go blue">Manage <svg fill="none" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg></span>
-          </div>
+        <div class="store-bento-title">Recent Activity</div>
+        <ul class="store-activity-list" id="activityList">
+          <li class="store-bento-empty">Loading…</li>
+        </ul>
+        <a href="/store/materials" class="store-bento-viewall">
+          View all materials
+          <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg>
         </a>
       </div>
 
-      <!-- Quick Actions Panel -->
-      <div class="actions-panel">
-        <div class="actions-panel-label">Quick Actions</div>
-        <div class="actions-grid">
-          <a href="/procurement/add-material" class="action-tile">
-            <div class="action-tile-icon"><svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg></div>
-            <span class="action-tile-lbl">Add Material</span>
+      <!-- Fire & life-safety catalog tiles -->
+      <a href="/store/catalog/Fire%20Alarm" class="store-bento-tile" style="--proc-accent:var(--proc-fire-alarm);--proc-accent-dark:var(--proc-fire-alarm-dark);">
+        <div class="store-bento-chip">
+          <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/>
+          </svg>
+        </div>
+        <div class="store-bento-title">Fire Alarm Materials</div>
+        <p class="store-bento-desc">Panels, detectors, MCPs, sounders, strobes &amp; alarm cabling</p>
+        <div class="store-bento-foot">
+          <div class="store-bento-count"><strong id="deptCount-Fire Alarm">—</strong> items</div>
+          <div class="store-bento-arr"><svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg></div>
+        </div>
+      </a>
+
+      <a href="/store/catalog/Fire%20Suppression" class="store-bento-tile" style="--proc-accent:var(--proc-fire-suppression);--proc-accent-dark:var(--proc-fire-suppression-dark);">
+        <div class="store-bento-chip">
+          <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.362 5.214A8.252 8.252 0 0 1 12 21 8.25 8.25 0 0 1 6.038 7.047 8.287 8.287 0 0 0 9 9.601a8.983 8.983 0 0 1 3.361-6.867 8.21 8.21 0 0 0 3 2.48Z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 18a3.75 3.75 0 0 0 .495-7.468 5.99 5.99 0 0 0-1.925 3.547 5.975 5.975 0 0 1-2.133-1.001A3.75 3.75 0 0 0 12 18Z"/>
+          </svg>
+        </div>
+        <div class="store-bento-title">Fire Suppression Materials</div>
+        <p class="store-bento-desc">Sprinklers, FM200, CO2, foam, cylinders &amp; valves</p>
+        <div class="store-bento-foot">
+          <div class="store-bento-count"><strong id="deptCount-Fire Suppression">—</strong> items</div>
+          <div class="store-bento-arr"><svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg></div>
+        </div>
+      </a>
+
+      <a href="/store/catalog/Fire%20Safety" class="store-bento-tile" style="--proc-accent:var(--proc-fire-safety);--proc-accent-dark:var(--proc-fire-safety-dark);">
+        <div class="store-bento-chip">
+          <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z"/>
+          </svg>
+        </div>
+        <div class="store-bento-title">Fire Safety Materials</div>
+        <p class="store-bento-desc">Extinguishers, hose reels, hydrants, risers &amp; pumps</p>
+        <div class="store-bento-foot">
+          <div class="store-bento-count"><strong id="deptCount-Fire Safety">—</strong> items</div>
+          <div class="store-bento-arr"><svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg></div>
+        </div>
+      </a>
+
+      <a href="/store/catalog/Emergency" class="store-bento-tile" style="--proc-accent:var(--proc-emergency);--proc-accent-dark:var(--proc-emergency-dark);">
+        <div class="store-bento-chip">
+          <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z"/>
+          </svg>
+        </div>
+        <div class="store-bento-title">Emergency &amp; Evacuation</div>
+        <p class="store-bento-desc">Exit signs, emergency lighting, PA systems &amp; fire doors</p>
+        <div class="store-bento-foot">
+          <div class="store-bento-count"><strong id="deptCount-Emergency">—</strong> items</div>
+          <div class="store-bento-arr"><svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg></div>
+        </div>
+      </a>
+
+      <!-- All Materials tile -->
+      <a href="/store/materials" class="store-bento-tile span-2-col" style="--proc-accent:var(--proc-brand-mid);--proc-accent-dark:var(--proc-brand);">
+        <div class="store-bento-chip">
+          <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m20.25 7.5-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z"/></svg>
+        </div>
+        <div class="store-bento-title">All Materials</div>
+        <p class="store-bento-desc">Master inventory across all properties and departments</p>
+        <div class="store-bento-foot">
+          <div class="store-bento-count"><strong id="allMaterialsCount">—</strong> materials · <strong id="allCategoriesCount">—</strong> categories</div>
+          <div class="store-bento-arr"><svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg></div>
+        </div>
+      </a>
+
+      <!-- Top Property by Value tile -->
+      <a href="/store/properties" class="store-bento-tile tile-stat" id="topPropertyTile" style="--proc-accent:#d97706;--proc-accent-dark:#92400e;">
+        <div class="store-bento-chip">
+          <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.563.563 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.563.563 0 0 0-.182-.557l-4.204-3.602a.563.563 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z"/></svg>
+        </div>
+        <div class="store-bento-eyebrow">Top Property by Value</div>
+        <div class="store-bento-bigstat" id="topPropertyValue">—</div>
+        <div class="store-bento-bigstat-sub" id="topPropertyName">No properties yet</div>
+        <p class="store-bento-desc" id="topPropertyMeta"></p>
+        <div class="store-bento-foot">
+          <div class="store-bento-count">View properties</div>
+          <div class="store-bento-arr"><svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg></div>
+        </div>
+      </a>
+
+      <!-- Catalog Health tile -->
+      <a href="/store/materials" class="store-bento-tile tile-stat" id="catalogHealthTile" style="--proc-accent:var(--proc-brand-light);--proc-accent-dark:#065f46;">
+        <div class="store-bento-chip">
+          <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+        </div>
+        <div class="store-bento-eyebrow">Catalog Health</div>
+        <div class="store-bento-bigstat" id="catalogHealthPct">—</div>
+        <div class="store-bento-bigstat-sub">of catalog items priced</div>
+        <p class="store-bento-desc" id="catalogHealthNote">Loading…</p>
+        <div class="store-bento-foot">
+          <div class="store-bento-count">View materials</div>
+          <div class="store-bento-arr"><svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg></div>
+        </div>
+      </a>
+
+      <!-- Properties tile -->
+      <a href="/store/properties" class="store-bento-tile span-2-col" style="--proc-accent:#1e40af;--proc-accent-dark:#1d4ed8;">
+        <div class="store-bento-chip">
+          <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21"/></svg>
+        </div>
+        <div class="store-bento-title">Properties</div>
+        <p class="store-bento-desc">Site-wise inventory organization by location</p>
+        <div class="store-bento-foot">
+          <div class="store-bento-count"><strong id="propertyCount">—</strong> properties · <strong id="assignedMaterials">—</strong> assigned</div>
+          <div class="store-bento-arr"><svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg></div>
+        </div>
+      </a>
+
+      <!-- Quick Actions tile -->
+      <div class="store-bento-tile tile-actions span-2-col">
+        <div class="store-bento-chip">
+          <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/></svg>
+        </div>
+        <div class="store-bento-title">Quick Actions</div>
+        <div class="store-bento-actions-grid">
+          <a href="/store/add-material" class="proc-action-tile">
+            <div class="proc-action-tile-icon"><svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg></div>
+            <span class="proc-action-tile-lbl">Add Material</span>
           </a>
-          <div class="action-tile" onclick="document.getElementById('excelInput').click()">
-            <div class="action-tile-icon"><svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg></div>
-            <span class="action-tile-lbl">Import Excel</span>
+          <div class="proc-action-tile" onclick="document.getElementById('excelInput').click()">
+            <div class="proc-action-tile-icon"><svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg></div>
+            <span class="proc-action-tile-lbl">Import Excel</span>
           </div>
-          <div class="action-tile" onclick="downloadSampleExcel()">
-            <div class="action-tile-icon"><svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div>
-            <span class="action-tile-lbl">Sample Excel</span>
+          <div class="proc-action-tile" onclick="downloadSampleExcel()">
+            <div class="proc-action-tile-icon"><svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div>
+            <span class="proc-action-tile-lbl">Sample Excel</span>
           </div>
-          <div class="action-tile" onclick="exportExcel()">
-            <div class="action-tile-icon"><svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg></div>
-            <span class="action-tile-lbl">Export Excel</span>
+          <div class="proc-action-tile" onclick="exportExcel()">
+            <div class="proc-action-tile-icon"><svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg></div>
+            <span class="proc-action-tile-lbl">Export Excel</span>
           </div>
-          <div class="action-tile" onclick="showAddPropertyModal()">
-            <div class="action-tile-icon"><svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21"/></svg></div>
-            <span class="action-tile-lbl">Add Property</span>
+          <div class="proc-action-tile" onclick="showAddPropertyModal()">
+            <div class="proc-action-tile-icon"><svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21"/></svg></div>
+            <span class="proc-action-tile-lbl">Add Property</span>
           </div>
         </div>
       </div>
+
     </div>
   </div>
 
@@ -481,7 +209,7 @@
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title" style="font-weight:700; font-size:1.05rem;">Add New Property</h5>
+          <h5 class="modal-title">Add New Property</h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
@@ -500,67 +228,126 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-light" data-bs-dismiss="modal" style="border-radius:10px;font-weight:600;">Cancel</button>
-          <button type="button" class="btn" style="background:linear-gradient(135deg,#d21725,#e8323f);color:white;border-radius:10px;font-weight:600;padding:.6rem 1.5rem;" onclick="addProperty()">Add Property</button>
+          <button type="button" class="btn-proc btn-proc-primary" onclick="addProperty()">Add Property</button>
         </div>
       </div>
     </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="{{ url_for('static', filename='js/store-common.js') }}"></script>
   <script>
     const token = localStorage.getItem('access_token');
+
+    function renderActivity(activities) {
+      const list = document.getElementById('activityList');
+      if (!activities || !activities.length) {
+        list.innerHTML = '<li class="store-bento-empty">No recent activity yet</li>';
+        return;
+      }
+      list.innerHTML = activities.slice(0, 6).map(a => `
+        <li class="store-activity-item">
+          <span class="store-activity-dot"></span>
+          <div>
+            <div class="store-activity-name">${ProcCommon.esc(a.material_name || 'Material')}</div>
+            <div class="store-activity-meta">${ProcCommon.esc(a.submitted_by || 'System')} · ${ProcCommon.esc(ProcCommon.timeAgo(a.created_at))}</div>
+          </div>
+        </li>
+      `).join('');
+    }
+
+    function renderTopProperty(properties) {
+      const valEl = document.getElementById('topPropertyValue');
+      const nameEl = document.getElementById('topPropertyName');
+      const metaEl = document.getElementById('topPropertyMeta');
+      const named = (properties || []).filter(p => p.name && p.name !== 'Unassigned');
+      if (!named.length) {
+        valEl.textContent = 'AED 0';
+        nameEl.textContent = 'No properties yet';
+        metaEl.textContent = 'Add a property to start tracking value';
+        return;
+      }
+      const top = named.reduce((best, p) => (p.total_value > (best.total_value || 0) ? p : best), named[0]);
+      valEl.textContent = 'AED ' + ProcCommon.formatAED(top.total_value);
+      nameEl.textContent = top.name;
+      metaEl.textContent = `${top.materials_count || 0} material${(top.materials_count === 1) ? '' : 's'} assigned`;
+    }
+
+    function renderCatalogHealth(catByDept) {
+      const pctEl = document.getElementById('catalogHealthPct');
+      const noteEl = document.getElementById('catalogHealthNote');
+      const depts = ['Fire Alarm', 'Fire Suppression', 'Fire Safety', 'Emergency'];
+      let total = 0, priced = 0;
+      depts.forEach(dept => {
+        (catByDept[dept] || []).forEach(item => {
+          total++;
+          if ((parseFloat(item.unit_price) || 0) > 0) priced++;
+        });
+      });
+      if (!total) {
+        pctEl.textContent = '—';
+        noteEl.textContent = 'No catalog items yet';
+        return;
+      }
+      const pct = Math.round((priced / total) * 100);
+      pctEl.textContent = pct + '%';
+      const missing = total - priced;
+      noteEl.textContent = missing > 0
+        ? `${missing} item${missing === 1 ? '' : 's'} need pricing`
+        : 'All catalog items are priced';
+    }
+
     async function loadStats() {
       try {
-        const [matRes, propRes, catRes] = await Promise.all([
-          fetch('/procurement/api/materials',         { headers: { 'Authorization': `Bearer ${token}` } }),
-          fetch('/procurement/api/properties',        { headers: { 'Authorization': `Bearer ${token}` } }),
-          fetch('/procurement/api/catalog/materials', { headers: { 'Authorization': `Bearer ${token}` } }),
+        const [matRes, propRes, catRes, actRes] = await Promise.all([
+          fetch('/store/api/materials',         { headers: { 'Authorization': `Bearer ${token}` } }),
+          fetch('/store/api/properties',        { headers: { 'Authorization': `Bearer ${token}` } }),
+          fetch('/store/api/catalog/materials', { headers: { 'Authorization': `Bearer ${token}` } }),
+          fetch('/store/api/recent-activity?limit=6', { headers: { 'Authorization': `Bearer ${token}` } }),
         ]);
         const matData  = await matRes.json();
         const propData = await propRes.json();
         const catData  = await catRes.json();
+        const actData  = await actRes.json().catch(() => ({ activities: [] }));
+
         const procMaterials = matData.materials || [];
-        let totalValue = 0;
-        const categories = new Set();
         let assignedCount = 0;
         procMaterials.forEach(m => {
-          totalValue += parseFloat(m.total_price) || 0;
-          if (m.category) categories.add(m.category);
           if (m.property && m.property !== 'Unassigned') assignedCount++;
         });
+
         const catByDept = catData.materials || {};
+        const depts = ['Fire Alarm', 'Fire Suppression', 'Fire Safety', 'Emergency'];
         let catalogTotal = 0;
-        ['HVAC', 'Cleaning', 'Electrical', 'Plumbing'].forEach(dept => {
+        depts.forEach(dept => {
           const items = catByDept[dept] || [];
           catalogTotal += items.length;
           const el = document.getElementById('deptCount-' + dept);
           if (el) el.textContent = items.length;
         });
         // Catalog items are a price list only (no quantity); total = sum of all unit prices
-        const catalogValue = ['HVAC', 'Cleaning', 'Electrical', 'Plumbing'].reduce((sum, dept) => {
-          return sum + (catByDept[dept] || []).reduce((s, item) => {
-            return s + (parseFloat(item.unit_price) || 0);
-          }, 0);
+        const catalogValue = depts.reduce((sum, dept) => {
+          return sum + (catByDept[dept] || []).reduce((s, item) => s + (parseFloat(item.unit_price) || 0), 0);
         }, 0);
-        const depts = ['HVAC', 'Cleaning', 'Electrical', 'Plumbing'];
-        const activeDepts = depts.filter(d => (catByDept[d] || []).length > 0).length;
-        const grandTotal = procMaterials.length + catalogTotal;
+
         document.getElementById('totalMaterials').textContent    = catalogTotal.toLocaleString();
-        // "All Materials" card reflects the department catalog totals only
         document.getElementById('allMaterialsCount').textContent = catalogTotal.toLocaleString();
         document.getElementById('allCategoriesCount').textContent= depts.length;
-        document.getElementById('totalQuantity').textContent     = catalogTotal.toLocaleString();
-        document.getElementById('totalValue').textContent        = catalogValue.toLocaleString('en-AE', { maximumFractionDigits: 0 });
+        document.getElementById('totalCategories').textContent   = depts.length;
+        document.getElementById('totalValue').textContent        = ProcCommon.formatAED(catalogValue);
         document.getElementById('assignedMaterials').textContent = assignedCount;
-        if (propData.properties) {
-          const uniqueProps = propData.properties.filter(p => p.name !== 'Unassigned');
-          document.getElementById('totalProperties').textContent = uniqueProps.length;
-          document.getElementById('propertyCount').textContent   = uniqueProps.length;
-        } else {
-          document.getElementById('totalProperties').textContent = '0';
-          document.getElementById('propertyCount').textContent   = '0';
-        }
-      } catch (error) { console.error('Error loading stats:', error); }
+
+        const properties = propData.properties || [];
+        const uniqueProps = properties.filter(p => p.name !== 'Unassigned');
+        document.getElementById('totalProperties').textContent = uniqueProps.length;
+        document.getElementById('propertyCount').textContent   = uniqueProps.length;
+
+        renderTopProperty(properties);
+        renderCatalogHealth(catByDept);
+        renderActivity(actData.activities || []);
+      } catch (error) {
+        console.error('Error loading stats:', error);
+      }
     }
     function showAddPropertyModal() {
       new bootstrap.Modal(document.getElementById('addPropertyModal')).show();
@@ -571,7 +358,7 @@
       const description = document.getElementById('propertyDescription').value.trim();
       if (!name) { alert('Property name is required'); return; }
       try {
-        const response = await fetch('/procurement/api/properties', {
+        const response = await fetch('/store/api/properties', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify({ name, address, description })
@@ -591,7 +378,7 @@
       const formData = new FormData();
       formData.append('file', input.files[0]);
       try {
-        const response = await fetch('/procurement/api/import-excel', {
+        const response = await fetch('/store/api/import-excel', {
           method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: formData
         });
         const result = await response.json();
@@ -600,10 +387,10 @@
       } catch (error) { alert('Error importing file: ' + error.message); }
       input.value = '';
     }
-    function exportExcel() { window.open('/procurement/api/export-excel', '_blank'); }
+    function exportExcel() { window.open('/store/api/export-excel', '_blank'); }
     async function downloadSampleExcel() {
       try {
-        const res = await fetch('/procurement/api/sample-excel', {
+        const res = await fetch('/store/api/sample-excel', {
           method: 'GET', headers: token ? { 'Authorization': 'Bearer ' + token } : {}
         });
         if (!res.ok) { const err = await res.json().catch(() => ({})); alert('Error: ' + (err.error || 'Failed')); return; }
@@ -611,7 +398,7 @@
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         const disp = res.headers.get('content-disposition') || '';
-        let filename = 'procurement_import_sample.xlsx';
+        let filename = 'store_import_sample.xlsx';
         const m = disp.match(/filename="?([^";]+)"?/i);
         if (m && m[1]) filename = m[1].trim();
         a.href = url; a.download = filename;
@@ -625,4 +412,3 @@
   <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 </body>
 </html>
-

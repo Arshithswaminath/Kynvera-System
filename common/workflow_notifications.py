@@ -18,7 +18,8 @@ from common.email_service import send_email
 
 def _module_display(module_type: str | None) -> str:
     return {
-        'hvac_mep':  'HVAC & MEP',
+        'hvac_mep':  'Fire Systems',
+        'hvac':      'Fire Systems',
         'civil':     'Civil Works',
         'cleaning':  'Cleaning Services',
     }.get(module_type or '', module_type or 'Form')

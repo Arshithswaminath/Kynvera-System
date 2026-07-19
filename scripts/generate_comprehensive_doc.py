@@ -210,7 +210,7 @@ def build(path: str):
         ("4", "Field Operations Modules"),
         ("5", "Human Resources (HR) Module"),
         ("6", "Approval Workflow Engine"),
-        ("7", "Procurement Module"),
+        ("7", "Store Module"),
         ("8", "MMR — Reporting and Analytics"),
         ("9", "Business Development Module"),
         ("10", "Document Hub (DocHub)"),
@@ -308,7 +308,7 @@ def build(path: str):
     story.append(Paragraph("Module-level permissions", s["h2"]))
     story.append(Paragraph(
         "In addition to roles, each user account carries individual on/off flags for each "
-        "operational module: HVAC & MEP, Civil, Cleaning, HR, and Procurement. "
+        "operational module: HVAC & MEP, Civil, Cleaning, HR, and Store. "
         "An administrator can grant a user access to one module without granting access to others. "
         "Administrator accounts automatically have access to every module.", s["body"]))
 
@@ -452,15 +452,15 @@ def build(path: str):
         "The result is a document that carries the actual, visible signatures of every "
         "party who participated in the approval process.", s["body"]))
 
-    # ── 7. Procurement ────────────────────────────────────────────────────
+    # ── 7. Store ────────────────────────────────────────────────────
     story.append(PageBreak())
-    story.append(_section_hdr("7", "Procurement Module", s))
+    story.append(_section_hdr("7", "Store Module", s))
     story.append(Paragraph(
-        "The procurement module provides a structured digital workflow for procurement "
-        "activities within the organisation. Users with procurement access can submit "
-        "and manage procurement requests through the platform at the dedicated path, "
+        "The Store module provides a structured digital workflow for materials, pricing, "
+        "and property tracking within the organisation. Users with Store access can manage "
+        "material catalogues and property registers through the platform at the dedicated path, "
         "with role-based visibility ensuring that only authorised staff can view or act "
-        "on procurement submissions. The module follows the same submission and "
+        "on Store records. The module follows the same submission and "
         "workflow patterns as other parts of the platform, integrating with the central "
         "notifications and audit systems.", s["body"]))
 
@@ -682,8 +682,8 @@ def build(path: str):
          "Browser-printable view of any submitted HR form."],
         ["MMR analytics and reporting",
          "CAFM data ingestion, chargeable rule application, dashboard analytics, Excel report generation, automated scheduled email, cycle and activity logging."],
-        ["Procurement workflows",
-         "Structured procurement request and approval flows."],
+        ["Store module",
+         "Material catalogues, pricing, property registers, and Excel import/export."],
         ["Business Development module",
          "BD submission and review workflows with admin visibility."],
         ["DocHub document repository",

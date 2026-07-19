@@ -42,7 +42,7 @@ SKIP_PATH_SUBSTRINGS = (
     "/api/reports",
     "/hr/api/",
     "/admin/mmr/api/",
-    "/procurement/api/",
+    "/store/api/",
     "/health",
     "/manifest.json",
     "/favicon.ico",

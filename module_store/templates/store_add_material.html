@@ -3,176 +3,48 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
-  
+
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
-<title>Add Material — Procurement</title>
+<title>Add Material — Store</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="/static/animations.css">
   <link rel="stylesheet" href="/static/css/dashboard.css">
   <link rel="stylesheet" href="/static/mobile_responsive.css">
+  <link rel="stylesheet" href="/static/css/store.css">
   <style>
-    *, *::before, *::after { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; box-sizing: border-box; }
-    :root {
-      --brand: #d21725; --brand-mid: #e8323f; --brand-light: #10b981;
-      --brand-pale: #f0fdf4; --bg: #f4f6f5;
-      --text: #0f172a; --muted: #64748b; --border: #e2e8f0;
-    }
-    body { background: var(--bg); min-height: 100vh; }
-
-    /* ── Top banner ── */
-    .page-banner {
-      background: linear-gradient(135deg, #0a3d26, #d21725 55%, #e8323f);
-      padding: 1.75rem 2.5rem; position: relative; overflow: hidden;
-    }
-    .page-banner::after {
-      content: ''; position: absolute; right: -5%; top: -30%;
-      width: 40%; height: 160%;
-      background: radial-gradient(circle, rgba(16,185,129,0.15) 0%, transparent 70%);
-    }
-    .back-link {
-      display: inline-flex; align-items: center; gap: 0.4rem;
-      color: rgba(255,255,255,0.65); text-decoration: none;
-      font-size: 0.82rem; font-weight: 500; margin-bottom: 0.6rem;
-      transition: color 0.2s; position: relative; z-index: 1;
-    }
-    .back-link:hover { color: #fff; }
-    .banner-title { font-size: 1.5rem; font-weight: 800; color: #fff; margin: 0; position: relative; z-index: 1; }
-    .banner-sub   { font-size: 0.85rem; color: rgba(255,255,255,0.6); margin: 0.2rem 0 0; position: relative; z-index: 1; }
-
-    /* ── Layout ── */
-    .form-layout {
-      max-width: 1100px; margin: 2.5rem auto;
+    .proc-form-layout {
+      max-width: 1100px; margin: 2.25rem auto;
       padding: 0 1.5rem;
       display: grid; grid-template-columns: 1fr 340px; gap: 1.5rem;
     }
-    @media (max-width: 900px) { .form-layout { grid-template-columns: 1fr; } }
-
-    /* ── Form card ── */
-    .form-card {
-      background: #fff; border-radius: 20px;
-      border: 1px solid var(--border); box-shadow: 0 2px 16px rgba(0,0,0,0.06);
-      overflow: hidden;
-    }
-    .form-card-header {
-      padding: 1.5rem 2rem; border-bottom: 1px solid var(--border);
-      display: flex; align-items: center; gap: 0.75rem;
-    }
-    .form-card-header-icon {
-      width: 40px; height: 40px; border-radius: 10px;
-      background: var(--brand-pale); display: flex; align-items: center; justify-content: center;
-    }
-    .form-card-header-icon svg { width: 18px; height: 18px; stroke: var(--brand); }
-    .form-card-header h2 { font-size: 1rem; font-weight: 700; color: var(--text); margin: 0; }
-    .form-card-header p  { font-size: 0.78rem; color: var(--muted); margin: 0; }
-    .form-body { padding: 2rem; }
-
-    /* Section dividers */
-    .form-section-label {
-      font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
-      letter-spacing: 0.09em; color: var(--muted); margin-bottom: 1rem;
-      display: flex; align-items: center; gap: 0.6rem;
-    }
-    .form-section-label::after {
-      content: ''; flex: 1; height: 1px;
-      background: linear-gradient(90deg, var(--border), transparent);
-    }
-
-    /* Input groups */
-    .form-label { font-size: 0.82rem; font-weight: 600; color: #374151; margin-bottom: 0.4rem; }
-    .form-label .req { color: #ef4444; }
-    .form-control, .form-select {
-      border-radius: 10px; border: 1.5px solid #d1d5db;
-      padding: 0.7rem 0.95rem; font-size: 0.875rem;
-      transition: border-color 0.15s, box-shadow 0.15s;
-    }
-    .form-control:focus, .form-select:focus {
-      border-color: var(--brand-light); box-shadow: 0 0 0 3px rgba(16,185,129,0.12);
-      outline: none;
-    }
-    .input-with-prefix { position: relative; }
-    .input-prefix {
-      position: absolute; left: 0; top: 0; bottom: 0; width: 44px;
-      display: flex; align-items: center; justify-content: center;
-      color: var(--muted); font-size: 0.8rem; font-weight: 700;
-      pointer-events: none;
-      border-right: 1.5px solid #d1d5db;
-    }
-    .input-with-prefix .form-control { padding-left: 52px; }
-
-    /* Submit button */
-    .btn-submit {
-      width: 100%; padding: 0.9rem;
-      background: linear-gradient(135deg, var(--brand), var(--brand-mid));
-      color: white; border: none; border-radius: 12px;
-      font-size: 0.9rem; font-weight: 700; cursor: pointer;
-      transition: all 0.2s; margin-top: 0.5rem;
-      display: flex; align-items: center; justify-content: center; gap: 0.5rem;
-    }
-    .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(210,23,37,0.3); }
-    .btn-submit:active { transform: translateY(0); }
-    .btn-submit svg { width: 18px; height: 18px; stroke: white; }
-
-    /* ── Summary panel ── */
-    .summary-panel {
-      display: flex; flex-direction: column; gap: 1rem;
-    }
-    .summary-card {
-      background: #fff; border-radius: 20px;
-      border: 1px solid var(--border); box-shadow: 0 2px 16px rgba(0,0,0,0.06);
-      overflow: hidden;
-    }
-    .summary-card-top {
-      background: linear-gradient(135deg, var(--brand), var(--brand-mid));
-      padding: 1.5rem; position: relative; overflow: hidden;
-    }
-    .summary-card-top::after {
-      content: ''; position: absolute; right: -10%; bottom: -30%;
-      width: 70%; height: 70%; border-radius: 50%;
-      background: rgba(255,255,255,0.08); pointer-events: none;
-    }
-    .summary-card-top label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: rgba(255,255,255,0.7); }
-    .summary-total { font-size: 2.25rem; font-weight: 800; color: #fff; line-height: 1; margin-top: 0.35rem; }
-    .summary-total-sub { font-size: 0.8rem; color: rgba(255,255,255,0.65); margin-top: 0.25rem; }
-    .summary-card-body { padding: 1.25rem 1.5rem; }
-    .summary-row {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 0.55rem 0; border-bottom: 1px solid #f1f5f9;
-      font-size: 0.82rem;
-    }
-    .summary-row:last-child { border-bottom: none; }
-    .summary-row-label { color: var(--muted); font-weight: 500; }
-    .summary-row-val   { font-weight: 700; color: var(--text); }
-
-    /* Tip card */
-    .tip-card {
-      background: #fffbeb; border: 1px solid #fde68a; border-radius: 14px; padding: 1.1rem 1.25rem;
-    }
-    .tip-card-title { font-size: 0.78rem; font-weight: 700; color: #92400e; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.4rem; }
-    .tip-card-title svg { width: 14px; height: 14px; stroke: #d97706; }
-    .tip-card ul { list-style: none; padding: 0; margin: 0; }
-    .tip-card ul li { font-size: 0.75rem; color: #78350f; padding: 0.2rem 0; display: flex; gap: 0.4rem; }
-    .tip-card ul li::before { content: '→'; color: #d97706; flex-shrink: 0; }
+    @media (max-width: 900px) { .proc-form-layout { grid-template-columns: 1fr; margin: 1.5rem auto; } }
   </style>
 </head>
-<body>
+<body class="has-main-nav proc-subpage">
+  {% set active_page = 'store' %}
+  {% include 'partials/main_navbar.html' with context %}
 
-  <!-- Banner -->
-  <div class="page-banner">
-    <a href="/procurement/" class="back-link">
-      <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-      Back to Procurement
-    </a>
-    <div class="banner-title">Add New Material</div>
-    <div class="banner-sub">Fill in the details to add a material to the inventory</div>
-  </div>
+  <!-- Hero -->
+  <header class="proc-subhero">
+    <div class="proc-subhero-inner">
+      <div>
+        <a href="/store/" class="back-link">
+          <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+          Back to Store
+        </a>
+        <h1 class="proc-subhero-title">Add New Material</h1>
+        <p class="proc-subhero-sub">Fill in the details to add a material to the inventory</p>
+      </div>
+    </div>
+  </header>
 
   <!-- Layout -->
-  <div class="form-layout">
+  <div class="proc-form-layout">
 
     <!-- Main form -->
-    <div class="form-card">
-      <div class="form-card-header">
-        <div class="form-card-header-icon">
+    <div class="proc-form-card">
+      <div class="proc-form-card-header">
+        <div class="proc-form-card-header-icon">
           <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" d="m20.25 7.5-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z"/>
           </svg>
@@ -183,51 +55,49 @@
         </div>
       </div>
 
-      <div class="form-body">
+      <div class="proc-form-body">
         <form id="materialForm">
           <!-- Basic Info -->
-          <div class="form-section-label">Basic Information</div>
+          <div class="proc-form-section-label">Basic Information</div>
           <div class="row g-3 mb-4">
             <div class="col-md-8">
-              <label class="form-label">Material Name <span class="req">*</span></label>
-              <input type="text" class="form-control" name="material_name" required placeholder="e.g., PVC Pipe 4 inch, Split AC 1.5 Ton">
+              <label class="proc-form-label">Material Name <span class="req">*</span></label>
+              <input type="text" class="proc-form-control" name="material_name" required placeholder="e.g., Addressable Smoke Detector, MCP Break Glass">
             </div>
             <div class="col-md-4">
-              <label class="form-label">Category</label>
-              <select class="form-select" name="category" id="catSelect" onchange="updatePreview()">
+              <label class="proc-form-label">Category</label>
+              <select class="proc-form-select" name="category" id="catSelect" onchange="updatePreview()">
+                <option value="Fire Alarm">Fire Alarm</option>
+                <option value="Fire Suppression">Fire Suppression</option>
+                <option value="Fire Safety">Fire Safety</option>
+                <option value="Emergency">Emergency</option>
                 <option value="General">General</option>
-                <option value="Electrical">Electrical</option>
-                <option value="Plumbing">Plumbing</option>
-                <option value="HVAC/MEP">HVAC / MEP</option>
-                <option value="Cleaning">Cleaning</option>
-                <option value="Safety">Safety</option>
                 <option value="Tools">Tools</option>
-                <option value="Office">Office Supplies</option>
               </select>
             </div>
             <div class="col-12">
-              <label class="form-label">Property / Site</label>
-              <select class="form-select" name="property" id="propertySelect" onchange="updatePreview()">
+              <label class="proc-form-label">Property / Site</label>
+              <select class="proc-form-select" name="property" id="propertySelect" onchange="updatePreview()">
                 <option value="Unassigned">— Unassigned (Master Inventory) —</option>
               </select>
-              <div class="form-text" style="font-size:.75rem;color:var(--muted);margin-top:.35rem;">Leave unassigned to add to the master inventory</div>
+              <div class="form-text" style="font-size:.75rem;color:var(--proc-muted);margin-top:.35rem;">Leave unassigned to add to the master inventory</div>
             </div>
             <div class="col-12">
-              <label class="form-label">Description</label>
-              <input type="text" class="form-control" name="description" placeholder="Brief description or specifications">
+              <label class="proc-form-label">Description</label>
+              <input type="text" class="proc-form-control" name="description" placeholder="Brief description or specifications">
             </div>
           </div>
 
           <!-- Pricing -->
-          <div class="form-section-label">Quantity &amp; Pricing</div>
+          <div class="proc-form-section-label">Quantity &amp; Pricing</div>
           <div class="row g-3 mb-4">
             <div class="col-md-4">
-              <label class="form-label">Quantity <span class="req">*</span></label>
-              <input type="number" class="form-control" name="quantity" id="quantity" required min="0" step="0.01" value="1" oninput="calculateTotal()">
+              <label class="proc-form-label">Quantity <span class="req">*</span></label>
+              <input type="number" class="proc-form-control" name="quantity" id="quantity" required min="0" step="0.01" value="1" oninput="calculateTotal()">
             </div>
             <div class="col-md-4">
-              <label class="form-label">Unit</label>
-              <select class="form-select" name="unit" id="unitSelect" onchange="updatePreview()">
+              <label class="proc-form-label">Unit</label>
+              <select class="proc-form-select" name="unit" id="unitSelect" onchange="updatePreview()">
                 <option value="pcs">Pieces (pcs)</option>
                 <option value="kg">Kilograms (kg)</option>
                 <option value="m">Meters (m)</option>
@@ -240,28 +110,28 @@
               </select>
             </div>
             <div class="col-md-4">
-              <label class="form-label">Unit Price (AED) <span class="req">*</span></label>
-              <div class="input-with-prefix">
-                <span class="input-prefix">AED</span>
-                <input type="number" class="form-control" name="unit_price" id="unit_price" required min="0" step="0.01" value="0" oninput="calculateTotal()">
+              <label class="proc-form-label">Unit Price (AED) <span class="req">*</span></label>
+              <div class="proc-input-with-prefix">
+                <span class="proc-input-prefix">AED</span>
+                <input type="number" class="proc-form-control" name="unit_price" id="unit_price" required min="0" step="0.01" value="0" oninput="calculateTotal()">
               </div>
             </div>
           </div>
 
           <!-- Supplier -->
-          <div class="form-section-label">Supplier Information</div>
+          <div class="proc-form-section-label">Supplier Information</div>
           <div class="row g-3 mb-4">
             <div class="col-12">
-              <label class="form-label">Supplier / Vendor</label>
-              <input type="text" class="form-control" name="supplier" placeholder="Supplier or vendor name">
+              <label class="proc-form-label">Supplier / Vendor</label>
+              <input type="text" class="proc-form-control" name="supplier" placeholder="Supplier or vendor name">
             </div>
             <div class="col-12">
-              <label class="form-label">Notes</label>
-              <textarea class="form-control" name="notes" rows="2" placeholder="Additional notes, brand, model number, etc."></textarea>
+              <label class="proc-form-label">Notes</label>
+              <textarea class="proc-form-control" name="notes" rows="2" placeholder="Additional notes, brand, model number, etc."></textarea>
             </div>
           </div>
 
-          <button type="submit" class="btn-submit">
+          <button type="submit" class="btn-proc btn-proc-primary" style="width:100%;padding:.9rem;font-size:.9rem;border-radius:12px;">
             <svg fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
             Add Material to Inventory
           </button>
@@ -270,33 +140,33 @@
     </div>
 
     <!-- Summary panel -->
-    <div class="summary-panel">
+    <div style="display:flex;flex-direction:column;gap:1rem;">
       <!-- Total value card -->
-      <div class="summary-card">
-        <div class="summary-card-top">
+      <div class="proc-summary-card">
+        <div class="proc-summary-top">
           <label>Total Value</label>
-          <div class="summary-total" id="totalDisplay">AED 0.00</div>
-          <div class="summary-total-sub" id="calcBreakdown">1 pcs × AED 0.00</div>
+          <div class="proc-summary-total" id="totalDisplay">AED 0.00</div>
+          <div class="proc-summary-total-sub" id="calcBreakdown">1 pcs × AED 0.00</div>
         </div>
-        <div class="summary-card-body">
-          <div class="summary-row">
-            <span class="summary-row-label">Category</span>
-            <span class="summary-row-val" id="prevCat">General</span>
+        <div class="proc-summary-body">
+          <div class="proc-summary-row">
+            <span class="proc-summary-row-label">Category</span>
+            <span class="proc-summary-row-val" id="prevCat">General</span>
           </div>
-          <div class="summary-row">
-            <span class="summary-row-label">Property</span>
-            <span class="summary-row-val" id="prevProp" style="max-width:160px;text-align:right;font-size:.8rem;">Unassigned</span>
+          <div class="proc-summary-row">
+            <span class="proc-summary-row-label">Property</span>
+            <span class="proc-summary-row-val" id="prevProp" style="max-width:160px;text-align:right;font-size:.8rem;">Unassigned</span>
           </div>
-          <div class="summary-row">
-            <span class="summary-row-label">Unit</span>
-            <span class="summary-row-val" id="prevUnit">pcs</span>
+          <div class="proc-summary-row">
+            <span class="proc-summary-row-label">Unit</span>
+            <span class="proc-summary-row-val" id="prevUnit">pcs</span>
           </div>
         </div>
       </div>
 
       <!-- Tips -->
-      <div class="tip-card">
-        <div class="tip-card-title">
+      <div class="proc-tip-card">
+        <div class="proc-tip-title">
           <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 0 0 1.5-.189m-1.5.189a6.01 6.01 0 0 1-1.5-.189m3.75 7.478a12.06 12.06 0 0 1-4.5 0m3.75 2.354a15.055 15.055 0 0 1-4.5 0M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg>
           Tips
         </div>
@@ -310,25 +180,26 @@
 
       <!-- Quick links -->
       <div style="display:flex;flex-direction:column;gap:.5rem;">
-        <a href="/procurement/materials" style="display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid var(--border);border-radius:12px;padding:.8rem 1rem;text-decoration:none;color:var(--text);font-size:.82rem;font-weight:600;transition:all .2s;">
+        <a href="/store/materials" class="proc-quicklink">
           <span>View All Materials</span>
-          <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
         </a>
-        <a href="/procurement/properties" style="display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid var(--border);border-radius:12px;padding:.8rem 1rem;text-decoration:none;color:var(--text);font-size:.82rem;font-weight:600;transition:all .2s;">
+        <a href="/store/properties" class="proc-quicklink">
           <span>Manage Properties</span>
-          <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
         </a>
       </div>
     </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="{{ url_for('static', filename='js/store-common.js') }}"></script>
   <script>
     const token = localStorage.getItem('access_token');
 
     async function loadProperties() {
       try {
-        const response = await fetch('/procurement/api/registered-properties', {
+        const response = await fetch('/store/api/registered-properties', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await response.json();
@@ -365,18 +236,18 @@
       e.preventDefault();
       const formData = new FormData(e.target);
       const data = Object.fromEntries(formData.entries());
-      const btn = e.target.querySelector('.btn-submit');
+      const btn = e.target.querySelector('button[type="submit"]');
       btn.disabled = true;
       btn.textContent = 'Adding…';
       try {
-        const response = await fetch('/procurement/api/materials', {
+        const response = await fetch('/store/api/materials', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify(data)
         });
         const result = await response.json();
         if (result.success) {
-          window.location.href = '/procurement/materials';
+          window.location.href = '/store/materials';
         } else {
           alert('Error: ' + result.error);
           btn.disabled = false;
@@ -392,4 +263,3 @@
   </script>
 </body>
 </html>
-

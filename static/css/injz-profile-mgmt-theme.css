@@ -8,10 +8,12 @@
 :root {
   --injz-pm-green: #d21725;
   --injz-pm-green-2: #e8323f;
-  --injz-pm-line: #e2ede8;
-  --injz-pm-muted: #587569;
-  --injz-pm-fill: #fafdfb;
+  --injz-pm-line: #e8e4e5;
+  --injz-pm-muted: #6b5f62;
+  --injz-pm-fill: #fbf8f9;
   --injz-pm-shadow: 0 24px 64px rgba(0, 0, 0, 0.14);
+  --injz-pm-tile: #ffffff;
+  --injz-pm-tile-on: linear-gradient(135deg, #fff5f5 0%, #ffffff 55%);
 }
 
 /* ── Shell: technician-style card ───────────────────────────────────────── */
@@ -30,8 +32,8 @@
 }
 
 .modal.injz-mgmt.admin-portal-modal.admin-profile-shell .modal-content {
-  width: min(680px, calc(100vw - 2rem)) !important;
-  max-width: 680px !important;
+  width: min(720px, calc(100vw - 2rem)) !important;
+  max-width: 720px !important;
 }
 
 #userActivityModal.injz-mgmt .modal-content {
@@ -172,11 +174,11 @@
 
 #accessModal.injz-mgmt .admin-profile-section h3,
 #createUserModal.injz-mgmt .admin-profile-section h3 {
-  font-size: 0.68rem !important;
-  font-weight: 800 !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.07em !important;
-  color: var(--injz-pm-muted) !important;
+  font-size: 0.92rem !important;
+  font-weight: 750 !important;
+  text-transform: none !important;
+  letter-spacing: -0.01em !important;
+  color: #1f1518 !important;
   margin: 0.85rem 0 0.5rem !important;
   padding: 0 !important;
 }
@@ -246,19 +248,19 @@
 
 #accessModal.injz-mgmt.admin-profile-shell--v2 .admin-profile-section h3 {
   border-bottom: none !important;
-  text-transform: uppercase !important;
-  font-weight: 800 !important;
-  color: var(--injz-pm-muted) !important;
+  text-transform: none !important;
+  font-weight: 750 !important;
+  color: #1f1518 !important;
 }
 
-/* Field labels — inspection form style */
+/* Field labels — sentence case */
 #accessModal.injz-mgmt .form-label,
 #createUserModal.injz-mgmt .form-label {
-  font-size: 0.73rem !important;
-  font-weight: 700 !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.04em !important;
-  color: var(--injz-pm-muted) !important;
+  font-size: 0.8rem !important;
+  font-weight: 650 !important;
+  text-transform: none !important;
+  letter-spacing: -0.01em !important;
+  color: #6b5f62 !important;
   margin-bottom: 0.28rem !important;
 }
 
@@ -276,7 +278,7 @@
 
 #accessModal.injz-mgmt .form-control:hover,
 #createUserModal.injz-mgmt .form-control:hover {
-  border-color: #c5d9ce !important;
+  border-color: #d4c8cb !important;
 }
 
 #accessModal.injz-mgmt .form-control:focus,
@@ -286,26 +288,623 @@
   box-shadow: 0 0 0 3px rgba(210, 23, 37, 0.12) !important;
 }
 
+/* Password field: one control — input + Show/Copy same height */
+#accessModal.injz-mgmt .admin-profile-password-row {
+  height: 44px;
+  align-items: stretch;
+}
+#accessModal.injz-mgmt .admin-profile-password-row .admin-profile-password-input.form-control {
+  height: 100% !important;
+  min-height: 0 !important;
+  padding: 0 0.9rem !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+#accessModal.injz-mgmt .admin-profile-password-row .admin-profile-password-input.form-control:hover,
+#accessModal.injz-mgmt .admin-profile-password-row .admin-profile-password-input.form-control:focus {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+#accessModal.injz-mgmt .admin-profile-password-row .admin-profile-password-btn.btn {
+  height: 100% !important;
+  min-height: 100% !important;
+  border-radius: 0 !important;
+  padding: 0 14px !important;
+}
+
 #accessModal.injz-mgmt .admin-profile-hint,
 #createUserModal.injz-mgmt .admin-profile-hint {
   font-size: 0.78rem !important;
-  color: #6b8178 !important;
+  color: #7a6e72 !important;
 }
 
-/* Module checkbox grid softer */
+#accessModal.injz-mgmt .admin-profile-section-lead {
+  margin: -0.15rem 0 0.7rem;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: #8a7d81;
+}
+
+/* Module access — toggle tiles (brand red) */
+#accessModal.injz-mgmt .admin-profile-module-grid {
+  grid-template-columns: 1fr 1fr !important;
+  gap: 0.5rem !important;
+}
+
 #accessModal.injz-mgmt .admin-profile-module-grid .checkbox-item {
-  border-color: var(--injz-pm-line) !important;
-  border-radius: 10px !important;
+  position: relative;
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.65rem !important;
+  min-height: 3.35rem !important;
+  margin: 0 !important;
+  padding: 0.65rem 0.8rem !important;
+  border: 1.5px solid var(--injz-pm-line) !important;
+  border-radius: 12px !important;
+  background: var(--injz-pm-tile) !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease !important;
+  cursor: pointer;
 }
 
-/* Defaults split collapses cleanly */
-#accessModal.injz-mgmt .admin-profile-defaults-split > .form-group {
-  border-color: var(--injz-pm-line) !important;
+#accessModal.injz-mgmt .admin-profile-module-grid .checkbox-item:hover {
+  border-color: #d8c9cd !important;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06) !important;
 }
 
-/* Quick actions pills */
-#accessModal.injz-mgmt .admin-profile-section--quick .admin-profile-quick .btn {
+#accessModal.injz-mgmt .admin-profile-module-grid .checkbox-item:has(input:checked) {
+  border-color: var(--injz-pm-green) !important;
+  background: var(--injz-pm-green) !important;
+  box-shadow: none !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-module-grid .checkbox-item:has(input:checked) .mod-tile-title {
+  color: #fff !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-module-grid .checkbox-item:has(input:checked) .mod-tile-sub {
+  color: rgba(255, 255, 255, 0.82) !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-module-grid .checkbox-item:has(input:checked) > input[type="checkbox"] {
+  background: rgba(255, 255, 255, 0.28) !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-module-grid .checkbox-item:has(input:checked) > input[type="checkbox"]::after {
+  background: #fff;
+}
+
+#accessModal.injz-mgmt .admin-profile-module-grid .checkbox-item:has(input:disabled) {
+  opacity: 0.72;
+  cursor: default;
+}
+
+#accessModal.injz-mgmt .admin-profile-module-grid .checkbox-item > label {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.12rem !important;
+  flex: 1 !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  cursor: pointer;
+  line-height: 1.25 !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-module-grid .mod-tile-title {
+  font-size: 0.84rem !important;
+  font-weight: 700 !important;
+  color: #1f1518 !important;
+  letter-spacing: -0.01em;
+}
+
+#accessModal.injz-mgmt .admin-profile-module-grid .mod-tile-sub {
+  font-size: 0.7rem !important;
+  font-weight: 500 !important;
+  color: #8a7d81 !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-module-grid .checkbox-item > input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  order: 2;
+  flex-shrink: 0;
+  width: 2.35rem !important;
+  height: 1.3rem !important;
+  margin: 0 0 0 auto !important;
+  border-radius: 999px !important;
+  border: none !important;
+  background: #e7e0e2 !important;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.08);
+  position: relative;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+#accessModal.injz-mgmt .admin-profile-module-grid .checkbox-item > input[type="checkbox"]::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 1.05rem;
+  height: 1.05rem;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.22);
+  transition: transform 0.15s ease;
+}
+
+#accessModal.injz-mgmt .admin-profile-module-grid .checkbox-item > input[type="checkbox"]:checked {
+  background: linear-gradient(135deg, var(--injz-pm-green), var(--injz-pm-green-2)) !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-module-grid .checkbox-item > input[type="checkbox"]:checked::after {
+  transform: translateX(1.05rem);
+}
+
+#accessModal.injz-mgmt .admin-profile-module-grid .checkbox-item > input[type="checkbox"]:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(210, 23, 37, 0.2);
+}
+
+/* Operations row: toggle + View/Full chips + sub-modules */
+#accessModal.injz-mgmt .admin-profile-module-grid .ops-access-card {
+  grid-column: 1 / -1 !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  justify-content: flex-start !important;
+  gap: 0.55rem !important;
+  padding: 0.7rem 0.85rem !important;
+  min-height: 0 !important;
+}
+
+#accessModal.injz-mgmt .ops-access-top {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.65rem !important;
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+#accessModal.injz-mgmt .admin-profile-module-grid .ops-access-card .ops-submodules {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  justify-content: flex-start !important;
+  align-items: center !important;
+  align-self: stretch !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  gap: 0.35rem !important;
+  list-style: none !important;
+  margin: 0 !important;
+  margin-right: auto !important;
+  padding: 0.15rem 0 0 !important;
+  text-align: left !important;
+}
+
+#accessModal.injz-mgmt .ops-submodules li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.28rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid var(--injz-pm-line);
+  background: #fff;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #6b5f62;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+#accessModal.injz-mgmt .ops-submodules li input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 1.85rem !important;
+  height: 1.05rem !important;
+  margin: 0 !important;
+  border-radius: 999px !important;
+  border: none !important;
+  background: #e7e0e2 !important;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.08);
+  position: relative;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+#accessModal.injz-mgmt .ops-submodules li input[type="checkbox"]::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 0.8rem;
+  height: 0.8rem;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.2);
+  transition: transform 0.15s ease;
+}
+
+#accessModal.injz-mgmt .ops-submodules li input[type="checkbox"]:checked {
+  background: #fff !important;
+}
+
+#accessModal.injz-mgmt .ops-submodules li input[type="checkbox"]:checked::after {
+  transform: translateX(0.8rem);
+  background: var(--injz-pm-green);
+}
+
+#accessModal.injz-mgmt .ops-submodules li label {
+  margin: 0 !important;
+  cursor: pointer;
+  font-size: inherit;
+  font-weight: inherit;
+  color: inherit;
+}
+
+#accessModal.injz-mgmt .ops-submodules li:has(input:checked) {
+  border-color: var(--injz-pm-green);
+  background: var(--injz-pm-green);
+  color: #fff;
+}
+
+#accessModal.injz-mgmt .ops-access-card:has(#accessOperations:checked) .ops-submodules li:has(input:checked),
+#accessModal.injz-mgmt .ops-access-card:has(#accessOperations:disabled) .ops-submodules li:has(input:checked) {
+  border-color: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+#accessModal.injz-mgmt .ops-access-card:has(#accessOperations:checked) .ops-submodules li:has(input:checked) input[type="checkbox"],
+#accessModal.injz-mgmt .ops-access-card:has(#accessOperations:disabled) .ops-submodules li:has(input:checked) input[type="checkbox"] {
+  background: rgba(255, 255, 255, 0.35) !important;
+}
+
+#accessModal.injz-mgmt .ops-access-card:has(#accessOperations:checked) .ops-submodules li:has(input:checked) input[type="checkbox"]::after,
+#accessModal.injz-mgmt .ops-access-card:has(#accessOperations:disabled) .ops-submodules li:has(input:checked) input[type="checkbox"]::after {
+  background: #fff;
+}
+
+#accessModal.injz-mgmt .ops-access-card:has(#accessOperations:checked),
+#accessModal.injz-mgmt .ops-access-card:has(#accessOperations:disabled:checked),
+#accessModal.injz-mgmt .ops-access-card:has(#accessOperations:disabled) {
+  border-color: var(--injz-pm-green) !important;
+  background: var(--injz-pm-green) !important;
+}
+
+#accessModal.injz-mgmt .ops-access-card:has(#accessOperations:checked) .mod-tile-title,
+#accessModal.injz-mgmt .ops-access-card:has(#accessOperations:disabled) .mod-tile-title {
+  color: #fff !important;
+}
+
+#accessModal.injz-mgmt .ops-access-card:has(#accessOperations:checked) .mod-tile-sub,
+#accessModal.injz-mgmt .ops-access-card:has(#accessOperations:disabled) .mod-tile-sub {
+  color: rgba(255, 255, 255, 0.82) !important;
+}
+
+#accessModal.injz-mgmt .ops-access-card:has(#accessOperations:checked) .ops-access-top > input[type="checkbox"],
+#accessModal.injz-mgmt .ops-access-card:has(#accessOperations:disabled) .ops-access-top > input[type="checkbox"] {
+  background: rgba(255, 255, 255, 0.28) !important;
+}
+
+#accessModal.injz-mgmt .ops-access-card:has(#accessOperations:checked) .ops-access-top > input[type="checkbox"]::after,
+#accessModal.injz-mgmt .ops-access-card:has(#accessOperations:disabled) .ops-access-top > input[type="checkbox"]::after {
+  background: #fff;
+}
+
+#accessModal.injz-mgmt .ops-access-card:has(#accessOperations:checked) .ops-submodules li:not(:has(input:checked)),
+#accessModal.injz-mgmt .ops-access-card:has(#accessOperations:disabled) .ops-submodules li:not(:has(input:checked)) {
+  border-color: rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.75);
+}
+
+#accessModal.injz-mgmt .ops-access-top > input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  order: 0;
+  flex-shrink: 0;
+  width: 2.35rem !important;
+  height: 1.3rem !important;
+  margin: 0 !important;
+  border-radius: 999px !important;
+  border: none !important;
+  background: #e7e0e2 !important;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.08);
+  position: relative;
+  cursor: pointer;
+}
+
+#accessModal.injz-mgmt .ops-access-top > input[type="checkbox"]::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 1.05rem;
+  height: 1.05rem;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.22);
+  transition: transform 0.15s ease;
+}
+
+#accessModal.injz-mgmt .ops-access-top > input[type="checkbox"]:checked {
+  background: linear-gradient(135deg, var(--injz-pm-green), var(--injz-pm-green-2)) !important;
+}
+
+#accessModal.injz-mgmt .ops-access-top > input[type="checkbox"]:checked::after {
+  transform: translateX(1.05rem);
+}
+
+#accessModal.injz-mgmt .ops-access-top > label[for="accessOperations"] {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.12rem !important;
+  flex: 1 !important;
+  min-width: 5rem;
+  margin: 0 !important;
+  cursor: pointer;
+}
+
+/* Defaults — one shared box, comment + signature on one row */
+#accessModal.injz-mgmt .admin-profile-defaults-box {
+  padding: 0.9rem 0.95rem !important;
+  border: 1.5px solid var(--injz-pm-line) !important;
+  border-radius: 12px !important;
+  background: linear-gradient(180deg, #ffffff 0%, var(--injz-pm-fill) 100%) !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-defaults-split {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 0.85rem 1rem !important;
+  align-items: stretch !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-defaults-split > .form-group,
+#accessModal.injz-mgmt .admin-profile-default-panel {
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0;
+}
+
+#accessModal.injz-mgmt .admin-profile-defaults-split textarea.form-control {
+  flex: 1 1 auto !important;
+  min-height: 7.25rem !important;
+  resize: vertical;
+  background: #fff !important;
+}
+
+@media (max-width: 640px) {
+  #accessModal.injz-mgmt .admin-profile-defaults-split {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+#accessModal.injz-mgmt .admin-profile-sig-panel .admin-profile-sig-drop {
+  flex: 1 1 auto;
+}
+
+#accessModal.injz-mgmt .admin-profile-sig-drop {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  min-height: 7.25rem;
+  padding: 0.9rem 0.75rem;
+  border: 1.5px dashed #d8c9cd;
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+  text-align: center;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+#accessModal.injz-mgmt .admin-profile-sig-drop:hover {
+  border-color: rgba(210, 23, 37, 0.45);
+  background: #fff8f8;
+  box-shadow: 0 0 0 3px rgba(210, 23, 37, 0.06);
+}
+
+#accessModal.injz-mgmt .admin-profile-sig-drop input[type="file"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+
+#accessModal.injz-mgmt .admin-profile-sig-drop-icon {
+  display: inline-flex;
+  width: 2rem;
+  height: 2rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  background: linear-gradient(135deg, #fff1f2, #ffe4e6);
+  color: var(--injz-pm-green);
+  margin-bottom: 0.2rem;
+}
+
+#accessModal.injz-mgmt .admin-profile-sig-drop-icon svg {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+#accessModal.injz-mgmt .admin-profile-sig-drop-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #1f1518;
+}
+
+#accessModal.injz-mgmt .admin-profile-sig-drop-hint {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: #8a7d81;
+}
+
+#accessModal.injz-mgmt .admin-profile-sig-preview {
+  margin-top: 0.55rem !important;
+  max-height: 72px !important;
+  border: 1.5px solid var(--injz-pm-line) !important;
   border-radius: 10px !important;
+  background: #fff !important;
+  padding: 0.4rem !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-sig-toolbar .btn {
+  margin-top: 0.45rem;
+  border-radius: 9px !important;
+  border: 1.5px solid var(--injz-pm-line) !important;
+  background: #fff !important;
+  color: #6b5f62 !important;
+  font-size: 0.76rem !important;
+  font-weight: 650 !important;
+  padding: 0.35rem 0.75rem !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-sig-toolbar .btn:hover {
+  border-color: rgba(210, 23, 37, 0.35) !important;
+  color: #b91c1c !important;
+  background: #fff8f8 !important;
+}
+
+/* Quick actions — compact outline buttons in one row */
+#accessModal.injz-mgmt .admin-profile-section--quick .admin-profile-quick {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  align-items: stretch !important;
+  gap: 0.4rem !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-section--quick .admin-profile-quick .admin-quick-action[style*="display: none"],
+#accessModal.injz-mgmt .admin-profile-section--quick .admin-profile-quick .admin-quick-action[hidden] {
+  display: none !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-section--quick .admin-quick-action {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex: 1 1 0 !important;
+  width: auto !important;
+  min-width: 0 !important;
+  height: 2.35rem !important;
+  min-height: 2.35rem !important;
+  margin: 0 !important;
+  padding: 0.35rem 0.65rem !important;
+  border: 1.5px solid var(--injz-pm-line) !important;
+  border-radius: 10px !important;
+  background: #fff !important;
+  box-shadow: none !important;
+  color: #334155 !important;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-section--quick .admin-quick-action + .admin-quick-action::before {
+  content: none !important;
+  display: none !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-section--quick .admin-quick-action:hover {
+  transform: none !important;
+  background: #f8f5f6 !important;
+  border-color: #d4c8cb !important;
+  box-shadow: none !important;
+  color: #1f1518 !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-section--quick .admin-quick-action-icon {
+  display: none !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-section--quick .admin-quick-action-label {
+  font-size: 0.78rem !important;
+  font-weight: 650 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  line-height: 1.2 !important;
+  text-align: center;
+}
+
+#accessModal.injz-mgmt .admin-profile-section--quick .admin-quick-action.btn-reset {
+  color: #9a3412 !important;
+  border-color: #fdba74 !important;
+  background: #fff !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-section--quick .admin-quick-action.btn-reset:hover {
+  color: #7c2d12 !important;
+  border-color: #fb923c !important;
+  background: #fff7ed !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-section--quick .admin-quick-action.btn-activity {
+  color: #1e40af !important;
+  border-color: #93c5fd !important;
+  background: #fff !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-section--quick .admin-quick-action.btn-activity:hover {
+  color: #1e3a8a !important;
+  border-color: #60a5fa !important;
+  background: #eff6ff !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-section--quick .admin-quick-action.btn-toggle {
+  color: #334155 !important;
+  border-color: var(--injz-pm-line) !important;
+  background: #fff !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-section--quick .admin-quick-action.btn-toggle.is-deactivate {
+  color: #b91c1c !important;
+  border-color: #fca5a5 !important;
+  background: #fff !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-section--quick .admin-quick-action.btn-toggle.is-deactivate:hover {
+  color: #7f1d1d !important;
+  border-color: #f87171 !important;
+  background: #fff1f2 !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-section--quick .admin-quick-action.btn-toggle.is-activate {
+  color: #047857 !important;
+  border-color: #6ee7b7 !important;
+  background: #fff !important;
+}
+
+#accessModal.injz-mgmt .admin-profile-section--quick .admin-quick-action.btn-toggle.is-activate:hover {
+  color: #065f46 !important;
+  border-color: #34d399 !important;
+  background: #ecfdf5 !important;
+}
+
+@media (max-width: 640px) {
+  #accessModal.injz-mgmt .admin-profile-module-grid {
+    grid-template-columns: 1fr !important;
+  }
+  #accessModal.injz-mgmt .admin-profile-section--quick .admin-profile-quick {
+    flex-wrap: wrap !important;
+  }
+  #accessModal.injz-mgmt .admin-profile-section--quick .admin-quick-action {
+    flex: 1 1 calc(50% - 0.2rem) !important;
+  }
 }
 
 /* ── Footer actions ─────────────────────────────────────────────────────── */
@@ -352,11 +951,16 @@
   cursor: pointer !important;
   background: linear-gradient(135deg, var(--injz-pm-green) 0%, var(--injz-pm-green-2) 100%) !important;
   color: #fff !important;
-  box-shadow: 0 6px 16px rgba(210, 23, 37, 0.25) !important;
+  box-shadow: none !important;
 }
 
 .injz-mgmt-btn-submit:hover {
   filter: brightness(1.06);
+  box-shadow: none !important;
+}
+
+#accessModal.injz-mgmt .modal-content {
+  box-shadow: none !important;
 }
 
 /* Password reset dialogs */

@@ -4,13 +4,13 @@
  */
 
 /* ===========================================
-   CSS Variables / Design Tokens
-   =========================================== */
+ CSS Variables / Design Tokens
+ =========================================== */
 :root {
   --primary: var(--color-brand, #d21725);
   --primary-light: var(--color-brand-light, #e8323f);
   --primary-dark: var(--color-brand-dark, #a8121e);
-  --secondary: #D9D9D9;
+  --secondary: #d9d9d9;
   --text-dark: #111827;
   --text-mid: #374151;
   --text-light: #6b7280;
@@ -27,8 +27,10 @@
   --nav-hairline: #ede2e2;
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+  --shadow-md:
+    0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+  --shadow-lg:
+    0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
@@ -36,16 +38,18 @@
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   /* iOS / system UI (SF on Apple devices) */
-  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", "Helvetica Neue", sans-serif;
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+    system-ui, "Segoe UI", "Helvetica Neue", sans-serif;
 }
 
 /* ===========================================
-   Base Styles
-   =========================================== */
-* { 
-  margin: 0; 
-  padding: 0; 
-  box-sizing: border-box; 
+ Base Styles
+ =========================================== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
 body {
@@ -70,8 +74,8 @@ html {
 }
 
 /* Dashboard routes: one continuous #faf8f8 surface (mobile_responsive sets body white).
-   design-tokens.css uses :root:not([data-theme="light"]) under prefers-color-scheme:dark,
-   which beats this file's :root and sets --bg-body to ~black — modules/footer then read "black block". */
+ design-tokens.css uses :root:not([data-theme="light"]) under prefers-color-scheme:dark,
+ which beats this file's :root and sets --bg-body to ~black — modules/footer then read "black block". */
 html:not([data-theme="dark"]) body.page-dashboard,
 html:not([data-theme="dark"]) body.hr-dashboard,
 html:not([data-theme="dark"]) body.inspection-dashboard,
@@ -97,8 +101,8 @@ body.review-dashboard {
 }
 
 /* ===========================================
-   Navigation
-   =========================================== */
+ Navigation
+ =========================================== */
 .nav {
   position: fixed;
   top: 0;
@@ -108,7 +112,9 @@ body.review-dashboard {
   /* Solid bar: same on localhost, Render, and behind Cloudflare (no backdrop-filter compositing drift) */
   background: #ffffff;
   border-bottom: 1px solid var(--nav-hairline);
-  transition: box-shadow 0.3s ease, background 0.3s ease;
+  transition:
+    box-shadow 0.3s ease,
+    background 0.3s ease;
 }
 
 .nav.scrolled {
@@ -179,7 +185,7 @@ a.logo:active {
 }
 
 /* Official nav mark — emblem-only crop fills its box, so a larger explicit size
-   makes the logo visibly bigger; 56px stays within the 72px nav so height is unchanged. */
+ makes the logo visibly bigger; 56px stays within the 72px nav so height is unchanged. */
 .logo img.logo-img-official {
   height: 44px !important;
   width: auto;
@@ -198,7 +204,9 @@ a.logo:active {
 }
 
 .logo-brand {
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+    "Helvetica Neue", Helvetica, Arial, sans-serif;
   font-size: 0.95rem;
   font-weight: 700;
   text-transform: none;
@@ -274,7 +282,9 @@ a.logo:active {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: color 0.2s ease, background 0.2s ease;
+  transition:
+    color 0.2s ease,
+    background 0.2s ease;
   padding: 0.5rem 0.85rem;
   border-radius: var(--radius-sm);
   white-space: nowrap;
@@ -309,13 +319,16 @@ a.logo:active {
   transform: translateY(-6px);
   visibility: hidden;
   pointer-events: none;
-  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease,
+    visibility 0.2s ease;
   z-index: 1205;
 }
 
 /* Bridge pointer gap between trigger row and submenu (keeps hover path continuous). */
 .nav-menu li.has-submenu.has-submitted-dropdown .nav-submenu::before {
-  content: '';
+  content: "";
   position: absolute;
   left: 0;
   right: 0;
@@ -349,12 +362,14 @@ a.logo:active {
 }
 
 .nav-menu li.has-submenu.has-submitted-dropdown > a::after {
-  content: '▾';
+  content: "▾";
   display: inline-flex;
   margin-left: 0.42rem;
   font-size: 0.72rem;
   color: var(--text-light);
-  transition: transform 0.2s ease, color 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    color 0.2s ease;
 }
 
 .nav-menu li.has-submenu.has-submitted-dropdown > a.nav-current::after {
@@ -368,10 +383,9 @@ a.logo:active {
   color: var(--primary);
 }
 
-
 /* ===========================================
-   Save Draft (inspection form - in main nav)
-   =========================================== */
+ Save Draft (inspection form - in main nav)
+ =========================================== */
 .nav-save-draft-btn {
   display: inline-flex;
   align-items: center;
@@ -394,27 +408,30 @@ a.logo:active {
   border-color: var(--primary);
   color: var(--primary);
 }
-.nav-save-draft-btn svg { flex-shrink: 0; }
+.nav-save-draft-btn svg {
+  flex-shrink: 0;
+}
 
 /* ===========================================
-   Logout Button
-   =========================================== */
+ Logout Button
+ =========================================== */
 .logout-btn {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
   padding: 0.5rem 1rem;
   font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--text-mid);
-  background: var(--bg-light);
-  border: 1px solid var(--border-color);
+  font-weight: 600;
+  color: #fff;
+  background: var(--primary);
+  border: 1px solid var(--primary);
   border-radius: var(--radius-sm);
   text-decoration: none;
   transition: all 0.2s ease;
   cursor: pointer;
   flex-shrink: 0;
   white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(210, 23, 37, 0.2);
 }
 
 .logout-btn::before {
@@ -422,15 +439,16 @@ a.logo:active {
 }
 
 .logout-btn:hover {
-  color: var(--primary);
-  background: rgba(210, 23, 37, 0.05);
-  border-color: rgba(210, 23, 37, 0.2);
+  color: #fff;
+  background: var(--primary-dark);
+  border-color: var(--primary-dark);
   transform: none;
-  box-shadow: none;
+  box-shadow: 0 2px 6px rgba(210, 23, 37, 0.28);
 }
 
 .logout-btn:active {
   transform: scale(0.97);
+  background: var(--primary-dark);
 }
 
 .logout-btn svg {
@@ -440,13 +458,21 @@ a.logo:active {
 }
 
 /* ===========================================
-   Dashboard hero — split: left copy, right widget
-   =========================================== */
+ Dashboard hero — split: left copy, right widget
+ =========================================== */
 .hero {
   padding: 7.5rem 0 4rem;
   background:
-    radial-gradient(ellipse 70% 60% at 0% 50%, rgba(210, 23, 37, 0.1) 0%, transparent 70%),
-    radial-gradient(ellipse 40% 40% at 100% 10%, rgba(210, 23, 37, 0.05) 0%, transparent 60%),
+    radial-gradient(
+      ellipse 70% 60% at 0% 50%,
+      rgba(210, 23, 37, 0.1) 0%,
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 40% 40% at 100% 10%,
+      rgba(210, 23, 37, 0.05) 0%,
+      transparent 60%
+    ),
     linear-gradient(160deg, #f9f5f5 0%, #fbfafa 50%, #faf8f8 100%);
   position: relative;
   z-index: 1;
@@ -455,7 +481,7 @@ a.logo:active {
 
 /* Subtle decorative grid - fades gradually to merge with content below (no hard line) */
 .hero::before {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0;
   background-image:
@@ -463,7 +489,12 @@ a.logo:active {
     linear-gradient(90deg, rgba(210, 23, 37, 0.04) 1px, transparent 1px);
   background-size: 48px 48px;
   mask-image: linear-gradient(to bottom, black 0%, black 45%, transparent 95%);
-  -webkit-mask-image: linear-gradient(to bottom, black 0%, black 45%, transparent 95%);
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    black 0%,
+    black 45%,
+    transparent 95%
+  );
   pointer-events: none;
   z-index: 0;
   animation: gridDrift 12s linear infinite;
@@ -475,8 +506,16 @@ a.logo:active {
   flex: 1;
   min-height: 0;
   background:
-    radial-gradient(ellipse 70% 60% at 0% 50%, rgba(210, 23, 37, 0.1) 0%, transparent 70%),
-    radial-gradient(ellipse 40% 40% at 100% 10%, rgba(210, 23, 37, 0.05) 0%, transparent 60%),
+    radial-gradient(
+      ellipse 70% 60% at 0% 50%,
+      rgba(210, 23, 37, 0.1) 0%,
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 40% 40% at 100% 10%,
+      rgba(210, 23, 37, 0.05) 0%,
+      transparent 60%
+    ),
     linear-gradient(160deg, #f9f5f5 0%, #fbfafa 50%, #faf8f8 100%);
   overflow: hidden;
 }
@@ -497,8 +536,16 @@ a.logo:active {
 .hero.proc-hero,
 .hero.review-hero {
   background:
-    radial-gradient(ellipse 70% 60% at 0% 50%, rgba(210, 23, 37, 0.1) 0%, transparent 70%),
-    radial-gradient(ellipse 40% 40% at 100% 10%, rgba(210, 23, 37, 0.05) 0%, transparent 60%),
+    radial-gradient(
+      ellipse 70% 60% at 0% 50%,
+      rgba(210, 23, 37, 0.1) 0%,
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 40% 40% at 100% 10%,
+      rgba(210, 23, 37, 0.05) 0%,
+      transparent 60%
+    ),
     linear-gradient(160deg, #f9f5f5 0%, #fbfafa 50%, #faf8f8 100%);
   padding-bottom: 6rem;
 }
@@ -511,8 +558,8 @@ a.logo:active {
   display: none;
 }
 /* Canonical "Back to Dashboard" link — shared by every module hero
-   (HR, Inspection, Procurement, Operations, Review History, …).
-   Define once here so all modules render an identical nav link. */
+ (HR, Inspection, Procurement, Operations, Review History, …).
+ Define once here so all modules render an identical nav link. */
 .back-btn {
   display: inline-flex;
   align-items: center;
@@ -564,18 +611,27 @@ a.logo:active {
 /* Grid fades gradually to bottom - no sharp cutoff (HR only; Procurement/Inspection use gradient only) */
 .hero.hr-hero::before {
   mask-image: linear-gradient(to bottom, black 0%, black 45%, transparent 95%);
-  -webkit-mask-image: linear-gradient(to bottom, black 0%, black 45%, transparent 95%);
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    black 0%,
+    black 45%,
+    transparent 95%
+  );
 }
 
 /* Glow orb behind text */
 .hero::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 20%;
   left: -8%;
   width: 420px;
   height: 420px;
-  background: radial-gradient(circle, rgba(210, 23, 37, 0.12) 0%, transparent 65%);
+  background: radial-gradient(
+    circle,
+    rgba(210, 23, 37, 0.12) 0%,
+    transparent 65%
+  );
   border-radius: 50%;
   pointer-events: none;
   z-index: 0;
@@ -607,7 +663,7 @@ a.logo:active {
 .hero-tagline {
   font-size: 0.68rem;
   font-weight: 700;
-  text-transform: uppercase;
+
   letter-spacing: 0.16em;
   color: var(--primary);
   margin: 0 0 1.25rem 0;
@@ -624,7 +680,7 @@ a.logo:active {
 }
 
 .hero-tagline::before {
-  content: '';
+  content: "";
   display: inline-block;
   width: 6px;
   height: 6px;
@@ -647,7 +703,13 @@ a.logo:active {
 
 .hero-title .hero-title-accent {
   display: inline-block;
-  background: linear-gradient(125deg, var(--primary) 0%, #e8323f 30%, var(--primary-light) 60%, var(--primary) 100%);
+  background: linear-gradient(
+    125deg,
+    var(--primary) 0%,
+    #e8323f 30%,
+    var(--primary-light) 60%,
+    var(--primary) 100%
+  );
   background-size: 200% auto;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -657,7 +719,7 @@ a.logo:active {
 }
 
 .hero-title .hero-title-accent::after {
-  content: '';
+  content: "";
   position: absolute;
   left: 0;
   bottom: -5px;
@@ -674,7 +736,7 @@ a.logo:active {
   font-weight: 400;
   line-height: 1.7;
   margin: 1.5rem 0 0;
-  max-width: 420px;
+  max-width: 520px;
   animation: heroFadeUp 0.75s cubic-bezier(0.16, 1, 0.3, 1) both 0.45s;
   opacity: 0;
 }
@@ -719,15 +781,13 @@ a.logo:active {
   opacity: 0;
 }
 
-/* HR workflow cards: right-align within hero-right */
+/* HR workflow strip on /hr/ dashboard (label + card grid) */
 .hr-workflow-cards #quickActionsRow {
-  display: flex !important;
-  justify-content: flex-end;
-  gap: 1.25rem;
+  display: block !important;
 }
 
-.hr-workflow-cards #quickActionsRow > div {
-  flex: 0 0 auto;
+.hr-workflow-cards #quickActionsRow > .modules-grid {
+  width: 100%;
 }
 
 .dashboard-widget-link {
@@ -750,7 +810,9 @@ a.logo:active {
   box-shadow: none;
   border: 1px solid var(--border-color);
   overflow: hidden;
-  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  transition:
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
 }
 
 .dashboard-widget-header {
@@ -828,7 +890,7 @@ a.logo:active {
   display: block;
   font-size: 0.68rem;
   font-weight: 600;
-  text-transform: uppercase;
+
   letter-spacing: 0.05em;
   color: var(--text-light);
   margin-bottom: 0.3rem;
@@ -897,7 +959,8 @@ a.logo:active {
     max-width: 640px;
     margin: 0 auto;
   }
-  .hero::before, .hero::after {
+  .hero::before,
+  .hero::after {
     display: none;
   }
 }
@@ -961,8 +1024,8 @@ a.logo:active {
 }
 
 /* ===========================================
-   Module Cards — Simple + Modern
-   =========================================== */
+ Module Cards — Simple + Modern
+ =========================================== */
 
 @keyframes dashboardModuleIn {
   from {
@@ -976,7 +1039,10 @@ a.logo:active {
 }
 
 @keyframes heroReveal {
-  to { opacity: 1; transform: translateY(0); }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .module-badge {
@@ -1008,6 +1074,13 @@ a.logo:active {
   position: relative;
 }
 
+/* Main dashboard: no hard seam where hero meets modules — transparent section
+ sits above the hero so the gradient/grid continues under MODULES. */
+body.page-dashboard .modules-section {
+  background: transparent;
+  z-index: 2;
+}
+
 .modules-section::before {
   display: none;
 }
@@ -1021,7 +1094,7 @@ a.logo:active {
 .modules-section-label {
   font-size: 0.68rem;
   font-weight: 700;
-  text-transform: uppercase;
+
   letter-spacing: 0.15em;
   color: var(--text-muted);
   margin-bottom: 1.25rem;
@@ -1042,37 +1115,54 @@ a.logo:active {
   text-decoration: none;
   color: inherit;
   display: block !important;
-  transition: transform 0.28s var(--ease-out), box-shadow 0.28s ease, border-color 0.28s ease;
+  transition:
+    transform 0.28s var(--ease-out),
+    box-shadow 0.28s ease,
+    border-color 0.28s ease;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 4px 12px rgba(0,0,0,0.04);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.05),
+    0 4px 12px rgba(0, 0, 0, 0.04);
   width: 100%;
   box-sizing: border-box;
   opacity: 1;
   transform: translateY(0);
 }
 
-.page-dashboard #modulesGrid.modules-grid--boot > .module-card:not([style*="display: none"]) {
+.page-dashboard
+  #modulesGrid.modules-grid--boot
+  > .module-card:not([style*="display: none"]) {
   opacity: 0;
   transform: translateY(16px) scale(0.985);
 }
 
-.page-dashboard #modulesGrid.modules-grid--entrance-active > .module-card:not([style*="display: none"]) {
+.page-dashboard
+  #modulesGrid.modules-grid--entrance-active
+  > .module-card:not([style*="display: none"]) {
   animation: dashboardModuleIn 0.52s cubic-bezier(0.22, 1, 0.36, 1) both;
   animation-delay: var(--dd-stagger, 0ms);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .page-dashboard #modulesGrid.modules-grid--boot > .module-card:not([style*="display: none"]),
-  .page-dashboard #modulesGrid.modules-grid--entrance-active > .module-card:not([style*="display: none"]) {
+  .page-dashboard
+    #modulesGrid.modules-grid--boot
+    > .module-card:not([style*="display: none"]),
+  .page-dashboard
+    #modulesGrid.modules-grid--entrance-active
+    > .module-card:not([style*="display: none"]) {
     opacity: 1 !important;
     transform: none !important;
     animation: none !important;
   }
 }
 
-.module-card[style*="display: none"] { display: none !important; }
-.module-card:not([style*="display: none"]) { display: block !important; }
+.module-card[style*="display: none"] {
+  display: none !important;
+}
+.module-card:not([style*="display: none"]) {
+  display: block !important;
+}
 
 /* Review History is revealed after load (visibility JS). */
 .page-dashboard .modules-grid #module-review-history.module-card {
@@ -1084,7 +1174,10 @@ a.logo:active {
 
 .module-card:hover {
   border-color: rgba(210, 23, 37, 0.32);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.07), 0 12px 32px rgba(210, 23, 37, 0.09), 0 0 0 1.5px rgba(210, 23, 37, 0.1);
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.07),
+    0 12px 32px rgba(210, 23, 37, 0.09),
+    0 0 0 1.5px rgba(210, 23, 37, 0.1);
   transform: translateY(-3px);
 }
 
@@ -1124,7 +1217,9 @@ a.logo:active {
   align-items: center;
   justify-content: center;
   margin-bottom: 1.1rem;
-  transition: background 0.25s ease, transform 0.25s var(--ease-out);
+  transition:
+    background 0.25s ease,
+    transform 0.25s var(--ease-out);
   position: relative;
   flex-shrink: 0;
 }
@@ -1153,7 +1248,6 @@ a.logo:active {
   letter-spacing: 0.1em;
   margin-bottom: 0.45rem;
   display: block;
-  text-transform: uppercase;
 }
 
 .module-title {
@@ -1205,8 +1299,8 @@ a.logo:active {
 }
 
 /* ===========================================
-   Footer
-   =========================================== */
+ Footer
+ =========================================== */
 .footer {
   background: var(--bg-body, #faf8f8);
   margin-top: auto;
@@ -1290,8 +1384,8 @@ a.logo:active {
 }
 
 /* ===========================================
-   Contact Modal
-   =========================================== */
+ Contact Modal
+ =========================================== */
 .contact-modal {
   display: none;
   position: fixed;
@@ -1323,12 +1417,18 @@ a.logo:active {
 }
 
 @keyframes modalFadeIn {
-  to { opacity: 1; }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .contact-modal-content {
@@ -1356,9 +1456,15 @@ a.logo:active {
 #profileModal.contact-modal {
   align-items: center !important;
   justify-content: center !important;
-  padding-top: max(8rem, calc(env(safe-area-inset-top, 0px) + 4.25rem + 4rem)) !important;
+  padding-top: max(
+    8rem,
+    calc(env(safe-area-inset-top, 0px) + 4.25rem + 4rem)
+  ) !important;
   padding-right: 1.25rem !important;
-  padding-bottom: max(2rem, calc(env(safe-area-inset-bottom, 0px) + 1.5rem)) !important;
+  padding-bottom: max(
+    2rem,
+    calc(env(safe-area-inset-bottom, 0px) + 1.5rem)
+  ) !important;
   padding-left: 1.25rem !important;
 }
 
@@ -1498,8 +1604,8 @@ a.logo:active {
 }
 
 /* ===========================================
-   Form Styles
-   =========================================== */
+ Form Styles
+ =========================================== */
 .form-label {
   display: block;
   margin-bottom: 0.5rem;
@@ -1515,7 +1621,9 @@ a.logo:active {
   border-radius: var(--radius-sm);
   font-family: inherit;
   font-size: 0.95rem;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
   background: white;
 }
 
@@ -1526,8 +1634,8 @@ a.logo:active {
 }
 
 /* ===========================================
-   Alerts
-   =========================================== */
+ Alerts
+ =========================================== */
 .alert {
   padding: 1rem;
   border-radius: var(--radius-sm);
@@ -1549,8 +1657,8 @@ a.logo:active {
 }
 
 /* ===========================================
-   Buttons
-   =========================================== */
+ Buttons
+ =========================================== */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -1603,15 +1711,15 @@ a.logo:active {
 }
 
 /* ===========================================
-   Utility Classes
-   =========================================== */
+ Utility Classes
+ =========================================== */
 .mb-3 {
   margin-bottom: 1.5rem;
 }
 
 /* ===========================================
-   Responsive - Nav collapse (show hamburger when nav would overlap welcome)
-   =========================================== */
+ Responsive - Nav collapse (show hamburger when nav would overlap welcome)
+ =========================================== */
 @media (max-width: 2500px) {
   .nav-container {
     padding: 0 1.5rem;
@@ -1626,37 +1734,40 @@ a.logo:active {
     pointer-events: none !important;
   }
 
-
   /* Show hamburger as soon as resolution shrinks - nav goes to menu */
   .mobile-menu-toggle {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    width: 44px !important;
-    height: 44px !important;
-    min-width: 44px !important;
-    min-height: 44px !important;
-    border: 1px solid var(--border-color) !important;
-    background: #fff !important;
-    border-radius: 10px !important;
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    min-height: 40px !important;
+    border: none !important;
+    background: transparent !important;
+    border-radius: 8px !important;
     cursor: pointer !important;
     padding: 0 !important;
-    color: var(--text-dark) !important;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06) !important;
-    transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease !important;
+    color: #374151 !important;
+    box-shadow: none !important;
+    transition:
+      background 0.15s ease,
+      color 0.15s ease !important;
   }
 
   .mobile-menu-toggle:hover {
-    background: var(--bg-light) !important;
-    border-color: var(--primary) !important;
+    background: rgba(0, 0, 0, 0.04) !important;
+    border: none !important;
     color: var(--primary) !important;
+    box-shadow: none !important;
   }
 
   .mobile-menu-toggle:active,
   .mobile-menu-toggle.active {
     background: rgba(210, 23, 37, 0.08) !important;
-    border-color: var(--primary) !important;
+    border: none !important;
     color: var(--primary) !important;
+    box-shadow: none !important;
   }
 
   /* Hide nav-center menu in collapsed mode (links shown in drawer) */
@@ -1683,7 +1794,9 @@ a.logo:active {
     box-shadow: none !important;
     padding: 0 !important;
     transform: translateX(105%) !important;
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease !important;
+    transition:
+      transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+      box-shadow 0.3s ease !important;
     z-index: 1200 !important;
     overflow-y: auto !important;
     overflow-x: hidden !important;
@@ -1694,7 +1807,9 @@ a.logo:active {
 
   .mobile-menu-drawer.active {
     transform: translateX(0) !important;
-    box-shadow: -12px 0 40px rgba(0, 0, 0, 0.15), 0 0 1px rgba(0, 0, 0, 0.08) !important;
+    box-shadow:
+      -12px 0 40px rgba(0, 0, 0, 0.15),
+      0 0 1px rgba(0, 0, 0, 0.08) !important;
     visibility: visible !important;
   }
 
@@ -1729,7 +1844,9 @@ a.logo:active {
     display: none !important;
   }
 
-  .mobile-menu-drawer-list li.has-submenu.has-submitted-dropdown.open .nav-submenu {
+  .mobile-menu-drawer-list
+    li.has-submenu.has-submitted-dropdown.open
+    .nav-submenu {
     display: block !important;
   }
 
@@ -1762,7 +1879,9 @@ a.logo:active {
     min-height: 48px !important;
     width: 100% !important;
     box-sizing: border-box !important;
-    transition: background 0.15s ease, color 0.15s ease !important;
+    transition:
+      background 0.15s ease,
+      color 0.15s ease !important;
   }
 
   .mobile-menu-drawer-list li a:hover,
@@ -1811,50 +1930,42 @@ a.logo:active {
     white-space: nowrap !important;
   }
 
-  /* Hamburger — equal 2px bars, even spacing (matches nav SVG stroke 2) */
-  .mobile-menu-toggle span {
+  /* Hamburger — three equal-weight bars (no ::before/::after subpixel skew) */
+  .mobile-menu-toggle .mobile-menu-bars {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    gap: 5px !important;
+    width: 18px !important;
+  }
+  .mobile-menu-toggle .mobile-menu-bars > span {
     display: block !important;
     width: 18px !important;
     height: 2px !important;
+    min-height: 2px !important;
+    max-height: 2px !important;
+    border: 0 !important;
     border-radius: 1px !important;
     background: currentColor !important;
-    position: relative !important;
-    transition: all 0.3s ease !important;
-    transform: translateZ(0) !important;
+    box-shadow: none !important;
+    transition:
+      transform 0.25s ease,
+      opacity 0.2s ease !important;
+    transform-origin: center !important;
   }
-
-  .mobile-menu-toggle span::before,
-  .mobile-menu-toggle span::after {
-    content: '' !important;
-    position: absolute !important;
-    left: 0 !important;
-    width: 18px !important;
-    height: 2px !important;
-    border-radius: 1px !important;
-    background: currentColor !important;
-    transition: all 0.3s ease !important;
+  .mobile-menu-toggle .mobile-menu-bars > span::before,
+  .mobile-menu-toggle .mobile-menu-bars > span::after {
+    content: none !important;
+    display: none !important;
   }
-
-  .mobile-menu-toggle span::before {
-    top: -6px !important;
+  .mobile-menu-toggle.active .mobile-menu-bars > span:nth-child(1) {
+    transform: translateY(7px) rotate(45deg) !important;
   }
-
-  .mobile-menu-toggle span::after {
-    bottom: -6px !important;
+  .mobile-menu-toggle.active .mobile-menu-bars > span:nth-child(2) {
+    opacity: 0 !important;
   }
-
-  .mobile-menu-toggle.active span {
-    background: transparent !important;
-  }
-
-  .mobile-menu-toggle.active span::before {
-    top: 0 !important;
-    transform: rotate(45deg) !important;
-  }
-
-  .mobile-menu-toggle.active span::after {
-    bottom: 0 !important;
-    transform: rotate(-45deg) !important;
+  .mobile-menu-toggle.active .mobile-menu-bars > span:nth-child(3) {
+    transform: translateY(-7px) rotate(-45deg) !important;
   }
 
   /* Backdrop overlay when menu is open (below drawer 1200, above page / steppers) */
@@ -1882,8 +1993,8 @@ a.logo:active {
 }
 
 /* ===========================================
-   Responsive - Tablet
-   =========================================== */
+ Responsive - Tablet
+ =========================================== */
 @media (max-width: 1024px) {
   .nav-container {
     padding: 0 2rem;
@@ -1896,20 +2007,20 @@ a.logo:active {
   .modules-inner {
     padding: 0 2rem;
   }
-  
+
   .modules-grid {
     grid-template-columns: repeat(2, 1fr) !important;
     gap: 1rem !important;
   }
-  
+
   .footer-inner {
     padding: 1.4rem 2rem;
   }
 }
 
 /* ===========================================
-   Responsive - Mobile
-   =========================================== */
+ Responsive - Mobile
+ =========================================== */
 @media (max-width: 768px) {
   .hero {
     padding: 7rem 0 4.5rem !important;
@@ -1923,12 +2034,12 @@ a.logo:active {
     width: 100% !important;
     max-width: 100% !important;
   }
-  
+
   .page-dashboard .hero-title {
     font-size: clamp(1.7rem, 6.5vw, 2.25rem) !important;
     letter-spacing: -0.03em !important;
   }
-  
+
   .hero-subtitle {
     font-size: 0.9rem !important;
     margin-top: 1rem !important;
@@ -1949,9 +2060,15 @@ a.logo:active {
   /* Profile: keep sheet shifted up on tablet/small laptop (≤768px) */
   #profileModal.contact-modal {
     align-items: flex-start !important;
-    padding-top: max(0.35rem, calc(env(safe-area-inset-top, 0px) + 4.25rem + 6px)) !important;
+    padding-top: max(
+      0.35rem,
+      calc(env(safe-area-inset-top, 0px) + 4.25rem + 6px)
+    ) !important;
     padding-right: 1rem !important;
-    padding-bottom: max(1rem, calc(env(safe-area-inset-bottom, 0px) + 0.75rem)) !important;
+    padding-bottom: max(
+      1rem,
+      calc(env(safe-area-inset-bottom, 0px) + 0.75rem)
+    ) !important;
     padding-left: 1rem !important;
     justify-content: center !important;
   }
@@ -1963,7 +2080,7 @@ a.logo:active {
   #contactModal.contact-modal.active {
     z-index: 10050 !important;
   }
-  
+
   .modules-section {
     display: block !important;
     visibility: visible !important;
@@ -1977,30 +2094,30 @@ a.logo:active {
   .modules-inner {
     padding: 0 1.25rem !important;
   }
-  
+
   .modules-grid {
     grid-template-columns: 1fr !important;
     gap: 0.625rem !important;
     display: grid !important;
     width: 100% !important;
   }
-  
+
   /* Footer - mobile */
   .footer {
     margin-top: 0 !important;
   }
-  
+
   .footer-inner {
     flex-direction: column !important;
     text-align: center !important;
     padding: 1.25rem 1.5rem max(1rem, env(safe-area-inset-bottom, 0px)) !important;
     gap: 0.85rem !important;
   }
-  
+
   .footer-links {
     gap: 1.75rem !important;
   }
-  
+
   /* Nav - mobile */
   .nav-container {
     padding: 0 1rem !important;
@@ -2019,13 +2136,13 @@ a.logo:active {
   .nav-center .nav-menu {
     pointer-events: auto !important;
   }
-  
+
   .logo {
     flex: 1 1 auto !important;
     gap: 0.625rem !important;
     min-width: 0 !important;
   }
-  
+
   .logo img {
     height: 48px !important;
     width: auto !important;
@@ -2049,14 +2166,16 @@ a.logo:active {
     overflow: hidden !important;
     text-overflow: ellipsis !important;
   }
-  
+
   .nav-right {
     flex: 0 0 auto !important;
     gap: 0.3rem !important;
   }
 
   /* Save Draft: icon-only on tablet/mobile to save space */
-  .nav-save-draft-btn span { display: none !important; }
+  .nav-save-draft-btn span {
+    display: none !important;
+  }
   .nav-save-draft-btn {
     padding: 0 !important;
     width: 34px !important;
@@ -2112,7 +2231,7 @@ a.logo:active {
   #pwa-install-btn.pwa-nav-icon:hover {
     background: var(--border-light) !important;
   }
-  
+
   /* Drawer position at 768px (nav height 56px) */
   .mobile-menu-drawer {
     top: 56px !important;
@@ -2123,7 +2242,7 @@ a.logo:active {
   .mobile-overlay {
     top: 56px !important;
   }
-  
+
   .nav-menu li a,
   .nav-menu a {
     display: flex !important;
@@ -2139,7 +2258,9 @@ a.logo:active {
     white-space: normal !important;
     width: 100% !important;
     box-sizing: border-box !important;
-    transition: background 0.15s ease, color 0.15s ease !important;
+    transition:
+      background 0.15s ease,
+      color 0.15s ease !important;
   }
 
   /* Keep current-route green when responsive rules force default link colours */
@@ -2152,88 +2273,86 @@ a.logo:active {
   .nav-menu a:active {
     background: rgba(210, 23, 37, 0.08) !important;
   }
-  
+
   .nav-menu a:hover {
     background: var(--bg-light) !important;
   }
-  
+
   .nav-menu li[style*="display: none"] {
     display: none !important;
   }
-  
-  /* Hamburger */
+
+  /* Hamburger — plain icon, no card chrome */
   .mobile-menu-toggle {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    width: 34px !important;
-    height: 34px !important;
-    min-width: 34px !important;
-    min-height: 34px !important;
-    border: 1px solid rgba(55, 65, 81, 0.18) !important;
-    background: #fff !important;
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    min-height: 36px !important;
+    border: none !important;
+    background: transparent !important;
     border-radius: 8px !important;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+    box-shadow: none !important;
     cursor: pointer !important;
     padding: 0 !important;
-    color: var(--text-dark) !important;
-    transition: background 0.15s ease !important;
+    color: #374151 !important;
+    transition:
+      background 0.15s ease,
+      color 0.15s ease !important;
     -webkit-tap-highlight-color: transparent !important;
   }
-  
+
   .mobile-menu-toggle:hover {
-    background: var(--border-light) !important;
+    background: rgba(0, 0, 0, 0.04) !important;
+    color: var(--primary) !important;
+    box-shadow: none !important;
   }
-  
+
   .mobile-menu-toggle:active {
-    background: var(--border-color) !important;
+    background: rgba(210, 23, 37, 0.08) !important;
+    color: var(--primary) !important;
+    box-shadow: none !important;
   }
-  
-  .mobile-menu-toggle span {
+
+  .mobile-menu-toggle .mobile-menu-bars {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    gap: 5px !important;
+    width: 18px !important;
+  }
+  .mobile-menu-toggle .mobile-menu-bars > span {
     display: block !important;
     width: 18px !important;
     height: 2px !important;
+    min-height: 2px !important;
+    max-height: 2px !important;
+    border: 0 !important;
     border-radius: 1px !important;
     background: currentColor !important;
-    position: relative !important;
-    transition: all 0.3s ease !important;
-    transform: translateZ(0) !important;
+    box-shadow: none !important;
+    transition:
+      transform 0.25s ease,
+      opacity 0.2s ease !important;
+    transform-origin: center !important;
   }
-  
-  .mobile-menu-toggle span::before,
-  .mobile-menu-toggle span::after {
-    content: '' !important;
-    position: absolute !important;
-    left: 0 !important;
-    width: 18px !important;
-    height: 2px !important;
-    border-radius: 1px !important;
-    background: currentColor !important;
-    transition: all 0.3s ease !important;
+  .mobile-menu-toggle .mobile-menu-bars > span::before,
+  .mobile-menu-toggle .mobile-menu-bars > span::after {
+    content: none !important;
+    display: none !important;
   }
-  
-  .mobile-menu-toggle span::before {
-    top: -6px !important;
+  .mobile-menu-toggle.active .mobile-menu-bars > span:nth-child(1) {
+    transform: translateY(7px) rotate(45deg) !important;
   }
-  
-  .mobile-menu-toggle span::after {
-    bottom: -6px !important;
+  .mobile-menu-toggle.active .mobile-menu-bars > span:nth-child(2) {
+    opacity: 0 !important;
   }
-  
-  .mobile-menu-toggle.active span {
-    background: transparent !important;
+  .mobile-menu-toggle.active .mobile-menu-bars > span:nth-child(3) {
+    transform: translateY(-7px) rotate(-45deg) !important;
   }
-  
-  .mobile-menu-toggle.active span::before {
-    top: 0 !important;
-    transform: rotate(45deg) !important;
-  }
-  
-  .mobile-menu-toggle.active span::after {
-    bottom: 0 !important;
-    transform: rotate(-45deg) !important;
-  }
-  
+
   /* Mobile overlay — same stack as collapsed-nav overlay (below drawer 1200) */
   .mobile-overlay {
     display: none;
@@ -2249,12 +2368,12 @@ a.logo:active {
     -webkit-backdrop-filter: blur(2px);
     backdrop-filter: blur(2px);
   }
-  
+
   .mobile-overlay.active {
     display: block;
     opacity: 1;
   }
-  
+
   /* Logout - compact on mobile */
   .logout-btn {
     font-size: 0.8rem !important;
@@ -2268,10 +2387,10 @@ a.logo:active {
     align-items: center !important;
     justify-content: center !important;
     border-radius: 8px !important;
-    background: #fff !important;
-    border: 1px solid rgba(55, 65, 81, 0.18) !important;
-    color: var(--text-dark) !important;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+    background: var(--primary) !important;
+    border: 1px solid var(--primary) !important;
+    color: #fff !important;
+    box-shadow: 0 1px 2px rgba(210, 23, 37, 0.2) !important;
   }
 
   .logout-btn svg {
@@ -2282,10 +2401,10 @@ a.logo:active {
   .logout-btn span {
     display: none !important;
   }
-  
+
   /* Module cards - compact grid on mobile.
-     card-body is display:contents so its children become direct grid items.
-     Must match specificity of base .module-card:not([style*="display: none"]) rule. */
+ card-body is display:contents so its children become direct grid items.
+ Must match specificity of base .module-card:not([style*="display: none"]) rule. */
   .module-card:not([style*="display: none"]) {
     display: grid !important;
   }
@@ -2302,7 +2421,9 @@ a.logo:active {
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;
-    transition: background 0.15s ease, box-shadow 0.15s ease !important;
+    transition:
+      background 0.15s ease,
+      box-shadow 0.15s ease !important;
   }
 
   .module-card .card-body {
@@ -2390,7 +2511,7 @@ a.logo:active {
     color: var(--text-light) !important;
     align-self: start !important;
   }
-  
+
   /* Notification dropdown full width on mobile */
   .notification-dropdown {
     left: 1rem !important;
@@ -2401,8 +2522,8 @@ a.logo:active {
 }
 
 /* ===========================================
-   Responsive - Phone (logo-only navbar zone)
-   =========================================== */
+ Responsive - Phone (logo-only navbar zone)
+ =========================================== */
 @media (max-width: 600px) {
   /* Hide welcome text + brand label — logo image alone at phone widths */
   .nav-welcome,
@@ -2416,7 +2537,6 @@ a.logo:active {
     height: 64px !important;
     padding: 0 1rem !important;
   }
-
 
   .logo img {
     height: 60px !important;
@@ -2435,7 +2555,9 @@ a.logo:active {
   }
 
   /* Logout: icon-only, compact */
-  .logout-btn span { display: none !important; }
+  .logout-btn span {
+    display: none !important;
+  }
   .logout-btn {
     padding: 0 !important;
     width: 32px !important;
@@ -2452,8 +2574,8 @@ a.logo:active {
 }
 
 /* ===========================================
-   Responsive - Small Mobile
-   =========================================== */
+ Responsive - Small Mobile
+ =========================================== */
 @media (max-width: 480px) {
   .hero {
     padding: 6.5rem 0 4rem !important;
@@ -2463,13 +2585,13 @@ a.logo:active {
     padding: 0 1rem !important;
     gap: 1rem !important;
   }
-  
+
   .page-dashboard .hero-title {
     font-size: clamp(1.55rem, 7vw, 1.85rem) !important;
     line-height: 1.15 !important;
     letter-spacing: -0.03em !important;
   }
-  
+
   .hero-subtitle {
     font-size: 0.855rem !important;
     margin-top: 0.75rem !important;
@@ -2482,7 +2604,7 @@ a.logo:active {
     padding: 0.3rem 0.65rem !important;
     margin-bottom: 0.75rem !important;
   }
-  
+
   .modules-grid {
     gap: 0.5rem !important;
   }
@@ -2491,31 +2613,31 @@ a.logo:active {
     font-size: 0.62rem !important;
     margin-bottom: 1rem !important;
   }
-  
+
   .footer-inner {
     padding: 1.2rem 1.25rem max(1rem, env(safe-area-inset-bottom, 0px)) !important;
   }
-  
+
   /* Keep flush with modules — spacing comes from .modules-section padding; margin here
-     left a strip that on hosted iOS/PWA often read as solid black (unpainted html canvas). */
+ left a strip that on hosted iOS/PWA often read as solid black (unpainted html canvas). */
   .footer {
     margin-top: 0 !important;
   }
-  
+
   .nav-container {
     padding: 0 0.875rem !important;
     height: 64px !important;
   }
-  
+
   .logo {
     gap: 0.5rem !important;
   }
-  
+
   .logo img {
     height: 56px !important;
     width: auto !important;
   }
-  
+
   /* Hide welcome text + brand label — logo image alone identifies the app on small phones */
   .nav-welcome,
   #welcome-text,
@@ -2525,7 +2647,9 @@ a.logo:active {
   }
 
   /* Logout: icon-only to save space */
-  .logout-btn span { display: none !important; }
+  .logout-btn span {
+    display: none !important;
+  }
   .logout-btn {
     padding: 0 !important;
     width: 32px !important;
@@ -2592,8 +2716,8 @@ a.logo:active {
 }
 
 /* ===========================================
-   Responsive - Very Small Mobile (≤375px)
-   =========================================== */
+ Responsive - Very Small Mobile (≤375px)
+ =========================================== */
 @media (max-width: 375px) {
   .hero {
     padding: 4.75rem 0 1rem !important;
@@ -2643,8 +2767,8 @@ a.logo:active {
 }
 
 /* ===========================================
-   Profile Modal Enhancements
-   =========================================== */
+ Profile Modal Enhancements
+ =========================================== */
 
 #profileModal .contact-modal-content {
   padding: 0 !important;
@@ -2692,6 +2816,27 @@ a.logo:active {
   flex-direction: column;
   overflow: hidden;
   -webkit-overflow-scrolling: touch;
+  font-family: var(--font-sans);
+}
+
+/* Keep profile fields / chips / buttons on the same radius + typeface */
+#profileModal .pro-container,
+#profileModal .pro-container input,
+#profileModal .pro-container select,
+#profileModal .pro-container textarea,
+#profileModal .pro-container button {
+  font-family: var(--font-sans) !important;
+}
+
+#profileModal .pro-info-item,
+#profileModal .pro-profile-edit,
+#profileModal .pro-modules-wrap,
+#profileModal .pro-module-badge,
+#profileModal .pro-btn,
+#profileModal .pro-tab,
+#profileModal .pro-profile-edit input[type="text"],
+#profileModal .pro-profile-edit input[type="date"] {
+  border-radius: 10px !important;
 }
 
 /* Profile Modal Container - shared across all modules */
@@ -2702,9 +2847,15 @@ a.logo:active {
   padding: 0 !important;
   border-radius: 20px !important;
   overflow: hidden;
-  box-shadow: 0 25px 60px rgba(0,0,0,0.3);
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.3);
   /* Fill space below fixed nav + overlay padding; tab body scrolls inside */
-  max-height: min(92vh, calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 6rem));
+  max-height: min(
+    92vh,
+    calc(
+      100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) -
+        6rem
+    )
+  );
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -2768,8 +2919,8 @@ a.logo:active {
 }
 
 /* ===========================================
-   Notification Bell & Dropdown
-   =========================================== */
+ Notification Bell & Dropdown
+ =========================================== */
 
 .pwa-install-slot {
   display: contents;
@@ -2850,7 +3001,9 @@ a.logo:active {
   max-height: 480px;
   background: white;
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-lg), 0 0 0 1px rgba(0, 0, 0, 0.05);
+  box-shadow:
+    var(--shadow-lg),
+    0 0 0 1px rgba(0, 0, 0, 0.05);
   opacity: 0;
   visibility: hidden;
   transform: translateY(-8px) scale(0.98);
@@ -2915,11 +3068,30 @@ a.logo:active {
 }
 
 .notification-item.unread {
-  background: #f0fdf4;
+  background: #fef2f2;
 }
 
 .notification-item.unread:hover {
-  background: #dcfce7;
+  background: #fee2e2;
+}
+
+.notification-item.priority {
+  border-left: 3px solid #dc2626;
+}
+
+.notification-priority-badge {
+  display: inline-block;
+  background: #fee2e2;
+  color: #dc2626;
+  border: 1px solid #fca5a5;
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-size: 0.65rem;
+  font-weight: 700;
+
+  letter-spacing: 0.03em;
+  margin-right: 6px;
+  vertical-align: middle;
 }
 
 .notification-icon {
@@ -2940,6 +3112,11 @@ a.logo:active {
 
 .notification-icon.rejected {
   background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: white;
+}
+
+.notification-icon.priority {
+  background: linear-gradient(135deg, #ef4444, #b91c1c);
   color: white;
 }
 
@@ -2985,7 +3162,7 @@ a.logo:active {
 }
 
 .notification-empty::before {
-  content: '🔔';
+  content: "🔔";
   display: block;
   font-size: 2rem;
   margin-bottom: 0.5rem;
@@ -3004,8 +3181,8 @@ a.logo:active {
 }
 
 /* ===========================================
-   Global nav — To-do floating panel (main_navbar, no overlay)
-   =========================================== */
+ Global nav — To-do floating panel (main_navbar, no overlay)
+ =========================================== */
 .todo-nav-wrapper {
   position: relative;
   flex-shrink: 0;
@@ -3034,7 +3211,10 @@ a.logo:active {
   opacity: 0;
   visibility: hidden;
   transform: translateY(-6px);
-  transition: opacity 0.22s ease, transform 0.22s ease, visibility 0.22s;
+  transition:
+    opacity 0.22s ease,
+    transform 0.22s ease,
+    visibility 0.22s;
 }
 
 .todo-panel-pop.is-open {
@@ -3111,7 +3291,7 @@ a.logo:active {
   flex: 0 0 auto;
   font-size: 0.6875rem;
   font-weight: 700;
-  text-transform: uppercase;
+
   letter-spacing: 0.06em;
   color: #64748b;
   white-space: nowrap;
@@ -3145,7 +3325,9 @@ a.logo:active {
   border-radius: 10px;
   font-family: inherit;
   background: #fff;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
 }
 
 .todo-new-input::placeholder {
@@ -3168,7 +3350,9 @@ a.logo:active {
   border-radius: 10px;
   cursor: pointer;
   flex-shrink: 0;
-  transition: background 0.15s ease, transform 0.1s ease;
+  transition:
+    background 0.15s ease,
+    transform 0.1s ease;
 }
 
 .todo-add-btn:hover {
@@ -3282,7 +3466,9 @@ a.logo:active {
   line-height: 1;
   cursor: pointer;
   border-radius: 8px;
-  transition: color 0.15s, background 0.15s;
+  transition:
+    color 0.15s,
+    background 0.15s;
 }
 
 .todo-item-delete:hover {
@@ -3321,7 +3507,9 @@ a.logo:active {
   cursor: pointer;
   padding: 0.4rem 0.6rem;
   border-radius: 6px;
-  transition: background 0.15s, color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s;
 }
 
 .todo-clear-done:hover {
@@ -3352,7 +3540,9 @@ a.logo:active {
   border: none;
   background: var(--primary, #d21725);
   box-shadow: 0 2px 8px rgba(210, 23, 37, 0.22);
-  transition: background 0.18s ease, box-shadow 0.18s ease;
+  transition:
+    background 0.18s ease,
+    box-shadow 0.18s ease;
 }
 .submission-view-pdf-btn:hover {
   background: var(--primary-dark, #a8121e);
@@ -3360,6 +3550,50 @@ a.logo:active {
   color: #fff !important;
 }
 
-
-
-
+/* Password policy banners (temp remind / 65-day expiry warn) */
+.password-policy-banner {
+  max-width: 1120px;
+  margin: 0 auto 1rem;
+  padding: 0.85rem 1.15rem;
+  border-radius: 12px;
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.4;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.password-policy-banner[hidden] {
+  display: none !important;
+}
+.password-policy-banner.warn {
+  background: #fff7ed;
+  color: #9a3412;
+  border: 1px solid #fdba74;
+}
+.password-policy-banner.remind {
+  background: #eff6ff;
+  color: #1e40af;
+  border: 1px solid #93c5fd;
+}
+.password-policy-banner .ppb-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+.password-policy-banner .ppb-btn {
+  appearance: none;
+  border: none;
+  border-radius: 8px;
+  padding: 0.4rem 0.85rem;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  background: #d21725;
+  color: #fff;
+}
+.password-policy-banner .ppb-btn:hover {
+  background: #a8121e;
+}

@@ -14,7 +14,7 @@ from app.models import Notification, User, db
 INSPECTION_MODULE_TYPES = frozenset({'hvac_mep', 'civil', 'cleaning'})
 
 MODULE_DISPLAY = {
-    'hvac_mep': 'HVAC & MEP',
+    'hvac_mep': 'Fire Systems',
     'civil': 'Civil Works',
     'cleaning': 'Cleaning Services',
 }

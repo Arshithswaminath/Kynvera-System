@@ -1,294 +1,1058 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
-  {% include 'partials/caveat_font.html' %}
-  <title>Over Time - Operations</title>
-  <meta name="theme-color" content="#d21725">
-  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
-  <style>
-    :root { --primary: #d21725; --primary-light: #e8323f; --ops-ink:#0f172a; --ops-muted:#64748b; --ops-rule:#e2e8f0; }
-    body.ops-page { background:#F8FAF8; }
-    .ops-wrap { max-width: 1180px; margin: 7rem auto 3rem; padding: 0 1.25rem; }
-    .ops-head { display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; margin-bottom:1.5rem; }
-    .ops-title { font-size:1.85rem; font-weight:800; color:var(--ops-ink); margin:0; }
-    .ops-sub { color:var(--ops-muted); margin:.35rem 0 0; font-size:.95rem; }
-    .ops-actions { display:flex; gap:.6rem; flex-wrap:wrap; }
-    .ops-btn { display:inline-flex; align-items:center; gap:.45rem; border:none; border-radius:10px; padding:.62rem 1.05rem; font-weight:600; font-size:.9rem; cursor:pointer; text-decoration:none; transition:transform .12s ease, box-shadow .12s ease; }
-    .ops-btn-primary { background:var(--primary); color:#fff; }
-    .ops-btn-primary:hover { transform:translateY(-1px); box-shadow:0 6px 16px rgba(210,23,37,.22); }
-    .ops-btn-ghost { background:#fff; color:var(--ops-ink); border:1px solid var(--ops-rule); }
-    .ops-btn-ghost:hover { border-color:var(--primary-light); }
-    .ops-btn-sm { padding:.36rem .6rem; font-size:.8rem; border-radius:8px; }
-    .ops-card { background:#fff; border:1px solid var(--ops-rule); border-radius:16px; box-shadow:0 1px 3px rgba(15,23,42,.05); overflow:hidden; }
-    .ops-table { width:100%; border-collapse:collapse; font-size:.88rem; }
-    .ops-table th { text-align:left; background:#faf5f6; color:#7a1019; font-weight:700; padding:.8rem 1rem; border-bottom:1px solid var(--ops-rule); white-space:nowrap; }
-    .ops-table td { padding:.75rem 1rem; border-bottom:1px solid #f1f5f9; color:var(--ops-ink); vertical-align:middle; }
-    .ops-table tr:last-child td { border-bottom:none; }
-    .ops-table tbody tr:hover { background:#fcfcfd; }
-    .ops-num { text-align:right; font-variant-numeric:tabular-nums; }
-    .ops-empty { padding:3rem 1rem; text-align:center; color:var(--ops-muted); }
-    .ops-pill { display:inline-block; padding:.18rem .55rem; border-radius:999px; font-size:.74rem; font-weight:700; background:#eef2f7; color:#475569; text-transform:capitalize; }
-    .row-actions { display:flex; gap:.4rem; justify-content:flex-end; }
-    /* Modal */
-    .ops-modal-backdrop { position:fixed; inset:0; background:rgba(15,23,42,.45); display:none; align-items:center; justify-content:center; z-index:1000; padding:1rem; }
-    .ops-modal-backdrop.open { display:flex; }
-    .ops-modal { background:#fff; border-radius:16px; width:100%; max-width:560px; max-height:92vh; overflow:auto; box-shadow:0 20px 50px rgba(15,23,42,.25); }
-    .ops-modal-head { padding:1.1rem 1.35rem; border-bottom:1px solid var(--ops-rule); display:flex; align-items:center; justify-content:space-between; }
-    .ops-modal-head h3 { margin:0; font-size:1.15rem; color:var(--ops-ink); }
-    .ops-modal-body { padding:1.35rem; }
-    .ops-modal-foot { padding:1rem 1.35rem; border-top:1px solid var(--ops-rule); display:flex; justify-content:flex-end; gap:.6rem; }
-    .ops-field { margin-bottom:1rem; }
-    .ops-field label { display:block; font-size:.82rem; font-weight:600; color:#334155; margin-bottom:.35rem; }
-    .ops-field input, .ops-field select, .ops-field textarea { width:100%; border:1px solid #cbd5e1; border-radius:9px; padding:.6rem .7rem; font-size:.9rem; font-family:inherit; box-sizing:border-box; }
-    .ops-field input:focus, .ops-field select:focus, .ops-field textarea:focus { outline:none; border-color:var(--primary-light); box-shadow:0 0 0 3px rgba(210,23,37,.12); }
-    .ops-grid2 { display:grid; grid-template-columns:1fr 1fr; gap:.85rem; }
-    .ops-close { background:none; border:none; font-size:1.5rem; line-height:1; cursor:pointer; color:#94a3b8; }
-    .ops-toast { position:fixed; bottom:1.5rem; left:50%; transform:translateX(-50%); background:var(--ops-ink); color:#fff; padding:.7rem 1.2rem; border-radius:10px; font-size:.9rem; z-index:2000; opacity:0; transition:opacity .2s; pointer-events:none; }
-    .ops-toast.show { opacity:1; }
-    .ops-toast.err { background:#b91c1c; }
-    @media (max-width:640px){ .ops-grid2{grid-template-columns:1fr;} .ops-table{font-size:.8rem;} }
-  </style>
-</head>
-<body class="ops-page">
-  {% set active_page = 'operations' %}
-  {% include 'partials/main_navbar.html' with context %}
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/design-tokens.css') }}"
+    />
+    {% include 'partials/caveat_font.html' %}
+    <title>Over Time - Operations</title>
+    <meta name="theme-color" content="#d21725" />
+    <link
+      rel="icon"
+      type="image/png"
+      href="{{ url_for('static', filename='favicon.png') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='animations.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='mobile_responsive.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/dashboard.css') }}"
+    />
+    <style>
+      :root {
+        --primary: #d21725;
+        --primary-light: #e8323f;
+        --ops-ink: #0f172a;
+        --ops-muted: #64748b;
+        --ops-rule: #e2e8f0;
+      }
+      body.ops-page {
+        background: #faf8f8;
+      }
+      .ops-wrap {
+        max-width: 1180px;
+        margin: 7rem auto 3rem;
+        padding: 0 1.25rem;
+      }
+      .ops-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        flex-wrap: wrap;
+        margin-bottom: 1.5rem;
+      }
+      .ops-title {
+        font-size: 1.85rem;
+        font-weight: 800;
+        color: var(--ops-ink);
+        margin: 0;
+      }
+      .ops-sub {
+        color: var(--ops-muted);
+        margin: 0.35rem 0 0;
+        font-size: 0.95rem;
+      }
+      .ops-actions {
+        display: flex;
+        gap: 0.6rem;
+        flex-wrap: wrap;
+      }
+      .ops-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        border: none;
+        border-radius: 10px;
+        padding: 0.62rem 1.05rem;
+        font-weight: 600;
+        font-size: 0.9rem;
+        cursor: pointer;
+        text-decoration: none;
+        transition:
+          transform 0.12s ease,
+          box-shadow 0.12s ease;
+      }
+      .ops-btn-primary {
+        background: var(--primary);
+        color: #fff;
+      }
+      .ops-btn-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 16px rgba(210, 23, 37, 0.22);
+      }
+      .ops-btn-ghost {
+        background: #fff;
+        color: var(--ops-ink);
+        border: 1px solid var(--ops-rule);
+      }
+      .ops-btn-ghost:hover {
+        border-color: var(--primary-light);
+      }
+      .ops-btn-sm {
+        padding: 0.36rem 0.6rem;
+        font-size: 0.8rem;
+        border-radius: 8px;
+      }
+      .ops-card {
+        background: #fff;
+        border: 1px solid var(--ops-rule);
+        border-radius: 16px;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+        overflow: hidden;
+      }
+      .ops-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.88rem;
+      }
+      .ops-table th {
+        text-align: left;
+        background: #faf5f6;
+        color: #7a1019;
+        font-weight: 700;
+        padding: 0.8rem 1rem;
+        border-bottom: 1px solid var(--ops-rule);
+        white-space: nowrap;
+      }
+      .ops-table td {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid #f1f5f9;
+        color: var(--ops-ink);
+        vertical-align: middle;
+      }
+      .ops-table tr:last-child td {
+        border-bottom: none;
+      }
+      .ops-table tbody tr:hover {
+        background: #fcfcfd;
+      }
+      .ops-num {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+      }
+      .ops-empty {
+        padding: 3rem 1rem;
+        text-align: center;
+        color: var(--ops-muted);
+      }
+      .ops-pill {
+        display: inline-block;
+        padding: 0.18rem 0.55rem;
+        border-radius: 999px;
+        font-size: 0.74rem;
+        font-weight: 700;
+        background: #eef2f7;
+        color: #475569;
+        text-transform: capitalize;
+      }
+      .ops-pill.weekend {
+        background: #fff0f1;
+        color: #a8121e;
+      }
+      .ops-pill.weekday {
+        background: #f1f5f9;
+        color: #475569;
+      }
+      .date-cell {
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+      }
+      .date-cell .date-main {
+        font-weight: 600;
+      }
+      .date-cell .date-hint {
+        font-size: 0.72rem;
+        color: var(--ops-muted);
+      }
+      .row-actions {
+        display: flex;
+        gap: 0.4rem;
+        justify-content: flex-end;
+      }
+      .ops-rate-box {
+        background: #faf5f6;
+        border: 1px solid #f0d5d8;
+        border-radius: 12px;
+        padding: 0.85rem 1rem;
+        margin-bottom: 1rem;
+      }
+      .ops-rate-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 0.75rem;
+      }
+      .ops-rate-lbl {
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        color: var(--ops-muted);
+        margin-bottom: 0.2rem;
+      }
+      .ops-rate-val {
+        font-size: 1.05rem;
+        font-weight: 800;
+        color: var(--ops-ink);
+        font-variant-numeric: tabular-nums;
+      }
+      .ops-rate-val.accent {
+        color: var(--primary);
+      }
+      .ops-check {
+        display: flex;
+        align-items: center;
+        gap: 0.55rem;
+        margin: 0.25rem 0 1rem;
+        font-size: 0.88rem;
+        font-weight: 600;
+        color: #334155;
+      }
+      .ops-check input {
+        width: 16px;
+        height: 16px;
+        accent-color: var(--primary);
+      }
+      .day-checks {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+      }
+      .day-check {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        border: 1px solid var(--ops-rule);
+        border-radius: 999px;
+        padding: 0.35rem 0.7rem;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--ops-muted);
+        cursor: pointer;
+        user-select: none;
+        background: #fff;
+      }
+      .day-check input {
+        display: none;
+      }
+      .day-check.on {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: #fff;
+      }
+      .ops-hint {
+        font-size: 0.8rem;
+        color: var(--ops-muted);
+        margin: 0.35rem 0 0;
+        line-height: 1.4;
+      }
+      .ops-modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.45);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        padding: 1rem;
+      }
+      .ops-modal-backdrop.open {
+        display: flex;
+      }
+      .ops-modal {
+        background: #fff;
+        border-radius: 16px;
+        width: 100%;
+        max-width: 560px;
+        max-height: 92vh;
+        overflow: auto;
+        box-shadow: 0 20px 50px rgba(15, 23, 42, 0.25);
+      }
+      .ops-modal-head {
+        padding: 1.1rem 1.35rem;
+        border-bottom: 1px solid var(--ops-rule);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .ops-modal-head h3 {
+        margin: 0;
+        font-size: 1.15rem;
+        color: var(--ops-ink);
+      }
+      .ops-modal-body {
+        padding: 1.35rem;
+      }
+      .ops-modal-foot {
+        padding: 1rem 1.35rem;
+        border-top: 1px solid var(--ops-rule);
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.6rem;
+      }
+      .ops-field {
+        margin-bottom: 1rem;
+      }
+      .ops-field label {
+        display: block;
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: #334155;
+        margin-bottom: 0.35rem;
+      }
+      .ops-field input,
+      .ops-field select,
+      .ops-field textarea {
+        width: 100%;
+        border: 1px solid #cbd5e1;
+        border-radius: 9px;
+        padding: 0.6rem 0.7rem;
+        font-size: 0.9rem;
+        font-family: inherit;
+        box-sizing: border-box;
+      }
+      .ops-field input:focus,
+      .ops-field select:focus,
+      .ops-field textarea:focus {
+        outline: none;
+        border-color: var(--primary-light);
+        box-shadow: 0 0 0 3px rgba(210, 23, 37, 0.12);
+      }
+      .ops-field input:disabled {
+        background: #f8fafc;
+        color: #64748b;
+      }
+      .ops-grid2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.85rem;
+      }
+      .ops-close {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        line-height: 1;
+        cursor: pointer;
+        color: #94a3b8;
+      }
+      .ops-toast {
+        position: fixed;
+        bottom: 1.5rem;
+        left: 50%;
+        transform: translateX(-50%);
+        background: var(--ops-ink);
+        color: #fff;
+        padding: 0.7rem 1.2rem;
+        border-radius: 10px;
+        font-size: 0.9rem;
+        z-index: 2000;
+        opacity: 0;
+        transition: opacity 0.2s;
+        pointer-events: none;
+      }
+      .ops-toast.show {
+        opacity: 1;
+      }
+      .ops-toast.err {
+        background: #b91c1c;
+      }
+      @media (max-width: 640px) {
+        .ops-grid2 {
+          grid-template-columns: 1fr;
+        }
+        .ops-table {
+          font-size: 0.8rem;
+        }
+        .ops-rate-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body class="ops-page">
+    {% set active_page = 'operations' %} {% include 'partials/main_navbar.html'
+    with context %}
 
-  <div class="ops-wrap">
-    <div class="ops-head">
-      <div>
-        <a href="/operations/" class="back-btn">
-          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-          Operations
-        </a>
-        <h1 class="ops-title">Over Time</h1>
-        <p class="ops-sub">Record and track staff overtime. Import in bulk from Excel.</p>
+    <div class="ops-wrap">
+      <div class="ops-head">
+        <div>
+          <a href="/operations/" class="back-btn">
+            <svg
+              width="20"
+              height="20"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M15 19l-7-7 7-7"
+              />
+            </svg>
+            Operations
+          </a>
+          <h1 class="ops-title">Over Time</h1>
+          <p class="ops-sub">
+            Record and track staff overtime. Rates auto-apply from weekday /
+            weekend settings.
+          </p>
+        </div>
+        <div class="ops-actions">
+          {% if can_edit_settings %}
+          <button class="ops-btn ops-btn-ghost" id="settingsBtn" type="button">
+            <svg
+              width="16"
+              height="16"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+              />
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+              />
+            </svg>
+            Settings
+          </button>
+          {% endif %}
+          <a
+            class="ops-btn ops-btn-ghost"
+            href="/operations/api/overtime/template"
+            id="tplBtn"
+          >
+            <svg
+              width="16"
+              height="16"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"
+              />
+            </svg>
+            Template
+          </a>
+          <button class="ops-btn ops-btn-ghost" id="importBtn">
+            <svg
+              width="16"
+              height="16"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 4v12m0-12l-4 4m4-4l4 4"
+              />
+            </svg>
+            Import Excel
+          </button>
+          <input
+            type="file"
+            id="importFile"
+            accept=".xlsx,.xls"
+            style="display: none"
+          />
+          <button class="ops-btn ops-btn-ghost" id="exportBtn">
+            <svg
+              width="16"
+              height="16"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"
+              />
+            </svg>
+            Export Excel
+          </button>
+          <button class="ops-btn ops-btn-primary" id="addBtn">
+            <svg
+              width="16"
+              height="16"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 5v14M5 12h14"
+              />
+            </svg>
+            Add Record
+          </button>
+        </div>
       </div>
-      <div class="ops-actions">
-        <a class="ops-btn ops-btn-ghost" href="/operations/api/overtime/template" id="tplBtn">
-          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"/></svg>
-          Template
-        </a>
-        <button class="ops-btn ops-btn-ghost" id="importBtn">
-          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 4v12m0-12l-4 4m4-4l4 4"/></svg>
-          Import Excel
-        </button>
-        <input type="file" id="importFile" accept=".xlsx,.xls" style="display:none;">
-        <button class="ops-btn ops-btn-ghost" id="exportBtn">
-          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"/></svg>
-          Export Excel
-        </button>
-        <button class="ops-btn ops-btn-primary" id="addBtn">
-          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v14M5 12h14"/></svg>
-          Add Record
-        </button>
+
+      <div class="ops-card">
+        <table class="ops-table">
+          <thead>
+            <tr>
+              <th>Employee</th>
+              <th>Employee ID</th>
+              <th>Department</th>
+              <th>Date</th>
+              <th class="ops-num">Hours</th>
+              <th class="ops-num">Rate</th>
+              <th class="ops-num">Total</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="otBody">
+            <tr>
+              <td colspan="9" class="ops-empty">Loading…</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
 
-    <div class="ops-card">
-      <table class="ops-table">
-        <thead>
-          <tr>
-            <th>Staff</th><th>Employee ID</th><th>Department</th><th>Date</th>
-            <th class="ops-num">Hours</th><th class="ops-num">Rate</th><th class="ops-num">Total</th>
-            <th>Status</th><th></th>
-          </tr>
-        </thead>
-        <tbody id="otBody">
-          <tr><td colspan="9" class="ops-empty">Loading…</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
+    <!-- Add / Edit modal -->
+    <div class="ops-modal-backdrop" id="otModal">
+      <div class="ops-modal">
+        <div class="ops-modal-head">
+          <h3 id="otModalTitle">Add Overtime Record</h3>
+          <button class="ops-close" data-close>&times;</button>
+        </div>
+        <div class="ops-modal-body">
+          <input type="hidden" id="f_id" />
+          <div class="ops-field">
+            <label>Employee Name *</label>
+            <input
+              type="text"
+              id="f_staff_name"
+              placeholder="e.g. John Smith"
+            />
+          </div>
+          <div class="ops-grid2">
+            <div class="ops-field">
+              <label>Employee ID</label
+              ><input type="text" id="f_employee_id" placeholder="EMP-001" />
+            </div>
+            <div class="ops-field">
+              <label>Department</label
+              ><input type="text" id="f_department" placeholder="MEP" />
+            </div>
+          </div>
+          <div class="ops-grid2">
+            <div class="ops-field">
+              <label>Date *</label><input type="date" id="f_date" />
+            </div>
+            <div class="ops-field">
+              <label>Hours *</label
+              ><input
+                type="number"
+                step="0.25"
+                min="0"
+                id="f_hours"
+                placeholder="3"
+              />
+            </div>
+          </div>
 
-  <!-- Add / Edit modal -->
-  <div class="ops-modal-backdrop" id="otModal">
-    <div class="ops-modal">
-      <div class="ops-modal-head">
-        <h3 id="otModalTitle">Add Overtime Record</h3>
-        <button class="ops-close" data-close>&times;</button>
-      </div>
-      <div class="ops-modal-body">
-        <input type="hidden" id="f_id">
-        <div class="ops-field">
-          <label>Staff Name *</label>
-          <input type="text" id="f_staff_name" placeholder="e.g. John Smith">
-        </div>
-        <div class="ops-grid2">
-          <div class="ops-field"><label>Employee ID</label><input type="text" id="f_employee_id" placeholder="EMP-001"></div>
-          <div class="ops-field"><label>Department</label><input type="text" id="f_department" placeholder="MEP"></div>
-        </div>
-        <div class="ops-grid2">
-          <div class="ops-field"><label>Date *</label><input type="date" id="f_date"></div>
-          <div class="ops-field"><label>Hours *</label><input type="number" step="0.25" min="0" id="f_hours" placeholder="3"></div>
-        </div>
-        <div class="ops-grid2">
-          <div class="ops-field"><label>Rate Per Hour (AED)</label><input type="number" step="0.01" min="0" id="f_rate" placeholder="25"></div>
-          <div class="ops-field"><label>Status</label>
-            <select id="f_status"><option value="recorded">Recorded</option><option value="approved">Approved</option><option value="paid">Paid</option></select>
+          <div class="ops-rate-box">
+            <div class="ops-rate-grid">
+              <div>
+                <div class="ops-rate-lbl">Day type</div>
+                <div class="ops-rate-val" id="f_day_type">—</div>
+              </div>
+              <div>
+                <div class="ops-rate-lbl">Rate (AED/h)</div>
+                <div class="ops-rate-val" id="f_auto_rate">—</div>
+              </div>
+              <div>
+                <div class="ops-rate-lbl">Total</div>
+                <div class="ops-rate-val accent" id="f_total_preview">—</div>
+              </div>
+            </div>
+          </div>
+
+          <label class="ops-check">
+            <input type="checkbox" id="f_override" />
+            Override rate for this record
+          </label>
+          <div class="ops-field" id="overrideRateWrap" style="display: none">
+            <label>Rate Per Hour (AED)</label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              id="f_rate"
+              placeholder="10"
+            />
+          </div>
+
+          <div class="ops-grid2">
+            <div class="ops-field">
+              <label>Status</label>
+              <select id="f_status">
+                <option value="recorded">Recorded</option>
+                <option value="approved">Approved</option>
+                <option value="paid">Paid</option>
+              </select>
+            </div>
+          </div>
+          <div class="ops-field">
+            <label>Reason</label
+            ><textarea
+              id="f_reason"
+              rows="2"
+              placeholder="Reason / notes"
+            ></textarea>
           </div>
         </div>
-        <div class="ops-field"><label>Reason</label><textarea id="f_reason" rows="2" placeholder="Reason / notes"></textarea></div>
-      </div>
-      <div class="ops-modal-foot">
-        <button class="ops-btn ops-btn-ghost" data-close>Cancel</button>
-        <button class="ops-btn ops-btn-primary" id="saveBtn">Save</button>
+        <div class="ops-modal-foot">
+          <button class="ops-btn ops-btn-ghost" data-close>Cancel</button>
+          <button class="ops-btn ops-btn-primary" id="saveBtn">Save</button>
+        </div>
       </div>
     </div>
-  </div>
 
-  <div class="ops-toast" id="toast"></div>
+    <!-- Settings modal -->
+    {% if can_edit_settings %}
+    <div class="ops-modal-backdrop" id="settingsModal">
+      <div class="ops-modal">
+        <div class="ops-modal-head">
+          <h3>Overtime Settings</h3>
+          <button class="ops-close" data-settings-close>&times;</button>
+        </div>
+        <div class="ops-modal-body">
+          <div class="ops-grid2">
+            <div class="ops-field">
+              <label>Weekday rate (AED / hour)</label>
+              <input type="number" step="0.01" min="0" id="s_weekday_rate" />
+            </div>
+            <div class="ops-field">
+              <label>Weekend rate (AED / hour)</label>
+              <input type="number" step="0.01" min="0" id="s_weekend_rate" />
+            </div>
+          </div>
+          <div class="ops-field">
+            <label>Weekend days</label>
+            <div class="day-checks" id="s_weekend_days">
+              <label class="day-check" data-day="0"
+                ><input type="checkbox" value="0" /> Mon</label
+              >
+              <label class="day-check" data-day="1"
+                ><input type="checkbox" value="1" /> Tue</label
+              >
+              <label class="day-check" data-day="2"
+                ><input type="checkbox" value="2" /> Wed</label
+              >
+              <label class="day-check" data-day="3"
+                ><input type="checkbox" value="3" /> Thu</label
+              >
+              <label class="day-check" data-day="4"
+                ><input type="checkbox" value="4" /> Fri</label
+              >
+              <label class="day-check" data-day="5"
+                ><input type="checkbox" value="5" /> Sat</label
+              >
+              <label class="day-check" data-day="6"
+                ><input type="checkbox" value="6" /> Sun</label
+              >
+            </div>
+            <p class="ops-hint">
+              Default UAE weekend is Friday &amp; Saturday. Rates apply
+              automatically from the overtime date.
+            </p>
+            <p class="ops-hint">
+              Changing rates does not recalculate past records — only new and
+              newly saved rows use the updated rates.
+            </p>
+          </div>
+        </div>
+        <div class="ops-modal-foot">
+          <button class="ops-btn ops-btn-ghost" data-settings-close>
+            Cancel
+          </button>
+          <button class="ops-btn ops-btn-primary" id="saveSettingsBtn">
+            Save Settings
+          </button>
+        </div>
+      </div>
+    </div>
+    {% endif %}
 
-  <script src="{{ url_for('static', filename='pwa-install.js') }}" defer></script>
-  <script src="{{ url_for('static', filename='mobile_utils.js') }}" defer></script>
-  <script src="{{ url_for('static', filename='api-client.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
-  <script>
-  (function(){
-    const body = document.getElementById('otBody');
-    const modal = document.getElementById('otModal');
-    let records = [];
+    <div class="ops-toast" id="toast"></div>
 
-    function toast(msg, isErr){ const t=document.getElementById('toast'); t.textContent=msg; t.className='ops-toast show'+(isErr?' err':''); setTimeout(()=>t.className='ops-toast',2600); }
-    function fmtNum(v){ if(v===null||v===undefined||v==='') return '—'; const n=Number(v); return Number.isInteger(n)? n.toString() : n.toFixed(2); }
-    function fmtAED(v){ if(v===null||v===undefined||v==='') return '—'; return 'AED '+Number(v).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); }
-    function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+    <script
+      src="{{ url_for('static', filename='pwa-install.js') }}"
+      defer
+    ></script>
+    <script
+      src="{{ url_for('static', filename='mobile_utils.js') }}"
+      defer
+    ></script>
+    <script src="{{ url_for('static', filename='api-client.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+    <script>
+      (function(){
+      const body = document.getElementById('otBody');
+      const modal = document.getElementById('otModal');
+      const canEditSettings = {{ 'true' if can_edit_settings else 'false' }};
+      let records = [];
+      let settings = { weekday_rate: 10, weekend_rate: 15, weekend_days: [4, 5] };
+      const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-    async function load(){
-      try{
-        const res = await ApiClient.fetch('/operations/api/overtime', { method:'GET' });
-        const data = await res.json();
-        if(!res.ok || !data.success){ throw new Error(data.error||'Failed to load'); }
-        records = data.records || [];
-        render();
-      }catch(e){ body.innerHTML='<tr><td colspan="9" class="ops-empty">'+esc(e.message)+'</td></tr>'; }
-    }
+      function toast(msg, isErr){
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className = 'ops-toast show' + (isErr ? ' err' : '');
+      setTimeout(() => t.className = 'ops-toast', 2600);
+      }
+      function fmtNum(v){
+      if (v === null || v === undefined || v === '') return '—';
+      const n = Number(v);
+      return Number.isInteger(n) ? n.toString() : n.toFixed(2);
+      }
+      function fmtAED(v){
+      if (v === null || v === undefined || v === '') return '—';
+      return 'AED ' + Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+      function esc(s){
+      return (s == null ? '' : String(s)).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+      }
 
-    function render(){
-      if(!records.length){ body.innerHTML='<tr><td colspan="9" class="ops-empty">No overtime records yet. Add one or import from Excel.</td></tr>'; return; }
-      body.innerHTML = records.map(r=>`
-        <tr>
-          <td><strong>${esc(r.staff_name)}</strong></td>
-          <td>${esc(r.employee_id)||'—'}</td>
-          <td>${esc(r.department)||'—'}</td>
-          <td>${esc(r.date)||'—'}</td>
-          <td class="ops-num">${fmtNum(r.hours)}</td>
-          <td class="ops-num">${r.rate_per_hour!=null?fmtAED(r.rate_per_hour):'—'}</td>
-          <td class="ops-num"><strong>${r.total_amount!=null?fmtAED(r.total_amount):'—'}</strong></td>
-          <td><span class="ops-pill">${esc(r.status)}</span></td>
-          <td><div class="row-actions">
-            <button class="ops-btn ops-btn-ghost ops-btn-sm" data-edit="${r.id}">Edit</button>
-            <button class="ops-btn ops-btn-ghost ops-btn-sm" data-del="${r.id}">Delete</button>
-          </div></td>
-        </tr>`).join('');
-    }
+      function parseLocalDate(iso){
+      if (!iso) return null;
+      const parts = String(iso).slice(0, 10).split('-').map(Number);
+      if (parts.length !== 3 || parts.some(isNaN)) return null;
+      return new Date(parts[0], parts[1] - 1, parts[2]);
+      }
 
-    function openModal(rec){
+      function isWeekendDate(d){
+      if (!d) return false;
+      const days = settings.weekend_days || [];
+      // JS getDay(): Sun=0 … Sat=6 — convert to Python weekday Mon=0 … Sun=6
+      const py = (d.getDay() + 6) % 7;
+      return days.map(Number).includes(py);
+      }
+
+      function rateForDate(d){
+      return isWeekendDate(d) ? Number(settings.weekend_rate) : Number(settings.weekday_rate);
+      }
+
+      function dayLabel(d){
+      if (!d) return '—';
+      const name = DAY_NAMES[(d.getDay() + 6) % 7];
+      return isWeekendDate(d) ? name + ' · Weekend' : name + ' · Weekday';
+      }
+
+      function syncRatePreview(){
+      const d = parseLocalDate(document.getElementById('f_date').value);
+      const hours = Number(document.getElementById('f_hours').value);
+      const override = document.getElementById('f_override').checked;
+      const autoRate = d ? rateForDate(d) : null;
+      let rate = autoRate;
+      if (override) {
+      const ov = document.getElementById('f_rate').value;
+      rate = ov === '' ? null : Number(ov);
+      }
+      document.getElementById('f_day_type').textContent = d ? dayLabel(d) : '—';
+      document.getElementById('f_auto_rate').textContent =
+      rate != null && !Number.isNaN(rate) ? fmtAED(rate) : '—';
+      const total = (rate != null && !Number.isNaN(rate) && !Number.isNaN(hours) && document.getElementById('f_hours').value !== '')
+      ? rate * hours : null;
+      document.getElementById('f_total_preview').textContent =
+      total != null ? fmtAED(total) : '—';
+      }
+
+      function setOverrideUI(on){
+      document.getElementById('overrideRateWrap').style.display = on ? '' : 'none';
+      if (on) {
+      const d = parseLocalDate(document.getElementById('f_date').value);
+      if (document.getElementById('f_rate').value === '' && d) {
+      document.getElementById('f_rate').value = rateForDate(d);
+      }
+      }
+      syncRatePreview();
+      }
+
+      async function load(){
+      try {
+      const res = await ApiClient.fetch('/operations/api/overtime', { method: 'GET' });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || 'Failed to load');
+      records = data.records || [];
+      if (data.settings) settings = data.settings;
+      render();
+      } catch (e) {
+      body.innerHTML = '<tr><td colspan="9" class="ops-empty">' + esc(e.message) + '</td></tr>';
+      }
+      }
+
+      function render(){
+      if (!records.length) {
+      body.innerHTML = '<tr><td colspan="9" class="ops-empty">No overtime records yet. Add one or import from Excel.</td></tr>';
+      return;
+      }
+      body.innerHTML = records.map(r => {
+      const d = parseLocalDate(r.date);
+      const weekend = r.day_type === 'weekend' || (d && isWeekendDate(d));
+      const hint = r.weekday_name
+      ? (esc(r.weekday_name) + ' · ' + (weekend ? 'weekend' : 'weekday'))
+      : (d ? dayLabel(d).toLowerCase() : '');
+      return `
+      <tr>
+      <td><strong>${esc(r.staff_name)}</strong></td>
+      <td>${esc(r.employee_id) || '—'}</td>
+      <td>${esc(r.department) || '—'}</td>
+      <td><div class="date-cell">
+      <span class="date-main">${esc(r.date) || '—'}</span>
+      ${hint ? `<span class="date-hint">${hint}</span>` : ''}
+      </div></td>
+      <td class="ops-num">${fmtNum(r.hours)}</td>
+      <td class="ops-num">${r.rate_per_hour != null ? fmtAED(r.rate_per_hour) : '—'}</td>
+      <td class="ops-num"><strong>${r.total_amount != null ? fmtAED(r.total_amount) : '—'}</strong></td>
+      <td><span class="ops-pill">${esc(r.status)}</span></td>
+      <td><div class="row-actions">
+      <button class="ops-btn ops-btn-ghost ops-btn-sm" data-edit="${r.id}">Edit</button>
+      <button class="ops-btn ops-btn-ghost ops-btn-sm" data-del="${r.id}">Delete</button>
+      </div></td>
+      </tr>`;
+      }).join('');
+      }
+
+      function openModal(rec){
       document.getElementById('otModalTitle').textContent = rec ? 'Edit Overtime Record' : 'Add Overtime Record';
       document.getElementById('f_id').value = rec ? rec.id : '';
-      document.getElementById('f_staff_name').value = rec ? (rec.staff_name||'') : '';
-      document.getElementById('f_employee_id').value = rec ? (rec.employee_id||'') : '';
-      document.getElementById('f_department').value = rec ? (rec.department||'') : '';
-      document.getElementById('f_date').value = rec ? (rec.date||'') : new Date().toISOString().slice(0,10);
-      document.getElementById('f_hours').value = rec ? (rec.hours!=null?rec.hours:'') : '';
-      document.getElementById('f_rate').value = rec && rec.rate_per_hour!=null ? rec.rate_per_hour : '';
-      document.getElementById('f_status').value = rec ? (rec.status||'recorded') : 'recorded';
-      document.getElementById('f_reason').value = rec ? (rec.reason||'') : '';
+      document.getElementById('f_staff_name').value = rec ? (rec.staff_name || '') : '';
+      document.getElementById('f_employee_id').value = rec ? (rec.employee_id || '') : '';
+      document.getElementById('f_department').value = rec ? (rec.department || '') : '';
+      document.getElementById('f_date').value = rec ? (rec.date || '') : new Date().toISOString().slice(0, 10);
+      document.getElementById('f_hours').value = rec ? (rec.hours != null ? rec.hours : '') : '';
+      document.getElementById('f_status').value = rec ? (rec.status || 'recorded') : 'recorded';
+      document.getElementById('f_reason').value = rec ? (rec.reason || '') : '';
+
+      // Detect override: stored rate differs from what settings would auto-apply for that date
+      let override = false;
+      if (rec && rec.rate_per_hour != null && rec.date) {
+      const d = parseLocalDate(rec.date);
+      const auto = d ? rateForDate(d) : null;
+      if (auto != null && Math.abs(Number(rec.rate_per_hour) - auto) > 0.001) override = true;
+      }
+      document.getElementById('f_override').checked = override;
+      document.getElementById('f_rate').value = override && rec ? rec.rate_per_hour : '';
+      setOverrideUI(override);
       modal.classList.add('open');
-    }
-    function closeModal(){ modal.classList.remove('open'); }
+      }
+      function closeModal(){ modal.classList.remove('open'); }
 
-    async function save(){
+      async function save(){
       const id = document.getElementById('f_id').value;
+      const override = document.getElementById('f_override').checked;
       const payload = {
-        staff_name: document.getElementById('f_staff_name').value.trim(),
-        employee_id: document.getElementById('f_employee_id').value.trim(),
-        department: document.getElementById('f_department').value.trim(),
-        date: document.getElementById('f_date').value,
-        hours: document.getElementById('f_hours').value,
-        rate_per_hour: document.getElementById('f_rate').value,
-        status: document.getElementById('f_status').value,
-        reason: document.getElementById('f_reason').value.trim(),
+      staff_name: document.getElementById('f_staff_name').value.trim(),
+      employee_id: document.getElementById('f_employee_id').value.trim(),
+      department: document.getElementById('f_department').value.trim(),
+      date: document.getElementById('f_date').value,
+      hours: document.getElementById('f_hours').value,
+      status: document.getElementById('f_status').value,
+      reason: document.getElementById('f_reason').value.trim(),
+      use_auto_rate: !override,
       };
-      if(!payload.staff_name){ toast('Staff name is required', true); return; }
-      if(!payload.date){ toast('Date is required', true); return; }
-      if(payload.hours===''){ toast('Hours is required', true); return; }
-      const url = id ? '/operations/api/overtime/'+id : '/operations/api/overtime';
+      if (override) payload.rate_per_hour = document.getElementById('f_rate').value;
+      if (!payload.staff_name) { toast('Employee name is required', true); return; }
+      if (!payload.date) { toast('Date is required', true); return; }
+      if (payload.hours === '') { toast('Hours is required', true); return; }
+      if (override && payload.rate_per_hour === '') { toast('Override rate is required', true); return; }
+      const url = id ? '/operations/api/overtime/' + id : '/operations/api/overtime';
       const method = id ? 'PUT' : 'POST';
-      try{
-        const res = await ApiClient.fetch(url, { method, headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-        const data = await res.json();
-        if(!res.ok || !data.success){ throw new Error(data.error||'Save failed'); }
-        toast(id?'Record updated':'Record added'); closeModal(); load();
-      }catch(e){ toast(e.message, true); }
-    }
+      try {
+      const res = await ApiClient.fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || 'Save failed');
+      toast(id ? 'Record updated' : 'Record added');
+      closeModal();
+      load();
+      } catch (e) { toast(e.message, true); }
+      }
 
-    async function del(id){
-      if(!confirm('Delete this overtime record?')) return;
-      try{
-        const res = await ApiClient.fetch('/operations/api/overtime/'+id, { method:'DELETE' });
-        const data = await res.json();
-        if(!res.ok || !data.success){ throw new Error(data.error||'Delete failed'); }
-        toast('Record deleted'); load();
-      }catch(e){ toast(e.message, true); }
-    }
+      async function del(id){
+      if (!confirm('Delete this overtime record?')) return;
+      try {
+      const res = await ApiClient.fetch('/operations/api/overtime/' + id, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || 'Delete failed');
+      toast('Record deleted');
+      load();
+      } catch (e) { toast(e.message, true); }
+      }
 
-    async function importExcel(file){
-      const fd = new FormData(); fd.append('file', file);
-      try{
-        const res = await ApiClient.fetch('/operations/api/overtime/import-excel', { method:'POST', body: fd });
-        const data = await res.json();
-        if(!res.ok || !data.success){ throw new Error(data.error||'Import failed'); }
-        let msg = (data.created||0)+' imported';
-        if(data.errors && data.errors.length){ msg += ', '+data.errors.length+' skipped'; }
-        toast(msg);
-        if(data.errors && data.errors.length){ console.warn('Import issues:', data.errors); alert('Some rows were skipped:\n\n'+data.errors.join('\n')); }
-        load();
-      }catch(e){ toast(e.message, true); }
-    }
+      async function importExcel(file){
+      const fd = new FormData();
+      fd.append('file', file);
+      try {
+      const res = await ApiClient.fetch('/operations/api/overtime/import-excel', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || 'Import failed');
+      let msg = (data.created || 0) + ' imported';
+      if (data.errors && data.errors.length) msg += ', ' + data.errors.length + ' skipped';
+      toast(msg);
+      if (data.errors && data.errors.length) {
+      console.warn('Import issues:', data.errors);
+      alert('Some rows were skipped:\n\n' + data.errors.join('\n'));
+      }
+      load();
+      } catch (e) { toast(e.message, true); }
+      }
 
-    document.getElementById('addBtn').addEventListener('click', ()=>openModal(null));
-    document.getElementById('saveBtn').addEventListener('click', save);
-    modal.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click', closeModal));
-    modal.addEventListener('click', e=>{ if(e.target===modal) closeModal(); });
-    document.getElementById('importBtn').addEventListener('click', ()=>document.getElementById('importFile').click());
-    document.getElementById('importFile').addEventListener('change', e=>{ if(e.target.files[0]){ importExcel(e.target.files[0]); e.target.value=''; } });
-    document.getElementById('exportBtn').addEventListener('click', async function(){
-      try{
-        const res = await ApiClient.fetch('/operations/api/overtime/export', { method:'GET' });
-        if(!res.ok){ throw new Error('Export failed'); }
-        const blob = await res.blob();
-        const today = new Date().toISOString().slice(0,10);
-        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download='overtime_export_'+today+'.xlsx';
-        document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
-        toast('Export downloaded');
-      }catch(err){ toast(err.message, true); }
-    });
-    body.addEventListener('click', e=>{
-      const ed = e.target.closest('[data-edit]'); const dl = e.target.closest('[data-del]');
-      if(ed){ const r=records.find(x=>x.id==ed.getAttribute('data-edit')); openModal(r); }
-      if(dl){ del(dl.getAttribute('data-del')); }
-    });
+      /* ── Settings UI ── */
+      function openSettings(){
+      const modalEl = document.getElementById('settingsModal');
+      if (!modalEl) return;
+      document.getElementById('s_weekday_rate').value = settings.weekday_rate;
+      document.getElementById('s_weekend_rate').value = settings.weekend_rate;
+      const selected = new Set((settings.weekend_days || []).map(Number));
+      document.querySelectorAll('#s_weekend_days .day-check').forEach(lab => {
+      const day = Number(lab.dataset.day);
+      const on = selected.has(day);
+      lab.classList.toggle('on', on);
+      lab.querySelector('input').checked = on;
+      });
+      modalEl.classList.add('open');
+      }
+      function closeSettings(){
+      const modalEl = document.getElementById('settingsModal');
+      if (modalEl) modalEl.classList.remove('open');
+      }
+      async function saveSettings(){
+      const weekday_rate = document.getElementById('s_weekday_rate').value;
+      const weekend_rate = document.getElementById('s_weekend_rate').value;
+      const weekend_days = [];
+      document.querySelectorAll('#s_weekend_days .day-check input:checked').forEach(inp => {
+      weekend_days.push(Number(inp.value));
+      });
+      if (!weekend_days.length) { toast('Select at least one weekend day', true); return; }
+      try {
+      const res = await ApiClient.fetch('/operations/api/overtime/settings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ weekday_rate, weekend_rate, weekend_days }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || 'Save failed');
+      settings = data.settings || settings;
+      toast('Settings saved');
+      closeSettings();
+      syncRatePreview();
+      render();
+      } catch (e) { toast(e.message, true); }
+      }
 
-    // Template link needs auth — fetch as blob
-    document.getElementById('tplBtn').addEventListener('click', async function(e){
+      document.getElementById('addBtn').addEventListener('click', () => openModal(null));
+      document.getElementById('saveBtn').addEventListener('click', save);
+      modal.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', closeModal));
+      modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+      document.getElementById('f_date').addEventListener('change', syncRatePreview);
+      document.getElementById('f_date').addEventListener('input', syncRatePreview);
+      document.getElementById('f_hours').addEventListener('input', syncRatePreview);
+      document.getElementById('f_rate').addEventListener('input', syncRatePreview);
+      document.getElementById('f_override').addEventListener('change', e => setOverrideUI(e.target.checked));
+
+      document.getElementById('importBtn').addEventListener('click', () => document.getElementById('importFile').click());
+      document.getElementById('importFile').addEventListener('change', e => {
+      if (e.target.files[0]) { importExcel(e.target.files[0]); e.target.value = ''; }
+      });
+      document.getElementById('exportBtn').addEventListener('click', async function(){
+      try {
+      const res = await ApiClient.fetch('/operations/api/overtime/export', { method: 'GET' });
+      if (!res.ok) throw new Error('Export failed');
+      const blob = await res.blob();
+      const today = new Date().toISOString().slice(0, 10);
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'overtime_export_' + today + '.xlsx';
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(a.href);
+      toast('Export downloaded');
+      } catch (err) { toast(err.message, true); }
+      });
+      body.addEventListener('click', e => {
+      const ed = e.target.closest('[data-edit]');
+      const dl = e.target.closest('[data-del]');
+      if (ed) {
+      const r = records.find(x => x.id == ed.getAttribute('data-edit'));
+      openModal(r);
+      }
+      if (dl) del(dl.getAttribute('data-del'));
+      });
+
+      document.getElementById('tplBtn').addEventListener('click', async function(e){
       e.preventDefault();
-      try{
-        const res = await ApiClient.fetch('/operations/api/overtime/template', { method:'GET' });
-        if(!res.ok){ throw new Error('Could not download template'); }
-        const blob = await res.blob();
-        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download='overtime_import_template.xlsx';
-        document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
-      }catch(err){ toast(err.message, true); }
-    });
+      try {
+      const res = await ApiClient.fetch('/operations/api/overtime/template', { method: 'GET' });
+      if (!res.ok) throw new Error('Could not download template');
+      const blob = await res.blob();
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'overtime_import_template.xlsx';
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(a.href);
+      } catch (err) { toast(err.message, true); }
+      });
 
-    load();
-  })();
-  </script>
-</body>
+      if (canEditSettings) {
+      document.getElementById('settingsBtn').addEventListener('click', openSettings);
+      document.getElementById('saveSettingsBtn').addEventListener('click', saveSettings);
+      const settingsModal = document.getElementById('settingsModal');
+      settingsModal.querySelectorAll('[data-settings-close]').forEach(b =>
+      b.addEventListener('click', closeSettings));
+      settingsModal.addEventListener('click', e => {
+      if (e.target === settingsModal) closeSettings();
+      });
+      document.querySelectorAll('#s_weekend_days .day-check').forEach(lab => {
+      lab.addEventListener('click', e => {
+      e.preventDefault();
+      const inp = lab.querySelector('input');
+      inp.checked = !inp.checked;
+      lab.classList.toggle('on', inp.checked);
+      });
+      });
+      }
+
+      load();
+      })();
+    </script>
+  </body>
 </html>

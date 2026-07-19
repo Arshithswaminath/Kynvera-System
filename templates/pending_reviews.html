@@ -42,27 +42,28 @@
     }
 
     .page-header {
-      background: linear-gradient(135deg, var(--wf-green) 0%, var(--wf-green-mid) 58%, var(--wf-green-deep) 100%);
-      color: white;
+      background: linear-gradient(135deg, #e31b2b 0%, #d21725 48%, #b81420 100%);
+      color: #ffffff;
       padding: 1.25rem 1.5rem 1.35rem;
       border-radius: 18px;
       margin-bottom: 1rem;
       position: relative;
       overflow: hidden;
-      box-shadow: 0 12px 38px rgba(210, 23, 37, 0.22), 0 1px 0 rgba(255,255,255,0.04) inset;
+      border: none;
+      box-shadow: 0 8px 24px rgba(210, 23, 37, 0.28);
     }
     .page-header::before {
       content: '';
-      position: absolute; top: -80px; right: -50px;
-      width: 240px; height: 240px; border-radius: 50%;
-      background: radial-gradient(circle, rgba(255,255,255,0.14) 0%, transparent 70%);
+      position: absolute; top: -70px; right: -40px;
+      width: 220px; height: 220px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,255,255,0.16) 0%, transparent 70%);
       pointer-events: none;
     }
     .page-header::after {
       content: '';
-      position: absolute; bottom: -90px; left: 30%;
-      width: 220px; height: 220px; border-radius: 50%;
-      background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, transparent 70%);
+      position: absolute; bottom: -80px; left: 25%;
+      width: 200px; height: 200px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,255,255,0.07) 0%, transparent 70%);
       pointer-events: none;
     }
     .page-header-top {
@@ -71,27 +72,33 @@
     }
     .back-link {
       display: inline-flex; align-items: center; gap: 0.4rem;
-      color: var(--wf-green-mid) !important; background: rgba(255,255,255,0.97);
+      color: #d21725 !important; background: #ffffff;
       text-decoration: none; font-weight: 600; font-size: 0.78rem;
       padding: 0.4rem 0.8rem; border-radius: 999px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: all 0.18s ease;
+      border: none;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      transition: background 0.18s ease, transform 0.18s ease;
     }
-    .back-link:hover { background: white; transform: translateX(-2px); box-shadow: 0 4px 14px rgba(0,0,0,0.12); }
+    .back-link:hover {
+      background: #fff5f5;
+      transform: translateX(-2px);
+    }
     .role-chip {
       display: inline-flex; align-items: center;
       padding: 0.4rem 0.85rem; border-radius: 999px;
-      background: rgba(255,255,255,0.97); color: var(--wf-green-mid);
+      background: rgba(255,255,255,0.96); color: #d21725;
       font-size: 0.78rem; font-weight: 600; letter-spacing: 0.01em;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      border: none;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
       white-space: nowrap;
     }
     .page-header h1 {
       font-size: 1.55rem; font-weight: 800; margin: 0.85rem 0 0.3rem;
-      letter-spacing: -0.03em; position: relative;
+      letter-spacing: -0.03em; position: relative; color: #ffffff;
     }
     .page-header p {
-      opacity: 0.85; margin: 0; font-size: 0.86rem; position: relative; max-width: 38rem;
-      line-height: 1.5;
+      margin: 0; font-size: 0.86rem; position: relative; max-width: 38rem;
+      line-height: 1.5; color: rgba(255,255,255,0.88);
     }
 
     .queue-panel {
@@ -132,8 +139,8 @@
       font-size: 0.8125rem; font-weight: 600; color: #64748b;
       letter-spacing: 0.01em;
       position: sticky; top: 0; z-index: 2;
-      background: linear-gradient(to bottom, #f1f5f4 78%, rgba(241, 245, 244, 0));
-      border-bottom: 1px solid rgba(148, 163, 184, 0.22);
+      background: transparent;
+      border-bottom: none;
       margin-bottom: 0.15rem;
     }
     .queue-date-header svg {
@@ -527,7 +534,7 @@
   const chevronSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6"/></svg>';
 
   const MODULE_NAMES = {
-    hvac_mep:'HVAC & MEP', civil:'Civil Works', cleaning:'Cleaning',
+    hvac_mep:'Fire Systems', civil:'Civil Works', cleaning:'Cleaning',
     hr_leave:'Leave', hr_leave_application:'Leave',
     hr_duty_resumption:'Duty Resumption', hr_commencement:'Commencement',
     hr_grievance:'Grievance', hr_passport_release:'Passport Release',
@@ -590,8 +597,14 @@
     operations_manager:'Operations Manager', business_development:'Business Development',
     procurement:'Procurement', general_manager:'General Manager',
     hr_manager:'HR Manager', supervisor:'Supervisor', manager:'Supervisor', admin:'Admin',
+    employee:'Employee',
   };
-  function _roleName(d) { return ROLE_MAP[d] || d || 'Reviewer'; }
+  function _roleName(d) {
+    if (!d) return 'Reviewer';
+    const key = String(d).toLowerCase().replace(/\s+/g, '_');
+    if (ROLE_MAP[key]) return ROLE_MAP[key];
+    return String(d).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  }
 
   function _reviewedAt(sub, user) {
     const d = (user && user.designation || '').toLowerCase();

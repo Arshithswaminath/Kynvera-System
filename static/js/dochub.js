@@ -156,11 +156,24 @@
     analytics: 'Analytics',
     archived: 'Archived',
     onboarding: 'Onboarding',
-    contracts: 'Project Contracts',
+    contracts: 'Contracts',
     policies: 'Policies',
-    manuals: 'User Manuals',
-    reports: 'Reports'
+    manuals: 'Manuals',
+    reports: 'Reports',
+    training: 'Training',
+    templates: 'Templates'
   };
+
+  const COLLECTION_FOLDERS = [
+    'onboarding',
+    'contracts',
+    'policies',
+    'manuals',
+    'reports',
+    'training',
+    'templates',
+    'internal'
+  ];
 
   let docs = [];
   let dhIsAdmin = false;
@@ -171,6 +184,12 @@
   let me = null;
 
   let filterBucket = 'all';
+  /** Active collection card view slug (null when browsing the home library). */
+  let collectionViewTag = null;
+  /** Active status filter tab within the collection table (all | published | draft | review | archived). */
+  let collectionStatusTab = 'all';
+  /** Collection table sort key (recent | name). */
+  let collectionSort = 'recent';
   /** Sidebar buckets manually collapsed while filterBucket still matches (click row again to close). */
   let sbCollapsedBuckets = new Set();
   let searchQ = '';
@@ -996,7 +1015,7 @@
       if (fb === 'starred' && !d.starred) return false;
       if (fb === 'recent' && (d.dateTs || 0) < recentCutoff) return false;
       if (
-        ['onboarding', 'contracts', 'policies', 'manuals', 'reports'].includes(fb)
+        ['onboarding', 'contracts', 'policies', 'manuals', 'reports', 'training', 'templates'].includes(fb)
       ) {
         if ((d.tag || '').toLowerCase() !== fb) return false;
       }
@@ -1032,7 +1051,7 @@
   function docsForNavBucket(bucket) {
     const now = Math.floor(Date.now() / 1000);
     const recentCutoff = now - 30 * 24 * 60 * 60;
-    const catBuckets = ['onboarding', 'contracts', 'policies', 'manuals', 'reports', 'qhse', 'training', 'templates'];
+    const catBuckets = ['onboarding', 'contracts', 'policies', 'manuals', 'reports', 'training', 'templates'];
     return docs.filter(d => {
       if (bucket === 'published' && d.status !== 'published') return false;
       if (bucket === 'draft' && d.status !== 'draft') return false;
@@ -1055,9 +1074,15 @@
     const q = String(searchQ || '').trim();
     const viewerOn = document.getElementById('dhViewerState');
     const editorOn = document.getElementById('dhEditorState');
+    const collOn = document.getElementById('dhCollectionState');
     const chromeOpen =
       (viewerOn && viewerOn.style.display === 'flex') ||
       (editorOn && editorOn.style.display === 'flex');
+    const collectionOpen =
+      collOn &&
+      collOn.style.display === 'flex' &&
+      collectionViewTag &&
+      isCollectionFolder(collectionViewTag);
 
     if (currentDocId != null || chromeOpen) {
       wrap.hidden = true;
@@ -1068,12 +1093,20 @@
     if (!q) {
       wrap.hidden = true;
       wrap.innerHTML = '';
-      empty.style.display = 'flex';
+      if (collectionViewTag && isCollectionFolder(collectionViewTag) && !currentDocId) {
+        empty.style.display = 'none';
+        setCollectionPaneVisible(true);
+        renderCollectionCards(collectionViewTag);
+      } else if (!collectionOpen) {
+        empty.style.display = 'flex';
+        setCollectionPaneVisible(false);
+      }
       return;
     }
 
     const list = visibleDocs();
     empty.style.display = 'none';
+    setCollectionPaneVisible(false);
     wrap.hidden = false;
 
     const n = list.length;
@@ -1112,15 +1145,27 @@
 
   function renderSbDocRowHtml(doc) {
     const sel = currentDocId === doc.id ? 'selected' : '';
+    const starred = !!doc.starred;
     return `<div class="sb-doc-item ${sel}" data-doc-id="${doc.id}">
       <span class="sb-doc-title">${esc(doc.name)}</span>
+      <button type="button" class="dh-star-btn ${starred ? 'is-starred' : ''}" data-star-id="${doc.id}" title="${starred ? 'Unstar' : 'Star'}" aria-label="${starred ? 'Unstar document' : 'Star document'}">${starred ? '★' : '☆'}</button>
     </div>`;
   }
 
   function bindSbDocList(el) {
     if (!el) return;
     el.querySelectorAll('.sb-doc-item').forEach(row => {
-      row.onclick = () => selectDoc(Number(row.dataset.docId));
+      row.onclick = e => {
+        if (e.target.closest('.dh-star-btn')) return;
+        selectDoc(Number(row.dataset.docId));
+      };
+    });
+    el.querySelectorAll('.dh-star-btn').forEach(btn => {
+      btn.onclick = e => {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleStarById(Number(btn.dataset.starId));
+      };
     });
   }
 
@@ -1160,7 +1205,6 @@
     renderSbDocList('dhSbDocsPolicies', docsForNavBucket('policies'));
     renderSbDocList('dhSbDocsManuals', docsForNavBucket('manuals'));
     renderSbDocList('dhSbDocsReports', docsForNavBucket('reports'));
-    renderSbDocList('dhSbDocsQhse', docsForNavBucket('qhse'));
     renderSbDocList('dhSbDocsTraining', docsForNavBucket('training'));
     renderSbDocList('dhSbDocsTemplates', docsForNavBucket('templates'));
     renderSbDocList('dhSbDocsOther', visibleDocs());
@@ -1180,7 +1224,6 @@
     setCount('dhSbCountPolicies', docsForNavBucket('policies').length);
     setCount('dhSbCountManuals', docsForNavBucket('manuals').length);
     setCount('dhSbCountReports', docsForNavBucket('reports').length);
-    setCount('dhSbCountQhse', docsForNavBucket('qhse').length);
     setCount('dhSbCountTraining', docsForNavBucket('training').length);
     setCount('dhSbCountTemplates', docsForNavBucket('templates').length);
     setCount('dhSbOtherCount', visibleDocs().length);
@@ -1188,8 +1231,27 @@
     const osl = document.getElementById('dhSbOtherSectionLabel');
     if (osl) osl.textContent = panelTitle();
 
+    // Update folder grid card counts on the home screen
+    ['onboarding', 'contracts', 'policies', 'manuals', 'reports', 'training', 'templates', 'internal'].forEach(tag => {
+      const el = document.getElementById('dhFolderCount-' + tag);
+      if (!el) return;
+      const n = docs.filter(d => (d.tag || '').toLowerCase() === tag.toLowerCase() && d.status !== 'archived').length;
+      el.textContent = n + ' doc' + (n === 1 ? '' : 's');
+    });
+
     syncSbBucketOpenState();
     syncMainSearchPanel();
+
+    const coll = document.getElementById('dhCollectionState');
+    if (
+      collectionViewTag &&
+      isCollectionFolder(collectionViewTag) &&
+      coll &&
+      coll.style.display === 'flex' &&
+      currentDocId == null
+    ) {
+      renderCollectionCards(collectionViewTag);
+    }
   }
 
   function syncTabStyles() {
@@ -1213,34 +1275,400 @@
   }
 
   window.dhSelectSbBucket = function (fb, headEl) {
+    const tag = normalizeFolderTag(fb);
+    if (isCollectionFolder(tag)) {
+      const coll = document.getElementById('dhCollectionState');
+      const onCollection =
+        collectionViewTag === tag &&
+        !currentDocId &&
+        coll &&
+        coll.style.display === 'flex';
+      if (onCollection) {
+        if (sbCollapsedBuckets.has(tag)) {
+          sbCollapsedBuckets.delete(tag);
+        } else {
+          sbCollapsedBuckets.add(tag);
+        }
+        syncSbBucketOpenState();
+        return;
+      }
+      filterDocs(tag, headEl);
+      return;
+    }
     if (
-      filterBucket === fb &&
-      SB_NAV_BUCKETS.includes(fb) &&
+      filterBucket === tag &&
+      SB_NAV_BUCKETS.includes(tag) &&
       !isOtherFilter()
     ) {
-      if (sbCollapsedBuckets.has(fb)) {
-        sbCollapsedBuckets.delete(fb);
+      if (sbCollapsedBuckets.has(tag)) {
+        sbCollapsedBuckets.delete(tag);
       } else {
-        sbCollapsedBuckets.add(fb);
+        sbCollapsedBuckets.add(tag);
       }
       syncSbBucketOpenState();
       return;
     }
-    filterDocs(fb, headEl);
+    filterDocs(tag, headEl);
   };
+
+  function setTopBackVisible(visible) {
+    const btn = document.getElementById('dhTopBackBtn');
+    if (btn) btn.hidden = !visible;
+  }
+
+  function isCollectionFolder(tag) {
+    return COLLECTION_FOLDERS.includes(String(tag || '').toLowerCase());
+  }
+
+  function normalizeFolderTag(tag) {
+    const t = String(tag || '').trim();
+    if (t === 'Internal') return 'internal';
+    return t.toLowerCase();
+  }
+
+  function collectionLabel(tag) {
+    const fb = normalizeFolderTag(tag);
+    return LABELS[fb] || fb.charAt(0).toUpperCase() + fb.slice(1);
+  }
+
+  function docsForCollection(tag, includeArchived) {
+    const fb = normalizeFolderTag(tag);
+    return docs.filter(d => {
+      if (!includeArchived && (d.status || '') === 'archived') return false;
+      return (d.tag || '').toLowerCase() === fb;
+    });
+  }
+
+  function readFolderFromUrl() {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const folder = normalizeFolderTag(params.get('folder') || '');
+      return isCollectionFolder(folder) ? folder : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function syncFolderUrl(tag, replace) {
+    try {
+      const url = new URL(window.location.href);
+      if (tag && isCollectionFolder(tag)) {
+        url.searchParams.set('folder', normalizeFolderTag(tag));
+      } else {
+        url.searchParams.delete('folder');
+      }
+      const next = url.pathname + url.search + url.hash;
+      if (replace) {
+        history.replaceState({ dochubFolder: tag || null }, '', next);
+      } else {
+        history.pushState({ dochubFolder: tag || null }, '', next);
+      }
+    } catch (_) {
+      /* ignore */
+    }
+  }
+
+  function setCollectionPaneVisible(show) {
+    const el = document.getElementById('dhCollectionState');
+    if (!el) return;
+    if (show) {
+      el.hidden = false;
+      el.style.display = 'flex';
+    } else {
+      el.style.display = 'none';
+      el.hidden = true;
+    }
+  }
+
+  function hideMainContentPanes() {
+    const empty = document.getElementById('dhEmptyState');
+    if (empty) empty.style.display = 'none';
+    setCollectionPaneVisible(false);
+    const viewer = document.getElementById('dhViewerState');
+    if (viewer) viewer.style.display = 'none';
+    const editor = document.getElementById('dhEditorState');
+    if (editor) editor.style.display = 'none';
+  }
+
+  function fileTypeKind(doc) {
+    if ((doc.doc_type || '') === 'content') return 'content';
+    const t = String(doc.type || doc.filename || '')
+      .toLowerCase()
+      .replace(/^\./, '');
+    if (t.includes('pdf')) return 'pdf';
+    if (
+      t.includes('doc') ||
+      t.includes('word') ||
+      t === 'rtf' ||
+      t === 'odt'
+    ) {
+      return 'doc';
+    }
+    if (
+      t.includes('xls') ||
+      t.includes('csv') ||
+      t.includes('sheet') ||
+      t === 'ods'
+    ) {
+      return 'xls';
+    }
+    if (
+      t.includes('png') ||
+      t.includes('jpg') ||
+      t.includes('jpeg') ||
+      t.includes('gif') ||
+      t.includes('webp') ||
+      t.includes('svg') ||
+      t.includes('image')
+    ) {
+      return 'img';
+    }
+    return 'file';
+  }
+
+  function fileTypeExtLabel(doc, kind) {
+    if (kind === 'content') return 'DOC';
+    const raw = String(doc.type || '').trim();
+    if (raw) return raw.replace(/^\./, '').slice(0, 4).toUpperCase();
+    const name = String(doc.filename || '');
+    const dot = name.lastIndexOf('.');
+    if (dot >= 0) return name.slice(dot + 1, dot + 5).toUpperCase();
+    return 'FILE';
+  }
+
+  function statusChipClass(status) {
+    const s = (status || 'draft').toLowerCase();
+    if (s === 'published') return 'dh-doc-card-status--published';
+    if (s === 'review') return 'dh-doc-card-status--review';
+    if (s === 'archived') return 'dh-doc-card-status--archived';
+    return 'dh-doc-card-status--draft';
+  }
+
+  function statusChipLabel(status) {
+    const s = (status || 'draft').toLowerCase();
+    if (s === 'published') return 'Published';
+    if (s === 'review') return 'In Review';
+    if (s === 'archived') return 'Archived';
+    return 'Draft';
+  }
+
+  function docCardIconSvg(kind) {
+    if (kind === 'content') {
+      return `<svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>`;
+    }
+    if (kind === 'img') {
+      return `<svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0 0 22.5 18.75V5.25A2.25 2.25 0 0 0 20.25 3H3.75A2.25 2.25 0 0 0 1.5 5.25v13.5A2.25 2.25 0 0 0 3.75 21Z"/></svg>`;
+    }
+    return `<svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>`;
+  }
+
+  function initialsFor(name) {
+    const parts = String(name || '')
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+    if (!parts.length) return '?';
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+
+  function renderDocRowHtml(doc, folderTag) {
+    const kind = fileTypeKind(doc);
+    const ext = fileTypeExtLabel(doc, kind);
+    const owner = doc.author || 'Unknown';
+    const size = doc.size && doc.size !== '—' ? esc(doc.size) : '—';
+    const label = collectionLabel(folderTag);
+    const typeLabel =
+      kind === 'content' ? 'DocHub document' : esc(ext) + ' file';
+    const starred = !!doc.starred;
+    return `<tr class="dh-coll-row" data-doc-id="${doc.id}">
+      <td class="dh-coll-td-star">
+        <button type="button" class="dh-star-btn ${starred ? 'is-starred' : ''}" data-star-id="${doc.id}" title="${starred ? 'Unstar' : 'Star'}" aria-label="${starred ? 'Unstar document' : 'Star document'}">${starred ? '★' : '☆'}</button>
+      </td>
+      <td class="dh-coll-td-name">
+        <span class="dh-coll-file dh-coll-file--${kind}" aria-hidden="true">
+          ${docCardIconSvg(kind)}
+        </span>
+        <span class="dh-coll-name-stack">
+          <span class="dh-coll-name-text">${esc(doc.name || 'Untitled')}</span>
+          <span class="dh-coll-name-meta">
+            <span>${typeLabel}</span>
+            <span class="dh-coll-name-dot">·</span>
+            <span>DocHub › ${esc(label)}</span>
+          </span>
+        </span>
+      </td>
+      <td class="dh-coll-td-owner">
+        <span class="dh-coll-avatar">${esc(initialsFor(owner))}</span>
+        <span class="dh-coll-owner-text">${esc(owner)}</span>
+      </td>
+      <td class="dh-coll-td-date">${esc(doc.date || '—')}</td>
+      <td class="dh-coll-td-size">${size}</td>
+      <td class="dh-coll-td-status">
+        <span class="dh-coll-status ${statusChipClass(doc.status)}">${esc(statusChipLabel(doc.status))}</span>
+      </td>
+    </tr>`;
+  }
+
+  function sortCollectionDocs(list) {
+    const arr = list.slice();
+    if (collectionSort === 'name') {
+      arr.sort((a, b) =>
+        String(a.name || '').localeCompare(String(b.name || ''), undefined, {
+          sensitivity: 'base'
+        })
+      );
+    } else {
+      arr.sort((a, b) => (b.dateTs || 0) - (a.dateTs || 0));
+    }
+    return arr;
+  }
+
+  function renderCollectionCards(tag) {
+    const fb = normalizeFolderTag(tag);
+    const label = collectionLabel(fb);
+    // Full set for this collection (includes archived; used for counts & Archived tab).
+    const fullList = docsForCollection(fb, true);
+    const activeList = fullList.filter(d => (d.status || '') !== 'archived');
+
+    const titleEl = document.getElementById('dhCollectionTitle');
+    const subEl = document.getElementById('dhCollectionSub');
+    if (titleEl) titleEl.textContent = label;
+    if (subEl) {
+      const n = activeList.length;
+      subEl.textContent =
+        n === 1
+          ? '1 document in this collection'
+          : `${n} documents in this collection`;
+    }
+
+    // Tab counts.
+    const counts = {
+      all: activeList.length,
+      published: activeList.filter(d => (d.status || '') === 'published').length,
+      draft: activeList.filter(d => (d.status || 'draft') === 'draft').length,
+      review: activeList.filter(d => (d.status || '') === 'review').length,
+      archived: fullList.filter(d => (d.status || '') === 'archived').length
+    };
+    document.querySelectorAll('#dhCollTabs .dh-coll-tab-count').forEach(el => {
+      const key = el.getAttribute('data-count');
+      el.textContent = counts[key] != null ? String(counts[key]) : '';
+    });
+    document.querySelectorAll('#dhCollTabs .dh-coll-tab').forEach(btn => {
+      btn.classList.toggle(
+        'active',
+        btn.getAttribute('data-status') === collectionStatusTab
+      );
+    });
+
+    // Rows: filter by active status tab.
+    let rows;
+    if (collectionStatusTab === 'archived') {
+      rows = fullList.filter(d => (d.status || '') === 'archived');
+    } else if (collectionStatusTab === 'all') {
+      rows = activeList;
+    } else if (collectionStatusTab === 'draft') {
+      rows = activeList.filter(d => (d.status || 'draft') === 'draft');
+    } else {
+      rows = activeList.filter(d => (d.status || '') === collectionStatusTab);
+    }
+    rows = sortCollectionDocs(rows);
+
+    const tbody = document.getElementById('dhCollectionRows');
+    const tableWrap = document.getElementById('dhCollTableWrap');
+    if (tbody) {
+      tbody.innerHTML = rows.map(d => renderDocRowHtml(d, fb)).join('');
+      tbody.querySelectorAll('.dh-coll-row[data-doc-id]').forEach(row => {
+        row.onclick = e => {
+          if (e.target.closest('.dh-star-btn')) return;
+          selectDoc(Number(row.dataset.docId));
+        };
+      });
+      tbody.querySelectorAll('.dh-star-btn').forEach(btn => {
+        btn.onclick = e => {
+          e.preventDefault();
+          e.stopPropagation();
+          toggleStarById(Number(btn.dataset.starId));
+        };
+      });
+    }
+
+    const countEl = document.getElementById('dhCollCount');
+    if (countEl) {
+      const n = rows.length;
+      countEl.textContent = n === 1 ? '1 document' : `${n} documents`;
+    }
+
+    const tabs = document.getElementById('dhCollTabs');
+    const toolbar = document.querySelector('#dhCollectionState .dh-coll-toolbar');
+    const empty = document.getElementById('dhCollectionEmpty');
+    // Collection has zero docs at all -> show the empty panel, hide the chrome.
+    const collectionEmpty = fullList.length === 0;
+    if (empty) empty.hidden = !collectionEmpty;
+    if (tabs) tabs.style.display = collectionEmpty ? 'none' : '';
+    if (toolbar) toolbar.style.display = collectionEmpty ? 'none' : '';
+    if (tableWrap) tableWrap.style.display = collectionEmpty ? 'none' : '';
+
+    // Sync sort select to current state.
+    const sortSel = document.getElementById('dhCollSort');
+    if (sortSel && sortSel.value !== collectionSort) sortSel.value = collectionSort;
+  }
+
+  function syncSidebarForFolder(fb) {
+    document.querySelectorAll('.sb-nav-item').forEach(e => e.classList.remove('active'));
+    document.querySelectorAll('.dh-sb-bucket-head').forEach(e => e.classList.remove('active'));
+    const head = document.querySelector(`.dh-sb-bucket-head[data-filter="${fb}"]`);
+    if (head) {
+      head.classList.add('active');
+      ensureCategoriesGroupOpen();
+    } else {
+      const nav = document.querySelector(`.sb-nav-item[data-filter="${fb}"]`);
+      if (nav) nav.classList.add('active');
+    }
+  }
+
+  function showCollectionView(tag, opts) {
+    const options = opts || {};
+    const fb = normalizeFolderTag(tag);
+    if (!isCollectionFolder(fb)) return;
+    revokeUploadPreviewUrl();
+    currentDocId = null;
+    viewMode = 'view';
+    if (collectionViewTag !== fb) {
+      sbCollapsedBuckets.clear();
+      collectionStatusTab = 'all';
+    }
+    collectionViewTag = fb;
+    filterBucket = fb;
+    setDocInfoWrapsVisible(false);
+    // Collection page has its own "Back to library" — hide the topbar Back.
+    setTopBackVisible(false);
+    const vcEmpty = document.getElementById('dhViewerContent');
+    if (vcEmpty) vcEmpty.classList.remove('dh-upload-preview-active');
+    hideMainContentPanes();
+    setCollectionPaneVisible(true);
+    syncSidebarForFolder(fb);
+    renderCollectionCards(fb);
+    renderDocList();
+    syncTabStyles();
+    if (options.updateUrl !== false) {
+      syncFolderUrl(fb, !!options.replace);
+    }
+  }
 
   function showEmpty() {
     revokeUploadPreviewUrl();
     currentDocId = null;
     viewMode = 'view';
+    collectionViewTag = null;
     setDocInfoWrapsVisible(false);
+    setTopBackVisible(false);
     const vcEmpty = document.getElementById('dhViewerContent');
     if (vcEmpty) {
       vcEmpty.classList.remove('dh-upload-preview-active');
     }
+    hideMainContentPanes();
     document.getElementById('dhEmptyState').style.display = 'flex';
-    document.getElementById('dhViewerState').style.display = 'none';
-    document.getElementById('dhEditorState').style.display = 'none';
     renderDocList();
   }
 
@@ -1464,10 +1892,10 @@
     const fe = document.getElementById('dhRefDocsFooterEditor');
     if (fv) fv.style.display = 'none';
     if (fe) fe.style.display = 'none';
-    document.getElementById('dhEmptyState').style.display = 'none';
-    document.getElementById('dhEditorState').style.display = 'none';
+    hideMainContentPanes();
     document.getElementById('dhViewerState').style.display = 'flex';
     setDocInfoWrapsVisible(true);
+    setTopBackVisible(true);
     setViewerModeTabsForUpload(true);
 
     document.getElementById('dhViewDocTitle').textContent = doc.name;
@@ -1498,10 +1926,10 @@
     revokeUploadPreviewUrl();
     const vcCo = document.getElementById('dhViewerContent');
     if (vcCo) vcCo.classList.remove('dh-upload-preview-active');
-    document.getElementById('dhEmptyState').style.display = 'none';
-    document.getElementById('dhEditorState').style.display = 'none';
+    hideMainContentPanes();
     document.getElementById('dhViewerState').style.display = 'flex';
     setDocInfoWrapsVisible(true);
+    setTopBackVisible(true);
     setViewerModeTabsForUpload(false);
 
     document.getElementById('dhViewDocTitle').textContent = doc.name;
@@ -1554,10 +1982,10 @@
       return;
     }
     revokeUploadPreviewUrl();
-    document.getElementById('dhEmptyState').style.display = 'none';
-    document.getElementById('dhViewerState').style.display = 'none';
+    hideMainContentPanes();
     document.getElementById('dhEditorState').style.display = 'flex';
     setDocInfoWrapsVisible(true);
+    setTopBackVisible(true);
     document.getElementById('dhDocTitleInput').value = doc.name || '';
     const ec = document.getElementById('dhEditorContent');
     ec.innerHTML = doc.content || '<p></p>';
@@ -1674,15 +2102,32 @@
   }
 
   async function toggleStarById(id) {
-    const doc = docs.find(d => d.id === id);
+    const doc = docs.find(d => Number(d.id) === Number(id));
     if (!doc) return;
     const next = !doc.starred;
-    const ok = await patchDoc(id, { starred: next });
-    if (!ok) return;
-    const d = docs.find(x => x.id === id);
+    const r = await apiFetch('/api/docs/' + id + '/star', {
+      method: next ? 'POST' : 'DELETE',
+      headers: jsonHeaders()
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || j.success === false) {
+      toast(j.error || j.message || 'Could not update star', true);
+      return;
+    }
+    const updated = j.document || j.data?.document;
+    if (updated) {
+      const idx = docs.findIndex(d => Number(d.id) === Number(id));
+      if (idx >= 0) docs[idx] = { ...docs[idx], ...updated };
+    } else {
+      doc.starred = next;
+    }
     updateKpis();
     renderDocList();
-    if (currentDocId === id && d) {
+    if (collectionViewTag && isCollectionFolder(collectionViewTag)) {
+      renderCollectionCards(collectionViewTag);
+    }
+    const d = docs.find(x => Number(x.id) === Number(id));
+    if (currentDocId != null && Number(currentDocId) === Number(id) && d) {
       const star = document.getElementById('dhViewerStar');
       if (star) star.textContent = d.starred ? '★ Starred' : '☆ Star';
     }
@@ -1711,8 +2156,13 @@
     toast('Document deleted');
     currentDocId = null;
     dirty = false;
+    const returnFolder = collectionViewTag || readFolderFromUrl();
     await loadDocs(false);
-    showEmpty();
+    if (returnFolder && isCollectionFolder(returnFolder)) {
+      showCollectionView(returnFolder, { updateUrl: true, replace: true });
+    } else {
+      showEmpty();
+    }
   }
 
   async function saveDoc() {
@@ -1754,8 +2204,38 @@
     markDirty();
   }
 
+  window.dhGoToFolder = function (tag) {
+    showCollectionView(tag, { updateUrl: true });
+  };
+
+  window.dhSetCollectionTab = function (status, el) {
+    let next = status || 'all';
+    if (!dhIsAdmin && (next === 'draft' || next === 'review' || next === 'archived')) {
+      next = 'all';
+    }
+    collectionStatusTab = next;
+    if (el) {
+      document.querySelectorAll('#dhCollTabs .dh-coll-tab').forEach(b => b.classList.remove('active'));
+      el.classList.add('active');
+    } else {
+      document.querySelectorAll('#dhCollTabs .dh-coll-tab').forEach(b => {
+        b.classList.toggle('active', b.getAttribute('data-status') === collectionStatusTab);
+      });
+    }
+    if (collectionViewTag && isCollectionFolder(collectionViewTag)) {
+      renderCollectionCards(collectionViewTag);
+    }
+  };
+
+  window.dhSetCollectionSort = function (value) {
+    collectionSort = value === 'name' ? 'name' : 'recent';
+    if (collectionViewTag && isCollectionFolder(collectionViewTag)) {
+      renderCollectionCards(collectionViewTag);
+    }
+  };
+
   function applyWriteUI() {
-    ['dhNewDocBtn', 'dhUploadBtn', 'dhEmptyNewBtn', 'dhEmptyUploadBtn'].forEach(id => {
+    ['dhNewDocBtn', 'dhUploadBtn', 'dhSbNewBtn', 'dhSbUploadBtn', 'dhSbTemplateBtn'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.style.display = dhCanEdit ? '' : 'none';
     });
@@ -1772,6 +2252,23 @@
     });
     const etb = document.querySelector('#dhEditorState .editor-toolbar');
     if (etb) etb.style.display = dhCanEdit ? '' : 'none';
+  }
+
+  /** Non-admins only see published docs — hide draft / review / archive chrome. */
+  function applyReaderChrome() {
+    document.body.classList.toggle('dh-reader-mode', !dhIsAdmin);
+    if (!dhIsAdmin) {
+      if (filterBucket === 'draft' || filterBucket === 'review' || filterBucket === 'archived') {
+        filterBucket = 'all';
+      }
+      if (
+        collectionStatusTab === 'draft' ||
+        collectionStatusTab === 'review' ||
+        collectionStatusTab === 'archived'
+      ) {
+        collectionStatusTab = 'all';
+      }
+    }
   }
 
   async function loadDocs(selectAfter) {
@@ -1816,6 +2313,7 @@
        (e.g. 401 from session/JWT edge cases on deploy). Otherwise buttons stay display:none. */
     applyWriteUI();
     applyEditChrome();
+    applyReaderChrome();
 
     const r = await apiFetch('/api/docs', { headers: jsonHeaders() });
     const j = await r.json().catch(() => ({}));
@@ -1839,10 +2337,16 @@
     if (selectAfter && currentDocId != null && docs.find(d => Number(d.id) === Number(currentDocId))) {
       selectDoc(currentDocId);
     } else if (!currentDocId) {
-      setDocInfoWrapsVisible(false);
-      document.getElementById('dhEmptyState').style.display = 'flex';
-      document.getElementById('dhViewerState').style.display = 'none';
-      document.getElementById('dhEditorState').style.display = 'none';
+      const folder = readFolderFromUrl() || collectionViewTag;
+      if (folder && isCollectionFolder(folder)) {
+        showCollectionView(folder, { updateUrl: false });
+      } else {
+        setDocInfoWrapsVisible(false);
+        hideMainContentPanes();
+        document.getElementById('dhEmptyState').style.display = 'flex';
+      }
+    } else if (collectionViewTag && isCollectionFolder(collectionViewTag)) {
+      renderCollectionCards(collectionViewTag);
     }
     syncTabStyles();
   }
@@ -2160,8 +2664,15 @@
     document.querySelectorAll('.dh-sb-bucket-head').forEach(e => e.classList.remove('active'));
     sbCollapsedBuckets.clear();
     filterBucket = 'all';
+    collectionViewTag = null;
+    syncFolderUrl(null, true);
     const head = document.getElementById('dhSbHeadAll');
     if (head) head.classList.add('active');
+    if (!currentDocId) {
+      hideMainContentPanes();
+      document.getElementById('dhEmptyState').style.display = 'flex';
+      setTopBackVisible(false);
+    }
     switchShell();
     renderDocList();
     syncTabStyles();
@@ -2171,6 +2682,13 @@
     if (tab === 'library') {
       sbCollapsedBuckets.clear();
       filterBucket = 'all';
+      collectionViewTag = null;
+      syncFolderUrl(null, true);
+      if (!currentDocId) {
+        hideMainContentPanes();
+        document.getElementById('dhEmptyState').style.display = 'flex';
+        setTopBackVisible(false);
+      }
       switchShell();
       renderDocList();
       syncTabStyles();
@@ -2182,10 +2700,17 @@
     }
 
     sbCollapsedBuckets.clear();
+    collectionViewTag = null;
+    syncFolderUrl(null, true);
     if (tab === 'published') filterBucket = 'published';
     else if (tab === 'starred') filterBucket = 'starred';
     else if (tab === 'recent') filterBucket = 'recent';
 
+    if (!currentDocId) {
+      hideMainContentPanes();
+      document.getElementById('dhEmptyState').style.display = 'flex';
+      setTopBackVisible(false);
+    }
     switchShell();
     renderDocList();
     syncTabStyles();
@@ -2205,16 +2730,34 @@
   }
 
   window.filterDocs = function (f, el) {
-    if (filterBucket !== f) {
+    let fb = normalizeFolderTag(f);
+    if (!dhIsAdmin && (fb === 'draft' || fb === 'review' || fb === 'archived')) {
+      fb = 'all';
+    }
+    if (isCollectionFolder(fb)) {
+      if (el) {
+        document.querySelectorAll('.sb-nav-item').forEach(e => e.classList.remove('active'));
+        document.querySelectorAll('.dh-sb-bucket-head').forEach(e => e.classList.remove('active'));
+        el.classList.add('active');
+      }
+      showCollectionView(fb, { updateUrl: true });
+      return;
+    }
+    if (filterBucket !== fb) {
       sbCollapsedBuckets.clear();
     }
-    filterBucket = f;
+    filterBucket = fb;
+    collectionViewTag = null;
+    syncFolderUrl(null, true);
     switchShell();
     document.querySelectorAll('.sb-nav-item').forEach(e => e.classList.remove('active'));
     document.querySelectorAll('.dh-sb-bucket-head').forEach(e => e.classList.remove('active'));
     if (el) el.classList.add('active');
-    if (['onboarding', 'contracts', 'policies', 'manuals', 'reports'].includes(f)) {
-      ensureCategoriesGroupOpen();
+    if (!currentDocId) {
+      hideMainContentPanes();
+      document.getElementById('dhEmptyState').style.display = 'flex';
+      setTopBackVisible(false);
+      setDocInfoWrapsVisible(false);
     }
     renderDocList();
     syncTabStyles();
@@ -2446,6 +2989,37 @@
     searchQ = String(q || '').trim();
     renderDocList();
   };
+  window.dhBackToLibrary = function () {
+    if (dirty && !confirm('Discard unsaved changes?')) return;
+    dirty = false;
+    closeDocInfoDropdowns();
+    searchQ = '';
+    const searchInput = document.getElementById('dhSearch');
+    if (searchInput) searchInput.value = '';
+    sbCollapsedBuckets.clear();
+    filterBucket = 'all';
+    collectionViewTag = null;
+    syncFolderUrl(null, true);
+    document.querySelectorAll('.sb-nav-item').forEach(e => e.classList.remove('active'));
+    document.querySelectorAll('.dh-sb-bucket-head').forEach(e => e.classList.remove('active'));
+    const head = document.getElementById('dhSbHeadAll');
+    if (head) head.classList.add('active');
+    showEmpty();
+    syncTabStyles();
+  };
+
+  /** Top-bar back: return to collection when one is open, otherwise to library home. */
+  window.dhTopBack = function () {
+    if (dirty && !confirm('Discard unsaved changes?')) return;
+    dirty = false;
+    closeDocInfoDropdowns();
+    if (collectionViewTag && isCollectionFolder(collectionViewTag)) {
+      showCollectionView(collectionViewTag, { updateUrl: true, replace: true });
+      return;
+    }
+    dhBackToLibrary();
+  };
+
   window.toggleStar = function () {
     if (currentDocId != null) toggleStarById(currentDocId);
   };
@@ -2493,8 +3067,8 @@
     };
     bind('dhNewDocBtn', openNewModal);
     bind('dhUploadBtn', openUploadModal);
-    bind('dhEmptyNewBtn', openNewModal);
-    bind('dhEmptyUploadBtn', openUploadModal);
+    bind('dhSbNewBtn', openNewModal);
+    bind('dhSbUploadBtn', openUploadModal);
     bind('dhEditorSaveBtn', saveDoc);
 
     const stBadge = document.getElementById('dhStatusBadge');
@@ -2560,6 +3134,20 @@
     });
 
     initUploadDropZone();
+
+    window.addEventListener('popstate', () => {
+      const folder = readFolderFromUrl();
+      if (folder) {
+        showCollectionView(folder, { updateUrl: false });
+      } else if (currentDocId != null) {
+        /* keep open document if URL has no folder */
+      } else {
+        collectionViewTag = null;
+        filterBucket = 'all';
+        showEmpty();
+        syncTabStyles();
+      }
+    });
 
     getMe().finally(() => {
       loadDocs(false);

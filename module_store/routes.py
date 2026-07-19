@@ -1,18 +1,57 @@
 """
-Procurement Module Routes
+Store Module Routes
 Handles material lists, quantities, pricing, and Excel imports
 """
 import uuid
 import json
 from datetime import datetime
 from io import BytesIO
-from flask import Blueprint, render_template, request, jsonify, current_app, send_file
+from flask import Blueprint, render_template, request, jsonify, current_app, send_file, redirect
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.models import db, User, Submission
 from common.form_data_utils import shallow_copy_form_data
 from common.datetime_utils import utc_now_naive
 
-procurement_bp = Blueprint('procurement_module', __name__, template_folder='templates')
+store_bp = Blueprint('store_module', __name__, template_folder='templates')
+
+# Store catalog departments — fire & life-safety materials only
+CATALOG_DEPARTMENTS = [
+    'Fire Alarm',
+    'Fire Suppression',
+    'Fire Safety',
+    'Emergency',
+]
+
+CATALOG_DEPT_META = {
+    'Fire Alarm': {
+        'color': '#d21725',
+        'gradient': 'linear-gradient(135deg,#e8323f,#d21725)',
+        'desc': 'Control panels, smoke/heat detectors, MCPs, sounders, strobes & alarm cabling.',
+        'title': 'Fire Alarm Materials',
+        'css_var': 'fire-alarm',
+    },
+    'Fire Suppression': {
+        'color': '#ea580c',
+        'gradient': 'linear-gradient(135deg,#f97316,#ea580c)',
+        'desc': 'Sprinklers, FM200, CO2, foam, deluge systems, cylinders & valves.',
+        'title': 'Fire Suppression Materials',
+        'css_var': 'fire-suppression',
+    },
+    'Fire Safety': {
+        'color': '#d97706',
+        'gradient': 'linear-gradient(135deg,#f59e0b,#d97706)',
+        'desc': 'Extinguishers, hose reels, hydrants, dry risers, cabinets & firefighting pumps.',
+        'title': 'Fire Safety Materials',
+        'css_var': 'fire-safety',
+    },
+    'Emergency': {
+        'color': '#0369a1',
+        'gradient': 'linear-gradient(135deg,#0ea5e9,#0369a1)',
+        'desc': 'Emergency lighting, exit signs, PA systems, fire doors & evacuation equipment.',
+        'title': 'Emergency & Evacuation Materials',
+        'css_var': 'emergency',
+    },
+}
 
 
 def get_current_user():
@@ -23,22 +62,22 @@ def get_current_user():
     return db.session.get(User, int(user_id))
 
 
-@procurement_bp.route('/')
+@store_bp.route('/')
 @jwt_required()
 def procurement_dashboard():
-    """Procurement Module Dashboard"""
+    """Store Module Dashboard"""
     user = get_current_user()
     if not user:
         return jsonify({'error': 'User not found'}), 404
     
-    # Check if user has Procurement access
+    # Check if user has Store access
     if user.role != 'admin' and not getattr(user, 'access_procurement_module', False):
-        return jsonify({'error': 'Access denied to Procurement module'}), 403
+        return jsonify({'error': 'Access denied to Store module'}), 403
     
-    return render_template('procurement_dashboard.html', user=user)
+    return render_template('store_dashboard.html', user=user)
 
 
-@procurement_bp.route('/materials')
+@store_bp.route('/materials')
 @jwt_required()
 def materials_list():
     """View all materials"""
@@ -49,10 +88,10 @@ def materials_list():
     if user.role != 'admin' and not getattr(user, 'access_procurement_module', False):
         return jsonify({'error': 'Access denied'}), 403
     
-    return render_template('procurement_materials.html', user=user)
+    return render_template('store_materials.html', user=user)
 
 
-@procurement_bp.route('/add-material')
+@store_bp.route('/add-material')
 @jwt_required()
 def add_material_form():
     """Add new material form"""
@@ -63,10 +102,10 @@ def add_material_form():
     if user.role != 'admin' and not getattr(user, 'access_procurement_module', False):
         return jsonify({'error': 'Access denied'}), 403
     
-    return render_template('procurement_add_material.html', user=user)
+    return render_template('store_add_material.html', user=user)
 
 
-@procurement_bp.route('/api/materials', methods=['GET'])
+@store_bp.route('/api/materials', methods=['GET'])
 @jwt_required()
 def get_materials():
     """Get all materials from procurement submissions"""
@@ -97,7 +136,7 @@ def get_materials():
     })
 
 
-@procurement_bp.route('/api/recent-activity', methods=['GET'])
+@store_bp.route('/api/recent-activity', methods=['GET'])
 @jwt_required()
 def recent_activity():
     """Get recent procurement material submissions for the dashboard activity log."""
@@ -127,7 +166,7 @@ def recent_activity():
     return jsonify({'success': True, 'activities': activities})
 
 
-@procurement_bp.route('/api/materials', methods=['POST'])
+@store_bp.route('/api/materials', methods=['POST'])
 @jwt_required()
 def add_material():
     """Add a new material to the list"""
@@ -182,7 +221,7 @@ def add_material():
     })
 
 
-@procurement_bp.route('/api/materials/<material_id>', methods=['DELETE'])
+@store_bp.route('/api/materials/<material_id>', methods=['DELETE'])
 @jwt_required()
 def delete_material(material_id):
     """Delete a material from the list"""
@@ -206,7 +245,7 @@ def delete_material(material_id):
     })
 
 
-@procurement_bp.route('/api/import-excel', methods=['POST'])
+@store_bp.route('/api/import-excel', methods=['POST'])
 @jwt_required()
 def import_excel():
     """Import materials from Excel file"""
@@ -342,7 +381,7 @@ def import_excel():
         }), 500
 
 
-@procurement_bp.route('/api/sample-excel', methods=['GET'])
+@store_bp.route('/api/sample-excel', methods=['GET'])
 @jwt_required()
 def download_sample_excel():
     """Download a sample Excel file for procurement material import."""
@@ -354,13 +393,13 @@ def download_sample_excel():
     try:
         import pandas as pd
         rows = [
-            {'Material Name': 'Office Paper A4 Ream', 'Category': 'Stationery', 'Description': '500 sheets per ream', 'Unit': 'ream', 'Quantity': 50, 'Unit Price': 12.50, 'Supplier': 'Gulf Paper Co', 'Notes': 'Monthly supply'},
-            {'Material Name': 'Printer Toner Cartridge', 'Category': 'IT Supplies', 'Description': 'Laser printer compatible', 'Unit': 'pcs', 'Quantity': 10, 'Unit Price': 85.00, 'Supplier': 'Tech Supplies LLC', 'Notes': ''},
-            {'Material Name': 'Cleaning Detergent 5L', 'Category': 'Cleaning', 'Description': 'Multi-surface cleaner', 'Unit': 'bottle', 'Quantity': 20, 'Unit Price': 28.00, 'Supplier': 'CleanPro', 'Notes': 'Bulk order'},
-            {'Material Name': 'LED Bulb 18W', 'Category': 'Electrical', 'Description': 'E27 fitting, warm white', 'Unit': 'pcs', 'Quantity': 100, 'Unit Price': 4.25, 'Supplier': 'Lighting World', 'Notes': ''},
-            {'Material Name': 'Hand Soap Refill 5L', 'Category': 'Hygiene', 'Description': 'Dispenser refill', 'Unit': 'bottle', 'Quantity': 15, 'Unit Price': 22.00, 'Supplier': 'Hygiene Plus', 'Notes': 'Washrooms'},
-            {'Material Name': 'Safety Gloves Box', 'Category': 'PPE', 'Description': '100 pairs per box', 'Unit': 'box', 'Quantity': 5, 'Unit Price': 35.00, 'Supplier': 'Safety First', 'Notes': 'Site use'},
-            {'Material Name': 'Paint 20L White', 'Category': 'Paints', 'Description': 'Interior emulsion', 'Unit': 'can', 'Quantity': 8, 'Unit Price': 120.00, 'Supplier': 'Paint Depot', 'Notes': 'Tower A'},
+            {'Material Name': 'Addressable Smoke Detector', 'Category': 'Fire Alarm', 'Description': 'Optical smoke detector, addressable', 'Unit': 'pcs', 'Quantity': 50, 'Unit Price': 185.00, 'Supplier': 'FireTech UAE', 'Notes': 'Civil Defence approved'},
+            {'Material Name': 'Manual Call Point', 'Category': 'Fire Alarm', 'Description': 'Break-glass MCP with resettable element', 'Unit': 'pcs', 'Quantity': 30, 'Unit Price': 95.00, 'Supplier': 'FireTech UAE', 'Notes': ''},
+            {'Material Name': 'Sprinkler Head 68°C', 'Category': 'Fire Suppression', 'Description': 'Pendant sprinkler, standard response', 'Unit': 'pcs', 'Quantity': 100, 'Unit Price': 28.00, 'Supplier': 'SafeFlow Systems', 'Notes': ''},
+            {'Material Name': 'ABC Fire Extinguisher 6kg', 'Category': 'Fire Safety', 'Description': 'Dry powder portable extinguisher', 'Unit': 'pcs', 'Quantity': 40, 'Unit Price': 120.00, 'Supplier': 'Gulf Fire Safety', 'Notes': 'Annual service due'},
+            {'Material Name': 'Emergency Exit Sign LED', 'Category': 'Emergency', 'Description': 'Maintained LED exit sign, 3hr battery', 'Unit': 'pcs', 'Quantity': 25, 'Unit Price': 145.00, 'Supplier': 'SafeExit Lighting', 'Notes': ''},
+            {'Material Name': 'Fire Hose Reel 30m', 'Category': 'Fire Safety', 'Description': 'Swing-type hose reel with nozzle', 'Unit': 'pcs', 'Quantity': 12, 'Unit Price': 850.00, 'Supplier': 'Gulf Fire Safety', 'Notes': ''},
+            {'Material Name': 'Fire Alarm Cable 2-Core 1.5mm', 'Category': 'Fire Alarm', 'Description': 'Fire-resistant alarm cable, red sheath', 'Unit': 'm', 'Quantity': 500, 'Unit Price': 4.50, 'Supplier': 'CablePro', 'Notes': 'Bulk drum'},
         ]
         df = pd.DataFrame(rows)
         output = BytesIO()
@@ -377,11 +416,11 @@ def download_sample_excel():
     except ImportError:
         return jsonify({'error': 'Sample Excel requires pandas and openpyxl.'}), 500
     except Exception as e:
-        current_app.logger.exception(f"Procurement sample Excel error: {e}")
+        current_app.logger.exception(f"Store sample Excel error: {e}")
         return jsonify({'error': str(e)}), 500
 
 
-@procurement_bp.route('/api/export-excel', methods=['GET'])
+@store_bp.route('/api/export-excel', methods=['GET'])
 @jwt_required()
 def export_excel():
     """Export materials list to Excel"""
@@ -463,7 +502,7 @@ def export_excel():
 # PROPERTY-WISE MATERIALS ROUTES
 # ============================================
 
-@procurement_bp.route('/properties')
+@store_bp.route('/properties')
 @jwt_required()
 def properties_list():
     """View materials organized by property"""
@@ -474,10 +513,10 @@ def properties_list():
     if user.role != 'admin' and not getattr(user, 'access_procurement_module', False):
         return jsonify({'error': 'Access denied'}), 403
     
-    return render_template('procurement_properties.html', user=user)
+    return render_template('store_properties.html', user=user)
 
 
-@procurement_bp.route('/property/<property_name>')
+@store_bp.route('/property/<property_name>')
 @jwt_required()
 def property_materials(property_name):
     """View materials for a specific property"""
@@ -488,10 +527,10 @@ def property_materials(property_name):
     if user.role != 'admin' and not getattr(user, 'access_procurement_module', False):
         return jsonify({'error': 'Access denied'}), 403
     
-    return render_template('procurement_property_detail.html', user=user, property_name=property_name)
+    return render_template('store_property_detail.html', user=user, property_name=property_name)
 
 
-@procurement_bp.route('/api/properties', methods=['GET'])
+@store_bp.route('/api/properties', methods=['GET'])
 @jwt_required()
 def get_properties():
     """Get all properties with material counts"""
@@ -528,7 +567,7 @@ def get_properties():
     })
 
 
-@procurement_bp.route('/api/properties', methods=['POST'])
+@store_bp.route('/api/properties', methods=['POST'])
 @jwt_required()
 def add_property():
     """Add a new property"""
@@ -574,7 +613,7 @@ def add_property():
     })
 
 
-@procurement_bp.route('/api/property-materials/<property_name>', methods=['GET'])
+@store_bp.route('/api/property-materials/<property_name>', methods=['GET'])
 @jwt_required()
 def get_property_materials(property_name):
     """Get materials for a specific property"""
@@ -606,7 +645,7 @@ def get_property_materials(property_name):
     })
 
 
-@procurement_bp.route('/api/material-assign-property', methods=['POST'])
+@store_bp.route('/api/material-assign-property', methods=['POST'])
 @jwt_required()
 def assign_material_to_property():
     """Assign a material to a property"""
@@ -641,38 +680,31 @@ def assign_material_to_property():
     })
 
 
-@procurement_bp.route('/catalog/<department>')
+@store_bp.route('/catalog/<path:department>')
 @jwt_required()
 def catalog_department(department):
-    """Show catalog materials for a specific department (HVAC/Cleaning/Electrical/Plumbing)."""
+    """Show catalog materials for a fire / life-safety department."""
     user = get_current_user()
     if not user:
         return jsonify({'error': 'User not found'}), 404
-    allowed = ['HVAC', 'Cleaning', 'Electrical', 'Plumbing']
-    if department not in allowed:
-        return redirect('/procurement/')
-    dept_meta = {
-        'HVAC':       {'color': '#0284c7', 'gradient': 'linear-gradient(135deg,#0ea5e9,#0284c7)', 'desc': 'Compressors, refrigerants, AHUs, filters and air-conditioning spare parts.'},
-        'Cleaning':   {'color': '#047857', 'gradient': 'linear-gradient(135deg,#10b981,#047857)', 'desc': 'Mops, buckets, chemicals, trolleys, washroom supplies and cleaning equipment.'},
-        'Electrical': {'color': '#d97706', 'gradient': 'linear-gradient(135deg,#f59e0b,#d97706)', 'desc': 'Switches, sockets, breakers, cables, lights, fans and electrical fittings.'},
-        'Plumbing':   {'color': '#6d28d9', 'gradient': 'linear-gradient(135deg,#8b5cf6,#6d28d9)', 'desc': 'Mixers, WC sets, basins, pipes, traps, valves and all sanitary fittings.'},
-    }
+    if department not in CATALOG_DEPARTMENTS:
+        return redirect('/store/')
     return render_template(
-        'procurement_catalog_department.html',
+        'store_catalog_department.html',
         user=user,
         department=department,
-        meta=dept_meta[department],
+        meta=CATALOG_DEPT_META[department],
     )
 
 
-@procurement_bp.route('/api/catalog/materials', methods=['GET'])
+@store_bp.route('/api/catalog/materials', methods=['GET'])
 @jwt_required()
 def get_catalog_materials():
     """
     Return the materials catalog grouped by department.
     Accessible to any authenticated user (inspection form users need this).
     Optional query params:
-      ?department=HVAC|Cleaning|Plumbing|Electrical
+      ?department=Fire Alarm|Fire Suppression|Fire Safety|Emergency
       ?q=search term
     """
     user_id = get_jwt_identity()
@@ -722,7 +754,7 @@ def get_catalog_materials():
     })
 
 
-@procurement_bp.route('/api/catalog/materials', methods=['POST'])
+@store_bp.route('/api/catalog/materials', methods=['POST'])
 @jwt_required()
 def create_catalog_material():
     """Create a new catalog material (department catalog)."""
@@ -740,8 +772,7 @@ def create_catalog_material():
     uom = (data.get('uom') or 'PCS').strip()
     unit_price_raw = data.get('unit_price', 0)
 
-    allowed = ['HVAC', 'Cleaning', 'Electrical', 'Plumbing']
-    if department not in allowed:
+    if department not in CATALOG_DEPARTMENTS:
         return jsonify({'error': 'Invalid department'}), 400
     if not material_name:
         return jsonify({'error': 'Material name is required'}), 400
@@ -777,7 +808,7 @@ def create_catalog_material():
     return jsonify({'success': True, 'id': submission_id, 'message': 'Catalog material created'})
 
 
-@procurement_bp.route('/api/catalog/materials/<material_id>', methods=['PUT'])
+@store_bp.route('/api/catalog/materials/<material_id>', methods=['PUT'])
 @jwt_required()
 def update_catalog_material(material_id):
     """Update an existing catalog material."""
@@ -799,8 +830,7 @@ def update_catalog_material(material_id):
     # Department is fixed by where the user is editing from, but keep validation if sent.
     if 'department' in data:
         dept = (data.get('department') or '').strip()
-        allowed = ['HVAC', 'Cleaning', 'Electrical', 'Plumbing']
-        if dept and dept not in allowed:
+        if dept and dept not in CATALOG_DEPARTMENTS:
             return jsonify({'error': 'Invalid department'}), 400
         if dept:
             fd['department'] = dept
@@ -854,7 +884,7 @@ def update_catalog_material(material_id):
     })
 
 
-@procurement_bp.route('/api/catalog/materials/<material_id>', methods=['DELETE'])
+@store_bp.route('/api/catalog/materials/<material_id>', methods=['DELETE'])
 @jwt_required()
 def delete_catalog_material(material_id):
     """Delete a catalog material by its submission_id."""
@@ -875,7 +905,7 @@ def delete_catalog_material(material_id):
     return jsonify({'success': True, 'message': 'Catalog material deleted'})
 
 
-@procurement_bp.route('/api/registered-properties', methods=['GET'])
+@store_bp.route('/api/registered-properties', methods=['GET'])
 @jwt_required()
 def get_registered_properties():
     """Get list of registered properties"""
@@ -912,7 +942,7 @@ def get_registered_properties():
 # PUBLIC CATALOG API — accessible to ticketing users
 # ============================================
 
-@procurement_bp.route('/api/catalog', methods=['GET'])
+@store_bp.route('/api/catalog', methods=['GET'])
 @jwt_required()
 def catalog_for_tickets():
     """Return the material catalog to any authenticated user (used by ticketing material picker).
@@ -966,7 +996,7 @@ def catalog_for_tickets():
     return jsonify({'success': True, 'materials': items, 'categories': all_cats, 'total': len(items)})
 
 
-@procurement_bp.route('/api/catalog', methods=['POST'])
+@store_bp.route('/api/catalog', methods=['POST'])
 @jwt_required()
 def add_to_catalog():
     """Add a custom material from the ticketing material picker and save it to the catalog.

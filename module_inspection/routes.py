@@ -8,7 +8,7 @@ from datetime import datetime, date, timezone
 
 from flask import Blueprint, render_template, redirect, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from app.models import db, User, InspectionNotification
+from app.models import db, User, InspectionNotification, Notification
 
 logger = logging.getLogger(__name__)
 
@@ -100,6 +100,27 @@ def _send_inspection_email(notif: InspectionNotification,
         db.session.commit()
     except Exception as exc:
         logger.warning("Inspection notification email failed: %s", exc)
+
+
+def _create_cd_priority_alerts(notif: InspectionNotification):
+    """Raise an in-app priority alert (bell dropdown) for Ops when a Civil Defense notification is registered."""
+    try:
+        ops_users = User.query.filter(
+            User.is_active == True,
+            User.designation.in_(['operations_manager', 'supervisor'])
+        ).all()
+        insp_date = notif.inspection_date.strftime('%d %b %Y') if notif.inspection_date else '—'
+        for u in ops_users:
+            db.session.add(Notification(
+                user_id=u.id,
+                title=f"Civil Defense Inspection — {notif.site_name}",
+                message=f"Inspection scheduled for {insp_date}. Ref: {notif.notif_id}.",
+                notification_type='cd_priority',
+                submission_id=notif.notif_id,
+            ))
+        db.session.commit()
+    except Exception as exc:
+        logger.warning("Failed to create in-app CD priority alerts: %s", exc)
 
 
 # ──────────────────────────────────────────────────────────────────
@@ -205,17 +226,20 @@ def api_create_notification():
     db.session.add(notif)
     db.session.commit()
 
-    # Parse custom email recipients from request
-    raw_to  = data.get('email_to', '')
-    raw_cc  = data.get('email_cc', '')
-    custom_to  = [e.strip() for e in raw_to.split(',')  if e.strip()] if raw_to  else None
-    custom_cc  = [e.strip() for e in raw_cc.split(',')  if e.strip()] if raw_cc  else None
-    custom_subject = data.get('email_subject') or None
-    custom_body    = data.get('email_body')    or None
+    _create_cd_priority_alerts(notif)
 
-    _send_inspection_email(notif,
-                           custom_to=custom_to, custom_cc=custom_cc,
-                           custom_subject=custom_subject, custom_body=custom_body)
+    if not data.get('skip_email'):
+        # Parse custom email recipients from request
+        raw_to  = data.get('email_to', '')
+        raw_cc  = data.get('email_cc', '')
+        custom_to  = [e.strip() for e in raw_to.split(',')  if e.strip()] if raw_to  else None
+        custom_cc  = [e.strip() for e in raw_cc.split(',')  if e.strip()] if raw_cc  else None
+        custom_subject = data.get('email_subject') or None
+        custom_body    = data.get('email_body')    or None
+
+        _send_inspection_email(notif,
+                               custom_to=custom_to, custom_cc=custom_cc,
+                               custom_subject=custom_subject, custom_body=custom_body)
 
     return jsonify({'success': True, 'notification': notif.to_dict()}), 201
 
@@ -301,6 +325,28 @@ def api_record_outcome(notif_id_int):
             notif.inspection_date = new_date
             notif.status = 'scheduled'
 
+    db.session.commit()
+    return jsonify({'success': True, 'notification': notif.to_dict()})
+
+
+@inspection_bp.route('/api/notifications/<int:notif_id_int>/comment', methods=['POST'])
+@jwt_required()
+def api_add_comment(notif_id_int):
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'error': 'Not found'}), 404
+    if not _has_notif_write_access(user) and not _has_inspection_access(user):
+        return jsonify({'error': 'Access denied'}), 403
+
+    notif = InspectionNotification.query.get_or_404(notif_id_int)
+    data = request.get_json() or {}
+    comment = (data.get('comment') or '').strip()
+    if not comment:
+        return jsonify({'error': 'comment is required'}), 400
+
+    log_line = f"[{_utcnow().strftime('%d %b %Y %H:%M')}] {user.full_name}: {comment}"
+    notif.notes = (notif.notes + "\n" + log_line) if notif.notes else log_line
     db.session.commit()
     return jsonify({'success': True, 'notification': notif.to_dict()})
 

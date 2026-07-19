@@ -6,21 +6,22 @@ URL prefix: /finance
 """
 import uuid
 import logging
+from io import BytesIO
 from datetime import datetime, date, timezone
 from calendar import monthrange
 
-from flask import Blueprint, render_template, redirect, request, jsonify
+from flask import Blueprint, render_template, redirect, request, jsonify, send_file
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy import func
 
-from app.models import db, User, Ticket, FinanceContract, FinanceMonthlyReport
+from app.models import db, User, Ticket, FinanceContract, FinanceMonthlyReport, FinanceSettings
 
 logger = logging.getLogger(__name__)
 
 finance_bp = Blueprint('finance', __name__, url_prefix='/finance',
                        template_folder='templates')
 
-MARGIN_THRESHOLD = 15.0   # percent — below this requires GM approval
+MARGIN_THRESHOLD = 15.0   # fallback default — prefer FinanceSettings.margin_threshold
 CONTRACT_TYPES = ['monthly', 'quarterly', 'semi_annual', 'annual', 'one_time']
 CONTRACT_TYPE_LABELS = {
     'monthly':     'Monthly',
@@ -29,6 +30,11 @@ CONTRACT_TYPE_LABELS = {
     'annual':      'Annual',
     'one_time':    'One-Time',
 }
+FINANCE_NOTIFY_KEYS = ('invoice_email_to', 'invoice_email_cc')
+FINANCE_ADMIN_KEYS = (
+    'margin_threshold', 'erp_ref_prefix', 'require_erp_ref',
+    'report_recipients', 'default_billing_day', 'default_contract_type',
+)
 
 
 def _utcnow():
@@ -40,8 +46,12 @@ def _has_finance_access(user):
         return False
     if user.role == 'admin':
         return True
-    return getattr(user, 'designation', None) in ('general_manager', 'operations_manager') or \
-           getattr(user, 'access_ticketing', False)
+    if getattr(user, 'access_finance', False):
+        return True
+    designation = getattr(user, 'designation', None)
+    if designation in ('general_manager', 'operations_manager', 'finance'):
+        return True
+    return bool(getattr(user, 'access_ticketing', False))
 
 
 def _finance_write_access(user):
@@ -49,6 +59,76 @@ def _finance_write_access(user):
     if not user:
         return False
     return user.role == 'admin' or getattr(user, 'designation', None) == 'general_manager'
+
+
+def _normalize_finance_settings(raw):
+    """Merge and validate finance settings against defaults."""
+    defaults = dict(FinanceSettings.DEFAULT_CONFIG)
+    cfg = dict(defaults)
+    if isinstance(raw, dict):
+        cfg.update(raw)
+
+    threshold = _to_float(cfg.get('margin_threshold'), defaults['margin_threshold'])
+    if threshold is None or threshold < 0:
+        threshold = defaults['margin_threshold']
+    threshold = min(100.0, max(0.0, float(threshold)))
+
+    billing_day = cfg.get('default_billing_day', defaults['default_billing_day'])
+    try:
+        billing_day = int(billing_day)
+    except (TypeError, ValueError):
+        billing_day = defaults['default_billing_day']
+    if billing_day < 1 or billing_day > 28:
+        billing_day = defaults['default_billing_day']
+
+    contract_type = str(cfg.get('default_contract_type') or defaults['default_contract_type']).strip()
+    if contract_type not in CONTRACT_TYPES:
+        contract_type = defaults['default_contract_type']
+
+    prefix = str(cfg.get('erp_ref_prefix') or defaults['erp_ref_prefix']).strip().upper()[:20]
+    if not prefix:
+        prefix = defaults['erp_ref_prefix']
+
+    require_erp = cfg.get('require_erp_ref', defaults['require_erp_ref'])
+    if isinstance(require_erp, str):
+        require_erp = require_erp.strip().lower() in ('1', 'true', 'yes', 'on')
+    else:
+        require_erp = bool(require_erp)
+
+    def _clean_emails(value):
+        parts = [p.strip() for p in str(value or '').replace(';', ',').split(',')]
+        return ', '.join(p for p in parts if p and '@' in p)
+
+    return {
+        'margin_threshold': round(threshold, 2),
+        'invoice_email_to': _clean_emails(cfg.get('invoice_email_to')),
+        'invoice_email_cc': _clean_emails(cfg.get('invoice_email_cc')),
+        'erp_ref_prefix': prefix,
+        'require_erp_ref': require_erp,
+        'report_recipients': _clean_emails(cfg.get('report_recipients')),
+        'default_billing_day': billing_day,
+        'default_contract_type': contract_type,
+    }
+
+
+def _get_finance_settings():
+    """Load single-row finance settings, seeding defaults if missing."""
+    row = FinanceSettings.query.first()
+    if not row:
+        row = FinanceSettings(config_json=dict(FinanceSettings.DEFAULT_CONFIG))
+        db.session.add(row)
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            row = FinanceSettings.query.first()
+            if not row:
+                return _normalize_finance_settings(None)
+    return _normalize_finance_settings(row.config_json or {})
+
+
+def _margin_threshold():
+    return float(_get_finance_settings().get('margin_threshold', MARGIN_THRESHOLD))
 
 
 def _compute_margin(ticket):
@@ -59,38 +139,175 @@ def _compute_margin(ticket):
     return None
 
 
-def _build_monthly_report_data(year: int, month: int):
-    """Collect all closed/resolved tickets in a calendar month."""
-    start = date(year, month, 1)
-    _, last_day = monthrange(year, month)
-    end = date(year, month, last_day)
+def _to_float(value, default=None):
+    if value is None or value == '':
+        return default
+    try:
+        return float(str(value).replace(',', '').replace('AED', '').strip())
+    except (ValueError, TypeError):
+        return default
 
-    closed_tickets = Ticket.query.filter(
-        Ticket.status.in_(['closed', 'resolved']),
-        func.date(Ticket.closed_at) >= start,
-        func.date(Ticket.closed_at) <= end,
-    ).all()
 
-    jobs = []
-    total_value = 0.0
-    for t in closed_tickets:
-        val = t.selling_price or t.total_cost or 0.0
-        total_value += val
-        margin = _compute_margin(t)
-        jobs.append({
-            'ticket_id': t.ticket_id,
-            'title': t.title,
-            'project': t.project,
-            'property': t.property_name or '',
-            'service_group': t.service_group,
-            'is_chargeable': t.is_chargeable,
-            'total_cost': round(t.total_cost or 0, 2),
-            'selling_price': round(t.selling_price or 0, 2),
-            'margin_pct': margin,
-            'closed_at': t.closed_at.isoformat() if t.closed_at else None,
-            'finance_contract_id': t.finance_contract_id,
-        })
-    return jobs, round(total_value, 2)
+def _parse_date(value):
+    """Parse a date from ISO, DD/MM/YYYY, or a datetime/date object."""
+    if value is None or value == '':
+        return None
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
+    s = str(value).strip()
+    for fmt in ('%Y-%m-%d', '%d/%m/%Y', '%d-%m-%Y', '%m/%d/%Y', '%Y/%m/%d'):
+        try:
+            return datetime.strptime(s, fmt).date()
+        except ValueError:
+            continue
+    try:
+        return datetime.fromisoformat(s).date()
+    except ValueError:
+        return None
+
+
+def _normalize_header(value):
+    s = str(value or '').strip().lower()
+    s = s.replace('(', ' ').replace(')', ' ').replace('/', ' ').replace('\\', ' ')
+    s = '_'.join(s.split())
+    return s
+
+
+def _new_contract_id():
+    """Short public contract id, e.g. FC-A1B2C."""
+    for _ in range(12):
+        cid = f"FC-{uuid.uuid4().hex[:5].upper()}"
+        if not FinanceContract.query.filter_by(contract_id=cid).first():
+            return cid
+    return f"FC-{uuid.uuid4().hex[:8].upper()}"
+
+
+def _infer_contract_type(raw_type, payment_methods=''):
+    """Map free-text contract type / payment cadence to CONTRACT_TYPES."""
+    blob = f'{raw_type or ""} {payment_methods or ""}'.lower()
+    if 'one' in blob and 'time' in blob:
+        return 'one_time'
+    if 'semi' in blob:
+        return 'semi_annual'
+    if 'quarter' in blob:
+        return 'quarterly'
+    if 'month' in blob:
+        return 'monthly'
+    if 'annual' in blob or 'year' in blob:
+        return 'annual'
+    cleaned = _normalize_header(raw_type)
+    if cleaned in CONTRACT_TYPES:
+        return cleaned
+    return 'monthly'
+
+
+def _cell(row, col_map, *keys):
+    for key in keys:
+        idx = col_map.get(key)
+        if idx is None:
+            continue
+        if idx >= len(row):
+            continue
+        v = row[idx]
+        if v is None:
+            continue
+        if isinstance(v, (datetime, date)):
+            return v
+        s = str(v).strip()
+        if s:
+            return s
+    return None
+
+
+def _find_header_row(rows):
+    """Locate the header row (template may have a banner above it)."""
+    markers = {
+        'project_location', 'property_location', 'project_name', 'client_name',
+        'revenue_offered', 'start_date', 'end_date', 'client_point_of_contact_poc',
+        'account_handler',
+    }
+    for i, row in enumerate(rows[:12]):
+        if not row:
+            continue
+        norms = {_normalize_header(c) for c in row if c is not None}
+        if norms & markers:
+            return i
+    return 0
+
+
+def _report_filters_from_request(data=None):
+    """Extract period + project/handler filters from JSON body or query args."""
+    src = data if data is not None else request.args
+
+    def _s(key):
+        v = src.get(key)
+        if v is None:
+            return None
+        s = str(v).strip()
+        return s or None
+
+    month = _s('month')
+    date_from = _s('date_from')
+    date_to = _s('date_to')
+    project = _s('project')
+    account_handler = _s('account_handler')
+    year = src.get('year')
+    month_num_raw = src.get('month_num')
+
+    # YYYY-MM string from month picker
+    if month and len(month) == 7 and month[4] == '-':
+        pass
+    elif month and month.isdigit() and int(month) <= 12:
+        # Legacy body: { year, month: 1-12 }
+        month_num_raw = month_num_raw or month
+        month = None
+    else:
+        month = month if month and '-' in month else None
+
+    # Legacy generate body: { year, month: 1-12 }
+    if not month and year is not None and month_num_raw is not None:
+        try:
+            y, m = int(year), int(month_num_raw)
+            if 1 <= m <= 12:
+                month = f'{y:04d}-{m:02d}'
+        except (TypeError, ValueError):
+            pass
+
+    year_out = None
+    month_num_out = None
+    try:
+        if year is not None and str(year).isdigit():
+            year_out = int(year)
+        if month_num_raw is not None and str(month_num_raw).isdigit() and int(month_num_raw) <= 12:
+            month_num_out = int(month_num_raw)
+    except (TypeError, ValueError):
+        pass
+
+    return {
+        'month': month,
+        'date_from': date_from,
+        'date_to': date_to,
+        'project': project,
+        'account_handler': account_handler,
+        'year': year_out,
+        'month_num': month_num_out,
+    }
+
+
+def _build_report_payload(filters=None):
+    from module_finance.finance_report_builder import build_dashboard_payload
+    f = filters or _report_filters_from_request()
+    return build_dashboard_payload(
+        month=f.get('month'),
+        date_from=f.get('date_from'),
+        date_to=f.get('date_to'),
+        year=f.get('year'),
+        month_num=f.get('month_num'),
+        project=f.get('project'),
+        account_handler=f.get('account_handler'),
+    )
 
 
 # ──────────────────────────────────────────────────────────────────
@@ -129,6 +346,99 @@ def reports_page():
     if not user or not _has_finance_access(user):
         return redirect('/dashboard')
     return render_template('finance_reports.html', user=user)
+
+
+@finance_bp.route('/processing')
+@jwt_required()
+def processing_page():
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    if not user or not _has_finance_access(user):
+        return redirect('/dashboard')
+    settings = _get_finance_settings()
+    return render_template('finance_processing.html', user=user,
+                           margin_threshold=settings['margin_threshold'],
+                           can_edit_admin_settings=_finance_write_access(user))
+
+
+@finance_bp.route('/settings')
+@jwt_required()
+def settings_page():
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    if not user or not _has_finance_access(user):
+        return redirect('/dashboard')
+    settings = _get_finance_settings()
+    return render_template(
+        'finance_settings.html',
+        user=user,
+        settings=settings,
+        margin_threshold=settings['margin_threshold'],
+        can_edit_admin_settings=_finance_write_access(user),
+        contract_types=CONTRACT_TYPES,
+        contract_type_labels=CONTRACT_TYPE_LABELS,
+    )
+
+
+# ──────────────────────────────────────────────────────────────────
+# API — Finance settings (billing rules desk)
+# ──────────────────────────────────────────────────────────────────
+
+@finance_bp.route('/api/settings', methods=['GET'])
+@jwt_required()
+def api_get_settings():
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    if not user or not _has_finance_access(user):
+        return jsonify({'error': 'Access denied'}), 403
+    settings = _get_finance_settings()
+    return jsonify({
+        'success': True,
+        'settings': settings,
+        'can_edit_admin_settings': _finance_write_access(user),
+        'contract_types': CONTRACT_TYPES,
+        'contract_type_labels': CONTRACT_TYPE_LABELS,
+    })
+
+
+@finance_bp.route('/api/settings', methods=['PATCH'])
+@jwt_required()
+def api_patch_settings():
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    if not user or not _has_finance_access(user):
+        return jsonify({'error': 'Access denied'}), 403
+
+    data = request.get_json() or {}
+    can_admin = _finance_write_access(user)
+    allowed = set(FINANCE_NOTIFY_KEYS)
+    if can_admin:
+        allowed |= set(FINANCE_ADMIN_KEYS)
+
+    incoming = {k: data[k] for k in allowed if k in data}
+    if not incoming:
+        return jsonify({'error': 'No editable settings provided'}), 400
+
+    current = _get_finance_settings()
+    merged = dict(current)
+    merged.update(incoming)
+    normalized = _normalize_finance_settings(merged)
+
+    row = FinanceSettings.query.first()
+    if not row:
+        row = FinanceSettings(config_json=normalized, updated_by_id=user.id)
+        db.session.add(row)
+    else:
+        row.config_json = normalized
+        row.updated_by_id = user.id
+        row.updated_at = _utcnow()
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'settings': normalized,
+        'can_edit_admin_settings': can_admin,
+    })
 
 
 # ──────────────────────────────────────────────────────────────────
@@ -202,6 +512,365 @@ def api_list_contracts():
     return jsonify({'success': True, 'contracts': [c.to_dict() for c in contracts]})
 
 
+@finance_bp.route('/api/contracts/template', methods=['GET'])
+@jwt_required()
+def api_contracts_template():
+    """Download a styled sample Excel template for project contracts."""
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    if not user or not _has_finance_access(user):
+        return jsonify({'error': 'Access denied'}), 403
+
+    try:
+        import openpyxl
+        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+        from openpyxl.utils import get_column_letter
+    except ImportError:
+        return jsonify({'error': 'openpyxl is required (pip install openpyxl)'}), 500
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = 'Contracts'
+
+    headers = [
+        'Project Name',
+        'Property / Location',
+        'Account Handler',
+        'Client Point of Contact (POC)',
+        'Revenue Offered',
+        'Start Date',
+        'End Date',
+        'Payment Methods',
+        'Contract Type',
+        'Comments',
+    ]
+    samples = [
+        [
+            'Ajman One HVAC AMC',
+            'Ajman One Tower — Ajman',
+            'Ahmed Al Mansoori',
+            'Khalid Hassan (Facility Manager)',
+            185000.00,
+            date(2026, 1, 1),
+            date(2026, 12, 31),
+            'Bank Transfer (Monthly)',
+            'monthly',
+            'Full HVAC AMC — covers chillers, AHUs, and FAHU units.',
+        ],
+        [
+            'Nuaimiya Soft Services',
+            'Al Nuaimiya Residential Complex — Ajman',
+            'Fatima Rahman',
+            'Sara Al Blooshi (Admin Manager)',
+            96000.00,
+            date(2026, 3, 1),
+            date(2027, 2, 28),
+            'Cheque / PDC (Quarterly)',
+            'quarterly',
+            'Cleaning + soft services. PDCs due on the 5th of each quarter.',
+        ],
+        [
+            'Corniche Plaza MEP',
+            'Corniche Plaza Offices — Sharjah',
+            'Ravi Krishnan',
+            'Omar Farouk (Operations Head)',
+            142500.00,
+            date(2025, 7, 15),
+            date(2026, 7, 14),
+            'Bank Transfer + Cheque',
+            'quarterly',
+            'MEP maintenance contract. 40% upfront, balance quarterly.',
+        ],
+        [
+            'Marina Heights FM Package',
+            'Marina Heights Building B — Dubai Marina',
+            'Layla Ibrahim',
+            'James Whitfield (Property Manager)',
+            275000.00,
+            date(2026, 2, 1),
+            date(2028, 1, 31),
+            'Bank Transfer (Semi-Annual)',
+            'semi_annual',
+            '2-year comprehensive FM package. Includes call-out SLA ≤ 4 hrs.',
+        ],
+        [
+            'SIFZ Warehouse Fit-Out',
+            'Industrial City Warehouse 12 — Sharjah',
+            'Mohammed Saleh',
+            'Priya Nair (Site Supervisor)',
+            48000.00,
+            date(2026, 4, 1),
+            date(2026, 9, 30),
+            'Cheque (One-Time)',
+            'one_time',
+            'Short-term civil fit-out support. Final payment on handover.',
+        ],
+    ]
+
+    accent = 'D21725'
+    accent_dark = 'A8121E'
+    title_fill = PatternFill('solid', fgColor=accent_dark)
+    header_fill = PatternFill('solid', fgColor=accent)
+    alt_fill = PatternFill('solid', fgColor='FDECEE')
+    white_fill = PatternFill('solid', fgColor='FFFFFF')
+    thin = Side(style='thin', color='D1D5DB')
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+    center = Alignment(horizontal='center', vertical='center', wrap_text=True)
+    left_align = Alignment(horizontal='left', vertical='center', wrap_text=True)
+
+    # Banner title
+    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(headers))
+    title_cell = ws.cell(row=1, column=1, value='Injaaz — Project Contracts Template')
+    title_cell.font = Font(bold=True, color='FFFFFF', size=14, name='Calibri')
+    title_cell.fill = title_fill
+    title_cell.alignment = Alignment(horizontal='left', vertical='center')
+    for col in range(1, len(headers) + 1):
+        c = ws.cell(row=1, column=col)
+        c.fill = title_fill
+        c.border = border
+    ws.row_dimensions[1].height = 32
+
+    subtitle = ws.cell(
+        row=2, column=1,
+        value='Sample reference — fill one row per project contract. Dates: YYYY-MM-DD. Revenue in AED.',
+    )
+    ws.merge_cells(start_row=2, start_column=1, end_row=2, end_column=len(headers))
+    subtitle.font = Font(italic=True, color='6B7280', size=10, name='Calibri')
+    subtitle.alignment = Alignment(horizontal='left', vertical='center')
+    ws.row_dimensions[2].height = 20
+
+    header_row = 3
+    for col_idx, h in enumerate(headers, start=1):
+        cell = ws.cell(row=header_row, column=col_idx, value=h)
+        cell.font = Font(bold=True, color='FFFFFF', size=11, name='Calibri')
+        cell.fill = header_fill
+        cell.alignment = center
+        cell.border = border
+    ws.row_dimensions[header_row].height = 30
+
+    for row_offset, sample in enumerate(samples):
+        row_idx = header_row + 1 + row_offset
+        row_fill = alt_fill if row_offset % 2 == 0 else white_fill
+        for col_idx, value in enumerate(sample, start=1):
+            cell = ws.cell(row=row_idx, column=col_idx, value=value)
+            cell.fill = row_fill
+            cell.border = border
+            cell.font = Font(name='Calibri', size=10, color='1F2937')
+            cell.alignment = left_align if col_idx in (1, 2, 3, 4, 8, 10) else center
+            if col_idx == 5:
+                cell.number_format = '#,##0.00'
+            elif col_idx in (6, 7):
+                cell.number_format = 'YYYY-MM-DD'
+        ws.row_dimensions[row_idx].height = 28
+
+    col_widths = [30, 34, 30, 32, 16, 14, 14, 24, 14, 48]
+    for i, w in enumerate(col_widths, start=1):
+        ws.column_dimensions[get_column_letter(i)].width = w
+
+    last_data_row = header_row + len(samples)
+    ws.auto_filter.ref = f'A{header_row}:{get_column_letter(len(headers))}{last_data_row}'
+    ws.freeze_panes = f'A{header_row + 1}'
+    ws.print_title_rows = f'{header_row}:{header_row}'
+
+    # Instructions sheet
+    ws2 = wb.create_sheet('Instructions')
+    ws2['A1'] = 'Project Contracts Template — Instructions'
+    ws2['A1'].font = Font(bold=True, size=13, color=accent_dark, name='Calibri')
+    instruction_notes = [
+        ('Project Name', 'Required. Internal project / contract name shown in the contracts list.'),
+        ('Property / Location', 'Exact site / building name and emirate (e.g. Ajman One Tower — Ajman).'),
+        ('Account Handler', 'Injaaz staff member handling this account / contract.'),
+        ('Client Point of Contact (POC)', 'Client-side contact name and role (stored in notes).'),
+        ('Revenue Offered', 'Total contract value in AED (numbers only).'),
+        ('Start Date', 'Required. Prefer YYYY-MM-DD.'),
+        ('End Date', 'Required. Prefer YYYY-MM-DD.'),
+        ('Payment Methods', 'How the client pays (Bank Transfer, Cheque, PDC, etc.) and cadence if known.'),
+        ('Contract Type', 'monthly, quarterly, semi_annual, annual, or one_time. Inferred from payment text if blank.'),
+        ('Comments', 'Optional notes — SLA, billing milestones, inclusions, or special terms.'),
+        ('Import', 'Use Import Excel on the Contracts page / Add Contract modal to upload this file.'),
+    ]
+    for row_i, (col, desc) in enumerate(instruction_notes, start=3):
+        ws2.cell(row=row_i, column=1, value=col).font = Font(bold=True, name='Calibri', size=10)
+        ws2.cell(row=row_i, column=2, value=desc).font = Font(name='Calibri', size=10)
+    ws2.column_dimensions['A'].width = 36
+    ws2.column_dimensions['B'].width = 88
+
+    buf = BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return send_file(
+        buf,
+        as_attachment=True,
+        download_name='finance_contracts_sample_template.xlsx',
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+
+
+@finance_bp.route('/api/contracts/import-excel', methods=['POST'])
+@jwt_required()
+def api_import_contracts_excel():
+    """Import contracts from the Excel template (or a compatible sheet)."""
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    if not user or not _finance_write_access(user):
+        return jsonify({'error': 'Admin or GM only'}), 403
+
+    try:
+        import openpyxl
+    except ImportError:
+        return jsonify({'error': 'openpyxl is required (pip install openpyxl)'}), 500
+
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file uploaded'}), 400
+    f = request.files['file']
+    if not f.filename:
+        return jsonify({'error': 'No file selected'}), 400
+
+    try:
+        wb = openpyxl.load_workbook(BytesIO(f.read()), read_only=True, data_only=True)
+        # Prefer the Contracts data sheet — opening the file often leaves
+        # "Instructions" as the active sheet, which has no importable rows.
+        if 'Contracts' in wb.sheetnames:
+            ws = wb['Contracts']
+        else:
+            ws = wb.active
+        rows = list(ws.iter_rows(values_only=True))
+        sheet_title = ws.title
+    except Exception as e:
+        return jsonify({'error': f'Could not read Excel file: {e}'}), 400
+
+    if not rows:
+        return jsonify({'error': 'Excel file is empty'}), 400
+
+    header_idx = _find_header_row(rows)
+    header_cells = rows[header_idx]
+    col_map = {_normalize_header(c): i for i, c in enumerate(header_cells) if c is not None}
+    if not col_map:
+        return jsonify({'error': 'Could not find a header row in the Excel file'}), 400
+    default_billing_day = _get_finance_settings()['default_billing_day']
+
+    # Reject instruction-sheet style headers (label + description only).
+    has_date_cols = ('start_date' in col_map or 'start' in col_map) and (
+        'end_date' in col_map or 'end' in col_map
+    )
+    has_identity = any(
+        k in col_map
+        for k in (
+            'project_name', 'client_name', 'client', 'company_name',
+            'client_point_of_contact_poc', 'client_point_of_contact',
+            'client_poc', 'poc', 'project_location', 'property_name',
+            'property_location',
+        )
+    )
+    if not has_date_cols or not has_identity:
+        return jsonify({
+            'error': (
+                f'Sheet "{sheet_title}" does not look like the Contracts data sheet. '
+                'Download the template again and import without switching to the Instructions tab, '
+                'or ensure columns include Project Name / Property / Location, Start Date, and End Date.'
+            ),
+        }), 400
+
+    created, errors = 0, []
+    data_rows_seen = 0
+    for row_num, row in enumerate(rows[header_idx + 1:], start=header_idx + 2):
+        if not row or all(c is None or str(c).strip() == '' for c in row):
+            continue
+        data_rows_seen += 1
+
+        location = _cell(
+            row, col_map,
+            'property_location', 'project_location',
+            'property', 'property_name', 'location',
+        )
+        handler = _cell(
+            row, col_map,
+            'account_handler', 'internal_project_manager_handling',
+            'internal_project_manager', 'project_manager', 'pm', 'handler',
+        )
+        poc = _cell(row, col_map, 'client_point_of_contact_poc', 'client_point_of_contact',
+                    'client_poc', 'poc')
+        project_name = _cell(
+            row, col_map,
+            'project_name', 'project', 'client_name', 'client', 'company_name',
+        )
+        revenue = _to_float(_cell(row, col_map, 'revenue_offered', 'contract_value', 'revenue', 'value'), 0.0)
+        start = _parse_date(_cell(row, col_map, 'start_date', 'start'))
+        end = _parse_date(_cell(row, col_map, 'end_date', 'end'))
+        payment = _cell(row, col_map, 'payment_methods', 'payment_method', 'payment') or ''
+        raw_type = _cell(row, col_map, 'contract_type', 'type') or ''
+        comments = _cell(row, col_map, 'comments', 'notes', 'comment') or ''
+        service_type = _cell(row, col_map, 'service_type', 'service') or ''
+
+        if not project_name:
+            errors.append(f'Row {row_num}: project name is required — skipped')
+            continue
+        if not start or not end:
+            errors.append(f'Row {row_num}: start date and end date are required — skipped')
+            continue
+        if end < start:
+            errors.append(f'Row {row_num}: end date is before start date — skipped')
+            continue
+
+        note_parts = []
+        if poc and str(poc).strip() != str(project_name).strip():
+            note_parts.append(f'POC: {poc}')
+        if payment:
+            note_parts.append(f'Payment: {payment}')
+        if comments:
+            if note_parts:
+                note_parts.append('---')
+            note_parts.append(str(comments))
+        notes = '\n'.join(note_parts)
+
+        contract = FinanceContract(
+            contract_id=_new_contract_id(),
+            client_name=str(project_name)[:255],
+            property_name=(str(location)[:255] if location else ''),
+            account_handler=(str(handler)[:255] if handler else ''),
+            contract_type=_infer_contract_type(raw_type, payment),
+            service_type=(str(service_type)[:120] if service_type else ''),
+            start_date=start,
+            end_date=end,
+            contract_value=float(revenue or 0),
+            billing_day=default_billing_day,
+            status='active',
+            notes=notes,
+            created_by_id=user.id,
+        )
+        db.session.add(contract)
+        created += 1
+
+    if not created:
+        detail = errors[:10] if errors else [
+            f'No data rows found on sheet "{sheet_title}" under the header row. '
+            'Keep the sample rows (or add your own) on the Contracts sheet, then import again.'
+        ]
+        return jsonify({
+            'success': False,
+            'error': 'No contracts imported',
+            'created': 0,
+            'errors': detail,
+            'sheet': sheet_title,
+            'data_rows_seen': data_rows_seen,
+        }), 400
+
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        logger.exception('import_contracts_excel commit: %s', e)
+        return jsonify({'error': 'Database error during import'}), 500
+
+    return jsonify({
+        'success': True,
+        'created': created,
+        'errors': errors,
+        'sheet': sheet_title,
+        'message': f'{created} contract(s) imported.',
+    })
+
+
 @finance_bp.route('/api/contracts', methods=['POST'])
 @jwt_required()
 def api_create_contract():
@@ -211,7 +880,10 @@ def api_create_contract():
         return jsonify({'error': 'Admin or GM only'}), 403
 
     data = request.get_json() or {}
-    required = ['client_name', 'contract_type', 'start_date', 'end_date']
+    project_name = (data.get('project_name') or data.get('client_name') or '').strip()
+    if not project_name:
+        return jsonify({'error': 'project_name is required'}), 400
+    required = ['contract_type', 'start_date', 'end_date']
     for f in required:
         if not data.get(f):
             return jsonify({'error': f'{f} is required'}), 400
@@ -222,17 +894,26 @@ def api_create_contract():
     except ValueError:
         return jsonify({'error': 'Invalid date format'}), 400
 
-    contract_id = f"FIN-CON-{uuid.uuid4().hex[:8].upper()}"
+    fin_settings = _get_finance_settings()
+    contract_type = data.get('contract_type') or fin_settings['default_contract_type']
+    if contract_type not in CONTRACT_TYPES:
+        return jsonify({'error': 'Invalid contract_type'}), 400
+    try:
+        billing_day = int(data['billing_day']) if data.get('billing_day') not in (None, '') else fin_settings['default_billing_day']
+    except (TypeError, ValueError):
+        billing_day = fin_settings['default_billing_day']
+
     contract = FinanceContract(
-        contract_id=contract_id,
-        client_name=data['client_name'],
+        contract_id=_new_contract_id(),
+        client_name=project_name[:255],
         property_name=data.get('property_name', ''),
-        contract_type=data['contract_type'],
+        account_handler=(data.get('account_handler') or '').strip()[:255],
+        contract_type=contract_type,
         service_type=data.get('service_type', ''),
         start_date=start,
         end_date=end,
         contract_value=float(data.get('contract_value') or 0),
-        billing_day=int(data.get('billing_day') or 29),
+        billing_day=billing_day,
         status='active',
         notes=data.get('notes', ''),
         created_by_id=user.id,
@@ -251,10 +932,17 @@ def api_update_contract(cid):
         return jsonify({'error': 'Admin or GM only'}), 403
     contract = FinanceContract.query.get_or_404(cid)
     data = request.get_json() or {}
-    for field in ['client_name', 'property_name', 'contract_type', 'service_type',
-                  'contract_value', 'billing_day', 'status', 'notes']:
+    if 'project_name' in data and 'client_name' not in data:
+        data['client_name'] = data.get('project_name')
+    for field in ['client_name', 'property_name', 'account_handler', 'contract_type',
+                  'service_type', 'contract_value', 'billing_day', 'status', 'notes']:
         if field in data:
-            setattr(contract, field, data[field])
+            val = data[field]
+            if field == 'account_handler' and val is not None:
+                val = str(val).strip()[:255]
+            if field == 'client_name' and val is not None:
+                val = str(val).strip()[:255]
+            setattr(contract, field, val)
     if 'start_date' in data:
         contract.start_date = date.fromisoformat(data['start_date'])
     if 'end_date' in data:
@@ -268,8 +956,8 @@ def api_update_contract(cid):
 def api_delete_contract(cid):
     user_id = get_jwt_identity()
     user = User.query.get(user_id)
-    if not user or user.role != 'admin':
-        return jsonify({'error': 'Admin only'}), 403
+    if not user or not _finance_write_access(user):
+        return jsonify({'error': 'Admin or GM only'}), 403
     contract = FinanceContract.query.get_or_404(cid)
     db.session.delete(contract)
     db.session.commit()
@@ -280,6 +968,36 @@ def api_delete_contract(cid):
 # API — Monthly Reports
 # ──────────────────────────────────────────────────────────────────
 
+def _report_jobs_from_stored(report_data):
+    """Normalize stored report_data (legacy list or enriched dict) to job rows."""
+    if not report_data:
+        return []
+    if isinstance(report_data, list):
+        return report_data
+    if isinstance(report_data, dict):
+        from module_finance.finance_report_builder import jobs_compat_list
+        if report_data.get('closed_jobs') is not None:
+            return jobs_compat_list(report_data)
+        if report_data.get('jobs'):
+            return report_data['jobs']
+    return []
+
+
+def _report_summary_from_stored(report):
+    """Pull KPI summary from enriched snapshot if present."""
+    data = report.report_data
+    if isinstance(data, dict) and isinstance(data.get('summary'), dict):
+        return data['summary']
+    return {
+        'created_count': None,
+        'registered_count': None,
+        'not_registered_count': None,
+        'rejected_count': None,
+        'closed_jobs_count': report.total_jobs,
+        'closed_jobs_value': report.total_value,
+    }
+
+
 @finance_bp.route('/api/reports', methods=['GET'])
 @jwt_required()
 def api_list_reports():
@@ -289,40 +1007,132 @@ def api_list_reports():
         return jsonify({'error': 'Access denied'}), 403
     reports = FinanceMonthlyReport.query.order_by(
         FinanceMonthlyReport.period_start.desc()).all()
-    return jsonify({'success': True, 'reports': [r.to_dict() for r in reports]})
+    out = []
+    for r in reports:
+        d = r.to_dict()
+        d['summary'] = _report_summary_from_stored(r)
+        out.append(d)
+    return jsonify({'success': True, 'reports': out})
+
+
+@finance_bp.route('/api/reports/filter-options', methods=['GET'])
+@jwt_required()
+def api_report_filter_options():
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    if not user or not _has_finance_access(user):
+        return jsonify({'error': 'Access denied'}), 403
+    from module_finance.finance_report_builder import get_filter_options
+    opts = get_filter_options()
+    return jsonify({'success': True, **opts})
+
+
+@finance_bp.route('/api/reports/dashboard', methods=['GET'])
+@jwt_required()
+def api_reports_dashboard():
+    """Live invoice-lifecycle dashboard for the selected period/filters."""
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    if not user or not _has_finance_access(user):
+        return jsonify({'error': 'Access denied'}), 403
+    try:
+        payload = _build_report_payload()
+    except Exception as exc:
+        logger.exception('Finance dashboard build failed')
+        return jsonify({'success': False, 'error': str(exc)}), 500
+    return jsonify({'success': True, **payload})
+
+
+@finance_bp.route('/api/reports/export.xlsx', methods=['GET'])
+@jwt_required()
+def api_reports_export_xlsx():
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    if not user or not _has_finance_access(user):
+        return jsonify({'error': 'Access denied'}), 403
+    from module_finance.finance_report_builder import build_excel
+    payload = _build_report_payload()
+    buf = build_excel(payload)
+    label = (payload['summary'].get('period_label') or 'report').replace(' ', '_')
+    stamp = datetime.now(timezone.utc).strftime('%Y%m%d')
+    return send_file(
+        buf,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name=f'AMAAN_Finance_{label}_{stamp}.xlsx',
+    )
+
+
+@finance_bp.route('/api/reports/export.pdf', methods=['GET'])
+@jwt_required()
+def api_reports_export_pdf():
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    if not user or not _has_finance_access(user):
+        return jsonify({'error': 'Access denied'}), 403
+    from module_finance.finance_report_builder import build_pdf
+    payload = _build_report_payload()
+    buf = build_pdf(payload)
+    label = (payload['summary'].get('period_label') or 'report').replace(' ', '_')
+    stamp = datetime.now(timezone.utc).strftime('%Y%m%d')
+    return send_file(
+        buf,
+        mimetype='application/pdf',
+        as_attachment=True,
+        download_name=f'AMAAN_Finance_{label}_{stamp}.pdf',
+    )
 
 
 @finance_bp.route('/api/reports/generate', methods=['POST'])
 @jwt_required()
 def api_generate_report():
-    """Generate (or regenerate) a monthly billing report for a given year/month."""
+    """Generate (or regenerate) a billing report snapshot for the selected period."""
     user_id = get_jwt_identity()
     user = User.query.get(user_id)
     if not user or not _finance_write_access(user):
         return jsonify({'error': 'Admin or GM only'}), 403
 
     data = request.get_json() or {}
-    today = date.today()
-    year  = int(data.get('year', today.year))
-    month = int(data.get('month', today.month))
+    filters = _report_filters_from_request(data)
+    from module_finance.finance_report_builder import jobs_compat_list
 
-    period_start = date(year, month, 1)
-    _, last_day  = monthrange(year, month)
-    period_end   = date(year, month, last_day)
-    period_label = period_start.strftime('%B %Y')
+    payload = _build_report_payload(filters)
+    summary = payload['summary']
+    period_start = date.fromisoformat(summary['period_start'])
+    period_end = date.fromisoformat(summary['period_end'])
+    period_label = summary['period_label']
+    jobs = jobs_compat_list(payload)
+    total_value = summary.get('closed_jobs_value') or summary.get('registered_value') or 0.0
 
-    jobs, total_value = _build_monthly_report_data(year, month)
+    # Store enriched snapshot (summary + all buckets) plus legacy-compatible jobs
+    snapshot = {
+        'version': 2,
+        'summary': summary,
+        'created': payload.get('created') or [],
+        'registered': payload.get('registered') or [],
+        'not_registered': payload.get('not_registered') or [],
+        'rejected': payload.get('rejected') or [],
+        'closed_jobs': payload.get('closed_jobs') or [],
+        'jobs': jobs,
+        'filters': summary.get('filters') or {},
+    }
 
-    # Upsert: one report per period
-    existing = FinanceMonthlyReport.query.filter_by(
-        period_start=period_start).first()
+    # Upsert: one report per period_start (calendar month key when no custom range)
+    existing = FinanceMonthlyReport.query.filter_by(period_start=period_start).first()
     if existing:
-        existing.total_jobs   = len(jobs)
-        existing.total_value  = total_value
-        existing.report_data  = jobs
+        existing.period_label = period_label
+        existing.period_end = period_end
+        existing.total_jobs = summary.get('closed_jobs_count', len(jobs))
+        existing.total_value = total_value
+        existing.report_data = snapshot
         existing.generated_by_id = user.id
         db.session.commit()
-        return jsonify({'success': True, 'report': existing.to_dict(), 'jobs': jobs})
+        return jsonify({
+            'success': True,
+            'report': {**existing.to_dict(), 'summary': summary},
+            'jobs': jobs,
+            **payload,
+        })
 
     report_id = f"FIN-RPT-{uuid.uuid4().hex[:8].upper()}"
     report = FinanceMonthlyReport(
@@ -330,14 +1140,19 @@ def api_generate_report():
         period_label=period_label,
         period_start=period_start,
         period_end=period_end,
-        total_jobs=len(jobs),
+        total_jobs=summary.get('closed_jobs_count', len(jobs)),
         total_value=total_value,
-        report_data=jobs,
+        report_data=snapshot,
         generated_by_id=user.id,
     )
     db.session.add(report)
     db.session.commit()
-    return jsonify({'success': True, 'report': report.to_dict(), 'jobs': jobs}), 201
+    return jsonify({
+        'success': True,
+        'report': {**report.to_dict(), 'summary': summary},
+        'jobs': jobs,
+        **payload,
+    }), 201
 
 
 @finance_bp.route('/api/reports/<int:rid>/send', methods=['POST'])
@@ -350,16 +1165,41 @@ def api_send_report(rid):
         return jsonify({'error': 'Admin or GM only'}), 403
 
     report = FinanceMonthlyReport.query.get_or_404(rid)
-    jobs = report.report_data or []
+    jobs = _report_jobs_from_stored(report.report_data)
+    summary = _report_summary_from_stored(report)
 
-    # Build email HTML
+    # Build email HTML with KPI strip + closed jobs table
+    kpi_html = ''
+    if summary.get('registered_count') is not None:
+        kpi_html = f"""
+    <table style="width:100%;border-collapse:collapse;margin-bottom:16px;">
+      <tr>
+        <td style="padding:10px;background:#f9fafb;border:1px solid #e5e7eb;text-align:center;">
+          <div style="font-size:11px;color:#6b7280;font-weight:700;">CREATED</div>
+          <div style="font-size:20px;font-weight:800;">{summary.get('created_count', 0)}</div>
+        </td>
+        <td style="padding:10px;background:#f9fafb;border:1px solid #e5e7eb;text-align:center;">
+          <div style="font-size:11px;color:#6b7280;font-weight:700;">REGISTERED</div>
+          <div style="font-size:20px;font-weight:800;">{summary.get('registered_count', 0)}</div>
+        </td>
+        <td style="padding:10px;background:#f9fafb;border:1px solid #e5e7eb;text-align:center;">
+          <div style="font-size:11px;color:#6b7280;font-weight:700;">NOT REGISTERED</div>
+          <div style="font-size:20px;font-weight:800;">{summary.get('not_registered_count', 0)}</div>
+        </td>
+        <td style="padding:10px;background:#f9fafb;border:1px solid #e5e7eb;text-align:center;">
+          <div style="font-size:11px;color:#6b7280;font-weight:700;">REJECTED</div>
+          <div style="font-size:20px;font-weight:800;">{summary.get('rejected_count', 0)}</div>
+        </td>
+      </tr>
+    </table>"""
+
     rows = ''.join(
         f"""<tr>
-          <td style="padding:6px 8px;border-bottom:1px solid #f3f4f6;">{j['ticket_id']}</td>
-          <td style="padding:6px 8px;border-bottom:1px solid #f3f4f6;">{j['title']}</td>
-          <td style="padding:6px 8px;border-bottom:1px solid #f3f4f6;">{j['project']}</td>
-          <td style="padding:6px 8px;border-bottom:1px solid #f3f4f6;">{'Yes' if j['is_chargeable'] else 'No'}</td>
-          <td style="padding:6px 8px;border-bottom:1px solid #f3f4f6;text-align:right;">AED {j['selling_price']:.2f}</td>
+          <td style="padding:6px 8px;border-bottom:1px solid #f3f4f6;">{j.get('ticket_id', '')}</td>
+          <td style="padding:6px 8px;border-bottom:1px solid #f3f4f6;">{j.get('title', '')}</td>
+          <td style="padding:6px 8px;border-bottom:1px solid #f3f4f6;">{j.get('project', '')}</td>
+          <td style="padding:6px 8px;border-bottom:1px solid #f3f4f6;">{'Yes' if j.get('is_chargeable') else 'No'}</td>
+          <td style="padding:6px 8px;border-bottom:1px solid #f3f4f6;text-align:right;">AED {float(j.get('selling_price') or j.get('amount') or 0):.2f}</td>
         </tr>"""
         for j in jobs
     )
@@ -369,7 +1209,8 @@ def api_send_report(rid):
     <h2 style="color:#fff;margin:0;">Monthly Finance Report — {report.period_label}</h2>
   </div>
   <div style="background:#fff;border:1px solid #e5e7eb;border-top:none;padding:24px;border-radius:0 0 10px 10px;">
-    <p>Total Completed Jobs: <strong>{report.total_jobs}</strong> &nbsp;|&nbsp; Total Revenue: <strong>AED {report.total_value:,.2f}</strong></p>
+    {kpi_html}
+    <p>Closed Jobs: <strong>{report.total_jobs}</strong> &nbsp;|&nbsp; Total Revenue: <strong>AED {report.total_value:,.2f}</strong></p>
     <table style="width:100%;border-collapse:collapse;font-size:.88rem;">
       <thead><tr style="background:#f9fafb;font-weight:700;font-size:.75rem;text-transform:uppercase;color:#9ca3af;">
         <th style="padding:8px;text-align:left;">Work Order</th>
@@ -378,28 +1219,45 @@ def api_send_report(rid):
         <th style="padding:8px;text-align:left;">Chargeable</th>
         <th style="padding:8px;text-align:right;">Amount</th>
       </tr></thead>
-      <tbody>{rows}</tbody>
+      <tbody>{rows or '<tr><td colspan="5" style="padding:12px;color:#9ca3af;">No closed jobs in this period.</td></tr>'}</tbody>
     </table>
     <p style="color:#6b7280;font-size:.8rem;margin-top:20px;">Generated by Amaan Application · {datetime.utcnow().strftime('%d %b %Y %H:%M')} UTC</p>
   </div>
 </body></html>"""
 
-    # Send to all admin + finance-designated users
-    recipients = [u.email for u in User.query.filter(
-        User.is_active == True,
-        User.email.isnot(None),
-    ).filter(
-        db.or_(User.role == 'admin', User.designation == 'general_manager')
-    ).all() if u.email]
+    fin_settings = _get_finance_settings()
+    configured = [
+        e.strip() for e in (fin_settings.get('report_recipients') or '').split(',')
+        if e.strip() and '@' in e.strip()
+    ]
+    if configured:
+        recipients = configured
+    else:
+        recipients = [u.email for u in User.query.filter(
+            User.is_active == True,
+            User.email.isnot(None),
+        ).filter(
+            db.or_(User.role == 'admin', User.designation == 'general_manager')
+        ).all() if u.email]
+
+    if not recipients:
+        return jsonify({'success': False, 'error': 'No report recipients configured. Set them in Finance Settings.'}), 400
 
     try:
         from common.email_service import send_email
+        plain = (
+            f'Monthly Finance Report {report.period_label}: '
+            f'{report.total_jobs} jobs, AED {report.total_value:,.2f}'
+        )
+        subject = f'[Amaan Finance] Monthly Report — {report.period_label}'
         for r in recipients:
+            if not r:
+                continue
             send_email(
-                to_email=r,
-                subject=f'[Amaan Finance] Monthly Report — {report.period_label}',
+                recipient=r,
+                subject=subject,
+                body=plain,
                 html_body=html,
-                body=f'Monthly Finance Report {report.period_label}: {report.total_jobs} jobs, AED {report.total_value:,.2f}',
             )
         report.sent_to_finance_at = _utcnow()
         db.session.commit()
@@ -442,7 +1300,8 @@ def api_calculate_costing():
     else:
         margin_pct = 0.0
 
-    gm_required = bool(margin_pct < MARGIN_THRESHOLD and selling_price > 0)
+    threshold = _margin_threshold()
+    gm_required = bool(margin_pct < threshold and selling_price > 0)
 
     return jsonify({
         'success': True,
@@ -451,7 +1310,7 @@ def api_calculate_costing():
         'selling_price': round(selling_price, 2),
         'margin_pct': round(margin_pct, 2),
         'gm_approval_required': gm_required,
-        'margin_threshold': MARGIN_THRESHOLD,
+        'margin_threshold': threshold,
     })
 
 
@@ -557,7 +1416,7 @@ def api_queue():
             'selling_price': round(t.selling_price or 0, 2),
             'total_cost': round(t.total_cost or 0, 2),
             'margin_pct': _compute_margin(t),
-            'service_report_url': f'/tickets/{t.ticket_id}/service-report',
+            'service_report_url': f'/tickets/{t.ticket_id}/service-report/pdf',
             'invoice_url': f'/tickets/{t.ticket_id}/invoice',
             'ticket_url': f'/tickets/{t.ticket_id}',
             'created_at': t.created_at.isoformat() if t.created_at else None,

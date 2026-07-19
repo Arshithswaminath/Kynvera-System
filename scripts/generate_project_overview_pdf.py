@@ -174,7 +174,7 @@ def build_pdf(path: str) -> None:
         ["Cleaning", "/cleaning", "Cleaning services forms and reports"],
         ["Inspection", "/inspection", "Cross-trade inspection workflows"],
         ["HR", "/hr", "HR forms, HR→GM approval, PDF/DOCX output"],
-        ["Procurement", "/procurement", "Procurement workflows"],
+        ["Store", "/store", "Store / materials workflows"],
         ["MMR", "/admin/mmr", "CAFM analytics, Excel reports, scheduled email (Dubai TZ)"],
         ["Business Development", "/bd, /admin/bd", "BD flows and admin entry"],
         ["DocHub", "/api/docs, /dochub", "Authorized document hub"],

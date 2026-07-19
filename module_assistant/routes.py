@@ -81,7 +81,7 @@ def chat():
 
         help_intents = {
             'module_help', 'ticketing_help', 'inspection_help', 'procurement_help',
-            'qhsi_help', 'mmr_help', 'bd_help', 'hr_form_help', 'workflow_help', 'profile_help',
+            'mmr_help', 'bd_help', 'hr_form_help', 'workflow_help', 'profile_help',
         }
 
         if intent in LIVE_DATA_INTENTS:

@@ -21,29 +21,69 @@ except ImportError:
 
 # ── Config ────────────────────────────────────────────────────────────────────
 SQLITE_PATH = os.path.join(os.path.dirname(__file__), "injaaz.db")
-PG_URL = (
-    "postgresql://injaaz_db_t2rb_user:BxwqYHt2GiA6uenC9PkjgebiIE2ydut8"
-    "@dpg-d6sheakr85hc73esmetg-a.oregon-postgres.render.com/injaaz_db_t2rb"
-)
+# Prefer PROD_DATABASE_URL; fall back to DATABASE_URL. Never hard-code credentials.
+PG_URL = os.environ.get("PROD_DATABASE_URL") or os.environ.get("DATABASE_URL")
 
 BATCH_SIZE = 100  # rows per INSERT batch
 
-# Tables in dependency order (parents before children)
+# Tables in dependency order (parents before children). Covers full local demo DB.
 TABLES = [
     "users",
+    "sessions",
+    "devices",
+    "email_otps",
+    "audit_logs",
     "submissions",
     "jobs",
     "files",
-    "audit_logs",
-    "sessions",
-    "devices",
     "bd_projects",
     "bd_followups",
     "bd_contacts",
     "bd_activities",
+    "admin_personal_projects",
+    "admin_personal_progress_steps",
     "dochub_documents",
+    "dochub_stars",
     "dochub_access",
+    "knowledge_base_entries",
+    "email_automation",
+    "email_automation_attachment",
+    "email_automation_run_log",
+    "email_automation_defaults",
+    "notification_config",
     "notifications",
+    "inspection_notifications",
+    "employees",
+    "technicians",
+    "clients",
+    "overtime_settings",
+    "overtime_records",
+    "finance_settings",
+    "finance_contracts",
+    "finance_monthly_reports",
+    "cheque_notification_config",
+    "cheque_requests",
+    "cheque_request_items",
+    "cheque_status_logs",
+    "trading_invoices",
+    "trading_invoice_items",
+    "ticket_projects",
+    "ticket_properties",
+    "ticket_zones",
+    "ticket_sub_zones",
+    "ticket_base_units",
+    "ticket_title_templates",
+    "ticket_supervisor_teams",
+    "tickets",
+    "ticket_notes",
+    "ticket_images",
+    "ticket_manpower",
+    "ticket_materials",
+    "device_handovers",
+    "mmr_chargeable_config",
+    "qhse_compliance_imports",
+    "qhse_staff_compliance_rows",
+    "qhsi_trainings",
 ]
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -132,6 +172,11 @@ def main():
     print(f"Source: {SQLITE_PATH}")
     if not os.path.exists(SQLITE_PATH):
         sys.exit(f"SQLite file not found: {SQLITE_PATH}")
+    if not PG_URL:
+        sys.exit(
+            "Set PROD_DATABASE_URL (or DATABASE_URL) to the Render External Database URL.\n"
+            '  export PROD_DATABASE_URL="postgresql://USER:PASS@HOST/DBNAME"'
+        )
     sqlite_conn = sqlite3.connect(SQLITE_PATH)
 
     print("Connecting to Render PostgreSQL ...")

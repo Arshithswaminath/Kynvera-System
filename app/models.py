@@ -32,6 +32,12 @@ class User(db.Model):
     designation = db.Column(db.String(30), default=None)  # 'supervisor', 'operations_manager', 'business_development', 'procurement', 'general_manager'
     is_active = db.Column(db.Boolean, default=True)
     password_changed = db.Column(db.Boolean, default=False)  # Track if password was changed from default
+    # Admin-only plaintext of current temp password (cleared after user changes it)
+    admin_visible_password = db.Column(db.String(255), nullable=True)
+    password_changed_at = db.Column(db.DateTime, nullable=True)  # Last password set/change (65-day clock)
+    password_locked = db.Column(db.Boolean, default=False)  # Locked after password age > 65 days
+    # Hashed PIN to unlock editing of protected admin accounts (Users & Teams)
+    admin_protect_pin_hash = db.Column(db.String(255), nullable=True)
     default_signature = db.Column(db.Text, default=None)  # Base64 data URL for default signature
     default_comment = db.Column(db.Text, default=None)  # Default comment for approvals
     # Module access permissions (admin has access to all by default)
@@ -40,12 +46,17 @@ class User(db.Model):
     access_cleaning = db.Column(db.Boolean, default=False)  # Cleaning form access
     access_hr = db.Column(db.Boolean, default=False)  # HR module access
     access_procurement_module = db.Column(db.Boolean, default=False)  # Procurement module access
-    access_business_development = db.Column(db.Boolean, default=False)  # BD email + inspection BD reviewer (when no conflicting designation)
+    access_business_development = db.Column(db.Boolean, default=False)  # BD inspection reviewer (when no conflicting designation)
     access_report_generation = db.Column(db.Boolean, default=False)  # MMR / Report Generation hub
     access_submitted_forms = db.Column(db.Boolean, default=False)  # "My submitted forms" workflow hub
     access_ticketing = db.Column(db.Boolean, default=False)  # Ticketing / Work Order module
-    access_operations = db.Column(db.Boolean, default=False)  # Operations module (Over Time + Trading Invoices)
+    access_operations = db.Column(db.Boolean, default=False)  # Operations hub (any sub-module)
     access_operations_manage = db.Column(db.Boolean, default=False)  # Operations: full access (create/edit) vs view-only
+    access_operations_overtime = db.Column(db.Boolean, default=False)
+    access_operations_invoices = db.Column(db.Boolean, default=False)
+    access_operations_clients = db.Column(db.Boolean, default=False)
+    access_operations_cheques = db.Column(db.Boolean, default=False)
+    access_finance = db.Column(db.Boolean, default=False)  # Finance & Invoicing module
     created_at = db.Column(db.DateTime, default=_utcnow)
     last_login = db.Column(db.DateTime)
     # First day with the company (for tenure on dashboard); editable in Profile / admin Manage profile
@@ -84,6 +95,33 @@ class User(db.Model):
     def check_password(self, password):
         """Verify password against hash"""
         return bcrypt.check_password_hash(self.password_hash, password)
+
+    def set_admin_protect_pin(self, pin):
+        """Hash and store the admin protect PIN."""
+        self.admin_protect_pin_hash = bcrypt.generate_password_hash(pin).decode('utf-8')
+
+    def check_admin_protect_pin(self, pin):
+        """Verify protect PIN against hash. False if no PIN configured."""
+        stored = getattr(self, 'admin_protect_pin_hash', None)
+        if not stored or not pin:
+            return False
+        return bcrypt.check_password_hash(stored, pin)
+
+    def password_age_days(self):
+        from common.password_policy import password_age_days
+        return password_age_days(self)
+
+    def should_warn_password_expiry(self):
+        from common.password_policy import should_warn_password_expiry
+        return should_warn_password_expiry(self)
+
+    def should_lock_for_password_age(self):
+        from common.password_policy import should_lock_for_password_age
+        return should_lock_for_password_age(self)
+
+    def should_remind_temp_password(self):
+        from common.password_policy import should_remind_temp_password
+        return should_remind_temp_password(self)
     
     def has_module_access(self, module):
         """Check if user has access to a specific module"""
@@ -99,9 +137,41 @@ class User(db.Model):
             'mmr': bool(getattr(self, 'access_report_generation', False)),
             'submitted_forms': bool(getattr(self, 'access_submitted_forms', False)),
             'ticketing': bool(getattr(self, 'access_ticketing', False)),
-            'operations': bool(getattr(self, 'access_operations', False)),
+            'operations': bool(getattr(self, 'access_operations', False)) or self.has_any_operations_submodule(),
+            'operations_overtime': bool(getattr(self, 'access_operations_overtime', False)),
+            'operations_invoices': bool(getattr(self, 'access_operations_invoices', False)),
+            'operations_clients': bool(getattr(self, 'access_operations_clients', False)),
+            'operations_cheques': bool(getattr(self, 'access_operations_cheques', False)),
+            'finance': bool(getattr(self, 'access_finance', False)),
         }
         return module_map.get(module, False)
+
+    def has_any_operations_submodule(self):
+        return any((
+            bool(getattr(self, 'access_operations_overtime', False)),
+            bool(getattr(self, 'access_operations_invoices', False)),
+            bool(getattr(self, 'access_operations_clients', False)),
+            bool(getattr(self, 'access_operations_cheques', False)),
+        ))
+
+    def has_operations_submodule(self, sub):
+        """sub: overtime | invoices | clients | cheques"""
+        if self.role == 'admin':
+            return True
+        key = {
+            'overtime': 'access_operations_overtime',
+            'invoices': 'access_operations_invoices',
+            'clients': 'access_operations_clients',
+            'cheques': 'access_operations_cheques',
+        }.get(sub)
+        if not key:
+            return False
+        if bool(getattr(self, key, False)):
+            return True
+        # Legacy: hub on, no per-sub flags set yet → all subs allowed
+        if bool(getattr(self, 'access_operations', False)) and not self.has_any_operations_submodule():
+            return True
+        return False
 
     def is_bd_inspection_reviewer(self):
         """BD reviewer lanes on inspection forms and BD email (designation BD, or access flag if not a conflicting primary role)."""
@@ -119,7 +189,9 @@ class User(db.Model):
         return d not in priority
     
     def to_dict(self, include_sensitive=False):
-        """Convert to dictionary"""
+        """Convert to dictionary. Admin list/detail includes admin_visible_password."""
+        from common.password_policy import password_policy_flags
+
         data = {
             'id': self.id,
             'username': self.username,
@@ -138,7 +210,13 @@ class User(db.Model):
             'access_ticketing': getattr(self, 'access_ticketing', False) if self.role != 'admin' else True,
             'access_operations': getattr(self, 'access_operations', False) if self.role != 'admin' else True,
             'access_operations_manage': getattr(self, 'access_operations_manage', False) if self.role != 'admin' else True,
+            'access_operations_overtime': getattr(self, 'access_operations_overtime', False) if self.role != 'admin' else True,
+            'access_operations_invoices': getattr(self, 'access_operations_invoices', False) if self.role != 'admin' else True,
+            'access_operations_clients': getattr(self, 'access_operations_clients', False) if self.role != 'admin' else True,
+            'access_operations_cheques': getattr(self, 'access_operations_cheques', False) if self.role != 'admin' else True,
+            'access_finance': getattr(self, 'access_finance', False) if self.role != 'admin' else True,
             'password_changed': self.password_changed if hasattr(self, 'password_changed') else True,
+            'admin_visible_password': getattr(self, 'admin_visible_password', None),
             'designation': self.designation if hasattr(self, 'designation') else None,
             'default_signature': self.default_signature if hasattr(self, 'default_signature') else None,
             'default_comment': self.default_comment if hasattr(self, 'default_comment') else None,
@@ -152,6 +230,7 @@ class User(db.Model):
             'other_leave_days': getattr(self, 'other_leave_days', None),
             'reporting_manager_id': getattr(self, 'reporting_manager_id', None),
         }
+        data.update(password_policy_flags(self))
         mgr = getattr(self, 'reporting_manager', None)
         if mgr:
             data['reporting_manager'] = {
@@ -167,6 +246,7 @@ class User(db.Model):
     def to_client_dict(self):
         """Session/API user payload including DocHub access (stored in dochub_access, not on User)."""
         data = self.to_dict()
+        data.pop('admin_visible_password', None)
         if self.role == 'admin':
             data['can_access_dochub'] = True
         else:
@@ -418,6 +498,26 @@ class Session(db.Model):
     
     def __repr__(self):
         return f'<Session {self.token_jti[:8]}... - User {self.user_id}>'
+
+
+class EmailOtp(db.Model):
+    """One-time codes emailed for protect-PIN reset and password reset."""
+    __tablename__ = 'email_otps'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    purpose = db.Column(db.String(40), nullable=False, index=True)  # protect_pin_reset | password_reset
+    code_hash = db.Column(db.String(255), nullable=False)
+    expires_at = db.Column(db.DateTime, nullable=False, index=True)
+    attempts = db.Column(db.Integer, default=0, nullable=False)
+    consumed_at = db.Column(db.DateTime, nullable=True)
+    request_ip = db.Column(db.String(45), nullable=True)
+    created_at = db.Column(db.DateTime, default=_utcnow, index=True)
+
+    user = db.relationship('User', backref=db.backref('email_otps', lazy='dynamic', cascade='all, delete-orphan'))
+
+    def __repr__(self):
+        return f'<EmailOtp {self.purpose} user={self.user_id}>'
 
 
 class Device(db.Model):
@@ -753,8 +853,14 @@ class DocHubDocument(db.Model):
     updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow, index=True)
 
     author = db.relationship('User', backref=db.backref('dochub_documents', lazy='dynamic'))
+    stars = db.relationship('DocHubStar', back_populates='document', cascade='all, delete-orphan', lazy='dynamic')
 
-    def to_dict(self):
+    def is_starred_by(self, user_id):
+        if not user_id:
+            return False
+        return DocHubStar.query.filter_by(user_id=user_id, document_id=self.id).first() is not None
+
+    def to_dict(self, user_id=None, starred=None):
         author_name = 'Unknown'
         if self.author:
             author_name = self.author.full_name or self.author.username or 'Unknown'
@@ -769,6 +875,13 @@ class DocHubDocument(db.Model):
             size_label = '—'
 
         date_label = self.updated_at.strftime('%b %d, %Y') if self.updated_at else ''
+
+        if starred is not None:
+            is_starred_for_user = bool(starred)
+        elif user_id is not None:
+            is_starred_for_user = self.is_starred_by(user_id)
+        else:
+            is_starred_for_user = False
 
         d = {
             'id': self.id,
@@ -785,7 +898,7 @@ class DocHubDocument(db.Model):
             'dateTs': int(self.updated_at.timestamp()) if self.updated_at else 0,
             'size': size_label,
             'sizeB': int(self.size_bytes or 0),
-            'starred': bool(self.is_starred),
+            'starred': is_starred_for_user,
             'inline_asset': bool(getattr(self, 'inline_asset', False)),
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
@@ -805,6 +918,25 @@ class DocHubDocument(db.Model):
 
     def __repr__(self):
         return f'<DocHubDocument {self.id} - {self.title}>'
+
+
+class DocHubStar(db.Model):
+    """Per-user starred documents in DocHub."""
+    __tablename__ = 'dochub_stars'
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'document_id', name='uq_dochub_star_user_document'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    document_id = db.Column(db.Integer, db.ForeignKey('dochub_documents.id'), nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=_utcnow, index=True)
+
+    user = db.relationship('User', backref=db.backref('dochub_stars', lazy='dynamic'))
+    document = db.relationship('DocHubDocument', back_populates='stars')
+
+    def __repr__(self):
+        return f'<DocHubStar user={self.user_id} doc={self.document_id}>'
 
 
 class DocHubAccess(db.Model):
@@ -895,126 +1027,6 @@ class KnowledgeBaseEntry(db.Model):
 
     def __repr__(self):
         return f'<KnowledgeBaseEntry {self.id} - {self.title}>'
-
-
-class QhsiTraining(db.Model):
-    """Quality team training sessions and meetings booked per project."""
-    __tablename__ = 'qhsi_trainings'
-
-    id = db.Column(db.Integer, primary_key=True)
-    training_id = db.Column(db.String(40), unique=True, nullable=False, index=True)
-    project_name = db.Column(db.String(255), nullable=False, index=True)
-    bd_project_id = db.Column(db.Integer, db.ForeignKey('bd_projects.id'), nullable=True)
-    title = db.Column(db.String(255), nullable=False)
-    training_type = db.Column(db.String(30), default='training')  # training, meeting, audit, induction
-    scheduled_at = db.Column(db.DateTime, nullable=False, index=True)
-    duration_minutes = db.Column(db.Integer, default=60)
-    location = db.Column(db.String(255))
-    facilitator_name = db.Column(db.String(120))
-    facilitator_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
-    attendees = db.Column(JSON, default=list)  # [{name, role, user_id?}]
-    status = db.Column(db.String(20), default='scheduled', index=True)  # scheduled, completed, cancelled
-    notes = db.Column(db.Text)
-    created_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
-    created_at = db.Column(db.DateTime, default=_utcnow)
-    updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
-
-    bd_project = db.relationship('BDProject', foreign_keys=[bd_project_id])
-    facilitator = db.relationship('User', foreign_keys=[facilitator_id])
-    created_by = db.relationship('User', foreign_keys=[created_by_id])
-
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'training_id': self.training_id,
-            'project_name': self.project_name,
-            'bd_project_id': self.bd_project_id,
-            'title': self.title,
-            'training_type': self.training_type,
-            'scheduled_at': self.scheduled_at.isoformat() if self.scheduled_at else None,
-            'duration_minutes': self.duration_minutes,
-            'location': self.location,
-            'facilitator_name': self.facilitator_name,
-            'facilitator_id': self.facilitator_id,
-            'attendees': self.attendees or [],
-            'status': self.status,
-            'notes': self.notes,
-            'created_by_id': self.created_by_id,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
-        }
-
-
-class QhseComplianceImport(db.Model):
-    """Batch metadata for Excel-imported staff compliance data."""
-    __tablename__ = 'qhse_compliance_imports'
-
-    id = db.Column(db.Integer, primary_key=True)
-    import_id = db.Column(db.String(40), unique=True, nullable=False, index=True)
-    filename = db.Column(db.String(255))
-    row_count = db.Column(db.Integer, default=0)
-    employee_count = db.Column(db.Integer, default=0)
-    stats_json = db.Column(JSON, default=dict)
-    imported_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True, index=True)
-    created_at = db.Column(db.DateTime, default=_utcnow, index=True)
-
-    imported_by = db.relationship('User', foreign_keys=[imported_by_id])
-    rows = db.relationship(
-        'QhseStaffComplianceRow',
-        back_populates='import_batch',
-        cascade='all, delete-orphan',
-    )
-
-    def to_dict(self):
-        return {
-            'import_id': self.import_id,
-            'filename': self.filename,
-            'row_count': self.row_count,
-            'employee_count': self.employee_count,
-            'stats': self.stats_json or {},
-            'imported_by_id': self.imported_by_id,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-        }
-
-
-class QhseStaffComplianceRow(db.Model):
-    """One kit line from Excel import (drives QHSE dashboard compliance metrics)."""
-    __tablename__ = 'qhse_staff_compliance_rows'
-
-    id = db.Column(db.Integer, primary_key=True)
-    import_batch_id = db.Column(
-        db.Integer,
-        db.ForeignKey('qhse_compliance_imports.id', ondelete='CASCADE'),
-        nullable=False,
-        index=True,
-    )
-    employee_name = db.Column(db.String(200), nullable=False, index=True)
-    employee_id = db.Column(db.String(80))
-    project_name = db.Column(db.String(255), nullable=False, index=True)
-    record_date = db.Column(db.String(20))
-    department = db.Column(db.String(120))
-    supervisor_name = db.Column(db.String(120))
-    notes = db.Column(db.Text)
-    item_type = db.Column(db.String(80))
-    item_label = db.Column(db.String(160))
-    condition = db.Column(db.String(20), nullable=False, index=True)  # ok, issue, missing
-    created_at = db.Column(db.DateTime, default=_utcnow)
-
-    import_batch = db.relationship('QhseComplianceImport', back_populates='rows')
-
-    def to_dict(self):
-        return {
-            'employee_name': self.employee_name,
-            'employee_id': self.employee_id,
-            'project_name': self.project_name,
-            'record_date': self.record_date,
-            'department': self.department,
-            'supervisor_name': self.supervisor_name,
-            'notes': self.notes,
-            'item_type': self.item_type,
-            'item_label': self.item_label,
-            'condition': self.condition,
-        }
 
 
 class EmailAutomation(db.Model):
@@ -1767,6 +1779,70 @@ class Technician(db.Model):
         return f'<Technician {self.employee_id} — {self.full_name}>'
 
 
+class Employee(db.Model):
+    """HR employment directory — may exist before an application User login is created."""
+    __tablename__ = 'employees'
+
+    id = db.Column(db.Integer, primary_key=True)
+    employee_id = db.Column(db.String(40), unique=True, nullable=False, index=True)
+    full_name = db.Column(db.String(160), nullable=False)
+    email = db.Column(db.String(120), nullable=True, index=True)
+    phone = db.Column(db.String(40), nullable=True)
+    job_title = db.Column(db.String(160), nullable=True)
+    department = db.Column(db.String(120), nullable=True)
+    designation = db.Column(db.String(160), nullable=True)
+    joining_date = db.Column(db.Date, nullable=True)
+    status = db.Column(db.String(20), default='active', index=True)  # active, inactive, on_leave
+    annual_leave_days = db.Column(db.Integer, nullable=True)
+    other_leave_days = db.Column(db.Integer, nullable=True)
+    salary = db.Column(db.Float, nullable=True)
+    notes = db.Column(db.Text, nullable=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True, unique=True, index=True)
+    reporting_manager_user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True, index=True)
+    created_at = db.Column(db.DateTime, default=_utcnow)
+    updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
+
+    user = db.relationship(
+        'User',
+        foreign_keys=[user_id],
+        backref=db.backref('employee_profile', uselist=False),
+    )
+    reporting_manager = db.relationship(
+        'User',
+        foreign_keys=[reporting_manager_user_id],
+    )
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'employee_id': self.employee_id,
+            'full_name': self.full_name,
+            'email': self.email,
+            'phone': self.phone,
+            'job_title': self.job_title,
+            'department': self.department,
+            'designation': self.designation,
+            'joining_date': self.joining_date.isoformat() if self.joining_date else None,
+            'status': self.status or 'active',
+            'annual_leave_days': self.annual_leave_days,
+            'other_leave_days': self.other_leave_days,
+            'salary': self.salary,
+            'notes': self.notes,
+            'user_id': self.user_id,
+            'has_app_account': bool(self.user_id),
+            'reporting_manager_user_id': self.reporting_manager_user_id,
+            'reporting_manager_name': (
+                (self.reporting_manager.full_name or self.reporting_manager.username)
+                if self.reporting_manager else None
+            ),
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+    def __repr__(self):
+        return f'<Employee {self.employee_id} — {self.full_name}>'
+
+
 class InspectionNotification(db.Model):
     """Civil Defense / regulatory inspection notifications registered by Sales."""
     __tablename__ = 'inspection_notifications'
@@ -1849,9 +1925,11 @@ class FinanceContract(db.Model):
     __tablename__ = 'finance_contracts'
 
     id = db.Column(db.Integer, primary_key=True)
-    contract_id = db.Column(db.String(50), unique=True, nullable=False, index=True)  # FIN-CON-XXXXXXXX
+    contract_id = db.Column(db.String(50), unique=True, nullable=False, index=True)  # FC-XXXXX
+    # client_name stores the project name (legacy column name kept for compatibility)
     client_name = db.Column(db.String(255), nullable=False)
-    property_name = db.Column(db.String(255), nullable=True)
+    property_name = db.Column(db.String(255), nullable=True)  # property / location
+    account_handler = db.Column(db.String(255), nullable=True)  # Injaaz staff handling the account
     contract_type = db.Column(db.String(40), nullable=False)  # quarterly, semi_annual, annual, monthly
     service_type = db.Column(db.String(120), nullable=True)   # HVAC AMC, Civil, Cleaning…
     start_date = db.Column(db.Date, nullable=False)
@@ -1872,7 +1950,9 @@ class FinanceContract(db.Model):
             'id': self.id,
             'contract_id': self.contract_id,
             'client_name': self.client_name,
+            'project_name': self.client_name,
             'property_name': self.property_name,
+            'account_handler': self.account_handler or '',
             'contract_type': self.contract_type,
             'service_type': self.service_type,
             'start_date': self.start_date.isoformat() if self.start_date else None,
@@ -1924,6 +2004,32 @@ class FinanceMonthlyReport(db.Model):
 
     def __repr__(self):
         return f'<FinanceMonthlyReport {self.report_id}>'
+
+
+class FinanceSettings(db.Model):
+    """Single-row JSON settings for Finance & Invoicing billing rules."""
+    __tablename__ = 'finance_settings'
+
+    id = db.Column(db.Integer, primary_key=True)
+    config_json = db.Column(JSON, nullable=False)
+    updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
+    updated_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+
+    updated_by = db.relationship('User', foreign_keys=[updated_by_id])
+
+    DEFAULT_CONFIG = {
+        'margin_threshold': 15.0,
+        'invoice_email_to': '',
+        'invoice_email_cc': '',
+        'erp_ref_prefix': 'INV',
+        'require_erp_ref': False,
+        'report_recipients': '',
+        'default_billing_day': 29,
+        'default_contract_type': 'monthly',
+    }
+
+    def __repr__(self):
+        return f'<FinanceSettings id={self.id}>'
 
 
 # ---------------------------------------------------------------------------
@@ -1978,6 +2084,24 @@ class OvertimeRecord(db.Model):
 
     def __repr__(self):
         return f'<OvertimeRecord {self.record_id} {self.staff_name}>'
+
+
+class OvertimeSettings(db.Model):
+    """Single-row JSON settings for overtime weekday/weekend rates."""
+    __tablename__ = 'overtime_settings'
+
+    id = db.Column(db.Integer, primary_key=True)
+    config_json = db.Column(JSON, nullable=False)
+
+    DEFAULT_CONFIG = {
+        'weekday_rate': 10.0,
+        'weekend_rate': 15.0,
+        # Python date.weekday(): Mon=0 … Sun=6 — UAE weekend Fri+Sat
+        'weekend_days': [4, 5],
+    }
+
+    def __repr__(self):
+        return f'<OvertimeSettings id={self.id}>'
 
 
 class Client(db.Model):
@@ -2108,3 +2232,167 @@ class TradingInvoiceItem(db.Model):
 
     def __repr__(self):
         return f'<TradingInvoiceItem {self.material_name}>'
+
+
+# ── Cheque Preparation (Operations) ──────────────────────────────────────────
+
+CHEQUE_STATUSES = ['requested', 'verified', 'approved', 'prepared',
+                   'submitted', 'cleared', 'rejected', 'cancelled']
+
+
+class ChequeRequest(db.Model):
+    """Cheque preparation / request form header (Operations module)."""
+    __tablename__ = 'cheque_requests'
+
+    id = db.Column(db.Integer, primary_key=True)
+    reference_no = db.Column(db.String(50), unique=True, nullable=False, index=True)  # CHQ-XXXXXXXX
+    office = db.Column(db.String(160), nullable=True)
+    department = db.Column(db.String(120), default='Finance')
+    status = db.Column(db.String(30), default='requested', index=True)
+    remarks = db.Column(db.Text, nullable=True)
+    attached_documents = db.Column(db.Text, nullable=True)  # one document name per line
+    total_amount = db.Column(db.Float, default=0.0)
+
+    requested_by_name = db.Column(db.String(160), nullable=True)
+    requested_date = db.Column(db.Date, nullable=True)
+    requested_signature = db.Column(db.Text, nullable=True)  # base64 data-URL
+    verified_by_name = db.Column(db.String(160), nullable=True)
+    verified_date = db.Column(db.Date, nullable=True)
+    verified_signature = db.Column(db.Text, nullable=True)  # base64 data-URL
+    approved_by_name = db.Column(db.String(160), nullable=True)
+    approved_date = db.Column(db.Date, nullable=True)
+    approved_signature = db.Column(db.Text, nullable=True)  # base64 data-URL
+
+    created_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=_utcnow)
+    updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
+
+    created_by = db.relationship('User', foreign_keys=[created_by_id],
+                                 backref=db.backref('cheque_requests', lazy='dynamic'))
+    items = db.relationship('ChequeRequestItem', backref='cheque_request',
+                            cascade='all, delete-orphan', lazy='select',
+                            order_by='ChequeRequestItem.sn')
+    status_logs = db.relationship('ChequeStatusLog', backref='cheque_request',
+                                  cascade='all, delete-orphan', lazy='select',
+                                  order_by='ChequeStatusLog.created_at')
+
+    def to_dict(self, include_items=True, include_logs=False, include_signatures=True):
+        data = {
+            'id': self.id,
+            'reference_no': self.reference_no,
+            'office': self.office,
+            'department': self.department,
+            'status': self.status,
+            'remarks': self.remarks,
+            'attached_documents': self.attached_documents,
+            'total_amount': self.total_amount,
+            'requested_by_name': self.requested_by_name,
+            'requested_date': self.requested_date.isoformat() if self.requested_date else None,
+            'verified_by_name': self.verified_by_name,
+            'verified_date': self.verified_date.isoformat() if self.verified_date else None,
+            'approved_by_name': self.approved_by_name,
+            'approved_date': self.approved_date.isoformat() if self.approved_date else None,
+            'has_requested_signature': bool(self.requested_signature),
+            'has_verified_signature': bool(self.verified_signature),
+            'has_approved_signature': bool(self.approved_signature),
+            'created_by_id': self.created_by_id,
+            'created_by_name': self.created_by.full_name if self.created_by else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'item_count': len(self.items),
+        }
+        if include_signatures:
+            data['requested_signature'] = self.requested_signature
+            data['verified_signature'] = self.verified_signature
+            data['approved_signature'] = self.approved_signature
+        if include_items:
+            data['items'] = [it.to_dict() for it in self.items]
+        if include_logs:
+            data['status_logs'] = [lg.to_dict() for lg in self.status_logs]
+        return data
+
+    def __repr__(self):
+        return f'<ChequeRequest {self.reference_no} {self.status}>'
+
+
+class ChequeRequestItem(db.Model):
+    """A supplier line on a cheque request (SN / Supplier / Amount / Date / Remarks)."""
+    __tablename__ = 'cheque_request_items'
+
+    id = db.Column(db.Integer, primary_key=True)
+    cheque_request_id = db.Column(db.Integer,
+                                  db.ForeignKey('cheque_requests.id', ondelete='CASCADE'),
+                                  nullable=False, index=True)
+    sn = db.Column(db.Integer, default=1)
+    supplier = db.Column(db.String(200), nullable=False)
+    amount = db.Column(db.Float, default=0.0)
+    cheque_date = db.Column(db.Date, nullable=True)
+    remarks = db.Column(db.Text, nullable=True)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'cheque_request_id': self.cheque_request_id,
+            'sn': self.sn,
+            'supplier': self.supplier,
+            'amount': self.amount,
+            'cheque_date': self.cheque_date.isoformat() if self.cheque_date else None,
+            'remarks': self.remarks,
+        }
+
+    def __repr__(self):
+        return f'<ChequeRequestItem {self.supplier} {self.amount}>'
+
+
+class ChequeStatusLog(db.Model):
+    """Audit trail of cheque request status changes."""
+    __tablename__ = 'cheque_status_logs'
+
+    id = db.Column(db.Integer, primary_key=True)
+    cheque_request_id = db.Column(db.Integer,
+                                  db.ForeignKey('cheque_requests.id', ondelete='CASCADE'),
+                                  nullable=False, index=True)
+    from_status = db.Column(db.String(30), nullable=True)
+    to_status = db.Column(db.String(30), nullable=False)
+    changed_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    note = db.Column(db.Text, nullable=True)
+    email_sent = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=_utcnow)
+
+    changed_by = db.relationship('User', foreign_keys=[changed_by_id])
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'cheque_request_id': self.cheque_request_id,
+            'from_status': self.from_status,
+            'to_status': self.to_status,
+            'changed_by_id': self.changed_by_id,
+            'changed_by_name': self.changed_by.full_name if self.changed_by else None,
+            'note': self.note,
+            'email_sent': bool(self.email_sent),
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+    def __repr__(self):
+        return f'<ChequeStatusLog {self.cheque_request_id} -> {self.to_status}>'
+
+
+class ChequeNotificationConfig(db.Model):
+    """Per-status To/CC recipients for cheque status-change emails (admin-managed)."""
+    __tablename__ = 'cheque_notification_config'
+
+    id = db.Column(db.Integer, primary_key=True)
+    status = db.Column(db.String(30), unique=True, nullable=False)
+    to_emails = db.Column(db.Text, default='')  # comma-separated
+    cc_emails = db.Column(db.Text, default='')
+
+    def to_dict(self):
+        return {
+            'status': self.status,
+            'to_emails': self.to_emails or '',
+            'cc_emails': self.cc_emails or '',
+        }
+
+    def __repr__(self):
+        return f'<ChequeNotificationConfig {self.status}>'

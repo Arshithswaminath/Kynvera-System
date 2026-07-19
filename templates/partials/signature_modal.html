@@ -1,0 +1,49 @@
+{# Shared Draw / Type / Upload signature modal. Requires signature_modal.css + signature_modal.js + SignaturePad. #}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&display=swap" rel="stylesheet">
+<div class="sigm-bg" id="sigmBg" aria-hidden="true">
+  <div class="sigm-modal" role="dialog" aria-modal="true" aria-labelledby="sigmTitle">
+    <div class="sigm-hd">
+      <h3 id="sigmTitle">Signature</h3>
+      <button type="button" class="sigm-x" id="sigmClose" aria-label="Close">&times;</button>
+    </div>
+    <div class="sigm-tabs" role="tablist">
+      <button type="button" class="sigm-tab is-active" data-sigm-tab="draw" role="tab" aria-selected="true">Draw</button>
+      <button type="button" class="sigm-tab" data-sigm-tab="type" role="tab" aria-selected="false">Type</button>
+      <button type="button" class="sigm-tab" data-sigm-tab="upload" role="tab" aria-selected="false">Upload</button>
+    </div>
+    <div class="sigm-body">
+      <div class="sigm-pane is-active" data-sigm-pane="draw">
+        <div class="sigm-draw-wrap">
+          <canvas id="sigmDrawCanvas"></canvas>
+        </div>
+      </div>
+      <div class="sigm-pane" data-sigm-pane="type">
+        <label class="sigm-type-label" for="sigmTypeInput">Type your full name</label>
+        <input type="text" id="sigmTypeInput" class="sigm-type-input" placeholder="Your name" autocomplete="name">
+        <div class="sigm-type-preview is-empty" id="sigmTypePreview"><span>Preview appears here</span></div>
+      </div>
+      <div class="sigm-pane" data-sigm-pane="upload">
+        <div class="sigm-drop" id="sigmDrop" tabindex="0" role="button" aria-label="Upload signature image">
+          <div class="sigm-drop-msg">
+            <strong>Drag &amp; drop a signature image or a scan</strong>
+            <div class="sigm-or">or</div>
+            <button type="button" class="sigm-drop-btn" id="sigmSelectBtn">Select Image</button>
+          </div>
+          <img class="sigm-drop-preview" id="sigmUploadPreview" alt="Uploaded signature preview">
+          <input type="file" id="sigmFileInput" accept="image/*" hidden>
+        </div>
+      </div>
+      <p class="sigm-legal">By signing this document with an electronic signature, I agree that such signature will be as valid as handwritten signatures to the extent allowed by local law.</p>
+    </div>
+    <div class="sigm-ft">
+      <div class="sigm-ft-left">
+        <button type="button" class="sigm-btn-text" id="sigmCancel">Cancel</button>
+        <button type="button" class="sigm-btn-secondary" id="sigmClearPane">Clear</button>
+        <button type="button" class="sigm-btn-secondary" id="sigmUseSaved" disabled title="No saved signature">Use Saved</button>
+      </div>
+      <button type="button" class="sigm-btn-primary" id="sigmAccept">Accept and Sign</button>
+    </div>
+  </div>
+</div>

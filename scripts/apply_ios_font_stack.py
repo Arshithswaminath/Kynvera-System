@@ -16,7 +16,7 @@ SCOPES = [
     ROOT / "templates",
     ROOT / "static",
     ROOT / "module_hr" / "templates",
-    ROOT / "module_procurement" / "templates",
+    ROOT / "module_store" / "templates",
     ROOT / "module_mmr" / "templates",
     ROOT / "module_inspection" / "templates",
     ROOT / "module_hvac_mep" / "templates",

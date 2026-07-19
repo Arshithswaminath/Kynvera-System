@@ -1,1030 +1,1608 @@
-﻿<!DOCTYPE html>
+﻿<!doctype html>
 <html lang="en" class="login-root">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover"
+    />
     <title>Login | Amaan Application</title>
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
+    <link
+      rel="icon"
+      type="image/png"
+      href="{{ url_for('static', filename='favicon.png') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/design-tokens.css') }}"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='mobile_responsive.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='animations.css') }}"
+    />
     <style>
-        :root {
-            --lp-primary: #a8121e;
-            --lp-primary-container: #d21725;
-            --lp-on-primary: #ffffff;
-            --lp-on-primary-container: #fca5a5;
-            --lp-primary-fixed-dim: #fca5a5;
-            --lp-surface: #fafafa;
-            --lp-surface-lowest: #ffffff;
-            --lp-surface-highest: #e4e4e7;
-            --lp-surface-high: #f4f4f5;
-            --lp-on-surface: #18181b;
-            --lp-on-surface-variant: #3f3f46;
-            --lp-outline: #71717a;
-            --lp-outline-variant: #d4d4d8;
-            --lp-error: #ba1a1a;
-            --lp-error-bg: #ffdad6;
-            --lp-success-bg: #dcfce7;
-            --lp-success-text: #166534;
-        }
+      :root {
+        --lp-primary: #a8121e;
+        --lp-primary-container: #d21725;
+        --lp-on-primary: #ffffff;
+        --lp-on-primary-container: #fca5a5;
+        --lp-primary-fixed-dim: #fca5a5;
+        --lp-surface: #fafafa;
+        --lp-surface-lowest: #ffffff;
+        --lp-surface-highest: #e4e4e7;
+        --lp-surface-high: #f4f4f5;
+        --lp-on-surface: #18181b;
+        --lp-on-surface-variant: #3f3f46;
+        --lp-outline: #71717a;
+        --lp-outline-variant: #d4d4d8;
+        --lp-error: #ba1a1a;
+        --lp-error-bg: #ffdad6;
+        --lp-success-bg: #dcfce7;
+        --lp-success-text: #166534;
+      }
 
-        .material-symbols-outlined {
-            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-            font-size: 1.25rem;
-            line-height: 1;
-        }
+      .material-symbols-outlined {
+        font-variation-settings:
+          "FILL" 0,
+          "wght" 400,
+          "GRAD" 0,
+          "opsz" 24;
+        font-size: 1.25rem;
+        line-height: 1;
+      }
 
-        /* One viewport, no page scroll (clip if content exceeds very short screens) */
+      /* One viewport, no page scroll (clip if content exceeds very short screens) */
+      html.login-root {
+        height: 100%;
+        max-height: 100%;
+        overflow: hidden;
+        box-sizing: border-box;
+      }
+
+      html.login-root body.login-page {
+        height: 100%;
+        max-height: 100%;
+      }
+
+      body.login-page {
+        margin: 0;
+        font-family:
+          -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+          system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+        color: var(--lp-on-surface);
+        background: var(--lp-surface);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        box-sizing: border-box;
+        padding-top: env(safe-area-inset-top, 0);
+        padding-bottom: env(safe-area-inset-bottom, 0);
+      }
+
+      @supports (height: 100dvh) {
         html.login-root {
-            height: 100%;
-            max-height: 100%;
-            overflow: hidden;
-            box-sizing: border-box;
+          height: 100dvh;
+          max-height: 100dvh;
         }
+      }
 
-        html.login-root body.login-page {
-            height: 100%;
-            max-height: 100%;
-        }
+      .login-main {
+        flex: 1 1 auto;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        overflow: hidden;
+      }
 
-        body.login-page {
-            margin: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
-            color: var(--lp-on-surface);
-            background: var(--lp-surface);
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            box-sizing: border-box;
-            padding-top: env(safe-area-inset-top, 0);
-            padding-bottom: env(safe-area-inset-bottom, 0);
-        }
-
-        @supports (height: 100dvh) {
-            html.login-root {
-                height: 100dvh;
-                max-height: 100dvh;
-            }
-        }
-
+      @media (min-width: 768px) {
         .login-main {
-            flex: 1 1 auto;
-            display: flex;
-            flex-direction: column;
-            min-height: 0;
-            overflow: hidden;
+          flex-direction: row;
         }
+      }
 
-        @media (min-width: 768px) {
-            .login-main {
-                flex-direction: row;
-            }
+      .login-hero {
+        width: 100%;
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem 1.5rem 2.5rem;
+        background: linear-gradient(
+          135deg,
+          var(--lp-primary) 0%,
+          var(--lp-primary-container) 100%
+        );
+        flex: 0 1 auto;
+        min-height: 0;
+      }
+
+      /* ── Mobile-only: full-screen splash + full-screen slide-up ──────── */
+      @media (max-width: 767px) {
+        /*
+ * mobile_responsive.css sets html/body to height:auto !important, so
+ * height:100% on main collapses and the absolute hero has ~0 height.
+ * Fill the viewport with min-height instead (flex:1 still applies on body).
+ */
+        .login-main {
+          overflow: hidden;
+          position: relative;
+          flex: 1 1 auto;
+          align-self: stretch;
+          width: 100%;
+          min-height: calc(
+            100vh - env(safe-area-inset-top, 0px) -
+              env(safe-area-inset-bottom, 0px)
+          );
+          min-height: calc(
+            100dvh - env(safe-area-inset-top, 0px) -
+              env(safe-area-inset-bottom, 0px)
+          );
         }
-
         .login-hero {
-            width: 100%;
-            position: relative;
-            overflow: hidden;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 2rem 1.5rem 2.5rem;
-            background: linear-gradient(135deg, var(--lp-primary) 0%, var(--lp-primary-container) 100%);
-            flex: 0 1 auto;
-            min-height: 0;
+          position: absolute;
+          inset: 0;
+          min-height: 100%;
+          max-height: none;
+          padding: 1.5rem 2.5rem
+            calc(env(safe-area-inset-bottom, 0px) + 10.75rem);
+          flex: none;
+          width: 100%;
+          /* row is default — flex-end is horizontal; column + flex-end = bottom */
+          display: flex;
+          flex-direction: column;
+          justify-content: flex-end;
+          align-items: flex-start;
+          text-align: left;
+          /* hero scales back when sheet opens */
+          transition:
+            transform 0.55s cubic-bezier(0.16, 1, 0.3, 1),
+            opacity 0.45s ease;
+          transform-origin: center 40%;
         }
-
-        /* ── Mobile-only: full-screen splash + full-screen slide-up ──────── */
-        @media (max-width: 767px) {
-            /*
-             * mobile_responsive.css sets html/body to height:auto !important, so
-             * height:100% on main collapses and the absolute hero has ~0 height.
-             * Fill the viewport with min-height instead (flex:1 still applies on body).
-             */
-            .login-main {
-                overflow: hidden;
-                position: relative;
-                flex: 1 1 auto;
-                align-self: stretch;
-                width: 100%;
-                min-height: calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
-                min-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
-            }
-            .login-hero {
-                position: absolute;
-                inset: 0;
-                min-height: 100%;
-                max-height: none;
-                padding: 1.5rem 2.5rem calc(env(safe-area-inset-bottom, 0px) + 10.75rem);
-                flex: none;
-                width: 100%;
-                /* row is default — flex-end is horizontal; column + flex-end = bottom */
-                display: flex;
-                flex-direction: column;
-                justify-content: flex-end;
-                align-items: flex-start;
-                text-align: left;
-                /* hero scales back when sheet opens */
-                transition: transform 0.55s cubic-bezier(0.16, 1, 0.3, 1),
-                            opacity 0.45s ease;
-                transform-origin: center 40%;
-            }
-            .login-hero.hero-exit {
-                transform: scale(0.92);
-                opacity: 0.55;
-            }
-            .login-hero-inner {
-                display: flex;
-                flex-direction: column;
-                align-items: flex-start;
-            }
-            .login-hero-kicker,
-            .login-hero-lede {
-                text-align: left;
-            }
-            .login-hero-title {
-                font-size: clamp(3.85rem, 17vw, 4.85rem);
-                line-height: 1.02;
-            }
-            .login-hero-lede {
-                max-width: 18rem;
-                font-size: 0.75rem;
-                line-height: 1.5;
-                opacity: 0.9;
-            }
-
-            /* Mobile CTA buttons inside hero */
-            .mobile-hero-cta {
-                display: flex;
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 0.75rem;
-                margin-top: 1.75rem;
-                width: 100%;
-                max-width: 15.5rem;
-            }
-            .btn-mobile-signin {
-                width: 100%;
-                min-height: 44px;
-                padding: 0.55rem 1.2rem;
-                background: rgba(255,255,255,0.15);
-                backdrop-filter: blur(12px);
-                -webkit-backdrop-filter: blur(12px);
-                border: 1.5px solid rgba(255,255,255,0.45);
-                border-radius: 100px;
-                color: #fff;
-                font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
-                font-size: 0.9rem;
-                font-weight: 700;
-                letter-spacing: 0.01em;
-                cursor: pointer;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                gap: 0.35rem;
-                transition: background 0.22s ease, transform 0.18s ease,
-                            box-shadow 0.22s ease;
-                box-shadow: 0 4px 20px rgba(0,0,0,0.12);
-            }
-            .btn-mobile-signin:hover {
-                background: rgba(255,255,255,0.22);
-                box-shadow: 0 6px 28px rgba(0,0,0,0.18);
-            }
-            .btn-mobile-signin:active {
-                transform: scale(0.96);
-                background: rgba(255,255,255,0.28);
-            }
-            .btn-mobile-signup-link {
-                text-align: left;
-                color: rgba(255,255,255,0.65);
-                font-size: 0.875rem;
-                margin: 0;
-            }
-            .btn-mobile-signup-link a {
-                color: var(--lp-primary-fixed-dim);
-                text-decoration: none;
-                font-weight: 700;
-            }
-
-            /* Backdrop (subtle, not needed for full screen but adds depth during transition) */
-            .mobile-backdrop {
-                display: block;
-                position: fixed;
-                inset: 0;
-                background: rgba(0,0,0,0);
-                z-index: 40;
-                pointer-events: none;
-            }
-
-            /* Full-screen slide-up sheet */
-            .login-canvas {
-                position: fixed;
-                inset: 0;
-                z-index: 50;
-                background: #fff;
-                border-radius: 0;
-                padding: calc(env(safe-area-inset-top, 0px) + 0.75rem) 2rem
-                         calc(env(safe-area-inset-bottom, 0px) + 2rem);
-                transform: translateY(100%);
-                transition: transform 0.55s cubic-bezier(0.16, 1, 0.3, 1);
-                overflow-y: auto;
-                overflow-x: hidden;
-                /* centre the card vertically */
-                display: flex !important;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                min-height: 0;
-                box-shadow: none;
-                margin-top: 0;
-            }
-            .login-canvas.sheet-open {
-                transform: translateY(0);
-            }
-
-            /* Pill handle at top of sheet */
-            .sheet-handle {
-                position: absolute;
-                top: calc(env(safe-area-inset-top, 0px) + 0.5rem);
-                left: 0;
-                right: 0;
-                display: flex;
-                justify-content: center;
-                padding: 0.5rem 0;
-                cursor: pointer;
-            }
-            .sheet-handle-bar {
-                width: 36px;
-                height: 4px;
-                background: #d0d5dd;
-                border-radius: 100px;
-                transition: background 0.2s;
-            }
-            .sheet-handle:hover .sheet-handle-bar {
-                background: #adb5bd;
-            }
-
-            /* Back button — top-left of sheet */
-            .sheet-back-btn {
-                position: absolute;
-                top: calc(env(safe-area-inset-top, 0px) + 0.6rem);
-                left: 1.25rem;
-                display: flex;
-                align-items: center;
-                gap: 0.3rem;
-                background: none;
-                border: none;
-                padding: 0.5rem;
-                color: var(--lp-outline);
-                font-size: 0.8rem;
-                font-family: inherit;
-                cursor: pointer;
-                border-radius: 8px;
-                transition: background 0.18s, color 0.18s;
-                z-index: 2;
-            }
-            .sheet-back-btn:hover {
-                background: var(--lp-surface-highest);
-                color: var(--lp-primary);
-            }
-
-            /* Card fills width, max-width centred */
-            .login-card {
-                width: 100%;
-                max-width: 26rem;
-                padding: 0;
-                border-radius: 0;
-                box-shadow: none;
-                border: none;
-                background: transparent;
-                /* push down past the fixed handle/back-btn */
-                padding-top: 3.5rem;
-            }
+        .login-hero.hero-exit {
+          transform: scale(0.92);
+          opacity: 0.55;
         }
-
-        @media (min-width: 768px) {
-            .login-hero {
-                width: 55%;
-                flex: 0 0 55%;
-                max-width: none;
-                align-self: stretch;
-                padding: 2rem 2rem 2rem 3rem;
-            }
-        }
-
-        .login-hero::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background-image: radial-gradient(var(--lp-on-primary-container) 1px, transparent 1px);
-            background-size: 24px 24px;
-            opacity: 0.1;
-            pointer-events: none;
-        }
-
-        .login-hero::after {
-            content: '';
-            position: absolute;
-            bottom: -6rem;
-            left: -6rem;
-            width: 24rem;
-            height: 24rem;
-            border-radius: 50%;
-            background: var(--lp-primary-fixed-dim);
-            opacity: 0.05;
-            filter: blur(48px);
-            pointer-events: none;
-        }
-
         .login-hero-inner {
-            position: relative;
-            z-index: 1;
-            max-width: 22rem;
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
         }
-
-        .login-hero-kicker {
-            font-size: 0.75rem;
-            font-weight: 600;
-            letter-spacing: 0.12em;
-            text-transform: uppercase;
-            color: var(--lp-on-primary-container);
-            margin: 0 0 1rem;
-        }
-
-        .login-hero-title {
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
-            font-weight: 800;
-            font-size: clamp(1.85rem, 5vw, 3.25rem);
-            line-height: 1.1;
-            color: var(--lp-on-primary);
-            margin: 0 0 1.25rem;
-        }
-
-        .login-hero-title span {
-            color: var(--lp-primary-fixed-dim);
-        }
-
+        .login-hero-kicker,
         .login-hero-lede {
-            margin: 0;
-            font-size: 1rem;
-            line-height: 1.6;
-            color: rgba(255, 255, 255, 0.9);
-            max-width: 20rem;
+          text-align: left;
+        }
+        .login-hero-title {
+          font-size: clamp(3.85rem, 17vw, 4.85rem);
+          line-height: 1.02;
+        }
+        .login-hero-lede {
+          max-width: 18rem;
+          font-size: 0.75rem;
+          line-height: 1.5;
+          opacity: 0.9;
         }
 
-        @media (min-width: 768px) {
-            .login-hero-lede {
-                font-size: 1.125rem;
-            }
+        /* Mobile CTA buttons inside hero */
+        .mobile-hero-cta {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 0.75rem;
+          margin-top: 1.75rem;
+          width: 100%;
+          max-width: 15.5rem;
+        }
+        .btn-mobile-signin {
+          width: 100%;
+          min-height: 44px;
+          padding: 0.55rem 1.2rem;
+          background: rgba(255, 255, 255, 0.15);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          border: 1.5px solid rgba(255, 255, 255, 0.45);
+          border-radius: 100px;
+          color: #fff;
+          font-family:
+            -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+            system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+          font-size: 0.9rem;
+          font-weight: 700;
+          letter-spacing: 0.01em;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.35rem;
+          transition:
+            background 0.22s ease,
+            transform 0.18s ease,
+            box-shadow 0.22s ease;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+        }
+        .btn-mobile-signin:hover {
+          background: rgba(255, 255, 255, 0.22);
+          box-shadow: 0 6px 28px rgba(0, 0, 0, 0.18);
+        }
+        .btn-mobile-signin:active {
+          transform: scale(0.96);
+          background: rgba(255, 255, 255, 0.28);
+        }
+        .btn-mobile-signup-link {
+          text-align: left;
+          color: rgba(255, 255, 255, 0.65);
+          font-size: 0.875rem;
+          margin: 0;
+        }
+        .btn-mobile-signup-link a {
+          color: var(--lp-primary-fixed-dim);
+          text-decoration: none;
+          font-weight: 700;
         }
 
+        /* Backdrop (subtle, not needed for full screen but adds depth during transition) */
+        .mobile-backdrop {
+          display: block;
+          position: fixed;
+          inset: 0;
+          background: rgba(0, 0, 0, 0);
+          z-index: 40;
+          pointer-events: none;
+        }
+
+        /* Full-screen slide-up sheet */
         .login-canvas {
-            flex: 1 1 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 1.25rem 1.25rem 1.5rem;
-            min-width: 0;
-            min-height: 0;
-            overflow: hidden;
+          position: fixed;
+          inset: 0;
+          z-index: 50;
+          background: #fff;
+          border-radius: 0;
+          padding: calc(env(safe-area-inset-top, 0px) + 0.75rem) 2rem
+            calc(env(safe-area-inset-bottom, 0px) + 2rem);
+          transform: translateY(100%);
+          transition: transform 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+          overflow-y: auto;
+          overflow-x: hidden;
+          /* centre the card vertically */
+          display: flex !important;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          min-height: 0;
+          box-shadow: none;
+          margin-top: 0;
+        }
+        .login-canvas.sheet-open {
+          transform: translateY(0);
         }
 
-        @media (min-width: 768px) {
-            .login-canvas {
-                width: 45%;
-                flex: 0 0 45%;
-                padding: 2rem 1.5rem;
-                min-width: 0;
-                align-self: stretch;
-            }
+        /* Pill handle at top of sheet */
+        .sheet-handle {
+          position: absolute;
+          top: calc(env(safe-area-inset-top, 0px) + 0.5rem);
+          left: 0;
+          right: 0;
+          display: flex;
+          justify-content: center;
+          padding: 0.5rem 0;
+          cursor: pointer;
+        }
+        .sheet-handle-bar {
+          width: 36px;
+          height: 4px;
+          background: #d0d5dd;
+          border-radius: 100px;
+          transition: background 0.2s;
+        }
+        .sheet-handle:hover .sheet-handle-bar {
+          background: #adb5bd;
         }
 
+        /* Back button — top-left of sheet */
+        .sheet-back-btn {
+          position: absolute;
+          top: calc(env(safe-area-inset-top, 0px) + 0.6rem);
+          left: 1.25rem;
+          display: flex;
+          align-items: center;
+          gap: 0.3rem;
+          background: none;
+          border: none;
+          padding: 0.5rem;
+          color: var(--lp-outline);
+          font-size: 0.8rem;
+          font-family: inherit;
+          cursor: pointer;
+          border-radius: 8px;
+          transition:
+            background 0.18s,
+            color 0.18s;
+          z-index: 2;
+        }
+        .sheet-back-btn:hover {
+          background: var(--lp-surface-highest);
+          color: var(--lp-primary);
+        }
+
+        /* Card fills width, max-width centred */
         .login-card {
-            width: 100%;
-            max-width: 28rem;
-            max-height: 100%;
-            background: var(--lp-surface-lowest);
-            border-radius: 0.75rem;
-            padding: 0 1.5rem 1.5rem;
-            box-shadow: 0 12px 40px rgba(0, 59, 34, 0.06);
-            border: 1px solid rgba(192, 201, 192, 0.35);
-            box-sizing: border-box;
-            overflow: hidden;
+          width: 100%;
+          max-width: 26rem;
+          padding: 0;
+          border-radius: 0;
+          box-shadow: none;
+          border: none;
+          background: transparent;
+          /* push down past the fixed handle/back-btn */
+          padding-top: 3.5rem;
         }
+      }
 
-        /* Mobile sheet inner sizing */
-        @media (max-width: 767px) {
-            .login-card-logo {
-                margin-bottom: calc(1rem - 40px);
-            }
-            .login-card-logo img {
-                display: block;
-                width: auto;
-                height: 150px;
-                border-radius: 0;
-                object-fit: contain;
-                margin-left: 0;
-                margin-right: auto;
-            }
-            .login-card-intro {
-                margin-bottom: 1.5rem;
-            }
-            .login-card-intro h1 {
-                font-size: 1.5rem;
-                margin-bottom: 0.3rem;
-            }
-            .login-card-intro .subtitle {
-                font-size: 0.875rem;
-                line-height: 1.5;
-            }
-            .form-group {
-                margin-bottom: 1.125rem;
-            }
-            .lp-label {
-                margin-bottom: 0.35rem;
-            }
-            .lp-input-icon {
-                left: 1rem;
-                font-size: 1.35rem;
-                width: 1.35rem;
-                text-align: center;
-            }
-            input.lp-input[type="text"],
-            input.lp-input[type="password"] {
-                padding: 0.95rem 1.125rem 0.95rem 3.35rem;
-                min-height: 52px;
-                border-radius: 0.65rem;
-                box-sizing: border-box;
-            }
-            .register-link {
-                margin-top: 1.5rem;
-                margin-bottom: 0;
-            }
+      @media (min-width: 768px) {
+        .login-hero {
+          width: 55%;
+          flex: 0 0 55%;
+          max-width: none;
+          align-self: stretch;
+          padding: 2rem 2rem 2rem 3rem;
         }
+      }
 
-        @media (min-width: 768px) {
-            .login-card {
-                padding: 0.1rem 2rem 1.75rem;
-                margin-top: 0;
-            }
+      .login-hero::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background-image: radial-gradient(
+          var(--lp-on-primary-container) 1px,
+          transparent 1px
+        );
+        background-size: 24px 24px;
+        opacity: 0.1;
+        pointer-events: none;
+      }
+
+      .login-hero::after {
+        content: "";
+        position: absolute;
+        bottom: -6rem;
+        left: -6rem;
+        width: 24rem;
+        height: 24rem;
+        border-radius: 50%;
+        background: var(--lp-primary-fixed-dim);
+        opacity: 0.05;
+        filter: blur(48px);
+        pointer-events: none;
+      }
+
+      .login-hero-inner {
+        position: relative;
+        z-index: 1;
+        max-width: 22rem;
+      }
+
+      .login-hero-kicker {
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+
+        color: var(--lp-on-primary-container);
+        margin: 0 0 1rem;
+      }
+
+      .login-hero-title {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+          system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+        font-weight: 800;
+        font-size: clamp(1.85rem, 5vw, 3.25rem);
+        line-height: 1.1;
+        color: var(--lp-on-primary);
+        margin: 0 0 1.25rem;
+      }
+
+      .login-hero-title span {
+        color: var(--lp-primary-fixed-dim);
+      }
+
+      .login-hero-lede {
+        margin: 0;
+        font-size: 1rem;
+        line-height: 1.6;
+        color: rgba(255, 255, 255, 0.9);
+        max-width: 20rem;
+      }
+
+      @media (min-width: 768px) {
+        .login-hero-lede {
+          font-size: 1.125rem;
         }
+      }
 
+      .login-canvas {
+        flex: 1 1 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1.25rem 1.25rem 1.5rem;
+        min-width: 0;
+        min-height: 0;
+        overflow: hidden;
+      }
+
+      @media (min-width: 768px) {
+        .login-canvas {
+          width: 45%;
+          flex: 0 0 45%;
+          padding: 2rem 1.5rem;
+          min-width: 0;
+          align-self: stretch;
+        }
+      }
+
+      .login-card {
+        width: 100%;
+        max-width: 28rem;
+        max-height: 100%;
+        background: var(--lp-surface-lowest);
+        border-radius: 0.75rem;
+        padding: 0 1.5rem 1.5rem;
+        box-shadow: 0 12px 40px rgba(0, 59, 34, 0.06);
+        border: 1px solid rgba(192, 201, 192, 0.35);
+        box-sizing: border-box;
+        overflow: hidden;
+      }
+
+      /* Mobile sheet inner sizing */
+      @media (max-width: 767px) {
         .login-card-logo {
-            margin-bottom: calc(1.25rem - 50px);
+          margin-top: -0.5rem;
+          margin-bottom: calc(1rem - 40px);
         }
-
         .login-card-logo img {
-            display: block;
-            width: auto;
-            height: 180px;
-            border-radius: 0;
-            object-fit: contain;
-            object-position: left center;
-            margin-left: -0.5rem;
-            margin-right: auto;
+          display: block;
+          width: auto;
+          height: 150px;
+          border-radius: 0;
+          object-fit: contain;
+          margin-left: -0.75rem;
+          margin-right: auto;
         }
-
         .login-card-intro {
-            margin-bottom: 1rem;
+          margin-bottom: 1.5rem;
         }
-
         .login-card-intro h1 {
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
-            font-size: 1.15rem;
-            font-weight: 700;
-            color: var(--lp-primary);
-            margin: 0 0 0.2rem;
-            text-align: left;
+          font-size: 1.5rem;
+          margin-bottom: 0.3rem;
         }
-
         .login-card-intro .subtitle {
-            margin: 0;
-            font-size: 0.775rem;
-            color: var(--lp-on-surface-variant);
-            line-height: 1.4;
-            text-align: left;
+          font-size: 0.875rem;
+          line-height: 1.5;
         }
-
-        .error-message {
-            background: var(--lp-error-bg);
-            color: #93000a;
-            padding: 0.75rem 1rem;
-            border-radius: 0.5rem;
-            margin-bottom: 1.25rem;
-            display: none;
-            font-size: 0.875rem;
-            line-height: 1.4;
-        }
-
-        .success-message {
-            background: var(--lp-success-bg);
-            color: var(--lp-success-text);
-            padding: 0.75rem 1rem;
-            border-radius: 0.5rem;
-            margin-bottom: 1.25rem;
-            display: none;
-            font-size: 0.875rem;
-            line-height: 1.4;
-        }
-
         .form-group {
-            margin-bottom: 0.875rem;
+          margin-bottom: 1.125rem;
         }
-
         .lp-label {
-            display: block;
-            margin-bottom: 0.25rem;
-            font-size: 0.625rem;
-            font-weight: 700;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-            color: var(--lp-outline);
+          margin-bottom: 0.35rem;
         }
-
-        .lp-input-wrap {
-            position: relative;
-            display: flex;
-            align-items: center;
-            background: var(--lp-surface-highest);
-            border-radius: 0.45rem;
-            transition: box-shadow 0.2s, background 0.2s;
-        }
-
-        .lp-input-wrap:focus-within {
-            background: var(--lp-surface-lowest);
-            box-shadow: 0 0 0 2px var(--lp-primary-fixed-dim);
-        }
-
-        .lp-input-wrap:focus-within .lp-input-icon {
-            color: var(--lp-primary);
-        }
-
         .lp-input-icon {
-            position: absolute;
-            left: 0.75rem;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--lp-outline);
-            pointer-events: none;
-            transition: color 0.2s;
+          left: 1rem;
+          font-size: 1.35rem;
+          width: 1.35rem;
+          text-align: center;
         }
+        input.lp-input[type="text"],
+        input.lp-input[type="password"] {
+          padding: 0.95rem 1.125rem 0.95rem 3.35rem;
+          min-height: 52px;
+          border-radius: 0.65rem;
+          box-sizing: border-box;
+        }
+        .register-link {
+          margin-top: 1.5rem;
+          margin-bottom: 0;
+        }
+      }
 
-        .lp-pw-toggle {
-            position: absolute;
-            right: 0.5rem;
-            top: 50%;
-            transform: translateY(-50%);
-            background: none;
-            border: none;
-            padding: 0.25rem;
-            cursor: pointer;
-            color: var(--lp-outline);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 0.25rem;
-            transition: color 0.2s;
-            z-index: 1;
+      @media (min-width: 768px) {
+        .login-card {
+          padding: 0.1rem 2rem 1.75rem;
+          margin-top: 0;
         }
-        .lp-pw-toggle:hover,
-        .lp-pw-toggle:focus,
-        .lp-pw-toggle:active {
-            color: var(--lp-outline) !important;
-            transform: translateY(-50%) !important;
-            background: transparent !important;
-            outline: none !important;
-            box-shadow: none !important;
+      }
+
+      .login-card-logo {
+        margin-top: -0.75rem;
+        margin-bottom: calc(1.25rem - 50px);
+      }
+
+      .login-card-logo img {
+        display: block;
+        width: auto;
+        height: 180px;
+        border-radius: 0;
+        object-fit: contain;
+        object-position: left center;
+        margin-left: -1.25rem;
+        margin-right: auto;
+      }
+
+      .login-card-intro {
+        margin-bottom: 1rem;
+      }
+
+      .login-card-intro h1 {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+          system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: var(--lp-primary);
+        margin: 0 0 0.2rem;
+        text-align: left;
+      }
+
+      .login-card-intro .subtitle {
+        margin: 0;
+        font-size: 0.775rem;
+        color: var(--lp-on-surface-variant);
+        line-height: 1.4;
+        text-align: left;
+      }
+
+      .error-message {
+        background: var(--lp-error-bg);
+        color: #93000a;
+        padding: 0.75rem 1rem;
+        border-radius: 0.5rem;
+        margin-bottom: 1.25rem;
+        display: none;
+        font-size: 0.875rem;
+        line-height: 1.4;
+      }
+
+      .success-message {
+        background: var(--lp-success-bg);
+        color: var(--lp-success-text);
+        padding: 0.75rem 1rem;
+        border-radius: 0.5rem;
+        margin-bottom: 1.25rem;
+        display: none;
+        font-size: 0.875rem;
+        line-height: 1.4;
+      }
+
+      .form-group {
+        margin-bottom: 0.875rem;
+      }
+
+      .lp-label {
+        display: block;
+        margin-bottom: 0.25rem;
+        font-size: 0.625rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+
+        color: var(--lp-outline);
+      }
+
+      .lp-input-wrap {
+        position: relative;
+        display: flex;
+        align-items: center;
+        background: var(--lp-surface-highest);
+        border-radius: 0.45rem;
+        transition:
+          box-shadow 0.2s,
+          background 0.2s;
+      }
+
+      .lp-input-wrap:focus-within {
+        background: var(--lp-surface-lowest);
+        box-shadow: 0 0 0 2px var(--lp-primary-fixed-dim);
+      }
+
+      .lp-input-wrap:focus-within .lp-input-icon {
+        color: var(--lp-primary);
+      }
+
+      .lp-input-icon {
+        position: absolute;
+        left: 0.75rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--lp-outline);
+        pointer-events: none;
+        transition: color 0.2s;
+      }
+
+      .lp-pw-toggle {
+        position: absolute;
+        right: 0.5rem;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        padding: 0.25rem;
+        cursor: pointer;
+        color: var(--lp-outline);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 0.25rem;
+        transition: color 0.2s;
+        z-index: 1;
+      }
+      .lp-pw-toggle:hover,
+      .lp-pw-toggle:focus,
+      .lp-pw-toggle:active {
+        color: var(--lp-outline) !important;
+        transform: translateY(-50%) !important;
+        background: transparent !important;
+        outline: none !important;
+        box-shadow: none !important;
+      }
+      .lp-pw-toggle .material-symbols-outlined {
+        font-size: 1.15rem;
+      }
+
+      input.lp-input[type="text"],
+      input.lp-input[type="password"] {
+        width: 100%;
+        padding: 0.65rem 2.5rem 0.65rem 2.5rem;
+        border: none;
+        border-radius: 0.45rem;
+        font-size: 0.875rem;
+        font-family: inherit;
+        background: transparent;
+        color: var(--lp-on-surface);
+        box-sizing: border-box;
+      }
+
+      input.lp-input::placeholder {
+        color: rgba(112, 121, 114, 0.55);
+      }
+
+      input.lp-input:focus {
+        outline: none;
+      }
+
+      .btn-login {
+        width: 100%;
+        padding: 0.7rem 1.25rem;
+        margin-top: 0.35rem;
+        background: var(--lp-primary-container);
+        color: var(--lp-on-primary);
+        border: none;
+        border-radius: 0.45rem;
+        font-size: 0.875rem;
+        font-weight: 700;
+        font-family: inherit;
+        cursor: pointer;
+        box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.1);
+        transition:
+          opacity 0.2s,
+          transform 0.15s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+      }
+
+      .btn-login:hover {
+        opacity: 0.92;
+      }
+
+      .btn-login:active {
+        transform: scale(0.98);
+      }
+
+      .btn-login:disabled {
+        background: var(--lp-outline-variant);
+        cursor: not-allowed;
+        opacity: 1;
+        box-shadow: none;
+      }
+
+      .btn-login .material-symbols-outlined {
+        font-size: 1.125rem;
+      }
+
+      .loading {
+        display: none;
+        text-align: center;
+        margin-top: 0.75rem;
+        color: var(--lp-primary-container);
+        font-size: 0.875rem;
+      }
+
+      .register-link {
+        text-align: center;
+        margin-top: 1.75rem;
+        color: var(--lp-on-surface-variant);
+        font-size: 0.875rem;
+      }
+
+      .register-link a {
+        color: var(--lp-primary);
+        text-decoration: none;
+        font-weight: 700;
+      }
+
+      .register-link a:hover {
+        text-decoration: underline;
+        text-underline-offset: 4px;
+        text-decoration-color: var(--lp-primary-fixed-dim);
+      }
+
+      .lp-forgot-row {
+        display: flex;
+        justify-content: flex-end;
+        margin: -0.35rem 0 0.85rem;
+      }
+
+      .lp-forgot-link,
+      .lp-text-btn {
+        background: none;
+        border: none;
+        padding: 0;
+        font-size: 0.82rem;
+        font-weight: 700;
+        color: var(--lp-primary);
+        cursor: pointer;
+        text-decoration: none;
+      }
+
+      .lp-forgot-link:hover,
+      .lp-text-btn:hover {
+        text-decoration: underline;
+        text-underline-offset: 3px;
+      }
+
+      #forgot-panel[hidden],
+      #login-form[hidden] {
+        display: none !important;
+      }
+
+      .lp-forgot-steps {
+        display: flex;
+        gap: 0.4rem;
+        margin: 0 0 1rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--lp-outline);
+      }
+
+      .lp-forgot-steps span.is-active {
+        color: var(--lp-primary);
+      }
+
+      .lp-forgot-step[hidden] {
+        display: none !important;
+      }
+
+      .lp-forgot-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 0.65rem;
+        margin-top: 0.25rem;
+      }
+
+      .lp-forgot-back {
+        text-align: center;
+        margin-top: 0.25rem;
+      }
+
+      /* Hide mobile-only elements on desktop */
+      .mobile-hero-cta,
+      .mobile-backdrop,
+      .sheet-handle,
+      .sheet-back-btn {
+        display: none;
+      }
+
+      @media (max-width: 767px) {
+        html.login-root,
+        body.login-page {
+          overflow: hidden !important;
+          background: var(--lp-primary) !important;
         }
-        .lp-pw-toggle .material-symbols-outlined { font-size: 1.15rem; }
 
         input.lp-input[type="text"],
         input.lp-input[type="password"] {
-            width: 100%;
-            padding: 0.65rem 2.5rem 0.65rem 2.5rem;
-            border: none;
-            border-radius: 0.45rem;
-            font-size: 0.875rem;
-            font-family: inherit;
-            background: transparent;
-            color: var(--lp-on-surface);
-            box-sizing: border-box;
-        }
-
-        input.lp-input::placeholder {
-            color: rgba(112, 121, 114, 0.55);
-        }
-
-        input.lp-input:focus {
-            outline: none;
+          font-size: 16px;
         }
 
         .btn-login {
-            width: 100%;
-            padding: 0.7rem 1.25rem;
-            margin-top: 0.35rem;
-            background: var(--lp-primary-container);
-            color: var(--lp-on-primary);
-            border: none;
-            border-radius: 0.45rem;
-            font-size: 0.875rem;
-            font-weight: 700;
-            font-family: inherit;
-            cursor: pointer;
-            box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.1);
-            transition: opacity 0.2s, transform 0.15s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
+          min-height: 54px;
+          border-radius: 100px;
+          font-size: 0.95rem;
         }
 
-        .btn-login:hover {
-            opacity: 0.92;
+        /* Show mobile-only elements */
+        .mobile-hero-cta {
+          display: flex;
         }
-
-        .btn-login:active {
-            transform: scale(0.98);
+        .mobile-backdrop {
+          display: block;
         }
-
-        .btn-login:disabled {
-            background: var(--lp-outline-variant);
-            cursor: not-allowed;
-            opacity: 1;
-            box-shadow: none;
+        .sheet-handle {
+          display: flex;
         }
-
-        .btn-login .material-symbols-outlined {
-            font-size: 1.125rem;
-        }
-
-        .loading {
-            display: none;
-            text-align: center;
-            margin-top: 0.75rem;
-            color: var(--lp-primary-container);
-            font-size: 0.875rem;
-        }
-
-        .register-link {
-            text-align: center;
-            margin-top: 1.75rem;
-            color: var(--lp-on-surface-variant);
-            font-size: 0.875rem;
-        }
-
-        .register-link a {
-            color: var(--lp-primary);
-            text-decoration: none;
-            font-weight: 700;
-        }
-
-        .register-link a:hover {
-            text-decoration: underline;
-            text-underline-offset: 4px;
-            text-decoration-color: var(--lp-primary-fixed-dim);
-        }
-
-        /* Hide mobile-only elements on desktop */
-        .mobile-hero-cta,
-        .mobile-backdrop,
-        .sheet-handle,
         .sheet-back-btn {
-            display: none;
+          display: flex;
         }
+      }
 
-        @media (max-width: 767px) {
-            html.login-root,
-            body.login-page {
-                overflow: hidden !important;
-                background: var(--lp-primary) !important;
-            }
-
-            input.lp-input[type="text"],
-            input.lp-input[type="password"] {
-                font-size: 16px;
-            }
-
-            .btn-login {
-                min-height: 54px;
-                border-radius: 100px;
-                font-size: 0.95rem;
-            }
-
-            /* Show mobile-only elements */
-            .mobile-hero-cta   { display: flex; }
-            .mobile-backdrop   { display: block; }
-            .sheet-handle      { display: flex; }
-            .sheet-back-btn    { display: flex; }
+      @media (max-width: 480px) {
+        .login-canvas {
+          padding-left: max(1.25rem, env(safe-area-inset-left));
+          padding-right: max(1.25rem, env(safe-area-inset-right));
         }
-
-        @media (max-width: 480px) {
-            .login-canvas {
-                padding-left: max(1.25rem, env(safe-area-inset-left));
-                padding-right: max(1.25rem, env(safe-area-inset-right));
-            }
-            .sheet-back-btn {
-                left: max(0.75rem, env(safe-area-inset-left));
-            }
+        .sheet-back-btn {
+          left: max(0.75rem, env(safe-area-inset-left));
         }
+      }
 
-        /*
-         * mobile_responsive.css uses .form-group input { padding !important; background #fff }
-         * which strips left space for icons and hides unfocused fields on a white card.
-         * Re-assert login chrome with higher specificity.
-         */
-        @media (max-width: 768px) {
-            body.login-page .login-card .lp-input-wrap {
-                background-color: var(--lp-surface-highest) !important;
-                border: 1.5px solid rgba(192, 201, 192, 0.7) !important;
-                border-radius: 0.65rem !important;
-                min-height: 52px !important;
-            }
-            body.login-page .login-card .lp-input-wrap:focus-within {
-                background-color: var(--lp-surface-lowest) !important;
-                border-color: var(--lp-primary-container) !important;
-                box-shadow: 0 0 0 2px var(--lp-primary-fixed-dim) !important;
-            }
-            body.login-page .login-card .lp-input-wrap input.lp-input[type="text"],
-            body.login-page .login-card .lp-input-wrap input.lp-input[type="password"] {
-                width: 100% !important;
-                padding: 0.95rem 3rem 0.95rem 3.5rem !important;
-                height: auto !important;
-                min-height: 52px !important;
-                background: transparent !important;
-                border: none !important;
-                border-radius: 0 !important;
-                box-shadow: none !important;
-                line-height: 1.45 !important;
-                color: var(--lp-on-surface) !important;
-            }
-            body.login-page .login-card .lp-input-wrap input.lp-input:focus {
-                outline: none !important;
-                box-shadow: none !important;
-            }
-            body.login-page .login-card .lp-input-icon {
-                left: 1rem !important;
-                font-size: 1.35rem !important;
-            }
+      /*
+ * mobile_responsive.css uses .form-group input { padding !important; background #fff }
+ * which strips left space for icons and hides unfocused fields on a white card.
+ * Re-assert login chrome with higher specificity.
+ */
+      @media (max-width: 768px) {
+        body.login-page .login-card .lp-input-wrap {
+          background-color: var(--lp-surface-highest) !important;
+          border: 1.5px solid rgba(192, 201, 192, 0.7) !important;
+          border-radius: 0.65rem !important;
+          min-height: 52px !important;
         }
+        body.login-page .login-card .lp-input-wrap:focus-within {
+          background-color: var(--lp-surface-lowest) !important;
+          border-color: var(--lp-primary-container) !important;
+          box-shadow: 0 0 0 2px var(--lp-primary-fixed-dim) !important;
+        }
+        body.login-page .login-card .lp-input-wrap input.lp-input[type="text"],
+        body.login-page
+          .login-card
+          .lp-input-wrap
+          input.lp-input[type="password"] {
+          width: 100% !important;
+          padding: 0.95rem 3rem 0.95rem 3.5rem !important;
+          height: auto !important;
+          min-height: 52px !important;
+          background: transparent !important;
+          border: none !important;
+          border-radius: 0 !important;
+          box-shadow: none !important;
+          line-height: 1.45 !important;
+          color: var(--lp-on-surface) !important;
+        }
+        body.login-page .login-card .lp-input-wrap input.lp-input:focus {
+          outline: none !important;
+          box-shadow: none !important;
+        }
+        body.login-page .login-card .lp-input-icon {
+          left: 1rem !important;
+          font-size: 1.35rem !important;
+        }
+      }
 
-        /* Override shared mobile_responsive.css body overflow on this route */
-        html.login-root,
-        body.login-page {
-            overflow: hidden !important;
-        }
+      /* Override shared mobile_responsive.css body overflow on this route */
+      html.login-root,
+      body.login-page {
+        overflow: hidden !important;
+      }
     </style>
-</head>
-<body class="login-page">
+  </head>
+  <body class="login-page">
     <main class="login-main">
-        <section class="login-hero" aria-hidden="false">
-            <div class="login-hero-inner">
-                <h2 class="login-hero-title">All Operations.<br><span>One Platform.</span></h2>
-                <p class="login-hero-lede">The hub for your teams to run logistics, facilities, and day-to-day operations in one place.</p>
+      <section class="login-hero" aria-hidden="false">
+        <div class="login-hero-inner">
+          <h2 class="login-hero-title">
+            All Operations.<br /><span>One Platform.</span>
+          </h2>
+          <p class="login-hero-lede">
+            The hub for your teams to run logistics, facilities, and day-to-day
+            operations in one place.
+          </p>
 
-                <!-- Mobile-only splash CTAs -->
-                <div class="mobile-hero-cta">
-                    <button class="btn-mobile-signin" id="mobile-signin-btn" type="button">
-                        <span>Sign in</span>
-                        <span class="material-symbols-outlined" style="font-size:0.95rem" aria-hidden="true">arrow_forward</span>
-                    </button>
-                    <p class="btn-mobile-signup-link">
-                        Create an account? <a href="{{ url_for('register_page') }}">Sign up</a>
-                    </p>
-                </div>
-            </div>
-        </section>
-
-        <!-- Mobile sheet backdrop -->
-        <div class="mobile-backdrop" id="mobile-backdrop"></div>
-
-        <section class="login-canvas" id="login-canvas">
-            <!-- Mobile drag handle -->
-            <div class="sheet-handle" id="sheet-handle" aria-hidden="true">
-                <div class="sheet-handle-bar"></div>
-            </div>
-            <!-- Mobile back button -->
-            <button class="sheet-back-btn" id="sheet-back-btn" type="button" aria-label="Close sign-in panel">
-                <span class="material-symbols-outlined" style="font-size:1rem">arrow_back_ios</span>
-                <span>Back</span>
+          <!-- Mobile-only splash CTAs -->
+          <div class="mobile-hero-cta">
+            <button
+              class="btn-mobile-signin"
+              id="mobile-signin-btn"
+              type="button"
+            >
+              <span>Sign in</span>
+              <span
+                class="material-symbols-outlined"
+                style="font-size: 0.95rem"
+                aria-hidden="true"
+                >arrow_forward</span
+              >
             </button>
+            <p class="btn-mobile-signup-link">
+              Create an account?
+              <a href="{{ url_for('register_page') }}">Sign up</a>
+            </p>
+          </div>
+        </div>
+      </section>
 
-            <div class="login-card">
-                <div class="login-card-logo">
-                    <img src="{{ url_for('static', filename='logo.png') }}" alt="Amaan Logo">
-                </div>
+      <!-- Mobile sheet backdrop -->
+      <div class="mobile-backdrop" id="mobile-backdrop"></div>
 
-                <div class="login-card-intro">
-                    <h1>Welcome</h1>
-                    <p class="subtitle">Sign in to open your dashboard and continue where you left off.</p>
-                </div>
+      <section class="login-canvas" id="login-canvas">
+        <!-- Mobile drag handle -->
+        <div class="sheet-handle" id="sheet-handle" aria-hidden="true">
+          <div class="sheet-handle-bar"></div>
+        </div>
+        <!-- Mobile back button -->
+        <button
+          class="sheet-back-btn"
+          id="sheet-back-btn"
+          type="button"
+          aria-label="Close sign-in panel"
+        >
+          <span class="material-symbols-outlined" style="font-size: 1rem"
+            >arrow_back_ios</span
+          >
+          <span>Back</span>
+        </button>
 
-                <div id="error-message" class="error-message"></div>
-                <div id="success-message" class="success-message"></div>
+        <div class="login-card">
+          <div class="login-card-logo">
+            <img
+              src="{{ url_for('static', filename='logo.png') }}"
+              alt="Amaan Logo"
+            />
+          </div>
 
-                <form id="login-form">
-                    <div class="form-group">
-                        <label class="lp-label" for="username">Username or email</label>
-                        <div class="lp-input-wrap">
-                            <span class="material-symbols-outlined lp-input-icon" aria-hidden="true">mail</span>
-                            <input class="lp-input" type="text" id="username" name="username" required autocomplete="username" placeholder="you@company.com">
-                        </div>
-                    </div>
+          <div class="login-card-intro">
+            <h1>Welcome</h1>
+            <p class="subtitle">
+              Sign in to open your dashboard and continue where you left off.
+            </p>
+          </div>
 
-                    <div class="form-group">
-                        <label class="lp-label" for="password">Password</label>
-                        <div class="lp-input-wrap">
-                            <span class="material-symbols-outlined lp-input-icon" aria-hidden="true">lock</span>
-                            <input class="lp-input" type="password" id="password" name="password" required autocomplete="off" data-1p-ignore="true" data-lpignore="true" placeholder="••••••••">
-                            <button type="button" class="lp-pw-toggle" id="pw-toggle" aria-label="Show password">
-                                <span class="material-symbols-outlined" id="pw-toggle-icon">visibility_off</span>
-                            </button>
-                        </div>
-                    </div>
+          <div id="error-message" class="error-message"></div>
+          <div id="success-message" class="success-message"></div>
 
-                    <button type="submit" class="btn-login" id="login-btn">
-                        <span>Sign in to dashboard</span>
-                        <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
-                    </button>
-                    <div class="loading" id="loading">Signing in...</div>
-                </form>
-
-                <div class="register-link">
-                    Don't have an account? <a href="{{ url_for('register_page') }}">Sign up</a>
-                </div>
+          <form id="login-form">
+            <div class="form-group">
+              <label class="lp-label" for="username">Username, full name, or email</label>
+              <div class="lp-input-wrap">
+                <span
+                  class="material-symbols-outlined lp-input-icon"
+                  aria-hidden="true"
+                  >person</span
+                >
+                <input
+                  class="lp-input"
+                  type="text"
+                  id="username"
+                  name="username"
+                  required
+                  autocomplete="username"
+                  placeholder="Username, full name, or email"
+                />
+              </div>
             </div>
-        </section>
+
+            <div class="form-group">
+              <label class="lp-label" for="password">Password</label>
+              <div class="lp-input-wrap">
+                <span
+                  class="material-symbols-outlined lp-input-icon"
+                  aria-hidden="true"
+                  >lock</span
+                >
+                <input
+                  class="lp-input"
+                  type="password"
+                  id="password"
+                  name="password"
+                  required
+                  autocomplete="off"
+                  data-1p-ignore="true"
+                  data-lpignore="true"
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  class="lp-pw-toggle"
+                  id="pw-toggle"
+                  aria-label="Show password"
+                >
+                  <span class="material-symbols-outlined" id="pw-toggle-icon"
+                    >visibility_off</span
+                  >
+                </button>
+              </div>
+            </div>
+
+            <div class="lp-forgot-row">
+              <button type="button" class="lp-forgot-link" id="forgot-open-btn">
+                Forgot password?
+              </button>
+            </div>
+
+            <button type="submit" class="btn-login" id="login-btn">
+              <span>Sign in to dashboard</span>
+              <span class="material-symbols-outlined" aria-hidden="true"
+                >arrow_forward</span
+              >
+            </button>
+            <div class="loading" id="loading">Signing in...</div>
+          </form>
+
+          <div id="forgot-panel" hidden>
+            <div class="lp-forgot-steps" aria-hidden="true">
+              <span id="fp-step-label-1" class="is-active">1. Account</span>
+              <span>·</span>
+              <span id="fp-step-label-2">2. Code</span>
+              <span>·</span>
+              <span id="fp-step-label-3">3. New password</span>
+            </div>
+
+            <div class="lp-forgot-step" id="fp-step-identify">
+              <div class="form-group">
+                <label class="lp-label" for="fp-identifier">Username or email</label>
+                <div class="lp-input-wrap">
+                  <span class="material-symbols-outlined lp-input-icon" aria-hidden="true">mail</span>
+                  <input
+                    class="lp-input"
+                    type="text"
+                    id="fp-identifier"
+                    autocomplete="username"
+                    placeholder="Username or email"
+                  />
+                </div>
+              </div>
+              <div class="lp-forgot-actions">
+                <button type="button" class="btn-login" id="fp-send-otp-btn">
+                  <span>Send verification code</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="lp-forgot-step" id="fp-step-otp" hidden>
+              <p id="fp-otp-hint" style="margin: 0 0 0.85rem; font-size: 0.88rem; color: var(--lp-on-surface-variant); line-height: 1.45;">
+                Enter the 6-digit code from your email.
+              </p>
+              <div class="form-group">
+                <label class="lp-label" for="fp-otp">Verification code</label>
+                <div class="lp-input-wrap">
+                  <span class="material-symbols-outlined lp-input-icon" aria-hidden="true">pin</span>
+                  <input
+                    class="lp-input"
+                    type="text"
+                    id="fp-otp"
+                    inputmode="numeric"
+                    autocomplete="one-time-code"
+                    maxlength="6"
+                    placeholder="6-digit code"
+                  />
+                </div>
+              </div>
+              <div class="lp-forgot-actions">
+                <button type="button" class="btn-login" id="fp-verify-otp-btn">
+                  <span>Verify code</span>
+                </button>
+                <button type="button" class="lp-text-btn" id="fp-resend-btn">Resend code</button>
+              </div>
+            </div>
+
+            <div class="lp-forgot-step" id="fp-step-password" hidden>
+              <div class="form-group">
+                <label class="lp-label" for="fp-new-password">New password</label>
+                <div class="lp-input-wrap">
+                  <span class="material-symbols-outlined lp-input-icon" aria-hidden="true">lock</span>
+                  <input
+                    class="lp-input"
+                    type="password"
+                    id="fp-new-password"
+                    autocomplete="new-password"
+                    placeholder="Min. 8 chars, upper, lower, digit"
+                  />
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="lp-label" for="fp-confirm-password">Confirm password</label>
+                <div class="lp-input-wrap">
+                  <span class="material-symbols-outlined lp-input-icon" aria-hidden="true">lock</span>
+                  <input
+                    class="lp-input"
+                    type="password"
+                    id="fp-confirm-password"
+                    autocomplete="new-password"
+                    placeholder="Re-enter password"
+                  />
+                </div>
+              </div>
+              <div class="lp-forgot-actions">
+                <button type="button" class="btn-login" id="fp-reset-btn">
+                  <span>Update password</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="lp-forgot-back">
+              <button type="button" class="lp-text-btn" id="forgot-back-btn">Back to sign in</button>
+            </div>
+            <div class="loading" id="fp-loading">Please wait...</div>
+          </div>
+
+          <div class="register-link">
+            Don't have an account?
+            <a href="{{ url_for('register_page') }}">Sign up</a>
+          </div>
+        </div>
+      </section>
     </main>
 
     <script>
-        /* ── Mobile full-screen slide-up logic ──────────────────────────── */
-        const isMobile = () => window.innerWidth <= 767;
+      /* ── Mobile full-screen slide-up logic ──────────────────────────── */
+      const isMobile = () => window.innerWidth <= 767;
 
-        const canvas      = document.getElementById('login-canvas');
-        const hero        = document.querySelector('.login-hero');
-        const mobileBtn   = document.getElementById('mobile-signin-btn');
-        const backBtn     = document.getElementById('sheet-back-btn');
-        const sheetHandle = document.getElementById('sheet-handle');
+      const canvas = document.getElementById("login-canvas");
+      const hero = document.querySelector(".login-hero");
+      const mobileBtn = document.getElementById("mobile-signin-btn");
+      const backBtn = document.getElementById("sheet-back-btn");
+      const sheetHandle = document.getElementById("sheet-handle");
 
-        function openSheet() {
-            if (!isMobile()) return;
-            canvas.classList.add('sheet-open');
-            hero && hero.classList.add('hero-exit');
-            // Focus first input after transition settles
-            setTimeout(() => {
-                const first = canvas.querySelector('input');
-                if (first) first.focus({ preventScroll: true });
-            }, 420);
+      function openSheet() {
+        if (!isMobile()) return;
+        canvas.classList.add("sheet-open");
+        hero && hero.classList.add("hero-exit");
+        // Focus first input after transition settles
+        setTimeout(() => {
+          const first = canvas.querySelector("input");
+          if (first) first.focus({ preventScroll: true });
+        }, 420);
+      }
+
+      function closeSheet() {
+        canvas.classList.remove("sheet-open");
+        hero && hero.classList.remove("hero-exit");
+        // Blur any focused input so keyboard hides
+        if (document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur();
         }
+      }
 
-        function closeSheet() {
-            canvas.classList.remove('sheet-open');
-            hero && hero.classList.remove('hero-exit');
-            // Blur any focused input so keyboard hides
-            if (document.activeElement instanceof HTMLElement) {
-                document.activeElement.blur();
-            }
+      if (mobileBtn) mobileBtn.addEventListener("click", openSheet);
+      if (backBtn) backBtn.addEventListener("click", closeSheet);
+
+      // Tap handle to close
+      if (sheetHandle) sheetHandle.addEventListener("click", closeSheet);
+
+      // Swipe-down to close on sheet handle
+      if (sheetHandle) {
+        let startY = 0;
+        sheetHandle.addEventListener(
+          "touchstart",
+          (e) => {
+            startY = e.touches[0].clientY;
+          },
+          { passive: true },
+        );
+        sheetHandle.addEventListener(
+          "touchend",
+          (e) => {
+            if (e.changedTouches[0].clientY - startY > 50) closeSheet();
+          },
+          { passive: true },
+        );
+      }
+
+      // Also swipe-down anywhere in the canvas (fast flick)
+      if (canvas) {
+        let touchStartY = 0;
+        canvas.addEventListener(
+          "touchstart",
+          (e) => {
+            touchStartY = e.touches[0].clientY;
+          },
+          { passive: true },
+        );
+        canvas.addEventListener(
+          "touchend",
+          (e) => {
+            const delta = e.changedTouches[0].clientY - touchStartY;
+            // Only dismiss if scrolled to very top and swiped down fast
+            if (delta > 80 && canvas.scrollTop <= 0) closeSheet();
+          },
+          { passive: true },
+        );
+      }
+
+      // Auto-open if a validation error is already present (e.g. server redirect)
+      window.addEventListener("DOMContentLoaded", () => {
+        if (isMobile()) {
+          const err = document.getElementById("error-message");
+          if (err && err.textContent.trim()) openSheet();
         }
+      });
 
-        if (mobileBtn) mobileBtn.addEventListener('click', openSheet);
-        if (backBtn)   backBtn.addEventListener('click', closeSheet);
+      /* ── Password visibility toggle ─────────────────────────────────── */
+      const pwInput = document.getElementById("password");
+      const pwToggle = document.getElementById("pw-toggle");
+      const pwIcon = document.getElementById("pw-toggle-icon");
+      if (pwToggle) {
+        pwToggle.addEventListener("click", () => {
+          const isHidden = pwInput.type === "password";
+          pwInput.type = isHidden ? "text" : "password";
+          pwIcon.textContent = isHidden ? "visibility" : "visibility_off";
+          pwToggle.setAttribute(
+            "aria-label",
+            isHidden ? "Hide password" : "Show password",
+          );
+        });
+      }
 
-        // Tap handle to close
-        if (sheetHandle) sheetHandle.addEventListener('click', closeSheet);
+      /* ── Login form logic ───────────────────────────────────────────── */
+      const loginForm = document.getElementById("login-form");
+      const loginBtn = document.getElementById("login-btn");
+      const loading = document.getElementById("loading");
+      const errorMessage = document.getElementById("error-message");
+      const successMessage = document.getElementById("success-message");
 
-        // Swipe-down to close on sheet handle
-        if (sheetHandle) {
-            let startY = 0;
-            sheetHandle.addEventListener('touchstart', e => {
-                startY = e.touches[0].clientY;
-            }, { passive: true });
-            sheetHandle.addEventListener('touchend', e => {
-                if (e.changedTouches[0].clientY - startY > 50) closeSheet();
-            }, { passive: true });
-        }
+      loginForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
 
-        // Also swipe-down anywhere in the canvas (fast flick)
-        if (canvas) {
-            let touchStartY = 0;
-            canvas.addEventListener('touchstart', e => {
-                touchStartY = e.touches[0].clientY;
-            }, { passive: true });
-            canvas.addEventListener('touchend', e => {
-                const delta = e.changedTouches[0].clientY - touchStartY;
-                // Only dismiss if scrolled to very top and swiped down fast
-                if (delta > 80 && canvas.scrollTop <= 0) closeSheet();
-            }, { passive: true });
-        }
+        // Clear previous messages
+        errorMessage.style.display = "none";
+        successMessage.style.display = "none";
 
-        // Auto-open if a validation error is already present (e.g. server redirect)
-        window.addEventListener('DOMContentLoaded', () => {
-            if (isMobile()) {
-                const err = document.getElementById('error-message');
-                if (err && err.textContent.trim()) openSheet();
-            }
+        // Show loading
+        loginBtn.disabled = true;
+        loading.style.display = "block";
+
+        const username = document.getElementById("username").value.trim();
+        const password = document.getElementById("password").value;
+
+        console.log("Login attempt:", {
+          username,
+          passwordLength: password.length,
         });
 
-        /* ── Password visibility toggle ─────────────────────────────────── */
-        const pwInput  = document.getElementById('password');
-        const pwToggle = document.getElementById('pw-toggle');
-        const pwIcon   = document.getElementById('pw-toggle-icon');
-        if (pwToggle) {
-            pwToggle.addEventListener('click', () => {
-                const isHidden = pwInput.type === 'password';
-                pwInput.type = isHidden ? 'text' : 'password';
-                pwIcon.textContent = isHidden ? 'visibility' : 'visibility_off';
-                pwToggle.setAttribute('aria-label', isHidden ? 'Hide password' : 'Show password');
+        const requestBody = JSON.stringify({ username, password });
+        console.log("Request body:", requestBody);
+
+        try {
+          const response = await fetch("/api/auth/login", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: requestBody,
+          });
+
+          console.log("Response status:", response.status);
+          console.log("Response headers:", [...response.headers.entries()]);
+
+          // Check if response is JSON
+          const contentType = response.headers.get("content-type");
+          console.log("Content-Type:", contentType);
+
+          if (!contentType || !contentType.includes("application/json")) {
+            const text = await response.text();
+            console.error("Non-JSON response:", text.substring(0, 500));
+            errorMessage.textContent =
+              "Server error: Expected JSON response. Check console for details.";
+            errorMessage.style.display = "block";
+            loginBtn.disabled = false;
+            loading.style.display = "none";
+            return;
+          }
+
+          const data = await response.json();
+          console.log("Response data:", data);
+
+          if (response.ok) {
+            // Store tokens
+            localStorage.setItem("access_token", data.access_token);
+            localStorage.setItem("refresh_token", data.refresh_token);
+            const userPayload = Object.assign({}, data.user || {}, {
+              requires_password_change: !!data.requires_password_change,
+              password_expiry_warning: !!data.password_expiry_warning,
+              password_days_remaining: data.password_days_remaining,
+              temp_password_reminder: !!data.temp_password_reminder,
             });
+            localStorage.setItem("user", JSON.stringify(userPayload));
+
+            // Show success
+            successMessage.textContent = "Login successful! Redirecting...";
+            successMessage.style.display = "block";
+
+            // Redirect to dashboard
+            setTimeout(() => {
+              window.location.href = "/dashboard";
+            }, 1000);
+          } else {
+            const code = data.error_code || data.code || "";
+            if (
+              code === "PASSWORD_EXPIRED_LOCKED" ||
+              (data.error || "").toLowerCase().includes("password expired")
+            ) {
+              errorMessage.textContent =
+                data.error ||
+                "Account locked because the password expired. Please contact an administrator to unlock.";
+            } else {
+              errorMessage.textContent = data.error || "Login failed";
+            }
+            errorMessage.style.display = "block";
+            loginBtn.disabled = false;
+            loading.style.display = "none";
+          }
+        } catch (error) {
+          console.error("Login error:", error);
+          errorMessage.textContent =
+            "Network error. Please check if the server is running on http://localhost:5000";
+          errorMessage.style.display = "block";
+          loginBtn.disabled = false;
+          loading.style.display = "none";
+        }
+      });
+
+      /* ── Forgot password (email OTP) ─────────────────────────────────── */
+      (function () {
+        const loginFormEl = document.getElementById("login-form");
+        const forgotPanel = document.getElementById("forgot-panel");
+        const openBtn = document.getElementById("forgot-open-btn");
+        const backBtnFp = document.getElementById("forgot-back-btn");
+        const fpLoading = document.getElementById("fp-loading");
+        const stepIdentify = document.getElementById("fp-step-identify");
+        const stepOtp = document.getElementById("fp-step-otp");
+        const stepPassword = document.getElementById("fp-step-password");
+        const labels = [
+          document.getElementById("fp-step-label-1"),
+          document.getElementById("fp-step-label-2"),
+          document.getElementById("fp-step-label-3"),
+        ];
+        let fpIdentifier = "";
+        let fpResetToken = null;
+
+        function showFpError(msg) {
+          successMessage.style.display = "none";
+          errorMessage.textContent = msg || "";
+          errorMessage.style.display = msg ? "block" : "none";
+        }
+        function showFpSuccess(msg) {
+          errorMessage.style.display = "none";
+          successMessage.textContent = msg || "";
+          successMessage.style.display = msg ? "block" : "none";
+        }
+        function setFpBusy(busy) {
+          if (fpLoading) fpLoading.style.display = busy ? "block" : "none";
+          [
+            "fp-send-otp-btn",
+            "fp-verify-otp-btn",
+            "fp-reset-btn",
+            "fp-resend-btn",
+          ].forEach((id) => {
+            const el = document.getElementById(id);
+            if (el) el.disabled = !!busy;
+          });
+        }
+        function setFpStep(step) {
+          if (stepIdentify) stepIdentify.hidden = step !== 1;
+          if (stepOtp) stepOtp.hidden = step !== 2;
+          if (stepPassword) stepPassword.hidden = step !== 3;
+          labels.forEach((el, i) => {
+            if (el) el.classList.toggle("is-active", i + 1 === step);
+          });
+        }
+        function openForgot() {
+          showFpError("");
+          showFpSuccess("");
+          fpIdentifier = (document.getElementById("username")?.value || "").trim();
+          const idEl = document.getElementById("fp-identifier");
+          if (idEl) idEl.value = fpIdentifier;
+          document.getElementById("fp-otp").value = "";
+          document.getElementById("fp-new-password").value = "";
+          document.getElementById("fp-confirm-password").value = "";
+          fpResetToken = null;
+          setFpStep(1);
+          if (loginFormEl) loginFormEl.hidden = true;
+          if (forgotPanel) forgotPanel.hidden = false;
+          setTimeout(() => idEl && idEl.focus(), 40);
+        }
+        function closeForgot() {
+          showFpError("");
+          showFpSuccess("");
+          fpResetToken = null;
+          if (forgotPanel) forgotPanel.hidden = true;
+          if (loginFormEl) loginFormEl.hidden = false;
         }
 
-        /* ── Login form logic ───────────────────────────────────────────── */
-        const loginForm = document.getElementById('login-form');
-        const loginBtn = document.getElementById('login-btn');
-        const loading = document.getElementById('loading');
-        const errorMessage = document.getElementById('error-message');
-        const successMessage = document.getElementById('success-message');
-        
-        loginForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            // Clear previous messages
-            errorMessage.style.display = 'none';
-            successMessage.style.display = 'none';
-            
-            // Show loading
-            loginBtn.disabled = true;
-            loading.style.display = 'block';
-            
-            const username = document.getElementById('username').value.trim();
-            const password = document.getElementById('password').value;
-            
-            console.log('Login attempt:', { username, passwordLength: password.length });
-            
-            const requestBody = JSON.stringify({ username, password });
-            console.log('Request body:', requestBody);
-            
-            try {
-                const response = await fetch('/api/auth/login', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: requestBody
-                });
-                
-                console.log('Response status:', response.status);
-                console.log('Response headers:', [...response.headers.entries()]);
-                
-                // Check if response is JSON
-                const contentType = response.headers.get('content-type');
-                console.log('Content-Type:', contentType);
-                
-                if (!contentType || !contentType.includes('application/json')) {
-                    const text = await response.text();
-                    console.error('Non-JSON response:', text.substring(0, 500));
-                    errorMessage.textContent = 'Server error: Expected JSON response. Check console for details.';
-                    errorMessage.style.display = 'block';
-                    loginBtn.disabled = false;
-                    loading.style.display = 'none';
-                    return;
-                }
-                
-                const data = await response.json();
-                console.log('Response data:', data);
-                
-                if (response.ok) {
-                    // Store tokens
-                    localStorage.setItem('access_token', data.access_token);
-                    localStorage.setItem('refresh_token', data.refresh_token);
-                    localStorage.setItem('user', JSON.stringify(data.user));
-                    
-                    // Show success
-                    successMessage.textContent = 'Login successful! Redirecting...';
-                    successMessage.style.display = 'block';
-                    
-                    // Redirect to dashboard
-                    setTimeout(() => {
-                        window.location.href = '/dashboard';
-                    }, 1000);
-                } else {
-                    errorMessage.textContent = data.error || 'Login failed';
-                    errorMessage.style.display = 'block';
-                    loginBtn.disabled = false;
-                    loading.style.display = 'none';
-                }
-            } catch (error) {
-                console.error('Login error:', error);
-                errorMessage.textContent = 'Network error. Please check if the server is running on http://localhost:5000';
-                errorMessage.style.display = 'block';
-                loginBtn.disabled = false;
-                loading.style.display = 'none';
-            }
-        });
-    </script>
-    <script src="{{ url_for('static', filename='mobile_utils.js') }}" defer></script>
-</body>
-</html>
+        async function fpJson(url, body) {
+          const response = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body || {}),
+          });
+          let data = {};
+          try {
+            data = await response.json();
+          } catch (_) {}
+          return { ok: response.ok, status: response.status, data };
+        }
 
+        async function sendOtp() {
+          showFpError("");
+          showFpSuccess("");
+          fpIdentifier = (
+            document.getElementById("fp-identifier")?.value || ""
+          ).trim();
+          if (!fpIdentifier) {
+            showFpError("Enter your username or email.");
+            return;
+          }
+          setFpBusy(true);
+          try {
+            const res = await fpJson("/api/auth/forgot-password/request-otp", {
+              identifier: fpIdentifier,
+            });
+            if (!res.ok) {
+              showFpError(
+                res.data.error || "Could not send verification code.",
+              );
+              return;
+            }
+            const masked = res.data.masked_email || "";
+            const hint = document.getElementById("fp-otp-hint");
+            if (hint) {
+              hint.textContent = masked
+                ? `We sent a 6-digit code to ${masked}. Enter it below.`
+                : "If an account matches, a code was sent. Enter it below.";
+            }
+            setFpStep(2);
+            showFpSuccess(res.data.message || "Check your email for a code.");
+            setTimeout(() => document.getElementById("fp-otp")?.focus(), 40);
+          } catch (err) {
+            showFpError("Network error. Please try again.");
+          } finally {
+            setFpBusy(false);
+          }
+        }
+
+        async function verifyOtp() {
+          showFpError("");
+          showFpSuccess("");
+          const code = (document.getElementById("fp-otp")?.value || "").trim();
+          if (!/^\d{6}$/.test(code)) {
+            showFpError("Enter the 6-digit code from your email.");
+            return;
+          }
+          setFpBusy(true);
+          try {
+            const res = await fpJson("/api/auth/forgot-password/verify-otp", {
+              identifier: fpIdentifier,
+              code,
+            });
+            if (!res.ok) {
+              showFpError(res.data.error || "Incorrect or expired code.");
+              return;
+            }
+            fpResetToken =
+              res.data.reset_token ||
+              (res.data.data && res.data.data.reset_token) ||
+              null;
+            if (!fpResetToken) {
+              showFpError("Verification succeeded but reset token was missing.");
+              return;
+            }
+            setFpStep(3);
+            showFpSuccess("Code verified. Choose a new password.");
+            setTimeout(
+              () => document.getElementById("fp-new-password")?.focus(),
+              40,
+            );
+          } catch (err) {
+            showFpError("Network error. Please try again.");
+          } finally {
+            setFpBusy(false);
+          }
+        }
+
+        async function resetPassword() {
+          showFpError("");
+          showFpSuccess("");
+          const pw = document.getElementById("fp-new-password")?.value || "";
+          const confirm =
+            document.getElementById("fp-confirm-password")?.value || "";
+          if (pw !== confirm) {
+            showFpError("Password confirmation does not match.");
+            return;
+          }
+          if (!fpResetToken) {
+            showFpError("Reset session expired. Start again.");
+            setFpStep(1);
+            return;
+          }
+          setFpBusy(true);
+          try {
+            const res = await fpJson("/api/auth/forgot-password/reset", {
+              reset_token: fpResetToken,
+              new_password: pw,
+              confirm_password: confirm,
+            });
+            if (!res.ok) {
+              showFpError(res.data.error || "Failed to update password.");
+              return;
+            }
+            const uname = res.data.username || fpIdentifier;
+            closeForgot();
+            const userEl = document.getElementById("username");
+            if (userEl && uname) userEl.value = uname;
+            document.getElementById("password").value = "";
+            showFpSuccess("Password updated. Sign in with your new password.");
+          } catch (err) {
+            showFpError("Network error. Please try again.");
+          } finally {
+            setFpBusy(false);
+          }
+        }
+
+        if (openBtn) openBtn.addEventListener("click", openForgot);
+        if (backBtnFp) backBtnFp.addEventListener("click", closeForgot);
+        document
+          .getElementById("fp-send-otp-btn")
+          ?.addEventListener("click", sendOtp);
+        document
+          .getElementById("fp-resend-btn")
+          ?.addEventListener("click", sendOtp);
+        document
+          .getElementById("fp-verify-otp-btn")
+          ?.addEventListener("click", verifyOtp);
+        document
+          .getElementById("fp-reset-btn")
+          ?.addEventListener("click", resetPassword);
+
+        const otpEl = document.getElementById("fp-otp");
+        if (otpEl) {
+          otpEl.addEventListener("input", () => {
+            otpEl.value = otpEl.value.replace(/\D/g, "").slice(0, 6);
+          });
+          otpEl.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              verifyOtp();
+            }
+          });
+        }
+        document.getElementById("fp-identifier")?.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            sendOtp();
+          }
+        });
+        ["fp-new-password", "fp-confirm-password"].forEach((id) => {
+          document.getElementById(id)?.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              resetPassword();
+            }
+          });
+        });
+      })();
+    </script>
+    <script
+      src="{{ url_for('static', filename='mobile_utils.js') }}"
+      defer
+    ></script>
+  </body>
+</html>

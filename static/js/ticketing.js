@@ -256,3 +256,322 @@ function tktFmtHours(h) {
   if (n === Math.floor(n)) return `${n}h`;
   return `${n}h`;
 }
+
+// ── Excel-style table column filters ──────────────────────
+function tktInitExcelFilters(tableId, opts = {}) {
+  const table = document.getElementById(tableId);
+  if (!table) return;
+
+  const tbody = table.tBodies[0];
+  if (!tbody) return;
+
+  const state = {
+    filters: {},   // colKey -> Set of allowed values (null/absent = all)
+    sortKey: null,
+    sortDir: null, // 'asc' | 'desc'
+    openKey: null,
+  };
+
+  const countEl = opts.countEl ? document.querySelector(opts.countEl) : null;
+  const clearAllBtn = opts.clearAllBtn ? document.querySelector(opts.clearAllBtn) : null;
+
+  let panel = document.getElementById('tkt-excel-panel');
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = 'tkt-excel-panel';
+    panel.className = 'tkt-excel-panel';
+    panel.hidden = true;
+    panel.innerHTML = `
+      <div class="tkt-excel-sort">
+        <button type="button" data-sort="asc">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 4h13M3 8h9m-9 4h6m4 0 3-3m0 0 3 3m-3-3v12"/></svg>
+          Sort A → Z
+        </button>
+        <button type="button" data-sort="desc">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 4h13M3 8h9m-9 4h9m5-4v12m0 0 3-3m-3 3-3-3"/></svg>
+          Sort Z → A
+        </button>
+      </div>
+      <div class="tkt-excel-search">
+        <input type="search" placeholder="Search values…" autocomplete="off">
+      </div>
+      <div class="tkt-excel-actions">
+        <button type="button" data-act="select-all">Select all</button>
+        <button type="button" data-act="clear">Clear</button>
+      </div>
+      <div class="tkt-excel-list" role="listbox" aria-multiselectable="true"></div>
+      <div class="tkt-excel-footer">
+        <button type="button" class="tkt-excel-btn-cancel" data-act="cancel">Cancel</button>
+        <button type="button" class="tkt-excel-btn-ok" data-act="ok">OK</button>
+      </div>
+    `;
+    document.body.appendChild(panel);
+  }
+
+  const searchInput = panel.querySelector('.tkt-excel-search input');
+  const listEl = panel.querySelector('.tkt-excel-list');
+  let draftSelected = new Set();
+  let draftValues = [];
+  let allUniqueForCol = [];
+
+  function rowVal(row, key) {
+    return (row.dataset[key] || '').trim();
+  }
+
+  function getVisibleRows(ignoreKey) {
+    return Array.from(tbody.rows).filter((row) => {
+      for (const [k, set] of Object.entries(state.filters)) {
+        if (ignoreKey && k === ignoreKey) continue;
+        if (!set) continue;
+        if (!set.has(rowVal(row, k))) return false;
+      }
+      return true;
+    });
+  }
+
+  function uniqueValues(key) {
+    const rows = getVisibleRows(key);
+    const map = new Map();
+    rows.forEach((row) => {
+      const v = rowVal(row, key);
+      const label = v || '(Blank)';
+      if (!map.has(v)) map.set(v, label);
+    });
+    return Array.from(map.entries())
+      .map(([value, label]) => ({ value, label }))
+      .sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base', numeric: true }));
+  }
+
+  function applyFiltersAndSort() {
+    const rows = Array.from(tbody.rows);
+    rows.forEach((row) => {
+      let show = true;
+      for (const [k, set] of Object.entries(state.filters)) {
+        if (!set) continue;
+        if (!set.has(rowVal(row, k))) { show = false; break; }
+      }
+      row.classList.toggle('tkt-row-hidden', !show);
+    });
+
+    if (state.sortKey && state.sortDir) {
+      const visible = rows.filter((r) => !r.classList.contains('tkt-row-hidden'));
+      const hidden = rows.filter((r) => r.classList.contains('tkt-row-hidden'));
+      const key = state.sortKey;
+      const dir = state.sortDir === 'asc' ? 1 : -1;
+      visible.sort((a, b) => {
+        const av = rowVal(a, key);
+        const bv = rowVal(b, key);
+        if (key === 'created') {
+          const ad = a.dataset.createdSort || av;
+          const bd = b.dataset.createdSort || bv;
+          return ad.localeCompare(bd, undefined, { numeric: true }) * dir;
+        }
+        return av.localeCompare(bv, undefined, { sensitivity: 'base', numeric: true }) * dir;
+      });
+      [...visible, ...hidden].forEach((r) => tbody.appendChild(r));
+    }
+
+    updateHeaderMarks();
+    updateMeta();
+  }
+
+  function activeFilterCount() {
+    return Object.values(state.filters).filter(Boolean).length;
+  }
+
+  function updateMeta() {
+    const total = tbody.rows.length;
+    const shown = Array.from(tbody.rows).filter((r) => !r.classList.contains('tkt-row-hidden')).length;
+    if (countEl) {
+      const n = activeFilterCount();
+      countEl.textContent = n
+        ? `Showing ${shown} of ${total} ticket${total === 1 ? '' : 's'} (${n} column filter${n === 1 ? '' : 's'})`
+        : `${total} ticket${total === 1 ? '' : 's'}`;
+    }
+    if (clearAllBtn) {
+      clearAllBtn.hidden = !(activeFilterCount() || state.sortKey);
+    }
+  }
+
+  function updateHeaderMarks() {
+    table.querySelectorAll('.tkt-col-filter-btn').forEach((btn) => {
+      const key = btn.dataset.col;
+      btn.classList.toggle('active', !!state.filters[key]);
+      btn.classList.toggle('open', state.openKey === key);
+      const mark = btn.parentElement?.querySelector('.tkt-col-sort-mark');
+      if (mark) {
+        if (state.sortKey === key) {
+          mark.textContent = state.sortDir === 'asc' ? '▲' : '▼';
+          mark.hidden = false;
+        } else {
+          mark.textContent = '';
+          mark.hidden = true;
+        }
+      }
+    });
+  }
+
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function renderList(filterText) {
+    const q = (filterText || '').trim().toLowerCase();
+    const items = q
+      ? allUniqueForCol.filter((x) => x.label.toLowerCase().includes(q))
+      : allUniqueForCol;
+    draftValues = items;
+    if (!items.length) {
+      listEl.innerHTML = '<div class="tkt-excel-empty">No matching values</div>';
+      return;
+    }
+    listEl.innerHTML = items.map((item, i) => {
+      const checked = draftSelected.has(item.value) ? 'checked' : '';
+      const safeLabel = escapeHtml(item.label);
+      return `<label class="tkt-excel-item"><input type="checkbox" data-idx="${i}" ${checked}><span title="${safeLabel}">${safeLabel}</span></label>`;
+    }).join('');
+  }
+
+  function positionPanel(anchor) {
+    panel.hidden = false;
+    const rect = anchor.getBoundingClientRect();
+    const pw = panel.offsetWidth;
+    const ph = panel.offsetHeight;
+    let left = rect.left;
+    let top = rect.bottom + 4;
+    if (left + pw > window.innerWidth - 8) left = Math.max(8, window.innerWidth - pw - 8);
+    if (top + ph > window.innerHeight - 8) top = Math.max(8, rect.top - ph - 4);
+    panel.style.left = `${Math.max(8, left)}px`;
+    panel.style.top = `${top}px`;
+  }
+
+  function closePanel() {
+    panel.hidden = true;
+    state.openKey = null;
+    updateHeaderMarks();
+  }
+
+  function openPanel(key, btn) {
+    state.openKey = key;
+    allUniqueForCol = uniqueValues(key);
+    const current = state.filters[key];
+    draftSelected = current
+      ? new Set(current)
+      : new Set(allUniqueForCol.map((x) => x.value));
+
+    panel.querySelectorAll('[data-sort]').forEach((b) => {
+      b.classList.toggle('active', state.sortKey === key && state.sortDir === b.dataset.sort);
+    });
+    searchInput.value = '';
+    renderList('');
+    positionPanel(btn);
+    updateHeaderMarks();
+    searchInput.focus();
+  }
+
+  function commitDraft() {
+    const key = state.openKey;
+    if (!key) return;
+    const allVals = new Set(allUniqueForCol.map((x) => x.value));
+    if (draftSelected.size === 0) {
+      state.filters[key] = new Set();
+    } else if (draftSelected.size >= allVals.size && [...allVals].every((v) => draftSelected.has(v))) {
+      delete state.filters[key];
+    } else {
+      state.filters[key] = new Set(draftSelected);
+    }
+    closePanel();
+    applyFiltersAndSort();
+  }
+
+  table.querySelectorAll('.tkt-col-filter-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const key = btn.dataset.col;
+      if (state.openKey === key && !panel.hidden) closePanel();
+      else openPanel(key, btn);
+    });
+  });
+
+  panel.addEventListener('click', (e) => e.stopPropagation());
+
+  panel.querySelectorAll('[data-sort]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const key = state.openKey;
+      if (!key) return;
+      const dir = btn.dataset.sort;
+      if (state.sortKey === key && state.sortDir === dir) {
+        state.sortKey = null;
+        state.sortDir = null;
+      } else {
+        state.sortKey = key;
+        state.sortDir = dir;
+      }
+      panel.querySelectorAll('[data-sort]').forEach((b) => {
+        b.classList.toggle('active', state.sortKey === key && state.sortDir === b.dataset.sort);
+      });
+      applyFiltersAndSort();
+    });
+  });
+
+  searchInput.addEventListener('input', () => renderList(searchInput.value));
+
+  panel.querySelector('[data-act="select-all"]').addEventListener('click', () => {
+    draftValues.forEach((x) => draftSelected.add(x.value));
+    renderList(searchInput.value);
+  });
+
+  panel.querySelector('[data-act="clear"]').addEventListener('click', () => {
+    draftValues.forEach((x) => draftSelected.delete(x.value));
+    renderList(searchInput.value);
+  });
+
+  listEl.addEventListener('change', (e) => {
+    const cb = e.target.closest('input[type="checkbox"]');
+    if (!cb) return;
+    const idx = Number(cb.dataset.idx);
+    const item = draftValues[idx];
+    if (!item) return;
+    if (cb.checked) draftSelected.add(item.value);
+    else draftSelected.delete(item.value);
+  });
+
+  panel.querySelector('[data-act="ok"]').addEventListener('click', commitDraft);
+  panel.querySelector('[data-act="cancel"]').addEventListener('click', closePanel);
+
+  document.addEventListener('click', (e) => {
+    if (panel.hidden) return;
+    if (panel.contains(e.target)) return;
+    if (e.target.closest('.tkt-col-filter-btn')) return;
+    closePanel();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !panel.hidden) closePanel();
+  });
+
+  window.addEventListener('resize', () => { if (!panel.hidden) closePanel(); });
+  // Close when the page/table scrolls, but not when scrolling inside the filter panel list
+  window.addEventListener('scroll', (e) => {
+    if (panel.hidden) return;
+    const t = e.target;
+    if (t && (t === panel || (t.nodeType === 1 && panel.contains(t)))) return;
+    closePanel();
+  }, true);
+
+  if (clearAllBtn) {
+    clearAllBtn.addEventListener('click', () => {
+      state.filters = {};
+      state.sortKey = null;
+      state.sortDir = null;
+      closePanel();
+      applyFiltersAndSort();
+    });
+  }
+
+  applyFiltersAndSort();
+}

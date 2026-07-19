@@ -10,7 +10,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy import or_, and_, not_, func
 from sqlalchemy.orm import joinedload, noload, aliased
 from sqlalchemy.orm.attributes import flag_modified
-from app.models import db, User, Submission, AuditLog, DocHubDocument, Device, BDProject, Job
+from app.models import db, User, Submission, AuditLog, DocHubDocument, Device, BDProject, Job, InspectionNotification
 from common.error_responses import error_response, success_response
 from common.workflow_notifications import send_team_notification
 from common.inspection_inapp_notifications import (
@@ -24,6 +24,10 @@ from datetime import datetime, timedelta
 import copy
 
 from module_hr.hr_management_chain import WF_MGMT_HR, WF_MGMT_RM, WF_MGMT_GM
+from module_hr.hr_visibility import (
+    collect_personalized_hr_pending,
+    user_sees_org_wide_hr_inbox,
+)
 
 workflow_bp = Blueprint('workflow_bp', __name__, url_prefix='/api/workflow')
 
@@ -185,12 +189,13 @@ def _hr_submitter_grace_deadline_iso(submission):
 
 
 def _hr_anytime_line_editor(user, submission) -> bool:
-    """Reporting manager of submitter, HR roster, GM, or admin — may edit anytime."""
+    """Reporting manager of submitter, HR manager designation, GM, or admin — may edit anytime.
+    Bare access_hr is module access only (own/team forms), not org-wide edit rights."""
     if _user_role_lower(user) == "admin":
         return True
     if _user_desig_lower(user) == "general_manager":
         return True
-    if getattr(user, "access_hr", False) or _user_desig_lower(user) == "hr_manager":
+    if _user_desig_lower(user) == "hr_manager":
         return True
     submitter = db.session.get(User, submission.user_id) if submission.user_id else None
     return bool(submitter and submitter.reporting_manager_id == user.id)
@@ -995,29 +1000,34 @@ def _my_submissions_filter(user_id):
 
 
 def _user_sees_org_wide_submissions(user, scope: str) -> bool:
-    """Organization-wide Submitted forms list (all users' rows)."""
+    """Organization-wide Submitted forms list (all users' rows).
+
+    Admin, GM, and HR manager designation see everything.
+    Bare access_hr is module access only — own + direct reports, not org-wide.
+    """
     if not user:
         return False
     if _user_role_lower(user) == 'admin':
         return True
     if scope in ('all', 'hr'):
-        if _user_desig_lower(user) == 'hr_manager':
-            return True
-        if _user_desig_lower(user) == 'general_manager':
-            return True
-        if getattr(user, 'access_hr', False):
+        des = _user_desig_lower(user)
+        if des in ('general_manager', 'hr_manager'):
             return True
     return False
 
 
 def _hr_submissions_list_query_for_user(base_query, user, scope: str = 'hr'):
-    """HR rows on Submitted forms: privileged viewers see all; others see only what they submitted."""
+    """HR rows on Submitted forms: admin/GM/HR manager see all; others see own + direct reports."""
     if not user:
         return None
     q = base_query.filter(_filter_hr())
     if _user_sees_org_wide_submissions(user, scope):
         return q
-    return q.filter(_my_submissions_filter(user.id))
+    report_ids = db.session.query(User.id).filter(User.reporting_manager_id == user.id)
+    return q.filter(or_(
+        _my_submissions_filter(user.id),
+        Submission.user_id.in_(report_ids),
+    ))
 
 
 def _inspection_submissions_list_query_for_user(base_query, user, scope: str = 'inspection'):
@@ -1135,10 +1145,14 @@ def _completion_rate_pct(global_scope=True, supervisor_id=None):
 
 
 def _inspection_my_submission_rows(user_id):
-    """Inspection forms this user submitted — shared by hero stats and my-submissions own rows."""
+    """Inspection forms this user submitted — shared by hero stats and my-submissions own rows.
+
+    Excludes rejected (cancelled) forms; deleted rows are already gone from the table.
+    """
     return Submission.query.filter(
         _filter_inspection(),
         _my_submissions_filter(user_id),
+        Submission.workflow_status != 'rejected',
     ).all()
 
 
@@ -1238,7 +1252,7 @@ def _dashboard_stat_href(label):
     if 'annual leave' in L or 'sick leave' in L or 'leave left' in L:
         return None  # opened via profile modal on dashboard
     if 'material' in L or 'catalog' in L:
-        return '/procurement/'
+        return '/store/'
     if 'project' in L or 'rfp' in L or 'pipeline' in L:
         return '/admin/bd'
     if 'pending' in L and ('sign' in L or 'review' in L):
@@ -1552,11 +1566,12 @@ def get_inspection_dashboard_stats():
             return error_response('User not found', status_code=404, error_code='NOT_FOUND')
 
         metrics = _inspection_hero_metrics(user)
+        cd_notification_total = InspectionNotification.query.count()
         hero_metrics = [
             {'label': 'Forms submitted', 'value': str(metrics['forms_submitted'])},
             {'label': 'Pending inspections', 'value': str(metrics['pending'])},
             {'label': 'Approved inspections', 'value': str(metrics['approved'])},
-            {'label': 'Completion rate', 'value': f"{metrics['rate']}%"},
+            {'label': 'Total Civil Defense Notification', 'value': str(cd_notification_total)},
         ]
         return success_response({'hero_metrics': hero_metrics})
     except Exception as e:
@@ -1818,7 +1833,7 @@ def get_my_trail():
                 if _s.id not in _seen_ids:
                     _seen_ids.add(_s.id)
                     hr_pending_rows.append(_s)
-        elif designation in ('hr_manager',) or getattr(user, 'access_hr', False):
+        elif user_sees_org_wide_hr_inbox(user):
             hr_pending_rows = (
                 Submission.query.options(*list_opts)
                 .filter(_filter_hr(),
@@ -1826,15 +1841,8 @@ def get_my_trail():
                 .order_by(Submission.created_at.desc()).all()
             )
         else:
-            # Reporting manager: submitter's reporting_manager_id == user.id
-            hr_pending_rows = (
-                Submission.query.options(*list_opts)
-                .join(SubmitterAlias, Submission.user_id == SubmitterAlias.id)
-                .filter(_filter_hr(),
-                        Submission.workflow_status == WF_MGMT_RM,
-                        SubmitterAlias.reporting_manager_id == user.id)
-                .order_by(Submission.created_at.desc()).all()
-            )
+            # Personalized: only forms awaiting this user's signature (mgmt / replacement)
+            hr_pending_rows = collect_personalized_hr_pending(user)
 
         pending_ids = {s.id for s in insp_pending_rows + hr_pending_rows}
         pending_rows = insp_pending_rows + hr_pending_rows
@@ -1873,7 +1881,7 @@ def get_my_trail():
                 .order_by(Submission.updated_at.desc())
                 .all()
             )
-        elif designation in ('hr_manager',) or getattr(user, 'access_hr', False):
+        elif user_sees_org_wide_hr_inbox(user):
             hr_reviewed_rows = (
                 Submission.query.options(*list_opts)
                 .filter(_filter_hr(),
@@ -1881,7 +1889,7 @@ def get_my_trail():
                 .order_by(Submission.updated_at.desc()).all()
             )
         else:
-            # RM: forms submitted by their direct reports, past the RM stage
+            # RM / involved users: forms submitted by their direct reports, past the RM stage
             hr_reviewed_rows = (
                 Submission.query.options(*list_opts)
                 .join(SubmitterAlias, Submission.user_id == SubmitterAlias.id)
@@ -1976,8 +1984,8 @@ def get_my_submissions():
             list_scope = 'mixed' if (include_hr and include_inspection) else ('hr' if include_hr else 'inspection')
 
         inspections_map = {
-            'hvac': 'HVAC & MEP',
-            'hvac_mep': 'HVAC & MEP',
+            'hvac': 'Fire Systems',
+            'hvac_mep': 'Fire Systems',
             'civil': 'Civil Works',
             'cleaning': 'Cleaning Services',
         }

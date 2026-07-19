@@ -1,832 +1,2685 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
-  <title>Email Automation – Injaaz</title>
-  <link rel="icon" type="image/png" href="/static/favicon.png">
-  <link rel="stylesheet" href="/static/mobile_responsive.css">
-  <link rel="stylesheet" href="/static/animations.css">
-  <link rel="stylesheet" href="/static/css/dashboard.css">
-  <style>
-    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-    :root {
-      --primary: #d21725; --primary-light: #e8323f;
-      --text: #111827; --text-muted: #6b7280;
-      --bg: #fafafa; --white: #fff; --border: #e5e7eb;
-      --success: #10b981; --danger: #ef4444; --warning: #f59e0b; --info: #3b82f6;
-      --radius: 10px;
-    }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5;
-      -webkit-font-smoothing: antialiased; }
-    body.ea-page { padding-top: 72px; width: 100%; }
-    .ea-wrap { max-width: 1080px; margin: 0 auto; padding: 28px 20px 80px; }
-    .ea-head { display: flex; align-items: center; justify-content: space-between; gap: 16px;
-      flex-wrap: wrap; margin-bottom: 22px; }
-    .ea-head h1 { font-size: 1.6rem; font-weight: 700; }
-    .ea-head p { color: var(--text-muted); font-size: .9rem; margin-top: 4px; }
-    .btn { border: none; border-radius: var(--radius); padding: 10px 16px; font-size: .9rem;
-      font-weight: 600; cursor: pointer; transition: .15s; display: inline-flex; align-items: center;
-      gap: 6px; background: var(--white); color: var(--text); border: 1px solid var(--border); }
-    .btn:hover { background: #f3f4f6; }
-    .btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
-    .btn-primary:hover { background: var(--primary-light); }
-    .btn-danger { color: var(--danger); border-color: #f3c2c2; background: #fff5f5; }
-    .btn-danger:hover { background: #fee2e2; }
-    .btn-sm { padding: 6px 11px; font-size: .82rem; }
-    .ea-card { background: var(--white); border: 1px solid var(--border); border-radius: 14px;
-      overflow: hidden; }
-    table.ea-table { width: 100%; border-collapse: collapse; }
-    .ea-table th { text-align: left; font-size: .72rem; text-transform: uppercase; letter-spacing: .04em;
-      color: var(--text-muted); padding: 13px 16px; border-bottom: 1px solid var(--border); background: #fafafa; }
-    .ea-table td { padding: 14px 16px; border-bottom: 1px solid #f1f1f1; vertical-align: middle; }
-    .ea-table tr:last-child td { border-bottom: none; }
-    .ea-name { font-weight: 600; }
-    .ea-sub { color: var(--text-muted); font-size: .82rem; }
-    .badge { display: inline-block; padding: 3px 9px; border-radius: 999px; font-size: .72rem;
-      font-weight: 600; }
-    .badge-on { background: #dcfce7; color: #166534; }
-    .badge-off { background: #f3f4f6; color: #6b7280; }
-    .badge-success { background: #dcfce7; color: #166534; }
-    .badge-failed { background: #fee2e2; color: #991b1b; }
-    .badge-never { background: #f3f4f6; color: #6b7280; }
-    .row-actions { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; }
-    .switch { position: relative; display: inline-block; width: 40px; height: 22px; cursor: pointer; }
-    .switch input { opacity: 0; width: 0; height: 0; }
-    .switch .slider { position: absolute; inset: 0; background: #cbd5e1; border-radius: 999px; transition: .2s; }
-    .switch .slider::before { content: ""; position: absolute; height: 16px; width: 16px; left: 3px; bottom: 3px;
-      background: #fff; border-radius: 50%; transition: .2s; }
-    .switch input:checked + .slider { background: var(--success); }
-    .switch input:checked + .slider::before { transform: translateX(18px); }
-    .ea-empty { padding: 56px 20px; text-align: center; color: var(--text-muted); }
-    /* Side drawer */
-    .drawer-overlay { position: fixed; inset: 0; background: rgba(17,24,39,.45); opacity: 0;
-      pointer-events: none; transition: opacity .22s ease; z-index: 5000; }
-    .drawer-overlay.open { opacity: 1; pointer-events: auto; }
-    .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(560px, 100vw); background: #fff;
-      box-shadow: -12px 0 40px rgba(0,0,0,.18); transform: translateX(100%); transition: transform .25s ease;
-      display: flex; flex-direction: column; z-index: 5001; }
-    .drawer-overlay.open .drawer { transform: translateX(0); }
-    .drawer-head { padding: 18px 22px 14px; border-bottom: 1px solid var(--border); display: flex;
-      align-items: center; justify-content: space-between; flex-shrink: 0; }
-    .drawer-head h2 { font-size: 1.15rem; font-weight: 700; }
-    .drawer-body { flex: 1; min-height: 0; overflow-y: auto; padding: 20px 22px; }
-    .drawer-foot { padding: 14px 22px; border-top: 1px solid var(--border); display: flex; gap: 10px;
-      justify-content: flex-end; flex-shrink: 0; background: #fff; }
-    /* Tabs */
-    .drawer-tabs { display: flex; gap: 2px; padding: 0 22px; border-bottom: 1px solid var(--border);
-      flex-shrink: 0; background: #fff; }
-    .drawer-tab { border: none; background: none; padding: 11px 14px; font-size: .86rem; font-weight: 600;
-      color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px;
-      font-family: inherit; }
-    .drawer-tab:hover { color: var(--text); }
-    .drawer-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
-    .tab-count { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 4px;
-      background: #f3f4f6; color: var(--text-muted); border-radius: 999px; font-size: .7rem; }
-    /* Meta summary card */
-    .meta-card { background: #f9fafb; border: 1px solid var(--border); border-radius: 12px;
-      padding: 14px 16px; margin-bottom: 18px; display: grid; grid-template-columns: 1fr 1fr;
-      gap: 10px 18px; }
-    .meta-item .k { font-size: .68rem; text-transform: uppercase; letter-spacing: .05em;
-      color: var(--text-muted); font-weight: 700; margin-bottom: 2px; }
-    .meta-item .v { font-size: .85rem; color: var(--text); font-weight: 500; word-break: break-word; }
-    .meta-item .v .ea-sub { font-size: .76rem; }
-    /* Run log list */
-    .log-item { display: flex; gap: 12px; padding: 11px 2px; border-bottom: 1px solid #f1f1f1;
-      align-items: flex-start; }
-    .log-item:last-child { border-bottom: none; }
-    .log-icon { width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; flex-shrink: 0; }
-    .log-icon.ok { background: var(--success); }
-    .log-icon.fail { background: var(--danger); }
-    .log-main { flex: 1; min-width: 0; }
-    .log-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-    .log-when { font-size: .85rem; font-weight: 600; }
-    .chip { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: .68rem;
-      font-weight: 700; text-transform: uppercase; letter-spacing: .03em; }
-    .chip-manual { background: #ede9fe; color: #5b21b6; }
-    .chip-scheduled { background: #e0f2fe; color: #075985; }
-    .log-detail { font-size: .8rem; color: var(--text-muted); margin-top: 2px; word-break: break-word; }
-    .log-stats { font-size: .73rem; color: #9ca3af; margin-top: 3px; font-variant-numeric: tabular-nums; }
-    .logs-more { width: 100%; margin-top: 10px; }
-    .field { margin-bottom: 15px; }
-    .field label { display: block; font-size: .8rem; font-weight: 600; margin-bottom: 6px; }
-    .field input[type=text], .field input[type=number], .field textarea, .field select {
-      width: 100%; padding: 9px 11px; border: 1px solid var(--border); border-radius: 8px; font-size: .9rem;
-      font-family: inherit; background: #fff; }
-    .field textarea { resize: vertical; min-height: 90px; }
-    .field .hint { font-size: .75rem; color: var(--text-muted); margin-top: 4px; }
-    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-    .sched-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
-    .sched-row .field { flex: 1; min-width: 120px; margin-bottom: 0; }
-    .attach-list { list-style: none; margin: 8px 0 0; padding: 0; }
-    .attach-list li { display: flex; align-items: center; justify-content: space-between; gap: 10px;
-      padding: 7px 10px; background: #f9fafb; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 6px; }
-    .attach-list .fn { font-size: .85rem; word-break: break-all; }
-    .link-x { color: var(--danger); cursor: pointer; font-weight: 700; border: none; background: none; font-size: 1rem; }
-    .hidden { display: none !important; }
-    /* Centered modal (default email settings) */
-    .modal-overlay { position: fixed; inset: 0; background: rgba(17,24,39,.45); display: flex;
-      align-items: center; justify-content: center; padding: 20px; opacity: 0; pointer-events: none;
-      transition: opacity .22s ease; z-index: 6000; }
-    .modal-overlay.open { opacity: 1; pointer-events: auto; }
-    .modal-card { background: #fff; border-radius: 14px; width: min(480px, 100%); padding: 22px;
-      box-shadow: 0 18px 48px rgba(0,0,0,.22); transform: translateY(10px); transition: transform .22s ease; }
-    .modal-overlay.open .modal-card { transform: none; }
-    .modal-card h2 { font-size: 1.15rem; font-weight: 700; margin-bottom: 14px; }
-    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; }
-    #toast-container { position: fixed; top: 84px; right: 18px; z-index: 9999; display: flex;
-      flex-direction: column; gap: 8px; }
-    .toast { padding: 12px 16px; border-radius: 10px; color: #fff; font-size: .88rem; font-weight: 500;
-      box-shadow: 0 8px 24px rgba(0,0,0,.18); animation: slideIn .25s; }
-    .toast-success { background: var(--success); } .toast-error { background: var(--danger); }
-    .toast-info { background: var(--info); }
-    @keyframes slideIn { from { transform: translateX(40px); opacity: 0; } to { transform: none; opacity: 1; } }
-    @media (max-width: 640px) {
-      .ea-table thead { display: none; }
-      .ea-table, .ea-table tbody, .ea-table tr, .ea-table td { display: block; width: 100%; }
-      .ea-table tr { border-bottom: 8px solid #f3f4f6; }
-      .ea-table td { border: none; padding: 6px 16px; }
-      .row-actions { justify-content: flex-start; padding-bottom: 14px; }
-      .grid2 { grid-template-columns: 1fr; }
-      .drawer { width: 100vw; }
-      .meta-card { grid-template-columns: 1fr; }
-    }
-  </style>
-</head>
-<body class="ea-page">
-  {% include 'partials/main_navbar.html' with context %}
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/design-tokens.css') }}"
+    />
+    <title>Email Automation – Injaaz</title>
+    <link rel="icon" type="image/png" href="/static/favicon.png" />
+    <link rel="stylesheet" href="/static/mobile_responsive.css" />
+    <link rel="stylesheet" href="/static/animations.css" />
+    <link rel="stylesheet" href="/static/css/dashboard.css" />
+    <style>
+      *,
+      *::before,
+      *::after {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      :root {
+        --primary: #d21725;
+        --primary-light: #e8323f;
+        --text: #111827;
+        --text-muted: #6b7280;
+        --bg: #fafafa;
+        --white: #fff;
+        --border: #e5e7eb;
+        --success: #10b981;
+        --danger: #ef4444;
+        --warning: #f59e0b;
+        --info: #3b82f6;
+        --radius: 10px;
+      }
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        font-size: 14px;
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+      }
+      body.ea-page {
+        padding-top: 72px;
+        width: 100%;
+      }
+      .ea-wrap {
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 28px 20px 80px;
+      }
+      .ea-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-bottom: 22px;
+      }
+      .ea-head h1 {
+        font-size: 1.6rem;
+        font-weight: 700;
+      }
+      .ea-head p {
+        color: var(--text-muted);
+        font-size: 0.9rem;
+        margin-top: 4px;
+      }
+      .btn {
+        border: none;
+        border-radius: var(--radius);
+        padding: 10px 16px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: 0.15s;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: var(--white);
+        color: var(--text);
+        border: 1px solid var(--border);
+      }
+      .btn:hover {
+        background: #f3f4f6;
+      }
+      .btn-primary {
+        background: var(--primary);
+        color: #fff;
+        border-color: var(--primary);
+      }
+      .btn-primary:hover {
+        background: var(--primary-light);
+      }
+      .btn-danger {
+        color: var(--danger);
+        border-color: #f3c2c2;
+        background: #fff5f5;
+      }
+      .btn-danger:hover {
+        background: #fee2e2;
+      }
+      .btn-sm {
+        padding: 6px 11px;
+        font-size: 0.82rem;
+      }
+      .ea-card {
+        background: var(--white);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        overflow: hidden;
+      }
+      table.ea-table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .ea-table th {
+        text-align: left;
+        font-size: 0.72rem;
+        letter-spacing: 0.04em;
+        color: var(--text-muted);
+        padding: 13px 16px;
+        border-bottom: 1px solid var(--border);
+        background: #fafafa;
+      }
+      .ea-table td {
+        padding: 14px 16px;
+        border-bottom: 1px solid #f1f1f1;
+        vertical-align: middle;
+      }
+      .ea-table tr:last-child td {
+        border-bottom: none;
+      }
+      .ea-name {
+        font-weight: 600;
+      }
+      .ea-sub {
+        color: var(--text-muted);
+        font-size: 0.82rem;
+      }
+      .badge {
+        display: inline-block;
+        padding: 3px 9px;
+        border-radius: 999px;
+        font-size: 0.72rem;
+        font-weight: 600;
+      }
+      .badge-on {
+        background: #dcfce7;
+        color: #166534;
+      }
+      .badge-off {
+        background: #f3f4f6;
+        color: #6b7280;
+      }
+      .badge-success {
+        background: #dcfce7;
+        color: #166534;
+      }
+      .badge-failed {
+        background: #fee2e2;
+        color: #991b1b;
+      }
+      .badge-never {
+        background: #f3f4f6;
+        color: #6b7280;
+      }
+      .row-actions {
+        display: flex;
+        gap: 6px;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+      }
+      .switch {
+        position: relative;
+        display: inline-block;
+        width: 40px;
+        height: 22px;
+        cursor: pointer;
+      }
+      .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+      .switch .slider {
+        position: absolute;
+        inset: 0;
+        background: #cbd5e1;
+        border-radius: 999px;
+        transition: 0.2s;
+      }
+      .switch .slider::before {
+        content: "";
+        position: absolute;
+        height: 16px;
+        width: 16px;
+        left: 3px;
+        bottom: 3px;
+        background: #fff;
+        border-radius: 50%;
+        transition: 0.2s;
+      }
+      .switch input:checked + .slider {
+        background: var(--success);
+      }
+      .switch input:checked + .slider::before {
+        transform: translateX(18px);
+      }
+      .ea-empty {
+        padding: 56px 20px;
+        text-align: center;
+        color: var(--text-muted);
+      }
+      /* Side drawer */
+      .drawer-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(17, 24, 39, 0.45);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.22s ease;
+        z-index: 5000;
+      }
+      .drawer-overlay.open {
+        opacity: 1;
+        pointer-events: auto;
+      }
+      .drawer {
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: min(560px, 100vw);
+        background: #fff;
+        box-shadow: -12px 0 40px rgba(0, 0, 0, 0.18);
+        transform: translateX(100%);
+        transition: transform 0.25s ease;
+        display: flex;
+        flex-direction: column;
+        z-index: 5001;
+      }
+      .drawer-overlay.open .drawer {
+        transform: translateX(0);
+      }
+      .drawer-head {
+        padding: 18px 22px 14px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-shrink: 0;
+      }
+      .drawer-head h2 {
+        font-size: 1.15rem;
+        font-weight: 700;
+      }
+      .drawer-body {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        padding: 20px 22px;
+      }
+      .drawer-foot {
+        padding: 14px 22px;
+        border-top: 1px solid var(--border);
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        flex-shrink: 0;
+        background: #fff;
+      }
+      /* Tabs */
+      .drawer-tabs {
+        display: flex;
+        gap: 2px;
+        padding: 0 22px;
+        border-bottom: 1px solid var(--border);
+        flex-shrink: 0;
+        background: #fff;
+      }
+      .drawer-tab {
+        border: none;
+        background: none;
+        padding: 11px 14px;
+        font-size: 0.86rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -1px;
+        font-family: inherit;
+      }
+      .drawer-tab:hover {
+        color: var(--text);
+      }
+      .drawer-tab.active {
+        color: var(--primary);
+        border-bottom-color: var(--primary);
+      }
+      .tab-count {
+        display: inline-block;
+        min-width: 18px;
+        padding: 0 5px;
+        margin-left: 4px;
+        background: #f3f4f6;
+        color: var(--text-muted);
+        border-radius: 999px;
+        font-size: 0.7rem;
+      }
+      /* Meta summary card */
+      .meta-card {
+        background: #f9fafb;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 14px 16px;
+        margin-bottom: 18px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px 18px;
+      }
+      .meta-item .k {
+        font-size: 0.68rem;
+        letter-spacing: 0.05em;
+        color: var(--text-muted);
+        font-weight: 700;
+        margin-bottom: 2px;
+      }
+      .meta-item .v {
+        font-size: 0.85rem;
+        color: var(--text);
+        font-weight: 500;
+        word-break: break-word;
+      }
+      .meta-item .v .ea-sub {
+        font-size: 0.76rem;
+      }
+      /* Run log list */
+      .log-item {
+        display: flex;
+        gap: 12px;
+        padding: 11px 2px;
+        border-bottom: 1px solid #f1f1f1;
+        align-items: flex-start;
+      }
+      .log-item:last-child {
+        border-bottom: none;
+      }
+      .log-icon {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        margin-top: 6px;
+        flex-shrink: 0;
+      }
+      .log-icon.ok {
+        background: var(--success);
+      }
+      .log-icon.fail {
+        background: var(--danger);
+      }
+      .log-main {
+        flex: 1;
+        min-width: 0;
+      }
+      .log-top {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .log-when {
+        font-size: 0.85rem;
+        font-weight: 600;
+      }
+      .chip {
+        display: inline-block;
+        padding: 1px 8px;
+        border-radius: 999px;
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: 0.03em;
+      }
+      .chip-manual {
+        background: #ede9fe;
+        color: #5b21b6;
+      }
+      .chip-scheduled {
+        background: #e0f2fe;
+        color: #075985;
+      }
+      .log-detail {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        margin-top: 2px;
+        word-break: break-word;
+      }
+      .log-stats {
+        font-size: 0.73rem;
+        color: #9ca3af;
+        margin-top: 3px;
+        font-variant-numeric: tabular-nums;
+      }
+      .logs-more {
+        width: 100%;
+        margin-top: 10px;
+      }
+      .field {
+        margin-bottom: 15px;
+      }
+      .field label {
+        display: block;
+        font-size: 0.8rem;
+        font-weight: 600;
+        margin-bottom: 6px;
+      }
+      .field input[type="text"],
+      .field input[type="number"],
+      .field textarea,
+      .field select {
+        width: 100%;
+        padding: 9px 11px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-size: 0.9rem;
+        font-family: inherit;
+        background: #fff;
+      }
+      .field textarea {
+        resize: vertical;
+        min-height: 90px;
+      }
+      .field .hint {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        margin-top: 4px;
+      }
+      .grid2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+      }
+      .sched-row {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: flex-end;
+      }
+      .sched-row .field {
+        flex: 1;
+        min-width: 120px;
+        margin-bottom: 0;
+      }
+      .attach-list {
+        list-style: none;
+        margin: 8px 0 0;
+        padding: 0;
+      }
+      .attach-list li {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 7px 10px;
+        background: #f9fafb;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        margin-bottom: 6px;
+      }
+      .attach-list .fn {
+        font-size: 0.85rem;
+        word-break: break-all;
+      }
+      .link-x {
+        color: var(--danger);
+        cursor: pointer;
+        font-weight: 700;
+        border: none;
+        background: none;
+        font-size: 1rem;
+      }
+      .hidden {
+        display: none !important;
+      }
+      /* Centered modal (default email settings) */
+      .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(17, 24, 39, 0.45);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.22s ease;
+        z-index: 6000;
+      }
+      .modal-overlay.open {
+        opacity: 1;
+        pointer-events: auto;
+      }
+      .modal-card {
+        background: #fff;
+        border-radius: 14px;
+        width: min(480px, 100%);
+        padding: 22px;
+        box-shadow: 0 18px 48px rgba(0, 0, 0, 0.22);
+        transform: translateY(10px);
+        transition: transform 0.22s ease;
+      }
+      .modal-overlay.open .modal-card {
+        transform: none;
+      }
+      .modal-card h2 {
+        font-size: 1.15rem;
+        font-weight: 700;
+        margin-bottom: 14px;
+      }
+      .modal-actions {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        margin-top: 18px;
+      }
+      /* Workflow notifications card (admin only) */
+      .wn-section {
+        margin-top: 26px;
+      }
+      .wn-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+        padding: 16px 18px 0;
+      }
+      .wn-head h2 {
+        font-size: 1.15rem;
+        font-weight: 700;
+      }
+      .wn-head p {
+        color: var(--text-muted);
+        font-size: 0.85rem;
+        margin-top: 3px;
+      }
+      .wn-body {
+        padding: 16px 18px 18px;
+      }
+      .wn-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+      }
+      @media (max-width: 760px) {
+        .wn-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      .wn-card {
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+        background: #fff;
+        display: flex;
+        flex-direction: column;
+      }
+      .wn-card-head {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 11px 14px;
+        background: #fff5f5;
+        border-bottom: 1px solid #f3d5d7;
+        font-weight: 700;
+        font-size: 0.92rem;
+        color: var(--primary);
+      }
+      .wn-card-body {
+        padding: 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        flex: 1;
+      }
+      .wn-textarea {
+        width: 100%;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 8px 11px;
+        font-size: 0.88rem;
+        font-family: inherit;
+        resize: vertical;
+        min-height: 60px;
+        line-height: 1.5;
+      }
+      .wn-textarea:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(210, 23, 37, 0.1);
+      }
+      .wn-submitter {
+        margin-top: auto;
+        padding: 11px 12px;
+        background: #f9fafb;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+      }
+      .wn-submitter .t {
+        font-size: 0.8rem;
+        font-weight: 700;
+        margin-bottom: 3px;
+      }
+      .wn-submitter .d {
+        font-size: 0.78rem;
+        color: var(--text-muted);
+        line-height: 1.45;
+        margin-bottom: 9px;
+      }
+      .wn-seg {
+        display: inline-flex;
+        border: 1px solid var(--border);
+        border-radius: 9px;
+        overflow: hidden;
+      }
+      .wn-seg label {
+        position: relative;
+        margin: 0;
+        cursor: pointer;
+      }
+      .wn-seg input {
+        position: absolute;
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+      .wn-seg span {
+        display: block;
+        padding: 7px 18px;
+        font-size: 0.84rem;
+        font-weight: 600;
+        background: #fff;
+        color: var(--text-muted);
+        border-right: 1px solid var(--border);
+        transition: 0.15s;
+      }
+      .wn-seg label:last-child span {
+        border-right: none;
+      }
+      .wn-seg input:checked + span.on {
+        background: var(--primary);
+        color: #fff;
+      }
+      .wn-seg input:checked + span.off {
+        background: #64748b;
+        color: #fff;
+      }
+      .wn-status {
+        font-size: 0.78rem;
+        color: var(--text-muted);
+        margin-top: 12px;
+      }
+      /* Known-email picker */
+      .notification-email-picker {
+        margin-top: 2px;
+      }
+      .notification-email-picker-toggle {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 8px 12px;
+        font-size: 0.84rem;
+        font-weight: 600;
+        font-family: inherit;
+        color: var(--primary);
+        background: #fff;
+        border: 1px solid var(--border);
+        border-radius: 9px;
+        cursor: pointer;
+        text-align: left;
+        transition: 0.15s;
+      }
+      .notification-email-picker-toggle:hover {
+        background: #fff5f5;
+        border-color: #f3c2c2;
+      }
+      .notification-email-picker-chevron {
+        flex-shrink: 0;
+        font-size: 0.6rem;
+        opacity: 0.7;
+        transition: transform 0.2s;
+      }
+      .notification-email-picker--open .notification-email-picker-toggle {
+        border-radius: 9px 9px 0 0;
+        background: #fff5f5;
+      }
+      .notification-email-picker--open .notification-email-picker-chevron {
+        transform: rotate(180deg);
+      }
+      .notification-email-picker-panel {
+        border: 1px solid var(--border);
+        border-top: none;
+        border-radius: 0 0 9px 9px;
+        overflow: hidden;
+        background: #fafafa;
+      }
+      .notification-email-picker-panel[hidden] {
+        display: none !important;
+      }
+      .notification-email-picker-search-wrap {
+        position: relative;
+      }
+      .notification-email-picker-search-icon {
+        position: absolute;
+        left: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 0.75rem;
+        pointer-events: none;
+      }
+      .notification-email-picker-filter {
+        width: 100%;
+        border: none;
+        border-bottom: 1px solid var(--border);
+        padding: 8px 12px 8px 32px;
+        font-size: 0.82rem;
+        font-family: inherit;
+        background: #fff;
+        outline: none;
+      }
+      .notification-email-picker-list {
+        max-height: 9.5rem;
+        overflow-y: auto;
+        padding: 4px 0;
+      }
+      .notification-email-picker-list:empty::after {
+        content: "No known emails yet — they appear after loading users or saving settings.";
+        display: block;
+        padding: 12px 14px;
+        font-size: 0.78rem;
+        color: var(--text-muted);
+        font-style: italic;
+      }
+      .notification-email-picker-row {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        padding: 5px 13px;
+        cursor: pointer;
+        user-select: none;
+        transition: background 0.1s;
+      }
+      .notification-email-picker-row:hover:not(
+          .notification-email-picker-row--present
+        ) {
+        background: #fff5f5;
+      }
+      .notification-email-picker-row--present {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+      .notification-email-picker-row .notif-pick-cb {
+        width: 15px;
+        height: 15px;
+        accent-color: var(--primary);
+        flex-shrink: 0;
+      }
+      .notif-pick-avatar {
+        width: 21px;
+        height: 21px;
+        border-radius: 50%;
+        background: var(--primary);
+        color: #fff;
+        font-size: 0.58rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      .notification-email-picker-row--present .notif-pick-avatar {
+        background: #9ca3af;
+      }
+      .notif-pick-email {
+        font-size: 0.82rem;
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .notif-pick-already {
+        font-size: 0.68rem;
+        color: var(--text-muted);
+        flex-shrink: 0;
+      }
+      .notification-email-picker-actions {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 11px;
+        border-top: 1px solid var(--border);
+        background: #fff;
+        flex-wrap: wrap;
+      }
+      .notif-pick-count {
+        font-size: 0.72rem;
+        color: var(--text-muted);
+        margin-left: auto;
+      }
+      .btn-notif-ghost {
+        font-size: 0.76rem;
+        padding: 4px 9px;
+        border-radius: 7px;
+        font-weight: 500;
+        cursor: pointer;
+        border: 1px solid var(--border);
+        background: #f8fafc;
+        color: var(--text-muted);
+        font-family: inherit;
+        transition: 0.12s;
+      }
+      .btn-notif-ghost:hover {
+        background: #fff5f5;
+        color: var(--primary);
+        border-color: #f3c2c2;
+      }
+      .btn-notif-add {
+        font-size: 0.76rem;
+        padding: 4px 11px;
+        border-radius: 7px;
+        font-weight: 600;
+        cursor: pointer;
+        border: 1px solid var(--primary);
+        background: var(--primary);
+        color: #fff;
+        font-family: inherit;
+        transition: 0.12s;
+      }
+      .btn-notif-add:hover {
+        background: var(--primary-light);
+      }
+      #toast-container {
+        position: fixed;
+        top: 84px;
+        right: 18px;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .toast {
+        padding: 12px 16px;
+        border-radius: 10px;
+        color: #fff;
+        font-size: 0.88rem;
+        font-weight: 500;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+        animation: slideIn 0.25s;
+      }
+      .toast-success {
+        background: var(--success);
+      }
+      .toast-error {
+        background: var(--danger);
+      }
+      .toast-info {
+        background: var(--info);
+      }
+      @keyframes slideIn {
+        from {
+          transform: translateX(40px);
+          opacity: 0;
+        }
+        to {
+          transform: none;
+          opacity: 1;
+        }
+      }
+      @media (max-width: 640px) {
+        .ea-table thead {
+          display: none;
+        }
+        .ea-table,
+        .ea-table tbody,
+        .ea-table tr,
+        .ea-table td {
+          display: block;
+          width: 100%;
+        }
+        .ea-table tr {
+          border-bottom: 8px solid #f3f4f6;
+        }
+        .ea-table td {
+          border: none;
+          padding: 6px 16px;
+        }
+        .row-actions {
+          justify-content: flex-start;
+          padding-bottom: 14px;
+        }
+        .grid2 {
+          grid-template-columns: 1fr;
+        }
+        .drawer {
+          width: 100vw;
+        }
+        .meta-card {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body class="ea-page">
+    {% include 'partials/main_navbar.html' with context %}
 
-  <div class="ea-wrap">
-    <div class="ea-head">
-      <div>
-        <h1>Email Automation</h1>
-        <p>Create scheduled emails — recipients, message, and attachments sent automatically.</p>
+    <div class="ea-wrap">
+      <div class="ea-head">
+        <div>
+          <h1>Email Automation</h1>
+          <p>
+            Create scheduled emails — recipients, message, and attachments sent
+            automatically.
+          </p>
+        </div>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap">
+          <button class="btn" onclick="openDefaultsModal()">
+            <svg
+              width="15"
+              height="15"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+              style="flex-shrink: 0"
+            >
+              <circle cx="12" cy="12" r="3"></circle>
+              <path
+                d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"
+              ></path>
+            </svg>
+            Default email settings
+          </button>
+          <button class="btn btn-primary" onclick="openDrawer()">
+            + New automation
+          </button>
+        </div>
       </div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap">
-        <button class="btn" onclick="openDefaultsModal()">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink:0">
-            <circle cx="12" cy="12" r="3"></circle>
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-          </svg>
-          Default email settings
-        </button>
-        <button class="btn btn-primary" onclick="openDrawer()">+ New automation</button>
-      </div>
-    </div>
 
-    <div class="ea-card">
-      <table class="ea-table">
-        <thead>
-          <tr>
-            <th>Name</th><th>Schedule</th><th>Recipients</th><th>Last run</th>
-            <th>Enabled</th><th style="text-align:right">Actions</th>
-          </tr>
-        </thead>
-        <tbody id="autoBody">
-          <tr><td colspan="6" class="ea-empty">Loading…</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- Create / Edit side drawer -->
-  <div class="drawer-overlay" id="drawerOverlay">
-    <aside class="drawer">
-      <div class="drawer-head">
-        <h2 id="drawerTitle">New automation</h2>
-        <button class="link-x" onclick="closeDrawer()" style="font-size:1.4rem">&times;</button>
+      <div class="ea-card">
+        <table class="ea-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Schedule</th>
+              <th>Recipients</th>
+              <th>Last run</th>
+              <th>Enabled</th>
+              <th style="text-align: right">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="autoBody">
+            <tr>
+              <td colspan="6" class="ea-empty">Loading…</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
 
-      <div class="drawer-tabs hidden" id="drawerTabs">
-        <button type="button" class="drawer-tab active" id="tabBtnDetails" onclick="switchTab('details')">Details</button>
-        <button type="button" class="drawer-tab" id="tabBtnAttachments" onclick="switchTab('attachments')">Attachments<span class="tab-count" id="attachCount">0</span></button>
-        <button type="button" class="drawer-tab" id="tabBtnLogs" onclick="switchTab('logs')">Run logs<span class="tab-count" id="logsCount">–</span></button>
-        <button type="button" class="drawer-tab" id="tabBtnSettings" onclick="switchTab('settings')">Settings</button>
-      </div>
-
-      <div class="drawer-body">
-        <input type="hidden" id="fId">
-
-        <div class="meta-card hidden" id="metaCard">
-          <div class="meta-item"><div class="k">Status</div><div class="v" id="metaEnabled">—</div></div>
-          <div class="meta-item"><div class="k">Schedule</div><div class="v" id="metaSchedule">—</div></div>
-          <div class="meta-item"><div class="k">Next run</div><div class="v" id="metaNextRun">—</div></div>
-          <div class="meta-item"><div class="k">Last run</div><div class="v" id="metaLastRun">—</div></div>
-          <div class="meta-item"><div class="k">Created</div><div class="v" id="metaCreated">—</div></div>
-          <div class="meta-item"><div class="k">Updated</div><div class="v" id="metaUpdated">—</div></div>
+      <!-- Workflow notification recipients (admins only) -->
+      <div class="ea-card wn-section hidden" id="wnSection">
+        <div class="wn-head">
+          <div>
+            <h2>Workflow Notifications</h2>
+            <p>
+              Who receives emails at each workflow stage of Inspection and HR
+              forms. Type addresses, or pick from known emails.
+            </p>
+          </div>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap">
+            <button
+              class="btn btn-sm"
+              type="button"
+              onclick="loadNotificationConfig()"
+            >
+              ↻ Refresh
+            </button>
+            <button
+              class="btn btn-primary btn-sm"
+              type="button"
+              onclick="saveNotificationConfig()"
+            >
+              Save settings
+            </button>
+          </div>
         </div>
-
-        <div id="tabDetails">
-        <div class="field">
-          <label>Name</label>
-          <input type="text" id="fName" placeholder="e.g. Annual Maintenance – Monthly Report">
-        </div>
-        <div class="field">
-          <label>To (comma-separated @injaaz.ae)</label>
-          <input type="text" id="fTo" placeholder="dennis@injaaz.ae, shakeel@injaaz.ae">
-        </div>
-        <div class="field">
-          <label>CC (optional)</label>
-          <input type="text" id="fCc" placeholder="finance@injaaz.ae">
-        </div>
-        <div class="field">
-          <label>Subject</label>
-          <input type="text" id="fSubject" placeholder="Email subject">
-        </div>
-        <div class="field">
-          <label>Body</label>
-          <textarea id="fBody" placeholder="Email message…"></textarea>
-        </div>
-
-        <div class="field">
-          <label>Schedule</label>
-          <div class="sched-row">
-            <div class="field">
-              <select id="fType" onchange="onTypeChange()">
-                <option value="daily">Daily</option>
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
-                <option value="quarterly">Quarterly</option>
-                <option value="interval">Custom interval</option>
-              </select>
+        <div class="wn-body">
+          <div class="wn-grid">
+            <!-- Inspection Forms -->
+            <div class="wn-card">
+              <div class="wn-card-head">🔍 Inspection Forms</div>
+              <div class="wn-card-body">
+                <div class="field" style="margin-bottom: 0">
+                  <label>To — primary recipients</label>
+                  <textarea
+                    id="inspectionTo"
+                    class="wn-textarea"
+                    rows="2"
+                    placeholder="ops@company.com, manager@company.com"
+                    oninput="refreshNotificationPickerDuplicateHints()"
+                  ></textarea>
+                  <div
+                    class="notification-email-picker"
+                    data-notify-textarea="inspectionTo"
+                  >
+                    <button
+                      type="button"
+                      class="notification-email-picker-toggle"
+                      aria-expanded="false"
+                      onclick="toggleNotificationPicker(this)"
+                    >
+                      <span>Pick from known emails</span>
+                      <span
+                        class="notification-email-picker-chevron"
+                        aria-hidden="true"
+                        >▼</span
+                      >
+                    </button>
+                    <div class="notification-email-picker-panel" hidden>
+                      <div class="notification-email-picker-search-wrap">
+                        <span class="notification-email-picker-search-icon"
+                          >🔎</span
+                        >
+                        <input
+                          type="search"
+                          class="notification-email-picker-filter"
+                          placeholder="Search known emails…"
+                          autocomplete="off"
+                          oninput="filterNotificationEmailPicker(this)"
+                        />
+                      </div>
+                      <div
+                        class="notification-email-picker-list"
+                        role="group"
+                        aria-label="Known emails for To"
+                      ></div>
+                      <div class="notification-email-picker-actions">
+                        <button
+                          type="button"
+                          class="btn-notif-ghost"
+                          onclick="notificationPickerSelectAllVisible(this)"
+                        >
+                          All visible
+                        </button>
+                        <button
+                          type="button"
+                          class="btn-notif-ghost"
+                          onclick="notificationPickerClearChecks(this)"
+                        >
+                          Clear
+                        </button>
+                        <button
+                          type="button"
+                          class="btn-notif-add"
+                          onclick="appendCheckedKnownEmails(this)"
+                        >
+                          Add selected
+                        </button>
+                        <span
+                          class="notif-pick-count"
+                          data-pick-count="inspectionTo"
+                        ></span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="field" style="margin-bottom: 0">
+                  <label>CC — carbon copy</label>
+                  <textarea
+                    id="inspectionCc"
+                    class="wn-textarea"
+                    rows="2"
+                    placeholder="teamlead@company.com"
+                    oninput="refreshNotificationPickerDuplicateHints()"
+                  ></textarea>
+                  <div
+                    class="notification-email-picker"
+                    data-notify-textarea="inspectionCc"
+                  >
+                    <button
+                      type="button"
+                      class="notification-email-picker-toggle"
+                      aria-expanded="false"
+                      onclick="toggleNotificationPicker(this)"
+                    >
+                      <span>Pick from known emails</span>
+                      <span
+                        class="notification-email-picker-chevron"
+                        aria-hidden="true"
+                        >▼</span
+                      >
+                    </button>
+                    <div class="notification-email-picker-panel" hidden>
+                      <div class="notification-email-picker-search-wrap">
+                        <span class="notification-email-picker-search-icon"
+                          >🔎</span
+                        >
+                        <input
+                          type="search"
+                          class="notification-email-picker-filter"
+                          placeholder="Search known emails…"
+                          autocomplete="off"
+                          oninput="filterNotificationEmailPicker(this)"
+                        />
+                      </div>
+                      <div
+                        class="notification-email-picker-list"
+                        role="group"
+                        aria-label="Known emails for CC"
+                      ></div>
+                      <div class="notification-email-picker-actions">
+                        <button
+                          type="button"
+                          class="btn-notif-ghost"
+                          onclick="notificationPickerSelectAllVisible(this)"
+                        >
+                          All visible
+                        </button>
+                        <button
+                          type="button"
+                          class="btn-notif-ghost"
+                          onclick="notificationPickerClearChecks(this)"
+                        >
+                          Clear
+                        </button>
+                        <button
+                          type="button"
+                          class="btn-notif-add"
+                          onclick="appendCheckedKnownEmails(this)"
+                        >
+                          Add selected
+                        </button>
+                        <span
+                          class="notif-pick-count"
+                          data-pick-count="inspectionCc"
+                        ></span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="wn-submitter">
+                  <p class="t">Submitter email</p>
+                  <p class="d">
+                    Send workflow notification emails to the user who submitted
+                    the form (added to <strong>To</strong> with your list
+                    above).
+                  </p>
+                  <div
+                    class="wn-seg"
+                    role="radiogroup"
+                    aria-label="Inspection forms: email submitter"
+                  >
+                    <label
+                      ><input
+                        type="radio"
+                        name="inspectionNotifySubmitter"
+                        value="1"
+                        checked
+                      /><span class="on">Enabled</span></label
+                    >
+                    <label
+                      ><input
+                        type="radio"
+                        name="inspectionNotifySubmitter"
+                        value="0"
+                      /><span class="off">Disabled</span></label
+                    >
+                  </div>
+                </div>
+              </div>
             </div>
-            <div class="field" id="wrapWeekday">
-              <select id="fWeekday">
-                <option value="0">Monday</option><option value="1">Tuesday</option>
-                <option value="2">Wednesday</option><option value="3">Thursday</option>
-                <option value="4">Friday</option><option value="5">Saturday</option>
-                <option value="6">Sunday</option>
-              </select>
-            </div>
-            <div class="field" id="wrapDom">
-              <input type="number" id="fDom" min="1" max="28" value="1" title="Day of month (1–28)">
-            </div>
-            <div class="field" id="wrapQstart">
-              <select id="fQstart" title="Quarter anchor month">
-                <option value="1">Jan, Apr, Jul, Oct</option>
-                <option value="2">Feb, May, Aug, Nov</option>
-                <option value="3">Mar, Jun, Sep, Dec</option>
-              </select>
-            </div>
-            <div class="field hidden" id="wrapInterval" style="flex:1.4">
-              <div style="display:flex;gap:8px">
-                <span style="align-self:center;color:var(--text-muted)">Every</span>
-                <input type="number" id="fIntN" min="1" max="365" value="1" style="max-width:80px">
-                <select id="fIntUnit">
-                  <option value="days">days</option>
-                  <option value="weeks">weeks</option>
-                  <option value="months">months</option>
-                </select>
+
+            <!-- HR Forms -->
+            <div class="wn-card">
+              <div class="wn-card-head">👥 HR Forms</div>
+              <div class="wn-card-body">
+                <div class="field" style="margin-bottom: 0">
+                  <label>To — primary recipients</label>
+                  <textarea
+                    id="hrTo"
+                    class="wn-textarea"
+                    rows="2"
+                    placeholder="hr@company.com"
+                    oninput="refreshNotificationPickerDuplicateHints()"
+                  ></textarea>
+                  <div
+                    class="notification-email-picker"
+                    data-notify-textarea="hrTo"
+                  >
+                    <button
+                      type="button"
+                      class="notification-email-picker-toggle"
+                      aria-expanded="false"
+                      onclick="toggleNotificationPicker(this)"
+                    >
+                      <span>Pick from known emails</span>
+                      <span
+                        class="notification-email-picker-chevron"
+                        aria-hidden="true"
+                        >▼</span
+                      >
+                    </button>
+                    <div class="notification-email-picker-panel" hidden>
+                      <div class="notification-email-picker-search-wrap">
+                        <span class="notification-email-picker-search-icon"
+                          >🔎</span
+                        >
+                        <input
+                          type="search"
+                          class="notification-email-picker-filter"
+                          placeholder="Search known emails…"
+                          autocomplete="off"
+                          oninput="filterNotificationEmailPicker(this)"
+                        />
+                      </div>
+                      <div
+                        class="notification-email-picker-list"
+                        role="group"
+                        aria-label="Known HR To emails"
+                      ></div>
+                      <div class="notification-email-picker-actions">
+                        <button
+                          type="button"
+                          class="btn-notif-ghost"
+                          onclick="notificationPickerSelectAllVisible(this)"
+                        >
+                          All visible
+                        </button>
+                        <button
+                          type="button"
+                          class="btn-notif-ghost"
+                          onclick="notificationPickerClearChecks(this)"
+                        >
+                          Clear
+                        </button>
+                        <button
+                          type="button"
+                          class="btn-notif-add"
+                          onclick="appendCheckedKnownEmails(this)"
+                        >
+                          Add selected
+                        </button>
+                        <span
+                          class="notif-pick-count"
+                          data-pick-count="hrTo"
+                        ></span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="field" style="margin-bottom: 0">
+                  <label>CC — carbon copy</label>
+                  <textarea
+                    id="hrCc"
+                    class="wn-textarea"
+                    rows="2"
+                    placeholder="gm@company.com"
+                    oninput="refreshNotificationPickerDuplicateHints()"
+                  ></textarea>
+                  <div
+                    class="notification-email-picker"
+                    data-notify-textarea="hrCc"
+                  >
+                    <button
+                      type="button"
+                      class="notification-email-picker-toggle"
+                      aria-expanded="false"
+                      onclick="toggleNotificationPicker(this)"
+                    >
+                      <span>Pick from known emails</span>
+                      <span
+                        class="notification-email-picker-chevron"
+                        aria-hidden="true"
+                        >▼</span
+                      >
+                    </button>
+                    <div class="notification-email-picker-panel" hidden>
+                      <div class="notification-email-picker-search-wrap">
+                        <span class="notification-email-picker-search-icon"
+                          >🔎</span
+                        >
+                        <input
+                          type="search"
+                          class="notification-email-picker-filter"
+                          placeholder="Search known emails…"
+                          autocomplete="off"
+                          oninput="filterNotificationEmailPicker(this)"
+                        />
+                      </div>
+                      <div
+                        class="notification-email-picker-list"
+                        role="group"
+                        aria-label="Known HR CC emails"
+                      ></div>
+                      <div class="notification-email-picker-actions">
+                        <button
+                          type="button"
+                          class="btn-notif-ghost"
+                          onclick="notificationPickerSelectAllVisible(this)"
+                        >
+                          All visible
+                        </button>
+                        <button
+                          type="button"
+                          class="btn-notif-ghost"
+                          onclick="notificationPickerClearChecks(this)"
+                        >
+                          Clear
+                        </button>
+                        <button
+                          type="button"
+                          class="btn-notif-add"
+                          onclick="appendCheckedKnownEmails(this)"
+                        >
+                          Add selected
+                        </button>
+                        <span
+                          class="notif-pick-count"
+                          data-pick-count="hrCc"
+                        ></span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="wn-submitter">
+                  <p class="t">Submitter email</p>
+                  <p class="d">
+                    Send workflow notification emails to the employee who
+                    submitted the HR form (added to <strong>To</strong>).
+                  </p>
+                  <div
+                    class="wn-seg"
+                    role="radiogroup"
+                    aria-label="HR forms: email submitter"
+                  >
+                    <label
+                      ><input
+                        type="radio"
+                        name="hrNotifySubmitter"
+                        value="1"
+                        checked
+                      /><span class="on">Enabled</span></label
+                    >
+                    <label
+                      ><input
+                        type="radio"
+                        name="hrNotifySubmitter"
+                        value="0"
+                      /><span class="off">Disabled</span></label
+                    >
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-          <div class="sched-row" style="margin-top:12px">
-            <div class="field" style="max-width:130px">
-              <label>Time (Dubai)</label>
-              <input type="time" id="fTime" value="10:00" style="width:100%;padding:9px 11px;border:1px solid var(--border);border-radius:8px">
+          <p
+            class="wn-status"
+            id="notifSettingsStatusLine"
+            role="status"
+            aria-live="polite"
+          >
+            One save updates both Inspection and HR. Separate addresses with
+            commas or new lines.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Create / Edit side drawer -->
+    <div class="drawer-overlay" id="drawerOverlay">
+      <aside class="drawer">
+        <div class="drawer-head">
+          <h2 id="drawerTitle">New automation</h2>
+          <button
+            class="link-x"
+            onclick="closeDrawer()"
+            style="font-size: 1.4rem"
+          >
+            &times;
+          </button>
+        </div>
+
+        <div class="drawer-tabs hidden" id="drawerTabs">
+          <button
+            type="button"
+            class="drawer-tab active"
+            id="tabBtnDetails"
+            onclick="switchTab('details')"
+          >
+            Details
+          </button>
+          <button
+            type="button"
+            class="drawer-tab"
+            id="tabBtnAttachments"
+            onclick="switchTab('attachments')"
+          >
+            Attachments<span class="tab-count" id="attachCount">0</span>
+          </button>
+          <button
+            type="button"
+            class="drawer-tab"
+            id="tabBtnLogs"
+            onclick="switchTab('logs')"
+          >
+            Run logs<span class="tab-count" id="logsCount">–</span>
+          </button>
+          <button
+            type="button"
+            class="drawer-tab"
+            id="tabBtnSettings"
+            onclick="switchTab('settings')"
+          >
+            Settings
+          </button>
+        </div>
+
+        <div class="drawer-body">
+          <input type="hidden" id="fId" />
+
+          <div class="meta-card hidden" id="metaCard">
+            <div class="meta-item">
+              <div class="k">Status</div>
+              <div class="v" id="metaEnabled">—</div>
+            </div>
+            <div class="meta-item">
+              <div class="k">Schedule</div>
+              <div class="v" id="metaSchedule">—</div>
+            </div>
+            <div class="meta-item">
+              <div class="k">Next run</div>
+              <div class="v" id="metaNextRun">—</div>
+            </div>
+            <div class="meta-item">
+              <div class="k">Last run</div>
+              <div class="v" id="metaLastRun">—</div>
+            </div>
+            <div class="meta-item">
+              <div class="k">Created</div>
+              <div class="v" id="metaCreated">—</div>
+            </div>
+            <div class="meta-item">
+              <div class="k">Updated</div>
+              <div class="v" id="metaUpdated">—</div>
             </div>
           </div>
-          <div class="hint" id="schedHint" style="margin-top:8px"></div>
+
+          <div id="tabDetails">
+            <div class="field">
+              <label>Name</label>
+              <input
+                type="text"
+                id="fName"
+                placeholder="e.g. Annual Maintenance – Monthly Report"
+              />
+            </div>
+            <div class="field">
+              <label>To (comma-separated @injaaz.ae)</label>
+              <input
+                type="text"
+                id="fTo"
+                placeholder="dennis@injaaz.ae, shakeel@injaaz.ae"
+              />
+            </div>
+            <div class="field">
+              <label>CC (optional)</label>
+              <input type="text" id="fCc" placeholder="finance@injaaz.ae" />
+            </div>
+            <div class="field">
+              <label>Subject</label>
+              <input type="text" id="fSubject" placeholder="Email subject" />
+            </div>
+            <div class="field">
+              <label>Body</label>
+              <textarea id="fBody" placeholder="Email message…"></textarea>
+            </div>
+
+            <div class="field">
+              <label>Schedule</label>
+              <div class="sched-row">
+                <div class="field">
+                  <select id="fType" onchange="onTypeChange()">
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                    <option value="quarterly">Quarterly</option>
+                    <option value="interval">Custom interval</option>
+                  </select>
+                </div>
+                <div class="field" id="wrapWeekday">
+                  <select id="fWeekday">
+                    <option value="0">Monday</option>
+                    <option value="1">Tuesday</option>
+                    <option value="2">Wednesday</option>
+                    <option value="3">Thursday</option>
+                    <option value="4">Friday</option>
+                    <option value="5">Saturday</option>
+                    <option value="6">Sunday</option>
+                  </select>
+                </div>
+                <div class="field" id="wrapDom">
+                  <input
+                    type="number"
+                    id="fDom"
+                    min="1"
+                    max="28"
+                    value="1"
+                    title="Day of month (1–28)"
+                  />
+                </div>
+                <div class="field" id="wrapQstart">
+                  <select id="fQstart" title="Quarter anchor month">
+                    <option value="1">Jan, Apr, Jul, Oct</option>
+                    <option value="2">Feb, May, Aug, Nov</option>
+                    <option value="3">Mar, Jun, Sep, Dec</option>
+                  </select>
+                </div>
+                <div class="field hidden" id="wrapInterval" style="flex: 1.4">
+                  <div style="display: flex; gap: 8px">
+                    <span style="align-self: center; color: var(--text-muted)"
+                      >Every</span
+                    >
+                    <input
+                      type="number"
+                      id="fIntN"
+                      min="1"
+                      max="365"
+                      value="1"
+                      style="max-width: 80px"
+                    />
+                    <select id="fIntUnit">
+                      <option value="days">days</option>
+                      <option value="weeks">weeks</option>
+                      <option value="months">months</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <div class="sched-row" style="margin-top: 12px">
+                <div class="field" style="max-width: 130px">
+                  <label>Time (Dubai)</label>
+                  <input
+                    type="time"
+                    id="fTime"
+                    value="10:00"
+                    style="
+                      width: 100%;
+                      padding: 9px 11px;
+                      border: 1px solid var(--border);
+                      border-radius: 8px;
+                    "
+                  />
+                </div>
+              </div>
+              <div class="hint" id="schedHint" style="margin-top: 8px"></div>
+            </div>
+          </div>
+          <!-- /tabDetails -->
+
+          <div id="tabAttachments" class="hidden">
+            <div class="field" id="attachField">
+              <label>Attachments</label>
+              <div class="hint" id="attachNew">
+                Attachments can be added after the automation is created.
+              </div>
+              <input
+                type="file"
+                id="fFile"
+                class="hidden"
+                onchange="uploadAttachment()"
+              />
+              <button
+                type="button"
+                class="btn btn-sm hidden"
+                id="btnAddAttach"
+                onclick="document.getElementById('fFile').click()"
+              >
+                + Add file
+              </button>
+              <ul class="attach-list" id="attachList"></ul>
+            </div>
+          </div>
+          <!-- /tabAttachments -->
+
+          <div id="tabLogs" class="hidden">
+            <div class="ea-sub" style="margin-bottom: 8px">
+              History of the last runs — scheduled and manual. The most recent
+              100 are kept.
+            </div>
+            <div id="logsList"></div>
+            <div
+              class="ea-empty hidden"
+              id="logsEmpty"
+              style="padding: 32px 10px"
+            >
+              No runs yet. Click “Run now” to test this automation.
+            </div>
+            <button
+              type="button"
+              class="btn btn-sm logs-more hidden"
+              id="btnLogsMore"
+              onclick="loadLogs(false)"
+            >
+              Load more
+            </button>
+          </div>
+          <!-- /tabLogs -->
+
+          <div id="tabSettings" class="hidden">
+            <div class="ea-sub" style="margin-bottom: 12px">
+              Default recipients pre-fill the To/CC fields when creating a new
+              automation. They are shared by everyone with Email Automation
+              access.
+            </div>
+            <div class="field">
+              <label>Default To (comma-separated @injaaz.ae)</label>
+              <input
+                type="text"
+                id="sTo"
+                placeholder="dennis@injaaz.ae, shakeel@injaaz.ae"
+              />
+            </div>
+            <div class="field">
+              <label>Default CC (optional)</label>
+              <input type="text" id="sCc" placeholder="finance@injaaz.ae" />
+            </div>
+            <button
+              type="button"
+              class="btn btn-primary"
+              id="btnSaveDefaultsTab"
+              onclick="saveDefaultsFromTab()"
+            >
+              Save defaults
+            </button>
+          </div>
+          <!-- /tabSettings -->
         </div>
-        </div><!-- /tabDetails -->
 
-        <div id="tabAttachments" class="hidden">
-          <div class="field" id="attachField">
-            <label>Attachments</label>
-            <div class="hint" id="attachNew">Attachments can be added after the automation is created.</div>
-            <input type="file" id="fFile" class="hidden" onchange="uploadAttachment()">
-            <button type="button" class="btn btn-sm hidden" id="btnAddAttach" onclick="document.getElementById('fFile').click()">+ Add file</button>
-            <ul class="attach-list" id="attachList"></ul>
+        <div class="drawer-foot">
+          <button
+            class="btn hidden"
+            id="btnDrawerRun"
+            onclick="runNow(parseInt(document.getElementById('fId').value, 10))"
+          >
+            ▶ Run now
+          </button>
+          <span style="flex: 1"></span>
+          <button class="btn" onclick="closeDrawer()">Cancel</button>
+          <button
+            class="btn btn-primary"
+            id="btnSave"
+            onclick="saveAutomation()"
+          >
+            Save
+          </button>
+        </div>
+      </aside>
+    </div>
+
+    <!-- Default email settings modal -->
+    <div class="modal-overlay" id="defaultsOverlay">
+      <div class="modal-card">
+        <h2>Default email settings</h2>
+        <div class="field">
+          <label>Default To (comma-separated @injaaz.ae)</label>
+          <input
+            type="text"
+            id="dTo"
+            placeholder="dennis@injaaz.ae, shakeel@injaaz.ae"
+          />
+        </div>
+        <div class="field">
+          <label>Default CC (optional)</label>
+          <input type="text" id="dCc" placeholder="finance@injaaz.ae" />
+          <div class="hint">
+            These pre-fill the To/CC fields when creating a new automation. They
+            are shared by everyone with Email Automation access.
           </div>
-        </div><!-- /tabAttachments -->
-
-        <div id="tabLogs" class="hidden">
-          <div class="ea-sub" style="margin-bottom:8px">History of the last runs — scheduled and manual. The most recent 100 are kept.</div>
-          <div id="logsList"></div>
-          <div class="ea-empty hidden" id="logsEmpty" style="padding:32px 10px">No runs yet. Click “Run now” to test this automation.</div>
-          <button type="button" class="btn btn-sm logs-more hidden" id="btnLogsMore" onclick="loadLogs(false)">Load more</button>
-        </div><!-- /tabLogs -->
-
-        <div id="tabSettings" class="hidden">
-          <div class="ea-sub" style="margin-bottom:12px">Default recipients pre-fill the To/CC fields when creating a new automation. They are shared by everyone with Email Automation access.</div>
-          <div class="field">
-            <label>Default To (comma-separated @injaaz.ae)</label>
-            <input type="text" id="sTo" placeholder="dennis@injaaz.ae, shakeel@injaaz.ae">
-          </div>
-          <div class="field">
-            <label>Default CC (optional)</label>
-            <input type="text" id="sCc" placeholder="finance@injaaz.ae">
-          </div>
-          <button type="button" class="btn btn-primary" id="btnSaveDefaultsTab" onclick="saveDefaultsFromTab()">Save defaults</button>
-        </div><!-- /tabSettings -->
-      </div>
-
-      <div class="drawer-foot">
-        <button class="btn hidden" id="btnDrawerRun" onclick="runNow(parseInt(document.getElementById('fId').value, 10))">▶ Run now</button>
-        <span style="flex:1"></span>
-        <button class="btn" onclick="closeDrawer()">Cancel</button>
-        <button class="btn btn-primary" id="btnSave" onclick="saveAutomation()">Save</button>
-      </div>
-    </aside>
-  </div>
-
-  <!-- Default email settings modal -->
-  <div class="modal-overlay" id="defaultsOverlay">
-    <div class="modal-card">
-      <h2>Default email settings</h2>
-      <div class="field">
-        <label>Default To (comma-separated @injaaz.ae)</label>
-        <input type="text" id="dTo" placeholder="dennis@injaaz.ae, shakeel@injaaz.ae">
-      </div>
-      <div class="field">
-        <label>Default CC (optional)</label>
-        <input type="text" id="dCc" placeholder="finance@injaaz.ae">
-        <div class="hint">These pre-fill the To/CC fields when creating a new automation. They are shared by everyone with Email Automation access.</div>
-      </div>
-      <div class="modal-actions">
-        <button class="btn" onclick="closeDefaultsModal()">Cancel</button>
-        <button class="btn btn-primary" id="btnSaveDefaults" onclick="saveDefaults()">Save</button>
+        </div>
+        <div class="modal-actions">
+          <button class="btn" onclick="closeDefaultsModal()">Cancel</button>
+          <button
+            class="btn btn-primary"
+            id="btnSaveDefaults"
+            onclick="saveDefaults()"
+          >
+            Save
+          </button>
+        </div>
       </div>
     </div>
-  </div>
 
-  <div id="toast-container"></div>
+    <div id="toast-container"></div>
 
-  <!-- Shared navbar behaviour: user info, menu visibility, mobile drawer, logout, notifications -->
-  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+    <!-- Shared navbar behaviour: user info, menu visibility, mobile drawer, logout, notifications -->
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 
-<script>
-// ── Auth helper ──────────────────────────────────────────────
-async function authFetch(url, opts = {}) {
-  const token = localStorage.getItem('access_token');
-  const headers = { ...(opts.headers || {}) };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-  let resp = await fetch(url, { ...opts, headers });
-  if (resp.status === 401) {
-    const refresh = localStorage.getItem('refresh_token');
-    if (refresh) {
-      const r = await fetch('/api/auth/refresh', { method: 'POST', headers: { 'Authorization': `Bearer ${refresh}` } });
-      if (r.ok) {
-        const d = await r.json();
-        if (d.access_token) {
-          localStorage.setItem('access_token', d.access_token);
-          headers['Authorization'] = `Bearer ${d.access_token}`;
-          return fetch(url, { ...opts, headers });
+    <script>
+      // ── Auth helper ──────────────────────────────────────────────
+      async function authFetch(url, opts = {}) {
+        const token = localStorage.getItem("access_token");
+        const headers = { ...(opts.headers || {}) };
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+        let resp = await fetch(url, { ...opts, headers });
+        if (resp.status === 401) {
+          const refresh = localStorage.getItem("refresh_token");
+          if (refresh) {
+            const r = await fetch("/api/auth/refresh", {
+              method: "POST",
+              headers: { Authorization: `Bearer ${refresh}` },
+            });
+            if (r.ok) {
+              const d = await r.json();
+              if (d.access_token) {
+                localStorage.setItem("access_token", d.access_token);
+                headers["Authorization"] = `Bearer ${d.access_token}`;
+                return fetch(url, { ...opts, headers });
+              }
+            }
+          }
+          window.location.href = "/login";
+        }
+        return resp;
+      }
+
+      function toast(msg, type = "info") {
+        const el = document.createElement("div");
+        el.className = `toast toast-${type}`;
+        el.textContent = msg;
+        document.getElementById("toast-container").appendChild(el);
+        setTimeout(() => el.remove(), 4000);
+      }
+
+      function esc(s) {
+        return (s == null ? "" : String(s)).replace(
+          /[&<>"]/g,
+          (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c],
+        );
+      }
+
+      // Safely turn a fetch Response into parsed JSON. Handles the case where the
+      // server (or a proxy/login redirect/offline shell) returns an HTML page instead
+      // of JSON — which previously surfaced a raw "Unexpected token '<'" error toast.
+      async function readJson(resp) {
+        // A followed redirect to the login page means the session expired.
+        if (resp.redirected && /\/login/i.test(resp.url || "")) {
+          window.location.href = "/login";
+          throw new Error("Your session has expired. Redirecting to sign in…");
+        }
+        const ct = resp.headers.get("content-type") || "";
+        let data = null;
+        if (ct.includes("application/json")) {
+          data = await resp.json().catch(() => null);
+        }
+        if (data === null) {
+          // Non-JSON body (HTML error/login page, offline shell, gateway error, …)
+          if (resp.status === 401 || resp.status === 403) {
+            window.location.href = "/login";
+            throw new Error("Please sign in again.");
+          }
+          throw new Error(
+            "Server returned an unexpected response. Please refresh and try again.",
+          );
+        }
+        if (!resp.ok) {
+          if (resp.status === 401 || resp.status === 403) {
+            window.location.href = "/login";
+          }
+          throw new Error(data.error || "Request failed.");
+        }
+        return data;
+      }
+
+      // ── List ─────────────────────────────────────────────────────
+      let currentAttachments = [];
+
+      async function loadList() {
+        const body = document.getElementById("autoBody");
+        try {
+          const resp = await authFetch("/admin/mmr/api/automations");
+          const data = await readJson(resp);
+          const rows = data.automations || [];
+          if (!rows.length) {
+            body.innerHTML = `<tr><td colspan="6" class="ea-empty">No automations yet. Click “New automation” to create one.</td></tr>`;
+            return;
+          }
+          body.innerHTML = rows.map(renderRow).join("");
+        } catch (e) {
+          body.innerHTML = `<tr><td colspan="6" class="ea-empty">Could not load automations.</td></tr>`;
+          toast(e.message, "error");
         }
       }
-    }
-    window.location.href = '/login';
-  }
-  return resp;
-}
 
-function toast(msg, type = 'info') {
-  const el = document.createElement('div');
-  el.className = `toast toast-${type}`;
-  el.textContent = msg;
-  document.getElementById('toast-container').appendChild(el);
-  setTimeout(() => el.remove(), 4000);
-}
+      function lastRunBadge(a) {
+        if (!a.last_run_at)
+          return `<span class="badge badge-never">Never</span>`;
+        const when = new Date(a.last_run_at + "Z").toLocaleString();
+        const cls =
+          a.last_run_status === "success" ? "badge-success" : "badge-failed";
+        return `<span class="badge ${cls}">${esc(a.last_run_status || "—")}</span><div class="ea-sub" title="${esc(a.last_run_detail || "")}">${esc(when)}</div>`;
+      }
 
-function esc(s) { return (s == null ? '' : String(s)).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+      function renderRow(a) {
+        const next = a.next_run_at
+          ? `<div class="ea-sub">Next: ${esc(new Date(a.next_run_at + "Z").toLocaleString())}</div>`
+          : "";
+        return `<tr style="cursor:pointer" onclick="openDrawer(${a.id})">
+ <td><div class="ea-name">${esc(a.name)}</div><div class="ea-sub">${a.attachments.length} attachment(s)</div></td>
+ <td>${esc(a.schedule_summary)}${next}</td>
+ <td>${a.recipient_count} recipient(s)</td>
+ <td>${lastRunBadge(a)}</td>
+ <td onclick="event.stopPropagation()"><label class="switch"><input type="checkbox" ${a.enabled ? "checked" : ""} onchange="toggle(${a.id})"><span class="slider"></span></label></td>
+ <td onclick="event.stopPropagation()"><div class="row-actions">
+ <button class="btn btn-sm" onclick="runNow(${a.id})">Run now</button>
+ <button class="btn btn-sm" onclick="openDrawer(${a.id})">Edit</button>
+ <button class="btn btn-sm btn-danger" onclick="removeAuto(${a.id})">Delete</button>
+ </div></td>
+ </tr>`;
+      }
 
-// Safely turn a fetch Response into parsed JSON. Handles the case where the
-// server (or a proxy/login redirect/offline shell) returns an HTML page instead
-// of JSON — which previously surfaced a raw "Unexpected token '<'" error toast.
-async function readJson(resp) {
-  // A followed redirect to the login page means the session expired.
-  if (resp.redirected && /\/login/i.test(resp.url || '')) {
-    window.location.href = '/login';
-    throw new Error('Your session has expired. Redirecting to sign in…');
-  }
-  const ct = resp.headers.get('content-type') || '';
-  let data = null;
-  if (ct.includes('application/json')) {
-    data = await resp.json().catch(() => null);
-  }
-  if (data === null) {
-    // Non-JSON body (HTML error/login page, offline shell, gateway error, …)
-    if (resp.status === 401 || resp.status === 403) {
-      window.location.href = '/login';
-      throw new Error('Please sign in again.');
-    }
-    throw new Error('Server returned an unexpected response. Please refresh and try again.');
-  }
-  if (!resp.ok) {
-    if (resp.status === 401 || resp.status === 403) {
-      window.location.href = '/login';
-    }
-    throw new Error(data.error || 'Request failed.');
-  }
-  return data;
-}
+      // ── Schedule field visibility + hint ─────────────────────────
+      function onTypeChange() {
+        const t = document.getElementById("fType").value;
+        document
+          .getElementById("wrapWeekday")
+          .classList.toggle("hidden", t !== "weekly");
+        document
+          .getElementById("wrapDom")
+          .classList.toggle("hidden", !(t === "monthly" || t === "quarterly"));
+        document
+          .getElementById("wrapQstart")
+          .classList.toggle("hidden", t !== "quarterly");
+        document
+          .getElementById("wrapInterval")
+          .classList.toggle("hidden", t !== "interval");
+        updateHint();
+      }
+      function updateHint() {
+        const t = document.getElementById("fType").value;
+        const time = document.getElementById("fTime").value || "10:00";
+        let h = "";
+        if (t === "daily") h = `Runs every day at ${time}.`;
+        else if (t === "weekly") h = `Runs weekly at ${time}.`;
+        else if (t === "monthly")
+          h = `Runs on day ${document.getElementById("fDom").value} each month at ${time}.`;
+        else if (t === "quarterly")
+          h = `Runs every 3 months on day ${document.getElementById("fDom").value} at ${time}.`;
+        else if (t === "interval")
+          h = `Runs every ${document.getElementById("fIntN").value} ${document.getElementById("fIntUnit").value} (12 months = yearly).`;
+        document.getElementById("schedHint").textContent = h;
+      }
+      ["fTime", "fDom", "fIntN", "fIntUnit", "fQstart", "fWeekday"].forEach(
+        (id) => {
+          document.addEventListener("input", (e) => {
+            if (
+              e.target.id &&
+              ["fTime", "fDom", "fIntN", "fIntUnit"].includes(e.target.id)
+            )
+              updateHint();
+          });
+        },
+      );
 
-// ── List ─────────────────────────────────────────────────────
-let currentAttachments = [];
+      // ── Side drawer ──────────────────────────────────────────────
+      let logsOffset = 0,
+        logsTotal = 0,
+        logsLoaded = false;
 
-async function loadList() {
-  const body = document.getElementById('autoBody');
-  try {
-    const resp = await authFetch('/admin/mmr/api/automations');
-    const data = await readJson(resp);
-    const rows = data.automations || [];
-    if (!rows.length) {
-      body.innerHTML = `<tr><td colspan="6" class="ea-empty">No automations yet. Click “New automation” to create one.</td></tr>`;
-      return;
-    }
-    body.innerHTML = rows.map(renderRow).join('');
-  } catch (e) {
-    body.innerHTML = `<tr><td colspan="6" class="ea-empty">Could not load automations.</td></tr>`;
-    toast(e.message, 'error');
-  }
-}
+      function fmtDt(ts) {
+        return ts ? new Date(ts + "Z").toLocaleString() : "—";
+      }
 
-function lastRunBadge(a) {
-  if (!a.last_run_at) return `<span class="badge badge-never">Never</span>`;
-  const when = new Date(a.last_run_at + 'Z').toLocaleString();
-  const cls = a.last_run_status === 'success' ? 'badge-success' : 'badge-failed';
-  return `<span class="badge ${cls}">${esc(a.last_run_status || '—')}</span><div class="ea-sub" title="${esc(a.last_run_detail||'')}">${esc(when)}</div>`;
-}
+      function relTime(ts) {
+        if (!ts) return "—";
+        const diff = Date.now() - new Date(ts + "Z").getTime();
+        const m = Math.round(diff / 60000);
+        if (m < 1) return "just now";
+        if (m < 60) return `${m} min ago`;
+        const h = Math.round(m / 60);
+        if (h < 24) return `${h} h ago`;
+        const d = Math.round(h / 24);
+        return d < 30 ? `${d} d ago` : fmtDt(ts);
+      }
 
-function renderRow(a) {
-  const next = a.next_run_at ? `<div class="ea-sub">Next: ${esc(new Date(a.next_run_at + 'Z').toLocaleString())}</div>` : '';
-  return `<tr style="cursor:pointer" onclick="openDrawer(${a.id})">
-    <td><div class="ea-name">${esc(a.name)}</div><div class="ea-sub">${a.attachments.length} attachment(s)</div></td>
-    <td>${esc(a.schedule_summary)}${next}</td>
-    <td>${a.recipient_count} recipient(s)</td>
-    <td>${lastRunBadge(a)}</td>
-    <td onclick="event.stopPropagation()"><label class="switch"><input type="checkbox" ${a.enabled ? 'checked' : ''} onchange="toggle(${a.id})"><span class="slider"></span></label></td>
-    <td onclick="event.stopPropagation()"><div class="row-actions">
-      <button class="btn btn-sm" onclick="runNow(${a.id})">Run now</button>
-      <button class="btn btn-sm" onclick="openDrawer(${a.id})">Edit</button>
-      <button class="btn btn-sm btn-danger" onclick="removeAuto(${a.id})">Delete</button>
-    </div></td>
-  </tr>`;
-}
+      function switchTab(name) {
+        ["details", "attachments", "logs", "settings"].forEach((t) => {
+          document
+            .getElementById("tab" + t[0].toUpperCase() + t.slice(1))
+            .classList.toggle("hidden", t !== name);
+          document
+            .getElementById("tabBtn" + t[0].toUpperCase() + t.slice(1))
+            .classList.toggle("active", t === name);
+        });
+        // Save applies to the Details form only
+        document
+          .getElementById("btnSave")
+          .classList.toggle("hidden", name !== "details");
+        if (name === "logs" && !logsLoaded) loadLogs(true);
+        if (name === "settings") fillSettingsTab();
+      }
 
-// ── Schedule field visibility + hint ─────────────────────────
-function onTypeChange() {
-  const t = document.getElementById('fType').value;
-  document.getElementById('wrapWeekday').classList.toggle('hidden', t !== 'weekly');
-  document.getElementById('wrapDom').classList.toggle('hidden', !(t === 'monthly' || t === 'quarterly'));
-  document.getElementById('wrapQstart').classList.toggle('hidden', t !== 'quarterly');
-  document.getElementById('wrapInterval').classList.toggle('hidden', t !== 'interval');
-  updateHint();
-}
-function updateHint() {
-  const t = document.getElementById('fType').value;
-  const time = document.getElementById('fTime').value || '10:00';
-  let h = '';
-  if (t === 'daily') h = `Runs every day at ${time}.`;
-  else if (t === 'weekly') h = `Runs weekly at ${time}.`;
-  else if (t === 'monthly') h = `Runs on day ${document.getElementById('fDom').value} each month at ${time}.`;
-  else if (t === 'quarterly') h = `Runs every 3 months on day ${document.getElementById('fDom').value} at ${time}.`;
-  else if (t === 'interval') h = `Runs every ${document.getElementById('fIntN').value} ${document.getElementById('fIntUnit').value} (12 months = yearly).`;
-  document.getElementById('schedHint').textContent = h;
-}
-['fTime','fDom','fIntN','fIntUnit','fQstart','fWeekday'].forEach(id => {
-  document.addEventListener('input', e => { if (e.target.id && ['fTime','fDom','fIntN','fIntUnit'].includes(e.target.id)) updateHint(); });
-});
+      function renderMeta(a) {
+        document.getElementById("metaEnabled").innerHTML = a.enabled
+          ? '<span class="badge badge-on">Enabled</span>'
+          : '<span class="badge badge-off">Disabled</span>';
+        document.getElementById("metaSchedule").textContent =
+          a.schedule_summary || "—";
+        document.getElementById("metaNextRun").textContent = a.next_run_at
+          ? fmtDt(a.next_run_at)
+          : a.enabled
+            ? "—"
+            : "Paused";
+        document.getElementById("metaLastRun").innerHTML = a.last_run_at
+          ? `<span class="badge ${a.last_run_status === "success" ? "badge-success" : "badge-failed"}">${esc(a.last_run_status || "—")}</span>
+ <div class="ea-sub" title="${esc(a.last_run_detail || "")}">${esc(relTime(a.last_run_at))}</div>`
+          : '<span class="badge badge-never">Never</span>';
+        document.getElementById("metaCreated").innerHTML =
+          `${esc(fmtDt(a.created_at))}${a.created_by_name ? `<div class="ea-sub">by ${esc(a.created_by_name)}</div>` : ""}`;
+        document.getElementById("metaUpdated").textContent = fmtDt(
+          a.updated_at,
+        );
+        document.getElementById("attachCount").textContent = (
+          a.attachments || []
+        ).length;
+      }
 
-// ── Side drawer ──────────────────────────────────────────────
-let logsOffset = 0, logsTotal = 0, logsLoaded = false;
+      async function openDrawer(id) {
+        document.getElementById("fId").value = id || "";
+        document.getElementById("drawerTitle").textContent = id
+          ? "Edit automation"
+          : "New automation";
+        currentAttachments = [];
+        logsOffset = 0;
+        logsTotal = 0;
+        logsLoaded = false;
+        document.getElementById("logsList").innerHTML = "";
+        document.getElementById("logsCount").textContent = "–";
+        document.getElementById("btnLogsMore").classList.add("hidden");
+        document.getElementById("logsEmpty").classList.add("hidden");
+        // reset form (new automations start from the saved defaults)
+        ["fName", "fTo", "fCc", "fSubject", "fBody"].forEach(
+          (f) => (document.getElementById(f).value = ""),
+        );
+        if (!id) {
+          document.getElementById("fTo").value = emailDefaults.to_emails || "";
+          document.getElementById("fCc").value = emailDefaults.cc_emails || "";
+        }
+        document.getElementById("fType").value = "daily";
+        document.getElementById("fWeekday").value = "0";
+        document.getElementById("fDom").value = "1";
+        document.getElementById("fQstart").value = "1";
+        document.getElementById("fIntN").value = "1";
+        document.getElementById("fIntUnit").value = "days";
+        document.getElementById("fTime").value = "10:00";
 
-function fmtDt(ts) { return ts ? new Date(ts + 'Z').toLocaleString() : '—'; }
+        const isEdit = !!id;
+        document.getElementById("attachNew").classList.toggle("hidden", isEdit);
+        document
+          .getElementById("btnAddAttach")
+          .classList.toggle("hidden", !isEdit);
+        document
+          .getElementById("drawerTabs")
+          .classList.toggle("hidden", !isEdit);
+        document.getElementById("metaCard").classList.toggle("hidden", !isEdit);
+        document
+          .getElementById("btnDrawerRun")
+          .classList.toggle("hidden", !isEdit);
+        switchTab("details");
 
-function relTime(ts) {
-  if (!ts) return '—';
-  const diff = Date.now() - new Date(ts + 'Z').getTime();
-  const m = Math.round(diff / 60000);
-  if (m < 1) return 'just now';
-  if (m < 60) return `${m} min ago`;
-  const h = Math.round(m / 60);
-  if (h < 24) return `${h} h ago`;
-  const d = Math.round(h / 24);
-  return d < 30 ? `${d} d ago` : fmtDt(ts);
-}
+        if (isEdit) {
+          try {
+            const resp = await authFetch(`/admin/mmr/api/automations/${id}`);
+            const data = await readJson(resp);
+            const a = data.automation;
+            document.getElementById("fName").value = a.name || "";
+            document.getElementById("fTo").value = a.to_emails || "";
+            document.getElementById("fCc").value = a.cc_emails || "";
+            document.getElementById("fSubject").value = a.subject || "";
+            document.getElementById("fBody").value = a.body || "";
+            document.getElementById("fType").value = a.schedule_type || "daily";
+            document.getElementById("fWeekday").value = String(a.weekday ?? 0);
+            document.getElementById("fDom").value = String(a.day_of_month ?? 1);
+            document.getElementById("fQstart").value = String(
+              a.quarter_start_month ?? 1,
+            );
+            document.getElementById("fIntN").value = String(a.interval_n ?? 1);
+            document.getElementById("fIntUnit").value =
+              a.interval_unit || "days";
+            document.getElementById("fTime").value =
+              String(a.hour ?? 10).padStart(2, "0") +
+              ":" +
+              String(a.minute ?? 0).padStart(2, "0");
+            currentAttachments = a.attachments || [];
+            renderMeta(a);
+          } catch (e) {
+            toast(e.message || "Failed to load", "error");
+          }
+        }
+        renderAttachments();
+        onTypeChange();
+        document.getElementById("drawerOverlay").classList.add("open");
+      }
+      function closeDrawer() {
+        document.getElementById("drawerOverlay").classList.remove("open");
+      }
 
-function switchTab(name) {
-  ['details','attachments','logs','settings'].forEach(t => {
-    document.getElementById('tab' + t[0].toUpperCase() + t.slice(1)).classList.toggle('hidden', t !== name);
-    document.getElementById('tabBtn' + t[0].toUpperCase() + t.slice(1)).classList.toggle('active', t === name);
-  });
-  // Save applies to the Details form only
-  document.getElementById('btnSave').classList.toggle('hidden', name !== 'details');
-  if (name === 'logs' && !logsLoaded) loadLogs(true);
-  if (name === 'settings') fillSettingsTab();
-}
+      // Refresh the meta card + logs for the automation currently open in the drawer.
+      async function refreshDrawer(id) {
+        try {
+          const resp = await authFetch(`/admin/mmr/api/automations/${id}`);
+          const data = await readJson(resp);
+          renderMeta(data.automation);
+          if (logsLoaded) loadLogs(true);
+        } catch (e) {
+          /* non-fatal: drawer keeps stale meta */
+        }
+      }
 
-function renderMeta(a) {
-  document.getElementById('metaEnabled').innerHTML =
-    a.enabled ? '<span class="badge badge-on">Enabled</span>' : '<span class="badge badge-off">Disabled</span>';
-  document.getElementById('metaSchedule').textContent = a.schedule_summary || '—';
-  document.getElementById('metaNextRun').textContent =
-    a.next_run_at ? fmtDt(a.next_run_at) : (a.enabled ? '—' : 'Paused');
-  document.getElementById('metaLastRun').innerHTML = a.last_run_at
-    ? `<span class="badge ${a.last_run_status === 'success' ? 'badge-success' : 'badge-failed'}">${esc(a.last_run_status || '—')}</span>
-       <div class="ea-sub" title="${esc(a.last_run_detail || '')}">${esc(relTime(a.last_run_at))}</div>`
-    : '<span class="badge badge-never">Never</span>';
-  document.getElementById('metaCreated').innerHTML =
-    `${esc(fmtDt(a.created_at))}${a.created_by_name ? `<div class="ea-sub">by ${esc(a.created_by_name)}</div>` : ''}`;
-  document.getElementById('metaUpdated').textContent = fmtDt(a.updated_at);
-  document.getElementById('attachCount').textContent = (a.attachments || []).length;
-}
+      function drawerOpenFor(id) {
+        return (
+          document.getElementById("drawerOverlay").classList.contains("open") &&
+          parseInt(document.getElementById("fId").value, 10) === id
+        );
+      }
 
-async function openDrawer(id) {
-  document.getElementById('fId').value = id || '';
-  document.getElementById('drawerTitle').textContent = id ? 'Edit automation' : 'New automation';
-  currentAttachments = [];
-  logsOffset = 0; logsTotal = 0; logsLoaded = false;
-  document.getElementById('logsList').innerHTML = '';
-  document.getElementById('logsCount').textContent = '–';
-  document.getElementById('btnLogsMore').classList.add('hidden');
-  document.getElementById('logsEmpty').classList.add('hidden');
-  // reset form (new automations start from the saved defaults)
-  ['fName','fTo','fCc','fSubject','fBody'].forEach(f => document.getElementById(f).value = '');
-  if (!id) {
-    document.getElementById('fTo').value = emailDefaults.to_emails || '';
-    document.getElementById('fCc').value = emailDefaults.cc_emails || '';
-  }
-  document.getElementById('fType').value = 'daily';
-  document.getElementById('fWeekday').value = '0';
-  document.getElementById('fDom').value = '1';
-  document.getElementById('fQstart').value = '1';
-  document.getElementById('fIntN').value = '1';
-  document.getElementById('fIntUnit').value = 'days';
-  document.getElementById('fTime').value = '10:00';
+      document
+        .getElementById("drawerOverlay")
+        .addEventListener("click", (e) => {
+          if (e.target === document.getElementById("drawerOverlay"))
+            closeDrawer();
+        });
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+          closeDefaultsModal();
+          closeDrawer();
+        }
+      });
 
-  const isEdit = !!id;
-  document.getElementById('attachNew').classList.toggle('hidden', isEdit);
-  document.getElementById('btnAddAttach').classList.toggle('hidden', !isEdit);
-  document.getElementById('drawerTabs').classList.toggle('hidden', !isEdit);
-  document.getElementById('metaCard').classList.toggle('hidden', !isEdit);
-  document.getElementById('btnDrawerRun').classList.toggle('hidden', !isEdit);
-  switchTab('details');
+      // ── Default email settings ───────────────────────────────────
+      let emailDefaults = { to_emails: "", cc_emails: "" };
 
-  if (isEdit) {
-    try {
-      const resp = await authFetch(`/admin/mmr/api/automations/${id}`);
-      const data = await readJson(resp);
-      const a = data.automation;
-      document.getElementById('fName').value = a.name || '';
-      document.getElementById('fTo').value = a.to_emails || '';
-      document.getElementById('fCc').value = a.cc_emails || '';
-      document.getElementById('fSubject').value = a.subject || '';
-      document.getElementById('fBody').value = a.body || '';
-      document.getElementById('fType').value = a.schedule_type || 'daily';
-      document.getElementById('fWeekday').value = String(a.weekday ?? 0);
-      document.getElementById('fDom').value = String(a.day_of_month ?? 1);
-      document.getElementById('fQstart').value = String(a.quarter_start_month ?? 1);
-      document.getElementById('fIntN').value = String(a.interval_n ?? 1);
-      document.getElementById('fIntUnit').value = a.interval_unit || 'days';
-      document.getElementById('fTime').value =
-        String(a.hour ?? 10).padStart(2,'0') + ':' + String(a.minute ?? 0).padStart(2,'0');
-      currentAttachments = a.attachments || [];
-      renderMeta(a);
-    } catch (e) { toast(e.message || 'Failed to load', 'error'); }
-  }
-  renderAttachments();
-  onTypeChange();
-  document.getElementById('drawerOverlay').classList.add('open');
-}
-function closeDrawer() { document.getElementById('drawerOverlay').classList.remove('open'); }
+      async function loadDefaults() {
+        try {
+          const resp = await authFetch("/admin/mmr/api/defaults");
+          const data = await readJson(resp);
+          emailDefaults = data.defaults || emailDefaults;
+        } catch (e) {
+          /* non-fatal: new automations just start empty */
+        }
+      }
 
-// Refresh the meta card + logs for the automation currently open in the drawer.
-async function refreshDrawer(id) {
-  try {
-    const resp = await authFetch(`/admin/mmr/api/automations/${id}`);
-    const data = await readJson(resp);
-    renderMeta(data.automation);
-    if (logsLoaded) loadLogs(true);
-  } catch (e) { /* non-fatal: drawer keeps stale meta */ }
-}
+      async function openDefaultsModal() {
+        await loadDefaults();
+        document.getElementById("dTo").value = emailDefaults.to_emails || "";
+        document.getElementById("dCc").value = emailDefaults.cc_emails || "";
+        document.getElementById("defaultsOverlay").classList.add("open");
+      }
+      function closeDefaultsModal() {
+        document.getElementById("defaultsOverlay").classList.remove("open");
+      }
 
-function drawerOpenFor(id) {
-  return document.getElementById('drawerOverlay').classList.contains('open')
-    && parseInt(document.getElementById('fId').value, 10) === id;
-}
+      async function persistDefaults(toVal, ccVal, btn) {
+        btn.disabled = true;
+        try {
+          const resp = await authFetch("/admin/mmr/api/defaults", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ to_emails: toVal, cc_emails: ccVal }),
+          });
+          const data = await readJson(resp);
+          emailDefaults = data.defaults || emailDefaults;
+          toast("Defaults saved", "success");
+          return true;
+        } catch (e) {
+          toast(e.message, "error");
+          return false;
+        } finally {
+          btn.disabled = false;
+        }
+      }
 
-document.getElementById('drawerOverlay').addEventListener('click', e => {
-  if (e.target === document.getElementById('drawerOverlay')) closeDrawer();
-});
-document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeDefaultsModal(); closeDrawer(); } });
+      async function saveDefaults() {
+        const ok = await persistDefaults(
+          document.getElementById("dTo").value,
+          document.getElementById("dCc").value,
+          document.getElementById("btnSaveDefaults"),
+        );
+        if (ok) closeDefaultsModal();
+      }
 
-// ── Default email settings ───────────────────────────────────
-let emailDefaults = { to_emails: '', cc_emails: '' };
+      // Settings tab inside the drawer — same defaults, edited in place
+      async function fillSettingsTab() {
+        await loadDefaults();
+        document.getElementById("sTo").value = emailDefaults.to_emails || "";
+        document.getElementById("sCc").value = emailDefaults.cc_emails || "";
+      }
 
-async function loadDefaults() {
-  try {
-    const resp = await authFetch('/admin/mmr/api/defaults');
-    const data = await readJson(resp);
-    emailDefaults = data.defaults || emailDefaults;
-  } catch (e) { /* non-fatal: new automations just start empty */ }
-}
+      function saveDefaultsFromTab() {
+        persistDefaults(
+          document.getElementById("sTo").value,
+          document.getElementById("sCc").value,
+          document.getElementById("btnSaveDefaultsTab"),
+        );
+      }
 
-async function openDefaultsModal() {
-  await loadDefaults();
-  document.getElementById('dTo').value = emailDefaults.to_emails || '';
-  document.getElementById('dCc').value = emailDefaults.cc_emails || '';
-  document.getElementById('defaultsOverlay').classList.add('open');
-}
-function closeDefaultsModal() { document.getElementById('defaultsOverlay').classList.remove('open'); }
+      document
+        .getElementById("defaultsOverlay")
+        .addEventListener("click", (e) => {
+          if (e.target === document.getElementById("defaultsOverlay"))
+            closeDefaultsModal();
+        });
 
-async function persistDefaults(toVal, ccVal, btn) {
-  btn.disabled = true;
-  try {
-    const resp = await authFetch('/admin/mmr/api/defaults', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ to_emails: toVal, cc_emails: ccVal }),
-    });
-    const data = await readJson(resp);
-    emailDefaults = data.defaults || emailDefaults;
-    toast('Defaults saved', 'success');
-    return true;
-  } catch (e) { toast(e.message, 'error'); return false; }
-  finally { btn.disabled = false; }
-}
+      // ── Run logs ─────────────────────────────────────────────────
+      function renderLogItem(l) {
+        const ok = l.status === "success";
+        const dur =
+          l.duration_ms != null
+            ? `${(l.duration_ms / 1000).toFixed(1)} s`
+            : "—";
+        return `<div class="log-item">
+ <div class="log-icon ${ok ? "ok" : "fail"}"></div>
+ <div class="log-main">
+ <div class="log-top">
+ <span class="log-when" title="${esc(fmtDt(l.run_at))}">${esc(relTime(l.run_at))}</span>
+ <span class="badge ${ok ? "badge-success" : "badge-failed"}">${esc(l.status || "—")}</span>
+ <span class="chip ${l.trigger === "manual" ? "chip-manual" : "chip-scheduled"}">${esc(l.trigger || "scheduled")}</span>
+ </div>
+ <div class="log-detail">${esc(l.detail || "")}</div>
+ <div class="log-stats">${l.recipient_count} recipient(s) · ${l.attachment_count} attachment(s) · ${esc(dur)}</div>
+ </div>
+ </div>`;
+      }
 
-async function saveDefaults() {
-  const ok = await persistDefaults(
-    document.getElementById('dTo').value,
-    document.getElementById('dCc').value,
-    document.getElementById('btnSaveDefaults'));
-  if (ok) closeDefaultsModal();
-}
+      async function loadLogs(reset) {
+        const id = document.getElementById("fId").value;
+        if (!id) return;
+        if (reset) {
+          logsOffset = 0;
+          document.getElementById("logsList").innerHTML = "";
+        }
+        try {
+          const resp = await authFetch(
+            `/admin/mmr/api/automations/${id}/logs?limit=50&offset=${logsOffset}`,
+          );
+          const data = await readJson(resp);
+          logsLoaded = true;
+          logsTotal = data.total || 0;
+          const logs = data.logs || [];
+          logsOffset += logs.length;
+          document
+            .getElementById("logsList")
+            .insertAdjacentHTML("beforeend", logs.map(renderLogItem).join(""));
+          document.getElementById("logsCount").textContent = logsTotal;
+          document
+            .getElementById("logsEmpty")
+            .classList.toggle("hidden", logsTotal > 0);
+          document
+            .getElementById("btnLogsMore")
+            .classList.toggle("hidden", logsOffset >= logsTotal);
+        } catch (e) {
+          toast(e.message, "error");
+        }
+      }
 
-// Settings tab inside the drawer — same defaults, edited in place
-async function fillSettingsTab() {
-  await loadDefaults();
-  document.getElementById('sTo').value = emailDefaults.to_emails || '';
-  document.getElementById('sCc').value = emailDefaults.cc_emails || '';
-}
+      function renderAttachments() {
+        const ul = document.getElementById("attachList");
+        ul.innerHTML = currentAttachments
+          .map(
+            (a) =>
+              `<li><span class="fn">${esc(a.filename)}</span><button class="link-x" onclick="deleteAttachment(${a.id})" title="Remove">&times;</button></li>`,
+          )
+          .join("");
+        document.getElementById("attachCount").textContent =
+          currentAttachments.length;
+      }
 
-function saveDefaultsFromTab() {
-  persistDefaults(
-    document.getElementById('sTo').value,
-    document.getElementById('sCc').value,
-    document.getElementById('btnSaveDefaultsTab'));
-}
+      function collectPayload() {
+        const [hh, mm] = (
+          document.getElementById("fTime").value || "10:00"
+        ).split(":");
+        return {
+          name: document.getElementById("fName").value,
+          to_emails: document.getElementById("fTo").value,
+          cc_emails: document.getElementById("fCc").value,
+          subject: document.getElementById("fSubject").value,
+          body: document.getElementById("fBody").value,
+          schedule_type: document.getElementById("fType").value,
+          hour: parseInt(hh, 10) || 0,
+          minute: parseInt(mm, 10) || 0,
+          weekday: parseInt(document.getElementById("fWeekday").value, 10),
+          day_of_month: parseInt(document.getElementById("fDom").value, 10),
+          quarter_start_month: parseInt(
+            document.getElementById("fQstart").value,
+            10,
+          ),
+          interval_n: parseInt(document.getElementById("fIntN").value, 10),
+          interval_unit: document.getElementById("fIntUnit").value,
+        };
+      }
 
-document.getElementById('defaultsOverlay').addEventListener('click', e => {
-  if (e.target === document.getElementById('defaultsOverlay')) closeDefaultsModal();
-});
+      async function saveAutomation() {
+        const id = document.getElementById("fId").value;
+        const payload = collectPayload();
+        const btn = document.getElementById("btnSave");
+        btn.disabled = true;
+        try {
+          const url = id
+            ? `/admin/mmr/api/automations/${id}`
+            : "/admin/mmr/api/automations";
+          const resp = await authFetch(url, {
+            method: id ? "PUT" : "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          const data = await readJson(resp);
+          toast(id ? "Automation updated" : "Automation created", "success");
+          if (!id) {
+            // re-open in edit mode so attachments can be added and logs viewed
+            closeDrawer();
+            await loadList();
+            openDrawer(data.automation.id);
+            return;
+          }
+          closeDrawer();
+          loadList();
+        } catch (e) {
+          toast(e.message, "error");
+        } finally {
+          btn.disabled = false;
+        }
+      }
 
-// ── Run logs ─────────────────────────────────────────────────
-function renderLogItem(l) {
-  const ok = l.status === 'success';
-  const dur = (l.duration_ms != null) ? `${(l.duration_ms / 1000).toFixed(1)} s` : '—';
-  return `<div class="log-item">
-    <div class="log-icon ${ok ? 'ok' : 'fail'}"></div>
-    <div class="log-main">
-      <div class="log-top">
-        <span class="log-when" title="${esc(fmtDt(l.run_at))}">${esc(relTime(l.run_at))}</span>
-        <span class="badge ${ok ? 'badge-success' : 'badge-failed'}">${esc(l.status || '—')}</span>
-        <span class="chip ${l.trigger === 'manual' ? 'chip-manual' : 'chip-scheduled'}">${esc(l.trigger || 'scheduled')}</span>
-      </div>
-      <div class="log-detail">${esc(l.detail || '')}</div>
-      <div class="log-stats">${l.recipient_count} recipient(s) · ${l.attachment_count} attachment(s) · ${esc(dur)}</div>
-    </div>
-  </div>`;
-}
+      async function toggle(id) {
+        try {
+          const resp = await authFetch(
+            `/admin/mmr/api/automations/${id}/toggle`,
+            { method: "POST" },
+          );
+          const data = await readJson(resp);
+          toast(data.automation.enabled ? "Enabled" : "Disabled", "success");
+          if (drawerOpenFor(id)) renderMeta(data.automation);
+        } catch (e) {
+          toast(e.message, "error");
+        }
+        loadList();
+      }
 
-async function loadLogs(reset) {
-  const id = document.getElementById('fId').value;
-  if (!id) return;
-  if (reset) { logsOffset = 0; document.getElementById('logsList').innerHTML = ''; }
-  try {
-    const resp = await authFetch(`/admin/mmr/api/automations/${id}/logs?limit=50&offset=${logsOffset}`);
-    const data = await readJson(resp);
-    logsLoaded = true;
-    logsTotal = data.total || 0;
-    const logs = data.logs || [];
-    logsOffset += logs.length;
-    document.getElementById('logsList').insertAdjacentHTML('beforeend', logs.map(renderLogItem).join(''));
-    document.getElementById('logsCount').textContent = logsTotal;
-    document.getElementById('logsEmpty').classList.toggle('hidden', logsTotal > 0);
-    document.getElementById('btnLogsMore').classList.toggle('hidden', logsOffset >= logsTotal);
-  } catch (e) { toast(e.message, 'error'); }
-}
+      async function runNow(id) {
+        toast("Sending…", "info");
+        try {
+          const resp = await authFetch(
+            `/admin/mmr/api/automations/${id}/run-now`,
+            { method: "POST" },
+          );
+          const data = await readJson(resp);
+          const st = data.automation.last_run_status;
+          toast(
+            st === "success"
+              ? "Email sent ✓"
+              : "Run failed: " + (data.automation.last_run_detail || ""),
+            st === "success" ? "success" : "error",
+          );
+          if (drawerOpenFor(id)) refreshDrawer(id);
+        } catch (e) {
+          toast(e.message, "error");
+        }
+        loadList();
+      }
 
-function renderAttachments() {
-  const ul = document.getElementById('attachList');
-  ul.innerHTML = currentAttachments.map(a =>
-    `<li><span class="fn">${esc(a.filename)}</span><button class="link-x" onclick="deleteAttachment(${a.id})" title="Remove">&times;</button></li>`
-  ).join('');
-  document.getElementById('attachCount').textContent = currentAttachments.length;
-}
+      async function removeAuto(id) {
+        if (!confirm("Delete this automation? This cannot be undone.")) return;
+        try {
+          const resp = await authFetch(`/admin/mmr/api/automations/${id}`, {
+            method: "DELETE",
+          });
+          await readJson(resp);
+          toast("Deleted", "success");
+        } catch (e) {
+          toast(e.message, "error");
+        }
+        loadList();
+      }
 
-function collectPayload() {
-  const [hh, mm] = (document.getElementById('fTime').value || '10:00').split(':');
-  return {
-    name: document.getElementById('fName').value,
-    to_emails: document.getElementById('fTo').value,
-    cc_emails: document.getElementById('fCc').value,
-    subject: document.getElementById('fSubject').value,
-    body: document.getElementById('fBody').value,
-    schedule_type: document.getElementById('fType').value,
-    hour: parseInt(hh, 10) || 0,
-    minute: parseInt(mm, 10) || 0,
-    weekday: parseInt(document.getElementById('fWeekday').value, 10),
-    day_of_month: parseInt(document.getElementById('fDom').value, 10),
-    quarter_start_month: parseInt(document.getElementById('fQstart').value, 10),
-    interval_n: parseInt(document.getElementById('fIntN').value, 10),
-    interval_unit: document.getElementById('fIntUnit').value,
-  };
-}
+      // ── Attachments ──────────────────────────────────────────────
+      async function uploadAttachment() {
+        const id = document.getElementById("fId").value;
+        const input = document.getElementById("fFile");
+        if (!id || !input.files[0]) return;
+        const fd = new FormData();
+        fd.append("file", input.files[0]);
+        try {
+          const resp = await authFetch(
+            `/admin/mmr/api/automations/${id}/attachments`,
+            { method: "POST", body: fd },
+          );
+          const data = await readJson(resp);
+          currentAttachments.push(data.attachment);
+          renderAttachments();
+          toast("Attachment added", "success");
+          loadList();
+        } catch (e) {
+          toast(e.message, "error");
+        }
+        input.value = "";
+      }
 
-async function saveAutomation() {
-  const id = document.getElementById('fId').value;
-  const payload = collectPayload();
-  const btn = document.getElementById('btnSave');
-  btn.disabled = true;
-  try {
-    const url = id ? `/admin/mmr/api/automations/${id}` : '/admin/mmr/api/automations';
-    const resp = await authFetch(url, {
-      method: id ? 'PUT' : 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    const data = await readJson(resp);
-    toast(id ? 'Automation updated' : 'Automation created', 'success');
-    if (!id) {
-      // re-open in edit mode so attachments can be added and logs viewed
-      closeDrawer();
-      await loadList();
-      openDrawer(data.automation.id);
-      return;
-    }
-    closeDrawer();
-    loadList();
-  } catch (e) { toast(e.message, 'error'); }
-  finally { btn.disabled = false; }
-}
+      async function deleteAttachment(attId) {
+        const id = document.getElementById("fId").value;
+        try {
+          const resp = await authFetch(
+            `/admin/mmr/api/automations/${id}/attachments/${attId}`,
+            { method: "DELETE" },
+          );
+          await readJson(resp);
+          currentAttachments = currentAttachments.filter((a) => a.id !== attId);
+          renderAttachments();
+          loadList();
+        } catch (e) {
+          toast(e.message, "error");
+        }
+      }
 
-async function toggle(id) {
-  try {
-    const resp = await authFetch(`/admin/mmr/api/automations/${id}/toggle`, { method: 'POST' });
-    const data = await readJson(resp);
-    toast(data.automation.enabled ? 'Enabled' : 'Disabled', 'success');
-    if (drawerOpenFor(id)) renderMeta(data.automation);
-  } catch (e) { toast(e.message, 'error'); }
-  loadList();
-}
+      // ── Workflow notification recipients (admins only) ──────────
+      function parseEmailList(value) {
+        return (value || "")
+          .split(/[,\n]/)
+          .map((v) => v.trim())
+          .filter(Boolean);
+      }
 
-async function runNow(id) {
-  toast('Sending…', 'info');
-  try {
-    const resp = await authFetch(`/admin/mmr/api/automations/${id}/run-now`, { method: 'POST' });
-    const data = await readJson(resp);
-    const st = data.automation.last_run_status;
-    toast(st === 'success' ? 'Email sent ✓' : ('Run failed: ' + (data.automation.last_run_detail || '')), st === 'success' ? 'success' : 'error');
-    if (drawerOpenFor(id)) refreshDrawer(id);
-  } catch (e) { toast(e.message, 'error'); }
-  loadList();
-}
+      let notificationKnownEmails = [];
 
-async function removeAuto(id) {
-  if (!confirm('Delete this automation? This cannot be undone.')) return;
-  try {
-    const resp = await authFetch(`/admin/mmr/api/automations/${id}`, { method: 'DELETE' });
-    await readJson(resp);
-    toast('Deleted', 'success');
-  } catch (e) { toast(e.message, 'error'); }
-  loadList();
-}
+      function toggleNotificationPicker(btn) {
+        if (!btn) return;
+        const picker = btn.closest(".notification-email-picker");
+        const panel =
+          picker && picker.querySelector(".notification-email-picker-panel");
+        if (!picker || !panel) return;
+        const willOpen = btn.getAttribute("aria-expanded") !== "true";
+        btn.setAttribute("aria-expanded", willOpen ? "true" : "false");
+        picker.classList.toggle("notification-email-picker--open", willOpen);
+        panel.hidden = !willOpen;
+        if (willOpen) {
+          const q = panel.querySelector(".notification-email-picker-filter");
+          if (q)
+            setTimeout(() => {
+              try {
+                q.focus();
+              } catch (e) {}
+            }, 160);
+        }
+      }
 
-// ── Attachments ──────────────────────────────────────────────
-async function uploadAttachment() {
-  const id = document.getElementById('fId').value;
-  const input = document.getElementById('fFile');
-  if (!id || !input.files[0]) return;
-  const fd = new FormData();
-  fd.append('file', input.files[0]);
-  try {
-    const resp = await authFetch(`/admin/mmr/api/automations/${id}/attachments`, { method: 'POST', body: fd });
-    const data = await readJson(resp);
-    currentAttachments.push(data.attachment);
-    renderAttachments();
-    toast('Attachment added', 'success');
-    loadList();
-  } catch (e) { toast(e.message, 'error'); }
-  input.value = '';
-}
+      function registerKnownEmails(emails) {
+        const set = new Set(
+          notificationKnownEmails.map((e) => e.toLowerCase()),
+        );
+        (emails || []).forEach((raw) => {
+          const email = String(raw || "").trim();
+          if (!email) return;
+          const key = email.toLowerCase();
+          if (set.has(key)) return;
+          set.add(key);
+          notificationKnownEmails.push(email);
+        });
+        notificationKnownEmails.sort((a, b) => a.localeCompare(b));
+        renderNotificationEmailPickers();
+      }
 
-async function deleteAttachment(attId) {
-  const id = document.getElementById('fId').value;
-  try {
-    const resp = await authFetch(`/admin/mmr/api/automations/${id}/attachments/${attId}`, { method: 'DELETE' });
-    await readJson(resp);
-    currentAttachments = currentAttachments.filter(a => a.id !== attId);
-    renderAttachments();
-    loadList();
-  } catch (e) { toast(e.message, 'error'); }
-}
+      function notifAvatarInitials(email) {
+        const local = (email || "").split("@")[0] || "?";
+        return local.slice(0, 2).toUpperCase();
+      }
 
-loadList();
-loadDefaults();
-</script>
-</body>
+      function renderNotificationEmailPickers() {
+        document
+          .querySelectorAll(".notification-email-picker")
+          .forEach((picker) => {
+            const list = picker.querySelector(
+              ".notification-email-picker-list",
+            );
+            const filterInput = picker.querySelector(
+              ".notification-email-picker-filter",
+            );
+            if (!list) return;
+            const tid = picker.dataset.notifyTextarea || "";
+            const safeId = tid.replace(/[^a-z0-9_]/gi, "_");
+            const preserveFilter = filterInput ? filterInput.value : "";
+            list.innerHTML = notificationKnownEmails
+              .map((email, idx) => {
+                const id = `notif_pick_${safeId}_${idx}`;
+                const v = esc(email);
+                return (
+                  `<label class="notification-email-picker-row" for="${id}">` +
+                  `<input type="checkbox" class="notif-pick-cb" id="${id}" value="${v}" onchange="updateNotifPickCount(this)" />` +
+                  `<span class="notif-pick-avatar">${notifAvatarInitials(email)}</span>` +
+                  `<span class="notif-pick-email">${esc(email)}</span>` +
+                  `<span class="notif-pick-already" hidden>already added</span>` +
+                  `</label>`
+                );
+              })
+              .join("");
+            if (filterInput) {
+              filterInput.value = preserveFilter;
+              filterNotificationEmailPicker(filterInput);
+            }
+          });
+        refreshNotificationPickerDuplicateHints();
+      }
+
+      function filterNotificationEmailPicker(input) {
+        const picker = input.closest(".notification-email-picker");
+        if (!picker) return;
+        const q = (input.value || "").trim().toLowerCase();
+        picker
+          .querySelectorAll(".notification-email-picker-row")
+          .forEach((row) => {
+            const emailEl = row.querySelector(".notif-pick-email");
+            const email = ((emailEl && emailEl.textContent) || "")
+              .trim()
+              .toLowerCase();
+            row.style.display = !q || email.includes(q) ? "" : "none";
+          });
+      }
+
+      function refreshNotificationPickerDuplicateHints() {
+        document
+          .querySelectorAll(".notification-email-picker")
+          .forEach((picker) => {
+            const tid = picker.dataset.notifyTextarea;
+            const ta = tid ? document.getElementById(tid) : null;
+            const set = new Set(
+              parseEmailList(ta && ta.value).map((e) => e.toLowerCase()),
+            );
+            picker
+              .querySelectorAll(".notification-email-picker-row")
+              .forEach((row) => {
+                const emailEl = row.querySelector(".notif-pick-email");
+                const alreadyEl = row.querySelector(".notif-pick-already");
+                const email = ((emailEl && emailEl.textContent) || "").trim();
+                const present = !!(email && set.has(email.toLowerCase()));
+                row.classList.toggle(
+                  "notification-email-picker-row--present",
+                  present,
+                );
+                if (alreadyEl) alreadyEl.hidden = !present;
+                const cb = row.querySelector('input[type="checkbox"]');
+                if (cb) {
+                  if (present) {
+                    cb.checked = false;
+                    cb.disabled = true;
+                  } else {
+                    cb.disabled = false;
+                  }
+                }
+              });
+            updateNotifPickCountForPicker(picker);
+          });
+      }
+
+      function updateNotifPickCount(cb) {
+        const picker = cb && cb.closest(".notification-email-picker");
+        if (picker) updateNotifPickCountForPicker(picker);
+      }
+
+      function updateNotifPickCountForPicker(picker) {
+        const tid = picker.dataset.notifyTextarea;
+        const countEl = tid
+          ? document.querySelector(`[data-pick-count="${tid}"]`)
+          : null;
+        if (!countEl) return;
+        const checked = picker.querySelectorAll(
+          'input[type="checkbox"]:checked:not(:disabled)',
+        ).length;
+        countEl.textContent = checked ? `${checked} checked` : "";
+      }
+
+      function notificationPickerSelectAllVisible(btn) {
+        const picker = btn.closest(".notification-email-picker");
+        if (!picker) return;
+        picker
+          .querySelectorAll(".notification-email-picker-row")
+          .forEach((row) => {
+            if (row.style.display === "none") return;
+            const cb = row.querySelector('input[type="checkbox"]');
+            if (cb && !cb.disabled) cb.checked = true;
+          });
+        updateNotifPickCountForPicker(picker);
+      }
+
+      function notificationPickerClearChecks(btn) {
+        const picker = btn.closest(".notification-email-picker");
+        if (!picker) return;
+        picker.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
+          if (!cb.disabled) cb.checked = false;
+        });
+        updateNotifPickCountForPicker(picker);
+      }
+
+      function appendCheckedKnownEmails(btn) {
+        const picker = btn.closest(".notification-email-picker");
+        if (!picker) return;
+        const tid = picker.dataset.notifyTextarea;
+        const textarea = tid ? document.getElementById(tid) : null;
+        if (!textarea) return;
+        const existing = parseEmailList(textarea.value);
+        const lower = new Set(existing.map((e) => e.toLowerCase()));
+        picker
+          .querySelectorAll(
+            '.notification-email-picker-row input[type="checkbox"]:checked',
+          )
+          .forEach((cb) => {
+            if (cb.disabled) return;
+            const v = (cb.value || "").trim();
+            if (!v || lower.has(v.toLowerCase())) return;
+            lower.add(v.toLowerCase());
+            existing.push(v);
+            cb.checked = false;
+          });
+        textarea.value = existing.join(", ");
+        refreshNotificationPickerDuplicateHints();
+      }
+
+      function updateNotifSettingsStatusLine(message) {
+        const el = document.getElementById("notifSettingsStatusLine");
+        if (el) el.textContent = message || "";
+      }
+
+      function applyNotificationConfig(config) {
+        const inspection = (config && config.inspection) || {};
+        const hr = (config && config.hr) || {};
+
+        document.getElementById("inspectionTo").value = (
+          inspection.to || []
+        ).join(", ");
+        document.getElementById("inspectionCc").value = (
+          inspection.cc || []
+        ).join(", ");
+        const insInc = inspection.include_submitter !== false;
+        document.querySelector(
+          `input[name="inspectionNotifySubmitter"][value="${insInc ? "1" : "0"}"]`,
+        ).checked = true;
+
+        document.getElementById("hrTo").value = (hr.to || []).join(", ");
+        document.getElementById("hrCc").value = (hr.cc || []).join(", ");
+        const hrInc = hr.include_submitter !== false;
+        document.querySelector(
+          `input[name="hrNotifySubmitter"][value="${hrInc ? "1" : "0"}"]`,
+        ).checked = true;
+
+        registerKnownEmails([
+          ...(inspection.to || []),
+          ...(inspection.cc || []),
+          ...(hr.to || []),
+          ...(hr.cc || []),
+        ]);
+      }
+
+      async function loadNotificationConfig() {
+        try {
+          const resp = await authFetch("/api/admin/notification-config");
+          if (resp.status === 403) return false; // not an admin — card stays hidden
+          const data = await resp.json().catch(() => null);
+          if (!resp.ok || !data || !data.success) {
+            throw new Error(
+              (data && data.error) || "Failed to load notification settings",
+            );
+          }
+          applyNotificationConfig(data.config || {});
+          updateNotifSettingsStatusLine(
+            `Loaded · ${new Date().toLocaleString()}`,
+          );
+          return true;
+        } catch (e) {
+          toast(e.message || "Failed to load notification settings", "error");
+          return false;
+        }
+      }
+
+      async function saveNotificationConfig() {
+        try {
+          const payload = {
+            config: {
+              inspection: {
+                to: parseEmailList(
+                  document.getElementById("inspectionTo").value,
+                ),
+                cc: parseEmailList(
+                  document.getElementById("inspectionCc").value,
+                ),
+                include_submitter:
+                  document.querySelector(
+                    'input[name="inspectionNotifySubmitter"]:checked',
+                  )?.value === "1",
+              },
+              hr: {
+                to: parseEmailList(document.getElementById("hrTo").value),
+                cc: parseEmailList(document.getElementById("hrCc").value),
+                include_submitter:
+                  document.querySelector(
+                    'input[name="hrNotifySubmitter"]:checked',
+                  )?.value === "1",
+              },
+            },
+          };
+          const resp = await authFetch("/api/admin/notification-config", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          const data = await resp.json().catch(() => null);
+          if (!resp.ok || !data || !data.success) {
+            throw new Error(
+              (data && data.error) || "Failed to save notification settings",
+            );
+          }
+          applyNotificationConfig(data.config || payload.config);
+          toast("Notification settings saved", "success");
+          updateNotifSettingsStatusLine(
+            `Saved · ${new Date().toLocaleString()}`,
+          );
+        } catch (e) {
+          toast(e.message || "Failed to save notification settings", "error");
+        }
+      }
+
+      // Seed the known-emails picker from the user roster (admin-only endpoint;
+      // silently skipped for anyone else).
+      async function loadKnownEmailsFromUsers() {
+        try {
+          const resp = await authFetch("/api/admin/users");
+          if (!resp.ok) return;
+          const data = await resp.json().catch(() => null);
+          if (data && data.success && Array.isArray(data.users)) {
+            registerKnownEmails(
+              data.users.map((u) => (u && u.email) || "").filter(Boolean),
+            );
+          }
+        } catch (e) {
+          /* non-fatal: picker just shows fewer suggestions */
+        }
+      }
+
+      async function initWorkflowNotifications() {
+        let isAdmin = false;
+        try {
+          const u = JSON.parse(localStorage.getItem("user") || "null");
+          isAdmin = !!(u && u.role === "admin");
+        } catch (e) {
+          /* fall through to API probe */
+        }
+        // The config API is the source of truth: it 403s for non-admins.
+        const loaded = await loadNotificationConfig();
+        if (!loaded && !isAdmin) return;
+        document.getElementById("wnSection").classList.remove("hidden");
+        loadKnownEmailsFromUsers();
+      }
+
+      loadList();
+      loadDefaults();
+      initWorkflowNotifications();
+    </script>
+  </body>
 </html>

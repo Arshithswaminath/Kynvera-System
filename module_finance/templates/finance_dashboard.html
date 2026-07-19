@@ -1,1395 +1,2641 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}">
-  {% include 'partials/caveat_font.html' ignore missing %}
-  <title>Finance — Amaan</title>
-  <meta name="theme-color" content="#d21725">
-  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
-  <style>
-    :root {
-      --fin-accent: #d21725;
-      --fin-accent-dark: #a8121e;
-      --fin-accent-light: #e8323f;
-      --fin-bg: #f5f6f8;
-      --fin-surface: #ffffff;
-      --fin-border: #e5e7eb;
-      --fin-border-soft: #f0f1f4;
-      --fin-text: #0f172a;
-      --fin-text-soft: #334155;
-      --fin-muted: #64748b;
-      --fin-success: #16a34a;
-      --fin-success-bg: #dcfce7;
-      --fin-warning: #d97706;
-      --fin-warning-bg: #fef3c7;
-      --fin-danger: #dc2626;
-      --fin-danger-bg: #fee2e2;
-      --fin-info: #0284c7;
-      --fin-info-bg: #e0f2fe;
-      --nav-top: 73px;
-    }
-    * { box-sizing: border-box; }
-    html, body { margin: 0; padding: 0; }
-    body.has-main-nav {
-      padding-top: var(--nav-top);
-      background: var(--fin-bg) !important;
-      color: var(--fin-text) !important;
-      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Inter", "Helvetica Neue", Arial, sans-serif;
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
-    }
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/design-tokens.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/dochub-page.css') }}"
+    />
+    {% include 'partials/caveat_font.html' ignore missing %}
+    <title>Finance — Amaan</title>
+    <meta name="theme-color" content="#d21725" />
+    <link
+      rel="icon"
+      type="image/png"
+      href="{{ url_for('static', filename='favicon.png') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/dashboard.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='mobile_responsive.css') }}"
+    />
+    <style>
+      :root {
+        --fin-accent: #d21725;
+        --fin-accent-dark: #a8121e;
+        --fin-accent-light: #e8323f;
+        --fin-bg: #f5f6f8;
+        --fin-surface: #ffffff;
+        --fin-border: #e5e7eb;
+        --fin-border-soft: #f0f1f4;
+        --fin-text: #0f172a;
+        --fin-text-soft: #334155;
+        --fin-muted: #64748b;
+        --fin-success: #16a34a;
+        --fin-success-bg: #dcfce7;
+        --fin-warning: #d97706;
+        --fin-warning-bg: #fef3c7;
+        --fin-danger: #dc2626;
+        --fin-danger-bg: #fee2e2;
+        --fin-info: #0284c7;
+        --fin-info-bg: #e0f2fe;
+        --nav-top: 73px;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+      body.has-main-nav {
+        padding-top: var(--nav-top);
+        background: var(--fin-bg) !important;
+        color: var(--fin-text) !important;
+        font-family:
+          -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+          system-ui, "Segoe UI", Roboto, "Helvetica Neue", Helvetica, Arial,
+          sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
 
-    /* ── Shared module container ─────────────────────────── */
-    .fin-container { max-width: 1180px; margin: 0 auto; }
+      /* ── Shared module container ─────────────────────────── */
+      .fin-container {
+        max-width: 1180px;
+        margin: 0 auto;
+      }
 
-    /* ── Hero header ────────────────────────────────────── */
-    .fin-hero {
-      background: transparent;
-      padding: 28px 24px 4px 20px;
-      position: relative;
-    }
-    .fin-hero-inner { position: relative; padding-left: 0; max-width: none; }
-    .fin-breadcrumb {
-      display: inline-flex; align-items: center; gap: 6px;
-      color: var(--fin-accent); text-decoration: none;
-      font-size: .78rem; font-weight: 600;
-      padding: 4px 10px;
-      background: rgba(210,23,37,.08);
-      border: 1px solid rgba(210,23,37,.18);
-      border-radius: 999px; margin-bottom: 12px;
-    }
-    .fin-breadcrumb:hover { background: rgba(210,23,37,.14); }
-    .fin-title {
-      font-size: 1.85rem; font-weight: 800; letter-spacing: -.025em;
-      color: var(--fin-text); margin: 0 0 6px;
-      display: flex; align-items: center; gap: 14px;
-    }
-    .fin-title-icon {
-      width: 42px; height: 42px;
-      background: linear-gradient(135deg, var(--fin-accent) 0%, var(--fin-accent-light) 100%);
-      border-radius: 11px;
-      display: flex; align-items: center; justify-content: center;
-      color: #fff; box-shadow: 0 6px 16px rgba(210,23,37,.28);
-    }
-    .fin-sub { color: var(--fin-muted); font-size: .9rem; margin: 0; max-width: 620px; }
-    .fin-nav {
-      display: inline-flex; gap: 3px; flex-wrap: wrap;
-      margin-top: 20px; padding: 4px;
-      background: #fff; border: 1px solid var(--fin-border);
-      border-radius: 11px; box-shadow: 0 2px 8px rgba(0,0,0,.04);
-    }
-    .fin-nav a {
-      padding: 8px 16px; border-radius: 8px;
-      font-size: .85rem; font-weight: 600; text-decoration: none;
-      color: var(--fin-muted);
-      display: inline-flex; align-items: center; gap: 7px;
-      transition: all .18s;
-    }
-    .fin-nav a:hover { color: var(--fin-text); background: #f3f4f6; }
-    .fin-nav a.active {
-      background: linear-gradient(135deg, var(--fin-accent) 0%, var(--fin-accent-light) 100%);
-      color: #fff; box-shadow: 0 4px 12px rgba(210,23,37,.3);
-    }
-    .fin-nav a svg { width: 15px; height: 15px; }
+      /* ── Hero header (simple, matches Contracts / Reports) ─ */
+      .fin-hero {
+        background: transparent;
+        padding: 24px 28px 0 20px;
+        position: relative;
+      }
+      .fin-hero-inner {
+        position: relative;
+        padding-left: 0;
+        max-width: none;
+      }
+      .fin-breadcrumb {
+        display: inline-block;
+        color: var(--fin-accent);
+        text-decoration: none;
+        font-size: 0.82rem;
+        font-weight: 500;
+        margin-bottom: 0;
+        padding: 0;
+        background: none;
+        border: none;
+        border-radius: 0;
+      }
+      .fin-breadcrumb:hover {
+        color: var(--fin-accent-dark, #a8121e);
+        text-decoration: underline;
+        background: none;
+      }
+      .fin-title {
+        font-size: 1.5rem;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        color: var(--fin-text);
+        margin: 6px 0 4px;
+      }
+      .fin-sub {
+        color: var(--fin-muted);
+        font-size: 0.88rem;
+        margin: 0 0 20px;
+        max-width: 620px;
+      }
+      .fin-nav {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin: 0 0 28px;
+        padding: 0;
+        background: none;
+        border: none;
+        border-radius: 0;
+        box-shadow: none;
+      }
+      .fin-nav a {
+        padding: 7px 16px;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-decoration: none;
+        color: #374151;
+        background: #fff;
+        border: 1.5px solid #e5e7eb;
+        display: inline-flex;
+        align-items: center;
+        transition: all 0.18s;
+      }
+      .fin-nav a:hover {
+        color: #fff;
+        background: var(--fin-accent);
+        border-color: var(--fin-accent);
+      }
+      .fin-nav a.active {
+        background: var(--fin-accent);
+        color: #fff;
+        border-color: var(--fin-accent);
+        box-shadow: none;
+      }
 
-    /* ── Bento layout ───────────────────────────────────── */
-    .fin-wrap {
-      padding: 20px 24px 60px 20px;
-      max-width: none;
-      width: 100%;
-    }
-    /* Two-column bento: wide main + right rail */
-    .bento-grid {
-      display: grid;
-      grid-template-columns: 3fr 2fr;
-      gap: 14px;
-      align-items: start;        /* each column sizes to its own content */
-      width: 100%;
-    }
-    .bento-main {
-      grid-column: 1;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-      min-width: 0;
-    }
-    .bento-rail {
-      grid-column: 2;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-      min-width: 0;
-    }
-    /* Both rail cards natural height — no stretching */
-    .bento-rail .dash-card {
-      width: 100%;
-    }
-    @media (max-width: 900px) {
-      .bento-grid { grid-template-columns: 1fr; }
-      .bento-rail { grid-column: 1; }
-    }
+      /* ── Bento layout ───────────────────────────────────── */
+      .fin-wrap {
+        padding: 20px 24px 60px 20px;
+        max-width: none;
+        width: 100%;
+      }
+      /* Two-column bento: wide main + right rail */
+      .bento-grid {
+        display: grid;
+        grid-template-columns: 3fr 2fr;
+        gap: 14px;
+        align-items: start; /* each column sizes to its own content */
+        width: 100%;
+      }
+      .bento-main {
+        grid-column: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        min-width: 0;
+      }
+      .bento-rail {
+        grid-column: 2;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        min-width: 0;
+      }
+      /* Both rail cards natural height — no stretching */
+      .bento-rail .dash-card {
+        width: 100%;
+      }
+      @media (max-width: 900px) {
+        .bento-grid {
+          grid-template-columns: 1fr;
+        }
+        .bento-rail {
+          grid-column: 1;
+        }
+      }
 
-    .section-title {
-      font-size: 1rem; font-weight: 700;
-      color: var(--fin-text);
-      margin: 0 0 14px;
-      display: flex; align-items: center; gap: 8px;
-      letter-spacing: -.01em;
-    }
-    .section-title .live-dot {
-      width: 7px; height: 7px;
-      background: var(--fin-success); border-radius: 50%;
-      box-shadow: 0 0 0 3px rgba(22,163,74,.18);
-      animation: pulse 2s infinite;
-    }
-    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .55; } }
+      .section-title {
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--fin-text);
+        margin: 0 0 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        letter-spacing: -0.01em;
+      }
 
-    /* ── Stat cards ─────────────────────────────────────── */
-    /* ── Metrics strip ──────────────────────────────────── */
-    .stat-strip {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      background: var(--fin-surface);
-      border: 1px solid var(--fin-border);
-      border-radius: 14px;
-      overflow: hidden;
-      margin-bottom: 0;
-    }
-    .stat-strip-item {
-      padding: 18px 20px;
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      position: relative;
-    }
-    .stat-strip-item + .stat-strip-item { border-left: 1px solid var(--fin-border-soft); }
-    .stat-strip-ico {
-      width: 42px; height: 42px; border-radius: 11px;
-      display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0;
-    }
-    .stat-strip-ico svg { width: 20px; height: 20px; }
-    .stat-strip-ico.red   { background: rgba(210,23,37,.09);  color: var(--fin-accent); }
-    .stat-strip-ico.green { background: var(--fin-success-bg); color: var(--fin-success); }
-    .stat-strip-ico.blue  { background: var(--fin-info-bg);    color: var(--fin-info); }
-    .stat-strip-ico.amber { background: var(--fin-warning-bg); color: var(--fin-warning); }
-    .stat-strip-body { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-    .stat-strip-val {
-      font-size: 1.65rem; font-weight: 800; line-height: 1; letter-spacing: -.03em;
-      color: var(--fin-text);
-    }
-    .stat-strip-val.red   { color: var(--fin-accent); }
-    .stat-strip-val.green { color: var(--fin-success); }
-    .stat-strip-label {
-      font-size: .7rem; font-weight: 700; color: var(--fin-muted);
-      text-transform: uppercase; letter-spacing: .06em; margin-top: 3px;
-    }
-    .stat-strip-sub {
-      font-size: .7rem; color: var(--fin-muted); font-weight: 400; margin-top: 1px;
-    }
-    @media (max-width: 700px) { .stat-strip { grid-template-columns: repeat(2, 1fr); } .stat-strip-item + .stat-strip-item:nth-child(odd) { border-left: none; } .stat-strip-item:nth-child(3), .stat-strip-item:nth-child(4) { border-top: 1px solid var(--fin-border-soft); } }
-    @media (max-width: 420px) { .stat-strip { grid-template-columns: 1fr; } .stat-strip-item + .stat-strip-item { border-left: none; border-top: 1px solid var(--fin-border-soft); } }
+      /* ── Stat cards ─────────────────────────────────────── */
+      /* ── Metrics strip ──────────────────────────────────── */
+      .stat-strip {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        background: var(--fin-surface);
+        border: 1px solid var(--fin-border);
+        border-radius: 14px;
+        overflow: hidden;
+        margin-bottom: 0;
+      }
+      .stat-strip-item {
+        padding: 18px 20px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        position: relative;
+      }
+      .stat-strip-item + .stat-strip-item {
+        border-left: 1px solid var(--fin-border-soft);
+      }
+      .stat-strip-ico {
+        width: 42px;
+        height: 42px;
+        border-radius: 11px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      .stat-strip-ico svg {
+        width: 20px;
+        height: 20px;
+      }
+      .stat-strip-ico.red {
+        background: rgba(210, 23, 37, 0.09);
+        color: var(--fin-accent);
+      }
+      .stat-strip-ico.green {
+        background: var(--fin-success-bg);
+        color: var(--fin-success);
+      }
+      .stat-strip-ico.blue {
+        background: var(--fin-info-bg);
+        color: var(--fin-info);
+      }
+      .stat-strip-ico.amber {
+        background: var(--fin-warning-bg);
+        color: var(--fin-warning);
+      }
+      .stat-strip-body {
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+        min-width: 0;
+      }
+      .stat-strip-val {
+        font-size: 1.65rem;
+        font-weight: 800;
+        line-height: 1;
+        letter-spacing: -0.03em;
+        color: var(--fin-text);
+      }
+      .stat-strip-val.red {
+        color: var(--fin-accent);
+      }
+      .stat-strip-val.green {
+        color: var(--fin-success);
+      }
+      .stat-strip-label {
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: var(--fin-muted);
+        letter-spacing: 0.06em;
+        margin-top: 3px;
+      }
+      .stat-strip-sub {
+        font-size: 0.7rem;
+        color: var(--fin-muted);
+        font-weight: 400;
+        margin-top: 1px;
+      }
+      @media (max-width: 700px) {
+        .stat-strip {
+          grid-template-columns: repeat(2, 1fr);
+        }
+        .stat-strip-item + .stat-strip-item:nth-child(odd) {
+          border-left: none;
+        }
+        .stat-strip-item:nth-child(3),
+        .stat-strip-item:nth-child(4) {
+          border-top: 1px solid var(--fin-border-soft);
+        }
+      }
+      @media (max-width: 420px) {
+        .stat-strip {
+          grid-template-columns: 1fr;
+        }
+        .stat-strip-item + .stat-strip-item {
+          border-left: none;
+          border-top: 1px solid var(--fin-border-soft);
+        }
+      }
 
-    /* ── Workflow tabs + queue ─────────────────────────── */
-    .queue-card {
-      background: var(--fin-surface);
-      border: 1px solid var(--fin-border);
-      border-radius: 14px;
-      overflow: hidden;
-      margin-bottom: 24px;
-    }
-    .queue-head {
-      display: flex; align-items: center;
-      padding: 16px 22px;
-      border-bottom: 1px solid var(--fin-border-soft);
-      gap: 12px; flex-wrap: wrap;
-    }
-    .queue-head h3 {
-      margin: 0; font-size: 1rem; font-weight: 700;
-      display: flex; align-items: center; gap: 9px;
-      letter-spacing: -.01em;
-    }
-    .queue-head h3 .h3-ico {
-      width: 26px; height: 26px; border-radius: 7px;
-      display: flex; align-items: center; justify-content: center;
-      background: linear-gradient(135deg, var(--fin-accent) 0%, var(--fin-accent-light) 100%);
-      color: #fff;
-    }
-    .queue-head h3 .h3-ico svg { width: 15px; height: 15px; }
-    .queue-tabs {
-      display: inline-flex; gap: 2px;
-      background: #f3f4f6; border-radius: 9px; padding: 3px;
-      margin-left: auto;
-    }
-    .queue-tab {
-      padding: 6px 14px; border: none; background: transparent;
-      font-size: .8rem; font-weight: 600; color: var(--fin-muted);
-      border-radius: 7px; cursor: pointer;
-      display: inline-flex; align-items: center; gap: 6px;
-      transition: all .15s;
-    }
-    .queue-tab:hover { color: var(--fin-text); }
-    .queue-tab.active {
-      background: #fff; color: var(--fin-accent);
-      box-shadow: 0 1px 3px rgba(0,0,0,.08);
-    }
-    .queue-tab .count {
-      background: rgba(210,23,37,.1); color: var(--fin-accent);
-      padding: 1px 7px; border-radius: 999px;
-      font-size: .68rem; font-weight: 700;
-    }
-    .queue-tab.active .count { background: var(--fin-accent); color: #fff; }
+      /* ── Workflow tabs + queue ─────────────────────────── */
+      .queue-card {
+        background: var(--fin-surface);
+        border: 1px solid var(--fin-border);
+        border-radius: 14px;
+        overflow: hidden;
+        margin-bottom: 24px;
+      }
+      .queue-head {
+        display: flex;
+        align-items: center;
+        padding: 16px 22px;
+        border-bottom: 1px solid var(--fin-border-soft);
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .queue-head h3 {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        letter-spacing: -0.01em;
+      }
+      .queue-head h3 .h3-ico {
+        width: 26px;
+        height: 26px;
+        border-radius: 7px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(
+          135deg,
+          var(--fin-accent) 0%,
+          var(--fin-accent-light) 100%
+        );
+        color: #fff;
+      }
+      .queue-head h3 .h3-ico svg {
+        width: 15px;
+        height: 15px;
+      }
+      .queue-tabs {
+        display: inline-flex;
+        gap: 2px;
+        background: #f3f4f6;
+        border-radius: 9px;
+        padding: 3px;
+        margin-left: auto;
+      }
+      .queue-tab {
+        padding: 6px 14px;
+        border: none;
+        background: transparent;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--fin-muted);
+        border-radius: 7px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.15s;
+      }
+      .queue-tab:hover {
+        color: var(--fin-text);
+      }
+      .queue-tab.active {
+        background: #fff;
+        color: var(--fin-accent);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+      }
+      .queue-tab .count {
+        background: none;
+        color: inherit;
+        padding: 0;
+        border-radius: 0;
+        font-size: 0.8rem;
+        font-weight: 700;
+        margin-left: 2px;
+      }
+      .queue-tab.active .count {
+        background: none;
+        color: inherit;
+      }
 
-    /* ── Queue rows ─────────────────────────────────────── */
-    .queue-body { padding: 8px; overflow-x: auto; }
-    .queue-row {
-      display: grid;
-      grid-template-columns: minmax(220px, 1.4fr) minmax(180px, 1.2fr) minmax(80px, auto) minmax(140px, auto);
-      gap: 14px; align-items: center;
-      padding: 14px 14px;
-      border-radius: 10px;
-      transition: background .15s;
-      border: 1px solid transparent;
-      min-width: 640px;
-    }
-    .queue-row:hover { background: #fafbfc; border-color: var(--fin-border-soft); }
-    .queue-row + .queue-row { margin-top: 4px; }
-    .qr-id {
-      font-size: .92rem; font-weight: 800; color: var(--fin-text);
-      text-decoration: none;
-      display: inline-flex; align-items: center; gap: 6px;
-    }
-    .qr-id:hover { color: var(--fin-accent); }
-    .qr-id .qr-id-tag {
-      background: var(--fin-danger-bg); color: var(--fin-accent);
-      padding: 1.5px 7px; border-radius: 5px;
-      font-size: .7rem; font-weight: 700;
-    }
-    .qr-title { font-size: .82rem; color: var(--fin-text-soft); margin-top: 3px; line-height: 1.3; }
-    .qr-meta { font-size: .74rem; color: var(--fin-muted); margin-top: 4px; display: flex; gap: 10px; flex-wrap: wrap; }
-    .qr-meta span { display: inline-flex; align-items: center; gap: 4px; }
-    .qr-amount { font-size: .92rem; font-weight: 800; color: var(--fin-text); }
-    .qr-amount-label { font-size: .68rem; color: var(--fin-muted); margin-top: 1px; text-transform: uppercase; letter-spacing: .04em; font-weight: 600; }
-    .qr-docs { display: flex; gap: 6px; flex-wrap: wrap; }
-    .qr-doc-btn {
-      display: inline-flex; align-items: center; gap: 5px;
-      padding: 5px 10px; border-radius: 7px;
-      background: #f1f5f9; color: var(--fin-text-soft);
-      font-size: .73rem; font-weight: 600;
-      text-decoration: none;
-      transition: all .15s;
-      border: 1px solid transparent;
-    }
-    .qr-doc-btn:hover { background: var(--fin-info-bg); color: var(--fin-info); border-color: rgba(2,132,199,.2); }
-    .qr-doc-btn svg { width: 13px; height: 13px; }
-    .qr-actions { display: flex; gap: 8px; align-items: center; }
+      /* ── Queue rows ─────────────────────────────────────── */
+      .queue-body {
+        padding: 8px;
+        overflow-x: auto;
+      }
+      .queue-row {
+        display: grid;
+        grid-template-columns: minmax(260px, 1fr) auto;
+        gap: 18px 24px;
+        align-items: start;
+        padding: 16px 16px;
+        border-radius: 10px;
+        transition: background 0.15s;
+        border: 1px solid transparent;
+        min-width: 560px;
+      }
+      .queue-row:hover {
+        background: #fafbfc;
+        border-color: var(--fin-border-soft);
+      }
+      .queue-row + .queue-row {
+        margin-top: 4px;
+        border-top: 1px solid var(--fin-border-soft);
+        border-radius: 0;
+        padding-top: 16px;
+      }
+      .queue-row + .queue-row:hover {
+        border-radius: 10px;
+      }
+      .qr-id {
+        font-size: 0.92rem;
+        font-weight: 800;
+        color: var(--fin-text);
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .qr-id:hover {
+        color: var(--fin-accent);
+      }
+      .qr-id .qr-id-tag {
+        background: var(--fin-danger-bg);
+        color: var(--fin-accent);
+        padding: 2px 8px;
+        border-radius: 6px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+      }
+      .qr-primary {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .qr-title {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: var(--fin-text);
+        line-height: 1.35;
+        margin: 0;
+        letter-spacing: -0.01em;
+      }
+      .qr-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 14px;
+        font-size: 0.74rem;
+        color: var(--fin-muted);
+        margin: 0;
+      }
+      .qr-meta span {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        line-height: 1.35;
+        white-space: nowrap;
+      }
+      .qr-meta span svg {
+        width: 12px;
+        height: 12px;
+        flex-shrink: 0;
+        opacity: 0.75;
+      }
+      .qr-aside {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 10px;
+        min-width: 168px;
+        text-align: right;
+      }
+      .qr-amount-block {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 2px;
+      }
+      .qr-amount {
+        font-size: 1rem;
+        font-weight: 800;
+        color: var(--fin-text);
+        white-space: nowrap;
+        letter-spacing: -0.02em;
+      }
+      .qr-amount-label {
+        font-size: 0.68rem;
+        color: var(--fin-muted);
+        letter-spacing: 0.04em;
+        font-weight: 600;
+        white-space: nowrap;
+      }
+      .qr-docs {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 2px;
+      }
+      .qr-doc-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 7px 12px;
+        border-radius: 8px;
+        background: #f1f5f9;
+        color: var(--fin-text-soft);
+        font-size: 0.74rem;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.15s;
+        border: 1px solid transparent;
+        white-space: nowrap;
+      }
+      .qr-doc-btn:hover {
+        background: var(--fin-info-bg);
+        color: var(--fin-info);
+        border-color: rgba(2, 132, 199, 0.2);
+      }
+      .qr-doc-btn svg {
+        width: 14px;
+        height: 14px;
+        flex-shrink: 0;
+      }
+      .qr-actions {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        justify-content: flex-end;
+      }
 
-    /* ── Workflow status pipeline ──────────────────────── */
-    .qr-status {
-      display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
-      font-size: .68rem; font-weight: 600;
-      color: var(--fin-muted);
-      margin-top: 6px;
-    }
-    .qr-status-step {
-      display: inline-flex; align-items: center; gap: 4px;
-      padding: 2px 7px; border-radius: 999px;
-      background: var(--fin-border-soft);
-    }
-    .qr-status-step.done   { background: var(--fin-success-bg); color: #166534; }
-    .qr-status-step.active { background: var(--fin-warning-bg); color: #92400e; box-shadow: 0 0 0 2px rgba(217,119,6,.18); }
-    .qr-status-sep { color: #cbd5e1; }
+      /* ── Workflow status pipeline ──────────────────────── */
+      .qr-status {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 6px 2px;
+        font-size: 0.68rem;
+        font-weight: 600;
+        color: var(--fin-muted);
+        margin: 2px 0 0;
+        row-gap: 6px;
+      }
+      .qr-status-unit {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        white-space: nowrap;
+        max-width: 100%;
+      }
+      .qr-status-step {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 3px 9px;
+        border-radius: 999px;
+        background: var(--fin-border-soft);
+        line-height: 1.3;
+      }
+      .qr-status-step.done {
+        background: var(--fin-success-bg);
+        color: #166534;
+      }
+      .qr-status-step.active {
+        background: var(--fin-warning-bg);
+        color: #92400e;
+        box-shadow: 0 0 0 2px rgba(217, 119, 6, 0.18);
+      }
+      .qr-status-sep {
+        color: #cbd5e1;
+        flex-shrink: 0;
+        font-size: 0.75rem;
+      }
 
-    /* ── Buttons ────────────────────────────────────────── */
-    .btn {
-      display: inline-flex; align-items: center; gap: 6px;
-      padding: 8px 14px; border-radius: 8px;
-      font-size: .82rem; font-weight: 600; cursor: pointer;
-      border: none; text-decoration: none; transition: all .15s;
-    }
-    .btn-sm { padding: 6.5px 11px; font-size: .76rem; }
-    .btn-primary {
-      background: linear-gradient(135deg, var(--fin-accent) 0%, var(--fin-accent-light) 100%);
-      color: #fff; box-shadow: 0 3px 8px rgba(210,23,37,.25);
-    }
-    .btn-primary:hover { filter: brightness(1.05); transform: translateY(-1px); }
-    .btn-outline {
-      background: #fff; border: 1.5px solid var(--fin-border);
-      color: var(--fin-text-soft);
-    }
-    .btn-outline:hover { background: #fafbfc; border-color: var(--fin-accent); color: var(--fin-accent); }
-    .btn-green {
-      background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%);
-      color: #fff; box-shadow: 0 3px 8px rgba(22,163,74,.2);
-    }
-    .btn-green:hover { filter: brightness(1.05); transform: translateY(-1px); }
+      /* ── Buttons ────────────────────────────────────────── */
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 14px;
+        border-radius: 8px;
+        font-size: 0.82rem;
+        font-weight: 600;
+        cursor: pointer;
+        border: none;
+        text-decoration: none;
+        transition: all 0.15s;
+      }
+      .btn-sm {
+        padding: 6.5px 11px;
+        font-size: 0.76rem;
+      }
+      .btn-primary {
+        background: linear-gradient(
+          135deg,
+          var(--fin-accent) 0%,
+          var(--fin-accent-light) 100%
+        );
+        color: #fff;
+        box-shadow: 0 3px 8px rgba(210, 23, 37, 0.25);
+      }
+      .btn-primary:hover {
+        filter: brightness(1.05);
+        transform: translateY(-1px);
+      }
+      .btn-outline {
+        background: #fff;
+        border: 1.5px solid var(--fin-border);
+        color: var(--fin-text-soft);
+      }
+      .btn-outline:hover {
+        background: #fafbfc;
+        border-color: var(--fin-accent);
+        color: var(--fin-accent);
+      }
+      .btn-green {
+        background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%);
+        color: #fff;
+        box-shadow: 0 3px 8px rgba(22, 163, 74, 0.2);
+      }
+      .btn-green:hover {
+        filter: brightness(1.05);
+        transform: translateY(-1px);
+      }
 
-    /* ── Badges ────────────────────────────────────────── */
-    .badge {
-      display: inline-flex; align-items: center; gap: 4px;
-      padding: 3.5px 9px; border-radius: 999px;
-      font-size: .68rem; font-weight: 700;
-      text-transform: uppercase; letter-spacing: .03em;
-    }
-    .badge-warn    { background: var(--fin-warning-bg); color: #92400e; }
-    .badge-success { background: var(--fin-success-bg); color: #166534; }
-    .badge-danger  { background: var(--fin-danger-bg);  color: #991b1b; }
-    .badge-info    { background: var(--fin-info-bg);    color: #075985; }
+      /* ── Badges ────────────────────────────────────────── */
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 3.5px 9px;
+        border-radius: 999px;
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: 0.03em;
+      }
+      .badge-warn {
+        background: var(--fin-warning-bg);
+        color: #92400e;
+      }
+      .badge-success {
+        background: var(--fin-success-bg);
+        color: #166534;
+      }
+      .badge-danger {
+        background: var(--fin-danger-bg);
+        color: #991b1b;
+      }
+      .badge-info {
+        background: var(--fin-info-bg);
+        color: #075985;
+      }
 
-    /* ── Empty state ───────────────────────────────────── */
-    .empty-state {
-      text-align: center; padding: 40px 20px;
-      color: var(--fin-muted); font-size: .9rem;
-    }
-    .empty-state svg { width: 48px; height: 48px; margin: 0 auto 14px; display: block; color: #cbd5e1; }
-    .empty-state.success { color: var(--fin-success); }
-    .empty-state.success svg { color: var(--fin-success); }
-    .empty-state-hint { font-size: .8rem; margin-top: 6px; color: var(--fin-muted); }
+      /* ── Empty state ───────────────────────────────────── */
+      .empty-state {
+        text-align: center;
+        padding: 40px 20px;
+        color: var(--fin-muted);
+        font-size: 0.9rem;
+      }
+      .empty-state svg {
+        width: 48px;
+        height: 48px;
+        margin: 0 auto 14px;
+        display: block;
+        color: #cbd5e1;
+      }
+      .empty-state.success {
+        color: var(--fin-success);
+      }
+      .empty-state.success svg {
+        color: var(--fin-success);
+      }
+      .empty-state-hint {
+        font-size: 0.8rem;
+        margin-top: 6px;
+        color: var(--fin-muted);
+      }
 
-    /* ── Sample data banner ────────────────────────────── */
-    .sample-banner {
-      background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-      border: 1px solid #fbbf24;
-      border-radius: 11px; padding: 11px 18px; margin-bottom: 18px;
-      display: flex; align-items: center; gap: 10px;
-      font-size: .85rem; color: #78350f;
-    }
-    .sample-banner svg { width: 18px; height: 18px; flex-shrink: 0; color: #a16207; }
+      /* ── Sample data banner ────────────────────────────── */
+      .sample-banner {
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        border: 1px solid #fbbf24;
+        border-radius: 11px;
+        padding: 11px 18px;
+        margin-bottom: 18px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 0.85rem;
+        color: #78350f;
+      }
+      .sample-banner svg {
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
+        color: #a16207;
+      }
 
-    /* ── Modal ─────────────────────────────────────────── */
-    #processModal {
-      position: fixed; inset: 0;
-      background: rgba(15,23,42,.55);
-      backdrop-filter: blur(4px);
-      z-index: 2147483000;
-      display: none;
-      align-items: center; justify-content: center;
-      padding: 20px;
-    }
-    #processModal.open { display: flex; opacity: 1; pointer-events: all; }
-    .modal {
-      background: #fff; border-radius: 16px;
-      width: 100%; max-width: 900px;
-      max-height: 90vh; overflow-y: auto;
-      box-shadow: 0 20px 60px rgba(0,0,0,.3);
-      position: relative;
-      pointer-events: all;
-    }
-    .modal-cols {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 0;
-    }
-    .modal-col-left {
-      padding-right: 20px;
-      border-right: 1px solid var(--fin-border-soft);
-    }
-    .modal-col-right {
-      padding-left: 20px;
-    }
-    /* ── Email section inside modal ── */
-    .email-sec-head {
-      display: flex; align-items: center; justify-content: space-between;
-      margin-bottom: 12px;
-    }
-    .email-sec-title {
-      font-size: .82rem; font-weight: 700; color: #374151;
-      display: flex; align-items: center; gap: 6px;
-    }
-    .email-settings-btn {
-      background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 6px;
-      padding: 4px 10px; font-size: .72rem; color: #6b7280;
-      cursor: pointer; display: flex; align-items: center; gap: 4px;
-    }
-    .email-settings-panel {
-      background: #f9fafb; border: 1.5px solid #e5e7eb; border-radius: 10px;
-      padding: 12px; margin-bottom: 10px;
-    }
-    .email-settings-title {
-      font-size: .75rem; font-weight: 700; color: #374151;
-      text-transform: uppercase; letter-spacing: .04em; margin-bottom: 8px;
-    }
-    .email-settings-row { margin-bottom: 6px; }
-    .email-settings-row:last-of-type { margin-bottom: 8px; }
-    .email-field-label {
-      font-size: .78rem; font-weight: 600; color: #374151;
-      display: block; margin-bottom: 3px;
-    }
-    .email-field-label-sub {
-      font-size: .72rem; font-weight: 400; color: #9ca3af;
-    }
-    .email-text-input {
-      width: 100%; box-sizing: border-box;
-      padding: 7px 10px; border: 1px solid #e5e7eb; border-radius: 6px;
-      font-size: .82rem; font-family: inherit;
-    }
-    .email-text-input-sm {
-      width: 100%; box-sizing: border-box;
-      padding: 6px 10px; border: 1px solid #e5e7eb; border-radius: 6px;
-      font-size: .8rem; font-family: inherit;
-    }
-    .email-to-cc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
-    .email-body-area {
-      width: 100%; box-sizing: border-box;
-      padding: 7px 10px; border: 1px solid #e5e7eb; border-radius: 6px;
-      font-size: .82rem; font-family: inherit; resize: vertical;
-    }
-    .email-save-btn {
-      background: #d21725; color: #fff; border: none; border-radius: 6px;
-      padding: 5px 14px; font-size: .78rem; font-weight: 600; cursor: pointer;
-    }
-    .modal-warning {
-      background: #fef3c7; border: 1px solid #fbbf24; border-radius: 9px;
-      padding: 10px 12px; font-size: .78rem; color: #78350f;
-      display: flex; gap: 8px; align-items: flex-start; margin-top: 16px;
-    }
-    .modal-warning svg { flex-shrink: 0; color: #a16207; margin-top: 1px; }
-    /* ── Modal success state ── */
-    .modal-success {
-      display: none;
-      flex-direction: column; align-items: center; justify-content: center;
-      padding: 40px 32px; text-align: center; gap: 0;
-    }
-    .modal-success.visible { display: flex; }
-    .ms-ring {
-      width: 72px; height: 72px; border-radius: 50%;
-      background: #f0fdf4; border: 2.5px solid #86efac;
-      display: flex; align-items: center; justify-content: center;
-      margin-bottom: 20px;
-      animation: msRingIn .4s cubic-bezier(.16,1,.3,1) both;
-    }
-    .ms-ring svg { color: #16a34a; animation: msCheckIn .35s ease both .15s; opacity: 0; }
-    @keyframes msRingIn { from { transform: scale(.7); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-    @keyframes msCheckIn { from { transform: scale(.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-    .ms-title { font-size: 1.1rem; font-weight: 800; color: #15803d; margin-bottom: 6px; }
-    .ms-pills { display: flex; gap: 8px; margin: 14px 0 20px; flex-wrap: wrap; justify-content: center; }
-    .ms-pill {
-      display: inline-flex; align-items: center; gap: 5px;
-      padding: 5px 12px; border-radius: 999px; font-size: .75rem; font-weight: 600;
-    }
-    .ms-pill.green { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
-    .ms-pill.blue  { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
-    .ms-sub { font-size: .78rem; color: var(--fin-muted); margin-bottom: 24px; max-width: 320px; line-height: 1.5; }
-    .ms-progress {
-      width: 200px; height: 3px; background: #e2e8f0; border-radius: 999px; overflow: hidden;
-    }
-    .ms-progress-bar {
-      height: 100%; width: 100%; background: #16a34a; border-radius: 999px;
-      transform-origin: left;
-      animation: msBar 3s linear both;
-    }
-    @keyframes msBar { from { transform: scaleX(0); } to { transform: scaleX(1); } }
-    .ms-done-btn {
-      margin-top: 16px; padding: 8px 24px; border-radius: 8px;
-      background: #16a34a; color: #fff; font-size: .82rem; font-weight: 600;
-      border: none; cursor: pointer; transition: background .15s;
-    }
-    .ms-done-btn:hover { background: #15803d; }
-    .form-required { color: var(--fin-danger); }
-    .form-field-last { margin-bottom: 0; }
-    .form-textarea-tall { min-height: 90px; }
-    .modal-head {
-      padding: 20px 24px;
-      border-bottom: 1px solid var(--fin-border-soft);
-      display: flex; align-items: center; gap: 12px;
-    }
-    .modal-head h3 { margin: 0; font-size: 1.05rem; font-weight: 800; letter-spacing: -.01em; }
-    .modal-head .h3-ico {
-      width: 30px; height: 30px; border-radius: 8px;
-      background: linear-gradient(135deg, var(--fin-accent) 0%, var(--fin-accent-light) 100%);
-      color: #fff; display: flex; align-items: center; justify-content: center;
-    }
-    .modal-head .h3-ico svg { width: 16px; height: 16px; }
-    .modal-close {
-      margin-left: auto; background: transparent; border: none;
-      cursor: pointer; color: var(--fin-muted); padding: 4px;
-      border-radius: 6px;
-    }
-    .modal-close:hover { background: #f3f4f6; color: var(--fin-text); }
-    .modal-body { padding: 22px 24px; }
-    .modal-body .ticket-snapshot {
-      background: #fafbfc; border: 1px solid var(--fin-border-soft);
-      border-radius: 10px; padding: 14px 16px; margin-bottom: 16px;
-    }
-    .ts-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: .82rem; }
-    .ts-row span:first-child { color: var(--fin-muted); }
-    .ts-row span:last-child { color: var(--fin-text); font-weight: 600; }
-    .form-field { margin-bottom: 14px; }
-    .form-label {
-      display: block; font-size: .78rem; font-weight: 600;
-      color: var(--fin-text-soft); margin-bottom: 6px;
-    }
-    .form-input, .form-textarea {
-      width: 100%; padding: 10px 12px;
-      border: 1.5px solid var(--fin-border); border-radius: 9px;
-      font-size: .9rem; font-family: inherit;
-      background: #fff; color: var(--fin-text);
-      transition: border-color .15s, box-shadow .15s;
-    }
-    .form-input:focus, .form-textarea:focus {
-      outline: none; border-color: var(--fin-accent);
-      box-shadow: 0 0 0 3px rgba(210,23,37,.1);
-    }
-    .form-textarea { resize: vertical; min-height: 70px; }
-    .form-hint { font-size: .72rem; color: var(--fin-muted); margin-top: 4px; }
-    .modal-foot {
-      padding: 16px 24px; border-top: 1px solid var(--fin-border-soft);
-      display: flex; justify-content: flex-end; gap: 10px;
-      background: #fafbfc; border-radius: 0 0 16px 16px;
-    }
+      /* ── Modal ─────────────────────────────────────────── */
+      #processModal {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.55);
+        backdrop-filter: blur(4px);
+        z-index: 2147483000;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+      #processModal.open {
+        display: flex;
+        opacity: 1;
+        pointer-events: all;
+      }
+      .modal {
+        background: #fff;
+        border-radius: 16px;
+        width: 100%;
+        max-width: 900px;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        position: relative;
+        pointer-events: all;
+      }
+      .modal-cols {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0;
+      }
+      .modal-col-left {
+        padding-right: 20px;
+        border-right: 1px solid var(--fin-border-soft);
+      }
+      .modal-col-right {
+        padding-left: 20px;
+      }
+      /* ── Email section inside modal ── */
+      .email-sec-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+      }
+      .email-sec-title {
+        font-size: 0.82rem;
+        font-weight: 700;
+        color: #374151;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .email-settings-btn {
+        background: #f3f4f6;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        padding: 4px 10px;
+        font-size: 0.72rem;
+        color: #6b7280;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .email-settings-panel {
+        background: #f9fafb;
+        border: 1.5px solid #e5e7eb;
+        border-radius: 10px;
+        padding: 12px;
+        margin-bottom: 10px;
+      }
+      .email-settings-title {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #374151;
+        letter-spacing: 0.04em;
+        margin-bottom: 8px;
+      }
+      .email-settings-row {
+        margin-bottom: 6px;
+      }
+      .email-settings-row:last-of-type {
+        margin-bottom: 8px;
+      }
+      .email-field-label {
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: #374151;
+        display: block;
+        margin-bottom: 3px;
+      }
+      .email-field-label-sub {
+        font-size: 0.72rem;
+        font-weight: 400;
+        color: #9ca3af;
+      }
+      .email-text-input {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 7px 10px;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        font-size: 0.82rem;
+        font-family: inherit;
+      }
+      .email-text-input-sm {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 6px 10px;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        font-size: 0.8rem;
+        font-family: inherit;
+      }
+      .email-to-cc-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+      .email-body-area {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 7px 10px;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        font-size: 0.82rem;
+        font-family: inherit;
+        resize: vertical;
+      }
+      .email-save-btn {
+        background: #d21725;
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        padding: 5px 14px;
+        font-size: 0.78rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .modal-warning {
+        background: #fef3c7;
+        border: 1px solid #fbbf24;
+        border-radius: 9px;
+        padding: 10px 12px;
+        font-size: 0.78rem;
+        color: #78350f;
+        display: flex;
+        gap: 8px;
+        align-items: flex-start;
+        margin-top: 16px;
+      }
+      .modal-warning svg {
+        flex-shrink: 0;
+        color: #a16207;
+        margin-top: 1px;
+      }
+      /* ── Modal success state ── */
+      .modal-success {
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 40px 32px;
+        text-align: center;
+        gap: 0;
+      }
+      .modal-success.visible {
+        display: flex;
+      }
+      .ms-ring {
+        width: 72px;
+        height: 72px;
+        border-radius: 50%;
+        background: #f0fdf4;
+        border: 2.5px solid #86efac;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 20px;
+        animation: msRingIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+      }
+      .ms-ring svg {
+        color: #16a34a;
+        animation: msCheckIn 0.35s ease both 0.15s;
+        opacity: 0;
+      }
+      @keyframes msRingIn {
+        from {
+          transform: scale(0.7);
+          opacity: 0;
+        }
+        to {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+      @keyframes msCheckIn {
+        from {
+          transform: scale(0.5);
+          opacity: 0;
+        }
+        to {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+      .ms-title {
+        font-size: 1.1rem;
+        font-weight: 800;
+        color: #15803d;
+        margin-bottom: 6px;
+      }
+      .ms-pills {
+        display: flex;
+        gap: 8px;
+        margin: 14px 0 20px;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+      .ms-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 5px 12px;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+      }
+      .ms-pill.green {
+        background: #f0fdf4;
+        color: #15803d;
+        border: 1px solid #bbf7d0;
+      }
+      .ms-pill.blue {
+        background: #eff6ff;
+        color: #1d4ed8;
+        border: 1px solid #bfdbfe;
+      }
+      .ms-sub {
+        font-size: 0.78rem;
+        color: var(--fin-muted);
+        margin-bottom: 24px;
+        max-width: 320px;
+        line-height: 1.5;
+      }
+      .ms-progress {
+        width: 200px;
+        height: 3px;
+        background: #e2e8f0;
+        border-radius: 999px;
+        overflow: hidden;
+      }
+      .ms-progress-bar {
+        height: 100%;
+        width: 100%;
+        background: #16a34a;
+        border-radius: 999px;
+        transform-origin: left;
+        animation: msBar 3s linear both;
+      }
+      @keyframes msBar {
+        from {
+          transform: scaleX(0);
+        }
+        to {
+          transform: scaleX(1);
+        }
+      }
+      .ms-done-btn {
+        margin-top: 16px;
+        padding: 8px 24px;
+        border-radius: 8px;
+        background: #16a34a;
+        color: #fff;
+        font-size: 0.82rem;
+        font-weight: 600;
+        border: none;
+        cursor: pointer;
+        transition: background 0.15s;
+      }
+      .ms-done-btn:hover {
+        background: #15803d;
+      }
+      .form-required {
+        color: var(--fin-danger);
+      }
+      .form-field-last {
+        margin-bottom: 0;
+      }
+      .form-textarea-tall {
+        min-height: 90px;
+      }
+      .modal-head {
+        padding: 20px 24px;
+        border-bottom: 1px solid var(--fin-border-soft);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .modal-head h3 {
+        margin: 0;
+        font-size: 1.05rem;
+        font-weight: 800;
+        letter-spacing: -0.01em;
+      }
+      .modal-head .h3-ico {
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        background: linear-gradient(
+          135deg,
+          var(--fin-accent) 0%,
+          var(--fin-accent-light) 100%
+        );
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .modal-head .h3-ico svg {
+        width: 16px;
+        height: 16px;
+      }
+      .modal-close {
+        margin-left: auto;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        color: var(--fin-muted);
+        padding: 4px;
+        border-radius: 6px;
+      }
+      .modal-close:hover {
+        background: #f3f4f6;
+        color: var(--fin-text);
+      }
+      .modal-body {
+        padding: 22px 24px;
+      }
+      .modal-body .ticket-snapshot {
+        background: #fafbfc;
+        border: 1px solid var(--fin-border-soft);
+        border-radius: 10px;
+        padding: 14px 16px;
+        margin-bottom: 16px;
+      }
+      .ts-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 4px 0;
+        font-size: 0.82rem;
+      }
+      .ts-row span:first-child {
+        color: var(--fin-muted);
+      }
+      .ts-row span:last-child {
+        color: var(--fin-text);
+        font-weight: 600;
+      }
+      .form-field {
+        margin-bottom: 14px;
+      }
+      .form-label {
+        display: block;
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: var(--fin-text-soft);
+        margin-bottom: 6px;
+      }
+      .form-input,
+      .form-textarea {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1.5px solid var(--fin-border);
+        border-radius: 9px;
+        font-size: 0.9rem;
+        font-family: inherit;
+        background: #fff;
+        color: var(--fin-text);
+        transition:
+          border-color 0.15s,
+          box-shadow 0.15s;
+      }
+      .form-input:focus,
+      .form-textarea:focus {
+        outline: none;
+        border-color: var(--fin-accent);
+        box-shadow: 0 0 0 3px rgba(210, 23, 37, 0.1);
+      }
+      .form-textarea {
+        resize: vertical;
+        min-height: 70px;
+      }
+      .form-hint {
+        font-size: 0.72rem;
+        color: var(--fin-muted);
+        margin-top: 4px;
+      }
+      .modal-foot {
+        padding: 16px 24px;
+        border-top: 1px solid var(--fin-border-soft);
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        background: #fafbfc;
+        border-radius: 0 0 16px 16px;
+      }
 
-    /* ── Activity ──────────────────────────────────────── */
-    .activity { display: flex; flex-direction: column; gap: 14px; }
-    .activity-item { display: flex; gap: 12px; align-items: flex-start; }
-    .activity-dot {
-      width: 9px; height: 9px; border-radius: 50%; margin-top: 6px;
-      flex-shrink: 0;
-      box-shadow: 0 0 0 3px #fff, 0 0 0 4px var(--fin-border);
-    }
-    .activity-dot.red   { background: var(--fin-accent); }
-    .activity-dot.green { background: var(--fin-success); }
-    .activity-dot.amber { background: var(--fin-warning); }
-    .activity-dot.blue  { background: var(--fin-info); }
-    .activity-body { flex: 1; }
-    .activity-title { font-size: .86rem; font-weight: 600; color: var(--fin-text); line-height: 1.4; }
-    .activity-time { font-size: .72rem; color: var(--fin-muted); margin-top: 2px; }
+      /* ── Activity ──────────────────────────────────────── */
+      .activity {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .activity-item {
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+      }
+      .activity-body {
+        flex: 1;
+        min-width: 0;
+      }
+      .activity-title {
+        font-size: 0.86rem;
+        font-weight: 600;
+        color: var(--fin-text);
+        line-height: 1.4;
+      }
+      .activity-time {
+        font-size: 0.72rem;
+        color: var(--fin-muted);
+        margin-top: 2px;
+      }
 
-    .grid-2 { display: grid; grid-template-columns: 1.6fr 1fr; gap: 16px; }
-    @media (max-width: 1100px) { .grid-2 { grid-template-columns: 1fr; } }
-    .dash-card {
-      background: var(--fin-surface);
-      border: 1px solid var(--fin-border);
-      border-radius: 13px;
-      padding: 20px 22px;
-    }
-    .dash-card h3 {
-      font-size: .95rem; font-weight: 700; margin: 0 0 16px;
-      color: var(--fin-text);
-      display: flex; align-items: center; gap: 9px;
-      letter-spacing: -.01em;
-    }
-    .dash-card h3 .h3-ico {
-      width: 26px; height: 26px; border-radius: 7px;
-      display: flex; align-items: center; justify-content: center;
-      background: linear-gradient(135deg, var(--fin-accent) 0%, var(--fin-accent-light) 100%);
-      color: #fff;
-    }
-    .dash-card h3 .h3-ico svg { width: 15px; height: 15px; }
+      .grid-2 {
+        display: grid;
+        grid-template-columns: 1.6fr 1fr;
+        gap: 16px;
+      }
+      @media (max-width: 1100px) {
+        .grid-2 {
+          grid-template-columns: 1fr;
+        }
+      }
+      .dash-card {
+        background: var(--fin-surface);
+        border: 1px solid var(--fin-border);
+        border-radius: 13px;
+        padding: 20px 22px;
+      }
+      .dash-card h3 {
+        font-size: 0.95rem;
+        font-weight: 700;
+        margin: 0 0 16px;
+        color: var(--fin-text);
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        letter-spacing: -0.01em;
+      }
+      .dash-card h3 .h3-ico {
+        width: 26px;
+        height: 26px;
+        border-radius: 7px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(
+          135deg,
+          var(--fin-accent) 0%,
+          var(--fin-accent-light) 100%
+        );
+        color: #fff;
+      }
+      .dash-card h3 .h3-ico svg {
+        width: 15px;
+        height: 15px;
+      }
 
-    /* ── Toast notification ────────────────────────────── */
-    .toast {
-      position: fixed; bottom: 30px; right: 30px;
-      background: #0f172a; color: #fff;
-      padding: 13px 20px; border-radius: 11px;
-      font-size: .88rem; font-weight: 600;
-      display: flex; align-items: center; gap: 10px;
-      box-shadow: 0 15px 40px rgba(0,0,0,.2);
-      z-index: 10000;
-      opacity: 0; transform: translateY(20px);
-      transition: opacity .25s, transform .25s;
-    }
-    .toast.show { opacity: 1; transform: translateY(0); }
-    .toast.success { background: #16a34a; }
-    .toast svg { width: 18px; height: 18px; }
+      /* ── Toast notification ────────────────────────────── */
+      .toast {
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        background: #0f172a;
+        color: #fff;
+        padding: 13px 20px;
+        border-radius: 11px;
+        font-size: 0.88rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+        z-index: 10000;
+        opacity: 0;
+        transform: translateY(20px);
+        transition:
+          opacity 0.25s,
+          transform 0.25s;
+      }
+      .toast.show {
+        opacity: 1;
+        transform: translateY(0);
+      }
+      .toast.success {
+        background: #16a34a;
+      }
+      .toast svg {
+        width: 18px;
+        height: 18px;
+      }
 
-    @media (max-width: 760px) {
-      .queue-row { grid-template-columns: 1fr; gap: 8px; min-width: 0; }
-      .qr-actions { width: 100%; justify-content: flex-end; }
-      .fin-wrap, .fin-hero { padding-left: 16px; padding-right: 16px; }
-    }
-  
-    /* Finance sidebar: ensure red bg visible on dochub layout */
-    body.has-main-nav.dochub-page-v2 {
-      height: auto !important;
-      min-height: 100dvh !important;
-      overflow-y: auto !important;
-      --sb-bg: #d21725 !important;
-    }
-    body.has-main-nav.dochub-page-v2 .dh-sidebar {
-      background: #d21725 !important;
-    }
-    body.has-main-nav.dochub-page-v2 .dh-main {
-      overflow-y: auto;
-      width: 100%;
-      min-width: 0;
-    }
-</style>
-</head>
-<body class="has-main-nav dochub-page-v2">
-  {% set active_page = 'finance' %}
-  {% include 'partials/main_navbar.html' with context %}
+      @media (max-width: 760px) {
+        .queue-row {
+          grid-template-columns: 1fr;
+          gap: 12px;
+          min-width: 0;
+        }
+        .qr-aside {
+          align-items: stretch;
+          min-width: 0;
+          text-align: left;
+          width: 100%;
+        }
+        .qr-amount-block {
+          align-items: flex-start;
+        }
+        .qr-actions {
+          width: 100%;
+          justify-content: flex-start;
+        }
+        .qr-meta span {
+          white-space: normal;
+        }
+        .fin-wrap,
+        .fin-hero {
+          padding-left: 16px;
+          padding-right: 16px;
+        }
+      }
 
-  <button type="button" class="dh-sidebar-toggle" id="finSidebarToggle" onclick="document.getElementById('finSidebar').classList.toggle('open')" aria-label="Open Finance menu" title="Menu">☰</button>
+      /* Finance sidebar: ensure red bg visible on dochub layout */
+      body.has-main-nav.dochub-page-v2 {
+        height: auto !important;
+        min-height: 100dvh !important;
+        overflow-y: auto !important;
+        --sb-bg: #d21725 !important;
+      }
+      body.has-main-nav.dochub-page-v2 .dh-sidebar {
+        background: #d21725 !important;
+      }
+      body.has-main-nav.dochub-page-v2 .dh-main {
+        overflow-y: auto;
+        width: 100%;
+        min-width: 0;
+      }
+    </style>
+  </head>
+  <body class="has-main-nav dochub-page-v2">
+    {% set active_page = 'finance' %} {% include 'partials/main_navbar.html'
+    with context %}
 
-  <div class="dh-page-root">
-    <aside class="dh-sidebar" id="finSidebar">
-      <div class="sb-brand">
-        <div class="sb-brand-text">
-          <span class="name">Finance</span>
-          <span class="tagline">Finance &amp; Invoicing</span>
-        </div>
-      </div>
+    <button
+      type="button"
+      class="dh-sidebar-toggle"
+      id="finSidebarToggle"
+      onclick="document.getElementById('finSidebar').classList.toggle('open')"
+      aria-label="Open Finance menu"
+      title="Menu"
+    >
+      ☰
+    </button>
 
-      <nav class="sb-nav">
-        <div class="dh-sb-section">
-          <div class="sb-section-label">Overview</div>
-          <a href="/finance/" class="sb-nav-item {% if request.path == '/finance/' or request.path == '/finance' %}active{% endif %}">
-            Invoice Queue
-          </a>
-          <a href="/finance/contracts" class="sb-nav-item {% if '/contracts' in request.path %}active{% endif %}">
-            Contracts
-          </a>
-          <a href="/finance/reports" class="sb-nav-item {% if '/reports' in request.path %}active{% endif %}">
-            Monthly Reports
-          </a>
-        </div>
+    <div class="dh-page-root">
+      {% include 'partials/finance_sidebar.html' with context %}
 
-        <div class="dh-sb-section">
-          <div class="sb-section-label">Finance</div>
-          <a href="/finance/" class="sb-nav-item">
-            Invoice Processing
-          </a>
-          <a href="/finance/contracts" class="sb-nav-item">
-            Contract Management
-          </a>
-          <a href="/tickets/" class="sb-nav-item">
-            Service Tickets
-          </a>
-        </div>
+      <div class="dh-main">
+        <!-- Hero -->
+        <header class="fin-hero">
+          <div class="fin-hero-inner">
+            <a href="/dashboard" class="fin-breadcrumb">← Dashboard</a>
+            <h1 class="fin-title">Finance &amp; Invoicing</h1>
+            <p class="fin-sub">
+              Process completed service tickets — review service reports, log
+              ERP invoice references, and trigger billing notifications to
+              clients and operations.
+            </p>
 
-        <div class="dh-sb-section">
-          <div class="sb-section-label">Reports</div>
-          <a href="/finance/reports" class="sb-nav-item">
-            Billing Reports
-          </a>
-          <a href="/admin/dashboard" class="sb-nav-item">
-            Settings
-          </a>
-        </div>
-      </nav>
-
-      <div class="sb-footer">
-        <div class="sb-user-row" onclick="if(typeof openProfileModal==='function'){openProfileModal();}" role="button" tabindex="0">
-          <div class="sb-avatar" id="finUserAv">{{ user.full_name[0]|upper if user and user.full_name else 'U' }}</div>
-          <div class="sb-user-text">
-            <div class="sb-user-name">{{ user.full_name if user else 'User' }}</div>
-            <div class="sb-user-role">{{ user.role|capitalize if user else 'User' }}</div>
+            <nav class="fin-nav">
+              <a href="/finance/" class="active">Invoice Queue</a>
+              <a href="/finance/contracts">Contracts</a>
+              <a href="/finance/reports">Monthly Reports</a>
+            </nav>
           </div>
+        </header>
+
+        <div class="fin-wrap">
+          <div class="sample-banner" id="sampleBanner" style="display: none">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke-width="2"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z"
+              />
+            </svg>
+            <div>
+              <strong>Demo data shown</strong> — once supervisors close tickets
+              through GM approval, real items will appear in the queue
+              automatically.
+            </div>
+          </div>
+
+          <h2 class="section-title">
+            Invoice Processing Overview
+            <span
+              style="
+                margin-left: auto;
+                font-size: 0.74rem;
+                font-weight: 500;
+                color: var(--fin-muted);
+              "
+              id="lastUpdated"
+              >Live — auto-refresh every 30s</span
+            >
+          </h2>
+
+          <!-- Bento grid: left main + right rail -->
+          <div class="bento-grid">
+            <div class="bento-main">
+              <!-- Stat strip -->
+              <div class="stat-strip">
+                <div class="stat-strip-item">
+                  <span class="stat-strip-ico red">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke-width="2.2"
+                      stroke="currentColor"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+                      />
+                    </svg>
+                  </span>
+                  <div class="stat-strip-body">
+                    <div class="stat-strip-val red" id="s-pending">—</div>
+                    <div class="stat-strip-label">Awaiting Invoice</div>
+                    <div class="stat-strip-sub">Pending finance action</div>
+                  </div>
+                </div>
+                <div class="stat-strip-item">
+                  <span class="stat-strip-ico green">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke-width="2.2"
+                      stroke="currentColor"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+                      />
+                    </svg>
+                  </span>
+                  <div class="stat-strip-body">
+                    <div class="stat-strip-val green" id="s-today">—</div>
+                    <div class="stat-strip-label">Completed Today</div>
+                    <div class="stat-strip-sub">ERP invoices logged</div>
+                  </div>
+                </div>
+                <div class="stat-strip-item">
+                  <span class="stat-strip-ico blue">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke-width="2.2"
+                      stroke="currentColor"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5"
+                      />
+                    </svg>
+                  </span>
+                  <div class="stat-strip-body">
+                    <div class="stat-strip-val" id="s-month">—</div>
+                    <div class="stat-strip-label">This Month</div>
+                    <div class="stat-strip-sub">Invoices processed</div>
+                  </div>
+                </div>
+                <div class="stat-strip-item">
+                  <span class="stat-strip-ico amber">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke-width="2.2"
+                      stroke="currentColor"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V10.5Zm-12 0h.008v.008H6V10.5Z"
+                      />
+                    </svg>
+                  </span>
+                  <div class="stat-strip-body">
+                    <div class="stat-strip-val" id="s-total">—</div>
+                    <div class="stat-strip-label">All-time Closed</div>
+                    <div class="stat-strip-sub">Total ERP invoices created</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Main queue — full width row -->
+              <div class="queue-card">
+                <div class="queue-head">
+                  <h3>Invoice Workflow Queue</h3>
+                  <div class="queue-tabs">
+                    <button
+                      class="queue-tab active"
+                      data-tab="pending"
+                      onclick="switchTab('pending')"
+                    >
+                      Awaiting Action
+                      <span class="count" id="tab-pending-count">0</span>
+                    </button>
+                    <button
+                      class="queue-tab"
+                      data-tab="completed"
+                      onclick="switchTab('completed')"
+                    >
+                      Completed
+                      <span class="count" id="tab-completed-count">0</span>
+                    </button>
+                  </div>
+                </div>
+                <div class="queue-body" id="queueBody">
+                  <div class="empty-state">
+                    <div
+                      style="
+                        display: inline-block;
+                        width: 30px;
+                        height: 30px;
+                        border: 3px solid #e5e7eb;
+                        border-top-color: var(--fin-accent);
+                        border-radius: 50%;
+                        animation: spin 0.8s linear infinite;
+                      "
+                    ></div>
+                    <div style="margin-top: 14px">Loading queue…</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {# /bento-main #}
+
+            <!-- Right rail: Pipeline + Activity stacked -->
+            <div class="bento-rail">
+              <div class="dash-card">
+                <div class="dash-card">
+                  <h3>Workflow Pipeline</h3>
+                  <div style="display: flex; flex-direction: column; gap: 10px">
+                    <div
+                      style="
+                        padding: 11px 12px;
+                        background: #fafbfc;
+                        border-radius: 10px;
+                      "
+                    >
+                      <div
+                        style="
+                          font-weight: 700;
+                          font-size: 0.88rem;
+                          line-height: 1.3;
+                        "
+                      >
+                        1 · Service Ticket Closed
+                      </div>
+                    </div>
+                    <div
+                      style="
+                        padding: 11px 12px;
+                        background: #fafbfc;
+                        border-radius: 10px;
+                      "
+                    >
+                      <div
+                        style="
+                          font-weight: 700;
+                          font-size: 0.88rem;
+                          line-height: 1.3;
+                        "
+                      >
+                        2 · Ticket Invoice Generated
+                      </div>
+                    </div>
+                    <div
+                      style="
+                        padding: 11px 12px;
+                        background: #fff7ed;
+                        border: 1px solid #fed7aa;
+                        border-radius: 10px;
+                      "
+                    >
+                      <div
+                        style="
+                          font-weight: 700;
+                          font-size: 0.88rem;
+                          line-height: 1.3;
+                          color: #92400e;
+                          display: flex;
+                          align-items: center;
+                          flex-wrap: wrap;
+                          gap: 6px;
+                        "
+                      >
+                        3 · ERP Invoice Creation
+                        <span class="badge badge-warn">Current Step</span>
+                      </div>
+                    </div>
+                    <div
+                      style="
+                        padding: 11px 12px;
+                        background: #fafbfc;
+                        border-radius: 10px;
+                        opacity: 0.7;
+                      "
+                    >
+                      <div
+                        style="
+                          font-weight: 700;
+                          font-size: 0.88rem;
+                          line-height: 1.3;
+                        "
+                      >
+                        4 · Auto-email Notifications
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {# /Workflow Pipeline dash-card #}
+
+              <div class="dash-card">
+                <h3>Recent Activity</h3>
+                <div class="activity" id="activityList"></div>
+              </div>
+              {# /Recent Activity dash-card #}
+            </div>
+            {# /bento-rail #}
+          </div>
+          {# /bento-grid #}
         </div>
+        {# /fin-wrap #}
+
+        <script src="{{ url_for('static', filename='api-client.js') }}"></script>
+        <script>
+          let currentTab = "pending";
+          let usingSample = false;
+          let activeTicketId = null;
+
+          // ─── Sample / demo workflow data ─────────────────────
+          const SAMPLE_QUEUE = {
+            pending: [
+              {
+                ticket_id: "TKT-2426",
+                title: "HVAC Quarterly Maintenance — Tower B Roof Units",
+                project: "Al Reem Tower",
+                property: "Block B",
+                selling_price: 8400,
+                total_cost: 6850,
+                margin_pct: 22.5,
+                supervisor_name: "Khalid Al Mansouri",
+                reporter_name: "Maintenance Desk",
+                resolved_at: "2026-05-28T11:20:00",
+                gm_approved_at: "2026-05-28T15:45:00",
+              },
+              {
+                ticket_id: "TKT-2425",
+                title: "Emergency AC Repair — 4th Floor Conference Room",
+                project: "Marina Heights",
+                property: "Tower 2",
+                selling_price: 3250,
+                total_cost: 2620,
+                margin_pct: 18.2,
+                supervisor_name: "Rashid Al Suwaidi",
+                reporter_name: "Building Manager",
+                resolved_at: "2026-05-28T09:15:00",
+                gm_approved_at: "2026-05-28T14:30:00",
+              },
+              {
+                ticket_id: "TKT-2423",
+                title: "Annual Pest Control Service — Common Areas",
+                project: "Sky Gardens",
+                property: "Phase 1",
+                selling_price: 4800,
+                total_cost: 3680,
+                margin_pct: 26.4,
+                supervisor_name: "Mohammed Khan",
+                reporter_name: "HOA Office",
+                resolved_at: "2026-05-27T16:00:00",
+                gm_approved_at: "2026-05-28T10:15:00",
+              },
+              {
+                ticket_id: "TKT-2421",
+                title: "Fire Alarm System Annual Inspection",
+                project: "Galleria Mall",
+                property: "East Wing",
+                selling_price: 6900,
+                total_cost: 5400,
+                margin_pct: 21.7,
+                supervisor_name: "Saeed Al Hosani",
+                reporter_name: "Operations Manager",
+                resolved_at: "2026-05-27T13:45:00",
+                gm_approved_at: "2026-05-27T17:20:00",
+              },
+              {
+                ticket_id: "TKT-2420",
+                title: "Deep Cleaning — Lobby & Common Areas",
+                project: "Capital Heights",
+                property: "Lobby",
+                selling_price: 5400,
+                total_cost: 4200,
+                margin_pct: 19.3,
+                supervisor_name: "Ali Hassan",
+                reporter_name: "Property Manager",
+                resolved_at: "2026-05-27T10:30:00",
+                gm_approved_at: "2026-05-27T15:00:00",
+              },
+            ],
+            completed: [
+              {
+                ticket_id: "TKT-2418",
+                title: "Plumbing — Burst Pipe Repair Apt 1402",
+                project: "Marina Heights",
+                property: "Tower 1",
+                selling_price: 1850,
+                total_cost: 1480,
+                margin_pct: 20.0,
+                supervisor_name: "Rashid Al Suwaidi",
+                finance_confirmed_at: "2026-05-28T17:30:00",
+                finance_invoice_ref: "INV-2026-04501",
+              },
+              {
+                ticket_id: "TKT-2417",
+                title: "Generator Monthly Service & Load Test",
+                project: "Corniche Plaza",
+                property: "Basement",
+                selling_price: 4200,
+                total_cost: 3200,
+                margin_pct: 23.8,
+                supervisor_name: "Khalid Al Mansouri",
+                finance_confirmed_at: "2026-05-28T16:15:00",
+                finance_invoice_ref: "INV-2026-04500",
+              },
+              {
+                ticket_id: "TKT-2416",
+                title: "Electrical Panel Upgrade — Phase 2",
+                project: "Sky Gardens",
+                property: "Phase 2",
+                selling_price: 9800,
+                total_cost: 7600,
+                margin_pct: 22.4,
+                supervisor_name: "Mohammed Khan",
+                finance_confirmed_at: "2026-05-28T14:00:00",
+                finance_invoice_ref: "INV-2026-04498",
+              },
+              {
+                ticket_id: "TKT-2415",
+                title: "CCTV Camera Installation — Parking Level",
+                project: "Galleria Mall",
+                property: "P2",
+                selling_price: 7400,
+                total_cost: 5900,
+                margin_pct: 20.3,
+                supervisor_name: "Saeed Al Hosani",
+                finance_confirmed_at: "2026-05-28T11:45:00",
+                finance_invoice_ref: "INV-2026-04495",
+              },
+              {
+                ticket_id: "TKT-2414",
+                title: "Pool Filter Replacement & Chemical Balance",
+                project: "Al Reem Tower",
+                property: "Recreation",
+                selling_price: 2200,
+                total_cost: 1750,
+                margin_pct: 20.5,
+                supervisor_name: "Khalid Al Mansouri",
+                finance_confirmed_at: "2026-05-28T09:20:00",
+                finance_invoice_ref: "INV-2026-04492",
+              },
+            ],
+            counts: {
+              pending: 5,
+              completed_today: 5,
+              completed_month: 47,
+              completed_total: 318,
+            },
+          };
+
+          const SAMPLE_ACTIVITY = [
+            {
+              title:
+                "INV-2026-04501 logged for TKT-2418 · email sent to supervisor + reporter",
+              time: "12 min ago",
+            },
+            {
+              title: "TKT-2426 escalated to Finance after GM approval",
+              time: "38 min ago",
+            },
+            { title: "INV-2026-04500 logged for TKT-2417", time: "1 hour ago" },
+            {
+              title: "New ticket TKT-2425 reached pending_finance queue",
+              time: "2 hours ago",
+            },
+            {
+              title: "INV-2026-04498 logged for TKT-2416",
+              time: "3 hours ago",
+            },
+          ];
+
+          function isEmptyApi(counts, items) {
+            if (!counts) return true;
+            if (
+              (counts.pending ?? 0) === 0 &&
+              (counts.completed_total ?? 0) === 0 &&
+              (!items || items.length === 0)
+            )
+              return true;
+            return false;
+          }
+
+          async function fetchWithTimeout(url, ms = 3000) {
+            const ctrl = new AbortController();
+            const tid = setTimeout(() => ctrl.abort(), ms);
+            try {
+              const token = localStorage.getItem("access_token") || "";
+              const res = await fetch(url, {
+                headers: token ? { Authorization: "Bearer " + token } : {},
+                signal: ctrl.signal,
+              });
+              clearTimeout(tid);
+              if (!res.ok) throw new Error("HTTP " + res.status);
+              const data = await res.json();
+              if (!data || !data.success) throw new Error("bad response");
+              return data;
+            } catch (e) {
+              clearTimeout(tid);
+              throw e;
+            }
+          }
+
+          async function loadQueue() {
+            let pendingData = null,
+              completedData = null;
+            try {
+              [pendingData, completedData] = await Promise.all([
+                fetchWithTimeout("/finance/api/queue?bucket=pending&limit=25"),
+                fetchWithTimeout(
+                  "/finance/api/queue?bucket=completed&limit=25",
+                ),
+              ]);
+              if (
+                !pendingData?.success ||
+                (isEmptyApi(pendingData?.counts, pendingData?.items) &&
+                  isEmptyApi(completedData?.counts, completedData?.items))
+              ) {
+                throw new Error("empty or error");
+              }
+            } catch (_) {
+              usingSample = true;
+              document.getElementById("sampleBanner").style.display = "flex";
+              pendingData = {
+                items: SAMPLE_QUEUE.pending,
+                counts: SAMPLE_QUEUE.counts,
+              };
+              completedData = {
+                items: SAMPLE_QUEUE.completed,
+                counts: SAMPLE_QUEUE.counts,
+              };
+            }
+
+            window._fin_pending = pendingData.items;
+            window._fin_completed = completedData.items;
+            const counts = pendingData?.counts || completedData?.counts || {};
+
+            document.getElementById("s-pending").textContent =
+              counts.pending ?? 0;
+            document.getElementById("s-today").textContent =
+              counts.completed_today ?? 0;
+            document.getElementById("s-month").textContent =
+              counts.completed_month ?? 0;
+            document.getElementById("s-total").textContent =
+              counts.completed_total ?? 0;
+
+            document.getElementById("tab-pending-count").textContent = (
+              pendingData.items || []
+            ).length;
+            document.getElementById("tab-completed-count").textContent = (
+              completedData.items || []
+            ).length;
+
+            renderActivity(usingSample ? SAMPLE_ACTIVITY : SAMPLE_ACTIVITY); // re-use sample feed; real activity feed can be wired later
+            renderQueue();
+          }
+
+          function switchTab(tab) {
+            currentTab = tab;
+            document
+              .querySelectorAll(".queue-tab")
+              .forEach((b) =>
+                b.classList.toggle("active", b.dataset.tab === tab),
+              );
+            renderQueue();
+          }
+
+          function renderQueue() {
+            const body = document.getElementById("queueBody");
+            const items =
+              currentTab === "pending"
+                ? window._fin_pending
+                : window._fin_completed;
+            if (!items || !items.length) {
+              if (currentTab === "pending") {
+                body.innerHTML = `<div class="empty-state success">
+ <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+ <div><strong>All caught up.</strong></div>
+ <div class="empty-state-hint">No tickets are currently waiting for an ERP invoice.</div>
+ </div>`;
+              } else {
+                body.innerHTML = `<div class="empty-state">
+ <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5"/></svg>
+ <div>No completed invoices yet.</div>
+ </div>`;
+              }
+              return;
+            }
+            body.innerHTML = items.map((t) => rowHtml(t, currentTab)).join("");
+          }
+
+          function fmtDT(iso) {
+            if (!iso) return "";
+            const d = new Date(iso);
+            if (isNaN(d)) return "";
+            return (
+              d.toLocaleDateString("en-AE", {
+                day: "numeric",
+                month: "short",
+              }) +
+              ", " +
+              d.toLocaleTimeString("en-AE", {
+                hour: "numeric",
+                minute: "2-digit",
+                hour12: true,
+              })
+            );
+          }
+
+          function rowHtml(t, tab) {
+            const completed = tab === "completed";
+            const gmApproved = completed || !!t.gm_approved_at;
+            const invoiceLogged = completed || !!t.finance_confirmed_at;
+            const stepTime = (iso) => {
+              const s = fmtDT(iso);
+              return s
+                ? ` <span style="font-weight:400;opacity:.75;">· ${s}</span>`
+                : "";
+            };
+            const stepHtml = `
+ <div class="qr-status" aria-label="Workflow status">
+ <span class="qr-status-unit"><span class="qr-status-step done">✓ Verified${stepTime(t.resolved_at)}</span></span>
+ <span class="qr-status-unit"><span class="qr-status-sep" aria-hidden="true">→</span><span class="qr-status-step ${gmApproved ? "done" : "active"}">${gmApproved ? "✓ GM Approved" + stepTime(t.gm_approved_at) : "● GM Approval"}</span></span>
+ <span class="qr-status-unit"><span class="qr-status-sep" aria-hidden="true">→</span><span class="qr-status-step ${invoiceLogged ? "done" : "active"}">${invoiceLogged ? "✓ ERP Invoice" + stepTime(t.finance_confirmed_at) : "● ERP Invoice"}</span></span>
+ <span class="qr-status-unit"><span class="qr-status-sep" aria-hidden="true">→</span><span class="qr-status-step ${completed ? "done" : ""}">${completed ? "✓ Email Sent" : "Auto-email"}</span></span>
+ </div>`;
+
+            const detailsAttr = usingSample
+              ? `href="javascript:void(0)" onclick="demoDoc()"`
+              : `href="/tickets/${t.ticket_id}"`;
+            let actions;
+            if (completed) {
+              actions = `<a ${detailsAttr} class="btn btn-outline btn-sm">View Details</a>`;
+            } else if (invoiceLogged) {
+              actions = `<span class="btn btn-outline btn-sm" style="pointer-events:none;opacity:.75;cursor:default;">
+ <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+ Awaiting GM approval
+ </span>`;
+            } else {
+              actions = `<button type="button" class="btn btn-green btn-sm" onclick="openModal('${t.ticket_id}')" data-open-modal="${t.ticket_id}">Log ERP Invoice</button>`;
+            }
+
+            // Demo rows have no backing ticket — guard doc links so they don't 404.
+            const srAttr = usingSample
+              ? `href="javascript:void(0)" onclick="demoDoc()"`
+              : `href="/tickets/${t.ticket_id}/service-report/pdf" target="_blank"`;
+            const invAttr = usingSample
+              ? `href="javascript:void(0)" onclick="demoDoc()"`
+              : `href="/tickets/${t.ticket_id}/invoice" target="_blank"`;
+            const idAttr = usingSample
+              ? `href="javascript:void(0)" onclick="demoDoc()"`
+              : `href="/tickets/${t.ticket_id}"`;
+
+            return `<div class="queue-row">
+ <div class="qr-primary">
+ <a ${idAttr} class="qr-id">
+ <span class="qr-id-tag">${t.ticket_id}</span>
+ </a>
+ <div class="qr-title">${escHtml(t.title)}</div>
+ <div class="qr-meta">
+ <span><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z"/></svg>${escHtml(t.project)}${t.property ? " · " + escHtml(t.property) : ""}</span>
+ <span><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"/></svg>${escHtml(t.supervisor_name || "—")}</span>
+ ${t.created_at ? `<span><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5"/></svg>Created ${fmtDT(t.created_at)}</span>` : ""}
+ ${completed ? `<span><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V10.5Zm-12 0h.008v.008H6V10.5Z"/></svg><strong>${escHtml(t.finance_invoice_ref || "—")}</strong></span>` : ""}
+ </div>
+ ${stepHtml}
+ <div class="qr-docs">
+ <a ${srAttr} class="qr-doc-btn">
+ <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>
+ Service Report
+ </a>
+ <a ${invAttr} class="qr-doc-btn">
+ <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V10.5Zm-12 0h.008v.008H6V10.5Z"/></svg>
+ Ticket Invoice
+ </a>
+ </div>
+ </div>
+ <div class="qr-aside">
+ <div class="qr-amount-block">
+ <div class="qr-amount">AED ${formatNum(t.selling_price || 0)}</div>
+ <div class="qr-amount-label">${t.margin_pct !== null ? t.margin_pct.toFixed(1) + "% margin" : "unbilled"}</div>
+ </div>
+ <div class="qr-actions">${actions}</div>
+ </div>
+ </div>`;
+          }
+
+          function renderActivity(items) {
+            const el = document.getElementById("activityList");
+            el.innerHTML = items
+              .map(
+                (a) => `
+ <div class="activity-item">
+ <div class="activity-body">
+ <div class="activity-title">${escHtml(a.title)}</div>
+ <div class="activity-time">${escHtml(a.time)}</div>
+ </div>
+ </div>`,
+              )
+              .join("");
+          }
+
+          // ── Modal ─────────────────────────────────────────────
+          function openModal(ticketId) {
+            if (!ticketId) {
+              console.warn("[Finance] openModal called without ticketId");
+              return;
+            }
+            activeTicketId = ticketId;
+            // Search both pending and completed lists; fall back to a minimal object so the modal still opens.
+            const allTickets = (window._fin_pending || []).concat(
+              window._fin_completed || [],
+            );
+            const t = allTickets.find((x) => x.ticket_id === ticketId) || {
+              ticket_id: ticketId,
+              title: "",
+              project: "",
+              property: "",
+              supervisor_name: "",
+              selling_price: 0,
+            };
+            const snap = document.getElementById("modalSnapshot");
+            if (snap)
+              snap.innerHTML = `
+ <div class="ts-row"><span>Ticket</span><span>${escHtml(t.ticket_id)}</span></div>
+ <div class="ts-row"><span>Title</span><span style="text-align:right;max-width:60%;">${escHtml(t.title)}</span></div>
+ <div class="ts-row"><span>Project</span><span>${escHtml(t.project)}${t.property ? " · " + escHtml(t.property) : ""}</span></div>
+ <div class="ts-row"><span>Supervisor</span><span>${escHtml(t.supervisor_name || "—")}</span></div>
+ <div class="ts-row"><span>Amount</span><span><strong>AED ${formatNum(t.selling_price)}</strong></span></div>`;
+            const inpNum = document.getElementById("erp_invoice_number");
+            const inpNotes = document.getElementById("erp_invoice_notes");
+            if (inpNum) inpNum.value = "";
+            if (inpNotes) inpNotes.value = "";
+            const overlay = document.getElementById("processModal");
+            if (overlay) {
+              overlay.classList.add("open");
+              loadFinEmailDefaults();
+              document.getElementById("fin-email-body").value = "";
+              document.getElementById("finEmailSettingsPanel").style.display =
+                "none";
+              setTimeout(() => inpNum && inpNum.focus(), 80);
+            }
+          }
+          function closeModal() {
+            document.getElementById("processModal").classList.remove("open");
+            activeTicketId = null;
+            // reset success state for next open
+            document.getElementById("modalSuccess").classList.remove("visible");
+            document.getElementById("modalFoot").style.display = "";
+            document.getElementById("processForm").style.display = "";
+          }
+
+          function showModalSuccess(ref, emailTo, status) {
+            const sub = document.getElementById("msSubText");
+            if (sub) {
+              if (status === "pending_gm_approval") {
+                sub.textContent = `ERP ref ${ref} logged · ticket will close automatically once the GM approves.`;
+              } else {
+                sub.textContent = emailTo
+                  ? `ERP ref ${ref} logged · notification sent to ${emailTo}.`
+                  : `ERP ref ${ref} logged · notification sent to the team.`;
+              }
+            }
+            // swap form → success panel
+            document.getElementById("processForm").style.display = "none";
+            document.getElementById("modalFoot").style.display = "none";
+            // restart the progress bar animation by cloning the element
+            const bar = document.getElementById("msProgressBar");
+            const newBar = bar.cloneNode(true);
+            bar.parentNode.replaceChild(newBar, bar);
+            document.getElementById("modalSuccess").classList.add("visible");
+            // auto-close after progress bar completes (3 s)
+            setTimeout(() => {
+              closeModal();
+            }, 3200);
+          }
+
+          async function submitProcess(ev) {
+            if (ev) ev.preventDefault();
+            if (!activeTicketId) {
+              toast("No ticket selected — reopen the dialog.");
+              return;
+            }
+            const ref = document
+              .getElementById("erp_invoice_number")
+              .value.trim();
+            const notes = document
+              .getElementById("erp_invoice_notes")
+              .value.trim();
+            if (!ref && _finSettings.require_erp_ref) {
+              toast(
+                `ERP invoice reference is required (e.g. ${(_finSettings.erp_ref_prefix || "INV")}-${new Date().getFullYear()}-00001).`,
+              );
+              document.getElementById("erp_invoice_number").focus();
+              return;
+            }
+            if (!ref) {
+              toast("Enter the ERP invoice number first.");
+              document.getElementById("erp_invoice_number").focus();
+              return;
+            }
+
+            if (usingSample) {
+              // sample-only flow: move row to "completed" + toast
+              const t = window._fin_pending.find(
+                (x) => x.ticket_id === activeTicketId,
+              );
+              if (t) {
+                t.finance_invoice_ref = ref;
+                t.finance_confirmed_at = new Date().toISOString();
+                window._fin_pending = window._fin_pending.filter(
+                  (x) => x.ticket_id !== activeTicketId,
+                );
+                window._fin_completed = [t, ...window._fin_completed];
+                SAMPLE_ACTIVITY.unshift({
+                  title: `${ref} logged for ${activeTicketId} · email sent to supervisor + reporter`,
+                  time: "just now",
+                });
+              }
+              showModalSuccess(
+                ref,
+                document.getElementById("fin-email-to")?.value.trim(),
+              );
+              document.getElementById("tab-pending-count").textContent =
+                window._fin_pending.length;
+              document.getElementById("tab-completed-count").textContent =
+                window._fin_completed.length;
+              renderActivity(SAMPLE_ACTIVITY.slice(0, 5));
+              renderQueue();
+              return;
+            }
+
+            try {
+              const emailTo = (
+                document.getElementById("fin-email-to")?.value || ""
+              ).trim();
+              const emailCc = (
+                document.getElementById("fin-email-cc")?.value || ""
+              ).trim();
+              const emailBody = (
+                document.getElementById("fin-email-body")?.value || ""
+              ).trim();
+              const res = await apiClient.post(
+                `/tickets/api/tickets/${activeTicketId}/finance-confirm`,
+                {
+                  invoice_ref: ref,
+                  notes: notes,
+                  email_to: emailTo || undefined,
+                  email_cc: emailCc || undefined,
+                  email_body: emailBody || undefined,
+                },
+              );
+              const data = await res.json().catch(() => ({}));
+              if (res.ok && data.success) {
+                showModalSuccess(ref, emailTo, data.status);
+                await loadQueue();
+              } else {
+                toast(data.error || "Unable to confirm");
+              }
+            } catch (e) {
+              toast("Network error — please retry");
+            }
+          }
+
+          function demoDoc() {
+            toast(
+              "Demo data — documents open once real tickets reach this queue",
+            );
+          }
+
+          function toast(msg) {
+            const t = document.getElementById("toast");
+            document.getElementById("toastMsg").textContent = msg;
+            t.classList.add("show", "success");
+            setTimeout(() => t.classList.remove("show"), 3200);
+          }
+
+          function formatNum(n) {
+            return Number(n).toLocaleString("en-AE", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            });
+          }
+          function escHtml(s) {
+            return String(s || "")
+              .replace(/&/g, "&amp;")
+              .replace(/</g, "&lt;")
+              .replace(/>/g, "&gt;");
+          }
+
+          // ── Finance email settings (server-side Finance Settings) ─
+          let _finSettings = {
+            invoice_email_to: "",
+            invoice_email_cc: "",
+            erp_ref_prefix: "INV",
+            require_erp_ref: false,
+          };
+
+          async function loadFinEmailDefaults() {
+            try {
+              const res = await ApiClient.fetch("/finance/api/settings", {
+                method: "GET",
+              });
+              const data = await res.json().catch(() => ({}));
+              if (res.ok && data.settings) {
+                _finSettings = Object.assign(_finSettings, data.settings);
+              }
+            } catch (_) {
+              /* keep empty defaults */
+            }
+            const to = _finSettings.invoice_email_to || "";
+            const cc = _finSettings.invoice_email_cc || "";
+            const toEl = document.getElementById("fin-email-to");
+            const ccEl = document.getElementById("fin-email-cc");
+            const defToEl = document.getElementById("fin-es-default-to");
+            const defCcEl = document.getElementById("fin-es-default-cc");
+            if (toEl && !toEl.value) toEl.value = to;
+            if (ccEl && !ccEl.value) ccEl.value = cc;
+            if (defToEl) defToEl.value = to;
+            if (defCcEl) defCcEl.value = cc;
+            const invEl = document.getElementById("erp_invoice_number");
+            if (invEl && _finSettings.erp_ref_prefix) {
+              const y = new Date().getFullYear();
+              invEl.placeholder = `${_finSettings.erp_ref_prefix}-${y}-00001`;
+            }
+          }
+
+          async function saveFinEmailSettings() {
+            const to = (
+              document.getElementById("fin-es-default-to").value || ""
+            ).trim();
+            const cc = (
+              document.getElementById("fin-es-default-cc").value || ""
+            ).trim();
+            try {
+              const res = await ApiClient.fetch("/finance/api/settings", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  invoice_email_to: to,
+                  invoice_email_cc: cc,
+                }),
+              });
+              const data = await res.json().catch(() => ({}));
+              if (!res.ok) throw new Error(data.error || "Save failed");
+              _finSettings = Object.assign(
+                _finSettings,
+                data.settings || { invoice_email_to: to, invoice_email_cc: cc },
+              );
+              document.getElementById("fin-email-to").value =
+                _finSettings.invoice_email_to || to;
+              document.getElementById("fin-email-cc").value =
+                _finSettings.invoice_email_cc || cc;
+              document.getElementById("finEmailSettingsPanel").style.display =
+                "none";
+              toast("Default recipients saved to Finance Settings.");
+            } catch (e) {
+              toast(e.message || "Could not save defaults.");
+            }
+          }
+
+          function toggleFinEmailSettings() {
+            const p = document.getElementById("finEmailSettingsPanel");
+            p.style.display = p.style.display === "none" ? "block" : "none";
+          }
+
+          // Expose handlers used by inline onclick attributes (guarantees they resolve from the global scope).
+          window.openModal = openModal;
+          window.closeModal = closeModal;
+          window.submitProcess = submitProcess;
+          window.switchTab = switchTab;
+          window.demoDoc = demoDoc;
+          window.toggleFinEmailSettings = toggleFinEmailSettings;
+          window.saveFinEmailSettings = saveFinEmailSettings;
+
+          // ── Event delegation for queue buttons ────────────────
+          document.addEventListener("click", function (e) {
+            // Log ERP Invoice button (data attribute — works on innerHTML-rendered buttons)
+            const btn = e.target.closest("[data-open-modal]");
+            if (btn) {
+              openModal(btn.getAttribute("data-open-modal"));
+              return;
+            }
+            // Backdrop close — only when clicking the dark overlay itself
+            const overlay = document.getElementById("processModal");
+            if (
+              overlay &&
+              overlay.classList.contains("open") &&
+              e.target === overlay
+            )
+              closeModal();
+          });
+          // Close modal on Esc
+          document.addEventListener("keydown", (e) => {
+            if (e.key === "Escape") closeModal();
+          });
+
+          // Kick off immediately — DOM elements above this script are already parsed
+          loadQueue().catch(() => {});
+          setInterval(() => loadQueue().catch(() => {}), 30000);
+
+          // spin keyframes
+          const style = document.createElement("style");
+          style.textContent =
+            "@keyframes spin { to { transform: rotate(360deg); } }";
+          document.head.appendChild(style);
+        </script>
       </div>
-    </aside>
-
-    <div class="dh-main">
-
-  <!-- Hero -->
-  <header class="fin-hero">
-    <div class="fin-hero-inner">
-      <a href="/dashboard" class="fin-breadcrumb">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" width="12" height="12"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18"/></svg>
-        Dashboard
-      </a>
-      <h1 class="fin-title">
-        <span class="fin-title-icon">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="22" height="22"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25Z"/></svg>
-        </span>
-        Finance &amp; Invoicing
-      </h1>
-      <p class="fin-sub">Process completed service tickets — review service reports, log ERP invoice references, and trigger billing notifications to clients and operations.</p>
-
-      <nav class="fin-nav">
-        <a href="/finance/" class="active">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6Z"/></svg>
-          Invoice Queue
-        </a>
-        <a href="/finance/contracts">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664"/></svg>
-          Contracts
-        </a>
-        <a href="/finance/reports">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>
-          Monthly Reports
-        </a>
-      </nav>
+      {# /dh-main #}
     </div>
-  </header>
+    {# /dh-page-root #}
+    <script
+      src="{{ url_for('static', filename='mobile_utils.js') }}"
+      defer
+    ></script>
+    <script
+      src="{{ url_for('static', filename='js/dashboard.js') }}"
+      defer
+    ></script>
 
-  <div class="fin-wrap">
-    <div class="sample-banner" id="sampleBanner" style="display:none;">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z"/></svg>
-      <div><strong>Demo data shown</strong> — once supervisors close tickets through GM approval, real items will appear in the queue automatically.</div>
-    </div>
-
-    <h2 class="section-title">
-      <span class="live-dot"></span>
-      Invoice Processing Overview
-      <span style="margin-left:auto;font-size:.74rem;font-weight:500;color:var(--fin-muted);" id="lastUpdated">Live — auto-refresh every 30s</span>
-    </h2>
-
-    <!-- Bento grid: left main + right rail -->
-    <div class="bento-grid">
-    <div class="bento-main">
-
-    <!-- Stat strip -->
-    <div class="stat-strip">
-      <div class="stat-strip-item">
-        <span class="stat-strip-ico red">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
-        </span>
-        <div class="stat-strip-body">
-          <div class="stat-strip-val red" id="s-pending">—</div>
-          <div class="stat-strip-label">Awaiting Invoice</div>
-          <div class="stat-strip-sub">Pending finance action</div>
-        </div>
-      </div>
-      <div class="stat-strip-item">
-        <span class="stat-strip-ico green">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
-        </span>
-        <div class="stat-strip-body">
-          <div class="stat-strip-val green" id="s-today">—</div>
-          <div class="stat-strip-label">Completed Today</div>
-          <div class="stat-strip-sub">ERP invoices logged</div>
-        </div>
-      </div>
-      <div class="stat-strip-item">
-        <span class="stat-strip-ico blue">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25"/></svg>
-        </span>
-        <div class="stat-strip-body">
-          <div class="stat-strip-val" id="s-month">—</div>
-          <div class="stat-strip-label">This Month</div>
-          <div class="stat-strip-sub">Invoices processed</div>
-        </div>
-      </div>
-      <div class="stat-strip-item">
-        <span class="stat-strip-ico amber">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25"/></svg>
-        </span>
-        <div class="stat-strip-body">
-          <div class="stat-strip-val" id="s-total">—</div>
-          <div class="stat-strip-label">All-time Closed</div>
-          <div class="stat-strip-sub">Total ERP invoices created</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Main queue — full width row -->
-    <div class="queue-card">
-      <div class="queue-head">
-        <h3>
+    <!-- Modals & toasts — outside dh-page-root so position:fixed works -->
+    <!-- ── Process ERP Invoice Modal ─────────────────────── -->
+    <div class="modal-overlay" id="processModal">
+      <div class="modal">
+        <div class="modal-head">
           <span class="h3-ico">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664"/></svg>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke-width="2.2"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M16.862 4.487l1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z"
+              />
+            </svg>
           </span>
-          Invoice Workflow Queue
-        </h3>
-        <div class="queue-tabs">
-          <button class="queue-tab active" data-tab="pending" onclick="switchTab('pending')">
-            Awaiting Action
-            <span class="count" id="tab-pending-count">0</span>
+          <h3>Log ERP Invoice Reference</h3>
+          <button type="button" class="modal-close" onclick="closeModal()">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke-width="2"
+              stroke="currentColor"
+              width="18"
+              height="18"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M6 18 18 6M6 6l12 12"
+              />
+            </svg>
           </button>
-          <button class="queue-tab" data-tab="completed" onclick="switchTab('completed')">
-            Completed
-            <span class="count" id="tab-completed-count">0</span>
-          </button>
         </div>
-      </div>
-      <div class="queue-body" id="queueBody">
-        <div class="empty-state">
-          <div style="display:inline-block;width:30px;height:30px;border:3px solid #e5e7eb;border-top-color:var(--fin-accent);border-radius:50%;animation:spin .8s linear infinite;"></div>
-          <div style="margin-top:14px;">Loading queue…</div>
-        </div>
-      </div>
-    </div>
-
-    </div>{# /bento-main #}
-
-    <!-- Right rail: Pipeline + Activity stacked -->
-    <div class="bento-rail">
-    <div class="dash-card">
-      <div class="dash-card">
-        <h3>
-          <span class="h3-ico">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625Z"/></svg>
-          </span>
-          Workflow Pipeline
-        </h3>
-        <div style="display:flex;flex-direction:column;gap:14px;">
-          <div style="display:flex;align-items:center;gap:14px;padding:12px;background:#fafbfc;border-radius:10px;">
-            <div style="width:34px;height:34px;border-radius:9px;background:var(--fin-success-bg);color:var(--fin-success);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
-            </div>
-            <div style="flex:1;">
-              <div style="font-weight:700;font-size:.88rem;">1 · Service Ticket Closed</div>
-              <div style="font-size:.78rem;color:var(--fin-muted);margin-top:2px;">Supervisor completes work + uploads service report</div>
-            </div>
-          </div>
-          <div style="display:flex;align-items:center;gap:14px;padding:12px;background:#fafbfc;border-radius:10px;">
-            <div style="width:34px;height:34px;border-radius:9px;background:var(--fin-success-bg);color:var(--fin-success);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-5.25h5.25M7.5 15h3M3.375 5.25c-.621 0-1.125.504-1.125 1.125v3.026a2.999 2.999 0 0 1 0 5.198v3.026c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125v-3.026a2.999 2.999 0 0 1 0-5.198V6.375c0-.621-.504-1.125-1.125-1.125H3.375Z"/></svg>
-            </div>
-            <div style="flex:1;">
-              <div style="font-weight:700;font-size:.88rem;">2 · Ticket Invoice Generated</div>
-              <div style="font-size:.78rem;color:var(--fin-muted);margin-top:2px;">System creates internal invoice PDF + auto-routes to Finance</div>
-            </div>
-          </div>
-          <div style="display:flex;align-items:center;gap:14px;padding:12px;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;">
-            <div style="width:34px;height:34px;border-radius:9px;background:var(--fin-warning-bg);color:var(--fin-warning);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125"/></svg>
-            </div>
-            <div style="flex:1;">
-              <div style="font-weight:700;font-size:.88rem;color:#92400e;">3 · ERP Invoice Creation <span class="badge badge-warn" style="margin-left:6px;">Current Step</span></div>
-              <div style="font-size:.78rem;color:#92400e;margin-top:2px;">Finance creates invoice in ERP and logs the reference number here</div>
-            </div>
-          </div>
-          <div style="display:flex;align-items:center;gap:14px;padding:12px;background:#fafbfc;border-radius:10px;opacity:.7;">
-            <div style="width:34px;height:34px;border-radius:9px;background:var(--fin-info-bg);color:var(--fin-info);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"/></svg>
-            </div>
-            <div style="flex:1;">
-              <div style="font-weight:700;font-size:.88rem;">4 · Auto-email Notifications</div>
-              <div style="font-size:.78rem;color:var(--fin-muted);margin-top:2px;">Supervisor + Reporter + Client notified, ticket fully closes</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>{# /Workflow Pipeline dash-card #}
-
-    <div class="dash-card">
-      <h3>
-        <span class="h3-ico">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
-        </span>
-        Recent Activity
-      </h3>
-      <div class="activity" id="activityList"></div>
-    </div>{# /Recent Activity dash-card #}
-
-    </div>{# /bento-rail #}
-    </div>{# /bento-grid #}
-  </div>{# /fin-wrap #}
-
-
-  <script src="{{ url_for('static', filename='api-client.js') }}"></script>
-  <script>
-    let currentTab = 'pending';
-    let usingSample = false;
-    let activeTicketId = null;
-
-    // ─── Sample / demo workflow data ─────────────────────
-    const SAMPLE_QUEUE = {
-      pending: [
-        { ticket_id: 'TKT-2426', title: 'HVAC Quarterly Maintenance — Tower B Roof Units', project: 'Al Reem Tower', property: 'Block B', selling_price: 8400, total_cost: 6850, margin_pct: 22.5, supervisor_name: 'Khalid Al Mansouri', reporter_name: 'Maintenance Desk', resolved_at: '2026-05-28T11:20:00', gm_approved_at: '2026-05-28T15:45:00' },
-        { ticket_id: 'TKT-2425', title: 'Emergency AC Repair — 4th Floor Conference Room', project: 'Marina Heights', property: 'Tower 2', selling_price: 3250, total_cost: 2620, margin_pct: 18.2, supervisor_name: 'Rashid Al Suwaidi', reporter_name: 'Building Manager', resolved_at: '2026-05-28T09:15:00', gm_approved_at: '2026-05-28T14:30:00' },
-        { ticket_id: 'TKT-2423', title: 'Annual Pest Control Service — Common Areas', project: 'Sky Gardens', property: 'Phase 1', selling_price: 4800, total_cost: 3680, margin_pct: 26.4, supervisor_name: 'Mohammed Khan', reporter_name: 'HOA Office', resolved_at: '2026-05-27T16:00:00', gm_approved_at: '2026-05-28T10:15:00' },
-        { ticket_id: 'TKT-2421', title: 'Fire Alarm System Annual Inspection', project: 'Galleria Mall', property: 'East Wing', selling_price: 6900, total_cost: 5400, margin_pct: 21.7, supervisor_name: 'Saeed Al Hosani', reporter_name: 'Operations Manager', resolved_at: '2026-05-27T13:45:00', gm_approved_at: '2026-05-27T17:20:00' },
-        { ticket_id: 'TKT-2420', title: 'Deep Cleaning — Lobby & Common Areas', project: 'Capital Heights', property: 'Lobby', selling_price: 5400, total_cost: 4200, margin_pct: 19.3, supervisor_name: 'Ali Hassan', reporter_name: 'Property Manager', resolved_at: '2026-05-27T10:30:00', gm_approved_at: '2026-05-27T15:00:00' },
-      ],
-      completed: [
-        { ticket_id: 'TKT-2418', title: 'Plumbing — Burst Pipe Repair Apt 1402', project: 'Marina Heights', property: 'Tower 1', selling_price: 1850, total_cost: 1480, margin_pct: 20.0, supervisor_name: 'Rashid Al Suwaidi', finance_confirmed_at: '2026-05-28T17:30:00', finance_invoice_ref: 'INV-2026-04501' },
-        { ticket_id: 'TKT-2417', title: 'Generator Monthly Service & Load Test', project: 'Corniche Plaza', property: 'Basement', selling_price: 4200, total_cost: 3200, margin_pct: 23.8, supervisor_name: 'Khalid Al Mansouri', finance_confirmed_at: '2026-05-28T16:15:00', finance_invoice_ref: 'INV-2026-04500' },
-        { ticket_id: 'TKT-2416', title: 'Electrical Panel Upgrade — Phase 2', project: 'Sky Gardens', property: 'Phase 2', selling_price: 9800, total_cost: 7600, margin_pct: 22.4, supervisor_name: 'Mohammed Khan', finance_confirmed_at: '2026-05-28T14:00:00', finance_invoice_ref: 'INV-2026-04498' },
-        { ticket_id: 'TKT-2415', title: 'CCTV Camera Installation — Parking Level', project: 'Galleria Mall', property: 'P2', selling_price: 7400, total_cost: 5900, margin_pct: 20.3, supervisor_name: 'Saeed Al Hosani', finance_confirmed_at: '2026-05-28T11:45:00', finance_invoice_ref: 'INV-2026-04495' },
-        { ticket_id: 'TKT-2414', title: 'Pool Filter Replacement & Chemical Balance', project: 'Al Reem Tower', property: 'Recreation', selling_price: 2200, total_cost: 1750, margin_pct: 20.5, supervisor_name: 'Khalid Al Mansouri', finance_confirmed_at: '2026-05-28T09:20:00', finance_invoice_ref: 'INV-2026-04492' },
-      ],
-      counts: { pending: 5, completed_today: 5, completed_month: 47, completed_total: 318 },
-    };
-
-    const SAMPLE_ACTIVITY = [
-      { color: 'green', title: 'INV-2026-04501 logged for TKT-2418 · email sent to supervisor + reporter', time: '12 min ago' },
-      { color: 'blue',  title: 'TKT-2426 escalated to Finance after GM approval',  time: '38 min ago' },
-      { color: 'green', title: 'INV-2026-04500 logged for TKT-2417',               time: '1 hour ago' },
-      { color: 'amber', title: 'New ticket TKT-2425 reached pending_finance queue',time: '2 hours ago' },
-      { color: 'green', title: 'INV-2026-04498 logged for TKT-2416',               time: '3 hours ago' },
-    ];
-
-    function isEmptyApi(counts, items) {
-      if (!counts) return true;
-      if ((counts.pending ?? 0) === 0 && (counts.completed_total ?? 0) === 0 && (!items || items.length === 0)) return true;
-      return false;
-    }
-
-    async function fetchWithTimeout(url, ms = 3000) {
-      const ctrl = new AbortController();
-      const tid  = setTimeout(() => ctrl.abort(), ms);
-      try {
-        const token = localStorage.getItem('access_token') || '';
-        const res = await fetch(url, {
-          headers: token ? { 'Authorization': 'Bearer ' + token } : {},
-          signal: ctrl.signal
-        });
-        clearTimeout(tid);
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const data = await res.json();
-        if (!data || !data.success) throw new Error('bad response');
-        return data;
-      } catch(e) { clearTimeout(tid); throw e; }
-    }
-
-    async function loadQueue() {
-      let pendingData = null, completedData = null;
-      try {
-        [pendingData, completedData] = await Promise.all([
-          fetchWithTimeout('/finance/api/queue?bucket=pending&limit=25'),
-          fetchWithTimeout('/finance/api/queue?bucket=completed&limit=25')
-        ]);
-        if (!pendingData?.success || (isEmptyApi(pendingData?.counts, pendingData?.items) && isEmptyApi(completedData?.counts, completedData?.items))) {
-          throw new Error('empty or error');
-        }
-      } catch(_) {
-        usingSample = true;
-        document.getElementById('sampleBanner').style.display = 'flex';
-        pendingData   = { items: SAMPLE_QUEUE.pending,   counts: SAMPLE_QUEUE.counts };
-        completedData = { items: SAMPLE_QUEUE.completed, counts: SAMPLE_QUEUE.counts };
-      }
-
-      window._fin_pending   = pendingData.items;
-      window._fin_completed = completedData.items;
-      const counts = (pendingData?.counts || completedData?.counts || {});
-
-      document.getElementById('s-pending').textContent = counts.pending ?? 0;
-      document.getElementById('s-today').textContent   = counts.completed_today ?? 0;
-      document.getElementById('s-month').textContent   = counts.completed_month ?? 0;
-      document.getElementById('s-total').textContent   = counts.completed_total ?? 0;
-
-      document.getElementById('tab-pending-count').textContent   = (pendingData.items || []).length;
-      document.getElementById('tab-completed-count').textContent = (completedData.items || []).length;
-
-      renderActivity(usingSample ? SAMPLE_ACTIVITY : SAMPLE_ACTIVITY);  // re-use sample feed; real activity feed can be wired later
-      renderQueue();
-    }
-
-    function switchTab(tab) {
-      currentTab = tab;
-      document.querySelectorAll('.queue-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
-      renderQueue();
-    }
-
-    function renderQueue() {
-      const body = document.getElementById('queueBody');
-      const items = currentTab === 'pending' ? window._fin_pending : window._fin_completed;
-      if (!items || !items.length) {
-        if (currentTab === 'pending') {
-          body.innerHTML = `<div class="empty-state success">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
-            <div><strong>All caught up.</strong></div>
-            <div class="empty-state-hint">No tickets are currently waiting for an ERP invoice.</div>
-          </div>`;
-        } else {
-          body.innerHTML = `<div class="empty-state">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5"/></svg>
-            <div>No completed invoices yet.</div>
-          </div>`;
-        }
-        return;
-      }
-      body.innerHTML = items.map(t => rowHtml(t, currentTab)).join('');
-    }
-
-    function fmtDT(iso) {
-      if (!iso) return '';
-      const d = new Date(iso);
-      if (isNaN(d)) return '';
-      return d.toLocaleDateString('en-AE', { day: 'numeric', month: 'short' })
-        + ', ' + d.toLocaleTimeString('en-AE', { hour: 'numeric', minute: '2-digit', hour12: true });
-    }
-
-    function rowHtml(t, tab) {
-      const completed = tab === 'completed';
-      const gmApproved = completed || !!t.gm_approved_at;
-      const invoiceLogged = completed || !!t.finance_confirmed_at;
-      const stepTime = (iso) => {
-        const s = fmtDT(iso);
-        return s ? ` <span style="font-weight:400;opacity:.75;">· ${s}</span>` : '';
-      };
-      const stepHtml = `
-        <div class="qr-status">
-          <span class="qr-status-step done">✓ Verified${stepTime(t.resolved_at)}</span>
-          <span class="qr-status-sep">→</span>
-          <span class="qr-status-step ${gmApproved ? 'done' : 'active'}">${gmApproved ? '✓ GM Approved' + stepTime(t.gm_approved_at) : '● GM Approval'}</span>
-          <span class="qr-status-sep">→</span>
-          <span class="qr-status-step ${invoiceLogged ? 'done' : 'active'}">${invoiceLogged ? '✓ ERP Invoice' + stepTime(t.finance_confirmed_at) : '● ERP Invoice'}</span>
-          <span class="qr-status-sep">→</span>
-          <span class="qr-status-step ${completed ? 'done' : ''}">${completed ? '✓ Email Sent' : 'Auto-email'}</span>
-        </div>`;
-
-      const detailsAttr = usingSample
-        ? `href="javascript:void(0)" onclick="demoDoc()"`
-        : `href="/tickets/${t.ticket_id}"`;
-      let actions;
-      if (completed) {
-        actions = `<a ${detailsAttr} class="btn btn-outline btn-sm">View Details</a>`;
-      } else if (invoiceLogged) {
-        actions = `<span class="btn btn-outline btn-sm" style="pointer-events:none;opacity:.75;cursor:default;">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
-            Awaiting GM approval
-          </span>`;
-      } else {
-        actions = `<button type="button" class="btn btn-green btn-sm" onclick="openModal('${t.ticket_id}')" data-open-modal="${t.ticket_id}">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.4" stroke="currentColor" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z"/></svg>
-            Log ERP Invoice
-          </button>`;
-      }
-
-      // Demo rows have no backing ticket — guard doc links so they don't 404.
-      const srAttr  = usingSample ? `href="javascript:void(0)" onclick="demoDoc()"` : `href="/tickets/${t.ticket_id}/service-report" target="_blank"`;
-      const invAttr = usingSample ? `href="javascript:void(0)" onclick="demoDoc()"` : `href="/tickets/${t.ticket_id}/invoice" target="_blank"`;
-      const idAttr  = usingSample ? `href="javascript:void(0)" onclick="demoDoc()"` : `href="/tickets/${t.ticket_id}"`;
-
-      return `<div class="queue-row">
-        <div style="min-width:0;">
-          <a ${idAttr} class="qr-id">
-            <span class="qr-id-tag">${t.ticket_id}</span>
-          </a>
-          <div class="qr-title">${escHtml(t.title)}</div>
-          <div class="qr-meta">
-            <span><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="11" height="11"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12 5.379 8.871a1.5 1.5 0 0 1 2.122 0L10.5 11.871m0 0 4.379-4.379a1.5 1.5 0 0 1 2.122 0L21 11.621"/></svg> ${escHtml(t.project)}${t.property ? ' · ' + escHtml(t.property) : ''}</span>
-            <span><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="11" height="11"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z"/></svg> ${escHtml(t.supervisor_name || '—')}</span>
-            ${t.created_at ? `<span><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="11" height="11"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5"/></svg> Created ${fmtDT(t.created_at)}</span>` : ''}
-            ${completed ? `<span><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="11" height="11"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 6v.75m0 3v.75"/></svg> <strong>${escHtml(t.finance_invoice_ref || '—')}</strong></span>` : ''}
-          </div>
-          ${stepHtml}
-        </div>
-        <div class="qr-docs">
-          <a ${srAttr} class="qr-doc-btn">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>
-            Service Report
-          </a>
-          <a ${invAttr} class="qr-doc-btn">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664"/></svg>
-            Ticket Invoice
-          </a>
-        </div>
-        <div style="text-align:right;">
-          <div class="qr-amount">AED ${formatNum(t.selling_price || 0)}</div>
-          <div class="qr-amount-label">${t.margin_pct !== null ? t.margin_pct.toFixed(1) + '% margin' : 'unbilled'}</div>
-        </div>
-        <div class="qr-actions">${actions}</div>
-      </div>`;
-    }
-
-    function renderActivity(items) {
-      const el = document.getElementById('activityList');
-      el.innerHTML = items.map(a => `
-        <div class="activity-item">
-          <div class="activity-dot ${a.color}"></div>
-          <div class="activity-body">
-            <div class="activity-title">${escHtml(a.title)}</div>
-            <div class="activity-time">${escHtml(a.time)}</div>
-          </div>
-        </div>`).join('');
-    }
-
-    // ── Modal ─────────────────────────────────────────────
-    function openModal(ticketId) {
-      if (!ticketId) { console.warn('[Finance] openModal called without ticketId'); return; }
-      activeTicketId = ticketId;
-      // Search both pending and completed lists; fall back to a minimal object so the modal still opens.
-      const allTickets = (window._fin_pending || []).concat(window._fin_completed || []);
-      const t = allTickets.find(x => x.ticket_id === ticketId)
-        || { ticket_id: ticketId, title: '', project: '', property: '', supervisor_name: '', selling_price: 0 };
-      const snap = document.getElementById('modalSnapshot');
-      if (snap) snap.innerHTML = `
-        <div class="ts-row"><span>Ticket</span><span>${escHtml(t.ticket_id)}</span></div>
-        <div class="ts-row"><span>Title</span><span style="text-align:right;max-width:60%;">${escHtml(t.title)}</span></div>
-        <div class="ts-row"><span>Project</span><span>${escHtml(t.project)}${t.property ? ' · ' + escHtml(t.property) : ''}</span></div>
-        <div class="ts-row"><span>Supervisor</span><span>${escHtml(t.supervisor_name || '—')}</span></div>
-        <div class="ts-row"><span>Amount</span><span><strong>AED ${formatNum(t.selling_price)}</strong></span></div>`;
-      const inpNum   = document.getElementById('erp_invoice_number');
-      const inpNotes = document.getElementById('erp_invoice_notes');
-      if (inpNum)   inpNum.value   = '';
-      if (inpNotes) inpNotes.value = '';
-      const overlay = document.getElementById('processModal');
-      if (overlay) {
-        overlay.classList.add('open');
-        loadFinEmailDefaults();
-        document.getElementById('fin-email-body').value = '';
-        document.getElementById('finEmailSettingsPanel').style.display = 'none';
-        setTimeout(() => inpNum && inpNum.focus(), 80);
-      }
-    }
-    function closeModal() {
-      document.getElementById('processModal').classList.remove('open');
-      activeTicketId = null;
-      // reset success state for next open
-      document.getElementById('modalSuccess').classList.remove('visible');
-      document.getElementById('modalFoot').style.display = '';
-      document.getElementById('processForm').style.display = '';
-    }
-
-    function showModalSuccess(ref, emailTo, status) {
-      const sub = document.getElementById('msSubText');
-      if (sub) {
-        if (status === 'pending_gm_approval') {
-          sub.textContent = `ERP ref ${ref} logged · ticket will close automatically once the GM approves.`;
-        } else {
-          sub.textContent = emailTo
-            ? `ERP ref ${ref} logged · notification sent to ${emailTo}.`
-            : `ERP ref ${ref} logged · notification sent to the team.`;
-        }
-      }
-      // swap form → success panel
-      document.getElementById('processForm').style.display = 'none';
-      document.getElementById('modalFoot').style.display = 'none';
-      // restart the progress bar animation by cloning the element
-      const bar = document.getElementById('msProgressBar');
-      const newBar = bar.cloneNode(true);
-      bar.parentNode.replaceChild(newBar, bar);
-      document.getElementById('modalSuccess').classList.add('visible');
-      // auto-close after progress bar completes (3 s)
-      setTimeout(() => { closeModal(); }, 3200);
-    }
-
-    async function submitProcess(ev) {
-      if (ev) ev.preventDefault();
-      if (!activeTicketId) { toast('No ticket selected — reopen the dialog.'); return; }
-      const ref   = document.getElementById('erp_invoice_number').value.trim();
-      const notes = document.getElementById('erp_invoice_notes').value.trim();
-      if (!ref) { toast('Enter the ERP invoice number first.'); document.getElementById('erp_invoice_number').focus(); return; }
-
-      if (usingSample) {
-        // sample-only flow: move row to "completed" + toast
-        const t = window._fin_pending.find(x => x.ticket_id === activeTicketId);
-        if (t) {
-          t.finance_invoice_ref = ref;
-          t.finance_confirmed_at = new Date().toISOString();
-          window._fin_pending = window._fin_pending.filter(x => x.ticket_id !== activeTicketId);
-          window._fin_completed = [t, ...window._fin_completed];
-          SAMPLE_ACTIVITY.unshift({ color: 'green', title: `${ref} logged for ${activeTicketId} · email sent to supervisor + reporter`, time: 'just now' });
-        }
-        showModalSuccess(ref, document.getElementById('fin-email-to')?.value.trim());
-        document.getElementById('tab-pending-count').textContent   = window._fin_pending.length;
-        document.getElementById('tab-completed-count').textContent = window._fin_completed.length;
-        renderActivity(SAMPLE_ACTIVITY.slice(0,5));
-        renderQueue();
-        return;
-      }
-
-      try {
-        const emailTo   = (document.getElementById('fin-email-to')?.value || '').trim();
-        const emailCc   = (document.getElementById('fin-email-cc')?.value || '').trim();
-        const emailBody = (document.getElementById('fin-email-body')?.value || '').trim();
-        const res = await apiClient.post(`/tickets/api/tickets/${activeTicketId}/finance-confirm`, {
-          invoice_ref: ref,
-          notes: notes,
-          email_to: emailTo || undefined,
-          email_cc: emailCc || undefined,
-          email_body: emailBody || undefined,
-        });
-        const data = await res.json().catch(() => ({}));
-        if (res.ok && data.success) {
-          showModalSuccess(ref, emailTo, data.status);
-          await loadQueue();
-        } else {
-          toast(data.error || 'Unable to confirm');
-        }
-      } catch(e) {
-        toast('Network error — please retry');
-      }
-    }
-
-    function demoDoc() {
-      toast('Demo data — documents open once real tickets reach this queue');
-    }
-
-    function toast(msg) {
-      const t = document.getElementById('toast');
-      document.getElementById('toastMsg').textContent = msg;
-      t.classList.add('show', 'success');
-      setTimeout(() => t.classList.remove('show'), 3200);
-    }
-
-    function formatNum(n) { return Number(n).toLocaleString('en-AE', {minimumFractionDigits:2,maximumFractionDigits:2}); }
-    function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
-    // ── Finance email settings ────────────────────────────
-    const FIN_EMAIL_KEY = 'fin_email_defaults';
-
-    function loadFinEmailDefaults() {
-      try {
-        const d = JSON.parse(localStorage.getItem(FIN_EMAIL_KEY) || '{}');
-        const toEl = document.getElementById('fin-email-to');
-        const ccEl = document.getElementById('fin-email-cc');
-        const defToEl = document.getElementById('fin-es-default-to');
-        const defCcEl = document.getElementById('fin-es-default-cc');
-        if (toEl && d.to) toEl.value = d.to;
-        if (ccEl && d.cc) ccEl.value = d.cc;
-        if (defToEl && d.to) defToEl.value = d.to;
-        if (defCcEl && d.cc) defCcEl.value = d.cc;
-      } catch(_) {}
-    }
-
-    function saveFinEmailSettings() {
-      const to = (document.getElementById('fin-es-default-to').value || '').trim();
-      const cc = (document.getElementById('fin-es-default-cc').value || '').trim();
-      localStorage.setItem(FIN_EMAIL_KEY, JSON.stringify({ to, cc }));
-      document.getElementById('fin-email-to').value = to;
-      document.getElementById('fin-email-cc').value = cc;
-      document.getElementById('finEmailSettingsPanel').style.display = 'none';
-      toast('Default recipients saved.');
-    }
-
-    function toggleFinEmailSettings() {
-      const p = document.getElementById('finEmailSettingsPanel');
-      p.style.display = p.style.display === 'none' ? 'block' : 'none';
-    }
-
-    // Expose handlers used by inline onclick attributes (guarantees they resolve from the global scope).
-    window.openModal = openModal;
-    window.closeModal = closeModal;
-    window.submitProcess = submitProcess;
-    window.switchTab = switchTab;
-    window.demoDoc = demoDoc;
-    window.toggleFinEmailSettings = toggleFinEmailSettings;
-    window.saveFinEmailSettings = saveFinEmailSettings;
-
-    // ── Event delegation for queue buttons ────────────────
-    document.addEventListener('click', function(e) {
-      // Log ERP Invoice button (data attribute — works on innerHTML-rendered buttons)
-      const btn = e.target.closest('[data-open-modal]');
-      if (btn) { openModal(btn.getAttribute('data-open-modal')); return; }
-      // Backdrop close — only when clicking the dark overlay itself
-      const overlay = document.getElementById('processModal');
-      if (overlay && overlay.classList.contains('open') && e.target === overlay) closeModal();
-    });
-    // Close modal on Esc
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
-
-    // Kick off immediately — DOM elements above this script are already parsed
-    loadQueue().catch(() => {});
-    setInterval(() => loadQueue().catch(() => {}), 30000);
-
-    // spin keyframes
-    const style = document.createElement('style');
-    style.textContent = '@keyframes spin { to { transform: rotate(360deg); } }';
-    document.head.appendChild(style);
-  </script>
-    </div>{# /dh-main #}
-  </div>{# /dh-page-root #}
-  <script src="{{ url_for('static', filename='mobile_utils.js') }}" defer></script>
-  <script src="{{ url_for('static', filename='js/dashboard.js') }}" defer></script>
-
-  <!-- Modals & toasts — outside dh-page-root so position:fixed works -->
-<!-- ── Process ERP Invoice Modal ─────────────────────── -->
-  <div class="modal-overlay" id="processModal">
-    <div class="modal">
-      <div class="modal-head">
-        <span class="h3-ico">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z"/></svg>
-        </span>
-        <h3>Log ERP Invoice Reference</h3>
-        <button type="button" class="modal-close" onclick="closeModal()">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
-        </button>
-      </div>
-      <div class="modal-body">
-        <form id="processForm" onsubmit="submitProcess(event)">
-          <div class="modal-cols">
-
-            <!-- ── Left: ticket info + invoice fields ── -->
-            <div class="modal-col-left">
-              <div class="ticket-snapshot" id="modalSnapshot"></div>
-              <div class="form-field">
-                <label class="form-label" for="erp_invoice_number">ERP Invoice Number <span class="form-required">*</span></label>
-                <input type="text" class="form-input" id="erp_invoice_number" placeholder="e.g. INV-2026-04532" required>
-                <div class="form-hint">Enter the invoice reference exactly as it appears in your ERP system (SAP / Oracle / Tally / Zoho etc.).</div>
-              </div>
-              <div class="form-field form-field-last">
-                <label class="form-label" for="erp_invoice_notes">Notes (optional)</label>
-                <textarea class="form-textarea form-textarea-tall" id="erp_invoice_notes" placeholder="Any internal notes about this invoice — payment terms, special conditions, etc."></textarea>
-              </div>
-            </div>
-
-            <!-- ── Right: notification email ── -->
-            <div class="modal-col-right">
-              <div class="email-sec-head">
-                <span class="email-sec-title">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"/></svg>
-                  Notification Email
-                </span>
-                <button type="button" class="email-settings-btn" onclick="toggleFinEmailSettings()">
-                  <svg width="11" height="11" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg>
-                  Settings
-                </button>
-              </div>
-
-              <!-- Default recipients settings drawer -->
-              <div id="finEmailSettingsPanel" class="email-settings-panel" style="display:none;">
-                <div class="email-settings-title">Default Recipients</div>
-                <div class="email-settings-row">
-                  <label class="email-field-label">Default To</label>
-                  <input type="text" id="fin-es-default-to" class="email-text-input-sm" placeholder="ops@company.com, finance@company.com">
+        <div class="modal-body">
+          <form id="processForm" onsubmit="submitProcess(event)">
+            <div class="modal-cols">
+              <!-- ── Left: ticket info + invoice fields ── -->
+              <div class="modal-col-left">
+                <div class="ticket-snapshot" id="modalSnapshot"></div>
+                <div class="form-field">
+                  <label class="form-label" for="erp_invoice_number"
+                    >ERP Invoice Number
+                    <span class="form-required">*</span></label
+                  >
+                  <input
+                    type="text"
+                    class="form-input"
+                    id="erp_invoice_number"
+                    placeholder="e.g. INV-2026-04532"
+                    required
+                  />
+                  <div class="form-hint">
+                    Enter the invoice reference exactly as it appears in your
+                    ERP system (SAP / Oracle / Tally / Zoho etc.).
+                  </div>
                 </div>
-                <div class="email-settings-row">
-                  <label class="email-field-label">Default CC</label>
-                  <input type="text" id="fin-es-default-cc" class="email-text-input-sm" placeholder="admin@company.com">
+                <div class="form-field form-field-last">
+                  <label class="form-label" for="erp_invoice_notes"
+                    >Notes (optional)</label
+                  >
+                  <textarea
+                    class="form-textarea form-textarea-tall"
+                    id="erp_invoice_notes"
+                    placeholder="Any internal notes about this invoice — payment terms, special conditions, etc."
+                  ></textarea>
                 </div>
-                <button type="button" class="email-save-btn" onclick="saveFinEmailSettings()">Save Defaults</button>
               </div>
 
-              <div class="email-to-cc-grid">
-                <div>
-                  <label class="email-field-label">To <span class="form-required">*</span></label>
-                  <input type="text" id="fin-email-to" class="email-text-input" placeholder="e.g. ops@company.com">
+              <!-- ── Right: notification email ── -->
+              <div class="modal-col-right">
+                <div class="email-sec-head">
+                  <span class="email-sec-title">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke-width="2"
+                      stroke="currentColor"
+                      width="15"
+                      height="15"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"
+                      />
+                    </svg>
+                    Notification Email
+                  </span>
+                  <button
+                    type="button"
+                    class="email-settings-btn"
+                    onclick="toggleFinEmailSettings()"
+                  >
+                    <svg
+                      width="11"
+                      height="11"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                      />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                    Settings
+                  </button>
+                </div>
+
+                <!-- Default recipients settings drawer -->
+                <div
+                  id="finEmailSettingsPanel"
+                  class="email-settings-panel"
+                  style="display: none"
+                >
+                  <div class="email-settings-title">Default Recipients</div>
+                  <div class="email-settings-row">
+                    <label class="email-field-label">Default To</label>
+                    <input
+                      type="text"
+                      id="fin-es-default-to"
+                      class="email-text-input-sm"
+                      placeholder="ops@company.com, finance@company.com"
+                    />
+                  </div>
+                  <div class="email-settings-row">
+                    <label class="email-field-label">Default CC</label>
+                    <input
+                      type="text"
+                      id="fin-es-default-cc"
+                      class="email-text-input-sm"
+                      placeholder="admin@company.com"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    class="email-save-btn"
+                    onclick="saveFinEmailSettings()"
+                  >
+                    Save Defaults
+                  </button>
+                </div>
+
+                <div class="email-to-cc-grid">
+                  <div>
+                    <label class="email-field-label"
+                      >To <span class="form-required">*</span></label
+                    >
+                    <input
+                      type="text"
+                      id="fin-email-to"
+                      class="email-text-input"
+                      placeholder="e.g. ops@company.com"
+                    />
+                  </div>
+                  <div>
+                    <label class="email-field-label">CC</label>
+                    <input
+                      type="text"
+                      id="fin-email-cc"
+                      class="email-text-input"
+                      placeholder="e.g. admin@company.com"
+                    />
+                  </div>
                 </div>
                 <div>
-                  <label class="email-field-label">CC</label>
-                  <input type="text" id="fin-email-cc" class="email-text-input" placeholder="e.g. admin@company.com">
+                  <label class="email-field-label"
+                    >Email Body
+                    <span class="email-field-label-sub"
+                      >(optional — leave blank to use auto-generated)</span
+                    ></label
+                  >
+                  <textarea
+                    id="fin-email-body"
+                    rows="4"
+                    class="email-body-area"
+                    placeholder="Auto-generated from ticket details if left blank…"
+                  ></textarea>
                 </div>
               </div>
+            </div>
+            <!-- /modal-cols -->
+
+            <div class="modal-warning">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="2"
+                stroke="currentColor"
+                width="16"
+                height="16"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
               <div>
-                <label class="email-field-label">Email Body <span class="email-field-label-sub">(optional — leave blank to use auto-generated)</span></label>
-                <textarea id="fin-email-body" rows="4" class="email-body-area" placeholder="Auto-generated from ticket details if left blank…"></textarea>
+                Confirming will mark the ticket fully closed and send an email
+                notification to the addresses above.
               </div>
             </div>
-
-          </div><!-- /modal-cols -->
-
-          <div class="modal-warning">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-            <div>Confirming will mark the ticket fully closed and send an email notification to the addresses above.</div>
+          </form>
+        </div>
+        <!-- ── Success state (shown after confirm) ── -->
+        <div class="modal-success" id="modalSuccess">
+          <div class="ms-ring">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke-width="3"
+              stroke="currentColor"
+              width="34"
+              height="34"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="m4.5 12.75 6 6 9-13.5"
+              />
+            </svg>
           </div>
-        </form>
-      </div>
-      <!-- ── Success state (shown after confirm) ── -->
-      <div class="modal-success" id="modalSuccess">
-        <div class="ms-ring">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" width="34" height="34"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+          <div class="ms-title">All done!</div>
+          <div class="ms-pills">
+            <span class="ms-pill green">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="2.5"
+                stroke="currentColor"
+                width="12"
+                height="12"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+                />
+              </svg>
+              Ticket Closed
+            </span>
+            <span class="ms-pill blue">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="2.5"
+                stroke="currentColor"
+                width="12"
+                height="12"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"
+                />
+              </svg>
+              Email Circulated
+            </span>
+          </div>
+          <p class="ms-sub" id="msSubText">
+            ERP invoice reference logged and notification sent to the team.
+          </p>
+          <div class="ms-progress">
+            <div class="ms-progress-bar" id="msProgressBar"></div>
+          </div>
+          <button type="button" class="ms-done-btn" onclick="closeModal()">
+            Done
+          </button>
         </div>
-        <div class="ms-title">All done!</div>
-        <div class="ms-pills">
-          <span class="ms-pill green">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" width="12" height="12"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
-            Ticket Closed
-          </span>
-          <span class="ms-pill blue">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" width="12" height="12"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"/></svg>
-            Email Circulated
-          </span>
-        </div>
-        <p class="ms-sub" id="msSubText">ERP invoice reference logged and notification sent to the team.</p>
-        <div class="ms-progress"><div class="ms-progress-bar" id="msProgressBar"></div></div>
-        <button type="button" class="ms-done-btn" onclick="closeModal()">Done</button>
-      </div>
 
-      <div class="modal-foot" id="modalFoot">
-        <button type="button" class="btn btn-outline" onclick="closeModal()">Cancel</button>
-        <button type="button" class="btn btn-green" onclick="submitProcess(null)">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.4" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
-          Confirm &amp; Send Email
-        </button>
+        <div class="modal-foot" id="modalFoot">
+          <button type="button" class="btn btn-outline" onclick="closeModal()">
+            Cancel
+          </button>
+          <button
+            type="button"
+            class="btn btn-green"
+            onclick="submitProcess(null)"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke-width="2.4"
+              stroke="currentColor"
+              width="14"
+              height="14"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="m4.5 12.75 6 6 9-13.5"
+              />
+            </svg>
+            Confirm &amp; Send Email
+          </button>
+        </div>
       </div>
     </div>
-  </div>
-<!-- ── Toast ─────────────────────────────────────────── -->
-  <div class="toast" id="toast">
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.4" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
-    <span id="toastMsg">Invoice confirmed</span>
-  </div>
-
-</body>
+    <!-- ── Toast ─────────────────────────────────────────── -->
+    <div class="toast" id="toast">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke-width="2.4"
+        stroke="currentColor"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="m4.5 12.75 6 6 9-13.5"
+        />
+      </svg>
+      <span id="toastMsg">Invoice confirmed</span>
+    </div>
+  </body>
 </html>

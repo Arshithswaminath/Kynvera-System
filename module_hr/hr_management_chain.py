@@ -47,11 +47,11 @@ def lane_for_user(user: User | None) -> str:
 
 
 def user_is_hr_head(user: User | None) -> bool:
+    """Org-wide HR head office signers: admin or designation hr_manager.
+    Bare Module Access access_hr does not grant the HR inbox or HO signature pool."""
     if not user:
         return False
     if user.role == "admin":
-        return True
-    if getattr(user, "access_hr", False):
         return True
     return (user.designation or "").strip().lower() == "hr_manager"
 
@@ -525,6 +525,91 @@ def _notify_user(app: Flask, uid: int, title: str, message: str, submission_id: 
     db.session.add(n)
 
 
+def _mgmt_sign_link(app: Flask, submission_id: str) -> str:
+    try:
+        from flask import request
+
+        base = (request.url_root or "").rstrip("/")
+    except RuntimeError:
+        base = (app.config.get("PREFERRED_URL_SCHEME") or "https") + "://" + (
+            app.config.get("SERVER_NAME") or "localhost"
+        )
+    return f"{base}/hr/mgmt-sign/{submission_id}"
+
+
+def _email_mgmt_sign_request(
+    app: Flask,
+    recipient: User,
+    submission: Submission,
+    *,
+    employee_name: str,
+    form_type_display: str,
+    step_label: str,
+) -> None:
+    """Email the person whose signature is required on the current management step."""
+    from common.email_service import is_email_configured, send_email
+
+    if not recipient or not recipient.email or not is_email_configured(app):
+        return
+
+    link = _mgmt_sign_link(app, submission.submission_id)
+    name = recipient.full_name or recipient.username or "there"
+    role = step_label or "approver"
+    subj = f"Action required: sign HR form ({submission.submission_id})"
+    body = (
+        f"Hello {name},\n\n"
+        f"{employee_name} submitted {form_type_display} and your signature is required "
+        f"as {role}.\n"
+        f"Please open Amaan and sign:\n{link}\n\n"
+        f"Reference: {submission.submission_id}\n"
+    )
+    html = (
+        f"<p>Hello <strong>{name}</strong>,</p>"
+        f"<p><strong>{employee_name}</strong> submitted <strong>{form_type_display}</strong> "
+        f"and your signature is required as <strong>{role}</strong>.</p>"
+        f"<p><a href=\"{link}\">Open form to sign</a></p>"
+        f"<p style=\"color:#64748b;font-size:12px\">Reference: {submission.submission_id}</p>"
+    )
+    try:
+        send_email(recipient.email, subj, body, html_body=html)
+    except Exception:
+        app.logger.exception(
+            "mgmt chain sign email failed for user %s submission=%s",
+            recipient.id,
+            submission.submission_id,
+        )
+
+
+def _current_mgmt_step_recipients(step: dict[str, Any]) -> list[User]:
+    """Users who should be notified for the current unsigned management step."""
+    mode = step.get("signer_mode")
+    if mode == "fixed_user":
+        try:
+            uid = int(step.get("signer_id"))
+        except (TypeError, ValueError):
+            return []
+        user = db.session.get(User, uid)
+        return [user] if user else []
+
+    gate = (step.get("designation_gate") or "").strip().lower()
+    if gate == "general_manager":
+        return list(
+            User.query.filter(
+                User.designation == "general_manager",
+                User.is_active == True,  # noqa: E712
+            ).all()
+        )
+    if gate == "hr_head_office":
+        out: list[User] = []
+        seen: set[int] = set()
+        for u in User.query.filter(User.is_active == True).all():  # noqa: E712
+            if user_is_hr_head(u) and u.id not in seen:
+                seen.add(u.id)
+                out.append(u)
+        return out
+    return []
+
+
 def notify_submitter_management_final(
     app: Flask,
     submission: Submission,
@@ -561,6 +646,7 @@ def notify_submitter_management_final(
 
 
 def notify_current_management_signers(app: Flask, submission: Submission) -> None:
+    """In-app + email notify for whoever must sign the current management step."""
     fd = submission.form_data if isinstance(submission.form_data, dict) else {}
     if not has_management_chain(fd):
         return
@@ -571,54 +657,49 @@ def notify_current_management_signers(app: Flask, submission: Submission) -> Non
     submission_id = submission.submission_id
     form_type_display = (submission.module_type or "HR").replace("hr_", "").replace("_", " ").title()
     employee_name = (
-        fd.get("employee_name") or fd.get("complainant_name") or fd.get("requester") or "Employee"
+        fd.get("employee_name")
+        or fd.get("complainant_name")
+        or fd.get("requester")
+        or "Employee"
+    )
+    step_label = (
+        step.get("pdf_label")
+        or step.get("key")
+        or "approver"
     )
     title = "HR form — your management sign-off"
-    msg = f"{employee_name} — {form_type_display} ({submission_id}). Your signature is required for the official PDF trail."
+    msg = (
+        f"{employee_name} — {form_type_display} ({submission_id}). "
+        "Your signature is required for the official PDF trail."
+    )
     n_type = "hr_mgmt_chain_signoff"
 
-    mode = step.get("signer_mode")
-    if mode == "fixed_user":
-        try:
-            uid = int(step.get("signer_id"))
-        except (TypeError, ValueError):
-            app.logger.warning(
-                "mgmt chain notify skipped: invalid signer_id %r submission=%s",
-                step.get("signer_id"),
-                submission_id,
-            )
-            return
-        recipient = db.session.get(User, uid)
-        if not recipient:
-            app.logger.warning(
-                "mgmt chain notify skipped: user id=%s missing submission=%s",
-                uid,
-                submission_id,
-            )
-            return
+    recipients = _current_mgmt_step_recipients(step)
+    if not recipients:
+        app.logger.warning(
+            "mgmt chain notify skipped: no recipients for step=%s submission=%s",
+            step.get("key"),
+            submission_id,
+        )
+        return
+
+    for recipient in recipients:
         if not recipient.is_active:
             app.logger.warning(
-                "mgmt chain notify target user id=%s inactive submission=%s (notification still queued)",
-                uid,
+                "mgmt chain notify target user id=%s inactive submission=%s "
+                "(notification/email still attempted)",
+                recipient.id,
                 submission_id,
             )
-        _notify_user(app, uid, title, msg, submission_id, n_type)
-        return
-    gate = (step.get("designation_gate") or "").lower()
-    if gate == "general_manager":
-        for u in User.query.filter(
-            User.designation == "general_manager",
-            User.is_active == True,  # noqa: E712
-        ).all():
-            _notify_user(app, u.id, title, msg, submission_id, n_type)
-        return
-    if gate == "hr_head_office":
-        q = User.query.filter(User.is_active == True)  # noqa: E712
-        ids = []
-        for u in q.all():
-            if user_is_hr_head(u) and u.id not in ids:
-                ids.append(u.id)
-                _notify_user(app, u.id, title, msg, submission_id, n_type)
+        _notify_user(app, recipient.id, title, msg, submission_id, n_type)
+        _email_mgmt_sign_request(
+            app,
+            recipient,
+            submission,
+            employee_name=employee_name,
+            form_type_display=form_type_display,
+            step_label=str(step_label),
+        )
 
 
 def attach_submission_enter_management(fd: dict[str, Any], submission_id: str) -> str | None:
@@ -785,10 +866,7 @@ def _pool_for_gate(gate: str) -> list[User]:
         return (
             User.query.filter(
                 User.is_active == True,  # noqa: E712
-                db.or_(
-                    db.func.lower(User.designation) == "hr_manager",
-                    User.access_hr == True,  # noqa: E712
-                ),
+                db.func.lower(User.designation) == "hr_manager",
             ).all()
         )
     return []

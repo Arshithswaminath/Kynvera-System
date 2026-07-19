@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}">
+  {% include 'partials/caveat_font.html' ignore missing %}
+  <title>Invoice Processing — Finance — Amaan</title>
+  <meta name="theme-color" content="#d21725">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
+  <style>
+    :root {
+      --accent: #d21725;
+      --nav-top: 73px;
+      --fin-font:
+        -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+        system-ui, "Segoe UI", Roboto, "Helvetica Neue", Helvetica, Arial,
+        sans-serif;
+      --margin-threshold: {{ margin_threshold|default(15) }};
+    }
+    body.has-main-nav {
+      padding-top: var(--nav-top);
+      font-family: var(--fin-font);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      background: #f5f6f8;
+    }
+    body.has-main-nav.dochub-page-v2 {
+      height: auto !important;
+      min-height: 100dvh !important;
+      overflow-y: auto !important;
+      --sb-bg: #d21725 !important;
+    }
+    body.has-main-nav.dochub-page-v2 .dh-sidebar { background: #d21725 !important; }
+    body.has-main-nav.dochub-page-v2 .dh-main { overflow-y: auto; }
+    .fin-wrap { max-width: none; padding: 24px 28px 60px 20px; }
+    .fin-nav { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 28px; }
+    .fin-nav a {
+      padding: 7px 16px; border-radius: 8px; font-size: .85rem; font-weight: 600;
+      text-decoration: none; color: #374151; background: #fff; border: 1.5px solid #e5e7eb;
+    }
+    .fin-nav a.active, .fin-nav a:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .toolbar {
+      display: flex; align-items: flex-end; justify-content: space-between;
+      gap: 16px; flex-wrap: wrap; margin-bottom: 20px;
+    }
+    .form-label { display: block; font-size: .75rem; font-weight: 600; color: #374151; margin-bottom: 5px; }
+    .form-select, .form-input {
+      border: 1.5px solid #d1d5db; border-radius: 8px; padding: 9px 11px; font-size: .88rem; background: #fff;
+    }
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px; border-radius: 8px;
+      font-size: .85rem; font-weight: 600; cursor: pointer; border: none; text-decoration: none;
+    }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: #b91c1c; }
+    .btn-outline { background: #fff; border: 1.5px solid #d1d5db; color: #374151; }
+    .btn-outline:hover { background: #f3f4f6; }
+    .btn-sm { padding: 5px 10px; font-size: .75rem; }
+    .panel {
+      background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;
+    }
+    .table-wrap { overflow-x: auto; }
+    .jobs-table { width: 100%; border-collapse: collapse; font-size: .84rem; min-width: 980px; }
+    .jobs-table th {
+      padding: 12px 14px; text-align: left; font-size: .72rem; font-weight: 700;
+      color: #9ca3af; text-transform: uppercase; letter-spacing: .04em;
+      border-bottom: 1px solid #e5e7eb; background: #fafafa;
+    }
+    .jobs-table td { padding: 12px 14px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
+    .jobs-table tr:hover td { background: #fafafa; }
+    .ticket-link { color: var(--accent); font-weight: 700; text-decoration: none; }
+    .ticket-link:hover { text-decoration: underline; }
+    .margin-ok { color: #16a34a; font-weight: 700; }
+    .margin-low { color: #dc2626; font-weight: 700; }
+    .badge {
+      display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px;
+      font-size: .7rem; font-weight: 700;
+    }
+    .badge-yes { background: #dcfce7; color: #166534; }
+    .badge-no { background: #f3f4f6; color: #6b7280; }
+    .badge-gm { background: #fef3c7; color: #92400e; }
+    .contract-select {
+      border: 1.5px solid #d1d5db; border-radius: 8px; padding: 6px 8px;
+      font-size: .78rem; max-width: 180px; background: #fff;
+    }
+    .empty-state { text-align: center; padding: 60px 20px; color: #9ca3af; }
+    .costing-panel {
+      background: #fff; border: 1px solid #e5e7eb; border-radius: 12px;
+      padding: 20px; margin-bottom: 20px;
+    }
+    .costing-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 12px; align-items: end;
+    }
+    .costing-result {
+      margin-top: 14px; padding: 12px 14px; border-radius: 8px;
+      background: #f9fafb; font-size: .85rem; display: none;
+    }
+    .costing-result.open { display: block; }
+    .pager {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 14px 16px; border-top: 1px solid #e5e7eb; font-size: .84rem; color: #64748b;
+    }
+    @media (max-width: 768px) {
+      .fin-wrap { padding: 16px 16px 48px; }
+    }
+  </style>
+</head>
+<body class="has-main-nav dochub-page-v2">
+  {% set active_page = 'finance' %}
+  {% include 'partials/main_navbar.html' with context %}
+
+  <button type="button" class="dh-sidebar-toggle" id="finSidebarToggle"
+          onclick="document.getElementById('finSidebar').classList.toggle('open')"
+          aria-label="Open Finance menu" title="Menu">☰</button>
+
+  <div class="dh-page-root">
+    {% include 'partials/finance_sidebar.html' with context %}
+
+    <div class="dh-main">
+      <div class="fin-wrap">
+        <a href="/dashboard" style="color:var(--accent);text-decoration:none;font-size:.82rem;">← Dashboard</a>
+        <h1 style="font-size:1.5rem;font-weight:800;margin:6px 0 4px;">Invoice Processing</h1>
+        <p style="color:#6b7280;font-size:.88rem;margin-bottom:20px;">
+          Review closed jobs, check margins, and link tickets to contracts.
+        </p>
+
+        <nav class="fin-nav">
+          <a href="{{ url_for('finance.dashboard') }}">Invoice Queue</a>
+          <a href="{{ url_for('finance.processing_page') }}" class="active">Invoice Processing</a>
+          <a href="{{ url_for('finance.contracts_page') }}">Contracts</a>
+          <a href="{{ url_for('finance.reports_page') }}">Monthly Reports</a>
+        </nav>
+
+        <div class="costing-panel">
+          <div style="font-weight:700;margin-bottom:12px;">Margin calculator</div>
+          <div class="costing-grid">
+            <div>
+              <label class="form-label">Manpower (AED)</label>
+              <input type="number" class="form-input" id="costManpower" value="0" min="0" step="0.01" style="width:100%;">
+            </div>
+            <div>
+              <label class="form-label">Materials (AED)</label>
+              <input type="number" class="form-input" id="costMaterials" value="0" min="0" step="0.01" style="width:100%;">
+            </div>
+            <div>
+              <label class="form-label">Overhead %</label>
+              <input type="number" class="form-input" id="costOverhead" value="10" min="0" step="0.1" style="width:100%;">
+            </div>
+            <div>
+              <label class="form-label">Markup %</label>
+              <input type="number" class="form-input" id="costMarkup" value="20" min="0" step="0.1" style="width:100%;">
+            </div>
+            <div>
+              <button class="btn btn-primary" type="button" onclick="runCosting()">Calculate</button>
+            </div>
+          </div>
+          <div class="costing-result" id="costingResult"></div>
+        </div>
+
+        <div class="toolbar">
+          <div>
+            <label class="form-label">Month</label>
+            <input type="month" class="form-input" id="monthFilter">
+          </div>
+          <button class="btn btn-outline" type="button" onclick="loadJobs(1)">Refresh</button>
+        </div>
+
+        <div class="panel">
+          <div class="table-wrap">
+            <div id="jobsBody">
+              <div class="empty-state">Loading jobs…</div>
+            </div>
+          </div>
+          <div class="pager" id="jobsPager" style="display:none;">
+            <span id="jobsMeta"></span>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-outline btn-sm" type="button" id="prevPage" onclick="changePage(-1)">Previous</button>
+              <button class="btn btn-outline btn-sm" type="button" id="nextPage" onclick="changePage(1)">Next</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='api-client.js') }}"></script>
+  <script>
+    let MARGIN_THRESHOLD = {{ margin_threshold|default(15) }};
+    let contracts = [];
+    let page = 1;
+    let total = 0;
+    const perPage = 30;
+
+    function escHtml(s) {
+      return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+    function money(n) {
+      return Number(n || 0).toLocaleString('en-AE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    function fmtDate(d) {
+      return d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+    }
+
+    async function apiJson(url, options) {
+      const res = await ApiClient.fetch(url, options || { method: 'GET' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || data.message || ('Request failed (' + res.status + ')'));
+      }
+      return data;
+    }
+
+    async function loadContracts() {
+      try {
+        const res = await apiJson('/finance/api/contracts?status=active');
+        contracts = res.contracts || [];
+      } catch (e) {
+        contracts = [];
+      }
+    }
+
+    function contractOptions(selectedId) {
+      const opts = ['<option value="">— No contract —</option>'];
+      for (const c of contracts) {
+        const sel = String(c.id) === String(selectedId || '') ? ' selected' : '';
+        const label = `${c.contract_id} · ${c.client_name || c.project_name || ''}`;
+        opts.push(`<option value="${c.id}"${sel}>${escHtml(label)}</option>`);
+      }
+      return opts.join('');
+    }
+
+    async function loadJobs(p) {
+      page = p || 1;
+      const month = document.getElementById('monthFilter').value;
+      const qs = new URLSearchParams({ page: String(page), per_page: String(perPage) });
+      if (month) qs.set('month', month);
+      const el = document.getElementById('jobsBody');
+      el.innerHTML = '<div class="empty-state">Loading jobs…</div>';
+      try {
+        const res = await apiJson(`/finance/api/jobs?${qs.toString()}`);
+        total = res.total || 0;
+        renderJobs(res.jobs || []);
+        renderPager();
+      } catch (e) {
+        el.innerHTML = '<div class="empty-state">Failed to load jobs.</div>';
+        document.getElementById('jobsPager').style.display = 'none';
+      }
+    }
+
+    function renderJobs(jobs) {
+      const el = document.getElementById('jobsBody');
+      if (!jobs.length) {
+        el.innerHTML = '<div class="empty-state"><h3>No closed jobs</h3><p>Try another month or process tickets from the Invoice Queue.</p></div>';
+        return;
+      }
+      el.innerHTML = `<table class="jobs-table">
+        <thead>
+          <tr>
+            <th>Work Order</th>
+            <th>Project</th>
+            <th>Chargeable</th>
+            <th>Cost</th>
+            <th>Selling</th>
+            <th>Margin</th>
+            <th>Contract</th>
+            <th>Closed</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          ${jobs.map(j => {
+            const margin = j.margin_pct;
+            const marginCls = margin == null ? '' : (margin < MARGIN_THRESHOLD ? 'margin-low' : 'margin-ok');
+            const marginTxt = margin == null ? '—' : `${margin.toFixed(1)}%`;
+            const gm = j.gm_approval_required && !j.gm_approved
+              ? '<span class="badge badge-gm">GM pending</span>'
+              : '';
+            return `<tr>
+              <td>
+                <a class="ticket-link" href="/tickets/${escHtml(j.ticket_id)}">${escHtml(j.ticket_id)}</a>
+                <div style="font-size:.75rem;color:#94a3b8;margin-top:2px;">${escHtml(j.title)}</div>
+              </td>
+              <td>${escHtml(j.project || '—')}<div style="font-size:.75rem;color:#94a3b8;">${escHtml(j.property || '')}</div></td>
+              <td>${j.is_chargeable ? '<span class="badge badge-yes">Yes</span>' : '<span class="badge badge-no">No</span>'} ${gm}</td>
+              <td>AED ${money(j.actual_price || j.total_cost)}</td>
+              <td>AED ${money(j.selling_price)}</td>
+              <td class="${marginCls}">${marginTxt}</td>
+              <td>
+                <select class="contract-select" data-ticket="${escHtml(j.ticket_id)}"
+                        onchange="linkContract(this)">
+                  ${contractOptions(j.finance_contract_id)}
+                </select>
+              </td>
+              <td>${fmtDate(j.closed_at)}</td>
+              <td>
+                <a class="btn btn-outline btn-sm" href="/tickets/${escHtml(j.ticket_id)}/invoice" target="_blank" rel="noopener">Invoice</a>
+              </td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>`;
+    }
+
+    function renderPager() {
+      const pager = document.getElementById('jobsPager');
+      if (!total) { pager.style.display = 'none'; return; }
+      pager.style.display = 'flex';
+      const from = (page - 1) * perPage + 1;
+      const to = Math.min(page * perPage, total);
+      document.getElementById('jobsMeta').textContent = `${from}–${to} of ${total}`;
+      document.getElementById('prevPage').disabled = page <= 1;
+      document.getElementById('nextPage').disabled = to >= total;
+    }
+
+    function changePage(delta) {
+      loadJobs(page + delta);
+    }
+
+    async function linkContract(sel) {
+      const ticketId = sel.dataset.ticket;
+      const contractId = sel.value ? parseInt(sel.value, 10) : null;
+      sel.disabled = true;
+      try {
+        await apiJson(`/finance/api/tickets/${ticketId}/link-contract`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contract_id: contractId }),
+        });
+      } catch (e) {
+        alert(e.message || 'Failed to link contract.');
+        loadJobs(page);
+      } finally {
+        sel.disabled = false;
+      }
+    }
+
+    async function runCosting() {
+      const payload = {
+        manpower_cost: parseFloat(document.getElementById('costManpower').value) || 0,
+        material_cost: parseFloat(document.getElementById('costMaterials').value) || 0,
+        overhead_pct: parseFloat(document.getElementById('costOverhead').value) || 0,
+        markup_pct: parseFloat(document.getElementById('costMarkup').value) || 0,
+      };
+      const box = document.getElementById('costingResult');
+      try {
+        const res = await apiJson('/finance/api/costing/calculate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const warn = res.gm_approval_required
+          ? `<span style="color:#dc2626;font-weight:700;">GM approval required</span> (margin below ${res.margin_threshold}%)`
+          : `<span style="color:#16a34a;font-weight:700;">Margin OK</span>`;
+        box.classList.add('open');
+        box.innerHTML = `
+          Raw cost AED ${money(res.raw_cost)} · Actual AED ${money(res.actual_price)} ·
+          Selling AED ${money(res.selling_price)} · Margin <strong>${res.margin_pct}%</strong> · ${warn}`;
+      } catch (e) {
+        box.classList.add('open');
+        box.textContent = e.message || 'Calculation failed.';
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      const now = new Date();
+      const m = String(now.getMonth() + 1).padStart(2, '0');
+      document.getElementById('monthFilter').value = `${now.getFullYear()}-${m}`;
+      document.getElementById('monthFilter').addEventListener('change', () => loadJobs(1));
+      try {
+        const s = await apiJson('/finance/api/settings');
+        if (s.settings && s.settings.margin_threshold != null) {
+          MARGIN_THRESHOLD = Number(s.settings.margin_threshold);
+        }
+      } catch (_) { /* keep server-rendered threshold */ }
+      await loadContracts();
+      loadJobs(1);
+    });
+  </script>
+  <script src="{{ url_for('static', filename='mobile_utils.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}" defer></script>
+</body>
+</html>

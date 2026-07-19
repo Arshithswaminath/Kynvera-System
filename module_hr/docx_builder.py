@@ -37,10 +37,10 @@ C_BW_LIGHT = "CCCCCC"
 
 FONT    = "Calibri"
 
-_LOGO = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-    "static", "logo.png"
-)
+_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_LOGO = os.path.join(_ROOT, "static", "icons", "Amaan-logo-tight.png")
+if not os.path.isfile(_LOGO):
+    _LOGO = os.path.join(_ROOT, "static", "logo.png")
 
 
 def _section_avg(fd, sn, suffixes):

@@ -1,0 +1,804 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/design-tokens.css') }}"
+    />
+    {% include 'partials/caveat_font.html' %}
+    <title>{{ cheque.reference_no }} - Cheque Preparation</title>
+    <meta name="theme-color" content="#d21725" />
+    <link
+      rel="icon"
+      type="image/png"
+      href="{{ url_for('static', filename='favicon.png') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='animations.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='mobile_responsive.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/dashboard.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/cheque_pdf_preview.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/signature_modal.css') }}"
+    />
+    <style>
+      :root {
+        --primary: #d21725;
+        --primary-light: #e8323f;
+        --ops-ink: #0f172a;
+        --ops-muted: #64748b;
+        --ops-rule: #e2e8f0;
+      }
+      body.ops-page {
+        background: #faf8f8;
+      }
+      .ops-wrap {
+        max-width: 1100px;
+        margin: 7rem auto 3rem;
+        padding: 0 1.25rem;
+      }
+      .ops-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        flex-wrap: wrap;
+        margin-bottom: 1.4rem;
+      }
+      .ops-title {
+        font-size: 1.7rem;
+        font-weight: 800;
+        color: var(--ops-ink);
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.7rem;
+        flex-wrap: wrap;
+      }
+      .ops-sub {
+        color: var(--ops-muted);
+        margin: 0.35rem 0 0;
+        font-size: 0.95rem;
+      }
+      .ops-actions {
+        display: flex;
+        gap: 0.6rem;
+        flex-wrap: wrap;
+      }
+      .ops-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        border: none;
+        border-radius: 10px;
+        padding: 0.62rem 1.05rem;
+        font-weight: 600;
+        font-size: 0.9rem;
+        cursor: pointer;
+        text-decoration: none;
+        transition:
+          transform 0.12s ease,
+          box-shadow 0.12s ease;
+        font-family: inherit;
+      }
+      .ops-btn-primary {
+        background: var(--primary);
+        color: #fff;
+      }
+      .ops-btn-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 16px rgba(210, 23, 37, 0.22);
+      }
+      .ops-btn-ghost {
+        background: #fff;
+        color: var(--ops-ink);
+        border: 1px solid var(--ops-rule);
+      }
+      .ops-btn-ghost:hover {
+        border-color: var(--primary-light);
+      }
+      .ops-btn-danger {
+        background: #fff;
+        color: #b91c1c;
+        border: 1px solid #fecaca;
+      }
+      .ops-btn-danger:hover {
+        background: #fef2f2;
+        border-color: #b91c1c;
+      }
+      .ops-card {
+        background: #fff;
+        border: 1px solid var(--ops-rule);
+        border-radius: 16px;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+        overflow: hidden;
+      }
+      .badge-chq {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 999px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        text-transform: capitalize;
+        white-space: nowrap;
+        vertical-align: middle;
+      }
+      .badge-chq.requested {
+        background: #e0e7ff;
+        color: #3730a3;
+      }
+      .badge-chq.verified {
+        background: #fef3c7;
+        color: #92400e;
+      }
+      .badge-chq.approved {
+        background: #cffafe;
+        color: #155e75;
+      }
+      .badge-chq.prepared {
+        background: #f3e8ff;
+        color: #6b21a8;
+      }
+      .badge-chq.submitted {
+        background: #dbeafe;
+        color: #1e40af;
+      }
+      .badge-chq.cleared {
+        background: #dcfce7;
+        color: #166534;
+      }
+      .badge-chq.rejected {
+        background: #fee2e2;
+        color: #991b1b;
+      }
+      .badge-chq.cancelled {
+        background: #f1f5f9;
+        color: #64748b;
+      }
+      /* Layout */
+      .chq-layout {
+        display: grid;
+        grid-template-columns: 1fr 340px;
+        gap: 1.2rem;
+        align-items: start;
+      }
+      /* Paper form */
+      .chq-form {
+        padding: 1.8rem 2rem 1.6rem;
+      }
+      .chq-form-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        border-bottom: 3px solid var(--primary);
+        padding-bottom: 1rem;
+        margin-bottom: 1.2rem;
+        flex-wrap: wrap;
+      }
+      .chq-form-title {
+        font-size: 1.05rem;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        color: var(--primary);
+      }
+      .chq-form-co {
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: var(--ops-muted);
+        letter-spacing: 0.05em;
+      }
+      .chq-meta {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.9rem;
+        margin-bottom: 1.2rem;
+      }
+      .chq-meta-item {
+      }
+      .chq-meta-label {
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: 0.07em;
+        color: var(--ops-muted);
+      }
+      .chq-meta-value {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: var(--ops-ink);
+        margin-top: 0.2rem;
+      }
+      .chq-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.88rem;
+        margin-bottom: 0.3rem;
+      }
+      .chq-table th {
+        background: #faf5f6;
+        color: #7a1019;
+        font-weight: 700;
+        text-align: left;
+        padding: 0.6rem 0.8rem;
+        border: 1px solid var(--ops-rule);
+      }
+      .chq-table td {
+        padding: 0.6rem 0.8rem;
+        border: 1px solid #eef2f7;
+        color: var(--ops-ink);
+      }
+      .num-cell {
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+      }
+      .chq-total-row td {
+        font-weight: 800;
+        background: #faf5f6;
+      }
+      /* Signature blocks */
+      .chq-sigs {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.9rem;
+        margin: 1.3rem 0 0.3rem;
+      }
+      .chq-sig {
+        border: 1px solid var(--ops-rule);
+        border-radius: 12px;
+        padding: 0.85rem 0.95rem;
+        min-height: 110px;
+      }
+      .chq-sig-role {
+        font-size: 0.7rem;
+        font-weight: 800;
+        letter-spacing: 0.07em;
+        color: var(--primary);
+        margin-bottom: 0.45rem;
+      }
+      .chq-sig-name {
+        font-weight: 700;
+        color: var(--ops-ink);
+        font-size: 0.92rem;
+      }
+      .chq-sig-ink {
+        display: block;
+        max-width: 100%;
+        max-height: 52px;
+        object-fit: contain;
+        margin: 0.4rem 0 0.2rem;
+      }
+      .chq-sig-rule {
+        border-bottom: 1px solid #cbd5e1;
+        height: 28px;
+        margin: 0.4rem 0 0.2rem;
+      }
+      .chq-sig-date {
+        font-size: 0.78rem;
+        color: var(--ops-muted);
+        margin-top: 0.25rem;
+      }
+      .chq-sig.pending {
+        background: #fafafa;
+      }
+      .chq-sig.pending .chq-sig-name {
+        color: #94a3b8;
+        font-weight: 500;
+        font-style: italic;
+      }
+      .chq-section-label {
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0.07em;
+        color: var(--ops-muted);
+        margin: 1.2rem 0 0.4rem;
+      }
+      .chq-remarks,
+      .chq-docs-box {
+        font-size: 0.9rem;
+        color: var(--ops-ink);
+        white-space: pre-wrap;
+        word-break: break-word;
+        border: 1px solid var(--ops-rule);
+        border-radius: 10px;
+        background: #fafafa;
+        padding: 0.85rem 1rem;
+        min-height: 2.4em;
+        line-height: 1.5;
+      }
+      .chq-docs {
+        margin: 0.2rem 0 0;
+        padding-left: 1.2rem;
+        font-size: 0.9rem;
+        color: var(--ops-ink);
+      }
+      .chq-docs li {
+        margin-bottom: 0.35rem;
+      }
+      .chq-table td {
+        vertical-align: top;
+      }
+      .chq-table td:last-child {
+        min-width: 140px;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      .chq-none {
+        color: #94a3b8;
+        font-style: italic;
+        font-size: 0.88rem;
+      }
+      /* Side panel */
+      .side-card {
+        background: #fff;
+        border: 1px solid var(--ops-rule);
+        border-radius: 16px;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+        padding: 1.2rem 1.3rem;
+        margin-bottom: 1.2rem;
+      }
+      .side-card h3 {
+        margin: 0 0 0.9rem;
+        font-size: 0.95rem;
+        color: var(--ops-ink);
+      }
+      .status-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 0.55rem;
+      }
+      .status-note {
+        width: 100%;
+        border: 1px solid #cbd5e1;
+        border-radius: 9px;
+        padding: 0.55rem 0.65rem;
+        font-size: 0.85rem;
+        font-family: inherit;
+        box-sizing: border-box;
+        margin-bottom: 0.7rem;
+        resize: vertical;
+      }
+      .status-note:focus {
+        outline: none;
+        border-color: var(--primary-light);
+        box-shadow: 0 0 0 3px rgba(210, 23, 37, 0.1);
+      }
+      /* Timeline */
+      .tl {
+        position: relative;
+        margin: 0;
+        padding: 0 0 0 1.35rem;
+        list-style: none;
+      }
+      .tl::before {
+        content: "";
+        position: absolute;
+        left: 0.42rem;
+        top: 0.4rem;
+        bottom: 0.4rem;
+        width: 2px;
+        background: #eef2f7;
+      }
+      .tl li {
+        position: relative;
+        padding-bottom: 1rem;
+      }
+      .tl li:last-child {
+        padding-bottom: 0;
+      }
+      .tl-dot {
+        position: absolute;
+        left: -1.35rem;
+        top: 0.28rem;
+        width: 11px;
+        height: 11px;
+        border-radius: 50%;
+        background: var(--primary);
+        border: 2px solid #fff;
+        box-shadow: 0 0 0 2px #fdeaec;
+      }
+      .tl li.muted .tl-dot {
+        background: #cbd5e1;
+        box-shadow: 0 0 0 2px #f1f5f9;
+      }
+      .tl-title {
+        font-size: 0.86rem;
+        font-weight: 700;
+        color: var(--ops-ink);
+      }
+      .tl-meta {
+        font-size: 0.76rem;
+        color: var(--ops-muted);
+        margin-top: 0.15rem;
+      }
+      .tl-note {
+        font-size: 0.8rem;
+        color: #475569;
+        margin-top: 0.25rem;
+        background: #f8fafc;
+        border-radius: 8px;
+        padding: 0.4rem 0.55rem;
+      }
+      .tl-mail {
+        font-size: 0.72rem;
+        margin-top: 0.25rem;
+        font-weight: 600;
+      }
+      .tl-mail.ok {
+        color: #16a34a;
+      }
+      .tl-mail.no {
+        color: #94a3b8;
+      }
+      .ops-toast {
+        position: fixed;
+        bottom: 1.5rem;
+        left: 50%;
+        transform: translateX(-50%);
+        background: var(--ops-ink);
+        color: #fff;
+        padding: 0.7rem 1.2rem;
+        border-radius: 10px;
+        font-size: 0.9rem;
+        z-index: 2000;
+        opacity: 0;
+        transition: opacity 0.2s;
+        pointer-events: none;
+      }
+      .ops-toast.show {
+        opacity: 1;
+      }
+      .ops-toast.err {
+        background: #b91c1c;
+      }
+      .view-only-tip {
+        font-size: 0.8rem;
+        color: var(--ops-muted);
+        background: #f8fafc;
+        border: 1px solid var(--ops-rule);
+        border-radius: 10px;
+        padding: 0.6rem 0.8rem;
+      }
+      @media (max-width: 900px) {
+        .chq-layout {
+          grid-template-columns: 1fr;
+        }
+        .chq-sigs,
+        .chq-meta {
+          grid-template-columns: 1fr;
+        }
+        .chq-form {
+          padding: 1.2rem 1.1rem;
+        }
+      }
+    </style>
+  </head>
+  <body class="ops-page">
+    {% set active_page = 'operations' %} {% include 'partials/main_navbar.html'
+    with context %}
+
+    <div class="ops-wrap">
+      <div class="ops-head">
+        <div>
+          <a href="/operations/cheques" class="back-btn">
+            <svg
+              width="20"
+              height="20"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M15 19l-7-7 7-7"
+              />
+            </svg>
+            Cheque Preparation
+          </a>
+          <h1 class="ops-title">
+            {{ cheque.reference_no }}
+            <span class="badge-chq" id="statusBadge">…</span>
+          </h1>
+          <p class="ops-sub">Cheque preparation / request form</p>
+        </div>
+        <div class="ops-actions">
+          <button class="ops-btn ops-btn-ghost" id="previewBtn">
+            <svg
+              width="16"
+              height="16"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"
+              />
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
+              />
+            </svg>
+            Preview / Print
+          </button>
+          {% if is_admin %}
+          <a
+            class="ops-btn ops-btn-ghost"
+            href="/operations/cheques?edit={{ cheque.reference_no }}"
+            >Edit on list page</a
+          >
+          <button class="ops-btn ops-btn-danger" id="deleteBtn">Delete</button>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="chq-layout">
+        <!-- Paper-style form -->
+        <div class="ops-card chq-form" id="formCard">
+          <div class="chq-form-head">
+            <div class="chq-form-title">Cheque Preparation / Request Form</div>
+            <div class="chq-form-co">AMAAN SYSTEMS LLC</div>
+          </div>
+
+          <div class="chq-meta" id="metaGrid"></div>
+
+          <table class="chq-table">
+            <thead>
+              <tr>
+                <th style="width: 44px">SN</th>
+                <th>Supplier</th>
+                <th class="num-cell">Amount (AED)</th>
+                <th style="width: 120px">Date</th>
+                <th>Remarks</th>
+              </tr>
+            </thead>
+            <tbody id="itemsBody">
+              <tr>
+                <td colspan="5" class="chq-none">Loading…</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="chq-sigs" id="sigBlocks"></div>
+
+          <div class="chq-section-label">Attached Documents</div>
+          <div class="chq-docs-box" id="docsEl">
+            <span class="chq-none">—</span>
+          </div>
+        </div>
+
+        <!-- Side panel -->
+        <div>
+          {% if is_admin %}
+          <div class="side-card">
+            <h3>Change Status</h3>
+            <textarea
+              class="status-note"
+              id="statusNote"
+              rows="2"
+              placeholder="Optional note (included in the notification email). Verified / Approved open the signature pad first."
+            ></textarea>
+            <div class="status-actions" id="statusActions">
+              <span class="chq-none">Loading…</span>
+            </div>
+          </div>
+          {% else %}
+          <div class="side-card">
+            <h3>Status</h3>
+            <p class="view-only-tip">
+              You have view-only access. Status changes and edits are managed by
+              administrators.
+            </p>
+          </div>
+          {% endif %}
+
+          <div class="side-card">
+            <h3>Status History</h3>
+            <ul class="tl" id="timeline">
+              <li class="muted">
+                <span class="tl-dot"></span>
+                <div class="tl-title">Loading…</div>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {% include 'partials/cheque_pdf_preview_modal.html' %} {% include
+    'partials/signature_modal.html' %}
+
+    <div class="ops-toast" id="toast"></div>
+
+    <script
+      src="{{ url_for('static', filename='pwa-install.js') }}"
+      defer
+    ></script>
+    <script
+      src="{{ url_for('static', filename='mobile_utils.js') }}"
+      defer
+    ></script>
+    <script src="{{ url_for('static', filename='api-client.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+    <script src="{{ url_for('static', filename='js/signature_modal.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/cheque_pdf_preview.js') }}"></script>
+    <script>
+      (function(){
+      const REF = {{ cheque.reference_no | tojson }};
+      const IS_ADMIN = {{ 'true' if is_admin else 'false' }};
+      const LABELS = {requested:'Requested', verified:'Verified', approved:'Approved', prepared:'Prepared',
+      submitted:'Submitted', cleared:'Cleared', rejected:'Rejected', cancelled:'Cancelled'};
+      const SIG_TITLES = { verified: 'Verified By Signature', approved: 'Approved By Signature' };
+
+      function toast(msg, isErr){ const t=document.getElementById('toast'); t.textContent=msg; t.className='ops-toast show'+(isErr?' err':''); setTimeout(()=>t.className='ops-toast',3600); }
+      function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+      function fmtAED(n){ return 'AED ' + (Number(n)||0).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+      function fmtDate(d){ if(!d) return '—'; const dt=new Date(d.length<=10 ? d+'T00:00:00' : d); return dt.toLocaleDateString('en-GB', {day:'2-digit', month:'short', year:'numeric'}); }
+      function fmtDateTime(d){ if(!d) return '—'; const dt=new Date(d); return dt.toLocaleDateString('en-GB', {day:'2-digit', month:'short', year:'numeric'}) + ' ' + dt.toLocaleTimeString('en-GB', {hour:'2-digit', minute:'2-digit'}); }
+
+      // Prefetch profile signature for "Use Saved" in the modal
+      ApiClient.fetch('/api/auth/me', { method:'GET' }).then(async res=>{
+      if(!res.ok) return;
+      const data = await res.json();
+      const saved = data && data.user && data.user.default_signature;
+      if(saved && window.InjaazSignatureModal) InjaazSignatureModal.setSavedSignature(saved);
+      }).catch(()=>{});
+
+      async function load(){
+      try{
+      const res = await ApiClient.fetch('/operations/api/cheques/'+encodeURIComponent(REF), { method:'GET' });
+      const data = await res.json();
+      if(!res.ok || !data.success){ throw new Error(data.error||'Failed to load'); }
+      render(data.cheque);
+      }catch(e){ toast(e.message, true); }
+      }
+
+      function render(c){
+      const badge = document.getElementById('statusBadge');
+      badge.textContent = LABELS[c.status]||c.status;
+      badge.className = 'badge-chq ' + c.status;
+
+      document.getElementById('metaGrid').innerHTML = `
+      <div class="chq-meta-item"><div class="chq-meta-label">Reference No</div><div class="chq-meta-value">${esc(c.reference_no)}</div></div>
+      <div class="chq-meta-item"><div class="chq-meta-label">Office</div><div class="chq-meta-value">${esc(c.office)||'—'}</div></div>
+      <div class="chq-meta-item"><div class="chq-meta-label">Department</div><div class="chq-meta-value">${esc(c.department)||'—'}</div></div>`;
+
+      const items = c.items||[];
+      document.getElementById('itemsBody').innerHTML = (items.length ? items.map(it=>`
+      <tr>
+      <td class="num-cell">${it.sn}</td>
+      <td>${esc(it.supplier)}</td>
+      <td class="num-cell">${fmtAED(it.amount)}</td>
+      <td>${fmtDate(it.cheque_date)}</td>
+      <td>${esc(it.remarks)||'—'}</td>
+      </tr>`).join('') : '<tr><td colspan="5" class="chq-none">No supplier lines</td></tr>')
+      + `<tr class="chq-total-row"><td colspan="2">Total</td><td class="num-cell">${fmtAED(c.total_amount)}</td><td colspan="2"></td></tr>`;
+
+      const sig = (role, name, date, ink) => `
+      <div class="chq-sig ${name?'':'pending'}">
+      <div class="chq-sig-role">${role}</div>
+      <div class="chq-sig-name">${name?esc(name):'Pending'}</div>
+      ${ink ? '<img class="chq-sig-ink" src="'+esc(ink)+'" alt="Signature">' : '<div class="chq-sig-rule"></div>'}
+      <div class="chq-sig-date">${date?fmtDate(date):''}</div>
+      </div>`;
+      document.getElementById('sigBlocks').innerHTML =
+      sig('Requested by', c.requested_by_name, c.requested_date, c.requested_signature) +
+      sig('Verified by', c.verified_by_name, c.verified_date, c.verified_signature) +
+      sig('Approved by', c.approved_by_name, c.approved_date, c.approved_signature);
+
+      const docs = (c.attached_documents||'').split('\n').map(s=>s.trim()).filter(Boolean);
+      document.getElementById('docsEl').innerHTML = docs.length
+      ? '<ol class="chq-docs">'+docs.map(d=>'<li>'+esc(d)+'</li>').join('')+'</ol>'
+      : '<span class="chq-none">—</span>';
+
+      // Timeline (newest first)
+      const logs = (c.status_logs||[]).slice().reverse();
+      document.getElementById('timeline').innerHTML = logs.length ? logs.map(lg=>`
+      <li>
+      <span class="tl-dot"></span>
+      <div class="tl-title">${lg.from_status ? (LABELS[lg.from_status]||lg.from_status)+' → ' : ''}${LABELS[lg.to_status]||lg.to_status}</div>
+      <div class="tl-meta">${esc(lg.changed_by_name)||'System'} · ${fmtDateTime(lg.created_at)}</div>
+      ${lg.note ? '<div class="tl-note">'+esc(lg.note)+'</div>' : ''}
+      <div class="tl-mail ${lg.email_sent?'ok':'no'}">${lg.email_sent?'✓ Notification email sent':'No email sent'}</div>
+      </li>`).join('') : '<li class="muted"><span class="tl-dot"></span><div class="tl-title">No history yet</div></li>';
+
+      if(IS_ADMIN) renderActions(c);
+      }
+
+      function renderActions(c){
+      const el = document.getElementById('statusActions');
+      const allowed = c.allowed_next_statuses||[];
+      if(!allowed.length){
+      el.innerHTML = '<span class="chq-none">This request is in a final status ('+(LABELS[c.status]||c.status)+') — no further changes.</span>';
+      return;
+      }
+      el.innerHTML = allowed.map(s=>{
+      const danger = (s==='rejected'||s==='cancelled');
+      const needsSig = (s==='verified'||s==='approved');
+      const label = needsSig ? ('Sign & mark as '+(LABELS[s]||s)) : ('Mark as '+(LABELS[s]||s));
+      return `<button class="ops-btn ${danger?'ops-btn-danger':'ops-btn-primary'}" data-status="${s}">
+      ${label}</button>`;
+      }).join('');
+      el.querySelectorAll('[data-status]').forEach(btn=>{
+      btn.addEventListener('click', ()=>changeStatus(btn.dataset.status));
+      });
+      }
+
+      function changeStatus(status){
+      const danger = (status==='rejected'||status==='cancelled');
+      if(danger && !confirm('Mark this cheque request as '+(LABELS[status]||status)+'? This is final.')) return;
+
+      // Verified / Approved must capture ink from the shared signature modal first
+      if(status==='verified' || status==='approved'){
+      if(!window.InjaazSignatureModal){
+      toast('Signature modal failed to load. Please refresh.', true);
+      return;
+      }
+      InjaazSignatureModal.open({
+      title: SIG_TITLES[status] || 'Signature',
+      onApply: function(dataUrl){ postStatus(status, dataUrl); }
+      });
+      return;
+      }
+      postStatus(status, null);
+      }
+
+      async function postStatus(status, signature){
+      const note = document.getElementById('statusNote').value.trim();
+      const body = { status, note };
+      if(signature) body.signature = signature;
+      try{
+      const res = await ApiClient.fetch('/operations/api/cheques/'+encodeURIComponent(REF)+'/status', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(body)
+      });
+      const data = await res.json();
+      if(!res.ok || !data.success){ throw new Error(data.error||'Status change failed'); }
+      toast(data.message || 'Status updated');
+      document.getElementById('statusNote').value = '';
+      render(data.cheque);
+      ChequePdfPreview.refreshIfOpen(REF);
+      }catch(e){ toast(e.message, true); }
+      }
+
+      document.getElementById('previewBtn').addEventListener('click', ()=>ChequePdfPreview.open(REF));
+
+      {% if is_admin %}
+      document.getElementById('deleteBtn').addEventListener('click', async ()=>{
+      if(!confirm('Delete cheque request '+REF+'? This also removes its status history.')) return;
+      try{
+      const res = await ApiClient.fetch('/operations/api/cheques/'+encodeURIComponent(REF), { method:'DELETE' });
+      const data = await res.json();
+      if(!res.ok || !data.success){ throw new Error(data.error||'Delete failed'); }
+      window.location.href = '/operations/cheques';
+      }catch(e){ toast(e.message, true); }
+      });
+      {% endif %}
+
+      load();
+      })();
+    </script>
+  </body>
+</html>

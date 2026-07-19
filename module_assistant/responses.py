@@ -319,8 +319,8 @@ def compose_procurement_summary(data):
     if not data.get('has_data'):
         return _base_payload(
             'procurement_data',
-            "You haven't submitted any materials or properties in Procurement yet. Head to the Procurement module to add your first entry.",
-            actions=[{'label': 'Open Procurement', 'href': '/procurement/', 'kind': 'link'}],
+            "You haven't submitted any materials or properties in Store yet. Head to the Store module to add your first entry.",
+            actions=[{'label': 'Open Store', 'href': '/store/', 'kind': 'link'}],
             suggestions=['My tickets', 'My submissions', 'Find a document'],
         )
 
@@ -335,7 +335,7 @@ def compose_procurement_summary(data):
     msg = f"You have {mat} material{'s' if mat != 1 else ''}"
     if prop:
         msg += f" across {prop} propert{'ies' if prop != 1 else 'y'}"
-    msg += " in the Procurement module."
+    msg += " in the Store module."
 
     recent = data.get('recent_materials') or []
     if recent:
@@ -347,7 +347,7 @@ def compose_procurement_summary(data):
         'procurement_data',
         msg,
         cards=cards,
-        actions=[{'label': 'Open Procurement', 'href': '/procurement/', 'kind': 'link'}],
+        actions=[{'label': 'Open Store', 'href': '/store/', 'kind': 'link'}],
         suggestions=['My tickets', 'How many pending forms?', 'My last leave'],
     )
 
@@ -411,15 +411,10 @@ def compose_my_inspections(data):
     total = data.get('total', 0)
     cards = [{'type': 'stat', 'label': 'Total inspections', 'value': str(total)}]
     parts = []
-    if data.get('hvac'):
-        cards.append({'type': 'stat', 'label': 'HVAC & MEP', 'value': str(data['hvac'])})
-        parts.append(f"{data['hvac']} HVAC")
-    if data.get('civil'):
-        cards.append({'type': 'stat', 'label': 'Civil', 'value': str(data['civil'])})
-        parts.append(f"{data['civil']} Civil")
-    if data.get('cleaning'):
-        cards.append({'type': 'stat', 'label': 'Cleaning', 'value': str(data['cleaning'])})
-        parts.append(f"{data['cleaning']} Cleaning")
+    fire_count = int(data.get('hvac') or 0) + int(data.get('civil') or 0) + int(data.get('cleaning') or 0)
+    if fire_count:
+        cards.append({'type': 'stat', 'label': 'Fire system', 'value': str(fire_count)})
+        parts.append(f"{fire_count} fire system")
 
     breakdown = f" ({', '.join(parts)})" if parts else ''
     msg = f"You have {total} inspection submission{'s' if total != 1 else ''}{breakdown}."

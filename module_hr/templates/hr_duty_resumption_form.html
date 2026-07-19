@@ -104,7 +104,7 @@
       box-shadow:0 1px 4px rgba(210,23,37,.04);
     }
     .sec:last-of-type{margin-bottom:0}
-    .sec-hd{font-size:.75rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--pri);margin-bottom:1rem;padding-bottom:.65rem;border-bottom:2px solid rgba(194,222,206,.7);display:flex;align-items:center;gap:.5rem}
+    .sec-hd{font-size:.75rem;font-weight:700;letter-spacing:.08em;color:var(--pri);margin-bottom:1rem;padding-bottom:.65rem;border-bottom:2px solid rgba(194,222,206,.7);display:flex;align-items:center;gap:.5rem}
     .sec-hd::before{content:'';width:4px;height:16px;background:linear-gradient(180deg,var(--pri),var(--pri-l));border-radius:2px}
 
     .grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:1.25rem 1.75rem}
@@ -355,10 +355,10 @@
       padding:12px 0;border-bottom:1px solid #f1f5f9;
     }
     .duty-sig-summary-row:last-child{border-bottom:none;padding-bottom:2px}
-    .duty-sig-summary-label{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#64748b;display:block;margin-bottom:4px}
+    .duty-sig-summary-label{font-size:.68rem;font-weight:700;letter-spacing:.06em;color:#64748b;display:block;margin-bottom:4px}
     .duty-sig-summary-value{font-size:.88rem;font-weight:600;color:#1e293b;line-height:1.35}
     .duty-sig-summary-value.muted{font-weight:500;color:#94a3b8;font-style:italic}
-    .duty-sig-badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:999px;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+    .duty-sig-badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:999px;font-size:.68rem;font-weight:700;letter-spacing:.04em}
     .duty-sig-badge--signed{background:#dcfce7;color:#15803d}
     .duty-sig-badge--pending{background:#fef9c3;color:#a16207}
     .duty-sig-badge--optional{background:#f1f5f9;color:#64748b}
@@ -947,7 +947,6 @@ function goToStep2(){
   document.getElementById('step2Badge').className='step-item active';
   document.getElementById('step2Badge').classList.remove('locked');
   document.getElementById('connector1').classList.add('done');
-  document.getElementById('step2Panel').scrollIntoView({behavior:'smooth',block:'start'});
   refreshDutySignatureSummary();
 }
 function goToStep1(){
@@ -959,7 +958,6 @@ function goToStep1(){
   document.getElementById('step1Badge').querySelector('.num').textContent='1';
   document.getElementById('step2Badge').className='step-item locked';
   document.getElementById('connector1').classList.remove('done');
-  document.getElementById('step1Panel').scrollIntoView({behavior:'smooth',block:'start'});
   refreshDutySignatureSummary();
 }
 

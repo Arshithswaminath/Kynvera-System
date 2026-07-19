@@ -6,15 +6,12 @@ from typing import Any
 
 
 MODULE_DISPLAY: dict[str, str] = {
-    "hvac_mep": "HVAC & MEP",
+    "hvac_mep": "Fire Systems",
     "civil": "Civil Works",
     "cleaning": "Cleaning Services",
-    "qhsi_inspection": "QHSI Inspection",
-    "qhsi_staff_compliance": "QHSI Staff Compliance",
     "procurement_material": "Procurement Request",
     "procurement_property": "Procurement Property",
     "catalog_material": "Material Catalog",
-    "bd_email": "Business Development",
     "mmr": "MMR Report",
 }
 
@@ -75,7 +72,7 @@ def format_visit_date_label(visit_date: date | datetime | str | None) -> str | N
 INSPECTION_MODULE_TYPES = ("hvac_mep", "civil", "cleaning")
 
 # Document number series — each category gets its own running sequence.
-SERIES_PREFIXES = ("HR", "INSP", "QHSI", "PRC", "TKT", "DOC")
+SERIES_PREFIXES = ("HR", "INSP", "PRC", "TKT", "DOC")
 
 
 def series_for_module_type(module_type: str | None) -> str:
@@ -85,8 +82,6 @@ def series_for_module_type(module_type: str | None) -> str:
         return "HR"
     if mt in INSPECTION_MODULE_TYPES:
         return "INSP"
-    if mt.startswith("qhsi"):
-        return "QHSI"
     if mt.startswith("procurement") or mt == "catalog_material":
         return "PRC"
     if mt.startswith("ticket"):

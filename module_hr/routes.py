@@ -7,6 +7,7 @@ import uuid
 from datetime import datetime
 from flask import Blueprint, render_template, request, jsonify, current_app, redirect, send_file, url_for
 from flask_jwt_extended import jwt_required, get_jwt_identity
+from sqlalchemy import or_
 from sqlalchemy.orm.attributes import flag_modified
 from app.models import db, User, Submission, Notification
 from common.form_data_utils import shallow_copy_form_data as _mutable_form_data
@@ -51,6 +52,11 @@ from module_hr.hr_management_chain import (
 )
 
 from module_hr.hr_signoff_activity import compute_hr_signoff_activity, hr_workflow_status_label
+from module_hr.hr_visibility import (
+    filter_hr_submissions_for_user,
+    user_has_visible_pending_hr_review,
+    user_sees_org_wide_hr_inbox,
+)
 
 from .print_utils import render_form_for_print
 from .docx_service import generate_hr_docx, get_supported_docx_forms
@@ -186,8 +192,33 @@ def _hr_form_context(user):
     }
 
 
+def _user_is_reporting_manager_of_submitter(user: User | None, submission: Submission | None) -> bool:
+    """True when user is the submitter's reporting manager (admin profile link)."""
+    if not user or not submission or not submission.user_id:
+        return False
+    if submission.user_id == user.id:
+        return False
+    submitter = db.session.get(User, submission.user_id)
+    return bool(submitter and submitter.reporting_manager_id == user.id)
+
+
+def _hr_list_visible_to_user_query(user: User):
+    """HR list visibility: admin/GM/HR manager → all; others → own + direct reports.
+
+    Bare access_hr does not grant org-wide visibility (that flag is for module access).
+    """
+    q = Submission.query.filter(Submission.module_type.like('hr_%'))
+    if _role_is_admin(user) or _user_desig_lc(user) in ('general_manager', 'hr_manager'):
+        return q
+    report_ids = db.session.query(User.id).filter(User.reporting_manager_id == user.id)
+    return q.filter(or_(
+        Submission.user_id == user.id,
+        Submission.user_id.in_(report_ids),
+    ))
+
+
 def _can_access_hr_submission_export(user, submission):
-    """Admin, HR, GM may export any HR submission; submitter may export their own."""
+    """Admin, HR, GM may export any HR submission; submitter and their RM may export."""
     if not user or not submission:
         return False
     is_hr = getattr(user, 'access_hr', False) or user.designation == 'hr_manager'
@@ -195,6 +226,8 @@ def _can_access_hr_submission_export(user, submission):
     if _role_is_admin(user) or is_hr or is_gm:
         return True
     if submission.user_id is not None and submission.user_id == user.id:
+        return True
+    if _user_is_reporting_manager_of_submitter(user, submission):
         return True
     # Designated colleague awaiting a routed (e.g. replacement) signature may preview the PDF on the sign page
     if isinstance(getattr(submission, 'module_type', None), str) and submission.module_type.startswith('hr_'):
@@ -240,12 +273,11 @@ def get_form_type_display(module_type):
 
 
 def _notify_hr_staff_new_submission(submission_id, module_type_full, employee_name, exclude_user_id=None):
-    """Inform HR roster that a submission is ready for HR review."""
+    """Inform HR managers (and admins) that a submission is ready for HR review."""
     form_type_display = get_form_type_display(module_type_full)
     q = User.query.filter(
         db.or_(
             User.role == 'admin',
-            User.access_hr == True,
             User.designation == 'hr_manager'
         ),
         User.is_active == True
@@ -260,6 +292,45 @@ def _notify_hr_staff_new_submission(submission_id, module_type_full, employee_na
             message=f'{employee_name} submitted {form_type_display} ({submission_id}).',
             notification_type='hr_pending_review',
             submission_id=submission_id
+        )
+
+
+def _email_hr_submitted(submission, submitter):
+    """Best-effort workflow email on HR form submit."""
+    try:
+        from common.workflow_notifications import send_hr_submitted
+        send_hr_submitted(submission, submitter)
+    except Exception as notify_err:
+        current_app.logger.warning(
+            'HR submit email failed for %s: %s',
+            getattr(submission, 'submission_id', ''),
+            notify_err,
+        )
+
+
+def _email_hr_stage(submission, action_user, action_label):
+    """Best-effort workflow email on HR approve / GM complete."""
+    try:
+        from common.workflow_notifications import send_hr_notification
+        send_hr_notification(submission, action_user, action_label)
+    except Exception as notify_err:
+        current_app.logger.warning(
+            'HR stage email failed for %s: %s',
+            getattr(submission, 'submission_id', ''),
+            notify_err,
+        )
+
+
+def _email_hr_rejected(submission, rejected_by, reason=''):
+    """Best-effort workflow email on HR / GM reject."""
+    try:
+        from common.workflow_notifications import send_hr_rejected
+        send_hr_rejected(submission, rejected_by, reason=reason or '')
+    except Exception as notify_err:
+        current_app.logger.warning(
+            'HR reject email failed for %s: %s',
+            getattr(submission, 'submission_id', ''),
+            notify_err,
         )
 
 
@@ -486,16 +557,14 @@ def hr_dashboard():
 @hr_bp.route('/pending_review')
 @jwt_required()
 def pending_review():
-    """Pending HR Review - For HR managers"""
+    """Pending HR Review — org-wide for HR managers/admin; personalized for involved users."""
     user = get_current_user()
     if not user:
         return jsonify({'error': 'User not found'}), 404
-    
-    # Only HR managers and admin can review
-    is_hr = getattr(user, 'access_hr', False) or user.designation == 'hr_manager'
-    if not _role_is_admin(user) and not is_hr:
+
+    if not user_sees_org_wide_hr_inbox(user) and not user_has_visible_pending_hr_review(user):
         return jsonify({'error': 'Access denied'}), 403
-    
+
     return render_template('hr_pending_review.html', user=user, supported_docx_forms=get_supported_docx_forms(), supported_pdf_forms=get_supported_pdf_forms())
 
 
@@ -752,6 +821,8 @@ def submit_hr_form():
         or 'Employee'
     )
 
+    _email_hr_submitted(submission, user)
+
     if routed_block:
         routed_rows = flatten_signers_notify(routed_block)
         for row in routed_rows:
@@ -808,23 +879,59 @@ def submit_hr_form():
     })
 
 
+_MY_HR_APPROVED_STATUSES = frozenset({'approved', 'completed'})
+
+
+def _classify_own_hr_status(status: str) -> str:
+    """Return pending | approved | rejected for the submitter's own forms."""
+    st = (status or '').strip()
+    if st in _MY_HR_APPROVED_STATUSES:
+        return 'approved'
+    if st == 'rejected' or st == 'closed_by_admin':
+        return 'rejected'
+    return 'pending'
+
+
 @hr_bp.route('/api/my-submissions')
 @jwt_required()
 def get_my_submissions():
-    """Get current user's own HR submissions"""
+    """Get current user's own HR submissions (optional ?view=pending|approved|rejected|all)."""
     user = get_current_user()
     if not user:
         return jsonify({'error': 'User not found'}), 404
-    
-    # Get user's own HR submissions
+
+    view = (request.args.get('view') or 'all').strip().lower()
+    if view not in ('all', 'pending', 'approved', 'rejected'):
+        view = 'all'
+
     submissions = Submission.query.filter(
         Submission.module_type.like('hr_%'),
         Submission.user_id == user.id
     ).order_by(Submission.created_at.desc()).all()
-    
+
+    pending_n = approved_n = rejected_n = 0
+    filtered = []
+    for s in submissions:
+        bucket = _classify_own_hr_status(s.workflow_status)
+        if bucket == 'pending':
+            pending_n += 1
+        elif bucket == 'approved':
+            approved_n += 1
+        else:
+            rejected_n += 1
+        if view == 'all' or bucket == view:
+            filtered.append(s)
+
     return jsonify({
         'success': True,
-        'submissions': [s.to_dict() for s in submissions]
+        'view': view,
+        'counts': {
+            'pending': pending_n,
+            'approved': approved_n,
+            'rejected': rejected_n,
+            'total': len(submissions),
+        },
+        'submissions': [s.to_dict() for s in filtered],
     })
 
 
@@ -835,18 +942,24 @@ def get_user_permissions():
     user = get_current_user()
     if not user:
         return jsonify({'error': 'User not found'}), 404
-    
-    is_hr = getattr(user, 'access_hr', False) or user.designation == 'hr_manager'
-    is_gm = user.designation == 'general_manager'
+
+    is_gm = _user_desig_lc(user) == 'general_manager'
     is_admin = _role_is_admin(user)
-    
+    org_wide_hr = user_sees_org_wide_hr_inbox(user)
+    can_review_hr = org_wide_hr or user_has_visible_pending_hr_review(user)
+    # Personal Pending / Approved cards for staff who use HR forms but are not
+    # the org-wide HR/GM reviewers (e.g. Arshith with Module Access HR only).
+    show_my_forms_tracking = not org_wide_hr and not is_gm and not is_admin
+
     return jsonify({
         'success': True,
         'permissions': {
-            'can_review_hr': is_admin or is_hr,
+            'can_review_hr': can_review_hr,
             'can_approve_gm': is_admin or is_gm,
             'is_admin': is_admin,
             'full_access': is_admin,
+            'org_wide_hr_inbox': org_wide_hr,
+            'show_my_forms_tracking': show_my_forms_tracking,
         }
     })
 
@@ -1146,6 +1259,7 @@ def mgmt_signoff_sign(submission_id):
     finished = submission.workflow_status == 'approved'
     if finished:
         notify_submitter_management_final(app, submission, completed=True)
+        _email_hr_stage(submission, user, 'GM Final Approval — Request Completed')
     else:
         notify_current_management_signers(app, submission)
 
@@ -1186,6 +1300,7 @@ def mgmt_signoff_reject(submission_id):
         rejected=True,
         reason=reason,
     )
+    _email_hr_rejected(submission, user, reason=reason)
     db.session.commit()
     return jsonify({'success': True, 'message': 'Request rejected'})
 
@@ -1225,32 +1340,29 @@ def my_mgmt_signoffs():
 @hr_bp.route('/api/pending-hr-review')
 @jwt_required()
 def get_pending_hr_review():
-    """Get submissions pending HR review"""
+    """Get submissions pending HR review (org-wide for HR managers; personalized otherwise)."""
     user = get_current_user()
     if not user:
         return jsonify({'error': 'User not found'}), 404
-    
-    # Only HR managers and admin can access
-    is_hr = getattr(user, 'access_hr', False) or user.designation == 'hr_manager'
-    if not _role_is_admin(user) and not is_hr:
-        return jsonify({'error': 'Access denied'}), 403
-    
-    # Get submissions pending HR review (legacy inbox + final HR step of management chain)
+
     submissions = Submission.query.filter(
         Submission.module_type.like('hr_%'),
         Submission.workflow_status.in_(['hr_review', WF_MGMT_HR]),
     ).order_by(Submission.created_at.desc()).all()
-    
-    # Add submitter info
+
+    visible = filter_hr_submissions_for_user(user, submissions)
+    if not user_sees_org_wide_hr_inbox(user) and not visible:
+        return jsonify({'error': 'Access denied'}), 403
+
     result = []
-    for s in submissions:
+    for s in visible:
         data = s.to_dict()
         submitter = db.session.get(User, s.user_id)
         if submitter:
             data['submitter_name'] = submitter.full_name or submitter.username
             data['submitter_email'] = submitter.email
         result.append(data)
-    
+
     return jsonify({
         'success': True,
         'submissions': result
@@ -1331,20 +1443,18 @@ def hr_approve(submission_id):
     if not user:
         return jsonify({'error': 'User not found'}), 404
     
-    # Only HR managers and admin can approve
-    is_hr = getattr(user, 'access_hr', False) or user.designation == 'hr_manager'
-    if not _role_is_admin(user) and not is_hr:
+    if not user_sees_org_wide_hr_inbox(user):
         return jsonify({'error': 'Access denied'}), 403
-    
+
     submission = Submission.query.filter_by(submission_id=submission_id).first()
     if not submission:
         return jsonify({'error': 'Submission not found'}), 404
-    
+
     if submission.workflow_status != 'hr_review':
         return jsonify({'error': 'Submission is not pending HR review'}), 400
-    
+
     data = request.get_json() or {}
-    
+
     # Update submission
     form_data = _mutable_form_data(submission)
     form_data['hr_reviewed_by_id'] = user.id
@@ -1355,7 +1465,7 @@ def hr_approve(submission_id):
     # Merge form-specific HR fields (e.g. leave_application: hr_checked, hr_balance_cf, etc.)
     for k, v in (data.get('form_data_hr') or {}).items():
         form_data[k] = v
-    
+
     submission.form_data = form_data
     submission.workflow_status = 'gm_review'  # Forward to GM
     submission.status = 'submitted'
@@ -1383,6 +1493,7 @@ def hr_approve(submission_id):
             notification_type='gm_approval_pending',
             submission_id=submission_id
         )
+    _email_hr_stage(submission, user, 'HR Approved — Pending GM Signature')
     db.session.commit()
     
     return jsonify({
@@ -1398,24 +1509,23 @@ def hr_reject(submission_id):
     user = get_current_user()
     if not user:
         return jsonify({'error': 'User not found'}), 404
-    
-    is_hr = getattr(user, 'access_hr', False) or user.designation == 'hr_manager'
-    if not _role_is_admin(user) and not is_hr:
+
+    if not user_sees_org_wide_hr_inbox(user):
         return jsonify({'error': 'Access denied'}), 403
-    
+
     submission = Submission.query.filter_by(submission_id=submission_id).first()
     if not submission:
         return jsonify({'error': 'Submission not found'}), 404
-    
+
     data = request.get_json() or {}
-    
+
     # Update submission
     form_data = _mutable_form_data(submission)
     form_data['hr_rejected_by_id'] = user.id
     form_data['hr_rejected_by_name'] = user.full_name or user.username
     form_data['hr_rejected_at'] = naive_utc_isoformat_z(utc_now_naive())
     form_data['hr_rejection_reason'] = data.get('reason', '')
-    
+
     submission.form_data = form_data
     submission.workflow_status = 'rejected'
     submission.status = 'rejected'
@@ -1436,7 +1546,8 @@ def hr_reject(submission_id):
             notification_type='hr_rejected',
             submission_id=submission_id
         )
-    
+
+    _email_hr_rejected(submission, user, reason=rejection_reason)
     db.session.commit()
     
     return jsonify({
@@ -1504,7 +1615,8 @@ def gm_approve(submission_id):
             notification_type='hr_approved',
             submission_id=submission_id
         )
-    
+
+    _email_hr_stage(submission, user, 'GM Final Approval — Request Completed')
     db.session.commit()
     
     return jsonify({
@@ -1569,7 +1681,8 @@ def gm_reject(submission_id):
             notification_type='hr_rejected',
             submission_id=submission_id
         )
-    
+
+    _email_hr_rejected(submission, user, reason=rejection_reason)
     db.session.commit()
     
     return jsonify({
@@ -1581,7 +1694,7 @@ def gm_reject(submission_id):
 @hr_bp.route('/api/submissions')
 @jwt_required()
 def get_hr_submissions():
-    """Get all HR submissions - For HR dashboard"""
+    """HR dashboard Recent Submissions: own + direct reports; GM/admin see all."""
     user = get_current_user()
     if not user:
         return jsonify({'error': 'User not found'}), 404
@@ -1591,10 +1704,11 @@ def get_hr_submissions():
     if not _role_is_admin(user) and not is_hr and not is_gm:
         return jsonify({'error': 'Access denied'}), 403
     
-    # Get all HR submissions
-    submissions = Submission.query.filter(
-        Submission.module_type.like('hr_%')
-    ).order_by(Submission.created_at.desc()).all()
+    submissions = (
+        _hr_list_visible_to_user_query(user)
+        .order_by(Submission.created_at.desc())
+        .all()
+    )
     
     return jsonify({
         'success': True,

@@ -11,7 +11,7 @@ from sqlalchemy import or_
 from app.models import DocHubDocument, Submission
 
 INSPECTION_MODULE_TYPES = (
-    'hvac_mep', 'civil', 'cleaning', 'qhsi_inspection', 'qhsi_staff_compliance',
+    'hvac_mep', 'civil', 'cleaning',
 )
 HR_LEAVE_MODULE_TYPES = ('hr_leave_application', 'hr_leave')
 TERMINAL_WORKFLOW = ('completed', 'closed_by_admin', 'rejected')
@@ -312,7 +312,7 @@ def get_my_profile(user, person_name: str = None):
 
 
 def get_procurement_summary(user):
-    """Materials and properties submitted by this user in the Procurement module."""
+    """Materials and properties submitted by this user in the Store module."""
     uid = user.id
     PROC_MODULE_TYPES = ('procurement_material', 'procurement_property', 'catalog_material')
     rows = Submission.query.filter(
@@ -394,7 +394,7 @@ def get_ticket_summary(user):
 
 
 def get_my_inspections_summary(user):
-    """Inspection form submissions by the current user (HVAC, Civil, Cleaning)."""
+    """Inspection form submissions by the current user (fire system)."""
     INSPECTION_TYPES = ('hvac_mep', 'civil', 'cleaning')
     rows = Submission.query.filter(
         Submission.user_id == user.id,
@@ -427,16 +427,13 @@ def get_my_inspections_summary(user):
 
 
 MODULE_ACCESS_LABELS = {
-    'access_hvac': 'HVAC & MEP Inspections',
-    'access_civil': 'Civil Works Inspections',
-    'access_cleaning': 'Cleaning Inspections',
+    'access_hvac': 'Fire system inspection',
     'access_hr': 'HR (leave, forms, requests)',
-    'access_procurement_module': 'Procurement',
-    'access_business_development': 'Business Development',
+    'access_procurement_module': 'Store',
+    'access_business_development': 'Sales',
     'access_report_generation': 'Email Automation',
     'access_submitted_forms': 'Submitted Forms hub',
     'access_ticketing': 'Ticketing / Work Orders',
-    'access_qhsi': 'QHSI (Quality, Hospitality, Safety & Inspections)',
 }
 
 
@@ -471,9 +468,18 @@ def get_account_context(user) -> str:
     if role == 'admin':
         lines.append("Module access: ALL modules (administrator).")
     else:
+        def _has_module(attr):
+            if attr == 'access_hvac':
+                return bool(
+                    getattr(user, 'access_hvac', False)
+                    or getattr(user, 'access_civil', False)
+                    or getattr(user, 'access_cleaning', False)
+                )
+            return bool(getattr(user, attr, False))
+
         granted = [
             label for attr, label in MODULE_ACCESS_LABELS.items()
-            if bool(getattr(user, attr, False))
+            if _has_module(attr)
         ]
         try:
             if _has_dochub_access(user):
@@ -486,7 +492,7 @@ def get_account_context(user) -> str:
             lines.append("Modules this user has access to: none granted yet.")
         not_granted = [
             label for attr, label in MODULE_ACCESS_LABELS.items()
-            if not bool(getattr(user, attr, False))
+            if not _has_module(attr)
         ]
         if not_granted:
             lines.append("Modules NOT granted: " + ", ".join(not_granted) + ".")

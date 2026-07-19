@@ -102,13 +102,6 @@ _INTENT_PATTERNS = {
         r'\bpricing\b',
         r'\b(register|registered)\s+propert(y|ies)\b',
     ],
-    'qhsi_help': [
-        r'\bqhsi\b',
-        r'\bqhse\b',
-        r'\bstaff\s+compliance\b',
-        r'\btraining\s+(booking|session|meeting)\b',
-        r'\b(uniform|ppe|safety\s+kit)\b',
-    ],
     'mmr_help': [
         r'\bmmr\b',
         r'\bmonthly\s+(maintenance\s+)?report\b',
@@ -185,7 +178,6 @@ _INTENT_KEYWORDS = {
     'ticketing_help': {'ticket', 'tickets', 'ticketing', 'workorder', 'work', 'order', 'service'},
     'inspection_help': {'inspection', 'hvac', 'mep', 'civil', 'cleaning', 'site', 'visit'},
     'procurement_help': {'procurement', 'material', 'materials', 'pricing', 'property', 'properties'},
-    'qhsi_help': {'qhsi', 'qhse', 'compliance', 'training', 'uniform', 'ppe', 'safety'},
     'mmr_help': {'mmr', 'monthly', 'report', 'chargeable', 'schedule'},
     'bd_help': {'business', 'development', 'pipeline', 'deals', 'leads', 'contacts'},
     'hr_form_help': {'termination', 'asset', 'visa', 'passport', 'grievance', 'appraisal',
@@ -309,7 +301,7 @@ def resolve_intent(message: str) -> IntentResult:
     # All help-style intents carry the raw query so the merged knowledge brain can answer.
     _HELP_INTENTS = {
         'module_help', 'ticketing_help', 'inspection_help', 'procurement_help',
-        'qhsi_help', 'mmr_help', 'bd_help', 'hr_form_help', 'workflow_help', 'profile_help',
+        'mmr_help', 'bd_help', 'hr_form_help', 'workflow_help', 'profile_help',
     }
     if best_intent in _HELP_INTENTS:
         entities['help_query'] = text
