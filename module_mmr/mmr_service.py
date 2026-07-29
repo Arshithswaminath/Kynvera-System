@@ -2153,7 +2153,7 @@ def _write_logo_header(ws, title: str, span_cols: int) -> int:
     if span_cols > 2:
         ws.merge_cells(f'B1:{end}1')
 
-    sub_cell = ws.cell(row=2, column=2, value='Injaaz Application – Report Generation')
+    sub_cell = ws.cell(row=2, column=2, value='Kynvera – Report Generation')
     sub_cell.font = Font(bold=True, size=9, color=SECONDARY, name='Calibri')
     sub_cell.alignment = Alignment(horizontal='left', vertical='center')
     if span_cols > 2:

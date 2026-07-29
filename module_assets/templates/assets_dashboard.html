@@ -1,0 +1,87 @@
+{% set fm_page_title = 'FM Assets' %}
+{% set fm_topbar_title = 'Dashboard' %}
+{% include 'partials/fm_shell_start.html' %}
+
+  <header class="fm-header">
+    <div>
+      <h1>FM Assets</h1>
+      <p>Equipment registry, health, warranty, and budget overview</p>
+    </div>
+    <div class="fm-header-actions">
+      {% if can_write %}
+      <a class="fm-btn fm-btn-primary" href="{{ url_for('assets_bp.assets_new_page') }}">Add asset</a>
+      {% endif %}
+    </div>
+  </header>
+
+  <section class="fm-kpi-grid">
+    <div class="fm-kpi">
+      <span class="fm-kpi-label">Building health</span>
+      <span class="fm-kpi-value">{% if kpis.building_health_pct is not none %}{{ kpis.building_health_pct }}%{% else %}—{% endif %}</span>
+      <span class="fm-kpi-hint">Avg health score across scored assets</span>
+    </div>
+    <div class="fm-kpi">
+      <span class="fm-kpi-label">Warranty status</span>
+      <span class="fm-kpi-value">{{ kpis.warranty.active }} active</span>
+      <span class="fm-kpi-hint">{{ kpis.warranty.expiring_30d }} expiring · {{ kpis.warranty.expired }} expired · {{ kpis.warranty.unknown }} unknown</span>
+    </div>
+    <div class="fm-kpi">
+      <span class="fm-kpi-label">Budget utilization</span>
+      <span class="fm-kpi-value">{% if kpis.budget.utilization_pct is not none %}{{ kpis.budget.utilization_pct }}%{% else %}—{% endif %}</span>
+      <span class="fm-kpi-hint">Maint {{ '{:,.0f}'.format(kpis.budget.maintenance_total) }} / Purchase {{ '{:,.0f}'.format(kpis.budget.purchase_total) }}</span>
+    </div>
+    <div class="fm-kpi fm-kpi-warn">
+      <span class="fm-kpi-label">Critical assets</span>
+      <span class="fm-kpi-value">{{ kpis.critical_count }}</span>
+      <span class="fm-kpi-hint">Status critical or health &lt; 40 · {{ kpis.total_assets }} total</span>
+    </div>
+  </section>
+
+  <section class="fm-panel">
+    <div class="fm-panel-head">
+      <h2>Recent assets</h2>
+      <a href="{{ url_for('assets_bp.assets_list_page') }}">View all</a>
+    </div>
+    {% if assets %}
+    <div class="fm-table-wrap">
+      <table class="fm-table">
+        <thead>
+          <tr>
+            <th>ID</th><th>Name</th><th>Type</th><th>Building</th><th>Health</th><th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for a in assets %}
+          <tr onclick="location.href='/assets/{{ a.asset_id }}'">
+            <td>{{ a.asset_id }}</td>
+            <td>{{ a.name }}</td>
+            <td>{{ a.asset_type or '—' }}</td>
+            <td>{{ a.building or '—' }}</td>
+            <td>{% if a.health_score is not none %}{{ a.health_score }}{% else %}—{% endif %}</td>
+            <td><span class="fm-status fm-status-{{ a.status or 'active' }}">{{ a.status or 'active' }}</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="fm-empty">No assets yet. {% if can_write %}<a href="{{ url_for('assets_bp.assets_new_page') }}">Create the first one</a>.{% endif %}</p>
+    {% endif %}
+  </section>
+
+  {% if kpis.by_building %}
+  <section class="fm-panel">
+    <div class="fm-panel-head"><h2>By building</h2></div>
+    <div class="fm-building-grid">
+      {% for b in kpis.by_building %}
+      <div class="fm-building-card">
+        <strong>{{ b.building }}</strong>
+        <span>{{ b.count }} assets</span>
+        <span>Health {% if b.avg_health is not none %}{{ b.avg_health }}%{% else %}—{% endif %}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+{% include 'partials/fm_shell_end.html' %}

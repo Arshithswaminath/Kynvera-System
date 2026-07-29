@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {% set title = 'Kynvera — All your operations on one platform' %}
+    {% include 'partials/landing_head.html' %}
+</head>
+<body class="landing">
+
+    <div class="landing-atmosphere" aria-hidden="true">
+        <span class="landing-blob landing-blob-a"></span>
+        <span class="landing-blob landing-blob-b"></span>
+        <span class="landing-blob landing-blob-c"></span>
+    </div>
+
+    <nav class="landing-nav">
+        <div class="landing-nav-inner">
+            <a href="{{ url_for('index') }}" class="landing-brand" aria-label="Kynvera home">
+                <img class="landing-brand-mark" src="{{ url_for('static', filename='images/kynvera/kynvera-mark-48.png') }}" alt="">
+            </a>
+            <div class="landing-nav-actions">
+                <a href="{{ url_for('login_page') }}" class="btn-nav-signin">Sign in</a>
+                <a href="{{ url_for('register_page') }}" class="btn-coral">Get started</a>
+            </div>
+        </div>
+    </nav>
+
+    <header class="landing-hero">
+        <img class="hero-brand" src="{{ url_for('static', filename='images/kynvera/kynvera-wordmark.png') }}" alt="Kynvera">
+        <h1>All your operations<br>on <span class="hero-highlight">one platform.</span></h1>
+        <p class="hero-sub">The hub for your teams to run logistics, facilities, and day-to-day operations in one place.</p>
+        <div class="hero-cta">
+            <a href="{{ url_for('login_page') }}" class="btn-coral">Sign in</a>
+            <a href="{{ url_for('register_page') }}" class="btn-ghost">Create an account</a>
+            <span class="hero-note" aria-hidden="true">
+                <svg viewBox="0 0 40 30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M36 4C28 14 18 18 5 19"/><path d="M11 13l-6 6 8 3"/></svg>
+                one login for everything!
+            </span>
+        </div>
+    </header>
+
+    <section class="landing-apps" id="landing-apps" aria-label="Platform modules">
+        <div class="landing-apps-inner">
+            <div class="landing-apps-grid">
+
+                <a href="{{ url_for('login_page', next='/hr/') }}" class="app-tile">
+                    <span class="app-tile-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path class="duo-fill" d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle class="duo-fill" cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    </span>
+                    <span class="app-tile-label">HR</span>
+                </a>
+
+                <a href="{{ url_for('login_page', next='/admin/mmr/') }}" class="app-tile">
+                    <span class="app-tile-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect class="duo-fill" x="6.4" y="13" width="3.2" height="8" rx="1"/><rect class="duo-fill" x="11.9" y="9" width="3.2" height="12" rx="1"/><rect class="duo-fill" x="17.4" y="5.5" width="3.2" height="15.5" rx="1"/><path d="M3 3v16a2 2 0 0 0 2 2h16"/></svg>
+                    </span>
+                    <span class="app-tile-label">Reports</span>
+                </a>
+
+                <a href="{{ url_for('login_page', next='/inspection/') }}" class="app-tile">
+                    <span class="app-tile-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle class="duo-fill" cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+                    </span>
+                    <span class="app-tile-label">Inspection</span>
+                </a>
+
+                <a href="{{ url_for('login_page', next='/procurement/') }}" class="app-tile">
+                    <span class="app-tile-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path class="duo-fill" d="M6 7h15l-1.3 8.3a2 2 0 0 1-2 1.7H9.3a2 2 0 0 1-2-1.7z"/><path d="M3 3h2l.9 4.5"/><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg>
+                    </span>
+                    <span class="app-tile-label">Procurement</span>
+                </a>
+
+                <a href="{{ url_for('login_page', next='/qhsi/') }}" class="app-tile">
+                    <span class="app-tile-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path class="duo-fill" d="M12 3 4 6v6c0 5 3.4 8.4 8 9.5 4.6-1.1 8-4.5 8-9.5V6z"/><path d="m9 12 2 2 4-4"/></svg>
+                    </span>
+                    <span class="app-tile-label">QHSE</span>
+                </a>
+
+                <a href="{{ url_for('login_page', next='/tickets/') }}" class="app-tile">
+                    <span class="app-tile-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path class="duo-fill" d="M3 9a2 2 0 0 1 0 4v4a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4a2 2 0 0 1 0-4V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2z"/><path d="m9 12 2 2 4-4"/></svg>
+                    </span>
+                    <span class="app-tile-label">Service Tickets</span>
+                </a>
+
+                <a href="{{ url_for('login_page', next='/assets/') }}" class="app-tile">
+                    <span class="app-tile-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path class="duo-fill" d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-7.9 7.9l-6.9 6.9a2.12 2.12 0 0 1-3-3l6.9-6.9a6 6 0 0 1 7.9-7.9z"/></svg>
+                    </span>
+                    <span class="app-tile-label">FM Assets</span>
+                </a>
+
+                <a href="{{ url_for('login_page', next='/workflow/submitted-forms') }}" class="app-tile">
+                    <span class="app-tile-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path class="duo-fill" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 15l2 2 4-4"/></svg>
+                    </span>
+                    <span class="app-tile-label">Submitted Forms</span>
+                </a>
+
+                <a href="{{ url_for('login_page', next='/workflow/pending-reviews') }}" class="app-tile">
+                    <span class="app-tile-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle class="duo-fill" cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                    </span>
+                    <span class="app-tile-label">Pending Review</span>
+                </a>
+
+                <a href="{{ url_for('login_page', next='/admin/devices') }}" class="app-tile">
+                    <span class="app-tile-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect class="duo-fill" x="2" y="4" width="20" height="14" rx="2"/><path d="M8 21h8M12 18v3"/></svg>
+                    </span>
+                    <span class="app-tile-label">Devices</span>
+                </a>
+
+                <a href="{{ url_for('login_page', next='/admin/bd') }}" class="app-tile">
+                    <span class="app-tile-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect class="duo-fill" x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18"/></svg>
+                    </span>
+                    <span class="app-tile-label">Business Dev</span>
+                </a>
+
+                <a href="{{ url_for('login_page', next='/admin/bd') }}" class="app-tile">
+                    <span class="app-tile-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect class="duo-fill" x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+                    </span>
+                    <span class="app-tile-label">Email Automation</span>
+                </a>
+
+            </div>
+
+            <p class="landing-apps-caption">
+                <strong>One workspace for your whole operation.</strong><br>
+                Each module simplifies a process and empowers your team — sign in to get started.
+            </p>
+        </div>
+    </section>
+
+    <section class="landing-pillars" aria-labelledby="pillars-title">
+        <div class="landing-section-inner">
+            <p class="section-eyebrow">Why teams choose Kynvera</p>
+            <h2 id="pillars-title">Built for the way operations actually run</h2>
+            <p class="section-lead">From the field to the boardroom — every workflow shares one identity, one audit trail, and one place to act.</p>
+
+            <div class="pillars-grid">
+                <article class="pillar">
+                    <span class="pillar-index" aria-hidden="true">01</span>
+                    <h3>Unified access</h3>
+                    <p>One secure login unlocks HR, tickets, inspections, assets, procurement, and more — without bouncing between tools.</p>
+                </article>
+                <article class="pillar">
+                    <span class="pillar-index" aria-hidden="true">02</span>
+                    <h3>Field-ready workflows</h3>
+                    <p>Forms, reviews, and service tickets stay connected so nothing stalls between the site and the office.</p>
+                </article>
+                <article class="pillar">
+                    <span class="pillar-index" aria-hidden="true">03</span>
+                    <h3>Clear accountability</h3>
+                    <p>Roles, approvals, and history stay visible — so teams know who owns what, and leaders can trust the numbers.</p>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <section class="landing-flow" aria-labelledby="flow-title">
+        <div class="landing-section-inner">
+            <p class="section-eyebrow">How it works</p>
+            <h2 id="flow-title">Three steps from sign-in to done</h2>
+
+            <ol class="flow-steps">
+                <li class="flow-step">
+                    <span class="flow-step-num">1</span>
+                    <div>
+                        <h3>Sign in once</h3>
+                        <p>Authenticate with your Kynvera credentials and optional MFA.</p>
+                    </div>
+                </li>
+                <li class="flow-step">
+                    <span class="flow-step-num">2</span>
+                    <div>
+                        <h3>Open any module</h3>
+                        <p>Jump into the workspace your role needs — no extra passwords.</p>
+                    </div>
+                </li>
+                <li class="flow-step">
+                    <span class="flow-step-num">3</span>
+                    <div>
+                        <h3>Keep work moving</h3>
+                        <p>Submit, review, assign, and close loops across the whole operation.</p>
+                    </div>
+                </li>
+            </ol>
+        </div>
+    </section>
+
+    <section class="landing-cta-band" aria-labelledby="cta-title">
+        <div class="landing-cta-inner">
+            <div class="landing-cta-copy">
+                <h2 id="cta-title">Ready to run everything from one place?</h2>
+                <p>Sign in to your workspace, or create an account to get your team onboarded.</p>
+            </div>
+            <div class="landing-cta-actions">
+                <a href="{{ url_for('login_page') }}" class="btn-coral">Sign in</a>
+                <a href="{{ url_for('register_page') }}" class="btn-ghost btn-ghost-on-warm">Create an account</a>
+            </div>
+        </div>
+    </section>
+
+    <footer class="landing-footer">
+        <div class="landing-footer-top">
+            <div class="landing-footer-brand">
+                <a href="{{ url_for('index') }}" class="landing-brand" aria-label="Kynvera home">
+                    <img class="landing-brand-mark" src="{{ url_for('static', filename='images/kynvera/kynvera-mark-48.png') }}" alt="">
+                    <img class="landing-brand-wordmark" src="{{ url_for('static', filename='images/kynvera/kynvera-wordmark.png') }}" alt="Kynvera">
+                </a>
+                <p>All operations, one platform — logistics, facilities, people, and the day-to-day in a single hub.</p>
+            </div>
+            <div class="landing-footer-cols">
+                <div>
+                    <h3>Platform</h3>
+                    <ul>
+                        <li><a href="{{ url_for('login_page') }}">Sign in</a></li>
+                        <li><a href="{{ url_for('register_page') }}">Create an account</a></li>
+                        <li><a href="#landing-apps">Open modules</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3>Modules</h3>
+                    <ul>
+                        <li><a href="{{ url_for('login_page', next='/hr/') }}">HR</a></li>
+                        <li><a href="{{ url_for('login_page', next='/tickets/') }}">Service Tickets</a></li>
+                        <li><a href="{{ url_for('login_page', next='/assets/') }}">FM Assets</a></li>
+                        <li><a href="{{ url_for('login_page', next='/admin/bd') }}">Email Automation</a></li>
+                        <li><a href="{{ url_for('login_page', next='/procurement/') }}">Procurement</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="landing-footer-bottom">
+            <span class="landing-footer-copy">&copy; 2026 Kynvera. All operations, one platform.</span>
+            <span class="landing-footer-links">
+                <a href="{{ url_for('login_page') }}">Sign in</a>
+                <a href="{{ url_for('register_page') }}">Create an account</a>
+            </span>
+        </div>
+    </footer>
+
+    <script src="{{ url_for('static', filename='mobile_utils.js') }}" defer></script>
+</body>
+</html>

@@ -1,0 +1,926 @@
+"""
+FM Asset Management — CRUD, dashboard KPIs, AI failure/RUL estimates.
+URL prefix: /assets
+"""
+import json
+import logging
+from datetime import datetime, date, timezone
+from flask import (
+    Blueprint, render_template, request, jsonify, redirect, g,
+)
+from flask_jwt_extended import jwt_required, get_jwt_identity
+from sqlalchemy import func
+
+from app.models import (
+    db, User, Asset, Ticket, AssetPrediction, FloorPlan,
+    PortfolioForecast, OutboundWebhook, IntegrationApiKey,
+)
+from common.fm_integration import (
+    fm_log_audit, dispatch_webhooks, jwt_or_api_key_required, create_api_key,
+)
+
+logger = logging.getLogger(__name__)
+
+assets_bp = Blueprint(
+    'assets_bp',
+    __name__,
+    url_prefix='/assets',
+    template_folder='templates',
+)
+
+
+def _utcnow():
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+def _current_user():
+    uid = get_jwt_identity()
+    return User.query.get(uid) if uid else None
+
+
+def _has_access(user):
+    if not user:
+        return False
+    if user.role == 'admin':
+        return True
+    if getattr(user, 'access_ticketing', False):
+        return True
+    return False
+
+
+def _can_write(user):
+    if not user:
+        return False
+    if user.role == 'admin':
+        return True
+    if getattr(user, 'access_ticketing', False) and user.designation in (
+        'supervisor', 'operations_manager', 'general_manager',
+    ):
+        return True
+    return user.role == 'admin'
+
+
+def _next_asset_id():
+    codes = [row[0] for row in db.session.query(Asset.asset_id).all()]
+    max_n = 0
+    for code in codes:
+        if code and str(code).upper().startswith('AST-'):
+            try:
+                max_n = max(max_n, int(str(code).split('-', 1)[1]))
+            except ValueError:
+                pass
+    return f'AST-{max_n + 1:04d}'
+
+
+def _parse_date(val):
+    if not val:
+        return None
+    if isinstance(val, date) and not isinstance(val, datetime):
+        return val
+    s = str(val).strip()[:10]
+    try:
+        return datetime.strptime(s, '%Y-%m-%d').date()
+    except ValueError:
+        return None
+
+
+def _asset_from_payload(data, asset=None):
+    asset = asset or Asset()
+    if not asset.asset_id:
+        asset.asset_id = (data.get('asset_id') or '').strip() or _next_asset_id()
+    asset.qr_code = (data.get('qr_code') or '').strip() or None
+    asset.name = (data.get('name') or '').strip()
+    asset.asset_type = (data.get('asset_type') or '').strip() or None
+    asset.building = (data.get('building') or '').strip() or None
+    asset.floor = (data.get('floor') or '').strip() or None
+    asset.room = (data.get('room') or '').strip() or None
+    asset.manufacturer = (data.get('manufacturer') or '').strip() or None
+    asset.model = (data.get('model') or '').strip() or None
+    asset.serial_number = (data.get('serial_number') or '').strip() or None
+    asset.installation_date = _parse_date(data.get('installation_date'))
+    asset.warranty_expiry = _parse_date(data.get('warranty_expiry'))
+    try:
+        asset.purchase_cost = float(data['purchase_cost']) if data.get('purchase_cost') not in (None, '') else None
+    except (TypeError, ValueError):
+        asset.purchase_cost = None
+    try:
+        mct = data.get('maintenance_cost_total')
+        asset.maintenance_cost_total = float(mct) if mct not in (None, '') else (asset.maintenance_cost_total or 0.0)
+    except (TypeError, ValueError):
+        pass
+    asset.status = (data.get('status') or asset.status or 'active').strip()
+    try:
+        hs = data.get('health_score')
+        asset.health_score = int(hs) if hs not in (None, '') else None
+        if asset.health_score is not None:
+            asset.health_score = max(0, min(100, asset.health_score))
+    except (TypeError, ValueError):
+        pass
+    urls = data.get('image_urls')
+    if isinstance(urls, list):
+        asset.image_urls = json.dumps(urls)
+    elif isinstance(urls, str) and urls.strip():
+        asset.image_urls = urls.strip()
+    asset.notes = (data.get('notes') or '').strip() or None
+    for coord in ('latitude', 'longitude'):
+        if data.get(coord) not in (None, ''):
+            try:
+                setattr(asset, coord, float(data[coord]))
+            except (TypeError, ValueError):
+                pass
+        elif coord in data and data.get(coord) in (None, ''):
+            setattr(asset, coord, None)
+    asset.updated_at = _utcnow()
+    return asset
+
+
+def _ensure_asset_columns(app):
+    extras = [('latitude', 'REAL'), ('longitude', 'REAL')]
+    with app.app_context():
+        try:
+            conn = db.engine.raw_connection()
+            cursor = conn.cursor()
+            if db.engine.dialect.name == 'sqlite':
+                cursor.execute('PRAGMA table_info(fm_assets)')
+                existing = {row[1] for row in cursor.fetchall()}
+            else:
+                cursor.execute(
+                    "SELECT column_name FROM information_schema.columns WHERE table_name='fm_assets'"
+                )
+                existing = {row[0] for row in cursor.fetchall()}
+            for name, typ in extras:
+                if name not in existing:
+                    cursor.execute(f'ALTER TABLE fm_assets ADD COLUMN {name} {typ}')
+            conn.commit()
+            conn.close()
+            db.create_all()
+        except Exception as exc:
+            logger.warning('Asset column ensure: %s', exc)
+
+
+@assets_bp.record_once
+def _on_register(state):
+    _ensure_asset_columns(state.app)
+
+
+def compute_dashboard_kpis():
+    """SQL aggregates for Building Health %, Warranty Status, Budget Utilization."""
+    today = date.today()
+    total = Asset.query.count()
+    if total == 0:
+        return {
+            'total_assets': 0,
+            'building_health_pct': None,
+            'warranty': {'active': 0, 'expiring_30d': 0, 'expired': 0, 'unknown': 0},
+            'budget': {
+                'purchase_total': 0.0,
+                'maintenance_total': 0.0,
+                'utilization_pct': None,
+            },
+            'critical_count': 0,
+            'by_building': [],
+        }
+
+    avg_health = db.session.query(func.avg(Asset.health_score)).filter(
+        Asset.health_score.isnot(None)
+    ).scalar()
+    building_health_pct = round(float(avg_health), 1) if avg_health is not None else None
+
+    assets = Asset.query.all()
+    warranty = {'active': 0, 'expiring_30d': 0, 'expired': 0, 'unknown': 0}
+    for a in assets:
+        if not a.warranty_expiry:
+            warranty['unknown'] += 1
+        elif a.warranty_expiry < today:
+            warranty['expired'] += 1
+        elif (a.warranty_expiry - today).days <= 30:
+            warranty['expiring_30d'] += 1
+        else:
+            warranty['active'] += 1
+
+    purchase_total = db.session.query(func.coalesce(func.sum(Asset.purchase_cost), 0.0)).scalar() or 0.0
+    maintenance_total = db.session.query(
+        func.coalesce(func.sum(Asset.maintenance_cost_total), 0.0)
+    ).scalar() or 0.0
+    utilization_pct = None
+    if purchase_total and float(purchase_total) > 0:
+        utilization_pct = round(100.0 * float(maintenance_total) / float(purchase_total), 1)
+
+    critical_count = Asset.query.filter(
+        db.or_(
+            Asset.status == 'critical',
+            Asset.health_score.isnot(None) & (Asset.health_score < 40),
+        )
+    ).count()
+
+    by_building_rows = (
+        db.session.query(
+            Asset.building,
+            func.count(Asset.id),
+            func.avg(Asset.health_score),
+        )
+        .group_by(Asset.building)
+        .all()
+    )
+    by_building = [
+        {
+            'building': b or 'Unassigned',
+            'count': c,
+            'avg_health': round(float(h), 1) if h is not None else None,
+        }
+        for b, c, h in by_building_rows
+    ]
+
+    return {
+        'total_assets': total,
+        'building_health_pct': building_health_pct,
+        'warranty': warranty,
+        'budget': {
+            'purchase_total': round(float(purchase_total), 2),
+            'maintenance_total': round(float(maintenance_total), 2),
+            'utilization_pct': utilization_pct,
+        },
+        'critical_count': critical_count,
+        'by_building': by_building,
+    }
+
+
+# ── Pages ──────────────────────────────────────────────────────────────
+
+@assets_bp.route('/')
+@jwt_required()
+def assets_dashboard():
+    user = _current_user()
+    if not _has_access(user):
+        return redirect('/dashboard')
+    kpis = compute_dashboard_kpis()
+    assets = Asset.query.order_by(Asset.updated_at.desc()).limit(50).all()
+    return render_template(
+        'assets_dashboard.html',
+        user=user,
+        kpis=kpis,
+        assets=assets,
+        can_write=_can_write(user),
+    )
+
+
+@assets_bp.route('/executive')
+@jwt_required()
+def assets_executive():
+    user = _current_user()
+    if not _has_access(user):
+        return redirect('/dashboard')
+    kpis = compute_dashboard_kpis()
+    ticket_stats = _ticket_exec_stats()
+    forecast = PortfolioForecast.query.order_by(PortfolioForecast.created_at.desc()).first()
+    # Narrative is fetched async by the page (see /assets/api/narrative) so the
+    # dashboard render never blocks on an LLM call.
+    return render_template(
+        'assets_executive.html',
+        user=user,
+        kpis=kpis,
+        ticket_stats=ticket_stats,
+        forecast=forecast.to_dict() if forecast else None,
+        can_write=_can_write(user),
+    )
+
+
+@assets_bp.route('/map')
+@jwt_required()
+def assets_map_page():
+    user = _current_user()
+    if not _has_access(user):
+        return redirect('/dashboard')
+    return render_template('assets_map.html', user=user, can_write=_can_write(user))
+
+
+@assets_bp.route('/twin')
+@jwt_required()
+def assets_twin_page():
+    user = _current_user()
+    if not _has_access(user):
+        return redirect('/dashboard')
+    plans = FloorPlan.query.order_by(FloorPlan.building, FloorPlan.floor).all()
+    return render_template(
+        'assets_twin.html',
+        user=user,
+        plans=plans,
+        can_write=_can_write(user),
+    )
+
+
+@assets_bp.route('/scan')
+@jwt_required()
+def assets_scan_page():
+    user = _current_user()
+    if not _has_access(user):
+        return redirect('/dashboard')
+    return render_template(
+        'assets_scan.html',
+        user=user,
+        can_write=_can_write(user),
+    )
+
+
+def _ticket_exec_stats():
+    open_statuses = {
+        'open', 'assigned', 'site_attended', 'work_started', 'work_completed',
+        'verification', 'provider_closed', 'on_hold',
+        'pending_supervisor', 'in_progress', 'pending_parts', 'pending_verification',
+    }
+    tickets = Ticket.query.filter(Ticket.status != 'draft').all()
+    open_count = sum(1 for t in tickets if (t.status or '') in open_statuses)
+    critical = sum(1 for t in tickets if t.priority == 'critical' and (t.status or '') in open_statuses)
+    breached = 0
+    now = _utcnow()
+    for t in tickets:
+        if not t.sla_hours or not t.created_at or (t.status or '') not in open_statuses:
+            continue
+        try:
+            elapsed = (now - t.created_at).total_seconds() / 3600.0
+            if elapsed > float(t.sla_hours):
+                breached += 1
+        except Exception:
+            pass
+    return {
+        'total': len(tickets),
+        'open': open_count,
+        'critical_open': critical,
+        'sla_breached': breached,
+    }
+
+
+@assets_bp.route('/list')
+@jwt_required()
+def assets_list_page():
+    user = _current_user()
+    if not _has_access(user):
+        return redirect('/dashboard')
+    return render_template(
+        'assets_list.html',
+        user=user,
+        can_write=_can_write(user),
+    )
+
+
+@assets_bp.route('/new')
+@jwt_required()
+def assets_new_page():
+    user = _current_user()
+    if not _can_write(user):
+        return redirect('/assets/')
+    return render_template(
+        'assets_form.html',
+        user=user,
+        asset=None,
+        mode='create',
+        can_write=True,
+    )
+
+
+@assets_bp.route('/<string:asset_code>')
+@jwt_required()
+def assets_detail_page(asset_code):
+    user = _current_user()
+    if not _has_access(user):
+        return redirect('/dashboard')
+    asset = Asset.query.filter_by(asset_id=asset_code).first_or_404()
+    tickets = (
+        Ticket.query.filter_by(asset_id=asset.id)
+        .order_by(Ticket.created_at.desc())
+        .limit(20)
+        .all()
+    )
+    last_pred = (
+        AssetPrediction.query.filter_by(asset_pk=asset.id)
+        .order_by(AssetPrediction.created_at.desc())
+        .first()
+    )
+    return render_template(
+        'assets_detail.html',
+        user=user,
+        asset=asset,
+        tickets=tickets,
+        last_prediction=last_pred.to_dict() if last_pred else None,
+        can_write=_can_write(user),
+    )
+
+
+@assets_bp.route('/<string:asset_code>/edit')
+@jwt_required()
+def assets_edit_page(asset_code):
+    user = _current_user()
+    if not _can_write(user):
+        return redirect(f'/assets/{asset_code}')
+    asset = Asset.query.filter_by(asset_id=asset_code).first_or_404()
+    return render_template(
+        'assets_form.html',
+        user=user,
+        asset=asset,
+        mode='edit',
+        can_write=True,
+    )
+
+
+# ── API ────────────────────────────────────────────────────────────────
+
+@assets_bp.route('/api/assets', methods=['GET'])
+@jwt_or_api_key_required
+def api_list_assets():
+    if getattr(g, 'auth_via', None) != 'api_key':
+        user = _current_user()
+        if not _has_access(user):
+            return jsonify({'success': False, 'error': 'Access denied'}), 403
+    q = Asset.query
+    status = request.args.get('status')
+    building = request.args.get('building')
+    search = (request.args.get('q') or '').strip()
+    critical = request.args.get('critical')
+    if status:
+        q = q.filter(Asset.status == status)
+    if building:
+        q = q.filter(Asset.building == building)
+    if critical in ('1', 'true', 'yes'):
+        q = q.filter(
+            db.or_(
+                Asset.status == 'critical',
+                Asset.health_score.isnot(None) & (Asset.health_score < 40),
+            )
+        )
+    if search:
+        like = f'%{search}%'
+        q = q.filter(
+            db.or_(
+                Asset.name.ilike(like),
+                Asset.asset_id.ilike(like),
+                Asset.qr_code.ilike(like),
+                Asset.asset_type.ilike(like),
+                Asset.serial_number.ilike(like),
+                Asset.building.ilike(like),
+            )
+        )
+    rows = q.order_by(Asset.name.asc()).limit(500).all()
+    return jsonify({'success': True, 'assets': [a.to_dict() for a in rows]})
+
+
+@assets_bp.route('/api/assets', methods=['POST'])
+@jwt_required()
+def api_create_asset():
+    user = _current_user()
+    if not _can_write(user):
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+    data = request.get_json(silent=True) or {}
+    if not (data.get('name') or '').strip():
+        return jsonify({'success': False, 'error': 'name is required'}), 400
+    asset = _asset_from_payload(data)
+    if Asset.query.filter_by(asset_id=asset.asset_id).first():
+        return jsonify({'success': False, 'error': f'Asset ID {asset.asset_id} already exists'}), 400
+    db.session.add(asset)
+    db.session.commit()
+    fm_log_audit(user.id, 'asset_create', 'asset', asset.asset_id, {'name': asset.name})
+    if (asset.status or '') == 'critical':
+        dispatch_webhooks('asset.critical', asset.to_dict())
+    return jsonify({'success': True, 'asset': asset.to_dict()}), 201
+
+
+@assets_bp.route('/api/assets/<string:asset_code>', methods=['GET'])
+@jwt_required()
+def api_get_asset(asset_code):
+    user = _current_user()
+    if not _has_access(user):
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+    asset = Asset.query.filter_by(asset_id=asset_code).first_or_404()
+    return jsonify({'success': True, 'asset': asset.to_dict()})
+
+
+@assets_bp.route('/api/assets/<string:asset_code>', methods=['PUT'])
+@jwt_required()
+def api_update_asset(asset_code):
+    user = _current_user()
+    if not _can_write(user):
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+    asset = Asset.query.filter_by(asset_id=asset_code).first_or_404()
+    data = request.get_json(silent=True) or {}
+    if data.get('name') is not None and not str(data.get('name')).strip():
+        return jsonify({'success': False, 'error': 'name is required'}), 400
+    _asset_from_payload(data, asset=asset)
+    db.session.commit()
+    fm_log_audit(user.id, 'asset_update', 'asset', asset.asset_id, {'name': asset.name})
+    if (asset.status or '') == 'critical':
+        dispatch_webhooks('asset.critical', asset.to_dict())
+    return jsonify({'success': True, 'asset': asset.to_dict()})
+
+
+@assets_bp.route('/api/assets/<string:asset_code>', methods=['DELETE'])
+@jwt_required()
+def api_delete_asset(asset_code):
+    user = _current_user()
+    if not _can_write(user):
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+    asset = Asset.query.filter_by(asset_id=asset_code).first_or_404()
+    Ticket.query.filter_by(asset_id=asset.id).update({'asset_id': None})
+    code = asset.asset_id
+    db.session.delete(asset)
+    db.session.commit()
+    fm_log_audit(user.id, 'asset_delete', 'asset', code, None)
+    return jsonify({'success': True})
+
+
+@assets_bp.route('/api/kpis', methods=['GET'])
+@jwt_required()
+def api_kpis():
+    user = _current_user()
+    if not _has_access(user):
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+    return jsonify({'success': True, 'kpis': compute_dashboard_kpis()})
+
+
+@assets_bp.route('/api/narrative', methods=['GET'])
+@jwt_required()
+def api_cost_narrative():
+    """Short Claude cost narrative for the executive dashboard (async-loaded)."""
+    user = _current_user()
+    if not _has_access(user):
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+    try:
+        from module_assistant.llm import generate_structured, StructuredLLMError, is_llm_enabled
+        from module_assistant.tools import get_fm_cost_trend
+    except ImportError:
+        return jsonify({'success': True, 'narrative': None})
+    if not is_llm_enabled():
+        return jsonify({'success': True, 'narrative': None})
+
+    trend = get_fm_cost_trend(user)
+    if not trend.get('allowed'):
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+
+    system_prompt = (
+        'You write one-line cost summaries for an FM executive dashboard. '
+        'Respond with at most two short factual sentences in third person. '
+        'Never use first person, never ask questions, never offer help, '
+        'never mention missing data beyond a plain statement of the numbers. '
+        'Example tone: "Maintenance costs rose 12% vs June, driven by HVAC work orders."'
+    )
+    user_content = (
+        f"Cost facts:\n{json.dumps(trend, default=str)}\n\n"
+        'Return JSON: {"narrative": "<max two sentences>"}'
+    )
+    try:
+        result = generate_structured(
+            system_prompt, user_content,
+            {'required': ['narrative'], 'properties': {'narrative': str}},
+        )
+        narrative = (result.get('narrative') or '').strip()[:400] or None
+    except StructuredLLMError as exc:
+        logger.warning('Cost narrative failed: %s', exc)
+        narrative = None
+    return jsonify({'success': True, 'narrative': narrative})
+
+
+@assets_bp.route('/api/assets/<string:asset_code>/predict', methods=['POST'])
+@jwt_required()
+def api_predict_asset(asset_code):
+    """Phase 3 — Claude-reasoned failure/RUL estimate (method: llm_estimate)."""
+    user = _current_user()
+    if not _has_access(user):
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+    asset = Asset.query.filter_by(asset_id=asset_code).first_or_404()
+
+    try:
+        from module_assistant.llm import generate_structured, StructuredLLMError, is_llm_enabled
+    except ImportError:
+        return jsonify({'success': False, 'error': 'LLM module unavailable'}), 503
+
+    if not is_llm_enabled():
+        return jsonify({'success': False, 'error': 'LLM is not enabled'}), 503
+
+    history = (
+        Ticket.query.filter_by(asset_id=asset.id)
+        .order_by(Ticket.created_at.desc())
+        .limit(30)
+        .all()
+    )
+    history_lines = []
+    for t in history:
+        history_lines.append(
+            f"- {t.ticket_id} [{t.status}] pri={t.priority} "
+            f"{t.title} cost={t.total_cost or t.projected_cost or 0} "
+            f"created={t.created_at.isoformat() if t.created_at else 'n/a'}"
+        )
+
+    system_prompt = (
+        'You are an FM reliability analyst. Given an asset and its work-order history, '
+        'estimate failure risk and remaining useful life. Be conservative. '
+        'recommendation must be one of: maintain, replace, monitor.'
+    )
+    user_content = (
+        f"Asset:\n{json.dumps(asset.to_dict(), default=str)}\n\n"
+        f"Work order history ({len(history_lines)} recent):\n"
+        + ('\n'.join(history_lines) if history_lines else '(none)')
+        + '\n\nReturn JSON with keys: failure_probability_pct (number 0-100), '
+        'rul_days (integer), predicted_maintenance_cost (number), '
+        'recommendation (maintain|replace|monitor), justification (short string).'
+    )
+    schema = {
+        'required': [
+            'failure_probability_pct', 'rul_days', 'predicted_maintenance_cost',
+            'recommendation', 'justification',
+        ],
+        'properties': {
+            'failure_probability_pct': (int, float),
+            'rul_days': int,
+            'predicted_maintenance_cost': (int, float),
+            'recommendation': str,
+            'justification': str,
+        },
+    }
+    try:
+        result = generate_structured(system_prompt, user_content, schema)
+    except StructuredLLMError as exc:
+        logger.warning('Asset predict failed for %s: %s', asset_code, exc)
+        return jsonify({'success': False, 'error': str(exc)}), 502
+
+    rec = (result.get('recommendation') or 'monitor').strip().lower()
+    if rec not in ('maintain', 'replace', 'monitor'):
+        rec = 'monitor'
+    try:
+        fpp = float(result['failure_probability_pct'])
+        fpp = max(0.0, min(100.0, fpp))
+    except (TypeError, ValueError):
+        fpp = 0.0
+    try:
+        rul = int(result['rul_days'])
+        rul = max(0, min(3650, rul))
+    except (TypeError, ValueError):
+        rul = 0
+    try:
+        pmc = float(result['predicted_maintenance_cost'])
+        pmc = max(0.0, pmc)
+    except (TypeError, ValueError):
+        pmc = 0.0
+
+    payload = {
+        'failure_probability_pct': round(fpp, 1),
+        'rul_days': rul,
+        'predicted_maintenance_cost': round(pmc, 2),
+        'recommendation': rec,
+        'justification': (result.get('justification') or '')[:500],
+        'method': 'llm_estimate',
+        'asset_id': asset.asset_id,
+    }
+    pred = AssetPrediction(
+        asset_pk=asset.id,
+        failure_probability_pct=payload['failure_probability_pct'],
+        rul_days=payload['rul_days'],
+        predicted_maintenance_cost=payload['predicted_maintenance_cost'],
+        recommendation=payload['recommendation'],
+        justification=payload['justification'],
+        method='llm_estimate',
+    )
+    db.session.add(pred)
+    db.session.commit()
+    payload['prediction_id'] = pred.id
+    payload['created_at'] = pred.created_at.isoformat() if pred.created_at else None
+    return jsonify({'success': True, 'prediction': payload})
+
+
+@assets_bp.route('/api/assets/<string:asset_code>/prediction', methods=['GET'])
+@jwt_required()
+def api_last_prediction(asset_code):
+    user = _current_user()
+    if not _has_access(user):
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+    asset = Asset.query.filter_by(asset_id=asset_code).first_or_404()
+    pred = (
+        AssetPrediction.query.filter_by(asset_pk=asset.id)
+        .order_by(AssetPrediction.created_at.desc())
+        .first()
+    )
+    if not pred:
+        return jsonify({'success': True, 'prediction': None})
+    data = pred.to_dict()
+    data['asset_id'] = asset.asset_id
+    return jsonify({'success': True, 'prediction': data})
+
+
+@assets_bp.route('/api/map-points', methods=['GET'])
+@jwt_required()
+def api_map_points():
+    user = _current_user()
+    if not _has_access(user):
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+    points = []
+    for a in Asset.query.filter(Asset.latitude.isnot(None), Asset.longitude.isnot(None)).all():
+        open_tickets = Ticket.query.filter(
+            Ticket.asset_id == a.id,
+            Ticket.status.notin_(['closed', 'cancelled', 'draft', 'resolved']),
+        ).count()
+        points.append({
+            **a.to_dict(),
+            'open_tickets': open_tickets,
+        })
+    return jsonify({'success': True, 'points': points})
+
+
+@assets_bp.route('/api/forecast', methods=['POST'])
+@jwt_required()
+def api_portfolio_forecast():
+    user = _current_user()
+    if not _has_access(user):
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+    try:
+        from module_assistant.llm import generate_structured, StructuredLLMError, is_llm_enabled
+    except ImportError:
+        return jsonify({'success': False, 'error': 'LLM unavailable'}), 503
+    if not is_llm_enabled():
+        return jsonify({'success': False, 'error': 'LLM is not enabled'}), 503
+
+    kpis = compute_dashboard_kpis()
+    ticket_stats = _ticket_exec_stats()
+    assets = [a.to_dict() for a in Asset.query.limit(80).all()]
+    system_prompt = (
+        'You are an FM portfolio analyst. Forecast next-quarter budget, failure volume, '
+        'and spare-parts demand from the provided KPIs and assets. Be conservative.'
+    )
+    user_content = (
+        f"KPIs:\n{json.dumps(kpis, default=str)}\n\nTicket stats:\n{json.dumps(ticket_stats)}\n\n"
+        f"Assets sample ({len(assets)}):\n{json.dumps(assets[:40], default=str)}\n\n"
+        'Return JSON with: budget_forecast (number), failure_count_forecast (integer), '
+        'spare_parts_top (list of strings), narrative (short string), horizon_days (integer).'
+    )
+    schema = {
+        'required': ['budget_forecast', 'failure_count_forecast', 'spare_parts_top', 'narrative', 'horizon_days'],
+        'properties': {
+            'budget_forecast': (int, float),
+            'failure_count_forecast': int,
+            'spare_parts_top': list,
+            'narrative': str,
+            'horizon_days': int,
+        },
+    }
+    try:
+        result = generate_structured(system_prompt, user_content, schema)
+    except StructuredLLMError as exc:
+        return jsonify({'success': False, 'error': str(exc)}), 502
+
+    payload = {
+        'budget_forecast': float(result.get('budget_forecast') or 0),
+        'failure_count_forecast': int(result.get('failure_count_forecast') or 0),
+        'spare_parts_top': list(result.get('spare_parts_top') or [])[:15],
+        'narrative': (result.get('narrative') or '')[:800],
+        'horizon_days': max(30, min(365, int(result.get('horizon_days') or 90))),
+        'method': 'llm_estimate',
+    }
+    row = PortfolioForecast(payload=payload, method='llm_estimate', created_by=user.id)
+    db.session.add(row)
+    db.session.commit()
+    return jsonify({'success': True, 'forecast': row.to_dict()})
+
+
+@assets_bp.route('/api/forecast/latest', methods=['GET'])
+@jwt_required()
+def api_forecast_latest():
+    user = _current_user()
+    if not _has_access(user):
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+    row = PortfolioForecast.query.order_by(PortfolioForecast.created_at.desc()).first()
+    return jsonify({'success': True, 'forecast': row.to_dict() if row else None})
+
+
+@assets_bp.route('/api/floor-plans', methods=['GET', 'POST'])
+@jwt_required()
+def api_floor_plans():
+    user = _current_user()
+    if not _has_access(user):
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+    if request.method == 'GET':
+        rows = FloorPlan.query.order_by(FloorPlan.building).all()
+        return jsonify({'success': True, 'plans': [r.to_dict() for r in rows]})
+    if not _can_write(user):
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+    data = request.get_json(silent=True) or {}
+    if not (data.get('name') and data.get('building') and data.get('image_url')):
+        return jsonify({'success': False, 'error': 'name, building, image_url required'}), 400
+    plan = FloorPlan(
+        name=data['name'].strip(),
+        building=data['building'].strip(),
+        floor=(data.get('floor') or '').strip() or None,
+        image_url=data['image_url'].strip(),
+        hotspots=data.get('hotspots') or [],
+    )
+    db.session.add(plan)
+    db.session.commit()
+    return jsonify({'success': True, 'plan': plan.to_dict()}), 201
+
+
+@assets_bp.route('/api/floor-plans/<int:plan_id>/recommend', methods=['POST'])
+@jwt_required()
+def api_twin_recommend(plan_id):
+    user = _current_user()
+    if not _has_access(user):
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+    plan = FloorPlan.query.get_or_404(plan_id)
+    try:
+        from module_assistant.llm import generate_structured, StructuredLLMError, is_llm_enabled
+    except ImportError:
+        return jsonify({'success': False, 'error': 'LLM unavailable'}), 503
+    if not is_llm_enabled():
+        return jsonify({'success': False, 'error': 'LLM is not enabled'}), 503
+
+    assets = Asset.query.filter_by(building=plan.building).all()
+    if plan.floor:
+        assets = [a for a in assets if (a.floor or '') == plan.floor]
+    tickets = []
+    for a in assets[:40]:
+        for t in Ticket.query.filter_by(asset_id=a.id).order_by(Ticket.created_at.desc()).limit(3):
+            tickets.append({'asset': a.asset_id, 'ticket': t.ticket_id, 'status': t.status, 'priority': t.priority})
+
+    system_prompt = (
+        'You are an FM digital-twin advisor. Given a floor plan building/floor, assets, and recent '
+        'tickets, recommend actions. Return JSON only.'
+    )
+    user_content = (
+        f"Plan: {json.dumps(plan.to_dict())}\n"
+        f"Assets: {json.dumps([a.to_dict() for a in assets[:40]], default=str)}\n"
+        f"Recent tickets: {json.dumps(tickets)}\n"
+        'Return JSON: recommendations (list of {room, severity, action, reason}), summary (string).'
+    )
+    schema = {
+        'required': ['recommendations', 'summary'],
+        'properties': {'recommendations': list, 'summary': str},
+    }
+    try:
+        result = generate_structured(system_prompt, user_content, schema)
+    except StructuredLLMError as exc:
+        return jsonify({'success': False, 'error': str(exc)}), 502
+    return jsonify({
+        'success': True,
+        'method': 'llm_estimate',
+        'summary': result.get('summary'),
+        'recommendations': result.get('recommendations') or [],
+    })
+
+
+@assets_bp.route('/api/integration/api-keys', methods=['GET', 'POST'])
+@jwt_required()
+def api_integration_keys():
+    user = _current_user()
+    if not user or user.role != 'admin':
+        return jsonify({'success': False, 'error': 'Admin only'}), 403
+    if request.method == 'GET':
+        rows = IntegrationApiKey.query.order_by(IntegrationApiKey.created_at.desc()).all()
+        return jsonify({'success': True, 'keys': [r.to_dict() for r in rows]})
+    data = request.get_json(silent=True) or {}
+    name = (data.get('name') or 'Integration key').strip()
+    row, raw = create_api_key(name, created_by=user.id)
+    fm_log_audit(user.id, 'api_key_create', 'integration_api_key', row.id, {'name': name})
+    return jsonify({'success': True, 'key': row.to_dict(), 'raw_key': raw}), 201
+
+
+@assets_bp.route('/api/integration/webhooks', methods=['GET', 'POST'])
+@jwt_required()
+def api_webhooks():
+    user = _current_user()
+    if not user or user.role != 'admin':
+        return jsonify({'success': False, 'error': 'Admin only'}), 403
+    if request.method == 'GET':
+        rows = OutboundWebhook.query.order_by(OutboundWebhook.created_at.desc()).all()
+        return jsonify({'success': True, 'webhooks': [r.to_dict() for r in rows]})
+    data = request.get_json(silent=True) or {}
+    if not data.get('name') or not data.get('target_url'):
+        return jsonify({'success': False, 'error': 'name and target_url required'}), 400
+    hook = OutboundWebhook(
+        name=data['name'].strip(),
+        target_url=data['target_url'].strip(),
+        secret=(data.get('secret') or '').strip() or None,
+        events=data.get('events') or ['ticket.created', 'ticket.closed', 'asset.critical'],
+        is_active=True,
+    )
+    db.session.add(hook)
+    db.session.commit()
+    return jsonify({'success': True, 'webhook': hook.to_dict()}), 201
+
+
+@assets_bp.route('/api/docs/integration', methods=['GET'])
+@jwt_required()
+def api_integration_docs():
+    """Lightweight integration surface documentation for the vendor checklist."""
+    return jsonify({
+        'success': True,
+        'auth': {
+            'jwt': 'Authorization: Bearer <access_token>',
+            'api_key': 'X-API-Key: inj_... (admin-created)',
+        },
+        'endpoints': [
+            {'method': 'GET', 'path': '/assets/api/assets', 'auth': 'jwt|api_key'},
+            {'method': 'GET', 'path': '/assets/api/kpis', 'auth': 'jwt'},
+            {'method': 'POST', 'path': '/assets/api/forecast', 'auth': 'jwt'},
+            {'method': 'GET', 'path': '/tickets/api/tickets', 'auth': 'jwt'},
+            {'method': 'POST', 'path': '/tickets/api/tickets', 'auth': 'jwt'},
+        ],
+        'webhooks': {
+            'events': ['ticket.created', 'ticket.closed', 'asset.critical'],
+            'configure': 'POST /assets/api/integration/webhooks',
+        },
+        'note': 'ERP/BMS/SCADA connectors require client discovery; not speculative.',
+    })

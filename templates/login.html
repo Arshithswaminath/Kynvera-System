@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    {% set title = 'Login | Injaaz Application' %}
+    {% set title = 'Sign in — Kynvera' %}
     {% include 'partials/auth_head.html' %}
 </head>
 <body>
@@ -38,6 +38,11 @@
                 </div>
             </div>
 
+            <div class="auth-field" id="mfa-field" style="display:none;">
+                <label class="auth-label" for="mfa_code">Authenticator code</label>
+                <input class="auth-input" type="text" id="mfa_code" name="mfa_code" inputmode="numeric" autocomplete="one-time-code" placeholder="6-digit code">
+            </div>
+
             <button type="submit" class="auth-submit-btn" id="login-btn">
                 <span id="login-btn-label">Continue</span>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -53,6 +58,15 @@
         const usernameInput = document.getElementById('username');
         const passwordToggle = document.getElementById('password-toggle');
         const passwordToggleIcon = document.getElementById('password-toggle-icon');
+
+        function safeNextPath() {
+            const params = new URLSearchParams(window.location.search);
+            const next = (params.get('next') || '').trim();
+            if (!next || !next.startsWith('/') || next.startsWith('//') || next.includes('://')) {
+                return '/dashboard';
+            }
+            return next;
+        }
 
         usernameInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
@@ -91,12 +105,15 @@
 
             const username = document.getElementById('username').value.trim();
             const password = document.getElementById('password').value;
+            const mfaCode = (document.getElementById('mfa_code')?.value || '').trim();
 
             try {
+                const body = { username, password };
+                if (mfaCode) body.mfa_code = mfaCode;
                 const response = await fetch('/api/auth/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password })
+                    body: JSON.stringify(body)
                 });
 
                 const contentType = response.headers.get('content-type');
@@ -113,7 +130,18 @@
 
                 const data = await response.json();
 
-                if (response.ok) {
+                if (response.ok && data.mfa_required && !data.access_token) {
+                    document.getElementById('mfa-field').style.display = 'block';
+                    document.getElementById('mfa_code')?.focus();
+                    successMessage.textContent = 'Enter your authenticator code to continue.';
+                    successMessage.style.display = 'block';
+                    loginBtn.disabled = false;
+                    loginBtnLabel.textContent = 'Verify MFA';
+                    loading.classList.remove('show');
+                    return;
+                }
+
+                if (response.ok && data.access_token) {
                     localStorage.setItem('access_token', data.access_token);
                     localStorage.setItem('refresh_token', data.refresh_token);
                     localStorage.setItem('user', JSON.stringify(data.user));
@@ -121,8 +149,9 @@
                     successMessage.textContent = 'Login successful! Redirecting...';
                     successMessage.style.display = 'block';
 
+                    const redirectTo = safeNextPath();
                     setTimeout(() => {
-                        window.location.href = '/dashboard';
+                        window.location.href = redirectTo;
                     }, 800);
                 } else {
                     errorMessage.textContent = data.error || 'Invalid username or password.';

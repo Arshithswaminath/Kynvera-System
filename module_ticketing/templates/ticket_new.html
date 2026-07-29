@@ -618,6 +618,33 @@
                   <span class="tkt-dot critical"></span> Critical
                 </label>
               </div>
+
+              <div class="tkt-field" style="margin-top:16px;">
+                <label>Linked FM asset (optional)</label>
+                <select class="tkt-select" id="assetSelect">
+                  <option value="">— None —</option>
+                </select>
+              </div>
+
+              <div class="tkt-ai-triage" id="aiTriageBox" style="margin-top:16px;padding:14px;border:1px solid #d5e0da;border-radius:10px;background:#f7faf8;">
+                <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
+                  <strong style="font-size:.9rem;">AI triage suggestion</strong>
+                  <button type="button" class="tkt-btn tkt-btn-outline tkt-btn-sm" id="aiTriageBtn">Suggest priority / SLA / tech</button>
+                </div>
+                <p id="aiTriageHint" style="margin:8px 0 0;font-size:.8rem;color:#64748b;">Claude suggests priority, SLA hours, technician, and parts. You review before creating — nothing is auto-applied.</p>
+                <div id="aiTriageResult" hidden style="margin-top:10px;font-size:.86rem;">
+                  <div id="aiTriageSummary"></div>
+                  <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
+                    <button type="button" class="tkt-btn tkt-btn-primary tkt-btn-sm" id="aiTriageAccept">Accept suggestion</button>
+                    <button type="button" class="tkt-btn tkt-btn-outline tkt-btn-sm" id="aiTriageDismiss">Keep my values</button>
+                  </div>
+                </div>
+              </div>
+              <input type="hidden" id="slaHours" value="">
+              <input type="hidden" id="triageLogId" value="">
+              <input type="hidden" id="suggestedTechId" value="">
+              <input type="hidden" id="requiredPartsJson" value="[]">
+
               <div class="new-tkt-complaint-recap" id="complaintClassRecap" aria-live="polite"></div>
             </div>
           </div>
@@ -2097,6 +2124,14 @@ document.getElementById('tktNewForm').addEventListener('submit', async (e) => {
     sub_zone: document.getElementById('subZoneSelect').value.trim(),
     base_unit: document.getElementById('baseUnitSelect').value.trim(),
     reporter_id: document.getElementById('reporterId')?.value || '',
+    asset_code: document.getElementById('assetSelect')?.value || '',
+    sla_hours: document.getElementById('slaHours')?.value || '',
+    triage_log_id: document.getElementById('triageLogId')?.value || '',
+    suggested_technician_id: document.getElementById('suggestedTechId')?.value || null,
+    required_parts: (() => {
+      try { return JSON.parse(document.getElementById('requiredPartsJson')?.value || '[]'); }
+      catch (_) { return []; }
+    })(),
   };
 
   const locCascade = validateLocationCascade();
@@ -2147,8 +2182,94 @@ document.getElementById('tktNewForm').addEventListener('submit', async (e) => {
     btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg> Create Work Order';
   }
 });
+
+// ── FM assets + AI triage ──────────────────────────────────
+(async function loadAssetOptions() {
+  const sel = document.getElementById('assetSelect');
+  if (!sel) return;
+  try {
+    const res = await tktFetch('/assets/api/assets');
+    if (!res.ok || !res.data.success) return;
+    (res.data.assets || []).forEach(a => {
+      const opt = document.createElement('option');
+      opt.value = a.asset_id;
+      opt.textContent = `${a.asset_id} — ${a.name}${a.building ? ' (' + a.building + ')' : ''}`;
+      sel.appendChild(opt);
+    });
+  } catch (_) { /* optional */ }
+})();
+
+let _lastTriageSuggestion = null;
+
+function setPriorityPill(val) {
+  document.querySelectorAll('.priority-pill').forEach(p => {
+    p.classList.toggle('selected', p.dataset.val === val);
+    const input = p.querySelector('input');
+    if (input) input.checked = p.dataset.val === val;
+  });
+}
+
+document.getElementById('aiTriageBtn')?.addEventListener('click', async () => {
+  const btn = document.getElementById('aiTriageBtn');
+  btn.disabled = true;
+  btn.textContent = 'Analyzing…';
+  const payload = {
+    title: (document.getElementById('title')?.value || '').trim(),
+    work_description: (document.getElementById('workDescription')?.value || '').trim(),
+    project: (document.getElementById('project')?.value || '').trim(),
+    service_group: (document.getElementById('serviceGroup')?.value || '').trim(),
+    category: (document.getElementById('category')?.value || '').trim(),
+    fault_type: (document.getElementById('faultType')?.value || '').trim(),
+    property_name: (document.getElementById('propertySelect')?.value || '').trim(),
+    zone: (document.getElementById('zoneSelect')?.value || '').trim(),
+    sub_zone: (document.getElementById('subZoneSelect')?.value || '').trim(),
+    base_unit: (document.getElementById('baseUnitSelect')?.value || '').trim(),
+    asset_code: (document.getElementById('assetSelect')?.value || '').trim(),
+  };
+  if (!payload.title && !payload.work_description) {
+    tktToast('Enter a title or description before requesting AI triage.', 'error');
+    btn.disabled = false;
+    btn.textContent = 'Suggest priority / SLA / tech';
+    return;
+  }
+  const res = await tktFetch('/tickets/api/tickets/triage-preview', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+  btn.disabled = false;
+  btn.textContent = 'Suggest priority / SLA / tech';
+  if (!res.ok || !res.data.success) {
+    tktToast(res.data.error || 'AI triage failed', 'error');
+    return;
+  }
+  _lastTriageSuggestion = res.data.suggestion;
+  document.getElementById('triageLogId').value = res.data.triage_log_id || '';
+  const s = res.data.suggestion || {};
+  const parts = (s.required_parts || []).join(', ') || 'none';
+  document.getElementById('aiTriageSummary').innerHTML =
+    `<strong>Priority:</strong> ${s.priority || '—'} · <strong>SLA:</strong> ${s.sla_hours || '—'}h · ` +
+    `<strong>Technician:</strong> ${s.technician_name || '—'} · <strong>Parts:</strong> ${parts}` +
+    `<div style="margin-top:6px;color:#64748b;">${(s.reasoning || '').replace(/</g,'&lt;')}</div>`;
+  document.getElementById('aiTriageResult').hidden = false;
+});
+
+document.getElementById('aiTriageAccept')?.addEventListener('click', () => {
+  const s = _lastTriageSuggestion;
+  if (!s) return;
+  if (s.priority) setPriorityPill(s.priority);
+  document.getElementById('slaHours').value = s.sla_hours || '';
+  document.getElementById('suggestedTechId').value = s.technician_id || '';
+  document.getElementById('requiredPartsJson').value = JSON.stringify(s.required_parts || []);
+  tktToast('AI suggestion applied — review before creating.', 'success');
+  updateSummary?.();
+});
+
+document.getElementById('aiTriageDismiss')?.addEventListener('click', () => {
+  document.getElementById('aiTriageResult').hidden = true;
+});
 </script>
 <script src="{{ url_for('static', filename='js/dashboard.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/fm-mobile.js') }}"></script>
 <script>
   function tktOpenMobileSidebar(){const s=document.getElementById('tktDhSidebar');if(s)s.classList.add('open');}
   function tktCloseMobileSidebar(){const s=document.getElementById('tktDhSidebar');if(s)s.classList.remove('open');}

@@ -1,0 +1,63 @@
+{% set fm_page_title = 'Asset map' %}
+{% set fm_topbar_title = 'Map' %}
+{% set fm_head_extra %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<style>#fmMap { height: 70vh; min-height: 420px; border-radius: 12px; border: 1px solid var(--fm-border); }</style>
+{% endset %}
+{% include 'partials/fm_shell_start.html' %}
+
+  <header class="fm-header">
+    <div>
+      <h1>GIS — Asset map</h1>
+      <p>Pins colored by health / status. Assets need latitude &amp; longitude.</p>
+    </div>
+    <a class="fm-btn fm-btn-outline" href="{{ url_for('assets_bp.assets_executive') }}">Executive</a>
+  </header>
+  <div id="fmMap"></div>
+  <p class="fm-muted" id="mapHint" style="margin-top:10px;">Loading map points…</p>
+
+{% set fm_scripts %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script>
+function pinColor(a) {
+  if ((a.status || '') === 'critical' || (a.health_score != null && a.health_score < 40)) return '#b42318';
+  if (a.health_score != null && a.health_score < 70) return '#b54708';
+  if ((a.open_tickets || 0) > 0) return '#175cd3';
+  return '#ff8e68';
+}
+(async function () {
+  const map = L.map('fmMap').setView([25.2048, 55.2708], 11);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap',
+  }).addTo(map);
+  const res = await fetch('/assets/api/map-points', {
+    headers: fmAuthHeaders(),
+  });
+  const data = await res.json();
+  const hint = document.getElementById('mapHint');
+  if (!data.success || !data.points.length) {
+    hint.textContent = 'No geocoded assets yet. Edit an asset and set latitude/longitude.';
+    return;
+  }
+  const bounds = [];
+  data.points.forEach(a => {
+    const color = pinColor(a);
+    const marker = L.circleMarker([a.latitude, a.longitude], {
+      radius: 9, color: '#fff', weight: 2, fillColor: color, fillOpacity: 0.9,
+    }).addTo(map);
+    marker.bindPopup(
+      `<strong>${a.asset_id}</strong> — ${a.name}<br>` +
+      `Health: ${a.health_score != null ? a.health_score : '—'} · Status: ${a.status}<br>` +
+      `Open tickets: ${a.open_tickets || 0}<br>` +
+      `<a href="/assets/${encodeURIComponent(a.asset_id)}">Open asset</a> · ` +
+      `<a href="/tickets/new">New ticket</a>`
+    );
+    bounds.push([a.latitude, a.longitude]);
+  });
+  if (bounds.length) map.fitBounds(bounds, { padding: [40, 40] });
+  hint.textContent = `${data.points.length} asset pin(s) shown.`;
+})();
+</script>
+{% endset %}
+{% include 'partials/fm_shell_end.html' %}

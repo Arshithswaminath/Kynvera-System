@@ -1,0 +1,134 @@
+{% set fm_page_title = 'Digital Twin' %}
+{% set fm_topbar_title = 'Digital twin' %}
+{% set fm_head_extra %}
+<style>
+  .twin-stage { position: relative; background: #0f1f18; border-radius: 12px; overflow: hidden; min-height: 360px; }
+  .twin-stage img { width: 100%; display: block; opacity: 0.92; }
+  .twin-hotspot {
+    position: absolute; width: 18px; height: 18px; margin: -9px 0 0 -9px;
+    border-radius: 50%; border: 2px solid #fff; cursor: pointer;
+    box-shadow: 0 0 0 3px rgba(0,0,0,.25);
+  }
+  .twin-hotspot.ok { background: #12b76a; }
+  .twin-hotspot.warn { background: #f79009; }
+  .twin-hotspot.crit { background: #f04438; }
+  .twin-form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .twin-form .fm-full { grid-column: 1 / -1; }
+</style>
+{% endset %}
+{% include 'partials/fm_shell_start.html' %}
+
+  <header class="fm-header">
+    <div>
+      <h1>2D Digital Twin</h1>
+      <p>Floor-plan hotspots by room/asset status + Claude recommendations</p>
+    </div>
+  </header>
+
+  <section class="fm-panel">
+    <label>Floor plan
+      <select class="fm-input" id="planSelect">
+        <option value="">— Select —</option>
+        {% for p in plans %}
+        <option value="{{ p.id }}" data-url="{{ p.image_url }}" data-hotspots='{{ p.hotspots|tojson }}'>{{ p.name }} ({{ p.building }}{% if p.floor %} / {{ p.floor }}{% endif %})</option>
+        {% endfor %}
+      </select>
+    </label>
+    <div class="twin-stage" id="twinStage" style="margin-top:12px;">
+      <p class="fm-muted" style="padding:24px;color:#cfe7d8;">Select a floor plan to view room status.</p>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
+      <button type="button" class="fm-btn fm-btn-primary" id="recBtn" disabled>AI recommendations</button>
+    </div>
+    <div id="recOut" class="fm-notes" style="margin-top:12px;"></div>
+  </section>
+
+  {% if can_write %}
+  <section class="fm-panel">
+    <h2>Add floor plan</h2>
+    <form class="twin-form" id="planForm">
+      <label>Name<input class="fm-input" name="name" required></label>
+      <label>Building<input class="fm-input" name="building" required></label>
+      <label>Floor<input class="fm-input" name="floor"></label>
+      <label>Image URL<input class="fm-input" name="image_url" required placeholder="https://…"></label>
+      <label class="fm-full">Hotspots JSON
+        <textarea class="fm-input" name="hotspots" rows="3" placeholder='[{"room":"2.105","x_pct":42,"y_pct":55}]'></textarea>
+      </label>
+      <div class="fm-full"><button class="fm-btn fm-btn-primary" type="submit">Save plan</button></div>
+    </form>
+  </section>
+  {% endif %}
+
+{% set fm_scripts %}
+<script>
+let currentPlanId = null;
+const stage = document.getElementById('twinStage');
+const recBtn = document.getElementById('recBtn');
+
+document.getElementById('planSelect')?.addEventListener('change', (e) => {
+  const opt = e.target.selectedOptions[0];
+  currentPlanId = opt?.value || null;
+  recBtn.disabled = !currentPlanId;
+  if (!currentPlanId) {
+    stage.innerHTML = '<p class="fm-muted" style="padding:24px;color:#cfe7d8;">Select a floor plan to view room status.</p>';
+    return;
+  }
+  let hotspots = [];
+  try { hotspots = JSON.parse(opt.dataset.hotspots || '[]'); } catch (_) {}
+  stage.innerHTML = `<img src="${opt.dataset.url}" alt="Floor plan">`;
+  hotspots.forEach(h => {
+    const el = document.createElement('button');
+    el.type = 'button';
+    el.className = 'twin-hotspot ' + (h.severity || 'ok');
+    el.style.left = (h.x_pct || 50) + '%';
+    el.style.top = (h.y_pct || 50) + '%';
+    el.title = h.room || 'Room';
+    el.addEventListener('click', () => {
+      alert((h.room || 'Room') + (h.note ? '\n' + h.note : ''));
+    });
+    stage.appendChild(el);
+  });
+});
+
+recBtn?.addEventListener('click', async () => {
+  if (!currentPlanId) return;
+  recBtn.disabled = true;
+  recBtn.textContent = 'Analyzing…';
+  const res = await fetch(`/assets/api/floor-plans/${currentPlanId}/recommend`, {
+    method: 'POST',
+    headers: fmAuthHeaders({'Content-Type': 'application/json'}),
+    body: '{}',
+  });
+  const data = await res.json();
+  recBtn.disabled = false;
+  recBtn.textContent = 'AI recommendations';
+  const out = document.getElementById('recOut');
+  if (!data.success) {
+    out.textContent = data.error || 'Failed';
+    return;
+  }
+  const lines = (data.recommendations || []).map(r =>
+    `• ${r.room || 'Area'} [${r.severity || 'info'}]: ${r.action || ''} — ${r.reason || ''}`
+  );
+  out.innerHTML = `<strong>${(data.summary || '').replace(/</g,'&lt;')}</strong><br><span class="fm-badge-estimate">method: llm_estimate</span><br>` +
+    lines.map(l => l.replace(/</g,'&lt;')).join('<br>');
+});
+
+document.getElementById('planForm')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const payload = Object.fromEntries(fd.entries());
+  try { payload.hotspots = JSON.parse(payload.hotspots || '[]'); }
+  catch (_) { alert('Hotspots must be valid JSON'); return; }
+  const res = await fetch('/assets/api/floor-plans', {
+    method: 'POST',
+    headers: fmAuthHeaders({'Content-Type': 'application/json'}),
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (data.success) location.reload();
+  else alert(data.error || 'Save failed');
+});
+</script>
+{% endset %}
+{% include 'partials/fm_shell_end.html' %}

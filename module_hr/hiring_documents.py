@@ -31,6 +31,7 @@ from app.models import (
     HIRING_PIPELINE_DEFAULT,
     HIRING_PIPELINE_LABELS,
     HIRING_PIPELINE_STATUSES,
+    HIRING_PIPELINE_STEPS,
     HIRING_VISA_GATED_DOC_TYPES,
     HiringCandidate,
     HiringDocument,
@@ -94,12 +95,15 @@ def _hiring_docs_dir() -> str:
 
 
 def _seed_documents(candidate: HiringCandidate) -> None:
-    existing = {d.doc_type for d in (candidate.documents or [])}
+    """Ensure all fixed doc slots exist. Append via relationship so the
+    in-memory collection stays in sync (session.add alone does not)."""
+    if candidate.documents is None:
+        candidate.documents = []
+    existing = {d.doc_type for d in candidate.documents}
     for doc_type in HIRING_DOC_TYPES:
         if doc_type in existing:
             continue
-        db.session.add(HiringDocument(
-            candidate_id=candidate.id,
+        candidate.documents.append(HiringDocument(
             doc_type=doc_type,
             status='missing',
         ))
@@ -216,7 +220,7 @@ def register_hiring_document_routes(hr_bp):
         status_filter = (request.args.get('status') or 'all').strip().lower()
         pipeline_filter = (request.args.get('pipeline') or 'all').strip().lower()
         page = max(1, int(request.args.get('page') or 1))
-        per_page = min(50, max(1, int(request.args.get('per_page') or 12)))
+        per_page = min(50, max(1, int(request.args.get('per_page') or 10)))
 
         query = HiringCandidate.query
         if q:
@@ -232,7 +236,12 @@ def register_hiring_document_routes(hr_bp):
         if pipeline_filter and pipeline_filter != 'all':
             if pipeline_filter in HIRING_PIPELINE_STATUSES:
                 query = query.filter(HiringCandidate.pipeline_status == pipeline_filter)
-        candidates = query.order_by(HiringCandidate.updated_at.desc()).all()
+        # Stable secondary key (id) prevents the same row appearing on two pages
+        # when several candidates share the same updated_at.
+        candidates = query.order_by(
+            HiringCandidate.updated_at.desc(),
+            HiringCandidate.id.desc(),
+        ).all()
         filtered = [c for c in candidates if _candidate_matches_status(c, status_filter)]
         total = len(filtered)
         start = (page - 1) * per_page
@@ -246,6 +255,7 @@ def register_hiring_document_routes(hr_bp):
             'pages': max(1, (total + per_page - 1) // per_page) if total else 1,
             'status_labels': STATUS_LABELS,
             'pipeline_labels': HIRING_PIPELINE_LABELS,
+            'pipeline_steps': list(HIRING_PIPELINE_STEPS),
             'pipeline_statuses': list(HIRING_PIPELINE_STATUSES),
         })
 
@@ -413,6 +423,43 @@ def register_hiring_document_routes(hr_bp):
 
     # ── API: documents ─────────────────────────────────────────────────────
 
+    @hr_bp.route('/api/hiring/candidates/<int:candidate_id>/mark-all-documents-submitted', methods=['POST'])
+    @jwt_required()
+    def api_mark_all_hiring_documents_submitted(candidate_id):
+        """Mark every document slot complete (received/uploaded; PCC attested). Keeps existing files."""
+        user, err = _require_hiring_user()
+        if err:
+            return err
+
+        candidate = db.session.get(HiringCandidate, candidate_id)
+        if not candidate:
+            return error_response('Candidate not found', status_code=404, error_code='NOT_FOUND')
+
+        _seed_documents(candidate)
+        db.session.flush()
+
+        updated = 0
+        for doc in list(candidate.documents or []):
+            if HiringCandidate.doc_is_complete(doc):
+                continue
+            if doc.doc_type == 'pcc':
+                doc.status = 'attested'
+            else:
+                doc.status = 'uploaded'
+            if not doc.uploaded_at:
+                doc.uploaded_at = utc_now_naive()
+            if not doc.uploaded_by:
+                doc.uploaded_by = user.id
+            updated += 1
+
+        candidate.updated_at = utc_now_naive()
+        db.session.commit()
+        db.session.refresh(candidate)
+        return success_response({
+            'candidate': candidate.to_dict(),
+            'updated': updated,
+        }, message='All documents marked as submitted')
+
     @hr_bp.route('/api/hiring/candidates/<int:candidate_id>/documents/<doc_type>', methods=['POST'])
     @jwt_required()
     def api_upload_hiring_document(candidate_id, doc_type):
@@ -507,6 +554,92 @@ def register_hiring_document_routes(hr_bp):
             'document': doc.to_dict(),
             'candidate': candidate.to_dict(),
         }, message='Document uploaded')
+
+    @hr_bp.route('/api/hiring/candidates/<int:candidate_id>/documents/<doc_type>/notes', methods=['PATCH'])
+    @jwt_required()
+    def api_update_hiring_document_notes(candidate_id, doc_type):
+        """Update per-document notes. Currently only offer_letter supports notes in the UI."""
+        user, err = _require_hiring_user()
+        if err:
+            return err
+
+        doc_type = (doc_type or '').strip().lower()
+        if doc_type != 'offer_letter':
+            return error_response(
+                'Notes are only supported for offer letter',
+                status_code=400,
+                error_code='VALIDATION_ERROR',
+            )
+
+        candidate = db.session.get(HiringCandidate, candidate_id)
+        if not candidate:
+            return error_response('Candidate not found', status_code=404, error_code='NOT_FOUND')
+
+        _seed_documents(candidate)
+        db.session.flush()
+
+        doc = next((d for d in (candidate.documents or []) if d.doc_type == 'offer_letter'), None)
+        if not doc:
+            return error_response('Document slot not found', status_code=404, error_code='NOT_FOUND')
+
+        data = request.get_json(silent=True) or {}
+        notes = (data.get('notes') or '').strip()
+        if len(notes) > 2000:
+            return error_response(
+                'Offer letter comment max 2000 characters',
+                status_code=400,
+                error_code='VALIDATION_ERROR',
+            )
+
+        doc.notes = notes or None
+        candidate.updated_at = utc_now_naive()
+        db.session.commit()
+        db.session.refresh(candidate)
+        return success_response({
+            'document': doc.to_dict(),
+            'candidate': candidate.to_dict(),
+        }, message='Offer letter comment saved')
+
+    @hr_bp.route('/api/hiring/candidates/<int:candidate_id>/documents/<doc_type>/mark-received', methods=['POST'])
+    @jwt_required()
+    def api_mark_hiring_document_received(candidate_id, doc_type):
+        """Mark a document slot as received without storing a file copy."""
+        user, err = _require_hiring_user()
+        if err:
+            return err
+
+        doc_type = (doc_type or '').strip().lower()
+        if doc_type not in HIRING_DOC_TYPES:
+            return error_response('Invalid document type', status_code=400, error_code='VALIDATION_ERROR')
+
+        candidate = db.session.get(HiringCandidate, candidate_id)
+        if not candidate:
+            return error_response('Candidate not found', status_code=404, error_code='NOT_FOUND')
+
+        _seed_documents(candidate)
+        db.session.flush()
+
+        if doc_type in HIRING_VISA_GATED_DOC_TYPES and not candidate.visa_docs_unlocked():
+            return error_response(
+                'Insurance, e-visa, and contract unlock after status is Visa process started',
+                status_code=400,
+                error_code='PIPELINE_LOCKED',
+            )
+
+        doc = next((d for d in (candidate.documents or []) if d.doc_type == doc_type), None)
+        if not doc:
+            return error_response('Document slot not found', status_code=404, error_code='NOT_FOUND')
+
+        # Received = checklist done with no copy in the system
+        _clear_document_file(doc)
+        doc.status = 'uploaded'
+        candidate.updated_at = utc_now_naive()
+        db.session.commit()
+        db.session.refresh(candidate)
+        return success_response({
+            'document': doc.to_dict(),
+            'candidate': candidate.to_dict(),
+        }, message='Marked as received (no file in system)')
 
     @hr_bp.route('/api/hiring/candidates/<int:candidate_id>/documents/<doc_type>/attest', methods=['POST'])
     @jwt_required()

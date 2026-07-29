@@ -4,7 +4,7 @@
 (function () {
   'use strict';
 
-  var HIDDEN_PATHS = ['/login', '/register', '/forgot-password', '/reset-password'];
+  var HIDDEN_PATHS = ['/', '/login', '/register', '/forgot-password', '/reset-password'];
   var MAX_HISTORY = 20;
   var DEFAULT_CHIPS = [
     'How many pending forms?',

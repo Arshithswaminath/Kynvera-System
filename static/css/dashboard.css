@@ -7,23 +7,23 @@
    CSS Variables / Design Tokens
    =========================================== */
 :root {
-  --primary: #125435;
-  --primary-light: #1a7a4d;
-  --primary-dark: #0d3d24;
+  --primary: #ff8e68;
+  --primary-light: #f97e54;
+  --primary-dark: #e05f36;
   --secondary: #D9D9D9;
-  --text-dark: #111827;
-  --text-mid: #374151;
+  --text-dark: #191b23;
+  --text-mid: #5c616e;
   --text-light: #6b7280;
-  --text-muted: #9ca3af;
-  --bg-light: #f9fafb;
+  --text-muted: #9498a3;
+  --bg-light: #fafafb;
   --white: #ffffff;
-  --bg-body: #f8faf8;
+  --bg-body: #f7f7f9;
   --bg-surface: #ffffff;
   --bg-card: #ffffff;
-  --border-color: #e5e7eb;
+  --border-color: #e9eaee;
   --border-light: #f3f4f6;
-  /* Main nav + module toolbars (matches BizFlow --line); avoids harsh “black” hairline on CDN/deploy */
-  --nav-hairline: #e2ede8;
+  /* Main nav + module toolbars — neutral hairline (Kynvera) */
+  --nav-hairline: #e9eaee;
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
@@ -49,7 +49,7 @@
 
 body {
   font-family: var(--font-sans);
-  background: var(--bg-body, #f8faf8);
+  background: var(--bg-body, #f7f7f9);
   color: var(--text-dark);
   overflow-x: hidden;
   line-height: 1.6;
@@ -69,11 +69,11 @@ body {
 html {
   scroll-behavior: smooth;
   /* PWA / iOS WKWebView: unpainted bands (esp. between sections) show black if html has no fill */
-  background-color: var(--bg-body, #f8faf8);
+  background-color: var(--bg-body, #f7f7f9);
   color-scheme: light;
 }
 
-/* Dashboard routes: one continuous #f8faf8 surface (mobile_responsive sets body white).
+/* Dashboard routes: one continuous whitish Kynvera surface (mobile_responsive sets body white).
    design-tokens.css uses :root:not([data-theme="light"]) under prefers-color-scheme:dark,
    which beats this file's :root and sets --bg-body to ~black — modules/footer then read "black block". */
 html:not([data-theme="dark"]) body.page-dashboard,
@@ -86,18 +86,18 @@ html:not([data-theme="dark"]) body.qhsi-form-unified,
 html:not([data-theme="dark"]) body.dm-device-mgmt-page,
 html:not([data-theme="dark"]) body.review-dashboard,
 html:not([data-theme="dark"]) body.admin-dh-page {
-  --bg-body: #f8faf8;
-  --bg-light: #f9fafb;
-  --text-dark: #111827;
-  --text-mid: #374151;
+  --bg-body: #f7f7f9;
+  --bg-light: #fafafb;
+  --text-dark: #191b23;
+  --text-mid: #5c616e;
   --text-light: #6b7280;
-  --text-muted: #9ca3af;
+  --text-muted: #9498a3;
   --white: #ffffff;
-  --border-color: #e5e7eb;
+  --border-color: #e9eaee;
 }
 
 html:not([data-theme="dark"]) body.admin-dh-page {
-  --bg-body: #eff4f1;
+  --bg-body: #f7f7f9;
 }
 
 body.page-dashboard,
@@ -110,7 +110,7 @@ body.qhsi-form-unified,
 body.dm-device-mgmt-page,
 body.review-dashboard,
 body.admin-dh-page {
-  background: var(--bg-body, #f8faf8) !important;
+  background: var(--bg-body, #f7f7f9) !important;
 }
 
 /* ===========================================
@@ -131,7 +131,7 @@ body.admin-dh-page {
 
 .nav.scrolled {
   background: #ffffff;
-  box-shadow: 0 1px 3px rgba(18, 84, 53, 0.08);
+  box-shadow: 0 1px 3px rgba(255, 142, 104, 0.08);
 }
 
 /* Device Management: module topbar (.dm-topbar) already divides content; strip nav hairline (same idea as DocHub v2). */
@@ -311,7 +311,7 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
 
 .nav-menu a:hover {
   color: var(--primary);
-  background: rgba(18, 84, 53, 0.05);
+  background: rgba(255, 142, 104, 0.05);
 }
 
 /* Current route — beats Bootstrap link colour and drawer `!important` text colour */
@@ -329,7 +329,7 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
   top: 100%;
   right: 0;
   min-width: 220px;
-  border: 1px solid rgba(18, 84, 53, 0.16);
+  border: 1px solid rgba(255, 142, 104, 0.16);
   border-radius: 12px;
   background: #fff;
   box-shadow: 0 10px 28px rgba(15, 23, 42, 0.14);
@@ -408,8 +408,8 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
   font-size: 0.875rem;
   font-weight: 600;
   color: var(--primary);
-  background: rgba(18, 84, 53, 0.08);
-  border: 1px solid rgba(18, 84, 53, 0.25);
+  background: rgba(255, 142, 104, 0.08);
+  border: 1px solid rgba(255, 142, 104, 0.25);
   border-radius: var(--radius-sm);
   cursor: pointer;
   flex-shrink: 0;
@@ -418,7 +418,7 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
   margin-right: 0.5rem;
 }
 .nav-save-draft-btn:hover {
-  background: rgba(18, 84, 53, 0.12);
+  background: rgba(255, 142, 104, 0.12);
   border-color: var(--primary);
   color: var(--primary);
 }
@@ -451,8 +451,8 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
 
 .logout-btn:hover {
   color: var(--primary);
-  background: rgba(18, 84, 53, 0.05);
-  border-color: rgba(18, 84, 53, 0.2);
+  background: rgba(255, 142, 104, 0.05);
+  border-color: rgba(255, 142, 104, 0.2);
   transform: none;
   box-shadow: none;
 }
@@ -477,7 +477,7 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
 .todo-nav-btn:focus-visible,
 .mobile-menu-toggle:focus-visible,
 .mark-all-read:focus-visible {
-  outline: 2px solid var(--primary, #125435);
+  outline: 2px solid var(--primary, #ff8e68);
   outline-offset: 3px;
 }
 
@@ -493,9 +493,9 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
 .hero {
   padding: 7.5rem 0 4rem;
   background:
-    radial-gradient(ellipse 70% 60% at 0% 50%, rgba(18, 84, 53, 0.1) 0%, transparent 70%),
-    radial-gradient(ellipse 40% 40% at 100% 10%, rgba(18, 84, 53, 0.05) 0%, transparent 60%),
-    linear-gradient(160deg, #f5f9f6 0%, #fafbfa 50%, #f8faf8 100%);
+    radial-gradient(ellipse 70% 60% at 0% 50%, rgba(255, 142, 104, 0.1) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 40% at 100% 10%, rgba(255, 142, 104, 0.05) 0%, transparent 60%),
+    linear-gradient(160deg, #fff8f5 0%, #fafbfa 50%, #f7f7f9 100%);
   position: relative;
   z-index: 1;
   overflow: hidden;
@@ -507,8 +507,8 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(18, 84, 53, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(18, 84, 53, 0.04) 1px, transparent 1px);
+    linear-gradient(rgba(255, 142, 104, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 142, 104, 0.04) 1px, transparent 1px);
   background-size: 48px 48px;
   mask-image: linear-gradient(to bottom, black 0%, black 45%, transparent 95%);
   -webkit-mask-image: linear-gradient(to bottom, black 0%, black 45%, transparent 95%);
@@ -523,9 +523,9 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
   flex: 1;
   min-height: 0;
   background:
-    radial-gradient(ellipse 70% 60% at 0% 50%, rgba(18, 84, 53, 0.1) 0%, transparent 70%),
-    radial-gradient(ellipse 40% 40% at 100% 10%, rgba(18, 84, 53, 0.05) 0%, transparent 60%),
-    linear-gradient(160deg, #f5f9f6 0%, #fafbfa 50%, #f8faf8 100%);
+    radial-gradient(ellipse 70% 60% at 0% 50%, rgba(255, 142, 104, 0.1) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 40% at 100% 10%, rgba(255, 142, 104, 0.05) 0%, transparent 60%),
+    linear-gradient(160deg, #fff8f5 0%, #fafbfa 50%, #f7f7f9 100%);
   overflow: hidden;
 }
 .inspection-page-content .hero,
@@ -546,15 +546,15 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
 .hero.proc-hero,
 .hero.review-hero {
   background:
-    radial-gradient(ellipse 70% 60% at 0% 50%, rgba(18, 84, 53, 0.1) 0%, transparent 70%),
-    radial-gradient(ellipse 40% 40% at 100% 10%, rgba(18, 84, 53, 0.05) 0%, transparent 60%),
-    linear-gradient(160deg, #f5f9f6 0%, #fafbfa 50%, #f8faf8 100%);
+    radial-gradient(ellipse 70% 60% at 0% 50%, rgba(255, 142, 104, 0.1) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 40% at 100% 10%, rgba(255, 142, 104, 0.05) 0%, transparent 60%),
+    linear-gradient(160deg, #fff8f5 0%, #fafbfa 50%, #f7f7f9 100%);
   padding-bottom: 6rem;
 }
 
 /* HR hero: gradient at top full width, no glow orb */
 .hero.hr-hero {
-  background: linear-gradient(180deg, #eef4f0 0%, #f2f7f4 45%, #F8FAF8 100%);
+  background: linear-gradient(180deg, #eef4f0 0%, #f2f7f4 45%, #f7f7f9 100%);
 }
 .hero.hr-hero::after {
   display: none;
@@ -600,7 +600,7 @@ body:not(.page-dashboard) .hero-left .back-btn:hover {
 /* Inspection / QHSI hero: same green gradient at top as HR module, no grid */
 .hero.inspection-hero,
 .hero.qhsi-hero {
-  background: linear-gradient(180deg, #eef4f0 0%, #f2f7f4 45%, #F8FAF8 100%);
+  background: linear-gradient(180deg, #eef4f0 0%, #f2f7f4 45%, #f7f7f9 100%);
 }
 .hero.inspection-hero::before,
 .hero.inspection-hero::after,
@@ -626,7 +626,7 @@ body:not(.page-dashboard) .hero-left .back-btn:hover {
 
 /* Submitted Forms (workflow history) hero — tighter bottom so stats sit closer to the list */
 .hero.review-hero {
-  background: linear-gradient(180deg, #eef4f0 0%, #f2f7f4 45%, #F8FAF8 100%);
+  background: linear-gradient(180deg, #eef4f0 0%, #f2f7f4 45%, #f7f7f9 100%);
   padding-bottom: 1.25rem;
 }
 .hero.review-hero::before,
@@ -636,7 +636,7 @@ body:not(.page-dashboard) .hero-left .back-btn:hover {
 
 /* Procurement hero: match Inspection - gradient at top, no grid */
 .hero.proc-hero {
-  background: linear-gradient(180deg, #eef4f0 0%, #f2f7f4 45%, #F8FAF8 100%);
+  background: linear-gradient(180deg, #eef4f0 0%, #f2f7f4 45%, #f7f7f9 100%);
 }
 .hero.proc-hero::before,
 .hero.proc-hero::after {
@@ -644,7 +644,7 @@ body:not(.page-dashboard) .hero-left .back-btn:hover {
 }
 /* Review History dashboard: match HR/Inspection background */
 .review-dashboard {
-  background: #F8FAF8;
+  background: #f7f7f9;
 }
 
 /* Grid fades gradually to bottom - no sharp cutoff (HR only; Procurement/Inspection use gradient only) */
@@ -661,7 +661,7 @@ body:not(.page-dashboard) .hero-left .back-btn:hover {
   left: -8%;
   width: 420px;
   height: 420px;
-  background: radial-gradient(circle, rgba(18, 84, 53, 0.12) 0%, transparent 65%);
+  background: radial-gradient(circle, rgba(255, 142, 104, 0.12) 0%, transparent 65%);
   border-radius: 50%;
   pointer-events: none;
   z-index: 0;
@@ -724,7 +724,7 @@ body.procurement-page .proc-hero-inner > .back-btn + .hero-title {
 
 .hero-title .hero-title-accent {
   display: inline-block;
-  background: linear-gradient(125deg, var(--primary) 0%, #1fa864 30%, var(--primary-light) 60%, var(--primary) 100%);
+  background: linear-gradient(125deg, var(--primary) 0%, #e05f36 30%, var(--primary-light) 60%, var(--primary) 100%);
   background-size: 200% auto;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -817,7 +817,7 @@ body.procurement-page .proc-hero-inner > .back-btn + .hero-title {
 }
 .dashboard-widget-link:hover .dashboard-widget {
   box-shadow: 0 2px 16px rgba(0, 0, 0, 0.06);
-  border-color: rgba(18, 84, 53, 0.14);
+  border-color: rgba(255, 142, 104, 0.14);
 }
 .dashboard-widget {
   background: #ffffff;
@@ -936,8 +936,8 @@ body.procurement-page .proc-hero-inner > .back-btn + .hero-title {
 
 .dashboard-stat-card--clickable[data-href]:hover,
 .dashboard-stat-card--clickable[data-action]:hover {
-  border-color: rgba(18, 84, 53, 0.28);
-  box-shadow: 0 2px 8px rgba(18, 84, 53, 0.08);
+  border-color: rgba(255, 142, 104, 0.28);
+  box-shadow: 0 2px 8px rgba(255, 142, 104, 0.08);
 }
 
 .dashboard-stat-card--clickable[data-href]:focus-visible,
@@ -1160,7 +1160,7 @@ body.procurement-page .proc-hero-inner > .back-btn + .hero-title {
 
 /* ---- Section ---- */
 .modules-section {
-  background: var(--bg-body, #f8faf8);
+  background: var(--bg-body, #f7f7f9);
   padding: 3rem 0 7rem;
   width: 100%;
   display: block !important;
@@ -1269,8 +1269,8 @@ body.procurement-page .proc-hero-inner > .back-btn + .hero-title {
 }
 
 .module-card:hover {
-  border-color: rgba(18, 84, 53, 0.32);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.07), 0 12px 32px rgba(18,84,53,0.09), 0 0 0 1.5px rgba(18,84,53,0.1);
+  border-color: rgba(255, 142, 104, 0.32);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.07), 0 12px 32px rgba(255, 142, 104,0.09), 0 0 0 1.5px rgba(255, 142, 104,0.1);
   transform: translateY(-3px);
 }
 
@@ -1337,7 +1337,7 @@ body.procurement-page .proc-hero-inner > .back-btn + .hero-title {
 }
 
 .module-card:hover .module-icon {
-  background: rgba(18, 84, 53, 0.1);
+  background: rgba(255, 142, 104, 0.1);
   transform: scale(1.06);
 }
 
@@ -1408,7 +1408,7 @@ body.procurement-page .proc-hero-inner > .back-btn + .hero-title {
    Footer
    =========================================== */
 .footer {
-  background: var(--bg-body, #f8faf8);
+  background: var(--bg-body, #f7f7f9);
   margin-top: auto;
   flex-shrink: 0;
   position: relative;
@@ -1744,7 +1744,7 @@ body.procurement-page .proc-hero-inner > .back-btn + .hero-title {
 .form-control:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(18, 84, 53, 0.08);
+  box-shadow: 0 0 0 3px rgba(255, 142, 104, 0.08);
 }
 
 /* ===========================================
@@ -1851,20 +1851,14 @@ body.procurement-page .proc-hero-inner > .back-btn + .hero-title {
   }
 
 
-  /* Show hamburger as soon as resolution shrinks - nav goes to menu */
+  /* Show hamburger when nav collapses — dimensions set by icon-rail rule below */
   .mobile-menu-toggle {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    width: auto !important;
-    height: auto !important;
-    min-width: 0 !important;
-    min-height: 0 !important;
     border: none !important;
     background: transparent !important;
-    border-radius: 8px !important;
     cursor: pointer !important;
-    padding: 0.5rem !important;
     color: var(--text-mid) !important;
     box-shadow: none !important;
     transition: background 0.15s ease, color 0.15s ease !important;
@@ -1891,13 +1885,14 @@ body.procurement-page .proc-hero-inner > .back-btn + .hero-title {
     display: block !important;
   }
 
-  /* Nav icon rail — transparent icons, equal tap targets */
+  /* Nav icon rail — equal 36×36 circular targets, matched glyphs */
   .nav-right {
     align-items: center !important;
     gap: 0.5rem !important;
     flex-wrap: nowrap !important;
   }
   .nav-right > .mobile-menu-toggle,
+  .nav-right .nav-assistant-btn,
   .nav-right .notification-btn,
   .nav-right .nav-save-draft-btn,
   .nav-right .logout-btn,
@@ -1906,26 +1901,29 @@ body.procurement-page .proc-hero-inner > .back-btn + .hero-title {
     height: 36px !important;
     min-width: 36px !important;
     min-height: 36px !important;
+    max-width: 36px !important;
+    max-height: 36px !important;
     padding: 0 !important;
     margin: 0 !important;
     box-sizing: border-box !important;
-    flex-shrink: 0 !important;
+    flex: 0 0 36px !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
     border: none !important;
     background: transparent !important;
-    border-radius: 8px !important;
+    border-radius: 50% !important;
     box-shadow: none !important;
     color: var(--text-dark) !important;
     vertical-align: middle !important;
+    line-height: 0 !important;
   }
   .nav-right > .mobile-menu-toggle:hover,
   .nav-right .notification-btn:hover,
   .nav-right .nav-save-draft-btn:hover,
   .nav-right .logout-btn:hover,
   .nav-right #pwa-install-btn.pwa-nav-icon:hover {
-    background: rgba(18, 84, 53, 0.06) !important;
+    background: rgba(255, 142, 104, 0.06) !important;
     color: var(--text-dark) !important;
   }
   .nav-right > .mobile-menu-toggle {
@@ -1934,38 +1932,37 @@ body.procurement-page .proc-hero-inner > .back-btn + .hero-title {
   }
   .nav-right > .mobile-menu-toggle.active {
     border: none !important;
-    background: rgba(18, 84, 53, 0.08) !important;
+    background: rgba(255, 142, 104, 0.08) !important;
     color: var(--primary) !important;
     box-shadow: none !important;
   }
   .nav-right > .mobile-menu-toggle:focus-visible,
+  .nav-right .nav-assistant-btn:focus-visible,
   .nav-right .notification-btn:focus-visible,
   .nav-right .logout-btn:focus-visible,
   .nav-right .nav-save-draft-btn:focus-visible {
-    outline: 2px solid var(--primary, #125435) !important;
+    outline: 2px solid var(--primary, #ff8e68) !important;
     outline-offset: 0 !important;
   }
+  .nav-right .nav-assistant-btn svg,
   .nav-right .notification-btn svg,
   .nav-right .logout-btn svg,
+  .nav-right .nav-save-draft-btn svg,
   .nav-right #pwa-install-btn.pwa-nav-icon svg {
-    width: 18px !important;
-    height: 18px !important;
+    width: 20px !important;
+    height: 20px !important;
+    flex-shrink: 0 !important;
+    display: block !important;
   }
 
-  /* Icon rail: compact assistant pill + hide other labels */
+  /* Assistant keeps brand fill; same box as siblings */
   .nav-right .nav-assistant-btn {
-    width: 36px !important;
-    min-width: 36px !important;
-    height: 36px !important;
-    padding: 0 !important;
-    border-radius: 50% !important;
-    background: var(--primary, #125435) !important;
+    background: var(--primary, #ff8e68) !important;
     color: #fff !important;
-    box-shadow: none !important;
   }
 
   .nav-right .nav-assistant-btn:hover {
-    background: var(--primary-light, #1a7a4c) !important;
+    background: var(--primary-light, #f97e54) !important;
     color: #fff !important;
   }
 
@@ -1985,9 +1982,14 @@ body.procurement-page .proc-hero-inner > .back-btn + .hero-title {
     white-space: nowrap !important;
   }
 
+  .nav-right .notification-btn,
+  .nav-right .notification-wrapper {
+    overflow: visible !important;
+  }
+
   .notification-wrapper .notification-badge {
-    top: 1px !important;
-    right: 1px !important;
+    top: -4px !important;
+    right: -4px !important;
   }
 
   /* Slide-out menu drawer - right side, outside nav to avoid backdrop-filter containing block */
@@ -2040,7 +2042,7 @@ body.procurement-page .proc-hero-inner > .back-btn + .hero-title {
     border: none !important;
     box-shadow: none !important;
     border-radius: 10px !important;
-    background: rgba(18, 84, 53, 0.04) !important;
+    background: rgba(255, 142, 104, 0.04) !important;
     margin: 0.2rem 0 0.35rem 0 !important;
     padding: 0.25rem !important;
     opacity: 1 !important;
@@ -2065,7 +2067,7 @@ body.procurement-page .proc-hero-inner > .back-btn + .hero-title {
     font-size: 0.86rem !important;
     border-radius: 8px !important;
     border-bottom: none !important;
-    color: #0f5132 !important;
+    color: var(--primary, #ff8e68) !important;
     background: #fff !important;
   }
 
@@ -2088,13 +2090,13 @@ body.procurement-page .proc-hero-inner > .back-btn + .hero-title {
 
   .mobile-menu-drawer-list li a:hover,
   .mobile-menu-drawer-list a:hover {
-    background: rgba(18, 84, 53, 0.06) !important;
+    background: rgba(255, 142, 104, 0.06) !important;
     color: var(--primary) !important;
   }
 
   .mobile-menu-drawer-list li a:active,
   .mobile-menu-drawer-list a:active {
-    background: rgba(18, 84, 53, 0.1) !important;
+    background: rgba(255, 142, 104, 0.1) !important;
     color: var(--primary) !important;
   }
 
@@ -2139,7 +2141,7 @@ body.procurement-page .proc-hero-inner > .back-btn + .hero-title {
   /* Hamburger — equal 2px bars, even spacing (matches nav SVG stroke 2) */
   .mobile-menu-toggle .hamburger-bar {
     display: block !important;
-    width: 18px !important;
+    width: 20px !important;
     height: 2px !important;
     border-radius: 1px !important;
     background: currentColor !important;
@@ -2153,7 +2155,7 @@ body.procurement-page .proc-hero-inner > .back-btn + .hero-title {
     content: '' !important;
     position: absolute !important;
     left: 0 !important;
-    width: 18px !important;
+    width: 20px !important;
     height: 2px !important;
     border-radius: 1px !important;
     background: currentColor !important;
@@ -2161,11 +2163,11 @@ body.procurement-page .proc-hero-inner > .back-btn + .hero-title {
   }
 
   .mobile-menu-toggle .hamburger-bar::before {
-    top: -6px !important;
+    top: -7px !important;
   }
 
   .mobile-menu-toggle .hamburger-bar::after {
-    bottom: -6px !important;
+    bottom: -7px !important;
   }
 
   .mobile-menu-toggle.active .hamburger-bar {
@@ -2517,7 +2519,7 @@ body.procurement-page .proc-hero-inner > .back-btn + .hero-title {
     min-height: 36px !important;
     justify-content: center !important;
     margin-right: 0 !important;
-    border-radius: 8px !important;
+    border-radius: 50% !important;
     background: transparent !important;
     border: none !important;
     color: var(--text-dark) !important;
@@ -2531,7 +2533,7 @@ body.procurement-page .proc-hero-inner > .back-btn + .hero-title {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    border-radius: 8px !important;
+    border-radius: 50% !important;
     background: transparent !important;
     color: var(--text-dark) !important;
     border: none !important;
@@ -2541,12 +2543,12 @@ body.procurement-page .proc-hero-inner > .back-btn + .hero-title {
   }
 
   .notification-btn svg {
-    width: 18px !important;
-    height: 18px !important;
+    width: 20px !important;
+    height: 20px !important;
   }
 
   .nav-right .notification-btn:hover {
-    background: rgba(18, 84, 53, 0.06) !important;
+    background: rgba(255, 142, 104, 0.06) !important;
   }
 
   .nav-right #pwa-install-btn.pwa-nav-icon {
@@ -2557,12 +2559,12 @@ body.procurement-page .proc-hero-inner > .back-btn + .hero-title {
     padding: 0 !important;
     background: transparent !important;
     border: none !important;
-    border-radius: 8px !important;
+    border-radius: 50% !important;
     box-shadow: none !important;
   }
 
   .nav-right #pwa-install-btn.pwa-nav-icon:hover {
-    background: rgba(18, 84, 53, 0.06) !important;
+    background: rgba(255, 142, 104, 0.06) !important;
   }
   
   /* Drawer: full width below nav (no left gap beside logo) */
@@ -2613,7 +2615,7 @@ body.procurement-page .proc-hero-inner > .back-btn + .hero-title {
 
   .nav-menu li a:active,
   .nav-menu a:active {
-    background: rgba(18, 84, 53, 0.08) !important;
+    background: rgba(255, 142, 104, 0.08) !important;
   }
   
   .nav-menu a:hover {
@@ -2629,16 +2631,9 @@ body.procurement-page .proc-hero-inner > .back-btn + .hero-title {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    width: auto !important;
-    height: auto !important;
-    min-width: 0 !important;
-    min-height: 0 !important;
     border: none !important;
     background: transparent !important;
-    border-radius: 8px !important;
-    box-shadow: none !important;
     cursor: pointer !important;
-    padding: 0.5rem !important;
     color: var(--text-mid) !important;
     transition: background 0.15s ease !important;
     -webkit-tap-highlight-color: transparent !important;
@@ -2655,7 +2650,7 @@ body.procurement-page .proc-hero-inner > .back-btn + .hero-title {
   
   .mobile-menu-toggle .hamburger-bar {
     display: block !important;
-    width: 18px !important;
+    width: 20px !important;
     height: 2px !important;
     border-radius: 1px !important;
     background: currentColor !important;
@@ -2669,7 +2664,7 @@ body.procurement-page .proc-hero-inner > .back-btn + .hero-title {
     content: '' !important;
     position: absolute !important;
     left: 0 !important;
-    width: 18px !important;
+    width: 20px !important;
     height: 2px !important;
     border-radius: 1px !important;
     background: currentColor !important;
@@ -2677,11 +2672,11 @@ body.procurement-page .proc-hero-inner > .back-btn + .hero-title {
   }
   
   .mobile-menu-toggle .hamburger-bar::before {
-    top: -6px !important;
+    top: -7px !important;
   }
   
   .mobile-menu-toggle .hamburger-bar::after {
-    bottom: -6px !important;
+    bottom: -7px !important;
   }
   
   .mobile-menu-toggle.active .hamburger-bar {
@@ -2750,7 +2745,7 @@ body.procurement-page .proc-hero-inner > .back-btn + .hero-title {
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    border-radius: 8px !important;
+    border-radius: 50% !important;
     background: transparent !important;
     border: none !important;
     color: var(--text-dark) !important;
@@ -2758,8 +2753,8 @@ body.procurement-page .proc-hero-inner > .back-btn + .hero-title {
   }
 
   .logout-btn svg {
-    width: 18px !important;
-    height: 18px !important;
+    width: 20px !important;
+    height: 20px !important;
   }
 
   .logout-btn span {
@@ -2795,7 +2790,7 @@ body.procurement-page .proc-hero-inner > .back-btn + .hero-title {
   .module-card:active {
     transform: scale(0.985) !important;
     transition: transform 0.1s ease !important;
-    background: rgba(18, 84, 53, 0.02) !important;
+    background: rgba(255, 142, 104, 0.02) !important;
   }
 
   .module-card .module-number {
@@ -3012,11 +3007,11 @@ body.procurement-page .proc-hero-inner > .back-btn + .hero-title {
     min-width: 36px !important;
     min-height: 36px !important;
     justify-content: center !important;
-    border-radius: 7px !important;
+    border-radius: 50% !important;
   }
   .logout-btn svg {
-    width: 16px !important;
-    height: 16px !important;
+    width: 20px !important;
+    height: 20px !important;
   }
 }
 
@@ -3153,11 +3148,11 @@ body.procurement-page .proc-hero-inner > .back-btn + .hero-title {
     min-width: 36px !important;
     min-height: 36px !important;
     justify-content: center !important;
-    border-radius: 8px !important;
+    border-radius: 50% !important;
   }
   .logout-btn svg {
-    width: 18px !important;
-    height: 18px !important;
+    width: 20px !important;
+    height: 20px !important;
   }
 
   .mobile-menu-drawer {
@@ -3431,6 +3426,7 @@ body.profile-modal-open {
   display: flex;
   align-items: center;
   flex-shrink: 0;
+  overflow: visible;
 }
 
 .notification-btn {
@@ -3445,6 +3441,14 @@ body.profile-modal-open {
   position: relative;
   transition: all 0.15s ease;
   color: var(--text-mid);
+  overflow: visible;
+}
+
+.notification-btn svg {
+  display: block;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 0;
 }
 
 .notification-btn:hover {
@@ -3468,20 +3472,27 @@ body.profile-modal-open {
 
 .notification-badge {
   position: absolute;
-  top: 2px;
-  right: 2px;
+  top: -3px;
+  right: -5px;
+  z-index: 1;
   background: #ef4444;
   color: white;
-  font-size: 0.6rem;
+  font-size: 0.62rem;
   font-weight: 700;
-  min-width: 16px;
-  height: 16px;
-  border-radius: 8px;
-  display: flex;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  border-radius: 999px;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0 3px;
+  padding: 0 0.32rem;
   border: 2px solid white;
+  box-sizing: border-box;
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 .notification-dropdown {
@@ -3535,7 +3546,7 @@ body.profile-modal-open {
 }
 
 .mark-all-read:hover {
-  background: rgba(18, 84, 53, 0.06);
+  background: rgba(255, 142, 104, 0.06);
 }
 
 .notification-list {
@@ -3659,12 +3670,12 @@ body.profile-modal-open {
 }
 
 .todo-nav-btn .todo-nav-badge {
-  background: var(--primary, #125435);
+  background: var(--primary, #ff8e68);
   border-color: #fff;
 }
 
 .todo-panel-pop {
-  --todo-accent: #125435;
+  --todo-accent: #ff8e68;
   --todo-accent-hover: #0f402a;
   --todo-surface: #f8fafc;
   --todo-border: #e2e8f0;
@@ -3780,7 +3791,7 @@ body.profile-modal-open {
 .todo-remind-input:focus {
   outline: none;
   border-color: var(--todo-accent);
-  box-shadow: 0 0 0 3px rgba(18, 84, 53, 0.12);
+  box-shadow: 0 0 0 3px rgba(255, 142, 104, 0.12);
 }
 
 .todo-new-input {
@@ -3802,7 +3813,7 @@ body.profile-modal-open {
 .todo-new-input:focus {
   outline: none;
   border-color: var(--todo-accent);
-  box-shadow: 0 0 0 3px rgba(18, 84, 53, 0.1);
+  box-shadow: 0 0 0 3px rgba(255, 142, 104, 0.1);
 }
 
 .todo-add-btn {
@@ -3972,7 +3983,7 @@ body.profile-modal-open {
 }
 
 .todo-clear-done:hover {
-  background: rgba(18, 84, 53, 0.09);
+  background: rgba(255, 142, 104, 0.09);
   color: var(--todo-accent-hover);
 }
 
@@ -3997,12 +4008,12 @@ body.profile-modal-open {
   color: #fff !important;
   text-decoration: none !important;
   border: none;
-  background: var(--primary, #125435);
-  box-shadow: 0 2px 8px rgba(18, 84, 53, 0.22);
+  background: var(--primary, #ff8e68);
+  box-shadow: 0 2px 8px rgba(255, 142, 104, 0.22);
   transition: background 0.18s ease, box-shadow 0.18s ease;
 }
 .submission-view-pdf-btn:hover {
-  background: var(--primary-dark, #0d3d24);
-  box-shadow: 0 3px 12px rgba(18, 84, 53, 0.28);
+  background: var(--primary-dark, #e05f36);
+  box-shadow: 0 3px 12px rgba(255, 142, 104, 0.28);
   color: #fff !important;
 }

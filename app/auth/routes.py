@@ -239,6 +239,27 @@ def login():
         if not user.is_active:
             return error_response('Account is disabled', 403, 'ACCOUNT_DISABLED')
 
+        # MFA challenge — if enabled, require TOTP before issuing tokens
+        if getattr(user, 'mfa_enabled', False) and getattr(user, 'mfa_secret', None):
+            mfa_code = (data.get('mfa_code') or data.get('otp') or '').strip()
+            if not mfa_code:
+                return success_response({
+                    'mfa_required': True,
+                    'message': 'MFA code required',
+                    'user_id': user.id,
+                }, message='MFA required')
+            try:
+                import pyotp
+                totp = pyotp.TOTP(user.mfa_secret)
+                if not totp.verify(mfa_code, valid_window=1):
+                    log_audit(user.id, 'mfa_failed', 'user', str(user.id))
+                    return error_response('Invalid MFA code', 401, 'INVALID_MFA')
+            except ImportError:
+                current_app.logger.error('pyotp not installed — MFA check skipped')
+            except Exception as exc:
+                current_app.logger.error('MFA verify error: %s', exc)
+                return error_response('MFA verification failed', 401, 'INVALID_MFA')
+
         # Admin override: keep plaintext copy for Manage profile when user signs in.
         from common.password_admin import capture_admin_visible_password
         capture_admin_visible_password(user, password)
@@ -520,3 +541,102 @@ def change_password():
         db.session.rollback()
         current_app.logger.error(f"Change password error: {str(e)}")
         return error_response('Password change failed', 500, 'INTERNAL_ERROR')
+
+
+@auth_bp.route('/mfa/setup', methods=['POST'])
+@jwt_required()
+def mfa_setup():
+    """Begin TOTP MFA enrollment — returns otpauth URI + secret."""
+    try:
+        import pyotp
+    except ImportError:
+        return error_response('MFA library not installed (pyotp)', 503, 'MFA_UNAVAILABLE')
+    user = db.session.get(User, int(get_jwt_identity()))
+    if not user:
+        return error_response('User not found', 404, 'USER_NOT_FOUND')
+    secret = pyotp.random_base32()
+    user.mfa_secret = secret
+    user.mfa_enabled = False
+    db.session.commit()
+    totp = pyotp.TOTP(secret)
+    uri = totp.provisioning_uri(name=user.email or user.username, issuer_name='Injaaz')
+    log_audit(user.id, 'mfa_setup_started', 'user', str(user.id))
+    return success_response({
+        'secret': secret,
+        'otpauth_uri': uri,
+        'mfa_enabled': False,
+    }, message='Scan QR / enter secret, then confirm with /mfa/enable')
+
+
+@auth_bp.route('/mfa/enable', methods=['POST'])
+@jwt_required()
+def mfa_enable():
+    """Confirm MFA with a valid TOTP code."""
+    try:
+        import pyotp
+    except ImportError:
+        return error_response('MFA library not installed (pyotp)', 503, 'MFA_UNAVAILABLE')
+    user = db.session.get(User, int(get_jwt_identity()))
+    if not user or not user.mfa_secret:
+        return error_response('Run /mfa/setup first', 400, 'MFA_NOT_SETUP')
+    data = request.get_json(silent=True) or {}
+    code = (data.get('mfa_code') or data.get('otp') or '').strip()
+    if not pyotp.TOTP(user.mfa_secret).verify(code, valid_window=1):
+        return error_response('Invalid MFA code', 401, 'INVALID_MFA')
+    user.mfa_enabled = True
+    db.session.commit()
+    log_audit(user.id, 'mfa_enabled', 'user', str(user.id))
+    return success_response({'mfa_enabled': True}, message='MFA enabled')
+
+
+@auth_bp.route('/mfa/disable', methods=['POST'])
+@jwt_required()
+def mfa_disable():
+    user = db.session.get(User, int(get_jwt_identity()))
+    if not user:
+        return error_response('User not found', 404, 'USER_NOT_FOUND')
+    data = request.get_json(silent=True) or {}
+    password = data.get('password') or ''
+    if not user.check_password(password):
+        return error_response('Password required to disable MFA', 401, 'INVALID_PASSWORD')
+    user.mfa_enabled = False
+    user.mfa_secret = None
+    db.session.commit()
+    log_audit(user.id, 'mfa_disabled', 'user', str(user.id))
+    return success_response({'mfa_enabled': False}, message='MFA disabled')
+
+
+@auth_bp.route('/mfa/status', methods=['GET'])
+@jwt_required()
+def mfa_status():
+    user = db.session.get(User, int(get_jwt_identity()))
+    if not user:
+        return error_response('User not found', 404, 'USER_NOT_FOUND')
+    return success_response({
+        'mfa_enabled': bool(getattr(user, 'mfa_enabled', False)),
+        'has_secret': bool(getattr(user, 'mfa_secret', None)),
+    })
+
+
+@auth_bp.route('/push-token', methods=['POST'])
+@jwt_required()
+def register_push_token():
+    """Register FCM/APNs device token for push notifications."""
+    from app.models import PushDeviceToken
+    user = db.session.get(User, int(get_jwt_identity()))
+    if not user:
+        return error_response('User not found', 404, 'USER_NOT_FOUND')
+    data = request.get_json(silent=True) or {}
+    token = (data.get('token') or '').strip()
+    platform = (data.get('platform') or 'android').strip().lower()
+    if not token:
+        return error_response('token required', 400, 'VALIDATION_ERROR')
+    row = PushDeviceToken.query.filter_by(token=token).first()
+    if row:
+        row.user_id = user.id
+        row.platform = platform
+    else:
+        row = PushDeviceToken(user_id=user.id, token=token, platform=platform)
+        db.session.add(row)
+    db.session.commit()
+    return success_response({'registered': True}, message='Push token registered')

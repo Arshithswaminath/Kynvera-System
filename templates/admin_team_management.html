@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
-  <meta name="theme-color" content="#125435">
+  <meta name="theme-color" content="#ff8e68">
   <title>Users &amp; Teams | Injaaz Admin</title>
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
   {% include 'partials/caveat_font.html' %}
@@ -29,8 +29,8 @@
     --radius: 14px;
     --shadow-lg: var(--tm-sh);
 
-    --tm-green:   #125435;
-    --tm-green2:  #1a7a4d;
+    --tm-green:   #ff8e68;
+    --tm-green2:  #f97e54;
     --tm-line:    #e2ede8;
     --tm-bg:      #f5faf7;
     --tm-card:    #ffffff;
@@ -346,14 +346,23 @@
   }
   .tm-avatar {
     width: 46px; height: 46px; border-radius: 14px;
-    background: linear-gradient(135deg, var(--tm-green), var(--tm-green2));
+    background: #0078d4;
     color: #fff; font-weight: 800; font-size: 1.05rem;
     display: flex; align-items: center; justify-content: center;
     flex-shrink: 0; letter-spacing: -.02em;
   }
-  .tm-avatar.blue { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
-  .tm-avatar.amber { background: linear-gradient(135deg, #d97706, #b45309); }
-  .tm-avatar.purple { background: linear-gradient(135deg, #7c3aed, #6d28d9); }
+  .tm-avatar.c0  { background: #0078d4; }
+  .tm-avatar.c1  { background: #e74856; }
+  .tm-avatar.c2  { background: #8764b8; }
+  .tm-avatar.c3  { background: #00b7c3; }
+  .tm-avatar.c4  { background: #ff8c00; }
+  .tm-avatar.c5  { background: #038387; }
+  .tm-avatar.c6  { background: #c239b3; }
+  .tm-avatar.c7  { background: #498205; }
+  .tm-avatar.c8  { background: #da3b01; }
+  .tm-avatar.c9  { background: #5c2e91; }
+  .tm-avatar.c10 { background: #008272; }
+  .tm-avatar.c11 { background: #ffb900; color: #1c1c1e; }
   .tm-staff-name {
     font-weight: 800;
     font-size: .97rem;
@@ -679,7 +688,7 @@
       <div class="tm-kpi-strip" id="tmKpiStrip">
         <div class="tm-kpi-card">
           <div class="tm-kpi-icon green">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="#125435" width="22" height="22"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="#ff8e68" width="22" height="22"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/></svg>
           </div>
           <div><div class="tm-kpi-lbl">Total Staff</div><div class="tm-kpi-val" id="kpiStaff">—</div></div>
         </div>
@@ -986,8 +995,12 @@
     return (name || '').split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('') || '?';
   }
 
-  const AVATAR_COLORS = ['', 'blue', 'amber', 'purple'];
-  function avatarColor(idx) { return AVATAR_COLORS[idx % AVATAR_COLORS.length]; }
+  function avatarColor(name) {
+    let n = 0;
+    const s = String(name || '');
+    for (let i = 0; i < s.length; i++) n = ((n << 5) - n) + s.charCodeAt(i);
+    return 'c' + (Math.abs(n) % 12);
+  }
 
   function fmtDate(d) {
     if (!d) return '—';
@@ -1098,7 +1111,7 @@
              aria-label="Manage profile for ${displayName}"
              title="Manage profile">
           <div class="tm-staff-card-top">
-            <div class="tm-avatar ${avatarColor(idx)}">${initials(u.full_name)}</div>
+            <div class="tm-avatar ${avatarColor(u.full_name)}">${initials(u.full_name)}</div>
             <div class="tm-staff-head">
               <div class="tm-staff-name-row">
                 <div class="tm-staff-name">${displayName}</div>

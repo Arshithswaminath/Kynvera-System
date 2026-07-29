@@ -1,15 +1,15 @@
 {# Main dashboard navigation bar - use across all modules #}
 {# Optional: active_page = 'home' | 'about' | 'admin' | 'personal-progress' | 'report' | 'mmr-chargeable' | 'hr' | ... #}
 {# Include with `with context` so routes can pass active_page: {% include 'partials/main_navbar.html' with context %} #}
-{# About: white full wordmark. Everywhere else: official mark (PNG). #}
+{# About: full wordmark. Everywhere else: Kynvera mark (PNG). #}
 {% set _about_nav_logo = active_page is defined and active_page == 'about' %}
 <nav class="nav" id="nav">
   <div class="nav-container">
-    <a href="/dashboard" class="logo" aria-label="Injaaz Home">
-      <img src="{{ url_for('static', filename=('icons/INJAAZ Logo - Edited.png' if _about_nav_logo else 'icons/icon-192x192.png')) }}" alt="Injaaz Facilities Management" class="{{ 'logo-img-about' if _about_nav_logo else 'logo-img-official' }}" width="{{ '200' if _about_nav_logo else '48' }}" height="{{ '40' if _about_nav_logo else '48' }}" decoding="async">
+    <a href="/dashboard" class="logo" aria-label="Kynvera Home">
+      <img src="{{ url_for('static', filename=('images/kynvera/kynvera-wordmark.png' if _about_nav_logo else 'images/kynvera/kynvera-mark-48.png')) }}" alt="Kynvera" class="{{ 'logo-img-about' if _about_nav_logo else 'logo-img-official' }}" width="{{ '200' if _about_nav_logo else '48' }}" height="{{ '40' if _about_nav_logo else '48' }}" decoding="async">
       <div class="logo-text">
-        <span class="logo-brand">Injaaz</span>
-        <span id="welcome-text" class="nav-welcome">Injaaz Application</span>
+        <span class="logo-brand">Kynvera</span>
+        <span id="welcome-text" class="nav-welcome">Kynvera</span>
       </div>
     </a>
     <div class="nav-center">
@@ -60,6 +60,9 @@
         <li id="ticketing-menu-item" style="display: none;">
           <a href="/tickets/"{% if active_page == 'ticketing' %} class="nav-current"{% endif %}>Service tickets</a>
         </li>
+        <li id="fm-assets-menu-item" style="display: none;">
+          <a href="/assets/"{% if active_page == 'fm-assets' %} class="nav-current"{% endif %}>FM Assets</a>
+        </li>
         <li id="qhsi-menu-item" style="display: none;">
           <a href="/qhsi/"{% if active_page == 'qhsi' %} class="nav-current"{% endif %}>QHSE</a>
         </li>
@@ -69,15 +72,15 @@
       <button type="button" class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle menu" aria-expanded="false">
         <span class="hamburger-bar" aria-hidden="true"></span>
       </button>
-      <button type="button" class="nav-assistant-btn" id="navAssistantBtn" aria-label="Ask Injaaz assistant" title="Ask Injaaz — help with forms, leave, documents" aria-expanded="false" aria-controls="assistantPanel">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="18" height="18" aria-hidden="true">
+      <button type="button" class="nav-assistant-btn" id="navAssistantBtn" aria-label="Ask Kynvera assistant" title="Ask Kynvera — help with forms, leave, documents" aria-expanded="false" aria-controls="assistantPanel">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="20" height="20" aria-hidden="true">
           <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a49.255 49.255 0 0 0 4.365-1.238C20.864 15.052 22 13.714 22 12.015c0-4.746-4.03-8.511-9-8.511S4 7.269 4 12.015v.745Z" />
         </svg>
-        <span class="nav-assistant-btn-label">Ask Injaaz</span>
+        <span class="nav-assistant-btn-label">Ask Kynvera</span>
       </button>
       <div class="notification-wrapper" id="notificationWrapper">
         <button class="notification-btn" id="notificationBtn" type="button" title="Notifications" aria-label="Notifications">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="22" height="22" aria-hidden="true">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="20" height="20" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
           </svg>
           <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
@@ -94,14 +97,14 @@
       </div>
       {% if show_inspection_save_draft %}
       <button type="button" id="saveDraftBtn" class="nav-save-draft-btn" title="Save Draft">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="22" height="22" aria-hidden="true">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="20" height="20" aria-hidden="true">
           <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
         </svg>
         <span>Save Draft</span>
       </button>
       {% endif %}
       <button class="logout-btn" id="logoutBtn" type="button" title="Logout" aria-label="Logout">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="22" height="22" aria-hidden="true">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="20" height="20" aria-hidden="true">
           <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 9V5.25A2.25 2.25 0 0 1 10.5 3h6a2.25 2.25 0 0 1 2.25 2.25v13.5A2.25 2.25 0 0 1 16.5 21h-6a2.25 2.25 0 0 1-2.25-2.25V15m-3 0-3-3m0 0 3-3m-3 3h12.75" />
         </svg>
         <span>Logout</span>

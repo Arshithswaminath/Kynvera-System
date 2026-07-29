@@ -88,7 +88,7 @@ _DEFAULT_CONFIG = {
     'body': (
         'Dear FM Team,\n\n'
         'Please find below comprehensive Daily Report of ({{REPORT_DATE}}) '
-        'generated from our CAFM system / Injaaz Application for all Pending & Resolved work orders.\n\n'
+        'generated from our CAFM system / Kynvera for all Pending & Resolved work orders.\n\n'
         'Regards,\n'
         'CAFM Team'
     ),
@@ -106,7 +106,7 @@ _MONTHLY_SUBJECT_DEFAULT = 'Monthly Report on Resolved and Pending Complaints fo
 _MONTHLY_BODY_DEFAULT = (
     'Dear FM Team,\n\n'
     'Please find below comprehensive Monthly Report of ({{REPORT_DATE}}) '
-    'generated from our CAFM system / Injaaz Application for all Pending & Resolved work orders.\n\n'
+    'generated from our CAFM system / Kynvera for all Pending & Resolved work orders.\n\n'
     'Regards,\n'
     'CAFM Team'
 )

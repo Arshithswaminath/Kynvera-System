@@ -395,7 +395,167 @@ def compose_ticket_summary(data):
         msg,
         cards=cards,
         actions=[{'label': 'View my tickets', 'href': '/tickets/list', 'kind': 'link'}],
-        suggestions=['How many pending forms?', 'My last leave', 'Find a document'],
+        suggestions=['Critical assets', 'Which building has the most failures?', 'Why did maintenance costs increase?'],
+    )
+
+
+def compose_fm_failures_by_building(data):
+    if not data.get('allowed'):
+        return _base_payload(
+            'fm_failures_by_building',
+            "You need Service Tickets access to view FM failure analytics.",
+            suggestions=['My tickets', 'Contact admin'],
+        )
+    buildings = data.get('buildings') or []
+    if not buildings:
+        return _base_payload(
+            'fm_failures_by_building',
+            "No work-order data yet to rank buildings by failures.",
+            actions=[{'label': 'Open FM Assets', 'href': '/assets/', 'kind': 'link'}],
+        )
+    top = buildings[0]
+    lines = [f"{b['building']}: {b['failure_count']}" for b in buildings[:8]]
+    msg = (
+        f"Highest failure volume is {top['building']} with {top['failure_count']} tickets "
+        f"(of {data.get('total_tickets', 0)} total). Top buildings:\n- " + '\n- '.join(lines)
+    )
+    return _base_payload(
+        'fm_failures_by_building',
+        msg,
+        actions=[
+            {'label': 'FM Assets dashboard', 'href': '/assets/', 'kind': 'link'},
+            {'label': 'Tickets', 'href': '/tickets/', 'kind': 'link'},
+        ],
+        suggestions=['Show all critical assets', 'Why did maintenance costs increase?'],
+    )
+
+
+def compose_fm_critical_assets(data):
+    if not data.get('allowed'):
+        return _base_payload(
+            'fm_critical_assets',
+            "You need Service Tickets access to view critical assets.",
+            suggestions=['My tickets', 'Contact admin'],
+        )
+    assets = data.get('assets') or []
+    if not assets:
+        return _base_payload(
+            'fm_critical_assets',
+            "No critical assets right now (status critical or health under 40).",
+            actions=[{'label': 'Open FM Assets', 'href': '/assets/', 'kind': 'link'}],
+        )
+    lines = [
+        f"{a['asset_id']} {a['name']} — health {a['health_score'] if a['health_score'] is not None else 'n/a'} ({a['status']})"
+        for a in assets[:10]
+    ]
+    msg = f"Found {data.get('count', len(assets))} critical asset(s):\n- " + '\n- '.join(lines)
+    return _base_payload(
+        'fm_critical_assets',
+        msg,
+        actions=[{'label': 'Open FM Assets', 'href': '/assets/list', 'kind': 'link'}],
+        suggestions=['Which building has the most failures?', 'Budget utilization'],
+    )
+
+
+def compose_fm_cost_trend(data, user=None, narrate: bool = True):
+    if not data.get('allowed'):
+        return _base_payload(
+            'fm_cost_trend',
+            "You need Service Tickets access to view maintenance cost trends.",
+            suggestions=['My tickets', 'Contact admin'],
+        )
+    this_c = data.get('this_month_cost', 0)
+    prev_c = data.get('prev_month_cost', 0)
+    delta = data.get('delta', 0)
+    pct = data.get('delta_pct')
+    direction = 'increased' if delta > 0 else ('decreased' if delta < 0 else 'held steady')
+    pct_bit = f" ({pct:+.1f}%)" if pct is not None else ''
+    facts = (
+        f"Ticket-linked costs for {data.get('month_label', 'this month')}: {this_c} "
+        f"across {data.get('this_month_tickets', 0)} tickets. "
+        f"{data.get('prev_month_label', 'Last month')}: {prev_c} "
+        f"({data.get('prev_month_tickets', 0)} tickets). Costs {direction} by {abs(delta)}{pct_bit}. "
+        f"Asset registry maintenance total: {data.get('asset_maintenance_total', 0)}; "
+        f"purchase total: {data.get('asset_purchase_total', 0)}."
+    )
+
+    msg = facts
+    if narrate and user is not None:
+        try:
+            from module_assistant.llm import generate_reply, is_llm_enabled
+            if is_llm_enabled():
+                narrated = generate_reply(
+                    'Explain briefly why maintenance costs may have changed based only on these facts. '
+                    'Do not invent causes not supported by the numbers.',
+                    [{'title': 'Cost facts', 'source': 'FM analytics', 'text': facts}],
+                    user_name=(getattr(user, 'full_name', None) or 'there').split()[0],
+                    account_context='',
+                )
+                if narrated:
+                    msg = narrated
+        except Exception:
+            pass
+
+    cards = [
+        {'type': 'stat', 'label': 'This month', 'value': str(this_c)},
+        {'type': 'stat', 'label': 'Last month', 'value': str(prev_c)},
+        {'type': 'stat', 'label': 'Change', 'value': str(delta)},
+    ]
+    return _base_payload(
+        'fm_cost_trend',
+        msg,
+        cards=cards,
+        actions=[{'label': 'FM Assets KPIs', 'href': '/assets/', 'kind': 'link'}],
+        suggestions=['Critical assets', 'Which building has the most failures?'],
+    )
+
+
+def compose_fm_maintenance_report(data):
+    if not data.get('allowed'):
+        return _base_payload(
+            'fm_maintenance_report',
+            "You don't have access to maintenance reporting yet.",
+            suggestions=['Contact admin'],
+        )
+    month = data.get('month_label') or 'this month'
+    hint = data.get('generate_hint') or (
+        f'Use the Monthly Maintenance Report hub to generate the {month} pack.'
+    )
+    return _base_payload(
+        'fm_maintenance_report',
+        hint,
+        actions=[
+            {'label': f'Generate {month} MMR', 'href': data.get('mmr_url') or '/admin/mmr/', 'kind': 'link'},
+            {'label': 'FM Executive dashboard', 'href': data.get('executive_url') or '/assets/executive', 'kind': 'link'},
+            {'label': 'Tickets', 'href': data.get('tickets_url') or '/tickets/', 'kind': 'link'},
+        ],
+        suggestions=['Why did maintenance costs increase?', 'Critical assets', 'Portfolio forecast'],
+    )
+
+
+def compose_fm_portfolio_forecast(forecast):
+    if not forecast:
+        return _base_payload(
+            'fm_portfolio_forecast',
+            "No portfolio forecast cached yet. Open the FM Executive dashboard and run “Portfolio forecast”.",
+            actions=[{'label': 'Executive dashboard', 'href': '/assets/executive', 'kind': 'link'}],
+            suggestions=['Critical assets', 'Why did maintenance costs increase?'],
+        )
+    msg = (
+        f"Portfolio forecast ({forecast.get('horizon_days', 90)} days): "
+        f"budget {forecast.get('budget_forecast')}, "
+        f"failures {forecast.get('failure_count_forecast')}. "
+        f"{forecast.get('narrative') or ''}"
+    )
+    return _base_payload(
+        'fm_portfolio_forecast',
+        msg,
+        cards=[
+            {'type': 'stat', 'label': 'Budget forecast', 'value': str(forecast.get('budget_forecast'))},
+            {'type': 'stat', 'label': 'Failures', 'value': str(forecast.get('failure_count_forecast'))},
+        ],
+        actions=[{'label': 'Executive dashboard', 'href': '/assets/executive', 'kind': 'link'}],
+        suggestions=['Generate maintenance report', 'Critical assets'],
     )
 
 

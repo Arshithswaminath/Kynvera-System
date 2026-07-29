@@ -20,19 +20,37 @@
   const PIPELINE_LABELS = {
     interview_completed: 'Interview completed',
     gathering_documents: 'Gathering documents',
+    preparing_offer_letter: 'Preparing offer letter',
     offer_letter_prepared: 'Offer letter prepared',
     offer_letter_signed: 'Offer letter signed',
     md_signed_offer_received: 'Signed offer letter from MD received',
     visa_process_started: 'Visa process started',
+    candidate_employee: 'Candidate employee',
+    on_hold: 'On hold',
   };
+
+  // Linear stages only — on_hold is a process-wide pause, not a step.
+  const PIPELINE_STEPS = [
+    'interview_completed',
+    'gathering_documents',
+    'preparing_offer_letter',
+    'offer_letter_prepared',
+    'offer_letter_signed',
+    'md_signed_offer_received',
+    'visa_process_started',
+    'candidate_employee',
+  ];
 
   const PIPELINE_SHORT = {
     interview_completed: 'Interview',
     gathering_documents: 'Documents',
+    preparing_offer_letter: 'Prep offer',
     offer_letter_prepared: 'Offer ready',
     offer_letter_signed: 'Offer signed',
     md_signed_offer_received: 'MD signed',
-    visa_process_started: 'Visa started',
+    visa_process_started: 'Visa',
+    candidate_employee: 'Employee',
+    on_hold: 'On hold',
   };
 
   const PIPELINE_META = {
@@ -43,8 +61,13 @@
     },
     gathering_documents: {
       focus: 'Collecting identity & clearance documents',
-      next: 'Advance when Phase 1 uploads are underway or complete',
+      next: 'Advance to Preparing offer letter when docs are in hand',
       hint: 'Track passport, Emirates ID, photograph, PCC (attested), and education certificate.',
+    },
+    preparing_offer_letter: {
+      focus: 'Offer letter is being prepared',
+      next: 'Advance when the department offer letter is ready',
+      hint: 'Draft and route the offer letter for department signature.',
     },
     offer_letter_prepared: {
       focus: 'Department offer letter is prepared',
@@ -63,12 +86,34 @@
     },
     visa_process_started: {
       focus: 'Visa process open — upload remaining pack',
-      next: 'Finish insurance, e-visa, and employment contract',
+      next: 'Advance to Candidate employee when the file is ready to close',
       hint: 'Insurance, e-visa, and contract uploads are unlocked at this stage.',
+    },
+    on_hold: {
+      focus: 'Whole process paused — not a hiring stage',
+      next: 'Jump to a stage to resume the process',
+      hint: 'On hold freezes progress at any point. Resume by choosing a stage.',
+    },
+    candidate_employee: {
+      focus: 'File closed — candidate is now an employee',
+      next: 'Hiring file is closed',
+      hint: 'Final stage. The hiring file is closed; reopen only if something needs correction.',
     },
   };
 
-  const PIPELINE_ORDER = Object.keys(PIPELINE_LABELS);
+  function visaDocsUnlockedForStatus(status) {
+    if (!status || status === 'on_hold') return false;
+    const visaIdx = PIPELINE_STEPS.indexOf('visa_process_started');
+    const idx = PIPELINE_STEPS.indexOf(status);
+    return visaIdx >= 0 && idx >= visaIdx;
+  }
+
+  function nextPipelineStatus(current) {
+    const idx = PIPELINE_STEPS.indexOf(current);
+    if (idx < 0) return PIPELINE_STEPS[0] || null;
+    if (idx + 1 < PIPELINE_STEPS.length) return PIPELINE_STEPS[idx + 1];
+    return null;
+  }
 
   const VISA_GATED = { insurance: true, e_visa: true, contract: true };
 
@@ -203,9 +248,9 @@
 
   function avatarClass(name) {
     let n = 0;
-    const s = name || '';
-    for (let i = 0; i < s.length; i++) n += s.charCodeAt(i);
-    return 'c' + (n % 6);
+    const s = String(name || '');
+    for (let i = 0; i < s.length; i++) n = ((n << 5) - n) + s.charCodeAt(i);
+    return 'c' + (Math.abs(n) % 12);
   }
 
   function statusIcon(status) {
@@ -226,17 +271,103 @@
       .replace(/"/g, '&quot;');
   }
 
+  /** Last-updated label in Asia/Dubai (GST), 24-hour clock. */
+  function formatUpdatedAtDubai(iso) {
+    if (!iso) return '';
+    var d = null;
+    if (window.InjaazDateTimeUAE && typeof window.InjaazDateTimeUAE.parseInstant === 'function') {
+      d = window.InjaazDateTimeUAE.parseInstant(iso);
+    } else {
+      var str = String(iso).trim().replace(' ', 'T');
+      if (!/[zZ]$/.test(str) && !/[+-]\d{2}:?\d{2}$/.test(str)) str += 'Z';
+      d = new Date(str);
+      if (Number.isNaN(d.getTime())) d = null;
+    }
+    if (!d) return '';
+    return d.toLocaleString('en-GB', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      timeZone: 'Asia/Dubai',
+    });
+  }
+
+  /* ── List filter persistence (survives detail → Back to list) ── */
+  const LIST_FILTERS_KEY = 'hhHiringListFilters';
+
+  function readStoredListFilters() {
+    try {
+      const raw = sessionStorage.getItem(LIST_FILTERS_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' ? parsed : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function writeStoredListFilters(filters) {
+    try {
+      sessionStorage.setItem(LIST_FILTERS_KEY, JSON.stringify({
+        q: filters.q || '',
+        status: filters.status || 'all',
+        pipeline: filters.pipeline || 'all',
+        page: filters.page || 1,
+      }));
+    } catch (e) { /* ignore quota / private mode */ }
+  }
+
+  function listFiltersQuery(filters) {
+    const qs = new URLSearchParams();
+    if (filters.q) qs.set('q', filters.q);
+    if (filters.status && filters.status !== 'all') qs.set('status', filters.status);
+    if (filters.pipeline && filters.pipeline !== 'all') qs.set('pipeline', filters.pipeline);
+    if (filters.page && Number(filters.page) > 1) qs.set('page', String(filters.page));
+    return qs;
+  }
+
+  function hiringListHref(filters) {
+    const src = filters || readStoredListFilters() || {};
+    const s = listFiltersQuery(src).toString();
+    return '/hr/hiring' + (s ? '?' + s : '');
+  }
+
+  function parseListFiltersFromLocation() {
+    const params = new URLSearchParams(window.location.search || '');
+    const out = {};
+    if (params.has('q')) out.q = params.get('q') || '';
+    if (params.has('status')) out.status = params.get('status') || 'all';
+    if (params.has('pipeline')) out.pipeline = params.get('pipeline') || 'all';
+    if (params.has('page')) {
+      const p = parseInt(params.get('page'), 10);
+      if (p > 0) out.page = p;
+    }
+    return out;
+  }
+
   /* ── List page ─────────────────────────────────────────── */
   function initList() {
     const root = document.getElementById('hhListRoot');
     if (!root) return;
 
-    const state = {
+    const fromUrl = parseListFiltersFromLocation();
+    const fromStore = readStoredListFilters() || {};
+    const initial = Object.assign({
       q: '',
       status: 'all',
       pipeline: 'all',
       page: 1,
-      perPage: 12,
+    }, fromStore, fromUrl);
+
+    const state = {
+      q: initial.q || '',
+      status: initial.status || 'all',
+      pipeline: initial.pipeline || 'all',
+      page: initial.page || 1,
+      perPage: 10,
       pages: 1,
       count: 0,
     };
@@ -254,7 +385,32 @@
     let searchTimer = null;
     let assessmentsCache = [];
 
+    function persistFilters() {
+      writeStoredListFilters(state);
+      const qs = listFiltersQuery(state).toString();
+      const next = window.location.pathname + (qs ? '?' + qs : '');
+      if (window.history && window.history.replaceState) {
+        window.history.replaceState(null, '', next);
+      }
+    }
+
+    function syncFilterControls() {
+      if (searchEl) searchEl.value = state.q || '';
+      filterBtns.forEach(function (btn) {
+        const active = (btn.getAttribute('data-status') || 'all') === state.status;
+        btn.classList.toggle('active', active);
+      });
+      if (pipelineFilter) {
+        const opt = pipelineFilter.querySelector('option[value="' + state.pipeline + '"]');
+        pipelineFilter.value = opt ? state.pipeline : 'all';
+        if (!opt) state.pipeline = 'all';
+      }
+    }
+
+    syncFilterControls();
+
     async function load() {
+      persistFilters();
       listEl.innerHTML = '<div class="hh-loading"><div class="hh-spinner"></div>Loading candidates…</div>';
       try {
         const qs = new URLSearchParams({
@@ -293,20 +449,46 @@
         const pct = c.total ? Math.round((c.completed / c.total) * 100) : 0;
         const pipeKey = c.pipeline_status || 'interview_completed';
         const pipeLabel = c.pipeline_label || PIPELINE_LABELS[pipeKey] || pipeKey;
+        const comment = (c.comments || '').trim();
+        const commentHtml = comment
+          ? '<div class="hh-row-comment" title="' + escapeHtml(comment) + '">' +
+              '<span class="hh-row-comment-label">Comment</span>' +
+              '<span class="hh-row-comment-text">' + escapeHtml(comment) + '</span>' +
+            '</div>'
+          : '';
+        const roleLine = [c.role, c.department].filter(Boolean).join(' · ') || '—';
+        const updatedLabel = formatUpdatedAtDubai(c.updated_at);
+        const updatedHtml = updatedLabel
+          ? '<time class="hh-row-updated" datetime="' + escapeHtml(c.updated_at || '') + '" title="Last updated (Dubai time)">' +
+              escapeHtml(updatedLabel) +
+            '</time>'
+          : '<span class="hh-row-updated hh-row-updated-empty" aria-hidden="true"></span>';
         return (
           '<a class="hh-row" href="/hr/hiring/candidates/' + c.id + '">' +
             '<div class="hh-avatar ' + avatarClass(c.full_name) + '">' + escapeHtml(c.initials || '?') + '</div>' +
             '<div class="hh-row-info">' +
-              '<div class="hh-row-name">' + escapeHtml(c.full_name) + '</div>' +
-              '<div class="hh-row-role">' + escapeHtml(c.role || '—') + '</div>' +
+              '<div class="hh-row-name">' + escapeHtml(c.full_name) +
+                '<span class="hh-row-role-inline">' + escapeHtml(roleLine) + '</span>' +
+              '</div>' +
             '</div>' +
             '<div class="hh-row-progress">' +
-              '<div class="hh-progress-label"><span>Documents</span><span>' + escapeHtml(c.progress_label) + '</span></div>' +
-              '<div class="hh-progress-track"><div class="hh-progress-fill" style="width:' + pct + '%"></div></div>' +
+              '<span class="hh-progress-count">' + escapeHtml(c.progress_label) + '</span>' +
+              '<div class="hh-progress-track" title="Documents ' + escapeHtml(c.progress_label) + '">' +
+                '<div class="hh-progress-fill" style="width:' + pct + '%"></div>' +
+              '</div>' +
             '</div>' +
-            '<span class="hh-status pipeline ' + escapeHtml(pipeKey) + '">' +
-              escapeHtml(pipeLabel) +
-            '</span>' +
+            '<div class="hh-row-meta">' +
+              '<span class="hh-status pipeline ' + escapeHtml(pipeKey) + '">' +
+                escapeHtml(pipeLabel) +
+              '</span>' +
+              commentHtml +
+            '</div>' +
+            updatedHtml +
+            '<button type="button" class="hh-row-delete" data-hh-delete="' + c.id + '" aria-label="Delete ' + escapeHtml(c.full_name) + '" title="Delete candidate">' +
+              '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.25" stroke="currentColor" aria-hidden="true">' +
+                '<path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>' +
+              '</svg>' +
+            '</button>' +
           '</a>'
         );
       }).join('');
@@ -411,6 +593,14 @@
 
     function openModal() {
       if (!modal) return;
+      const title = document.getElementById('hhAddTitle');
+      const sub = document.getElementById('hhAddSub');
+      const submit = document.getElementById('hhAddSubmit');
+      if (title) title.textContent = 'Add Candidate';
+      if (sub) {
+        sub.textContent = 'Enter candidate details, or import name and role from an Interview Assessment already in the system.';
+      }
+      if (submit) submit.textContent = 'Create checklist';
       modal.classList.add('open');
       loadAssessments();
       const first = modal.querySelector('input[name="full_name"]');
@@ -436,8 +626,35 @@
     bindAddTriggers();
     // Empty-state button is re-rendered — delegate
     listEl.addEventListener('click', function (e) {
-      const btn = e.target.closest('[data-hh-add]');
-      if (btn) openModal();
+      const addBtn = e.target.closest('[data-hh-add]');
+      if (addBtn) {
+        openModal();
+        return;
+      }
+      const delBtn = e.target.closest('[data-hh-delete]');
+      if (!delBtn) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const id = parseInt(delBtn.getAttribute('data-hh-delete'), 10);
+      if (!id) return;
+      (async function () {
+        const ok = await confirmDialog({
+          title: 'Delete candidate',
+          message: 'Delete this candidate and all uploaded documents? This cannot be undone.',
+          confirmLabel: 'Delete',
+          danger: true,
+        });
+        if (!ok) return;
+        delBtn.disabled = true;
+        try {
+          await api('/hr/api/hiring/candidates/' + id, { method: 'DELETE' });
+          toast('Candidate deleted');
+          load();
+        } catch (err) {
+          toast(err.message, true);
+          delBtn.disabled = false;
+        }
+      })();
     });
 
     if (interviewPick) {
@@ -471,9 +688,22 @@
       setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
     }
 
+    function hideImportResult() {
+      const el = document.getElementById('hhImportResult');
+      if (!el) return;
+      clearTimeout(el._dismissTimer);
+      el._dismissTimer = null;
+      el.classList.remove('is-fading');
+      el.hidden = true;
+      el.innerHTML = '';
+    }
+
     function showImportResult(result, message) {
       const el = document.getElementById('hhImportResult');
       if (!el) return;
+      clearTimeout(el._dismissTimer);
+      el._dismissTimer = null;
+      el.classList.remove('is-fading');
       const errs = (result && result.errors) || [];
       let html =
         '<div class="hh-import-result-inner">' +
@@ -494,6 +724,13 @@
       el.innerHTML = html;
       el.hidden = false;
       el.classList.toggle('has-errors', errs.length > 0);
+      // Success banners auto-fade after 10s; error lists stay until dismissed.
+      if (!errs.length) {
+        el._dismissTimer = setTimeout(function () {
+          el.classList.add('is-fading');
+          setTimeout(hideImportResult, 400);
+        }, 10000);
+      }
     }
 
     const templateBtn = document.getElementById('hhExcelTemplate');
@@ -576,8 +813,7 @@
     if (importResultEl) {
       importResultEl.addEventListener('click', function (e) {
         if (e.target.closest('[data-hh-import-dismiss]')) {
-          importResultEl.hidden = true;
-          importResultEl.innerHTML = '';
+          hideImportResult();
         }
       });
     }
@@ -662,7 +898,13 @@
         next.pipeline_label = PIPELINE_LABELS[next.pipeline_status] || next.pipeline_status;
       }
       if (typeof next.visa_docs_unlocked !== 'boolean') {
-        next.visa_docs_unlocked = PIPELINE_ORDER.indexOf(next.pipeline_status) >= PIPELINE_ORDER.indexOf('visa_process_started');
+        next.visa_docs_unlocked = visaDocsUnlockedForStatus(next.pipeline_status);
+      }
+      if (typeof next.is_on_hold !== 'boolean') {
+        next.is_on_hold = next.pipeline_status === 'on_hold';
+      }
+      if (typeof next.file_closed !== 'boolean') {
+        next.file_closed = !next.is_on_hold && next.pipeline_status === 'candidate_employee';
       }
       candidateState = next;
       return next;
@@ -682,61 +924,125 @@
     function renderDocRow(d) {
       const locked = !!d.upload_locked;
       const accept = (d.allowed_extensions || []).map(function (x) { return '.' + x; }).join(',');
+      const status = d.status || 'missing';
+      const hasFile = !!d.has_file;
+      const isReceived = !hasFile && (status === 'uploaded' || status === 'attested' || status === 'verified');
       let statusHtml = '';
       let toolsHtml = '';
 
-      if (locked) {
-        statusHtml = '<span class="hh-doc-badge is-locked">Locked</span>';
-      } else {
-        if (d.is_complete) {
-          statusHtml = '<span class="hh-doc-badge is-done">Complete</span>';
-        } else if (d.doc_type === 'pcc' && d.has_file && d.status === 'uploaded') {
-          statusHtml = '<span class="hh-doc-badge is-wait">Awaiting attest</span>';
-        } else if (d.has_file) {
-          statusHtml = '<span class="hh-doc-badge is-done">Uploaded</span>';
+      const isOfferLetter = d.doc_type === 'offer_letter';
+
+      if (!isOfferLetter) {
+        if (locked) {
+          statusHtml = '<span class="hh-doc-badge is-locked">Locked</span>';
+        } else if (hasFile) {
+          if (d.doc_type === 'pcc' && status === 'uploaded') {
+            statusHtml = '<span class="hh-doc-badge is-wait">Awaiting attest</span>';
+          } else if (d.doc_type === 'pcc' && (status === 'attested' || status === 'verified')) {
+            statusHtml = '<span class="hh-doc-badge is-done">Attested</span>';
+          } else {
+            statusHtml = '<span class="hh-doc-badge is-done">On file</span>';
+          }
+        } else if (status === 'attested') {
+          statusHtml = '<span class="hh-doc-badge is-received">Attested</span>';
+        } else if (status === 'verified') {
+          statusHtml = '<span class="hh-doc-badge is-received">Verified</span>';
+        } else if (status === 'uploaded') {
+          statusHtml = '<span class="hh-doc-badge is-received">File uploaded</span>';
         } else {
           statusHtml = '<span class="hh-doc-badge is-idle">Needed</span>';
         }
 
-        if (d.has_file && d.id) {
-          toolsHtml += '<button type="button" class="hh-doc-tool" data-view="' + d.id + '" data-filename="' + escapeHtml(d.filename || 'document') + '">View</button>';
-        }
-        if (d.doc_type === 'pcc' && d.has_file && d.status === 'uploaded') {
-          toolsHtml += '<button type="button" class="hh-doc-tool is-primary" data-attest="pcc">Mark attested</button>';
-        }
-        toolsHtml +=
-          '<button type="button" class="hh-doc-tool' + (d.has_file ? '' : ' is-primary') + '" data-upload="' + escapeHtml(d.doc_type) + '" data-accept="' + escapeHtml(accept) + '">' +
-            (d.has_file ? 'Re-upload' : 'Upload') +
-          '</button>';
-        if (d.has_file && d.id) {
-          toolsHtml += '<button type="button" class="hh-doc-tool is-danger" data-clear="' + d.id + '">Clear</button>';
+        if (!locked) {
+          if (hasFile && d.id) {
+            toolsHtml += '<button type="button" class="hh-doc-tool" data-view="' + d.id + '" data-filename="' + escapeHtml(d.filename || 'document') + '">View</button>';
+          }
+          if (d.doc_type === 'pcc' && hasFile && status === 'uploaded') {
+            toolsHtml += '<button type="button" class="hh-doc-tool is-primary" data-attest="pcc">Mark attested</button>';
+          }
+          toolsHtml +=
+            '<button type="button" class="hh-doc-tool' + (hasFile || isReceived ? '' : ' is-primary') + '" data-upload="' + escapeHtml(d.doc_type) + '" data-accept="' + escapeHtml(accept) + '">' +
+              (hasFile ? 'Re-upload' : (isReceived ? 'Attach file' : 'Upload')) +
+            '</button>';
+          if (!hasFile && !isReceived) {
+            toolsHtml +=
+              '<button type="button" class="hh-doc-tool" data-mark-received="' + escapeHtml(d.doc_type) + '">Mark received</button>';
+          }
+          if ((hasFile || isReceived) && d.id) {
+            toolsHtml +=
+              '<button type="button" class="hh-doc-tool is-danger" data-clear="' + d.id + '" data-clear-mode="' +
+                (isReceived ? 'received' : 'file') + '">' +
+                (isReceived ? 'Clear mark' : 'Clear') +
+              '</button>';
+          }
         }
       }
 
       let sub = '';
-      if (locked) {
+      if (isOfferLetter) {
+        sub = '';
+      } else if (locked) {
         sub = 'Available after Visa process started';
-      } else if (d.filename) {
+      } else if (hasFile && d.filename) {
         sub = escapeHtml(d.filename);
         if (d.uploaded_at) sub += ' · ' + escapeHtml(String(d.uploaded_at).slice(0, 10));
+      } else if (isReceived) {
+        sub = 'Handed over in person — no file copy in system';
       } else {
         const exts = (d.allowed_extensions || []).join(', ').toUpperCase();
         sub = 'Accepted: ' + escapeHtml(exts || '—');
       }
 
+      const docSvg =
+        '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true">' +
+          '<path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/>' +
+        '</svg>';
+
+      let iconHtml;
+      if (locked || hasFile) {
+        iconHtml =
+          '<div class="hh-doc-icon' + (hasFile ? ' is-on-file' : '') + '" aria-hidden="true">' +
+            docSvg +
+          '</div>';
+      } else {
+        iconHtml =
+          '<label class="hh-doc-icon hh-doc-icon-check' + (isReceived ? ' is-checked' : '') + '"' +
+            ' title="' + (isReceived ? 'Clear in-person upload mark' : 'Mark as handed over in person') + '">' +
+            '<input type="checkbox" class="hh-visually-hidden" data-inperson-check="' + escapeHtml(d.doc_type) + '"' +
+              (isReceived ? ' checked' : '') +
+              (d.id ? ' data-doc-id="' + d.id + '"' : '') +
+              ' aria-label="' + (isReceived ? 'Clear file uploaded mark for ' : 'Mark file uploaded for ') +
+              escapeHtml(d.label || d.doc_type) + '">' +
+            docSvg +
+            '<span class="hh-doc-icon-tick" aria-hidden="true">' +
+              '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">' +
+                '<path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>' +
+              '</svg>' +
+            '</span>' +
+          '</label>';
+      }
+
       return (
-        '<div class="hh-doc-row' + (locked ? ' is-locked' : '') + '" data-doc-type="' + escapeHtml(d.doc_type) + '">' +
-          '<div class="hh-doc-icon">' +
-            '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg>' +
-          '</div>' +
+        '<div class="hh-doc-row' + (locked ? ' is-locked' : '') +
+          (isOfferLetter ? ' has-offer-comment' : '') +
+          '" data-doc-type="' + escapeHtml(d.doc_type) + '">' +
+          iconHtml +
           '<div class="hh-doc-info">' +
             '<div class="hh-doc-label">' + escapeHtml(d.label || d.doc_type) + '</div>' +
-            '<div class="hh-doc-sub">' + sub + '</div>' +
+            (isOfferLetter
+              ? '<div class="hh-doc-sub">Offer letter note</div>'
+              : (sub ? '<div class="hh-doc-sub">' + sub + '</div>' : '')) +
           '</div>' +
-          '<div class="hh-doc-actions">' +
-            '<div class="hh-doc-actions-top">' + statusHtml + '</div>' +
-            (toolsHtml ? '<div class="hh-doc-tools">' + toolsHtml + '</div>' : '') +
-          '</div>' +
+          (isOfferLetter
+            ? '<div class="hh-doc-offer-comment' + ((d.notes || '').trim() ? ' has-note' : '') + '">' +
+                '<input type="text" id="hhOfferLetterComment" class="hh-doc-offer-comment-input" maxlength="2000" ' +
+                  'placeholder="Add a note…" aria-label="Offer letter comment" ' +
+                  'value="' + escapeHtml(d.notes || '') + '">' +
+              '</div>'
+            : '<div class="hh-doc-actions">' +
+                '<div class="hh-doc-actions-top">' + statusHtml + '</div>' +
+                (toolsHtml ? '<div class="hh-doc-tools">' + toolsHtml + '</div>' : '') +
+              '</div>') +
         '</div>'
       );
     }
@@ -752,7 +1058,9 @@
       const optimistic = applyCandidate(candidateState || {}, {
         pipeline_status: value,
         pipeline_label: PIPELINE_LABELS[value],
-        visa_docs_unlocked: PIPELINE_ORDER.indexOf(value) >= PIPELINE_ORDER.indexOf('visa_process_started'),
+        is_on_hold: value === 'on_hold',
+        file_closed: value === 'candidate_employee',
+        visa_docs_unlocked: visaDocsUnlockedForStatus(value),
         updated_at: new Date().toISOString(),
       });
       render(optimistic);
@@ -762,11 +1070,16 @@
           method: 'PATCH',
           json: { pipeline_status: value },
         });
-        toast('Status updated');
+        const toastMsg = value === 'on_hold'
+          ? 'Process put on hold'
+          : (value === 'candidate_employee' ? 'File closed' : 'Status updated');
+        toast(toastMsg);
         render(applyCandidate(data.candidate || candidateState, {
           pipeline_status: value,
           pipeline_label: PIPELINE_LABELS[value],
-          visa_docs_unlocked: PIPELINE_ORDER.indexOf(value) >= PIPELINE_ORDER.indexOf('visa_process_started'),
+          is_on_hold: value === 'on_hold',
+          file_closed: value === 'candidate_employee',
+          visa_docs_unlocked: visaDocsUnlockedForStatus(value),
         }));
       } catch (err) {
         toast(err.message, true);
@@ -805,9 +1118,13 @@
       const pipeKey = c.pipeline_status || 'interview_completed';
       const pipeLabel = c.pipeline_label || PIPELINE_LABELS[pipeKey] || pipeKey;
       const meta = PIPELINE_META[pipeKey] || PIPELINE_META.interview_completed;
-      const keys = PIPELINE_ORDER;
-      const currentIdx = Math.max(0, keys.indexOf(pipeKey));
-      const nextKey = keys[currentIdx + 1] || null;
+      const steps = PIPELINE_STEPS;
+      const stepIdx = steps.indexOf(pipeKey);
+      const currentIdx = stepIdx >= 0 ? stepIdx : -1;
+      const isOnHold = pipeKey === 'on_hold' || !!c.is_on_hold;
+      const isFileClosed = !isOnHold && (pipeKey === 'candidate_employee' || !!c.file_closed);
+      // On hold pauses the whole process — resume via Jump to / stepper, no advance.
+      const nextKey = isOnHold ? null : nextPipelineStatus(pipeKey);
       const nextLabel = nextKey ? (PIPELINE_LABELS[nextKey] || nextKey) : null;
       const visaUnlocked = !!c.visa_docs_unlocked;
 
@@ -822,77 +1139,117 @@
         return Math.max(0, Math.floor((Date.now() - t) / 86400000));
       })();
 
-      const selectOptions = keys.map(function (key) {
-        return '<option value="' + escapeHtml(key) + '"' +
-          (key === pipeKey ? ' selected' : '') + '>' +
-          escapeHtml(PIPELINE_LABELS[key]) + '</option>';
-      }).join('');
+      const selectOptions =
+        '<optgroup label="Stages">' +
+          steps.map(function (key) {
+            return '<option value="' + escapeHtml(key) + '"' +
+              (key === pipeKey ? ' selected' : '') + '>' +
+              escapeHtml(PIPELINE_LABELS[key]) + '</option>';
+          }).join('') +
+        '</optgroup>' +
+        '<optgroup label="Process">' +
+          '<option value="on_hold"' + (isOnHold ? ' selected' : '') + '>' +
+            'On hold — pause process' +
+          '</option>' +
+        '</optgroup>';
 
-      const stepsHtml = keys.map(function (key, i) {
+      const stepsHtml = steps.map(function (key, i) {
         const label = PIPELINE_LABELS[key] || key;
         const short = PIPELINE_SHORT[key] || label;
-        const current = key === pipeKey;
-        const done = currentIdx > i;
+        const current = !isOnHold && key === pipeKey;
+        const done = !isOnHold && currentIdx > i;
         return (
-          '<li class="hh-pipe-step' + (current ? ' is-current' : '') + (done ? ' is-done' : '') + '">' +
+          '<li class="hh-pipe-step' + (current ? ' is-current' : '') + (done ? ' is-done' : '') +
+            (isOnHold ? ' is-frozen' : '') +
+            (current && isFileClosed ? ' is-closed' : '') + '">' +
             '<button type="button" class="hh-pipe-btn" data-pipeline="' + escapeHtml(key) + '"' +
-              ' title="' + escapeHtml(label) + '"' +
+              ' title="' + escapeHtml(label) +
+                (current && isFileClosed ? ' (file closed)' : '') +
+                (isOnHold ? ' — tap to resume here' : '') + '"' +
               ' aria-current="' + (current ? 'step' : 'false') + '"' +
-              ' aria-label="Set stage: ' + escapeHtml(label) + '">' +
-              '<span class="hh-pipe-dot" aria-hidden="true">' + (done ? '✓' : String(i + 1)) + '</span>' +
+              ' aria-label="' + (isOnHold ? 'Resume at: ' : 'Set stage: ') + escapeHtml(label) + '">' +
+              '<span class="hh-pipe-dot" aria-hidden="true">' +
+                (done || (current && isFileClosed) ? '✓' : String(i + 1)) +
+              '</span>' +
               '<span class="hh-pipe-label">' + escapeHtml(short) + '</span>' +
             '</button>' +
           '</li>'
         );
       }).join('');
 
+      const stageKicker = isOnHold
+        ? 'Process on hold'
+        : (isFileClosed
+            ? 'File closed'
+            : ('Stage ' + (currentIdx + 1) + ' of ' + steps.length));
+      const holdBtn = isOnHold
+        ? ''
+        : '<button type="button" class="hh-btn hh-btn-ghost hh-btn-sm hh-pipeline-hold-btn" data-pipeline="on_hold" title="Pause the whole hiring process">' +
+            'Put on hold' +
+          '</button>';
+      const advanceHtml = nextKey
+        ? '<button type="button" class="hh-btn hh-btn-primary hh-btn-sm" data-pipeline="' + escapeHtml(nextKey) + '">' +
+            'Advance to ' + escapeHtml(PIPELINE_SHORT[nextKey] || nextLabel) +
+          '</button>'
+        : (isOnHold
+            ? '<span class="hh-pipeline-final hh-pipeline-final-hold">Jump to a stage to resume</span>'
+            : (isFileClosed
+                ? '<span class="hh-pipeline-final hh-pipeline-final-closed">File closed</span>'
+                : '<span class="hh-pipeline-final">Final stage</span>'));
+
       body.innerHTML =
-        '<div class="hh-pipeline-top">' +
+        '<div class="hh-pipeline-top' + (isOnHold ? ' is-on-hold' : '') + '">' +
           '<div class="hh-pipeline-stage">' +
-            '<div class="hh-pipeline-kicker">Stage ' + (currentIdx + 1) + ' of ' + keys.length + '</div>' +
-            '<h2 class="hh-pipeline-title">' + escapeHtml(pipeLabel) + '</h2>' +
+            '<div class="hh-pipeline-kicker' + (isOnHold ? ' is-hold' : '') + '">' + escapeHtml(stageKicker) + '</div>' +
+            '<h2 class="hh-pipeline-title">' + escapeHtml(isOnHold ? 'On hold' : pipeLabel) + '</h2>' +
             '<p class="hh-pipeline-focus">' + escapeHtml(meta.focus) + '</p>' +
           '</div>' +
-          '<div class="hh-pipeline-aside">' +
+          '<div class="hh-pipeline-note">' +
             renderCommentsBlock(c) +
-            '<div class="hh-pipeline-controls">' +
-              '<label class="hh-pipeline-select-wrap">' +
-                '<span class="hh-pipeline-select-label">Jump to</span>' +
-                '<select id="hhPipelineSelectInline" class="hh-select hh-pipeline-select" aria-label="Update pipeline status">' +
-                  selectOptions +
-                '</select>' +
-              '</label>' +
-              (nextKey
-                ? '<button type="button" class="hh-btn hh-btn-primary hh-btn-sm" data-pipeline="' + escapeHtml(nextKey) + '">' +
-                    'Advance to ' + escapeHtml(PIPELINE_SHORT[nextKey] || nextLabel) +
-                  '</button>'
-                : '<span class="hh-pipeline-final">Final stage</span>') +
-            '</div>' +
+          '</div>' +
+          '<div class="hh-pipeline-controls">' +
+            '<label class="hh-pipeline-select-wrap">' +
+              '<span class="hh-pipeline-select-label">Jump to</span>' +
+              '<select id="hhPipelineSelectInline" class="hh-select hh-pipeline-select" aria-label="Update pipeline status">' +
+                selectOptions +
+              '</select>' +
+            '</label>' +
+            holdBtn +
+            advanceHtml +
           '</div>' +
         '</div>' +
 
-        '<div class="hh-pipeline-segments" role="img" aria-label="Stage ' + (currentIdx + 1) + ' of ' + keys.length + '">' +
-          keys.map(function (key, i) {
-            const cls = i < currentIdx ? 'is-done' : (i === currentIdx ? 'is-current' : '');
+        '<div class="hh-pipeline-segments' + (isOnHold ? ' is-on-hold' : '') + '" role="img" aria-label="' + escapeHtml(stageKicker) + '">' +
+          steps.map(function (key, i) {
+            let cls = '';
+            if (isOnHold) {
+              cls = 'is-frozen';
+            } else if (i < currentIdx) {
+              cls = 'is-done';
+            } else if (i === currentIdx) {
+              cls = isFileClosed ? 'is-current is-closed' : 'is-current';
+            }
             return '<span class="hh-pipeline-seg ' + cls + '" title="' + escapeHtml(PIPELINE_LABELS[key] || key) + '"></span>';
           }).join('') +
-          '<span class="hh-pipeline-seg-caption">Stage ' + (currentIdx + 1) + ' / ' + keys.length + '</span>' +
+          '<span class="hh-pipeline-seg-caption' + (isOnHold ? ' is-hold' : '') + '">' + escapeHtml(stageKicker) + '</span>' +
         '</div>' +
 
-        '<ol class="hh-pipeline-stepper">' + stepsHtml + '</ol>' +
+        '<ol class="hh-pipeline-stepper' + (isOnHold ? ' is-on-hold' : '') + '">' + stepsHtml + '</ol>' +
 
         '<div class="hh-pipe-stats hh-pipe-stats-row">' +
           '<div class="hh-pipe-stat">' +
             '<span class="hh-pipe-stat-val">' + overallDone + '/' + overallTotal + '</span>' +
             '<span class="hh-pipe-stat-lbl">Docs done</span>' +
           '</div>' +
-          '<div class="hh-pipe-stat">' +
-            '<span class="hh-pipe-stat-val">' + (currentIdx + 1) + '/' + keys.length + '</span>' +
-            '<span class="hh-pipe-stat-lbl">Stage</span>' +
+          '<div class="hh-pipe-stat' + (isOnHold ? ' is-hold' : '') + '">' +
+            '<span class="hh-pipe-stat-val">' +
+              (isOnHold ? 'Hold' : ((currentIdx + 1) + '/' + steps.length)) +
+            '</span>' +
+            '<span class="hh-pipe-stat-lbl">' + (isOnHold ? 'Process' : 'Stage') + '</span>' +
           '</div>' +
           '<div class="hh-pipe-stat">' +
             '<span class="hh-pipe-stat-val">' + (daysInStage == null ? '—' : (daysInStage === 0 ? 'Today' : daysInStage + 'd')) + '</span>' +
-            '<span class="hh-pipe-stat-lbl">In stage</span>' +
+            '<span class="hh-pipe-stat-lbl">' + (isOnHold ? 'On hold' : 'In stage') + '</span>' +
           '</div>' +
           '<div class="hh-pipe-stat ' + (visaUnlocked ? 'is-open' : 'is-locked') + '">' +
             '<span class="hh-pipe-stat-val">' + (visaUnlocked ? 'Open' : 'Locked') + '</span>' +
@@ -901,6 +1258,7 @@
         '</div>';
 
       body.classList.remove('is-busy');
+      body.classList.toggle('is-on-hold', isOnHold);
       bindPipelineBody(body);
       bindCommentsEditors();
 
@@ -1089,34 +1447,40 @@
       function fitSize() {
         const styles = window.getComputedStyle(input);
         const lineHeight = parseFloat(styles.lineHeight) || 22;
-        const padX = (parseFloat(styles.paddingLeft) || 0) + (parseFloat(styles.paddingRight) || 0);
         const padY = (parseFloat(styles.paddingTop) || 0) + (parseFloat(styles.paddingBottom) || 0);
-        const maxW = Math.min(420, Math.max(160, (block.parentElement && block.parentElement.clientWidth) || 420));
-        const minW = 112;
+        const noteSlot = block.closest('.hh-pipeline-note');
+        const hostW = (noteSlot || block.parentElement || block).clientWidth || 0;
 
-        const mirror = document.createElement('span');
-        mirror.setAttribute('aria-hidden', 'true');
-        mirror.textContent = (input.value || input.placeholder || 'Add a note…') + ' ';
-        mirror.style.cssText = [
-          'position:absolute',
-          'visibility:hidden',
-          'white-space:pre',
-          'font:' + styles.font,
-          'letter-spacing:' + styles.letterSpacing,
-          'padding:0',
-          'border:0',
-          'left:-9999px',
-          'top:0',
-        ].join(';');
-        document.body.appendChild(mirror);
-        const textW = Math.ceil(mirror.getBoundingClientRect().width) + padX + 4;
-        document.body.removeChild(mirror);
-
-        const nextW = Math.max(minW, Math.min(maxW, textW));
-        input.style.width = nextW + 'px';
+        // In the pipeline note slot, fill available width and grow with content.
+        // Elsewhere, keep a compact text-sized width.
+        if (noteSlot) {
+          input.style.width = '100%';
+        } else {
+          const padX = (parseFloat(styles.paddingLeft) || 0) + (parseFloat(styles.paddingRight) || 0);
+          const maxW = Math.min(420, Math.max(160, hostW || 420));
+          const minW = 112;
+          const mirror = document.createElement('span');
+          mirror.setAttribute('aria-hidden', 'true');
+          mirror.textContent = (input.value || input.placeholder || 'Add a note…') + ' ';
+          mirror.style.cssText = [
+            'position:absolute',
+            'visibility:hidden',
+            'white-space:pre',
+            'font:' + styles.font,
+            'letter-spacing:' + styles.letterSpacing,
+            'padding:0',
+            'border:0',
+            'left:-9999px',
+            'top:0',
+          ].join(';');
+          document.body.appendChild(mirror);
+          const textW = Math.ceil(mirror.getBoundingClientRect().width) + padX + 4;
+          document.body.removeChild(mirror);
+          input.style.width = Math.max(minW, Math.min(maxW, textW)) + 'px';
+        }
 
         input.style.height = 'auto';
-        const maxH = (lineHeight * 2) + padY;
+        const maxH = (lineHeight * 4) + padY;
         const nextH = Math.min(Math.max(lineHeight + padY, input.scrollHeight), maxH);
         input.style.height = nextH + 'px';
         input.style.overflowY = input.scrollHeight > maxH + 1 ? 'auto' : 'hidden';
@@ -1174,38 +1538,221 @@
         fitSize();
       });
 
+      if (typeof ResizeObserver !== 'undefined') {
+        const noteSlot = block.closest('.hh-pipeline-note') || block;
+        const ro = new ResizeObserver(function () { fitSize(); });
+        ro.observe(noteSlot);
+      } else {
+        window.addEventListener('resize', fitSize);
+      }
+
       fitSize();
+    }
+
+    const editModal = document.getElementById('hhAddModal');
+    const editForm = document.getElementById('hhAddForm');
+    const editTitle = document.getElementById('hhAddTitle');
+    const editSub = document.getElementById('hhAddSub');
+    const editSubmit = document.getElementById('hhAddSubmit');
+    const editInterviewPick = document.getElementById('hhInterviewPick');
+    const editInterviewApply = document.getElementById('hhInterviewApply');
+    let editAssessmentsCache = [];
+    let editModalBound = false;
+
+    function fillEditForm(c) {
+      if (!editForm || !c) return;
+      const set = function (name, value) {
+        const el = editForm.querySelector('[name="' + name + '"]');
+        if (el) el.value = value || '';
+      };
+      set('full_name', c.full_name);
+      set('role', c.role);
+      set('department', c.department);
+      set('phone', c.phone);
+      set('email', c.email);
+      set('replacement_name', c.replacement_name);
+      set('replacement_employee_id', c.replacement_employee_id);
+      set('comments', c.comments);
+    }
+
+    async function loadEditAssessments() {
+      if (!editInterviewPick) return;
+      editInterviewPick.innerHTML = '<option value="">Loading assessments…</option>';
+      if (editInterviewApply) editInterviewApply.disabled = true;
+      try {
+        const data = await api('/hr/api/hiring/interview-assessments?limit=40');
+        editAssessmentsCache = data.assessments || [];
+        if (!editAssessmentsCache.length) {
+          editInterviewPick.innerHTML = '<option value="">No interview assessments found</option>';
+          return;
+        }
+        editInterviewPick.innerHTML =
+          '<option value="">Select an interview assessment…</option>' +
+          editAssessmentsCache.map(function (a, i) {
+            const label = a.full_name + (a.role ? ' — ' + a.role : '') +
+              (a.interview_date ? ' (' + a.interview_date + ')' : '');
+            return '<option value="' + i + '">' + escapeHtml(label) + '</option>';
+          }).join('');
+      } catch (e) {
+        editInterviewPick.innerHTML = '<option value="">Could not load assessments</option>';
+      }
+    }
+
+    function openEditModal() {
+      const c = candidateState;
+      if (!editModal || !editForm || !c) return;
+      if (editTitle) editTitle.textContent = 'Edit Candidate';
+      if (editSub) {
+        editSub.textContent = 'Update candidate details. You can also refill name and role from an Interview Assessment.';
+      }
+      if (editSubmit) editSubmit.textContent = 'Save changes';
+      fillEditForm(c);
+      editModal.classList.add('open');
+      loadEditAssessments();
+      const first = editForm.querySelector('input[name="full_name"]');
+      if (first) first.focus();
+    }
+
+    function closeEditModal() {
+      if (!editModal) return;
+      editModal.classList.remove('open');
+      if (editForm) editForm.reset();
+      if (editInterviewPick) {
+        editInterviewPick.innerHTML = '<option value="">Select an interview assessment…</option>';
+      }
+      if (editInterviewApply) editInterviewApply.disabled = true;
+    }
+
+    function bindEditModal() {
+      if (editModalBound || !editModal || !editForm) return;
+      editModalBound = true;
+
+      editModal.addEventListener('click', function (e) {
+        if (e.target === editModal) closeEditModal();
+      });
+      const cancel = editModal.querySelector('[data-close]');
+      if (cancel) cancel.addEventListener('click', closeEditModal);
+
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && editModal.classList.contains('open')) {
+          closeEditModal();
+        }
+      });
+
+      if (editInterviewPick) {
+        editInterviewPick.addEventListener('change', function () {
+          if (editInterviewApply) editInterviewApply.disabled = editInterviewPick.value === '';
+        });
+      }
+      if (editInterviewApply) {
+        editInterviewApply.addEventListener('click', function () {
+          const idx = parseInt(editInterviewPick && editInterviewPick.value, 10);
+          if (Number.isNaN(idx) || !editAssessmentsCache[idx]) {
+            toast('Select an interview assessment first', true);
+            return;
+          }
+          const a = editAssessmentsCache[idx];
+          const nameEl = editForm.querySelector('[name="full_name"]');
+          const roleEl = editForm.querySelector('[name="role"]');
+          if (nameEl) nameEl.value = a.full_name || '';
+          if (roleEl) roleEl.value = a.role || '';
+          toast('Filled from interview assessment');
+        });
+      }
+
+      editForm.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        const fd = new FormData(editForm);
+        const payload = {
+          full_name: (fd.get('full_name') || '').toString().trim(),
+          role: (fd.get('role') || '').toString().trim(),
+          department: (fd.get('department') || '').toString().trim(),
+          phone: (fd.get('phone') || '').toString().trim(),
+          email: (fd.get('email') || '').toString().trim(),
+          replacement_name: (fd.get('replacement_name') || '').toString().trim(),
+          replacement_employee_id: (fd.get('replacement_employee_id') || '').toString().trim(),
+          comments: (fd.get('comments') || '').toString().trim(),
+        };
+        if (!payload.full_name) {
+          toast('Full name is required', true);
+          return;
+        }
+        if (!payload.role) {
+          toast('Role / position is required', true);
+          return;
+        }
+        if (editSubmit) editSubmit.disabled = true;
+        try {
+          const data = await api('/hr/api/hiring/candidates/' + candidateId, {
+            method: 'PATCH',
+            json: payload,
+          });
+          toast('Details updated');
+          closeEditModal();
+          if (data.candidate) {
+            render(applyCandidate(data.candidate));
+          } else {
+            await load();
+          }
+        } catch (err) {
+          toast(err.message, true);
+        } finally {
+          if (editSubmit) editSubmit.disabled = false;
+        }
+      });
+    }
+
+    function bindProfileEditors() {
+      const editBtn = document.getElementById('hhEditCandidate');
+      if (!editBtn) return;
+      bindEditModal();
+      editBtn.addEventListener('click', openEditModal);
     }
 
     function render(c) {
       if (!c) return;
+      if (c.full_name) {
+        document.title = c.full_name + ' — Hiring Documents · Injaaz';
+      }
       const contacts = [];
       if (c.email) contacts.push(escapeHtml(c.email));
       if (c.phone) contacts.push(escapeHtml(c.phone));
-      const pipeKey = c.pipeline_status || 'interview_completed';
-      const pipeLabel = c.pipeline_label || PIPELINE_LABELS[pipeKey] || pipeKey;
+      const pencilSvg =
+        '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor" width="15" height="15" aria-hidden="true">' +
+          '<path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13L2 21l1.05-2.935a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Z"/>' +
+        '</svg>';
       headerEl.innerHTML =
-        '<div class="hh-profile-main">' +
-          '<div class="hh-avatar">' + escapeHtml(c.initials || '?') + '</div>' +
-          '<div class="hh-detail-meta">' +
-            '<h1>' + escapeHtml(c.full_name) + '</h1>' +
-            '<p>' + escapeHtml([c.role, c.department].filter(Boolean).join(' · ') || '—') + '</p>' +
-            (contacts.length ? '<div class="hh-detail-contacts">' + contacts.join('<span aria-hidden="true"> · </span>') + '</div>' : '') +
+        '<div class="hh-profile-main" id="hhProfileMain">' +
+          '<div class="hh-avatar ' + avatarClass(c.full_name) + '" id="hhProfileAvatar">' + escapeHtml(c.initials || '?') + '</div>' +
+          '<div class="hh-detail-meta" id="hhDetailMetaView">' +
+            '<div class="hh-detail-meta-head">' +
+              '<h1 id="hhProfileName">' + escapeHtml(c.full_name) + '</h1>' +
+              '<button type="button" class="hh-profile-edit-btn" id="hhEditCandidate" title="Edit details" aria-label="Edit candidate details">' +
+                pencilSvg +
+              '</button>' +
+            '</div>' +
+            '<p id="hhProfileRoleLine">' + escapeHtml([c.role, c.department].filter(Boolean).join(' · ') || '—') + '</p>' +
+            (contacts.length
+              ? '<div class="hh-detail-contacts" id="hhProfileContacts">' + contacts.join('<span aria-hidden="true"> · </span>') + '</div>'
+              : '<div class="hh-detail-contacts" id="hhProfileContacts" hidden></div>') +
           '</div>' +
         '</div>' +
         renderReplacementBlock(c) +
         '<div class="hh-profile-aside">' +
-          '<span class="hh-status pipeline ' + escapeHtml(pipeKey) + '">' +
-            escapeHtml(pipeLabel) +
-          '</span>' +
+          '<button type="button" class="hh-btn hh-btn-sm hh-btn-on-brand-ghost" id="hhMarkAllSubmitted">Mark all submitted</button>' +
           '<button type="button" class="hh-btn hh-btn-sm hh-btn-on-brand-danger" id="hhDeleteCandidate">Delete</button>' +
         '</div>';
 
+      const markAllBtn = document.getElementById('hhMarkAllSubmitted');
+      if (markAllBtn) {
+        markAllBtn.addEventListener('click', onMarkAllSubmitted);
+      }
       const deleteBtn = document.getElementById('hhDeleteCandidate');
       if (deleteBtn) {
         deleteBtn.addEventListener('click', onDeleteCandidate);
       }
       bindReplacementEditors();
+      bindProfileEditors();
 
       renderPipeline(c);
 
@@ -1249,7 +1796,48 @@
       }
       if (phase2El) {
         phase2El.innerHTML = phase2.map(function (d) { return renderDocRow(d); }).join('');
+        bindOfferLetterCommentEditor();
       }
+    }
+
+    function bindOfferLetterCommentEditor() {
+      const input = document.getElementById('hhOfferLetterComment');
+      const wrap = input && input.closest('.hh-doc-offer-comment');
+      if (!input || !wrap) return;
+
+      let lastSaved = (input.value || '').trim();
+      let saving = false;
+
+      async function saveIfChanged() {
+        const value = (input.value || '').trim();
+        if (value === lastSaved || saving) return;
+        saving = true;
+        input.disabled = true;
+        try {
+          const data = await api(
+            '/hr/api/hiring/candidates/' + candidateId + '/documents/offer_letter/notes',
+            { method: 'PATCH', json: { notes: value } }
+          );
+          lastSaved = value;
+          wrap.classList.toggle('has-note', !!value);
+          if (data.candidate) applyCandidate(data.candidate);
+          toast(value ? 'Offer letter comment saved' : 'Offer letter comment cleared');
+        } catch (err) {
+          toast(err.message, true);
+          input.value = lastSaved;
+        } finally {
+          saving = false;
+          input.disabled = false;
+        }
+      }
+
+      input.addEventListener('blur', saveIfChanged);
+      input.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          input.blur();
+        }
+      });
     }
 
     function ensureFileInput() {
@@ -1275,6 +1863,26 @@
         input.accept = accept;
         input.value = '';
         input.click();
+        return;
+      }
+
+      const markReceivedBtn = e.target.closest('[data-mark-received]');
+      if (markReceivedBtn) {
+        const docType = markReceivedBtn.getAttribute('data-mark-received');
+        markReceivedBtn.disabled = true;
+        try {
+          const data = await api(
+            '/hr/api/hiring/candidates/' + candidateId + '/documents/' + encodeURIComponent(docType) + '/mark-received',
+            { method: 'POST', json: {} }
+          );
+          toast('Marked as file uploaded (handed over in person)');
+          if (data.candidate) render(applyCandidate(data.candidate));
+          else await load();
+        } catch (err) {
+          toast(err.message, true);
+        } finally {
+          markReceivedBtn.disabled = false;
+        }
         return;
       }
 
@@ -1324,9 +1932,12 @@
       const clearBtn = e.target.closest('[data-clear]');
       if (clearBtn) {
         const id = clearBtn.getAttribute('data-clear');
+        const clearMode = clearBtn.getAttribute('data-clear-mode') || 'file';
         const ok = await confirmDialog({
-          title: 'Clear document',
-          message: 'Clear this document? The uploaded file will be removed.',
+          title: clearMode === 'received' ? 'Clear upload mark' : 'Clear document',
+          message: clearMode === 'received'
+            ? 'Clear the in-person file uploaded mark for this document?'
+            : 'Clear this document? The uploaded file will be removed.',
           confirmLabel: 'Clear',
           danger: true,
         });
@@ -1334,7 +1945,7 @@
         clearBtn.disabled = true;
         try {
           await api('/hr/api/hiring/documents/' + id, { method: 'DELETE' });
-          toast('Document cleared');
+          toast(clearMode === 'received' ? 'Upload mark cleared' : 'Document cleared');
           await load();
         } catch (err) {
           toast(err.message, true);
@@ -1344,9 +1955,56 @@
       }
     }
 
+    async function handleInPersonCheck(e) {
+      const input = e.target.closest('[data-inperson-check]');
+      if (!input || input.tagName !== 'INPUT') return;
+      const docType = input.getAttribute('data-inperson-check');
+      const checked = !!input.checked;
+      const label = input.closest('.hh-doc-icon-check');
+      input.disabled = true;
+      try {
+        if (checked) {
+          const data = await api(
+            '/hr/api/hiring/candidates/' + candidateId + '/documents/' + encodeURIComponent(docType) + '/mark-received',
+            { method: 'POST', json: {} }
+          );
+          toast('Marked as file uploaded (handed over in person)');
+          if (data.candidate) render(applyCandidate(data.candidate));
+          else await load();
+        } else {
+          const docId = input.getAttribute('data-doc-id');
+          if (!docId) {
+            input.checked = true;
+            toast('Could not clear — reload and try again', true);
+            return;
+          }
+          const ok = await confirmDialog({
+            title: 'Clear upload mark',
+            message: 'Clear the in-person file uploaded mark for this document?',
+            confirmLabel: 'Clear',
+            danger: true,
+          });
+          if (!ok) {
+            input.checked = true;
+            return;
+          }
+          await api('/hr/api/hiring/documents/' + docId, { method: 'DELETE' });
+          toast('Upload mark cleared');
+          await load();
+        }
+      } catch (err) {
+        input.checked = !checked;
+        if (label) label.classList.toggle('is-checked', !checked);
+        toast(err.message, true);
+      } finally {
+        input.disabled = false;
+      }
+    }
+
     function bindChecklistDnD(el) {
       if (!el) return;
       el.addEventListener('click', handleDocClick);
+      el.addEventListener('change', handleInPersonCheck);
       el.addEventListener('dragover', function (e) {
         const row = e.target.closest('.hh-doc-row');
         if (!row || row.classList.contains('is-locked')) return;
@@ -1407,6 +2065,29 @@
       }
     }
 
+    async function onMarkAllSubmitted() {
+      const ok = await confirmDialog({
+        title: 'Mark all submitted',
+        message: 'Mark every document as submitted? Existing uploaded files are kept. PCC will be marked attested.',
+        confirmLabel: 'Mark all submitted',
+      });
+      if (!ok) return;
+      const markAllBtn = document.getElementById('hhMarkAllSubmitted');
+      if (markAllBtn) markAllBtn.disabled = true;
+      try {
+        const data = await api(
+          '/hr/api/hiring/candidates/' + candidateId + '/mark-all-documents-submitted',
+          { method: 'POST', json: {} }
+        );
+        toast('All documents marked as submitted');
+        if (data.candidate) render(applyCandidate(data.candidate));
+        else await load();
+      } catch (err) {
+        toast(err.message, true);
+        if (markAllBtn) markAllBtn.disabled = false;
+      }
+    }
+
     async function onDeleteCandidate() {
       const ok = await confirmDialog({
         title: 'Delete candidate',
@@ -1420,13 +2101,18 @@
       try {
         await api('/hr/api/hiring/candidates/' + candidateId, { method: 'DELETE' });
         toast('Candidate deleted');
-        window.location.href = '/hr/hiring';
+        window.location.href = hiringListHref();
       } catch (err) {
         toast(err.message, true);
         if (deleteBtn) deleteBtn.disabled = false;
       }
     }
 
+    const backLink = document.querySelector('a.hh-back');
+    if (backLink) backLink.setAttribute('href', hiringListHref());
+
+    const initialMarkAll = document.getElementById('hhMarkAllSubmitted');
+    if (initialMarkAll) initialMarkAll.addEventListener('click', onMarkAllSubmitted);
     const initialDelete = document.getElementById('hhDeleteCandidate');
     if (initialDelete) initialDelete.addEventListener('click', onDeleteCandidate);
 

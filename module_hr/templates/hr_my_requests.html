@@ -5,15 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
   
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
-<title>HR Module - Injaaz Application</title>
-  <meta name="theme-color" content="#125435">
+<title>HR Module - Kynvera</title>
+  <meta name="theme-color" content="#ff8e68">
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-forms.css') }}">
   <style>
-    :root { --primary: #125435; --primary-light: #1a7a4c; --secondary: #6366f1; }
+    :root { --primary: #ff8e68; --primary-light: #f97e54; --secondary: #6366f1; }
     .hr-hero::before { display: none; }
     .hr-hero { padding: 9rem 0 5rem; }
     .hr-modules-section::before { display: none; }
@@ -389,7 +389,7 @@
         wrap.innerHTML = '<div style="background:#faf5ff;border:1px solid #e9d5ff;border-radius:14px;padding:1rem 1.1rem;"><div style="font-weight:700;color:#5b21b6;margin-bottom:0.55rem;font-size:.95rem">Your signature is required</div>' +
           d.submissions.map(s => {
             const sid = encodeURIComponent(s.submission_id);
-            return `<div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.65rem;margin-top:.55rem;padding-top:.55rem;border-top:1px solid #ede9fe"><div><strong>${escapeHtml(s.submitter_display||'Colleague')}</strong><span style="color:#64748b;margin-left:.4rem">${escapeHtml(s.submission_id)}</span><div style="font-size:.82rem;color:#64748b;margin-top:.2rem">${escapeHtml(getFormTypeLabel(s.module_type))}${s.pending_slot_label ? ' · ' + escapeHtml(s.pending_slot_label) : ''}</div></div><a href="/hr/replacement-sign/${sid}" style="flex-shrink:0;background:#125435;color:#fff;text-decoration:none;padding:.45rem .85rem;border-radius:10px;font-weight:600;font-size:.82rem;">Open · Sign</a></div>`;
+            return `<div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.65rem;margin-top:.55rem;padding-top:.55rem;border-top:1px solid #ede9fe"><div><strong>${escapeHtml(s.submitter_display||'Colleague')}</strong><span style="color:#64748b;margin-left:.4rem">${escapeHtml(s.submission_id)}</span><div style="font-size:.82rem;color:#64748b;margin-top:.2rem">${escapeHtml(getFormTypeLabel(s.module_type))}${s.pending_slot_label ? ' · ' + escapeHtml(s.pending_slot_label) : ''}</div></div><a href="/hr/replacement-sign/${sid}" style="flex-shrink:0;background:#ff8e68;color:#fff;text-decoration:none;padding:.45rem .85rem;border-radius:10px;font-weight:600;font-size:.82rem;">Open · Sign</a></div>`;
           }).join('') + '</div>';
       } catch(e){ wrap.style.display='none'; }
     }

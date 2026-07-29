@@ -14,6 +14,7 @@ from app.models import (
     HIRING_PIPELINE_DEFAULT,
     HIRING_PIPELINE_LABELS,
     HIRING_PIPELINE_STATUSES,
+    HIRING_PIPELINE_STEPS,
     HiringCandidate,
     HiringDocument,
     db,
@@ -50,8 +51,18 @@ PROFILE_HEADERS = (
 STATUS_HEADERS = tuple(DOC_COLUMN_HEADERS[dt] for dt in HIRING_DOC_TYPES)
 ALL_HEADERS = PROFILE_HEADERS + STATUS_HEADERS + ('Comments',)
 
-DOC_STATUS_LABELS = ('Missing', 'Uploaded', 'Attested', 'Verified')
+DOC_STATUS_TICK = '✓'
+DOC_STATUS_CROSS = '✗'
+DOC_STATUS_LABELS = (DOC_STATUS_CROSS, DOC_STATUS_TICK)
 DOC_STATUS_KEYS = frozenset({'missing', 'uploaded', 'attested', 'verified'})
+
+# Symbols / glyphs Excel may store for tick / cross
+_TICK_GLYPHS = frozenset({
+    '✓', '✔', '√', '☑', '✅', '☑️',
+})
+_CROSS_GLYPHS = frozenset({
+    '✗', '✘', '✕', '×', '❌', '☒',
+})
 
 FIELD_ALIASES = {
     'candidate_id': ('candidate id', 'id', 'hiring id', 'candidate'),
@@ -132,9 +143,20 @@ def _build_header_map(columns) -> dict:
 
 def _normalize_doc_status(raw: str, doc_type: str) -> tuple[Optional[str], Optional[str]]:
     """Return (status_key, error). Blank → (None, None) meaning leave unchanged."""
-    s = normalize_column_name(raw)
-    if not s:
+    raw_s = _cell_str(raw)
+    if not raw_s:
         return None, None
+
+    # Tick / cross symbols (normalize_column_name would strip these)
+    if raw_s in _TICK_GLYPHS or raw_s.lower() in ('tick', 'check', 'checked', 'yes', 'y'):
+        status = 'attested' if doc_type == 'pcc' else 'uploaded'
+        return status, None
+    if raw_s in _CROSS_GLYPHS or raw_s.lower() in ('cross', 'unchecked', 'no', 'n'):
+        return 'missing', None
+
+    s = normalize_column_name(raw_s)
+    if not s:
+        return None, f'Invalid status "{raw}" for {DOC_COLUMN_HEADERS.get(doc_type, doc_type)}'
 
     aliases = {
         'missing': 'missing',
@@ -168,6 +190,10 @@ def _normalize_pipeline(raw: str) -> tuple[Optional[str], Optional[str]]:
     if not s:
         return None, None
     key = s.strip().lower().replace(' ', '_').replace('-', '_')
+    if key in ('onhold',):
+        key = 'on_hold'
+    if key in ('candidateemployee', 'candidate_as_employee', 'file_closed', 'fileclosed', 'closed'):
+        key = 'candidate_employee'
     if key in HIRING_PIPELINE_STATUSES:
         return key, None
     label_map = {normalize_column_name(v): k for k, v in HIRING_PIPELINE_LABELS.items()}
@@ -181,10 +207,13 @@ def _normalize_pipeline(raw: str) -> tuple[Optional[str], Optional[str]]:
     return None, f'Invalid pipeline status "{raw}"'
 
 
-def _status_label(status: Optional[str]) -> str:
+def _status_label(status: Optional[str], has_file: bool = False) -> str:
+    """Excel display: ✓ = submitted, ✗ = missing."""
     if not status or status == 'missing':
-        return 'Missing'
-    return status.replace('_', ' ').title()
+        return DOC_STATUS_CROSS
+    if status in ('uploaded', 'attested', 'verified'):
+        return DOC_STATUS_TICK
+    return DOC_STATUS_CROSS
 
 
 def _pipeline_label(key: Optional[str]) -> str:
@@ -223,37 +252,6 @@ def build_hiring_template_bytes(candidates: Optional[list] = None) -> bytes:
     for col, width in widths.items():
         ws.column_dimensions[col].width = width
 
-    # Lookups sheet for dropdowns
-    ws_look = wb.create_sheet('Lookups')
-    ws_look['A1'] = 'Pipeline Status'
-    for i, key in enumerate(HIRING_PIPELINE_STATUSES, start=2):
-        ws_look.cell(i, 1, HIRING_PIPELINE_LABELS[key])
-    ws_look['B1'] = 'Document Status'
-    for i, label in enumerate(DOC_STATUS_LABELS, start=2):
-        ws_look.cell(i, 2, label)
-    ws_look.sheet_state = 'hidden'
-
-    pipe_dv = DataValidation(
-        type='list',
-        formula1=f'=Lookups!$A$2:$A${1 + len(HIRING_PIPELINE_STATUSES)}',
-        allow_blank=True,
-    )
-    pipe_dv.error = 'Pick a pipeline stage from the list'
-    pipe_dv.errorTitle = 'Invalid pipeline'
-    ws.add_data_validation(pipe_dv)
-    pipe_dv.add('I2:I1000')
-
-    status_dv = DataValidation(
-        type='list',
-        formula1=f'=Lookups!$B$2:$B${1 + len(DOC_STATUS_LABELS)}',
-        allow_blank=True,
-    )
-    status_dv.error = 'Use Missing, Uploaded, Attested, or Verified'
-    status_dv.errorTitle = 'Invalid status'
-    ws.add_data_validation(status_dv)
-    # Doc columns J–R (9 docs)
-    status_dv.add('J2:R1000')
-
     if candidates:
         for row_idx, cand in enumerate(candidates, start=2):
             by_type = {d.doc_type: d for d in (cand.documents or [])}
@@ -270,10 +268,17 @@ def build_hiring_template_bytes(candidates: Optional[list] = None) -> bytes:
             ]
             for dt in HIRING_DOC_TYPES:
                 doc = by_type.get(dt)
-                values.append(_status_label(doc.status if doc else 'missing'))
+                if doc:
+                    values.append(_status_label(doc.status, has_file=doc.has_file()))
+                else:
+                    values.append(_status_label('missing'))
             values.append(cand.comments or '')
             for col_idx, val in enumerate(values, start=1):
-                ws.cell(row_idx, col_idx, val)
+                cell = ws.cell(row_idx, col_idx, val)
+                # Center tick/cross in document columns (J–R = 10–18)
+                if 10 <= col_idx <= 18:
+                    cell.alignment = Alignment(horizontal='center', vertical='center')
+        data_end_row = 1 + len(candidates)
     else:
         # Example row so HR sees the shape
         example = [
@@ -286,20 +291,58 @@ def build_hiring_template_bytes(candidates: Optional[list] = None) -> bytes:
             'Ali Hassan',
             'EMP-01234',
             HIRING_PIPELINE_LABELS['gathering_documents'],
-            'Uploaded',
-            'Missing',
-            'Uploaded',
-            'Attested',
-            'Missing',
-            'Missing',
-            'Missing',
-            'Missing',
-            'Missing',
+            DOC_STATUS_TICK,
+            DOC_STATUS_CROSS,
+            DOC_STATUS_TICK,
+            DOC_STATUS_TICK,
+            DOC_STATUS_CROSS,
+            DOC_STATUS_CROSS,
+            DOC_STATUS_CROSS,
+            DOC_STATUS_CROSS,
+            DOC_STATUS_CROSS,
             'Example row — replace or delete before importing',
         ]
         for col_idx, val in enumerate(example, start=1):
             cell = ws.cell(2, col_idx, val)
             cell.fill = example_fill
+            if 10 <= col_idx <= 18:
+                cell.alignment = Alignment(horizontal='center', vertical='center')
+        data_end_row = 2
+
+    # Dropdowns: use inline lists (not a hidden sheet). Hidden-sheet refs often
+    # only work on the first data row in Excel for Mac / some Excel builds.
+    # showDropDown=False is required — Excel treats True as "hide arrow".
+    max_dv_row = max(data_end_row + 200, 1000)
+    # Stages first, then On hold as a process pause (not a linear stage).
+    pipe_list = ','.join(
+        HIRING_PIPELINE_LABELS[k] for k in (HIRING_PIPELINE_STEPS + ('on_hold',))
+    )
+    status_list = ','.join(DOC_STATUS_LABELS)
+
+    pipe_dv = DataValidation(
+        type='list',
+        formula1=f'"{pipe_list}"',
+        allow_blank=True,
+        showDropDown=False,
+        showErrorMessage=True,
+    )
+    pipe_dv.error = 'Pick a pipeline stage from the list'
+    pipe_dv.errorTitle = 'Invalid pipeline'
+    pipe_dv.add(f'I2:I{max_dv_row}')
+    ws.add_data_validation(pipe_dv)
+
+    status_dv = DataValidation(
+        type='list',
+        formula1=f'"{status_list}"',
+        allow_blank=True,
+        showDropDown=False,
+        showErrorMessage=True,
+    )
+    status_dv.error = f'Use {DOC_STATUS_CROSS} (missing) or {DOC_STATUS_TICK} (submitted)'
+    status_dv.errorTitle = 'Invalid status'
+    # Doc columns J–R (9 docs)
+    status_dv.add(f'J2:R{max_dv_row}')
+    ws.add_data_validation(status_dv)
 
     # Instructions
     ws2 = wb.create_sheet('Instructions')
@@ -317,18 +360,21 @@ def build_hiring_template_bytes(candidates: Optional[list] = None) -> bytes:
         '• Else → create a new candidate (Full Name and Role are required).',
         '',
         'Document statuses',
-        '• Missing — clears any uploaded file for that slot.',
-        '• Uploaded / Attested / Verified — updates status only (no file attached via Excel).',
+        f'• {DOC_STATUS_CROSS} — missing / not submitted (clears any uploaded file for that slot).',
+        f'• {DOC_STATUS_TICK} — submitted / on file (checklist complete; for PCC this marks attested).',
         '• Blank cell — leave the current status unchanged.',
-        '• Attested is for PCC; on other documents it is treated as Uploaded.',
+        '• Older files that still say Missing / Uploaded / Received / Attested / Verified are still accepted on import.',
         '',
-        'Pipeline statuses',
-        *[f'• {HIRING_PIPELINE_LABELS[k]}' for k in HIRING_PIPELINE_STATUSES],
+        'Pipeline stages (in order)',
+        *[f'• {HIRING_PIPELINE_LABELS[k]}' for k in HIRING_PIPELINE_STEPS],
+        f'• {HIRING_PIPELINE_LABELS["on_hold"]} — pauses the whole process (not a stage)',
         '',
         'Notes',
         '• Excel does not upload document files — use the candidate detail page for files.',
         '• Comments max 4000 characters.',
         '• Bad rows are reported; other rows still import.',
+        '• Dropdowns apply to Pipeline Status and document columns through row '
+        f'{max_dv_row}. Re-download the template if an older file is missing them.',
     ]
     for i, line in enumerate(lines, start=1):
         ws2.cell(i, 1, line)
@@ -518,7 +564,6 @@ def apply_hiring_import(rows: list[dict], user, seed_documents_fn, clear_documen
                     )
                     db.session.add(candidate)
                     db.session.flush()
-                    seed_documents_fn(candidate)
                     is_create = True
                     if email:
                         email_index[email.lower()] = candidate
@@ -538,6 +583,8 @@ def apply_hiring_import(rows: list[dict], user, seed_documents_fn, clear_documen
                     if fields.get('pipeline_status'):
                         candidate.pipeline_status = fields['pipeline_status']
 
+                # Seed once after create/update. Relationship-backed seed keeps
+                # candidate.documents current so we never re-insert the same slot.
                 seed_documents_fn(candidate)
                 db.session.flush()
 
@@ -546,11 +593,10 @@ def apply_hiring_import(rows: list[dict], user, seed_documents_fn, clear_documen
                     doc = by_type.get(doc_type)
                     if not doc:
                         doc = HiringDocument(
-                            candidate_id=candidate.id,
                             doc_type=doc_type,
                             status='missing',
                         )
-                        db.session.add(doc)
+                        candidate.documents.append(doc)
                         db.session.flush()
                         by_type[doc_type] = doc
 

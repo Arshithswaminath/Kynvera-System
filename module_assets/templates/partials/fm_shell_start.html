@@ -1,0 +1,30 @@
+{# Shared FM Assets page chrome — open shell (sidebar + topbar).
+   Before include, set:
+     fm_page_title, fm_topbar_title
+     optional: fm_narrow (bool), fm_head_extra (markup string)
+#}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+  <title>{{ fm_page_title | default('FM Assets') }} — Kynvera</title>
+  {% include 'partials/caveat_font.html' ignore missing %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/ticketing.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/fm-assets.css') }}">
+  {% if fm_head_extra is defined %}{{ fm_head_extra|safe }}{% endif %}
+</head>
+<body class="tkt-dh-page fm-assets-shell">
+<div class="tkt-dh-app-root">
+<div class="dh-page-root tkt-dh-page-root">
+{% include 'partials/fm_sidebar.html' with context %}
+<div class="tkt-dh-main">
+{% set tkt_topbar_title = fm_topbar_title | default('FM Assets') %}
+{% include 'partials/tkt_topbar.html' with context %}
+<div class="tkt-content">
+<main class="fm-wrap{% if fm_narrow %} fm-wrap-narrow{% endif %}">

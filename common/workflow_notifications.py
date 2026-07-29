@@ -96,13 +96,13 @@ def _html_email(
     status_type: str = 'pending',
     rows: list[tuple[str, str]],
     cta_url: str = '',
-    cta_label: str = 'Open in Injaaz',
+    cta_label: str = 'Open in Kynvera',
 ) -> str:
     """
     Outlook-safe HTML email (table-based layout, VML button, bgcolor attributes).
     Tested against Outlook 2007/2010/2013/2016 Word rendering engine.
     """
-    accent = _STATUS_COLOUR.get(status_type, '#125435')
+    accent = _STATUS_COLOUR.get(status_type, '#ff8e68')
     now_str = datetime.now().strftime('%d %b %Y, %H:%M')
 
     # Details rows — alternating row shading works in all Outlook versions
@@ -186,13 +186,13 @@ def _html_email(
 
         <!-- ── Header ── -->
         <tr>
-          <td bgcolor="#125435" style="background-color:#125435;padding:18px 32px;">
+          <td bgcolor="#ff8e68" style="background-color:#ff8e68;padding:18px 32px;">
             <table width="100%" cellpadding="0" cellspacing="0" border="0">
               <tr>
                 <td style="font-family:Arial,Helvetica,sans-serif;font-size:20px;font-weight:bold;
-                           color:#ffffff;letter-spacing:-0.5px;">Injaaz</td>
+                           color:#ffffff;letter-spacing:-0.5px;">Kynvera</td>
                 <td align="right" style="font-family:Arial,Helvetica,sans-serif;font-size:12px;
-                           color:#a7f3c4;">Workflow Notification</td>
+                           color:#ffcdb8;">Workflow Notification</td>
               </tr>
             </table>
           </td>
@@ -254,7 +254,7 @@ def _html_email(
         <tr>
           <td bgcolor="#f8fafc" style="background-color:#f8fafc;padding:16px 32px 20px 32px;">
             <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#94a3b8;line-height:1.6;">
-              Sent automatically by <strong style="color:#64748b;">Injaaz Workflow</strong> on {now_str}.<br>
+              Sent automatically by <strong style="color:#64748b;">Kynvera Workflow</strong> on {now_str}.<br>
               Do not reply to this email.
             </p>
           </td>
@@ -278,7 +278,7 @@ def _plain_text(title: str, rows: list[tuple[str, str]], cta_url: str = '') -> s
         lines.append(f'{label}: {value}')
     if cta_url:
         lines += ['', f'Open here: {cta_url}']
-    lines += ['', 'Injaaz Team']
+    lines += ['', 'Kynvera Team']
     return '\n'.join(lines)
 
 
@@ -298,7 +298,7 @@ def _send(
     status_type: str,
     rows: list[tuple[str, str]],
     cta_url: str = '',
-    cta_label: str = 'Open in Injaaz',
+    cta_label: str = 'Open in Kynvera',
 ) -> bool:
     """
     Resolve recipients from admin config then send via the same send_email()
@@ -357,7 +357,7 @@ def send_inspection_submitted(submission, submitter) -> bool:
     return _send(
         module='inspection',
         submission=submission,
-        subject=f"[Injaaz] {module_name} — New Submission",
+        subject=f"[Kynvera] {module_name} — New Submission",
         title=f"New {module_name} Form Submitted",
         status_label='New Submission',
         status_type='submitted',
@@ -398,7 +398,7 @@ def send_team_notification(submission, action_user, action_label: str) -> bool:
     return _send(
         module='inspection',
         submission=submission,
-        subject=f"[Injaaz] {module_name} — {action_label}",
+        subject=f"[Kynvera] {module_name} — {action_label}",
         title=action_label,
         status_label=status_label,
         status_type=status_type,
@@ -444,7 +444,7 @@ def send_hr_submitted(submission, submitter) -> bool:
     return _send(
         module='hr',
         submission=submission,
-        subject=f"[Injaaz HR] {form_name} — New Submission",
+        subject=f"[Kynvera HR] {form_name} — New Submission",
         title=f"New {form_name} Submitted",
         status_label='Submitted',
         status_type='submitted',
@@ -473,7 +473,7 @@ def send_hr_notification(submission, action_user, action_label: str) -> bool:
     return _send(
         module='hr',
         submission=submission,
-        subject=f"[Injaaz HR] {form_name} — {action_label}",
+        subject=f"[Kynvera HR] {form_name} — {action_label}",
         title=action_label,
         status_label=status_label,
         status_type=status_type,
@@ -495,7 +495,7 @@ def send_hr_rejected(submission, rejected_by, reason: str = '') -> bool:
     return _send(
         module='hr',
         submission=submission,
-        subject=f"[Injaaz HR] {form_name} — Rejected",
+        subject=f"[Kynvera HR] {form_name} — Rejected",
         title=f"{form_name} — Rejected",
         status_label='Rejected',
         status_type='rejected',

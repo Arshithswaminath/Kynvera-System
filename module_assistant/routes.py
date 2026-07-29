@@ -25,6 +25,10 @@ from module_assistant.responses import (
     compose_pending_count,
     compose_procurement_summary,
     compose_ticket_summary,
+    compose_fm_failures_by_building,
+    compose_fm_critical_assets,
+    compose_fm_cost_trend,
+    compose_fm_maintenance_report,
     compose_fallback,
 )
 from module_assistant.tools import (
@@ -35,6 +39,10 @@ from module_assistant.tools import (
     get_pending_summary,
     get_procurement_summary,
     get_ticket_summary,
+    get_fm_failures_by_building,
+    get_fm_critical_assets,
+    get_fm_cost_trend,
+    get_fm_maintenance_report_hint,
     search_documents,
 )
 
@@ -47,6 +55,8 @@ LIVE_DATA_INTENTS = {
     'pending_count', 'my_submissions', 'my_drafts', 'my_last_leave',
     'find_document', 'change_password', 'contact_admin',
     'procurement_data', 'my_tickets', 'my_inspections', 'my_profile',
+    'fm_failures_by_building', 'fm_critical_assets', 'fm_cost_trend',
+    'fm_maintenance_report', 'fm_portfolio_forecast',
 }
 
 
@@ -107,6 +117,19 @@ def chat():
                 payload = compose_procurement_summary(get_procurement_summary(user))
             elif intent == 'my_tickets':
                 payload = compose_ticket_summary(get_ticket_summary(user))
+            elif intent == 'fm_failures_by_building':
+                payload = compose_fm_failures_by_building(get_fm_failures_by_building(user))
+            elif intent == 'fm_critical_assets':
+                payload = compose_fm_critical_assets(get_fm_critical_assets(user))
+            elif intent == 'fm_cost_trend':
+                payload = compose_fm_cost_trend(get_fm_cost_trend(user), user=user)
+            elif intent == 'fm_maintenance_report':
+                payload = compose_fm_maintenance_report(get_fm_maintenance_report_hint(user))
+            elif intent == 'fm_portfolio_forecast':
+                from module_assistant.responses import compose_fm_portfolio_forecast
+                from app.models import PortfolioForecast
+                row = PortfolioForecast.query.order_by(PortfolioForecast.created_at.desc()).first()
+                payload = compose_fm_portfolio_forecast(row.to_dict() if row else None)
             elif intent == 'my_inspections':
                 payload = compose_my_inspections(get_my_inspections_summary(user))
             elif intent == 'my_profile':

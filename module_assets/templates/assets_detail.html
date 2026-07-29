@@ -1,0 +1,114 @@
+{% set fm_page_title = asset.asset_id ~ ' — ' ~ asset.name %}
+{% set fm_topbar_title = asset.asset_id %}
+{% include 'partials/fm_shell_start.html' %}
+
+  <header class="fm-header">
+    <div>
+      <p class="fm-eyebrow"><a href="{{ url_for('assets_bp.assets_dashboard') }}">Assets</a> · {{ asset.asset_id }}</p>
+      <h1>{{ asset.name }}</h1>
+      <p>{{ asset.asset_type or 'Equipment' }}{% if asset.building %} · {{ asset.building }}{% endif %}{% if asset.floor %} / {{ asset.floor }}{% endif %}{% if asset.room %} / {{ asset.room }}{% endif %}</p>
+    </div>
+    <div class="fm-header-actions">
+      {% if can_write %}
+      <a class="fm-btn fm-btn-outline" href="{{ url_for('assets_bp.assets_edit_page', asset_code=asset.asset_id) }}">Edit</a>
+      {% endif %}
+      <button type="button" class="fm-btn fm-btn-primary" id="predictBtn">AI estimate</button>
+    </div>
+  </header>
+
+  <section class="fm-detail-grid">
+    <div class="fm-panel">
+      <h2>Details</h2>
+      <dl class="fm-dl">
+        <dt>Status</dt><dd><span class="fm-status fm-status-{{ asset.status or 'active' }}">{{ asset.status or 'active' }}</span></dd>
+        <dt>Health</dt><dd>{% if asset.health_score is not none %}{{ asset.health_score }} / 100{% else %}—{% endif %}</dd>
+        <dt>Manufacturer</dt><dd>{{ asset.manufacturer or '—' }}</dd>
+        <dt>Model</dt><dd>{{ asset.model or '—' }}</dd>
+        <dt>Serial</dt><dd>{{ asset.serial_number or '—' }}</dd>
+        <dt>QR</dt><dd>{{ asset.qr_code or '—' }}</dd>
+        <dt>Installed</dt><dd>{{ asset.installation_date or '—' }}</dd>
+        <dt>Warranty</dt><dd>{{ asset.warranty_expiry or '—' }}</dd>
+        <dt>Purchase cost</dt><dd>{% if asset.purchase_cost is not none %}{{ '%.2f'|format(asset.purchase_cost) }}{% else %}—{% endif %}</dd>
+        <dt>Maint. cost</dt><dd>{{ '%.2f'|format(asset.maintenance_cost_total or 0) }}</dd>
+        <dt>Coordinates</dt><dd>{% if asset.latitude is not none and asset.longitude is not none %}{{ asset.latitude }}, {{ asset.longitude }}{% else %}—{% endif %}</dd>
+      </dl>
+      {% if asset.notes %}<p class="fm-notes">{{ asset.notes }}</p>{% endif %}
+    </div>
+
+    <div class="fm-panel" id="predictPanel">
+      <div class="fm-panel-head">
+        <h2>Failure / RUL estimate</h2>
+        <span class="fm-badge-estimate" title="Claude heuristic until a trained model exists">Estimate</span>
+      </div>
+      <p class="fm-muted" id="predictPlaceholder" {% if last_prediction %}hidden{% endif %}>Click “AI estimate” to generate a failure probability and remaining useful life from this asset’s history. Results are LLM estimates, not a trained predictive model.</p>
+      <div id="predictResult" {% if not last_prediction %}hidden{% endif %}>
+        <div class="fm-predict-grid">
+          <div><span class="fm-kpi-label">Failure probability</span><span class="fm-kpi-value" id="predFail">{% if last_prediction %}{{ last_prediction.failure_probability_pct }}%{% else %}—{% endif %}</span></div>
+          <div><span class="fm-kpi-label">RUL (days)</span><span class="fm-kpi-value" id="predRul">{% if last_prediction %}{{ last_prediction.rul_days }}{% else %}—{% endif %}</span></div>
+          <div><span class="fm-kpi-label">Predicted maint. cost</span><span class="fm-kpi-value" id="predCost">{% if last_prediction %}{{ last_prediction.predicted_maintenance_cost }}{% else %}—{% endif %}</span></div>
+          <div><span class="fm-kpi-label">Recommendation</span><span class="fm-kpi-value" id="predRec">{% if last_prediction %}{{ last_prediction.recommendation }}{% else %}—{% endif %}</span></div>
+        </div>
+        <p id="predWhy" class="fm-notes">{% if last_prediction %}{{ last_prediction.justification or '' }}{% endif %}</p>
+        <p class="fm-muted"><code id="predMethod">method: {% if last_prediction %}{{ last_prediction.method }}{% else %}llm_estimate{% endif %}</code></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="fm-panel">
+    <div class="fm-panel-head"><h2>Linked work orders</h2></div>
+    {% if tickets %}
+    <div class="fm-table-wrap">
+      <table class="fm-table">
+        <thead><tr><th>Ticket</th><th>Title</th><th>Priority</th><th>Status</th><th>Created</th></tr></thead>
+        <tbody>
+          {% for t in tickets %}
+          <tr onclick="location.href='/tickets/{{ t.ticket_id }}'">
+            <td>{{ t.ticket_id }}</td>
+            <td>{{ t.title }}</td>
+            <td>{{ t.priority }}</td>
+            <td>{{ t.status }}</td>
+            <td>{{ t.created_at.strftime('%d %b %Y') if t.created_at else '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="fm-empty">No tickets linked to this asset yet.</p>
+    {% endif %}
+  </section>
+
+{% set fm_scripts %}
+<script>
+const ASSET_CODE = {{ asset.asset_id|tojson }};
+document.getElementById('predictBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('predictBtn');
+  btn.disabled = true;
+  btn.textContent = 'Estimating…';
+  try {
+    const res = await fetch(`/assets/api/assets/${encodeURIComponent(ASSET_CODE)}/predict`, {
+      method: 'POST',
+      headers: fmAuthHeaders({'Content-Type': 'application/json'}),
+      body: '{}',
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Prediction failed');
+    const p = data.prediction;
+    document.getElementById('predictPlaceholder').hidden = true;
+    document.getElementById('predictResult').hidden = false;
+    document.getElementById('predFail').textContent = p.failure_probability_pct + '%';
+    document.getElementById('predRul').textContent = p.rul_days;
+    document.getElementById('predCost').textContent = p.predicted_maintenance_cost;
+    document.getElementById('predRec').textContent = p.recommendation;
+    document.getElementById('predWhy').textContent = p.justification || '';
+    document.getElementById('predMethod').textContent = 'method: ' + (p.method || 'llm_estimate');
+  } catch (err) {
+    alert(err.message || String(err));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'AI estimate';
+  }
+});
+</script>
+{% endset %}
+{% include 'partials/fm_shell_end.html' %}

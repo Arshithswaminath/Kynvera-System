@@ -1038,6 +1038,16 @@
           {% if ticket.status == 'pending_supervisor' and user_is_supervisor %}
           <div class="workflow-panel panel-supervisor">
             <div class="workflow-panel-title">Assign Technician</div>
+            <div id="detailAiTriage" style="margin-bottom:14px;padding:12px;border:1px solid #fed7aa;border-radius:8px;background:#fff7ed;">
+              <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center;">
+                <strong style="font-size:.86rem;color:#c2440c;">AI triage</strong>
+                <button type="button" class="tkt-btn tkt-btn-outline tkt-btn-sm" id="detailTriageBtn">Get suggestion</button>
+              </div>
+              <div id="detailTriageResult" hidden style="margin-top:8px;font-size:.84rem;"></div>
+              <div id="detailTriageActions" hidden style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">
+                <button type="button" class="tkt-btn tkt-btn-primary tkt-btn-sm" id="detailTriageAccept">Accept priority / SLA</button>
+              </div>
+            </div>
             <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
               <div style="flex:1;min-width:200px;">
                 <select class="tkt-select" id="techAssignSelect">
@@ -1258,6 +1268,16 @@
                 <tr><td>Category</td><td>{{ ticket.category }}</td></tr>
                 <tr><td>Fault Type</td><td>{{ ticket.fault_type }}</td></tr>
                 <tr><td>Priority</td><td><span class="tkt-badge badge-priority-{{ ticket.priority }}">{{ ticket.priority|capitalize }}</span></td></tr>
+                <tr><td>SLA</td><td>
+                  {% if ticket.sla_hours %}
+                    {{ ticket.sla_hours }} hours
+                    <span id="slaCountdown" class="tkt-badge" style="margin-left:8px;"
+                          data-sla="{{ ticket.sla_hours }}"
+                          data-created="{{ ticket.created_at.isoformat() if ticket.created_at else '' }}"
+                          data-status="{{ ticket.status }}">…</span>
+                  {% else %}—{% endif %}
+                </td></tr>
+                <tr><td>FM Asset</td><td>{% if ticket.fm_asset %}<a href="/assets/{{ ticket.fm_asset.asset_id }}">{{ ticket.fm_asset.asset_id }} — {{ ticket.fm_asset.name }}</a>{% else %}—{% endif %}</td></tr>
                 <tr><td>Status</td><td><span class="tkt-badge badge-status-{{ ticket.status }}" id="sidebarStatus">{{ ticket.status|tkt_status_label }}</span></td></tr>
                 <tr><td>Reporter</td><td>{{ ticket.reporter.full_name if ticket.reporter else '—' }}</td></tr>
                 <tr><td>Supervisor</td><td>{{ ticket.supervisor.full_name if ticket.supervisor else '<span style="color:#94a3b8;">Not assigned</span>'|safe }}</td></tr>
@@ -2030,6 +2050,31 @@
 <script src="{{ url_for('static', filename='js/ticketing.js') }}"></script>
 <script>
 const TICKET_ID = '{{ ticket.ticket_id }}';
+
+(function updateSlaBadge() {
+  const el = document.getElementById('slaCountdown');
+  if (!el) return;
+  const sla = parseFloat(el.dataset.sla || '');
+  const created = el.dataset.created;
+  const status = el.dataset.status || '';
+  const terminal = ['closed', 'cancelled', 'resolved'];
+  if (!sla || !created || terminal.includes(status)) {
+    el.textContent = terminal.includes(status) ? 'Closed' : '';
+    return;
+  }
+  const start = new Date(created.endsWith('Z') ? created : created + 'Z');
+  const elapsedH = (Date.now() - start.getTime()) / 3600000;
+  const remaining = sla - elapsedH;
+  if (remaining < 0) {
+    el.textContent = `BREACHED ${Math.abs(remaining).toFixed(1)}h over`;
+    el.style.background = '#fef2f2';
+    el.style.color = '#b42318';
+  } else {
+    el.textContent = `${remaining.toFixed(1)}h left`;
+    el.style.background = remaining < sla * 0.25 ? '#fff7ed' : '#ecfdf3';
+    el.style.color = remaining < sla * 0.25 ? '#c2410c' : '#027a48';
+  }
+})();
 const ACTUAL_PRICE = {{ actual_price | tojson }};
 let procMaterials = {{ procurement_materials | tojson }};
 let _selectedMarkup = null;
@@ -2578,6 +2623,71 @@ document.getElementById('confirmSubmitSupBtn')?.addEventListener('click', async 
   });
   if (res.ok && res.data.success) { tktToast('Sent to supervisor queue!', 'success'); setTimeout(() => location.reload(), 800); }
   else { tktToast(res.data.error || 'Failed.', 'error'); btn.disabled = false; btn.textContent = 'Send to Supervisor'; }
+});
+
+// ── AI triage (supervisor) ─────────────────────────────────
+let _detailTriageLogId = null;
+let _detailTriageSuggestion = null;
+document.getElementById('detailTriageBtn')?.addEventListener('click', async () => {
+  const btn = document.getElementById('detailTriageBtn');
+  btn.disabled = true;
+  btn.textContent = 'Analyzing…';
+  const res = await tktFetch('/tickets/api/tickets/triage-preview', {
+    method: 'POST',
+    body: JSON.stringify({
+      ticket_id: TICKET_ID,
+      title: {{ ticket.title|tojson }},
+      work_description: {{ ticket.work_description|tojson }},
+      project: {{ ticket.project|tojson }},
+      service_group: {{ ticket.service_group|tojson }},
+      category: {{ ticket.category|tojson }},
+      fault_type: {{ ticket.fault_type|tojson }},
+      property_name: {{ (ticket.property_name or '')|tojson }},
+      zone: {{ (ticket.zone or '')|tojson }},
+      asset_pk: {{ (ticket.asset_id or none)|tojson }},
+    }),
+  });
+  btn.disabled = false;
+  btn.textContent = 'Get suggestion';
+  if (!res.ok || !res.data.success) {
+    tktToast(res.data.error || 'AI triage failed', 'error');
+    return;
+  }
+  _detailTriageLogId = res.data.triage_log_id;
+  _detailTriageSuggestion = res.data.suggestion;
+  const s = res.data.suggestion || {};
+  const parts = (s.required_parts || []).join(', ') || 'none';
+  const el = document.getElementById('detailTriageResult');
+  el.hidden = false;
+  el.innerHTML = `<strong>${s.priority || '—'}</strong> · SLA ${s.sla_hours || '—'}h · Tech: ${s.technician_name || '—'} · Parts: ${parts}<div style="margin-top:4px;color:#9a3412;">${(s.reasoning||'').replace(/</g,'&lt;')}</div>`;
+  document.getElementById('detailTriageActions').hidden = false;
+  // Pre-select suggested technician if present
+  if (s.technician_id) {
+    const sel = document.getElementById('techAssignSelect');
+    if (sel) {
+      const opt = [...sel.options].find(o => String(o.dataset.userId) === String(s.technician_id));
+      if (opt) sel.value = opt.value;
+    }
+  }
+});
+
+document.getElementById('detailTriageAccept')?.addEventListener('click', async () => {
+  if (!_detailTriageLogId || !_detailTriageSuggestion) return;
+  const res = await tktFetch('/tickets/api/tickets/triage-confirm', {
+    method: 'POST',
+    body: JSON.stringify({
+      triage_log_id: _detailTriageLogId,
+      ticket_id: TICKET_ID,
+      apply_to_ticket: true,
+      accepted: _detailTriageSuggestion,
+    }),
+  });
+  if (res.ok && res.data.success) {
+    tktToast('Priority / SLA updated from AI suggestion.', 'success');
+    setTimeout(() => location.reload(), 700);
+  } else {
+    tktToast(res.data.error || 'Could not apply suggestion', 'error');
+  }
 });
 
 // ── Assign technician ─────────────────────────────────────

@@ -191,7 +191,7 @@ function getNavWelcomeFirstName(user) {
 function formatNavWelcome(user) {
   const displayName = (user && (user.full_name || user.username)) || '';
   if (!displayName) {
-    return isNavWelcomeCompact() ? 'Hi' : 'Injaaz Application';
+    return isNavWelcomeCompact() ? 'Hi' : 'Kynvera';
   }
   if (isNavWelcomeCompact()) {
     return `Hi, ${getNavWelcomeFirstName(user)}`;
@@ -277,6 +277,10 @@ function applyProfileBasedNavVisibility(user) {
   const tktEl = document.getElementById('ticketing-menu-item');
   if (tktEl) {
     tktEl.style.display = (user && (isAppAdmin(user) || accessFlagOn(user, 'access_ticketing'))) ? 'list-item' : 'none';
+  }
+  const fmAssetsEl = document.getElementById('fm-assets-menu-item');
+  if (fmAssetsEl) {
+    fmAssetsEl.style.display = (user && (isAppAdmin(user) || accessFlagOn(user, 'access_ticketing'))) ? 'list-item' : 'none';
   }
   const qhsiEl = document.getElementById('qhsi-menu-item');
   if (qhsiEl) {
@@ -480,6 +484,14 @@ function updateModuleVisibility(user) {
     const showTicketing = isAdmin || accessFlagOn(user, 'access_ticketing');
     ticketingCard.style.display = showTicketing ? 'block' : 'none';
     ticketingCard.style.visibility = showTicketing ? 'visible' : 'hidden';
+  }
+
+  // FM Assets (same access as ticketing)
+  const fmAssetsCard = document.getElementById('module-fm-assets');
+  if (fmAssetsCard) {
+    const showAssets = isAdmin || accessFlagOn(user, 'access_ticketing');
+    fmAssetsCard.style.display = showAssets ? 'block' : 'none';
+    fmAssetsCard.style.visibility = showAssets ? 'visible' : 'hidden';
   }
 
   const qhsiCard = document.getElementById('module-qhsi');
@@ -1046,9 +1058,9 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
         justify-content: center;
         font-weight: 700;
         color: #ffffff;
-        background: linear-gradient(160deg, #1b8a56 0%, #147347 100%);
+        background: linear-gradient(160deg, #ff8e68 0%, #e05f36 100%);
         border: 3px solid #ffffff;
-        box-shadow: 0 6px 18px rgba(20, 115, 71, 0.25);
+        box-shadow: 0 6px 18px rgba(255, 142, 104, 0.28);
         position: relative;
         flex-shrink: 0;
       }
@@ -1119,7 +1131,7 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
 
       .pro-nav-item.active {
         background: transparent;
-        color: #147347;
+        color: #e05f36;
         font-weight: 600;
         box-shadow: none;
       }
@@ -1140,7 +1152,7 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
       }
 
       .pro-nav-item.active .pro-nav-ico {
-        color: #147347;
+        color: #e05f36;
       }
 
       .pro-nav-ico svg {
@@ -1172,7 +1184,7 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
       }
 
       .pro-rail-status.is-active {
-        color: #15803d;
+        color: #e05f36;
       }
 
       .pro-rail-status.is-inactive {
@@ -1343,8 +1355,8 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
         height: 30px;
         border-radius: 8px;
         flex-shrink: 0;
-        background: color-mix(in srgb, var(--icon-color, #147347) 12%, #ffffff);
-        color: var(--icon-color, #147347);
+        background: color-mix(in srgb, var(--icon-color, #ff8e68) 14%, #ffffff);
+        color: var(--icon-color, #e05f36);
       }
 
       .pro-org-ico svg {
@@ -1388,7 +1400,7 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
         position: relative;
         flex-shrink: 0;
         padding: 0.9rem 3.25rem 0.85rem 1.15rem;
-        background: linear-gradient(180deg, #1a7a4d 0%, #145c3a 100%);
+        background: linear-gradient(180deg, #ff8e68 0%, #e05f36 100%);
         border-radius: 0;
         margin: 0 -1rem;
         overflow: hidden;
@@ -1438,10 +1450,10 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
         height: 76px;
         font-size: 1.6rem;
         margin: 0;
-        background: linear-gradient(160deg, #1b8a56 0%, #147347 100%) !important;
+        background: linear-gradient(160deg, #ff8e68 0%, #e05f36 100%) !important;
         backdrop-filter: none;
         border: 3px solid #ffffff;
-        box-shadow: 0 6px 18px rgba(20, 115, 71, 0.25);
+        box-shadow: 0 6px 18px rgba(255, 142, 104, 0.28);
         color: #ffffff;
       }
 
@@ -1620,10 +1632,10 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
         display: flex;
         align-items: center;
         justify-content: center;
-        background: var(--icon-color, #147347);
+        background: var(--icon-color, #ff8e68);
         color: white;
         flex-shrink: 0;
-        box-shadow: 0 2px 6px color-mix(in srgb, var(--icon-color, #147347) 35%, transparent);
+        box-shadow: 0 2px 6px color-mix(in srgb, var(--icon-color, #ff8e68) 35%, transparent);
       }
 
       .pro-info-icon svg {
@@ -1804,8 +1816,8 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
 
       .pro-field-input:focus {
         outline: none;
-        border-color: #18794e;
-        box-shadow: 0 0 0 3px rgba(24, 121, 78, 0.14);
+        border-color: #ff8e68;
+        box-shadow: 0 0 0 3px rgba(255, 142, 104, 0.18);
         background: #ffffff;
       }
 
@@ -1837,8 +1849,8 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
       }
       
       .pro-security-card.success {
-        background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
-        border-color: #86efac;
+        background: linear-gradient(135deg, #fff4ef 0%, #ffe8dc 100%);
+        border-color: rgba(255, 142, 104, 0.45);
       }
       
       .pro-security-card.warning {
@@ -1863,7 +1875,7 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
       }
       
       .pro-security-card.success .pro-security-icon {
-        background: #22c55e;
+        background: #ff8e68;
         color: white;
       }
       
@@ -1908,24 +1920,24 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
       }
       
       .pro-btn-primary {
-        background: linear-gradient(160deg, #1b8a56 0%, #147347 100%);
+        background: linear-gradient(160deg, #ff8e68 0%, #e05f36 100%);
         color: white;
-        box-shadow: 0 3px 8px rgba(20, 115, 71, 0.26);
+        box-shadow: 0 3px 8px rgba(255, 142, 104, 0.28);
       }
       
       .pro-btn-primary:hover {
         transform: translateY(-0.5px);
-        box-shadow: 0 5px 12px rgba(20, 115, 71, 0.3);
+        box-shadow: 0 5px 12px rgba(255, 142, 104, 0.34);
       }
       
       .pro-btn-outline {
         background: white;
-        color: #167d4f;
-        border: 1px solid #a6d8bf;
+        color: #e05f36;
+        border: 1px solid rgba(255, 142, 104, 0.55);
       }
       
       .pro-btn-outline:hover {
-        background: #f4fbf7;
+        background: #fff4ef;
       }
       
       .pro-btn-sm {
@@ -1945,14 +1957,14 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
       }
       
       .pro-btn-success {
-        background: linear-gradient(160deg, #27ae60 0%, #1e9f58 100%);
+        background: linear-gradient(160deg, #ff8e68 0%, #e05f36 100%);
         color: white;
-        box-shadow: 0 3px 8px rgba(30, 159, 88, 0.28);
+        box-shadow: 0 3px 8px rgba(255, 142, 104, 0.28);
       }
       
       .pro-btn-success:hover {
         transform: translateY(-0.5px);
-        box-shadow: 0 5px 12px rgba(30, 159, 88, 0.32);
+        box-shadow: 0 5px 12px rgba(255, 142, 104, 0.34);
       }
       
       /* Signature Section */
@@ -1974,7 +1986,7 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
       .pro-sig-header-icon {
         width: 32px;
         height: 32px;
-        background: linear-gradient(135deg, #125435 0%, #1a7a4d 100%);
+        background: linear-gradient(135deg, #ff8e68 0%, #f97e54 100%);
         border-radius: 8px;
         display: flex;
         align-items: center;
@@ -2263,13 +2275,13 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
       }
       
       .pro-sig-preview:hover {
-        border-color: #125435;
-        background: #f0fdf4;
+        border-color: #ff8e68;
+        background: #fff4ef;
       }
       
       .pro-sig-preview.has-sig {
         border-style: solid;
-        border-color: #22c55e;
+        border-color: #ff8e68;
       }
       
       .pro-sig-preview img {
@@ -2316,7 +2328,7 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
       
       .pro-sig-comment:focus {
         outline: none;
-        border-color: #125435;
+        border-color: #ff8e68;
         box-shadow: 0 0 0 3px rgba(18,84,53,0.1);
       }
       
@@ -2520,28 +2532,28 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
                 <div class="pro-org-title">Organization Details</div>
                 <div class="pro-org-grid">
                   <div class="pro-org-card">
-                    <span class="pro-org-ico" style="--icon-color:#6366f1">${I.briefcase}</span>
+                    <span class="pro-org-ico" style="--icon-color:#ff8e68">${I.briefcase}</span>
                     <div class="pro-org-text">
                       <div class="pro-org-label">Job Title</div>
                       <div class="pro-org-value">${hrJobTitle}</div>
                     </div>
                   </div>
                   <div class="pro-org-card">
-                    <span class="pro-org-ico" style="--icon-color:#8b5cf6">${I.manager}</span>
+                    <span class="pro-org-ico" style="--icon-color:#e05f36">${I.manager}</span>
                     <div class="pro-org-text">
                       <div class="pro-org-label">Reporting Manager</div>
                       <div class="pro-org-value">${reportingMgrDisp}</div>
                     </div>
                   </div>
                   <div class="pro-org-card">
-                    <span class="pro-org-ico" style="--icon-color:#f59e0b">${I.leave}</span>
+                    <span class="pro-org-ico" style="--icon-color:#f97e54">${I.leave}</span>
                     <div class="pro-org-text">
                       <div class="pro-org-label">Annual Leave (days)</div>
                       <div class="pro-org-value">${annualLeavesDisp}</div>
                     </div>
                   </div>
                   <div class="pro-org-card">
-                    <span class="pro-org-ico" style="--icon-color:#f43f5e">${I.clipboard}</span>
+                    <span class="pro-org-ico" style="--icon-color:#ff8e68">${I.clipboard}</span>
                     <div class="pro-org-text">
                       <div class="pro-org-label">Other Leave (days)</div>
                       <div class="pro-org-value">${otherLeavesDisp}</div>
@@ -2573,16 +2585,16 @@ function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDis
 
               <div class="pro-info-list pro-info-list--grid">
                 <div class="pro-info-item">
-                  <div class="pro-info-icon" style="--icon-color:${user.is_active ? '#16a34a' : '#dc2626'}">${I.shield}</div>
+                  <div class="pro-info-icon" style="--icon-color:${user.is_active ? '#ff8e68' : '#dc2626'}">${I.shield}</div>
                   <div class="pro-info-content">
                     <div class="pro-info-label">Account Status</div>
-                    <div class="pro-info-value" style="color: ${user.is_active ? '#16a34a' : '#dc2626'}">
+                    <div class="pro-info-value" style="color: ${user.is_active ? '#e05f36' : '#dc2626'}">
                       ${user.is_active ? 'Active' : 'Inactive'}
                     </div>
                   </div>
                 </div>
                 <div class="pro-info-item">
-                  <div class="pro-info-icon" style="--icon-color:#f59e0b">${I.role}</div>
+                  <div class="pro-info-icon" style="--icon-color:#ff8e68">${I.role}</div>
                   <div class="pro-info-content">
                     <div class="pro-info-label">Role</div>
                     <div class="pro-info-value">${escapeHtml(getRoleDisplay())}</div>

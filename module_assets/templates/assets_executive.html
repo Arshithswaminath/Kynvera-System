@@ -1,0 +1,116 @@
+{% set fm_page_title = 'FM Executive Dashboard' %}
+{% set fm_topbar_title = 'Executive' %}
+{% include 'partials/fm_shell_start.html' %}
+
+  <header class="fm-header">
+    <div>
+      <h1>FM Executive Dashboard</h1>
+      <p>Building health, warranty, budget, and work-order portfolio</p>
+    </div>
+    <div class="fm-header-actions">
+      <button type="button" class="fm-btn fm-btn-primary" id="forecastBtn">Run portfolio forecast</button>
+      <a class="fm-btn fm-btn-outline" href="{{ url_for('assets_bp.assets_map_page') }}">Map</a>
+    </div>
+  </header>
+
+  <section class="fm-kpi-grid">
+    <div class="fm-kpi">
+      <span class="fm-kpi-label">Building health</span>
+      <span class="fm-kpi-value">{% if kpis.building_health_pct is not none %}{{ kpis.building_health_pct }}%{% else %}—{% endif %}</span>
+    </div>
+    <div class="fm-kpi">
+      <span class="fm-kpi-label">Open work orders</span>
+      <span class="fm-kpi-value">{{ ticket_stats.open }}</span>
+      <span class="fm-kpi-hint">{{ ticket_stats.critical_open }} critical · {{ ticket_stats.sla_breached }} SLA breached</span>
+    </div>
+    <div class="fm-kpi">
+      <span class="fm-kpi-label">Budget utilization</span>
+      <span class="fm-kpi-value">{% if kpis.budget.utilization_pct is not none %}{{ kpis.budget.utilization_pct }}%{% else %}—{% endif %}</span>
+      <span class="fm-kpi-hint">Maint {{ '{:,.0f}'.format(kpis.budget.maintenance_total) }} / Purchase {{ '{:,.0f}'.format(kpis.budget.purchase_total) }}</span>
+    </div>
+    <div class="fm-kpi">
+      <span class="fm-kpi-label">Warranty</span>
+      <span class="fm-kpi-value">{{ kpis.warranty.active }} active</span>
+      <span class="fm-kpi-hint">{{ kpis.warranty.expiring_30d }} expiring · {{ kpis.warranty.expired }} expired</span>
+    </div>
+    <div class="fm-kpi fm-kpi-warn">
+      <span class="fm-kpi-label">Critical assets</span>
+      <span class="fm-kpi-value">{{ kpis.critical_count }}</span>
+    </div>
+  </section>
+
+  <section class="fm-panel" id="narrativePanel" hidden>
+    <div class="fm-panel-head"><h2>Cost narrative</h2><span class="fm-badge-estimate">AI</span></div>
+    <p class="fm-notes" id="narrativeText"></p>
+  </section>
+
+  <section class="fm-panel">
+    <div class="fm-panel-head">
+      <h2>Portfolio forecast</h2>
+      <span class="fm-badge-estimate">Estimate</span>
+    </div>
+    <div id="forecastBox">
+      {% if forecast %}
+      <div class="fm-predict-grid">
+        <div><span class="fm-kpi-label">Budget forecast</span><span class="fm-kpi-value">{{ '{:,.0f}'.format(forecast.budget_forecast or 0) }}</span></div>
+        <div><span class="fm-kpi-label">Failures forecast</span><span class="fm-kpi-value">{{ forecast.failure_count_forecast }}</span></div>
+        <div><span class="fm-kpi-label">Horizon</span><span class="fm-kpi-value">{{ forecast.horizon_days }}d</span></div>
+      </div>
+      <p class="fm-notes">{{ forecast.narrative }}</p>
+      <p class="fm-muted">Spares: {{ (forecast.spare_parts_top or [])|join(', ') or '—' }} · <code>method: {{ forecast.method }}</code></p>
+      {% else %}
+      <p class="fm-muted">No forecast yet. Click “Run portfolio forecast”.</p>
+      {% endif %}
+    </div>
+  </section>
+
+  {% if kpis.by_building %}
+  <section class="fm-panel">
+    <div class="fm-panel-head"><h2>By building</h2></div>
+    <div class="fm-building-grid">
+      {% for b in kpis.by_building %}
+      <div class="fm-building-card">
+        <strong>{{ b.building }}</strong>
+        <span>{{ b.count }} assets</span>
+        <span>Health {% if b.avg_health is not none %}{{ b.avg_health }}%{% else %}—{% endif %}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+{% set fm_scripts %}
+<script>
+(async function loadNarrative() {
+  try {
+    const res = await fetch('/assets/api/narrative', {
+      headers: fmAuthHeaders(),
+    });
+    const data = await res.json();
+    if (data.success && data.narrative) {
+      document.getElementById('narrativeText').textContent = data.narrative;
+      document.getElementById('narrativePanel').hidden = false;
+    }
+  } catch (_) { /* narrative is optional */ }
+})();
+
+document.getElementById('forecastBtn')?.addEventListener('click', async () => {
+  const btn = document.getElementById('forecastBtn');
+  btn.disabled = true; btn.textContent = 'Forecasting…';
+  try {
+    const res = await fetch('/assets/api/forecast', {
+      method: 'POST',
+      headers: fmAuthHeaders({'Content-Type': 'application/json'}),
+      body: '{}',
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Failed');
+    location.reload();
+  } catch (e) {
+    alert(e.message || String(e));
+    btn.disabled = false; btn.textContent = 'Run portfolio forecast';
+  }
+});
+</script>
+{% endset %}
+{% include 'partials/fm_shell_end.html' %}

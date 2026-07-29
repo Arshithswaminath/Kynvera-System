@@ -4,13 +4,21 @@ Optional LLM backend for natural Injaaz assistant replies (RAG over knowledge ba
 Providers:
   - claude  (default) — Anthropic API, claude-haiku-4-5 recommended
   - openai            — OpenAI or any OpenAI-compatible endpoint
+
+Also exposes generate_structured() for FM triage / prediction JSON calls.
 """
+import json
 import logging
+import re
 
 logger = logging.getLogger(__name__)
 
 _claude_client = None
 _openai_client = None
+
+
+class StructuredLLMError(Exception):
+    """Raised when a structured LLM call fails or returns invalid JSON."""
 
 SYSTEM_PROMPT = """You are the Injaaz Assistant — a helpful, natural chat guide for the Injaaz FM platform and company.
 
@@ -153,3 +161,129 @@ def generate_reply(message: str, context_chunks: list, user_name: str = 'there',
     except Exception as e:
         logger.error('Assistant LLM call failed: %s', e, exc_info=True)
         return ''
+
+
+def _strip_json_fences(text: str) -> str:
+    text = (text or '').strip()
+    if text.startswith('```'):
+        text = re.sub(r'^```(?:json)?\s*', '', text, flags=re.IGNORECASE)
+        text = re.sub(r'\s*```$', '', text)
+    return text.strip()
+
+
+def _validate_against_schema(data: dict, schema: dict) -> dict:
+    """Lightweight required-key + type checks. schema keys map to expected Python types or tuples."""
+    if not isinstance(data, dict):
+        raise StructuredLLMError('Response is not a JSON object')
+    required = schema.get('required') or []
+    properties = schema.get('properties') or schema
+    # Support both {"required": [...], "properties": {...}} and flat {key: type}
+    if 'properties' not in schema and 'required' not in schema:
+        properties = schema
+        required = list(schema.keys())
+    for key in required:
+        if key not in data:
+            raise StructuredLLMError(f'Missing required key: {key}')
+    for key, expected in properties.items():
+        if key not in data:
+            continue
+        value = data[key]
+        if expected is None:
+            continue
+        if isinstance(expected, tuple):
+            if not isinstance(value, expected) and not (value is None and type(None) in expected):
+                raise StructuredLLMError(f'Key {key} has wrong type')
+        elif expected is list:
+            if not isinstance(value, list):
+                raise StructuredLLMError(f'Key {key} must be a list')
+        elif expected is dict:
+            if not isinstance(value, dict):
+                raise StructuredLLMError(f'Key {key} must be an object')
+        elif expected in (str, int, float, bool):
+            if expected is float and isinstance(value, int):
+                data[key] = float(value)
+            elif not isinstance(value, expected) and value is not None:
+                # Allow int for numeric fields that came as strings
+                if expected is int and isinstance(value, str) and value.isdigit():
+                    data[key] = int(value)
+                elif expected is float and isinstance(value, str):
+                    try:
+                        data[key] = float(value)
+                    except ValueError as exc:
+                        raise StructuredLLMError(f'Key {key} must be {expected.__name__}') from exc
+                else:
+                    raise StructuredLLMError(f'Key {key} must be {expected.__name__}')
+    return data
+
+
+def _raw_completion(system_prompt: str, user_content: str, model: str = None, max_tokens: int = 1200) -> str:
+    from flask import current_app
+    model = model or current_app.config.get('ASSISTANT_LLM_MODEL') or (
+        'claude-haiku-4-5' if _provider() != 'openai' else 'gpt-4o-mini'
+    )
+    if _provider() == 'openai':
+        client = _get_openai_client()
+        if not client:
+            raise StructuredLLMError('OpenAI client unavailable')
+        response = client.chat.completions.create(
+            model=model,
+            messages=[
+                {'role': 'system', 'content': system_prompt},
+                {'role': 'user', 'content': user_content},
+            ],
+            max_tokens=max_tokens,
+            temperature=0.1,
+        )
+        return (response.choices[0].message.content or '').strip()
+
+    client = _get_claude_client()
+    if not client:
+        raise StructuredLLMError('Claude client unavailable — check ANTHROPIC_API_KEY')
+    response = client.messages.create(
+        model=model,
+        max_tokens=max_tokens,
+        system=system_prompt,
+        messages=[{'role': 'user', 'content': user_content}],
+        temperature=0.1,
+    )
+    parts = []
+    for block in response.content:
+        if getattr(block, 'type', None) == 'text':
+            parts.append(block.text)
+    return ''.join(parts).strip()
+
+
+def generate_structured(system_prompt: str, user_content: str, schema: dict, model: str = None) -> dict:
+    """Call the configured LLM and parse a strict-JSON response validated against schema.
+
+    Raises StructuredLLMError on unavailable client, malformed JSON, or schema mismatch.
+    """
+    if not is_llm_enabled():
+        raise StructuredLLMError('LLM is disabled')
+
+    full_system = (
+        (system_prompt or '').strip()
+        + '\n\nYou MUST respond with ONLY valid JSON. No prose, no markdown fences, no commentary.'
+    )
+    try:
+        raw = _raw_completion(full_system, user_content, model=model)
+    except StructuredLLMError:
+        raise
+    except Exception as exc:
+        logger.error('Structured LLM call failed: %s', exc, exc_info=True)
+        raise StructuredLLMError(str(exc)) from exc
+
+    cleaned = _strip_json_fences(raw)
+    try:
+        data = json.loads(cleaned)
+    except json.JSONDecodeError as exc:
+        # Try to extract first {...} block
+        match = re.search(r'\{[\s\S]*\}', cleaned)
+        if not match:
+            raise StructuredLLMError(f'Invalid JSON from LLM: {exc}') from exc
+        try:
+            data = json.loads(match.group(0))
+        except json.JSONDecodeError as exc2:
+            raise StructuredLLMError(f'Invalid JSON from LLM: {exc2}') from exc2
+
+    return _validate_against_schema(data, schema)

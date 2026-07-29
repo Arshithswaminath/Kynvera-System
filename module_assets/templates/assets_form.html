@@ -1,0 +1,78 @@
+{% set fm_page_title = ('Edit asset' if mode == 'edit' else 'New asset') %}
+{% set fm_topbar_title = fm_page_title %}
+{% set fm_narrow = true %}
+{% include 'partials/fm_shell_start.html' %}
+
+  <header class="fm-header">
+    <div>
+      <h1>{% if mode == 'edit' %}Edit asset{% else %}New asset{% endif %}</h1>
+      <p><a href="{{ url_for('assets_bp.assets_dashboard') }}">← Dashboard</a></p>
+    </div>
+  </header>
+
+  <form id="assetForm" class="fm-form">
+    <label>Name *<input class="fm-input" name="name" required value="{{ asset.name if asset else '' }}"></label>
+    <label>Asset ID<input class="fm-input" name="asset_id" {% if mode == 'edit' %}readonly{% endif %}
+           placeholder="Auto AST-####" value="{{ asset.asset_id if asset else '' }}"></label>
+    <label>QR code<input class="fm-input" name="qr_code" value="{{ asset.qr_code if asset and asset.qr_code else '' }}"></label>
+    <label>Type<input class="fm-input" name="asset_type" placeholder="chiller, pump, AHU…" value="{{ asset.asset_type if asset and asset.asset_type else '' }}"></label>
+    <label>Building<input class="fm-input" name="building" value="{{ asset.building if asset and asset.building else '' }}"></label>
+    <label>Floor<input class="fm-input" name="floor" value="{{ asset.floor if asset and asset.floor else '' }}"></label>
+    <label>Room<input class="fm-input" name="room" value="{{ asset.room if asset and asset.room else '' }}"></label>
+    <label>Manufacturer<input class="fm-input" name="manufacturer" value="{{ asset.manufacturer if asset and asset.manufacturer else '' }}"></label>
+    <label>Model<input class="fm-input" name="model" value="{{ asset.model if asset and asset.model else '' }}"></label>
+    <label>Serial number<input class="fm-input" name="serial_number" value="{{ asset.serial_number if asset and asset.serial_number else '' }}"></label>
+    <label>Installation date<input class="fm-input" type="date" name="installation_date" value="{{ asset.installation_date.isoformat() if asset and asset.installation_date else '' }}"></label>
+    <label>Warranty expiry<input class="fm-input" type="date" name="warranty_expiry" value="{{ asset.warranty_expiry.isoformat() if asset and asset.warranty_expiry else '' }}"></label>
+    <label>Purchase cost<input class="fm-input" type="number" step="0.01" name="purchase_cost" value="{{ asset.purchase_cost if asset and asset.purchase_cost is not none else '' }}"></label>
+    <label>Latitude<input class="fm-input" type="number" step="any" name="latitude" value="{{ asset.latitude if asset and asset.latitude is not none else '' }}"></label>
+    <label>Longitude<input class="fm-input" type="number" step="any" name="longitude" value="{{ asset.longitude if asset and asset.longitude is not none else '' }}"></label>
+    <label>Maintenance cost total<input class="fm-input" type="number" step="0.01" name="maintenance_cost_total" value="{{ asset.maintenance_cost_total if asset else 0 }}"></label>
+    <label>Health score (0–100)<input class="fm-input" type="number" min="0" max="100" name="health_score" value="{{ asset.health_score if asset and asset.health_score is not none else '' }}"></label>
+    <label>Status
+      <select class="fm-input" name="status">
+        {% set st = asset.status if asset else 'active' %}
+        {% for s in ['active','critical','inactive','decommissioned'] %}
+        <option value="{{ s }}" {% if st == s %}selected{% endif %}>{{ s }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="fm-full">Notes<textarea class="fm-input" name="notes" rows="3">{{ asset.notes if asset and asset.notes else '' }}</textarea></label>
+    <div class="fm-form-actions fm-full">
+      <button type="submit" class="fm-btn fm-btn-primary">Save</button>
+      <a class="fm-btn fm-btn-outline" href="{{ url_for('assets_bp.assets_dashboard') }}">Cancel</a>
+    </div>
+    <p id="formError" class="fm-error fm-full" hidden></p>
+  </form>
+
+{% set fm_scripts %}
+<script>
+const MODE = {{ 'edit'|tojson if mode == 'edit' else 'create'|tojson }};
+const CODE = {{ (asset.asset_id if asset else '')|tojson }};
+document.getElementById('assetForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const payload = Object.fromEntries(fd.entries());
+  ['purchase_cost','maintenance_cost_total','health_score','latitude','longitude'].forEach(k => {
+    if (payload[k] === '') delete payload[k];
+  });
+  const err = document.getElementById('formError');
+  err.hidden = true;
+  const url = MODE === 'edit' ? `/assets/api/assets/${encodeURIComponent(CODE)}` : '/assets/api/assets';
+  const method = MODE === 'edit' ? 'PUT' : 'POST';
+  const res = await fetch(url, {
+    method,
+    headers: fmAuthHeaders({'Content-Type': 'application/json'}),
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (data.success) {
+    location.href = '/assets/' + encodeURIComponent(data.asset.asset_id);
+  } else {
+    err.textContent = data.error || 'Save failed';
+    err.hidden = false;
+  }
+});
+</script>
+{% endset %}
+{% include 'partials/fm_shell_end.html' %}

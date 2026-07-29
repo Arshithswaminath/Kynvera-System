@@ -172,6 +172,15 @@ except Exception as e:
     logger.exception("Could not import module_assistant.routes.assistant_bp: %s", e)
     assistant_bp = None
 
+# FM Assets registry
+assets_bp = None
+try:
+    from module_assets.routes import assets_bp  # noqa: F401
+    logger.info("Imported module_assets.routes.assets_bp")
+except Exception as e:
+    logger.exception("Could not import module_assets.routes.assets_bp: %s", e)
+    assets_bp = None
+
 # Ensure required directories exist at startup
 os.makedirs(GENERATED_DIR, exist_ok=True)
 os.makedirs(UPLOADS_DIR, exist_ok=True)
@@ -249,47 +258,61 @@ def create_app():
     )
     
     # JWT Error Handlers - ensure proper error responses
-    @jwt.unauthorized_loader
-    def unauthorized_callback(callback):
-        """Handle missing or invalid JWT token"""
-        # Check if this is a page render route (returns HTML) vs API route (returns JSON)
-        # Page render routes: /api/workflow/history, /api/workflow/pending-reviews, etc.
+    def _is_html_page_request():
+        """True for full-page navigations that should silently refresh / redirect to login.
+
+        API endpoints (JSON) are excluded — those return 401 so the client-side
+        JS refresh flow can handle them. The two workflow "page render" routes
+        live under /api/ but actually serve HTML, so they count as pages.
+        """
         page_render_routes = ['/api/workflow/history', '/api/workflow/pending-reviews']
         if request.path in page_render_routes:
-            # For page render routes, redirect to login
-            from flask import redirect, url_for
-            return redirect(url_for('login_page')), 302
-        elif request.path.startswith('/api/') or '/api/' in request.path:
-            return jsonify({"success": False, "error": "Authentication required"}), 401
-        # For other HTML pages, redirect to login
+            return True
+        if request.path.startswith('/api/') or '/api/' in request.path:
+            return False
+        return True
+
+    def _silent_refresh_or_login():
+        """Try to mint a new access token from the refresh cookie; else go to login.
+
+        Used for HTML page navigations whose ACCESS token has expired or is
+        missing. On a successful refresh we redirect back to the originally
+        requested URL with a fresh access cookie attached, so the user never
+        sees the login screen as long as their refresh token is still valid.
+        """
         from flask import redirect, url_for
+        from common.jwt_session import mint_access_token_from_refresh_cookie
+        from flask_jwt_extended import set_access_cookies
+
+        # Only GET navigations are safe to transparently replay via redirect.
+        if request.method == 'GET':
+            new_access_token = mint_access_token_from_refresh_cookie()
+            if new_access_token:
+                response = redirect(request.full_path if request.query_string else request.path)
+                set_access_cookies(response, new_access_token)
+                return response, 302
         return redirect(url_for('login_page')), 302
+
+    @jwt.unauthorized_loader
+    def unauthorized_callback(callback):
+        """Handle missing JWT token"""
+        if _is_html_page_request():
+            return _silent_refresh_or_login()
+        return jsonify({"success": False, "error": "Authentication required"}), 401
     
     @jwt.invalid_token_loader
     def invalid_token_callback(callback):
         """Handle invalid JWT token"""
-        # Check if this is a page render route
-        page_render_routes = ['/api/workflow/history', '/api/workflow/pending-reviews']
-        if request.path in page_render_routes:
-            from flask import redirect, url_for
-            return redirect(url_for('login_page')), 302
-        elif request.path.startswith('/api/') or '/api/' in request.path:
-            return jsonify({"success": False, "error": "Invalid token"}), 401
-        from flask import redirect, url_for
-        return redirect(url_for('login_page')), 302
+        if _is_html_page_request():
+            return _silent_refresh_or_login()
+        return jsonify({"success": False, "error": "Invalid token"}), 401
     
     @jwt.expired_token_loader
     def expired_token_callback(jwt_header, jwt_payload):
         """Handle expired JWT token"""
-        # Check if this is a page render route
-        page_render_routes = ['/api/workflow/history', '/api/workflow/pending-reviews']
-        if request.path in page_render_routes:
-            from flask import redirect, url_for
-            return redirect(url_for('login_page')), 302
-        elif request.path.startswith('/api/') or '/api/' in request.path:
-            return jsonify({"success": False, "error": "Token has expired"}), 401
-        from flask import redirect, url_for
-        return redirect(url_for('login_page')), 302
+        if _is_html_page_request():
+            return _silent_refresh_or_login()
+        return jsonify({"success": False, "error": "Token has expired"}), 401
     
     # JWT token verification callback (check if token is revoked)
     @jwt.token_in_blocklist_loader
@@ -398,6 +421,8 @@ def create_app():
                     ('admin_visible_password', 'VARCHAR(255)'),
                     ('phone', 'VARCHAR(40)'),
                     ('assigned_project', 'VARCHAR(200)'),
+                    ('mfa_enabled', 'BOOLEAN DEFAULT FALSE'),
+                    ('mfa_secret', 'VARCHAR(64)'),
                 ]
                 for col_name, col_def in user_optional_columns:
                     if col_name not in columns:
@@ -1031,6 +1056,15 @@ def create_app():
     else:
         logger.warning("⚠️  Live Assistant blueprint not available - check imports")
 
+    # Register FM Assets blueprint
+    if assets_bp:
+        if hasattr(app, 'csrf') and app.csrf:
+            app.csrf.exempt(assets_bp)
+        app.register_blueprint(assets_bp)
+        logger.info("✅ Registered FM Assets blueprint at /assets")
+    else:
+        logger.warning("⚠️  FM Assets blueprint not available - check imports")
+
     # Register reports API blueprint for on-demand regeneration
     try:
         from app.reports_api import reports_bp
@@ -1212,12 +1246,11 @@ def create_app():
         """DocHub module - all users with access"""
         return render_template('dochub.html', active_page='dochub')
 
-    # Root route: Show login page
+    # Root route: public marketing landing
     @app.route('/')
     def index():
-        """Redirect to login page"""
-        from flask import redirect, url_for
-        return redirect(url_for('login_page'))
+        """Render public landing page"""
+        return render_template('landing.html')
 
     # Serve generated files (downloads) - DEPRECATED in production (use cloud URLs)
     # This route is kept for backward compatibility in development only

@@ -17,9 +17,9 @@
   </style>
   
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
-  <meta name="theme-color" content="#125435">
+  <meta name="theme-color" content="#ff8e68">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <title>Administration - Injaaz Application</title>
+  <title>Administration - Kynvera</title>
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
@@ -42,7 +42,7 @@
     <aside class="dh-sidebar" id="adminDhSidebar" aria-label="Administration menu">
       <div class="sb-brand">
         <div class="sb-brand-text">
-          <span class="name">Injaaz</span>
+          <span class="name">Kynvera</span>
           <span class="tagline">Control Center</span>
         </div>
       </div>
@@ -1268,7 +1268,7 @@
       width: 22px;
       height: 22px;
       border-radius: 50%;
-      background: var(--primary);
+      background: var(--notif-avatar-bg, var(--primary));
       color: #fff;
       font-size: 0.6rem;
       font-weight: 700;
@@ -1548,6 +1548,17 @@
       return local.slice(0, 2).toUpperCase();
     }
 
+    const NOTIF_AVATAR_COLORS = [
+      '#0078d4', '#e74856', '#8764b8', '#00b7c3', '#ff8c00', '#038387',
+      '#c239b3', '#498205', '#da3b01', '#5c2e91', '#008272', '#ffb900'
+    ];
+    function notifAvatarColor(email) {
+      let n = 0;
+      const s = String(email || '').toLowerCase();
+      for (let i = 0; i < s.length; i++) n = ((n << 5) - n) + s.charCodeAt(i);
+      return NOTIF_AVATAR_COLORS[Math.abs(n) % NOTIF_AVATAR_COLORS.length];
+    }
+
     function renderNotificationEmailPickers() {
       document.querySelectorAll('.notification-email-picker').forEach((picker) => {
         const list = picker.querySelector('.notification-email-picker-list');
@@ -1560,9 +1571,10 @@
           const id = `notif_pick_${safeId}_${idx}`;
           const v = notificationEscapeAttr(email);
           const initials = notifAvatarInitials(email);
+          const avatarBg = notifAvatarColor(email);
           return `<label class="notification-email-picker-row" for="${id}">` +
             `<input type="checkbox" class="notif-pick-cb" id="${id}" value="${v}" onchange="updateNotifPickCount(this)" />` +
-            `<span class="notif-pick-avatar">${initials}</span>` +
+            `<span class="notif-pick-avatar" style="--notif-avatar-bg:${avatarBg}">${initials}</span>` +
             `<span class="notif-pick-email">${escapeHtml(email)}</span>` +
             `<span class="notif-pick-already" hidden>already added</span>` +
             `</label>`;
@@ -2057,7 +2069,7 @@
       let recentBlock = '';
       if (recentRows.length) {
         recentBlock = '<div class="adm-dash-tk-rec">' +
-          '<div class="adm-dash-tk-rec-hd"><span class="adm-dash-tk-rec-title">Recently updated</span><a href="/tickets/list" style="font-size:0.78rem;font-weight:700;color:var(--accent-700,#125435);text-decoration:none">View all →</a></div>' +
+          '<div class="adm-dash-tk-rec-hd"><span class="adm-dash-tk-rec-title">Recently updated</span><a href="/tickets/list" style="font-size:0.78rem;font-weight:700;color:var(--accent-700,#ff8e68);text-decoration:none">View all →</a></div>' +
           '<ul class="adm-dash-tk-rec-list">';
         recentRows.forEach(function (t) {
           const tid = escapeHtml(t.ticket_id || '—');

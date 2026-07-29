@@ -1,0 +1,75 @@
+{% set fm_page_title = 'Asset list' %}
+{% set fm_topbar_title = 'All assets' %}
+{% include 'partials/fm_shell_start.html' %}
+
+  <header class="fm-header">
+    <div>
+      <h1>All assets</h1>
+      <p>Search and filter the equipment registry</p>
+    </div>
+    {% if can_write %}
+    <a class="fm-btn fm-btn-primary" href="{{ url_for('assets_bp.assets_new_page') }}">Add asset</a>
+    {% endif %}
+  </header>
+
+  <div class="fm-filters">
+    <input type="search" id="q" placeholder="Search name, ID, type, building…" class="fm-input">
+    <select id="status" class="fm-input">
+      <option value="">All statuses</option>
+      <option value="active">Active</option>
+      <option value="critical">Critical</option>
+      <option value="inactive">Inactive</option>
+      <option value="decommissioned">Decommissioned</option>
+    </select>
+    <label class="fm-check"><input type="checkbox" id="critical"> Critical only</label>
+    <button type="button" class="fm-btn fm-btn-outline" id="reloadBtn">Refresh</button>
+  </div>
+
+  <div class="fm-table-wrap">
+    <table class="fm-table">
+      <thead>
+        <tr>
+          <th>ID</th><th>Name</th><th>Type</th><th>Building</th><th>Health</th><th>Warranty</th><th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="assetRows"><tr><td colspan="7">Loading…</td></tr></tbody>
+    </table>
+  </div>
+
+{% set fm_scripts %}
+<script>
+async function loadAssets() {
+  const params = new URLSearchParams();
+  const q = document.getElementById('q').value.trim();
+  const status = document.getElementById('status').value;
+  if (q) params.set('q', q);
+  if (status) params.set('status', status);
+  if (document.getElementById('critical').checked) params.set('critical', '1');
+  const res = await fetch('/assets/api/assets?' + params.toString(), {
+    headers: fmAuthHeaders()
+  });
+  const data = await res.json();
+  const tbody = document.getElementById('assetRows');
+  if (!data.success || !data.assets.length) {
+    tbody.innerHTML = '<tr><td colspan="7">No assets found</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.assets.map(a => `
+    <tr onclick="location.href='/assets/${encodeURIComponent(a.asset_id)}'">
+      <td>${a.asset_id}</td>
+      <td>${a.name || ''}</td>
+      <td>${a.asset_type || '—'}</td>
+      <td>${a.building || '—'}</td>
+      <td>${a.health_score != null ? a.health_score : '—'}</td>
+      <td>${a.warranty_expiry || '—'}</td>
+      <td><span class="fm-status fm-status-${a.status || 'active'}">${a.status || 'active'}</span></td>
+    </tr>`).join('');
+}
+document.getElementById('reloadBtn').addEventListener('click', loadAssets);
+document.getElementById('q').addEventListener('keydown', e => { if (e.key === 'Enter') loadAssets(); });
+document.getElementById('status').addEventListener('change', loadAssets);
+document.getElementById('critical').addEventListener('change', loadAssets);
+loadAssets();
+</script>
+{% endset %}
+{% include 'partials/fm_shell_end.html' %}

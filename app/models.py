@@ -49,6 +49,9 @@ class User(db.Model):
     access_qhsi = db.Column(db.Boolean, default=False)  # QHSI — quality, hospitality, safety & inspections
     # Pre-designated department representative allowed to appear in the ticket "Reported By" list.
     is_ticket_reporter = db.Column(db.Boolean, default=False)
+    # MFA (TOTP)
+    mfa_enabled = db.Column(db.Boolean, default=False)
+    mfa_secret = db.Column(db.String(64), nullable=True)
     created_at = db.Column(db.DateTime, default=_utcnow)
     last_login = db.Column(db.DateTime)
     # First day with the company (for tenure on dashboard); editable in Profile / admin Manage profile
@@ -1204,6 +1207,10 @@ class Ticket(db.Model):
     source_subject = db.Column(db.String(500), nullable=True)        # original email subject
     source_message_id = db.Column(db.String(255), nullable=True, index=True)  # inbound Message-Id, for de-dupe
 
+    # FM asset link + AI triage SLA (nullable — not all tickets are asset-linked)
+    asset_id = db.Column(db.Integer, db.ForeignKey('fm_assets.id'), nullable=True, index=True)
+    sla_hours = db.Column(db.Integer, nullable=True)
+
     # Relationships
     reporter = db.relationship('User', foreign_keys=[reporter_id],
                                backref=db.backref('reported_tickets', lazy='dynamic'))
@@ -1213,6 +1220,8 @@ class Ticket(db.Model):
                                  backref=db.backref('supervised_tickets', lazy='dynamic'))
     technician = db.relationship('User', foreign_keys=[technician_id],
                                  backref=db.backref('technician_tickets', lazy='dynamic'))
+    fm_asset = db.relationship('Asset', foreign_keys=[asset_id],
+                               backref=db.backref('tickets', lazy='dynamic'))
     notes = db.relationship('TicketNote', backref='ticket',
                             lazy='dynamic', cascade='all, delete-orphan',
                             order_by='TicketNote.created_at')
@@ -1254,6 +1263,10 @@ class Ticket(db.Model):
             'supervisor_name': self.supervisor.full_name if self.supervisor else None,
             'technician_id': self.technician_id,
             'technician_name': self.technician.full_name if self.technician else None,
+            'asset_id': self.asset_id,
+            'asset_code': self.fm_asset.asset_id if self.fm_asset else None,
+            'asset_name': self.fm_asset.name if self.fm_asset else None,
+            'sla_hours': self.sla_hours,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
             'closed_at': self.closed_at.isoformat() if self.closed_at else None,
@@ -1265,6 +1278,249 @@ class Ticket(db.Model):
 
     def __repr__(self):
         return f'<Ticket {self.ticket_id} [{self.status}]>'
+
+
+class Asset(db.Model):
+    """Facility Management equipment/asset registry (chillers, pumps, AHUs, etc.).
+
+    Distinct from Device (IT hardware) and HR asset handover forms.
+    """
+    __tablename__ = 'fm_assets'
+
+    id = db.Column(db.Integer, primary_key=True)
+    asset_id = db.Column(db.String(40), unique=True, nullable=False, index=True)  # AST-0001
+    qr_code = db.Column(db.String(120), nullable=True, index=True)
+    name = db.Column(db.String(200), nullable=False)
+    asset_type = db.Column(db.String(120), nullable=True, index=True)  # chiller, pump, AHU, etc.
+    building = db.Column(db.String(160), nullable=True, index=True)
+    floor = db.Column(db.String(80), nullable=True)
+    room = db.Column(db.String(80), nullable=True)
+    manufacturer = db.Column(db.String(160), nullable=True)
+    model = db.Column(db.String(160), nullable=True)
+    serial_number = db.Column(db.String(160), nullable=True, index=True)
+    installation_date = db.Column(db.Date, nullable=True)
+    warranty_expiry = db.Column(db.Date, nullable=True)
+    purchase_cost = db.Column(db.Float, nullable=True)
+    maintenance_cost_total = db.Column(db.Float, default=0.0)
+    status = db.Column(db.String(40), default='active', index=True)  # active, inactive, critical, decommissioned
+    health_score = db.Column(db.Integer, nullable=True)  # 0-100
+    image_urls = db.Column(db.Text, nullable=True)  # JSON list of URLs
+    notes = db.Column(db.Text, nullable=True)
+    latitude = db.Column(db.Float, nullable=True)
+    longitude = db.Column(db.Float, nullable=True)
+    created_at = db.Column(db.DateTime, default=_utcnow)
+    updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
+
+    def image_list(self):
+        if not self.image_urls:
+            return []
+        try:
+            data = json.loads(self.image_urls)
+            return data if isinstance(data, list) else []
+        except Exception:
+            return []
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'asset_id': self.asset_id,
+            'qr_code': self.qr_code,
+            'name': self.name,
+            'asset_type': self.asset_type,
+            'building': self.building,
+            'floor': self.floor,
+            'room': self.room,
+            'manufacturer': self.manufacturer,
+            'model': self.model,
+            'serial_number': self.serial_number,
+            'installation_date': self.installation_date.isoformat() if self.installation_date else None,
+            'warranty_expiry': self.warranty_expiry.isoformat() if self.warranty_expiry else None,
+            'purchase_cost': self.purchase_cost,
+            'maintenance_cost_total': self.maintenance_cost_total or 0.0,
+            'status': self.status or 'active',
+            'health_score': self.health_score,
+            'image_urls': self.image_list(),
+            'notes': self.notes,
+            'latitude': self.latitude,
+            'longitude': self.longitude,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+    def __repr__(self):
+        return f'<Asset {self.asset_id} — {self.name}>'
+
+
+class AssetPrediction(db.Model):
+    """Cached Claude (or future model) failure/RUL estimates for an asset."""
+    __tablename__ = 'fm_asset_predictions'
+
+    id = db.Column(db.Integer, primary_key=True)
+    asset_pk = db.Column(db.Integer, db.ForeignKey('fm_assets.id', ondelete='CASCADE'), nullable=False, index=True)
+    failure_probability_pct = db.Column(db.Float, nullable=True)
+    rul_days = db.Column(db.Integer, nullable=True)
+    predicted_maintenance_cost = db.Column(db.Float, nullable=True)
+    recommendation = db.Column(db.String(40), nullable=True)
+    justification = db.Column(db.Text, nullable=True)
+    method = db.Column(db.String(40), default='llm_estimate')
+    created_at = db.Column(db.DateTime, default=_utcnow, index=True)
+
+    asset = db.relationship('Asset', backref=db.backref('predictions', lazy='dynamic', cascade='all, delete-orphan'))
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'asset_pk': self.asset_pk,
+            'failure_probability_pct': self.failure_probability_pct,
+            'rul_days': self.rul_days,
+            'predicted_maintenance_cost': self.predicted_maintenance_cost,
+            'recommendation': self.recommendation,
+            'justification': self.justification,
+            'method': self.method or 'llm_estimate',
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class FloorPlan(db.Model):
+    """2D digital-twin floor plan per building/floor with hotspot JSON."""
+    __tablename__ = 'fm_floor_plans'
+
+    id = db.Column(db.Integer, primary_key=True)
+    building = db.Column(db.String(160), nullable=False, index=True)
+    floor = db.Column(db.String(80), nullable=True, index=True)
+    name = db.Column(db.String(200), nullable=False)
+    image_url = db.Column(db.String(512), nullable=False)
+    # hotspots: [{room, x_pct, y_pct, asset_ids?}]
+    hotspots = db.Column(JSON, nullable=True)
+    created_at = db.Column(db.DateTime, default=_utcnow)
+    updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'building': self.building,
+            'floor': self.floor,
+            'name': self.name,
+            'image_url': self.image_url,
+            'hotspots': self.hotspots or [],
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class IntegrationApiKey(db.Model):
+    """API keys for external system access to FM REST endpoints."""
+    __tablename__ = 'integration_api_keys'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(120), nullable=False)
+    key_prefix = db.Column(db.String(12), nullable=False, index=True)
+    key_hash = db.Column(db.String(255), nullable=False)
+    is_active = db.Column(db.Boolean, default=True)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=_utcnow)
+    last_used_at = db.Column(db.DateTime, nullable=True)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'key_prefix': self.key_prefix,
+            'is_active': self.is_active,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'last_used_at': self.last_used_at.isoformat() if self.last_used_at else None,
+        }
+
+
+class OutboundWebhook(db.Model):
+    """Configurable outbound event webhooks (ticket/asset events)."""
+    __tablename__ = 'outbound_webhooks'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(120), nullable=False)
+    target_url = db.Column(db.String(512), nullable=False)
+    secret = db.Column(db.String(120), nullable=True)
+    events = db.Column(JSON, nullable=True)  # e.g. ["ticket.created","ticket.closed","asset.critical"]
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=_utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'target_url': self.target_url,
+            'events': self.events or [],
+            'is_active': self.is_active,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class PushDeviceToken(db.Model):
+    """FCM/APNs device tokens for push notifications."""
+    __tablename__ = 'push_device_tokens'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    token = db.Column(db.String(512), nullable=False, unique=True)
+    platform = db.Column(db.String(20), default='android')  # android, ios, web
+    created_at = db.Column(db.DateTime, default=_utcnow)
+    updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
+
+    user = db.relationship('User', backref=db.backref('push_tokens', lazy='dynamic', cascade='all, delete-orphan'))
+
+
+class PortfolioForecast(db.Model):
+    """Cached portfolio-level Claude forecast (budget/failure/spares)."""
+    __tablename__ = 'fm_portfolio_forecasts'
+
+    id = db.Column(db.Integer, primary_key=True)
+    payload = db.Column(JSON, nullable=False)
+    method = db.Column(db.String(40), default='llm_estimate')
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=_utcnow, index=True)
+
+    def to_dict(self):
+        data = dict(self.payload or {})
+        data['method'] = self.method or 'llm_estimate'
+        data['created_at'] = self.created_at.isoformat() if self.created_at else None
+        data['id'] = self.id
+        return data
+
+
+class TicketTriageLog(db.Model):
+    """Audit trail for AI ticket triage suggestions vs human decisions."""
+    __tablename__ = 'ticket_triage_logs'
+
+    id = db.Column(db.Integer, primary_key=True)
+    ticket_id = db.Column(db.Integer, db.ForeignKey('tickets.id', ondelete='SET NULL'), nullable=True, index=True)
+    ticket_code = db.Column(db.String(50), nullable=True, index=True)  # TKT-... when known
+    actor_user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    prompt_inputs = db.Column(JSON, nullable=True)
+    raw_response = db.Column(db.Text, nullable=True)
+    suggested = db.Column(JSON, nullable=True)  # priority, sla_hours, technician_id, required_parts, reasoning
+    accepted = db.Column(JSON, nullable=True)   # final human decision (or null if preview-only)
+    decision = db.Column(db.String(40), default='preview')  # preview, accepted, overridden, rejected
+    created_at = db.Column(db.DateTime, default=_utcnow, index=True)
+
+    ticket = db.relationship('Ticket', foreign_keys=[ticket_id],
+                             backref=db.backref('triage_logs', lazy='dynamic'))
+    actor = db.relationship('User', foreign_keys=[actor_user_id])
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'ticket_id': self.ticket_id,
+            'ticket_code': self.ticket_code,
+            'actor_user_id': self.actor_user_id,
+            'prompt_inputs': self.prompt_inputs,
+            'raw_response': self.raw_response,
+            'suggested': self.suggested,
+            'accepted': self.accepted,
+            'decision': self.decision,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+    def __repr__(self):
+        return f'<TicketTriageLog {self.id} ticket={self.ticket_code or self.ticket_id}>'
 
 
 class TicketNote(db.Model):
@@ -1686,22 +1942,31 @@ HIRING_DOC_ALLOWED_EXT = {
 # Docs that unlock only after pipeline reaches visa_process_started
 HIRING_VISA_GATED_DOC_TYPES = frozenset({'insurance', 'e_visa', 'contract'})
 
-HIRING_PIPELINE_STATUSES = (
+# Linear hiring stages only — on_hold is a process-wide pause, not a step.
+HIRING_PIPELINE_STEPS = (
     'interview_completed',
     'gathering_documents',
+    'preparing_offer_letter',
     'offer_letter_prepared',
     'offer_letter_signed',
     'md_signed_offer_received',
     'visa_process_started',
+    'candidate_employee',
 )
+
+# Valid stored values = real steps + on_hold pause state
+HIRING_PIPELINE_STATUSES = HIRING_PIPELINE_STEPS + ('on_hold',)
 
 HIRING_PIPELINE_LABELS = {
     'interview_completed': 'Interview completed',
     'gathering_documents': 'Gathering documents',
+    'preparing_offer_letter': 'Preparing offer letter',
     'offer_letter_prepared': 'Offer letter prepared',
     'offer_letter_signed': 'Offer letter signed',
     'md_signed_offer_received': 'Signed offer letter from MD received',
     'visa_process_started': 'Visa process started',
+    'candidate_employee': 'Candidate employee',
+    'on_hold': 'On hold',
 }
 
 HIRING_PIPELINE_DEFAULT = 'interview_completed'
@@ -1766,27 +2031,43 @@ class HiringCandidate(db.Model):
             return HIRING_PIPELINE_DEFAULT
         return status
 
+    def is_on_hold(self) -> bool:
+        """True when the whole hiring process is paused (not a linear stage)."""
+        return self.normalized_pipeline_status() == 'on_hold'
+
     def pipeline_index(self) -> int:
+        """Index within HIRING_PIPELINE_STEPS; -1 while process is on hold."""
+        status = self.normalized_pipeline_status()
+        if status == 'on_hold':
+            return -1
         try:
-            return HIRING_PIPELINE_STATUSES.index(self.normalized_pipeline_status())
+            return HIRING_PIPELINE_STEPS.index(status)
         except ValueError:
             return 0
 
     def visa_docs_unlocked(self) -> bool:
-        """Insurance, e-visa, and contract unlock at visa_process_started."""
-        visa_idx = HIRING_PIPELINE_STATUSES.index('visa_process_started')
+        """Insurance, e-visa, and contract unlock at visa_process_started (not while on hold)."""
+        if self.is_on_hold():
+            return False
+        visa_idx = HIRING_PIPELINE_STEPS.index('visa_process_started')
         return self.pipeline_index() >= visa_idx
 
+    def file_closed(self) -> bool:
+        """True when hiring file is closed (candidate employee final stage)."""
+        return self.normalized_pipeline_status() == 'candidate_employee'
+
     def pipeline_steps(self):
+        """Linear stage chips only — excludes on_hold (process pause)."""
         current = self.normalized_pipeline_status()
+        on_hold = current == 'on_hold'
         current_idx = self.pipeline_index()
         steps = []
-        for i, key in enumerate(HIRING_PIPELINE_STATUSES):
+        for i, key in enumerate(HIRING_PIPELINE_STEPS):
             steps.append({
                 'key': key,
                 'label': HIRING_PIPELINE_LABELS.get(key, key),
-                'done': i < current_idx,
-                'current': key == current,
+                'done': (not on_hold) and current_idx > i,
+                'current': (not on_hold) and key == current,
             })
         return steps
 
@@ -1829,6 +2110,7 @@ class HiringCandidate(db.Model):
             'has_file': False,
             'is_complete': False,
             'file_url': None,
+            'notes': '',
             'allowed_extensions': sorted(HIRING_DOC_ALLOWED_EXT.get(dt, set())),
         }
 
@@ -1856,6 +2138,8 @@ class HiringCandidate(db.Model):
             'pipeline_status': pipeline,
             'pipeline_label': HIRING_PIPELINE_LABELS.get(pipeline, pipeline),
             'pipeline_steps': self.pipeline_steps(),
+            'is_on_hold': pipeline == 'on_hold',
+            'file_closed': pipeline == 'candidate_employee',
             'visa_docs_unlocked': visa_unlocked,
             'phase1_completed': p1_done,
             'phase1_total': p1_total,
@@ -1863,8 +2147,8 @@ class HiringCandidate(db.Model):
             'phase2_total': p2_total,
             'phase2_unlocked': True,
             'created_by': self.created_by,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'created_at': naive_utc_isoformat_z(self.created_at) if self.created_at else None,
+            'updated_at': naive_utc_isoformat_z(self.updated_at) if self.updated_at else None,
         }
         if include_documents:
             by_type = self._docs_by_type()
@@ -1906,6 +2190,7 @@ class HiringDocument(db.Model):
     mime_type = db.Column(db.String(100))
     file_size = db.Column(db.Integer)
     status = db.Column(db.String(20), default='missing', index=True)  # missing|uploaded|attested|verified
+    notes = db.Column(db.Text)  # optional per-doc note (UI currently for offer letter)
     uploaded_at = db.Column(db.DateTime)
     uploaded_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
 
@@ -1945,6 +2230,7 @@ class HiringDocument(db.Model):
             'has_file': self.has_file(),
             'is_complete': HiringCandidate.doc_is_complete(self),
             'file_url': self.file_url(),
+            'notes': self.notes or '',
             'allowed_extensions': sorted(HIRING_DOC_ALLOWED_EXT.get(self.doc_type, set())),
         }
 

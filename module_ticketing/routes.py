@@ -30,7 +30,7 @@ from app.models import (
     TicketMaterial, TicketManpower, Notification,
     TicketProject, TicketProperty, TicketZone, TicketSubZone,
     TicketBaseUnit, TicketTitleTemplate, TicketSupervisorTeam,
-    BDProject, TicketEmailIntake,
+    BDProject, TicketEmailIntake, Asset, TicketTriageLog,
 )
 from module_ticketing.tz_utils import to_gst, GST_OFFSET
 
@@ -195,6 +195,9 @@ def _migrate_ticket_columns(app):
         ('ops_close_signature',            'TEXT'),
         ('ops_close_signed_by',            'VARCHAR(160)'),
         ('ops_close_signed_role',          'VARCHAR(120)'),
+        # FM asset link + AI triage SLA
+        ('asset_id',                       'INTEGER'),
+        ('sla_hours',                      'INTEGER'),
     ]
     with app.app_context():
         from app.models import db
@@ -1399,6 +1402,76 @@ def inbound_email_webhook(secret_token):
 # Create ticket (API)
 # ---------------------------------------------------------------------------
 
+@ticketing_bp.route('/api/tickets/triage-preview', methods=['POST'])
+@jwt_required()
+def triage_preview():
+    """AI-suggest priority / SLA / technician / parts — human must confirm before apply."""
+    user = _current_user()
+    if not _has_access(user):
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+    data = request.get_json(silent=True) or {}
+    if not (data.get('title') or data.get('work_description')):
+        return jsonify({'success': False, 'error': 'title or work_description required'}), 400
+
+    supervisor_id = None
+    project = (data.get('project') or '').strip()
+    if project:
+        supervisor_id = _resolve_project_supervisor_id(project)
+
+    try:
+        from module_ai_triage.triage import triage_ticket
+    except ImportError as exc:
+        return jsonify({'success': False, 'error': f'Triage module unavailable: {exc}'}), 503
+
+    result = triage_ticket(
+        data,
+        actor_user_id=user.id,
+        supervisor_user_id=supervisor_id,
+        ticket_db_id=data.get('ticket_db_id'),
+        ticket_code=(data.get('ticket_id') or data.get('ticket_code') or None),
+        log_decision='preview',
+    )
+    status = 200 if result.get('success') else 502
+    return jsonify(result), status
+
+
+@ticketing_bp.route('/api/tickets/triage-confirm', methods=['POST'])
+@jwt_required()
+def triage_confirm():
+    """Record accept/override of an AI triage suggestion; optionally apply to an existing ticket."""
+    user = _current_user()
+    if not _has_access(user):
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+    data = request.get_json(silent=True) or {}
+    triage_log_id = data.get('triage_log_id')
+    if not triage_log_id:
+        return jsonify({'success': False, 'error': 'triage_log_id required'}), 400
+
+    try:
+        from module_ai_triage.triage import confirm_triage
+    except ImportError as exc:
+        return jsonify({'success': False, 'error': f'Triage module unavailable: {exc}'}), 503
+
+    ticket = None
+    ticket_code = (data.get('ticket_id') or '').strip()
+    if ticket_code:
+        ticket = Ticket.query.filter_by(ticket_id=ticket_code).first()
+
+    apply = bool(data.get('apply_to_ticket')) and ticket is not None
+    result = confirm_triage(
+        int(triage_log_id),
+        data.get('accepted') or {},
+        actor_user_id=user.id,
+        ticket=ticket,
+        apply_to_ticket=apply,
+    )
+    if not result.get('success'):
+        return jsonify(result), 404
+
+    # If applying and a technician was suggested, surface it — still requires assign-technician call
+    return jsonify(result)
+
+
 @ticketing_bp.route('/api/tickets', methods=['POST'])
 @jwt_required()
 def create_ticket():
@@ -1445,8 +1518,57 @@ def create_ticket():
         projected_cost=float(data['projected_cost']) if data.get('projected_cost') else None,
         status='pending_supervisor',
     )
+
+    # Optional FM asset link + AI-suggested SLA (human may have accepted on create form)
+    asset_pk = data.get('asset_id')
+    asset_code = (data.get('asset_code') or '').strip()
+    linked_asset = None
+    if asset_pk:
+        try:
+            linked_asset = Asset.query.get(int(asset_pk))
+        except (TypeError, ValueError):
+            linked_asset = None
+    elif asset_code:
+        linked_asset = Asset.query.filter_by(asset_id=asset_code).first()
+    if linked_asset:
+        ticket.asset_id = linked_asset.id
+    if data.get('sla_hours') not in (None, ''):
+        try:
+            ticket.sla_hours = max(1, min(72, int(data['sla_hours'])))
+        except (TypeError, ValueError):
+            pass
+
     db.session.add(ticket)
     db.session.flush()  # get ticket.id
+
+    # Link triage log if create form accepted an AI suggestion
+    triage_log_id = data.get('triage_log_id')
+    if triage_log_id:
+        try:
+            log = TicketTriageLog.query.get(int(triage_log_id))
+            if log:
+                log.ticket_id = ticket.id
+                log.ticket_code = ticket.ticket_id
+                accepted = {
+                    'priority': ticket.priority,
+                    'sla_hours': ticket.sla_hours,
+                    'technician_id': data.get('suggested_technician_id'),
+                    'required_parts': data.get('required_parts') or [],
+                }
+                log.accepted = accepted
+                suggested = log.suggested or {}
+                log.decision = (
+                    'overridden'
+                    if suggested
+                    and (
+                        suggested.get('priority') != ticket.priority
+                        or suggested.get('sla_hours') != ticket.sla_hours
+                    )
+                    else 'accepted'
+                )
+                log.actor_user_id = user.id
+        except (TypeError, ValueError):
+            pass
 
     route_sup = db.session.get(User, proj_supervisor_id) if proj_supervisor_id else None
     route_bit = (
@@ -1467,6 +1589,12 @@ def create_ticket():
     )
 
     db.session.commit()
+    try:
+        from common.fm_integration import fm_log_audit, dispatch_webhooks
+        fm_log_audit(user.id, 'ticket_create', 'ticket', ticket.ticket_id, {'title': ticket.title})
+        dispatch_webhooks('ticket.created', ticket.to_dict())
+    except Exception:
+        pass
     return jsonify({'success': True, 'ticket_id': ticket.ticket_id, 'id': ticket.id}), 201
 
 
@@ -2715,6 +2843,12 @@ def ops_close(ticket_id):
               note_type='status_change')
 
     db.session.commit()
+    try:
+        from common.fm_integration import fm_log_audit, dispatch_webhooks
+        fm_log_audit(user.id, 'ticket_closed', 'ticket', ticket.ticket_id, None)
+        dispatch_webhooks('ticket.closed', ticket.to_dict())
+    except Exception:
+        pass
     _send_completion_emails(ticket, user)
     _send_invoice_emails(ticket)
     return jsonify({
@@ -2888,7 +3022,7 @@ def _send_completion_emails(ticket: Ticket, closed_by: User):
           </table>
           {"<p><strong>Closing notes:</strong> " + ticket.close_notes + "</p>" if ticket.close_notes else ""}
           <hr style="margin-top:20px;"/>
-          <p style="font-size:12px; color:#888;">This is an automated notification from Injaaz Application.</p>
+          <p style="font-size:12px; color:#888;">This is an automated notification from Kynvera.</p>
         </div>
         """
         _send_ticket_email(subject, recipients, body)
@@ -2961,7 +3095,7 @@ def _send_invoice_emails(ticket: Ticket):
             <tr><td style="padding:6px; font-weight:bold;">Closed at</td><td style="padding:6px;">{to_gst(ticket.closed_at).strftime('%d %b %Y %H:%M') if ticket.closed_at else 'N/A'} (GST)</td></tr>
           </table>
           <hr style="margin-top:20px;"/>
-          <p style="font-size:12px; color:#888;">This is an automated notification from Injaaz Application.</p>
+          <p style="font-size:12px; color:#888;">This is an automated notification from Kynvera.</p>
         </div>
         """
         attachments = [{

@@ -584,3 +584,150 @@ def search_documents(user, query: str, limit=5):
         'documents': results,
         'query': query,
     }
+
+
+def _fm_access(user):
+    return bool(
+        getattr(user, 'role', None) == 'admin'
+        or getattr(user, 'access_ticketing', False)
+    )
+
+
+def get_fm_failures_by_building(user):
+    """Aggregate ticket failures by building/property (Asset.building or Ticket.property_name)."""
+    if not _fm_access(user):
+        return {'allowed': False, 'buildings': []}
+    try:
+        from app.models import Ticket, Asset
+        from collections import Counter
+        from sqlalchemy.orm import joinedload
+
+        tickets = Ticket.query.options(joinedload(Ticket.fm_asset)).filter(
+            Ticket.status != 'draft'
+        ).all()
+        counter = Counter()
+        for t in tickets:
+            if t.fm_asset and t.fm_asset.building:
+                key = t.fm_asset.building
+            else:
+                key = t.property_name or 'Unassigned'
+            counter[key] += 1
+        buildings = [
+            {'building': name, 'failure_count': count}
+            for name, count in counter.most_common(15)
+        ]
+        return {'allowed': True, 'buildings': buildings, 'total_tickets': len(tickets)}
+    except Exception:
+        return {'allowed': True, 'buildings': [], 'total_tickets': 0}
+
+
+def get_fm_critical_assets(user):
+    if not _fm_access(user):
+        return {'allowed': False, 'assets': []}
+    try:
+        from app.models import Asset, db
+        rows = Asset.query.filter(
+            db.or_(
+                Asset.status == 'critical',
+                Asset.health_score.isnot(None) & (Asset.health_score < 40),
+            )
+        ).order_by(Asset.health_score.asc()).limit(25).all()
+        return {
+            'allowed': True,
+            'assets': [
+                {
+                    'asset_id': a.asset_id,
+                    'name': a.name,
+                    'building': a.building,
+                    'health_score': a.health_score,
+                    'status': a.status,
+                }
+                for a in rows
+            ],
+            'count': len(rows),
+        }
+    except Exception:
+        return {'allowed': True, 'assets': [], 'count': 0}
+
+
+def get_fm_cost_trend(user):
+    """Compare this calendar month vs previous month ticket costs + asset maintenance totals."""
+    if not _fm_access(user):
+        return {'allowed': False}
+    try:
+        from app.models import Ticket, Asset, db
+        from datetime import datetime, timezone
+        from sqlalchemy import func
+
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
+        this_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        if this_start.month == 1:
+            prev_start = this_start.replace(year=this_start.year - 1, month=12)
+        else:
+            prev_start = this_start.replace(month=this_start.month - 1)
+        prev_end = this_start
+
+        def month_cost(start, end):
+            rows = Ticket.query.filter(
+                Ticket.created_at >= start,
+                Ticket.created_at < end,
+                Ticket.status != 'draft',
+            ).all()
+            total = 0.0
+            for t in rows:
+                total += float(t.total_cost or t.projected_cost or t.selling_price or 0)
+            return round(total, 2), len(rows)
+
+        this_cost, this_n = month_cost(this_start, now)
+        prev_cost, prev_n = month_cost(prev_start, prev_end)
+        delta = round(this_cost - prev_cost, 2)
+        pct = None
+        if prev_cost > 0:
+            pct = round(100.0 * delta / prev_cost, 1)
+
+        maint_total = db.session.query(
+            func.coalesce(func.sum(Asset.maintenance_cost_total), 0.0)
+        ).scalar() or 0.0
+        purchase_total = db.session.query(
+            func.coalesce(func.sum(Asset.purchase_cost), 0.0)
+        ).scalar() or 0.0
+
+        return {
+            'allowed': True,
+            'this_month_cost': this_cost,
+            'this_month_tickets': this_n,
+            'prev_month_cost': prev_cost,
+            'prev_month_tickets': prev_n,
+            'delta': delta,
+            'delta_pct': pct,
+            'asset_maintenance_total': round(float(maint_total), 2),
+            'asset_purchase_total': round(float(purchase_total), 2),
+            'month_label': this_start.strftime('%B %Y'),
+            'prev_month_label': prev_start.strftime('%B %Y'),
+        }
+    except Exception:
+        return {'allowed': True, 'this_month_cost': 0, 'prev_month_cost': 0, 'delta': 0}
+
+
+def get_fm_maintenance_report_hint(user):
+    """Point users at existing MMR / ticketing report generators and offer deep links."""
+    from datetime import datetime, timezone
+    month = datetime.now(timezone.utc).strftime('%B %Y')
+    allowed = (
+        _fm_access(user)
+        or getattr(user, 'access_report_generation', False)
+        or getattr(user, 'role', None) == 'admin'
+    )
+    return {
+        'allowed': allowed,
+        'month_label': month,
+        'mmr_url': '/admin/mmr/',
+        'tickets_url': '/tickets/',
+        'assets_url': '/assets/',
+        'executive_url': '/assets/executive',
+        # Real generation lives in MMR hub / ticket PDF builders — deep-link with context
+        'generate_hint': (
+            f'Open the MMR hub to generate the {month} maintenance report pack '
+            '(PDF/Excel). Ticket-level PDFs are available from each work order page.'
+        ),
+    }

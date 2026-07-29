@@ -1,0 +1,83 @@
+{% set fm_page_title = 'Scan asset QR' %}
+{% set fm_topbar_title = 'QR scan' %}
+{% set fm_narrow = true %}
+{% include 'partials/fm_shell_start.html' %}
+
+  <header class="fm-header">
+    <div>
+      <h1>QR / asset lookup</h1>
+      <p>Scan or enter an asset ID / QR code</p>
+    </div>
+  </header>
+  <section class="fm-panel">
+    <video id="qrVideo" playsinline style="width:100%;border-radius:10px;background:#111;max-height:280px;"></video>
+    <canvas id="qrCanvas" hidden></canvas>
+    <p class="fm-muted" id="scanStatus" style="margin-top:8px;">Starting camera…</p>
+    <label style="margin-top:12px;display:block;">Or enter code
+      <input class="fm-input" id="manualCode" placeholder="AST-0001 or QR value">
+    </label>
+    <button type="button" class="fm-btn fm-btn-primary" id="goBtn" style="margin-top:10px;">Open asset</button>
+  </section>
+
+{% set fm_scripts %}
+<script src="{{ url_for('static', filename='js/fm-mobile.js') }}"></script>
+<script>
+async function openAsset(code) {
+  code = (code || '').trim();
+  if (!code) return;
+  let res = await fetch('/assets/api/assets/' + encodeURIComponent(code), {
+    headers: fmAuthHeaders(),
+  });
+  if (res.ok) {
+    const data = await res.json();
+    if (data.success) {
+      location.href = '/assets/' + encodeURIComponent(data.asset.asset_id);
+      return;
+    }
+  }
+  res = await fetch('/assets/api/assets?q=' + encodeURIComponent(code), {
+    headers: fmAuthHeaders(),
+  });
+  const data = await res.json();
+  const hit = (data.assets || []).find(a => a.qr_code === code || a.asset_id === code) || (data.assets || [])[0];
+  if (hit) location.href = '/assets/' + encodeURIComponent(hit.asset_id);
+  else alert('Asset not found');
+}
+
+document.getElementById('goBtn').addEventListener('click', () => openAsset(document.getElementById('manualCode').value));
+
+(async function startScan() {
+  const status = document.getElementById('scanStatus');
+  const video = document.getElementById('qrVideo');
+  try {
+    if (window.InjaazFMMobile?.scanQr) {
+      const code = await window.InjaazFMMobile.scanQr();
+      if (code) return openAsset(code);
+    }
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+    video.srcObject = stream;
+    await video.play();
+    status.textContent = 'Point at a QR code (BarcodeDetector) or enter manually.';
+    if ('BarcodeDetector' in window) {
+      const detector = new BarcodeDetector({ formats: ['qr_code'] });
+      const tick = async () => {
+        try {
+          const codes = await detector.detect(video);
+          if (codes && codes[0]?.rawValue) {
+            stream.getTracks().forEach(t => t.stop());
+            return openAsset(codes[0].rawValue);
+          }
+        } catch (_) {}
+        requestAnimationFrame(tick);
+      };
+      tick();
+    } else {
+      status.textContent = 'Live QR not supported in this browser — enter the code manually.';
+    }
+  } catch (e) {
+    status.textContent = 'Camera unavailable — enter asset ID manually.';
+  }
+})();
+</script>
+{% endset %}
+{% include 'partials/fm_shell_end.html' %}
