@@ -506,6 +506,7 @@ def dropdowns():
 
 
 @hvac_mep_bp.route("/save-draft", methods=["POST"])
+@jwt_required()
 def save_draft():
     GENERATED_DIR, UPLOADS_DIR, JOBS_DIR, EXECUTOR = get_paths()
     payload = request.get_json(force=True)
@@ -557,6 +558,7 @@ def save_signature_dataurl(dataurl, uploads_dir, prefix="signature"):
 # ---------- Submit route (handles multi-item + per-item photos + signatures) ----------
 @hvac_mep_bp.route("/submit", methods=["POST"])
 @rate_limit_if_available('10 per minute')  # Limit form submissions
+@jwt_required()
 def submit():
     GENERATED_DIR, UPLOADS_DIR, JOBS_DIR, EXECUTOR = get_paths()
 
@@ -757,10 +759,16 @@ def submit():
         )
         sub_id = submission.submission_id
 
-        # Trigger inspection email notification for real-time supervisor submission.
+        # Trigger inspection email notification (RQ with sync/thread fallback)
         try:
-            submitter_user = db.session.get(User, int(user_id)) if user_id else None
-            send_inspection_submitted(submission, submitter_user)
+            from app.tasks.job_runner import enqueue_or_run
+            from app.tasks.inspection_jobs import run_inspection_submitted_notify
+            enqueue_or_run(
+                run_inspection_submitted_notify,
+                sub_id,
+                user_id,
+                description='hvac-inspection-notify',
+            )
         except Exception as notify_err:
             logger.warning(f"Submission email notification failed for {sub_id}: {notify_err}")
 
@@ -771,30 +779,24 @@ def submit():
         logger.info(f"Starting background task for job {job_id}")
         logger.debug(f"Executor object: {EXECUTOR}")
         
-        # Submit to executor with submission_id instead of record
-        if EXECUTOR:
-            # Add callback to catch any errors
-            future = EXECUTOR.submit(
-                process_job,
-                sub_id,
-                job_id,
-                current_app.config,
-                current_app._get_current_object()
-            )
-            
-            # Add error callback
+        from app.tasks.job_runner import enqueue_or_run
+        from app.tasks.inspection_jobs import run_hvac_process_job
+        future = enqueue_or_run(
+            run_hvac_process_job,
+            sub_id,
+            job_id,
+            executor=EXECUTOR,
+            description=f'hvac-process-{job_id}',
+        )
+        if hasattr(future, 'add_done_callback'):
             def log_exception(fut):
                 try:
-                    fut.result()  # This will raise if the worker had an exception
+                    fut.result()
                 except Exception as e:
                     logger.error(f"❌ FATAL: Background job {job_id} crashed: {e}")
                     logger.error(traceback.format_exc())
-            
             future.add_done_callback(log_exception)
-            logger.info(f"✅ Background job {job_id} submitted to executor")
-        else:
-            logger.error("ThreadPoolExecutor not found in app config")
-            return jsonify({'error': 'Background processing not available'}), 500
+        logger.info(f"✅ Background job {job_id} queued (RQ or executor/thread)")
 
         return jsonify({"status": "queued", "job_id": job_id, "submission_id": sub_id, "items": len(items)})
     
@@ -805,6 +807,7 @@ def submit():
 
 
 @hvac_mep_bp.route("/status/<job_id>", methods=["GET"])
+@jwt_required()
 def status(job_id):
     try:
         job_data = get_job_status_db(job_id)
@@ -818,6 +821,7 @@ def status(job_id):
 
 
 @hvac_mep_bp.route("/generated/<path:filename>", methods=["GET"])
+@jwt_required()
 def download_generated(filename):
     GENERATED_DIR, UPLOADS_DIR, JOBS_DIR, EXECUTOR = get_paths()
     # allow nested paths like uploads/<name>
@@ -825,6 +829,7 @@ def download_generated(filename):
 
 
 @hvac_mep_bp.route("/download/<job_id>/<file_type>", methods=["GET"])
+@jwt_required()
 def download_file(job_id, file_type):
     """
     Download proxy route that fetches files from Cloudinary or local storage
@@ -998,6 +1003,7 @@ def process_job(sub_id, job_id, config, app):
 
 @hvac_mep_bp.route("/upload-photo", methods=["POST"])
 @rate_limit_if_available('20 per minute')  # Allow multiple photos per submission
+@jwt_required()
 def upload_photo():
     """
     Upload a single photo immediately to cloud storage.
@@ -1066,6 +1072,7 @@ def upload_photo():
 
 @hvac_mep_bp.route("/submit-with-urls", methods=["POST"])
 @rate_limit_if_available('10 per minute')  # Limit form submissions
+@jwt_required()
 def submit_with_urls():
     """
     Submit form data where photos are already uploaded to cloud.
@@ -1302,8 +1309,14 @@ def submit_with_urls():
 
             # Trigger inspection email notification on real HVAC submission.
             try:
-                submitter_user = db.session.get(User, int(user_id)) if user_id else None
-                send_inspection_submitted(submission_db, submitter_user)
+                from app.tasks.job_runner import enqueue_or_run
+                from app.tasks.inspection_jobs import run_inspection_submitted_notify
+                enqueue_or_run(
+                    run_inspection_submitted_notify,
+                    sub_id,
+                    user_id,
+                    description='hvac-inspection-notify',
+                )
             except Exception as notify_err:
                 logger.warning(f"Submission email notification failed for {sub_id}: {notify_err}")
         
@@ -1313,17 +1326,17 @@ def submit_with_urls():
         
         logger.info(f"Starting background task for job {job_id}")
         
-        # Submit to executor
-        if EXECUTOR:
-            future = EXECUTOR.submit(
-                process_job,
-                sub_id,
-                job_id,
-                current_app.config,
-                current_app._get_current_object()
-            )
-            
-            # Add error callback to catch silent failures
+        from app.tasks.job_runner import enqueue_or_run
+        from app.tasks.inspection_jobs import run_hvac_process_job
+        future = enqueue_or_run(
+            run_hvac_process_job,
+            sub_id,
+            job_id,
+            executor=EXECUTOR,
+            description=f'hvac-process-{job_id}',
+        )
+        
+        if hasattr(future, 'add_done_callback'):
             def log_exception(fut):
                 try:
                     fut.result()
@@ -1331,12 +1344,8 @@ def submit_with_urls():
                     logger.error(f"❌ FATAL: Background job {job_id} crashed: {e}")
                     import traceback
                     logger.error(traceback.format_exc())
-            
             future.add_done_callback(log_exception)
-            logger.info(f"✅ Background job {job_id} submitted to executor")
-        else:
-            logger.error("ThreadPoolExecutor not found in app config")
-            return jsonify({'error': 'Background processing not available'}), 500
+        logger.info(f"✅ Background job {job_id} queued (RQ or executor/thread)")
         
         logger.info(f"🚀 Job {job_id} queued for submission {sub_id}")
         
@@ -1354,6 +1363,7 @@ def submit_with_urls():
 
 
 @hvac_mep_bp.route("/add-photos-to-item", methods=["POST"])
+@jwt_required()
 def add_photos_to_item():
     """
     Add additional photos to an existing item in a submission.

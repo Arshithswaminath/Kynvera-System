@@ -11,7 +11,7 @@ from __future__ import annotations
 from datetime import datetime
 from flask import current_app
 from app.models import User, db
-from common.email_service import send_email
+from common.email_service import send_email_async
 
 
 # ─── Display helpers ──────────────────────────────────────────────────────────
@@ -20,8 +20,6 @@ def _module_display(module_type: str | None) -> str:
     return {
         'hvac_mep':  'Fire Systems',
         'hvac':      'Fire Systems',
-        'civil':     'Civil Works',
-        'cleaning':  'Cleaning Services',
     }.get(module_type or '', module_type or 'Form')
 
 
@@ -324,7 +322,7 @@ def _send(
         )
         plain = _plain_text(title, rows, cta_url)
 
-        ok = send_email(
+        ok = send_email_async(
             recipient=to_list,
             subject=subject,
             body=plain,

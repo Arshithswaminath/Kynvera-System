@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+  {% include 'partials/caveat_font.html' %}
+  <title>Duty / Timesheet — Under deployment</title>
+  <meta name="theme-color" content="#ff8e68">
+  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <style>
+    .ops-wrap{max-width:1100px;margin:7rem auto 3rem;padding:0 1.25rem}
+    .badge-ud{display:inline-block;background:#fef3c7;color:#92400e;border:1px solid #f59e0b;border-radius:999px;padding:.2rem .7rem;font-size:.75rem;font-weight:700;margin-left:.5rem}
+    .ops-card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:1rem;margin-bottom:1rem}
+    table{width:100%;border-collapse:collapse;font-size:.9rem}
+    th,td{padding:.55rem .4rem;border-bottom:1px solid #e2e8f0;text-align:left}
+    input,select{padding:.45rem .55rem;border:1px solid #cbd5e1;border-radius:8px;font:inherit}
+    .btn{background:#ff8e68;color:#fff;border:none;border-radius:8px;padding:.55rem 1rem;font-weight:600;cursor:pointer}
+    .btn-ghost{background:#fff;color:#0f172a;border:1px solid #e2e8f0}
+  </style>
+</head>
+<body>
+  {% set active_page = 'operations' %}
+  {% include 'partials/main_navbar.html' with context %}
+  <div class="ops-wrap">
+    <h1>Duty / Timesheet <span class="badge-ud">Under deployment</span></h1>
+    <p style="color:#64748b">Project hours from start/end. Rates visible to Finance only.</p>
+    <div class="ops-card">
+      <form id="tsForm" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.6rem;align-items:end">
+        <label>Staff<input name="staff_name" required></label>
+        <label>Employee ID<input name="employee_id"></label>
+        <label>Project<input name="project_name" required></label>
+        <label>Project code<input name="project_code"></label>
+        <label>Date<input type="date" name="work_date" required></label>
+        <label>Start<input type="time" name="start_time" required></label>
+        <label>End<input type="time" name="end_time" required></label>
+        <label>Remarks<input name="remarks"></label>
+        <button class="btn" type="submit">Add entry</button>
+      </form>
+    </div>
+    <div class="ops-card">
+      <div style="display:flex;justify-content:space-between;margin-bottom:.75rem">
+        <strong>Entries</strong>
+        <span id="totalHours">Total hours: —</span>
+      </div>
+      <div style="overflow:auto">
+        <table>
+          <thead><tr>
+            <th>Date</th><th>Staff</th><th>Project</th><th>Start</th><th>End</th><th>Hours</th>
+            {% if can_see_rates %}<th>Rate</th><th>Total</th>{% endif %}
+            <th></th>
+          </tr></thead>
+          <tbody id="tsBody"></tbody>
+        </table>
+      </div>
+    </div>
+    <a class="btn btn-ghost" href="/operations/">← Operations</a>
+  </div>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+  <script>
+    const CAN_RATES = {{ 'true' if can_see_rates else 'false' }};
+    async function load(){
+      const res = await ApiClient.fetch('/operations/api/timesheet');
+      const data = await res.json();
+      const rows = data.entries || [];
+      document.getElementById('totalHours').textContent = 'Total hours: ' + (data.total_hours ?? 0);
+      document.getElementById('tsBody').innerHTML = rows.map(r => `<tr>
+        <td>${r.work_date||''}</td><td>${r.staff_name||''}</td><td>${r.project_name||''}${r.project_code?' ('+r.project_code+')':''}</td>
+        <td>${r.start_time||''}</td><td>${r.end_time||''}</td><td>${r.hours??''}</td>
+        ${CAN_RATES?`<td>${r.rate_per_hour??'—'}</td><td>${r.total_amount??'—'}</td>`:''}
+        <td><button class="btn-ghost" data-del="${r.entry_id}">Delete</button></td>
+      </tr>`).join('') || '<tr><td colspan="9">No entries yet.</td></tr>';
+    }
+    document.getElementById('tsForm').addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      const body = Object.fromEntries(fd.entries());
+      const res = await ApiClient.fetch('/operations/api/timesheet', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+      const data = await res.json();
+      if(!res.ok){ alert(data.error||'Save failed'); return; }
+      e.target.reset(); load();
+    });
+    document.getElementById('tsBody').addEventListener('click', async (e)=>{
+      const id = e.target.getAttribute('data-del');
+      if(!id) return;
+      if(!confirm('Delete this entry?')) return;
+      await ApiClient.fetch('/operations/api/timesheet/'+encodeURIComponent(id), {method:'DELETE'});
+      load();
+    });
+    load();
+  </script>
+</body>
+</html>

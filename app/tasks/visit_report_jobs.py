@@ -1,24 +1,42 @@
-# app/tasks.py
+"""Legacy site-visit report jobs (RQ).
+
+Models (Visit / ReportJob / FileAsset) are optional; functions fail clearly
+at call time if those models are not present in ``app.models``.
+"""
+from __future__ import annotations
+
 import os
+from io import BytesIO
+
 import cloudinary
 import cloudinary.uploader
-from rq import Queue
-from redis import Redis
-from app.models import db, Visit, ReportJob, FileAsset
-from io import BytesIO
-from reportlab.pdfgen import canvas
 import pandas as pd
+from redis import Redis
+from reportlab.pdfgen import canvas
+from rq import Queue
 
 redis_url = os.environ.get("REDIS_URL")
 redis_conn = Redis.from_url(redis_url) if redis_url else Redis()
 q = Queue(connection=redis_conn)
 
+
 def enqueue_report_job(job_id):
     q.enqueue(process_report_job, job_id)
 
+
 def process_report_job(job_id):
-    # Lazily import create_app to get context
     from app import create_app
+    from app.models import db
+
+    Visit = getattr(__import__("app.models", fromlist=["Visit"]), "Visit", None)
+    ReportJob = getattr(__import__("app.models", fromlist=["ReportJob"]), "ReportJob", None)
+    FileAsset = getattr(__import__("app.models", fromlist=["FileAsset"]), "FileAsset", None)
+    if Visit is None or ReportJob is None or FileAsset is None:
+        raise RuntimeError(
+            "Visit/ReportJob/FileAsset models are not available in app.models; "
+            "legacy visit report jobs cannot run."
+        )
+
     app = create_app()
     with app.app_context():
         job = ReportJob.query.get(job_id)
@@ -31,7 +49,6 @@ def process_report_job(job_id):
             visit = Visit.query.get(job.visit_id)
             assets = FileAsset.query.filter_by(visit_id=visit.id).all()
 
-            # Generate PDF
             pdf_buffer = BytesIO()
             p = canvas.Canvas(pdf_buffer)
             p.setFont("Helvetica", 12)
@@ -49,7 +66,6 @@ def process_report_job(job_id):
             p.save()
             pdf_buffer.seek(0)
 
-            # Generate XLSX via pandas
             rows = []
             for a in assets:
                 rows.append({"filename": a.filename, "url": a.secure_url, "size": a.size})
@@ -59,7 +75,6 @@ def process_report_job(job_id):
                 df.to_excel(writer, index=False, sheet_name="assets")
             xlsx_buffer.seek(0)
 
-            # Upload artifacts to Cloudinary (as raw files)
             cloudinary.config(
                 cloud_name=app.config.get("CLOUDINARY_CLOUD_NAME"),
                 api_key=app.config.get("CLOUDINARY_API_KEY"),
@@ -71,13 +86,13 @@ def process_report_job(job_id):
                 pdf_buffer,
                 resource_type="raw",
                 folder=folder,
-                public_id=f"report_{job.id}.pdf"
+                public_id=f"report_{job.id}.pdf",
             )
             xlsx_res = cloudinary.uploader.upload_large(
                 xlsx_buffer,
                 resource_type="raw",
                 folder=folder,
-                public_id=f"report_{job.id}.xlsx"
+                public_id=f"report_{job.id}.xlsx",
             )
 
             job.pdf_url = pdf_res.get("secure_url")
@@ -85,7 +100,7 @@ def process_report_job(job_id):
             job.status = "done"
             db.session.commit()
 
-        except Exception as exc:
+        except Exception:
             job.status = "failed"
             db.session.commit()
             app.logger.exception("Error processing report job %s", job_id)

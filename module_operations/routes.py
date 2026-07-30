@@ -10,7 +10,7 @@ v1 is simple CRUD (no approval workflow):
 import uuid
 import logging
 from io import BytesIO
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 
 from flask import (
     Blueprint, render_template, redirect, request, send_file, current_app,
@@ -24,6 +24,7 @@ from app.models import (
     CHEQUE_STATUSES,
 )
 from common.error_responses import success_response, error_response
+from common.ownership import forbid_unless_owner_or_elevated
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +47,7 @@ def _has_operations_access(user):
 
 
 def _has_ops_sub_access(user, sub):
-    """sub: overtime | invoices | clients | cheques"""
+    """sub: overtime | timesheet | attendance | invoices | clients | cheques"""
     if not user:
         return False
     if hasattr(user, 'has_operations_submodule'):
@@ -347,6 +348,9 @@ def api_update_overtime(rec_id):
     rec = OvertimeRecord.query.get(rec_id)
     if not rec:
         return error_response('Record not found', status_code=404, error_code='NOT_FOUND')
+    denied = forbid_unless_owner_or_elevated(user, rec)
+    if denied:
+        return denied
     data = request.get_json(silent=True) or {}
 
     if 'staff_name' in data:
@@ -406,6 +410,9 @@ def api_delete_overtime(rec_id):
     rec = OvertimeRecord.query.get(rec_id)
     if not rec:
         return error_response('Record not found', status_code=404, error_code='NOT_FOUND')
+    denied = forbid_unless_owner_or_elevated(user, rec)
+    if denied:
+        return denied
     db.session.delete(rec)
     try:
         db.session.commit()
@@ -816,6 +823,9 @@ def api_update_client(client_id):
     c = Client.query.get(client_id)
     if not c:
         return error_response('Client not found', status_code=404, error_code='NOT_FOUND')
+    denied = forbid_unless_owner_or_elevated(user, c)
+    if denied:
+        return denied
     data = request.get_json(silent=True) or {}
     if 'client_name' in data:
         name = (data.get('client_name') or '').strip()
@@ -846,6 +856,9 @@ def api_delete_client(client_id):
     c = Client.query.get(client_id)
     if not c:
         return error_response('Client not found', status_code=404, error_code='NOT_FOUND')
+    denied = forbid_unless_owner_or_elevated(user, c)
+    if denied:
+        return denied
     if c.trading_invoices.count() > 0:
         return error_response('Cannot delete a client with existing invoices.',
                               status_code=400, error_code='VALIDATION_ERROR')
@@ -1014,13 +1027,24 @@ def api_create_invoice():
     if not client:
         return error_response('A valid client is required', status_code=400, error_code='VALIDATION_ERROR')
 
+    inv_date = _parse_date(data.get('invoice_date')) or date.today()
+    due = _parse_date(data.get('due_date'))
+    status = (data.get('status') or 'draft').strip() or 'draft'
+    if status == 'issued' and not due:
+        due = inv_date + timedelta(days=30)
+    owner_uid = data.get('owner_user_id') or user.id
+    try:
+        owner_uid = int(owner_uid) if owner_uid is not None else user.id
+    except (TypeError, ValueError):
+        owner_uid = user.id
     inv = TradingInvoice(
         invoice_no=_gen_id('TRD-INV'),
         client_id=client.id,
-        invoice_date=_parse_date(data.get('invoice_date')) or date.today(),
-        due_date=_parse_date(data.get('due_date')),
-        status=(data.get('status') or 'draft').strip() or 'draft',
+        invoice_date=inv_date,
+        due_date=due,
+        status=status,
         notes=(data.get('notes') or '').strip() or None,
+        owner_user_id=owner_uid,
         created_by_id=user.id,
     )
     err = _build_items(inv, data.get('items'))
@@ -1047,6 +1071,9 @@ def api_update_invoice(invoice_id):
     inv = TradingInvoice.query.get(invoice_id)
     if not inv:
         return error_response('Invoice not found', status_code=404, error_code='NOT_FOUND')
+    denied = forbid_unless_owner_or_elevated(user, inv)
+    if denied:
+        return denied
     data = request.get_json(silent=True) or {}
 
     if 'client_id' in data:
@@ -1060,8 +1087,16 @@ def api_update_invoice(invoice_id):
             inv.invoice_date = d
     if 'due_date' in data:
         inv.due_date = _parse_date(data.get('due_date'))
+    prev_status = inv.status
     if 'status' in data:
         inv.status = (data.get('status') or 'draft').strip() or 'draft'
+    if inv.status == 'issued' and not inv.due_date:
+        inv.due_date = (inv.invoice_date or date.today()) + timedelta(days=30)
+    if 'owner_user_id' in data and data.get('owner_user_id'):
+        try:
+            inv.owner_user_id = int(data.get('owner_user_id'))
+        except (TypeError, ValueError):
+            pass
     if 'notes' in data:
         inv.notes = (data.get('notes') or '').strip() or None
     if 'items' in data:
@@ -1071,12 +1106,26 @@ def api_update_invoice(invoice_id):
     # tax_pct may change independently of items; fall back to existing value
     _recompute_totals(inv, data.get('tax_pct', inv.tax_pct))
 
+    became_paid = prev_status != 'paid' and inv.status == 'paid'
+    if became_paid and not inv.paid_at:
+        from common.datetime_utils import utc_now_naive
+        inv.paid_at = utc_now_naive()
+
     try:
         db.session.commit()
     except Exception as e:
         db.session.rollback()
         logger.error('update_invoice: %s', e, exc_info=True)
         return error_response('Database error', status_code=500, error_code='DATABASE_ERROR')
+
+    if became_paid:
+        try:
+            from app.tasks.reminder_jobs import send_paid_confirmation_for_trading_invoice
+            send_paid_confirmation_for_trading_invoice(inv, marked_by=user)
+            db.session.commit()
+        except Exception as exc:
+            logger.warning('Trading invoice paid email failed: %s', exc)
+
     return success_response({'invoice': inv.to_dict()}, message='Trading invoice updated.')
 
 
@@ -1089,6 +1138,9 @@ def api_delete_invoice(invoice_id):
     inv = TradingInvoice.query.get(invoice_id)
     if not inv:
         return error_response('Invoice not found', status_code=404, error_code='NOT_FOUND')
+    denied = forbid_unless_owner_or_elevated(user, inv)
+    if denied:
+        return denied
     db.session.delete(inv)
     try:
         db.session.commit()
@@ -1133,9 +1185,9 @@ def invoice_pdf(invoice_no):
 # ── Cheque Preparation ───────────────────────────────────────────────────────
 #
 # Digitized "Cheque Preparation / Request Form". Lifecycle:
-#   requested → verified → approved → prepared → submitted → cleared
+#   requested (requestor) → verified (Finance) → approved (GM)
+#   → prepared → submitted → cleared (Finance/admin)
 # plus rejected / cancelled from any non-terminal status.
-# All mutations are admin-only; Operations users are view-only.
 
 CHEQUE_FLOW = ['requested', 'verified', 'approved', 'prepared', 'submitted', 'cleared']
 CHEQUE_TERMINAL = {'cleared', 'rejected', 'cancelled'}
@@ -1149,6 +1201,68 @@ STATUS_LABELS = {
 
 def _is_admin(user):
     return bool(user) and user.role == 'admin'
+
+
+def _is_finance_user(user):
+    if not user:
+        return False
+    if _is_admin(user):
+        return True
+    if bool(getattr(user, 'access_finance', False)):
+        return True
+    desig = str(getattr(user, 'designation', '') or '').strip().lower()
+    return desig in ('finance', 'finance_manager', 'accountant')
+
+
+def _is_gm_user(user):
+    if not user:
+        return False
+    if _is_admin(user):
+        return True
+    desig = str(getattr(user, 'designation', '') or '').strip().lower()
+    return desig == 'general_manager'
+
+
+def _can_view_cheques(user):
+    return (
+        _has_ops_sub_access(user, 'cheques')
+        or _is_finance_user(user)
+        or _is_gm_user(user)
+    )
+
+
+def _can_create_cheque(user):
+    """Requestor: any ops-cheques user (or admin)."""
+    return _has_ops_sub_access(user, 'cheques')
+
+
+def _can_edit_cheque_content(user, cheque):
+    """Requestor (creator) may edit while still requested; admin always."""
+    if _is_admin(user):
+        return True
+    if not cheque or cheque.status != 'requested':
+        return False
+    return bool(cheque.created_by_id and user and cheque.created_by_id == user.id)
+
+
+def _can_transition_cheque(user, to_status):
+    """
+    requested → verified: Finance
+    verified → approved: GM
+    approved → prepared/submitted/cleared (+ reject/cancel): Finance or admin
+    reject/cancel while early: requestor (own), Finance, GM, admin
+    """
+    if _is_admin(user):
+        return True
+    if to_status == 'verified':
+        return _is_finance_user(user)
+    if to_status == 'approved':
+        return _is_gm_user(user)
+    if to_status in ('prepared', 'submitted', 'cleared'):
+        return _is_finance_user(user)
+    if to_status in ('rejected', 'cancelled'):
+        return _is_finance_user(user) or _is_gm_user(user) or _has_ops_sub_access(user, 'cheques')
+    return False
 
 
 def _normalize_signature(raw):
@@ -1294,9 +1408,16 @@ def _send_cheque_status_email(cheque, from_status, to_status, changed_by_name, n
 @jwt_required()
 def cheques_page():
     user = _current_user()
-    if not _has_ops_sub_access(user, 'cheques'):
+    if not _can_view_cheques(user):
         return redirect('/dashboard')
-    return render_template('operations_cheques.html', user=user, is_admin=_is_admin(user))
+    return render_template(
+        'operations_cheques.html',
+        user=user,
+        is_admin=_is_admin(user),
+        can_create=_can_create_cheque(user),
+        is_finance=_is_finance_user(user),
+        is_gm=_is_gm_user(user),
+    )
 
 
 @operations_bp.route('/cheques/<reference_no>/pdf', methods=['GET'])
@@ -1353,7 +1474,7 @@ def cheque_detail_page(reference_no):
 @jwt_required()
 def api_list_cheques():
     user = _current_user()
-    if not _has_ops_sub_access(user, 'cheques'):
+    if not _can_view_cheques(user):
         return error_response('Access denied', status_code=403, error_code='ACCESS_DENIED')
 
     query = ChequeRequest.query
@@ -1377,6 +1498,9 @@ def api_list_cheques():
         'cheques': [c.to_dict(include_items=True, include_signatures=False) for c in cheques],
         'counts': {s: counts.get(s, 0) for s in CHEQUE_STATUSES},
         'is_admin': _is_admin(user),
+        'can_create': _can_create_cheque(user),
+        'is_finance': _is_finance_user(user),
+        'is_gm': _is_gm_user(user),
     })
 
 
@@ -1384,22 +1508,30 @@ def api_list_cheques():
 @jwt_required()
 def api_get_cheque(reference_no):
     user = _current_user()
-    if not _has_ops_sub_access(user, 'cheques'):
+    if not _can_view_cheques(user):
         return error_response('Access denied', status_code=403, error_code='ACCESS_DENIED')
     cheque = ChequeRequest.query.filter_by(reference_no=reference_no).first()
     if not cheque:
         return error_response('Cheque request not found', status_code=404, error_code='NOT_FOUND')
     data = cheque.to_dict(include_items=True, include_logs=True)
-    data['allowed_next_statuses'] = _allowed_next_statuses(cheque.status)
-    return success_response({'cheque': data, 'is_admin': _is_admin(user)})
+    allowed = [s for s in _allowed_next_statuses(cheque.status) if _can_transition_cheque(user, s)]
+    data['allowed_next_statuses'] = allowed
+    return success_response({
+        'cheque': data,
+        'is_admin': _is_admin(user),
+        'can_create': _can_create_cheque(user),
+        'can_edit': _can_edit_cheque_content(user, cheque),
+        'is_finance': _is_finance_user(user),
+        'is_gm': _is_gm_user(user),
+    })
 
 
 @operations_bp.route('/api/cheques', methods=['POST'])
 @jwt_required()
 def api_create_cheque():
     user = _current_user()
-    if not _is_admin(user):
-        return error_response('Admin access required', status_code=403, error_code='ACCESS_DENIED')
+    if not _can_create_cheque(user):
+        return error_response('Cheque access required', status_code=403, error_code='ACCESS_DENIED')
     data = request.get_json(silent=True) or {}
 
     items_data = data.get('items') or []
@@ -1449,11 +1581,15 @@ def api_create_cheque():
 @jwt_required()
 def api_update_cheque(reference_no):
     user = _current_user()
-    if not _is_admin(user):
-        return error_response('Admin access required', status_code=403, error_code='ACCESS_DENIED')
     cheque = ChequeRequest.query.filter_by(reference_no=reference_no).first()
     if not cheque:
         return error_response('Cheque request not found', status_code=404, error_code='NOT_FOUND')
+    if not _can_edit_cheque_content(user, cheque):
+        return error_response(
+            'Only the requestor (while status is Requested) or an admin may edit this cheque',
+            status_code=403,
+            error_code='ACCESS_DENIED',
+        )
     data = request.get_json(silent=True) or {}
 
     for field in ('office', 'remarks', 'attached_documents',
@@ -1517,8 +1653,8 @@ def api_delete_cheque(reference_no):
 @jwt_required()
 def api_change_cheque_status(reference_no):
     user = _current_user()
-    if not _is_admin(user):
-        return error_response('Admin access required', status_code=403, error_code='ACCESS_DENIED')
+    if not _has_ops_sub_access(user, 'cheques') and not _is_finance_user(user) and not _is_gm_user(user):
+        return error_response('Access denied', status_code=403, error_code='ACCESS_DENIED')
     cheque = ChequeRequest.query.filter_by(reference_no=reference_no).first()
     if not cheque:
         return error_response('Cheque request not found', status_code=404, error_code='NOT_FOUND')
@@ -1533,6 +1669,19 @@ def api_change_cheque_status(reference_no):
             f'"{STATUS_LABELS.get(new_status, new_status)}". Allowed: '
             + (', '.join(STATUS_LABELS.get(s, s) for s in allowed) or 'none (terminal status)'),
             status_code=400, error_code='INVALID_TRANSITION')
+    if not _can_transition_cheque(user, new_status):
+        role_hint = {
+            'verified': 'Finance',
+            'approved': 'General Manager',
+            'prepared': 'Finance',
+            'submitted': 'Finance',
+            'cleared': 'Finance',
+        }.get(new_status, 'an authorised role')
+        return error_response(
+            f'Only {role_hint} may move a cheque to "{STATUS_LABELS.get(new_status, new_status)}"',
+            status_code=403,
+            error_code='ACCESS_DENIED',
+        )
 
     old_status = cheque.status
     cheque.status = new_status
@@ -1579,7 +1728,9 @@ def api_change_cheque_status(reference_no):
     db.session.commit()
 
     data = cheque.to_dict(include_items=True, include_logs=True)
-    data['allowed_next_statuses'] = _allowed_next_statuses(cheque.status)
+    data['allowed_next_statuses'] = [
+        s for s in _allowed_next_statuses(cheque.status) if _can_transition_cheque(user, s)
+    ]
     return success_response({'cheque': data},
                             message=f'Status changed to {STATUS_LABELS.get(new_status, new_status)}.'
                                     + ('' if log.email_sent else ' (No notification email sent — check recipients/config.)'))
@@ -1625,3 +1776,24 @@ def api_update_cheque_notification_config():
         logger.error('update_cheque_notification_config: %s', e, exc_info=True)
         return error_response('Database error', status_code=500, error_code='DATABASE_ERROR')
     return success_response(message='Notification recipients saved.')
+
+
+# ── Duty / Timesheet (Meeting 2) ─────────────────────────────────────────────
+from module_operations.timesheet_api import register_timesheet_routes
+
+register_timesheet_routes(
+    operations_bp,
+    current_user_fn=_current_user,
+    has_ops_sub_access_fn=_has_ops_sub_access,
+    rate_for_date_fn=_rate_for_date,
+    day_type_for_date_fn=_day_type_for_date,
+)
+
+# ── Attendance (Meeting 2) ───────────────────────────────────────────────────
+from module_operations.attendance_api import register_attendance_routes
+
+register_attendance_routes(
+    operations_bp,
+    current_user_fn=_current_user,
+    has_ops_sub_access_fn=_has_ops_sub_access,
+)

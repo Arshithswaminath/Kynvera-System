@@ -5,22 +5,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
   {% include 'partials/caveat_font.html' %}
-  <title>Operations - Amaan Application</title>
-  <meta name="theme-color" content="#d21725">
+  <title>Operations — Kynvera</title>
+  <meta name="theme-color" content="#ff8e68">
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
   <style>
-    :root { --primary: #d21725; --primary-light: #e8323f; }
-    /* Tints anchored to the top so every layer resolves to #faf8f8 (= --bg-body) well
+    :root { --primary: #ff8e68; --primary-light: #f97e54; }
+    /* Tints anchored to the top so every layer resolves to #f7f7f9 (= --bg-body) well
        before the hero's bottom edge — otherwise overflow:hidden slices them into a hard line. */
     .operations-hero {
       padding: 9rem 0 5rem;
       background:
-        radial-gradient(ellipse 75% 70% at 0% 0%, rgba(210, 23, 37, 0.12) 0%, transparent 72%),
-        radial-gradient(ellipse 40% 45% at 100% 0%, rgba(210, 23, 37, 0.05) 0%, transparent 60%),
-        linear-gradient(180deg, #f9f5f5 0%, #fbfafa 55%, #faf8f8 82%);
+        radial-gradient(ellipse 75% 70% at 0% 0%, rgba(255, 142, 104, 0.12) 0%, transparent 72%),
+        radial-gradient(ellipse 40% 45% at 100% 0%, rgba(255, 142, 104, 0.05) 0%, transparent 60%),
+        linear-gradient(180deg, #fafafb 0%, #fafafb 55%, #f7f7f9 82%);
     }
     /* The floating orb (.hero::after) extends past the hero's bottom edge and gets clipped
        into a visible seam — the other module heroes (hr/proc/review) hide it too. */
@@ -60,6 +60,30 @@
             <h2 class="module-title">Over Time</h2>
             <p class="module-description">Record staff overtime hours manually or by Excel import, with automatic cost calculation.</p>
             <span class="module-arrow">Open Over Time <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
+          </div>
+        </a>
+
+        <a href="/operations/timesheet" class="module-card" id="ops-tile-timesheet" style="display: none;">
+          <div class="card-body">
+            <span class="module-number">Operations · Under deployment</span>
+            <div class="module-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>
+            </div>
+            <h2 class="module-title">Duty / Timesheet</h2>
+            <p class="module-description">Log project duty hours from start/end time. Rates visible to Finance only.</p>
+            <span class="module-arrow">Open Timesheet <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
+          </div>
+        </a>
+
+        <a href="/operations/attendance" class="module-card" id="ops-tile-attendance" style="display: none;">
+          <div class="card-body">
+            <span class="module-number">Operations · Under deployment</span>
+            <div class="module-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5"/></svg>
+            </div>
+            <h2 class="module-title">Attendance</h2>
+            <p class="module-description">Import biometric Excel, match technicians, edit day status and hours.</p>
+            <span class="module-arrow">Open Attendance <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
           </div>
         </a>
 
@@ -118,8 +142,8 @@
 
   <footer class="footer">
     <div class="footer-inner">
-      <div class="footer-brand">Amaan Systems</div>
-      <p class="footer-copy">© {{ now().year }} Amaan Application / built by <span class="footer-built-by-name">Arshith Swaminath P</span></p>
+      <div class="footer-brand">Kynvera</div>
+      <p class="footer-copy">© {{ now().year }} Kynvera / built by <span class="footer-built-by-name">Arshith Swaminath P</span></p>
     </div>
   </footer>
 
@@ -134,14 +158,18 @@
         if (user.role === 'admin') return true;
         if (user[key]) return true;
         // Legacy hub-only: show all subs when hub is on and no sub flags are set
-        var anySub = !!(user.access_operations_overtime || user.access_operations_invoices
-          || user.access_operations_clients || user.access_operations_cheques);
+        var anySub = !!(user.access_operations_overtime || user.access_operations_timesheet
+          || user.access_operations_attendance
+          || user.access_operations_invoices || user.access_operations_clients
+          || user.access_operations_cheques);
         return !!user.access_operations && !anySub;
       }
       function applyOpsTiles(user) {
         if (!user) return;
         var map = [
           ['ops-tile-overtime', 'access_operations_overtime'],
+          ['ops-tile-timesheet', 'access_operations_timesheet'],
+          ['ops-tile-attendance', 'access_operations_attendance'],
           ['ops-tile-invoices', 'access_operations_invoices'],
           ['ops-tile-clients', 'access_operations_clients'],
           ['ops-tile-cheques', 'access_operations_cheques'],

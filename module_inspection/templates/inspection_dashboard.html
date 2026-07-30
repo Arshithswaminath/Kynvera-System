@@ -6,24 +6,24 @@
   
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
   {% include 'partials/caveat_font.html' %}
-<title>Inspection Module - Amaan Application</title>
-  <meta name="theme-color" content="#d21725">
+<title>Inspection Module — Kynvera</title>
+  <meta name="theme-color" content="#ff8e68">
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
   <style>
     :root {
-      --primary: #d21725;
-      --primary-light: #e8323f;
+      --primary: #ff8e68;
+      --primary-light: #f97e54;
       --secondary: #6366f1;
     }
-    /* Inspection module: match HR module - green gradient at top */
+    /* Inspection module: match HR module — neutral Kynvera canvas */
     .inspection-dashboard {
-      background: #F8FAF8;
+      background: #f9f9f9;
     }
     .inspection-dashboard .modules-section {
-      background: #F8FAF8 !important;
+      background: #f9f9f9 !important;
     }
     .inspection-hero {
       padding: 9rem 0 5rem;
@@ -49,7 +49,7 @@
     a.dashboard-stat-card:focus-visible {
       transform: translateY(-2px);
       border-color: var(--primary-light);
-      box-shadow: 0 6px 18px rgba(210, 23, 37, 0.10);
+      box-shadow: 0 6px 18px rgba(255, 142, 104, 0.10);
       outline: none;
     }
   </style>
@@ -145,8 +145,8 @@
 
   <footer class="footer">
     <div class="footer-inner">
-      <div class="footer-brand">Amaan Systems</div>
-      <p class="footer-copy">© {{ now().year }} Amaan Application / built by <span class="footer-built-by-name">Arshith Swaminath P</span></p>
+      <div class="footer-brand">Kynvera</div>
+      <p class="footer-copy">© {{ now().year }} Kynvera / built by <span class="footer-built-by-name">Arshith Swaminath P</span></p>
     </div>
   </footer>
 
@@ -179,12 +179,12 @@
       const isAdmin = user.role === 'admin';
       const fire = document.getElementById('inspection-fire');
       const cdNotif = document.getElementById('inspection-cd-notif');
-      const hasInspectionAccess = isAdmin || user.access_hvac || user.access_civil || user.access_cleaning;
+      const hasInspectionAccess = isAdmin || user.access_hvac;
       if (fire) fire.style.display = hasInspectionAccess ? 'flex' : 'none';
       if (cdNotif) {
         const showCd = isAdmin || user.access_business_development ||
-          user.access_hvac || user.access_civil || user.access_cleaning ||
-          ['business_development', 'operations_manager', 'general_manager'].includes(user.designation);
+          user.access_hvac ||
+          ['sales', 'business_development', 'operations_manager', 'general_manager'].includes(user.designation);
         cdNotif.style.display = showCd ? 'flex' : 'none';
       }
     }
