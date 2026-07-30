@@ -7,7 +7,7 @@ Covers:
   • Fire Systems inspection (basic + signed workflow)
   • Ticketing work-order / invoice / service-report PDFs
   • Ticketing analytics report PDFs (all REPORT_SPECS keys)
-  • Operations cheque + trading invoice PDFs
+  • Operations cheque + trading invoice + quotation PDFs
   • Finance monthly report PDF
   • Legacy site-visit PDF
 
@@ -33,6 +33,7 @@ from test_suite_common import (  # noqa: E402
     fake_cheque,
     fake_manpower,
     fake_materials,
+    fake_quotation,
     fake_ticket,
     fake_trading_invoice,
     inspection_sample_data,
@@ -250,6 +251,20 @@ def _gen_operations(out_dir: str, result: SuiteResult) -> None:
         build_trading_invoice_pdf(invoice, client, items, buf)
         path = os.path.join(ops_dir, "trading_invoice_TRD-INV-TEST-001.pdf")
         _save_pdf(path, buf)
+        result.pass_(label)
+    except Exception as exc:
+        result.fail(label, str(exc))
+
+    label = "operations/quotation"
+    try:
+        from module_operations.quotation_builder import build_quotation_pdf
+        path = os.path.join(ops_dir, "quotation_ASQ-2026-TEST-001.pdf")
+        build_quotation_pdf(fake_quotation(), path)
+        with open(path, "rb") as f:
+            if not is_pdf_bytes(f.read(4)):
+                raise RuntimeError("not a PDF")
+        if os.path.getsize(path) < 200:
+            raise RuntimeError(f"PDF too small ({os.path.getsize(path)} bytes)")
         result.pass_(label)
     except Exception as exc:
         result.fail(label, str(exc))

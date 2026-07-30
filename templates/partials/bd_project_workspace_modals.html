@@ -1,0 +1,140 @@
+{# Shared modals for BD project workspace (embedded in Sales module). #}
+
+  <!-- Edit project modal -->
+  <div class="pd-modal-veil" id="pdEditModal" onclick="if(event.target===this)pdCloseEdit()">
+    <div class="pd-modal-box" onclick="event.stopPropagation()">
+      <div class="pd-modal-head">
+        <div class="pd-modal-ico">✏️</div>
+        <div>
+          <div class="pd-modal-title">Edit Project</div>
+          <div class="pd-modal-sub">Update deal details and save changes</div>
+        </div>
+        <button type="button" class="pd-modal-close" onclick="pdCloseEdit()" aria-label="Close">✕</button>
+      </div>
+      <div class="pd-modal-body">
+        <div class="pd-field-grid">
+          <div class="pd-fld"><label>Project Name</label><input id="pdFldName" placeholder="Project name"></div>
+          <div class="pd-fld"><label>Company</label><input id="pdFldCompany" placeholder="Client company"></div>
+        </div>
+        <div class="pd-field-grid trio">
+          <div class="pd-fld"><label>Value (USD)</label><input id="pdFldValue" type="number" min="0" step="1"></div>
+          <div class="pd-fld"><label>Stage</label>
+            <select id="pdFldStage">
+              <option value="prospecting">Prospecting</option>
+              <option value="qualifying">Qualifying</option>
+              <option value="proposal">Proposal</option>
+              <option value="negotiation">Negotiation</option>
+              <option value="closing">Closing</option>
+            </select>
+          </div>
+          <div class="pd-fld"><label>Priority</label>
+            <select id="pdFldPriority">
+              <option value="high">High</option>
+              <option value="med">Medium</option>
+              <option value="low">Low</option>
+            </select>
+          </div>
+        </div>
+        <div class="pd-field-grid trio">
+          <div class="pd-fld"><label>Status</label>
+            <select id="pdFldStatus">
+              <option value="active">Active</option>
+              <option value="prospect">Prospect</option>
+              <option value="proposal">Proposal</option>
+              <option value="under_renewal">Under Renewal</option>
+              <option value="won">Won</option>
+              <option value="lost">Lost</option>
+            </select>
+          </div>
+          <div class="pd-fld"><label>Progress (%)</label><input id="pdFldProgress" type="number" min="0" max="100" step="1"></div>
+          <div class="pd-fld"><label>Next Action</label><input id="pdFldNextAction" placeholder="e.g. Contract review"></div>
+        </div>
+        <div class="pd-field-grid">
+          <div class="pd-fld">
+            <label>Owner</label>
+            <select id="pdFldOwnerUser"><option value="">Me (default)</option></select>
+            <input id="pdFldOwner" placeholder="Display name (optional)" style="margin-top:6px">
+          </div>
+          <div class="pd-fld"><label>Expected Close</label><input id="pdFldCloseDate" type="date"></div>
+        </div>
+        <div class="pd-section-divider">Contact</div>
+        <div class="pd-field-grid">
+          <div class="pd-fld"><label>Primary Contact</label><input id="pdFldContactName" placeholder="Contact full name"></div>
+          <div class="pd-fld"><label>Contact Email</label><input id="pdFldContactEmail" type="email" placeholder="email@company.com"></div>
+        </div>
+        <div class="pd-section-divider">Details</div>
+        <div class="pd-field-grid solo">
+          <div class="pd-fld"><label>Notes / Description</label><textarea id="pdFldNotes" rows="3" placeholder="Key details…"></textarea></div>
+        </div>
+      </div>
+      <div class="pd-modal-foot">
+        <button type="button" class="pd-btn pd-btn-ghost" onclick="pdCloseEdit()">Cancel</button>
+        <button type="button" class="pd-btn pd-btn-primary" id="pdEditSaveBtn" onclick="pdSaveProject()">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notes prompt (reject / cancel quotations) — in-app, not browser prompt() -->
+  <div class="pd-modal-veil" id="pdNotesModal" onclick="if(event.target===this)pdCloseNotesModal()">
+    <div class="pd-modal-box pd-notes-modal-box" onclick="event.stopPropagation()" role="dialog" aria-modal="true" aria-labelledby="pdNotesTitle">
+      <div class="pd-modal-head">
+        <div>
+          <div class="pd-modal-title" id="pdNotesTitle">Notes</div>
+          <div class="pd-modal-sub" id="pdNotesSub">Add a short note</div>
+        </div>
+      </div>
+      <div class="pd-modal-body">
+        <div class="pd-fld">
+          <label id="pdNotesLabel" for="pdNotesInput">Notes</label>
+          <textarea id="pdNotesInput" rows="4" placeholder="Enter notes…"></textarea>
+          <div class="pd-notes-err" id="pdNotesErr" hidden>Notes are required</div>
+        </div>
+      </div>
+      <div class="pd-modal-foot">
+        <button type="button" class="pd-btn pd-btn-ghost" onclick="pdCloseNotesModal()">Cancel</button>
+        <button type="button" class="pd-btn pd-btn-primary" id="pdNotesConfirmBtn" onclick="pdConfirmNotesModal()">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Review Thanks & Regards before signing on Submit -->
+  <div class="pd-modal-veil" id="pdSignoffModal" onclick="if(event.target===this)pdCloseSignoffModal()">
+    <div class="pd-modal-box pd-signoff-modal-box" onclick="event.stopPropagation()" role="dialog" aria-modal="true" aria-labelledby="pdSignoffTitle">
+      <div class="pd-modal-head">
+        <div class="pd-modal-ico">✍️</div>
+        <div>
+          <div class="pd-modal-title" id="pdSignoffTitle">Thanks &amp; Regards</div>
+          <div class="pd-modal-sub">Confirm the PDF sign-off, then continue to signature</div>
+        </div>
+        <button type="button" class="pd-modal-close" onclick="pdCloseSignoffModal()" aria-label="Close">✕</button>
+      </div>
+      <div class="pd-modal-body">
+        <input type="hidden" id="pdSignoffQuoteId" value="">
+        <div class="pd-fld">
+          <label for="pdSignoffLabel">Closing line</label>
+          <input id="pdSignoffLabel" placeholder="Thanks &amp; Regards">
+        </div>
+        <div class="pd-field-grid">
+          <div class="pd-fld">
+            <label for="pdSignoffName">Name</label>
+            <input id="pdSignoffName" placeholder="Eng. …">
+          </div>
+          <div class="pd-fld">
+            <label for="pdSignoffEmail">Email</label>
+            <input id="pdSignoffEmail" type="email">
+          </div>
+        </div>
+        <div class="pd-fld">
+          <label for="pdSignoffPhone">Phone</label>
+          <input id="pdSignoffPhone">
+        </div>
+        <p class="pd-signoff-hint">Next step: draw or upload your signature for the PDF.</p>
+      </div>
+      <div class="pd-modal-foot">
+        <button type="button" class="pd-btn pd-btn-ghost" onclick="pdCloseSignoffModal()">Back</button>
+        <button type="button" class="pd-btn pd-btn-primary" onclick="pdContinueSignoffToSign()">Continue to sign</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="pd-toast"></div>

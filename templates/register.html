@@ -6,8 +6,8 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover"
     />
-    <meta name="theme-color" content="#d21725" />
-    <title>Sign Up — Amaan Application</title>
+    <meta name="theme-color" content="#ff8e68" />
+    <title>Sign Up — Kynvera</title>
     <link
       rel="icon"
       type="image/png"
@@ -17,17 +17,23 @@
       rel="stylesheet"
       href="{{ url_for('static', filename='css/design-tokens.css') }}"
     />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
     <link
       rel="stylesheet"
       href="{{ url_for('static', filename='mobile_responsive.css') }}"
     />
     <style>
       :root {
-        --lp-primary: #a8121e;
-        --lp-primary-container: #d21725;
+        --lp-primary: #e05f36;
+        --lp-primary-container: #ff8e68;
         --lp-on-primary: #ffffff;
-        --lp-on-primary-container: #fca5a5;
-        --lp-primary-fixed-dim: #fca5a5;
+        --lp-on-primary-container: #ffb090;
+        --lp-primary-fixed-dim: #ffb090;
         --lp-surface: #fafafa;
         --lp-surface-lowest: #ffffff;
         --lp-surface-highest: #e4e4e7;
@@ -60,7 +66,19 @@
           -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
           system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
         color: var(--lp-on-surface);
-        background: var(--lp-surface) !important;
+        /* Same canvas as home dashboard */
+        background:
+          radial-gradient(
+            ellipse 70% 60% at 0% 50%,
+            rgba(255, 142, 104, 0.1) 0%,
+            transparent 70%
+          ),
+          radial-gradient(
+            ellipse 40% 40% at 100% 10%,
+            rgba(255, 142, 104, 0.05) 0%,
+            transparent 60%
+          ),
+          linear-gradient(160deg, #fafafb 0%, #fafafb 50%, #f7f7f9 100%) !important;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -68,9 +86,31 @@
           max(1.25rem, env(safe-area-inset-right, 0))
           max(1.25rem, env(safe-area-inset-bottom, 0))
           max(1.25rem, env(safe-area-inset-left, 0));
+        position: relative;
+      }
+
+      body.register-page::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(255, 142, 104, 0.04) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 142, 104, 0.04) 1px, transparent 1px);
+        background-size: 48px 48px;
+        mask-image: linear-gradient(to bottom, black 0%, black 45%, transparent 95%);
+        -webkit-mask-image: linear-gradient(
+          to bottom,
+          black 0%,
+          black 45%,
+          transparent 95%
+        );
+        pointer-events: none;
+        z-index: 0;
       }
 
       .register-page-wrap {
+        position: relative;
+        z-index: 1;
         width: 100%;
         max-width: 1080px;
         display: flex;
@@ -114,9 +154,11 @@
         min-height: 0;
         border-radius: 0.875rem;
         overflow: hidden;
-        background: var(--lp-surface-lowest);
-        box-shadow: 0 16px 56px rgba(168, 18, 30, 0.1);
-        border: 1px solid rgba(192, 201, 192, 0.45);
+        background: rgba(255, 255, 255, 0.92);
+        box-shadow:
+          0 1px 2px rgba(15, 23, 42, 0.04),
+          0 12px 40px rgba(15, 23, 42, 0.06);
+        border: 1px solid rgba(228, 228, 231, 0.85);
       }
 
       @media (min-width: 768px) {
@@ -127,18 +169,18 @@
         }
       }
 
-      /* ── Left progress panel (matches login hero) ── */
+      /* ── Left progress panel (coral texture + white wordmark) ── */
       .register-progress {
         position: relative;
         overflow: hidden;
         padding: 1.75rem 1.5rem 1.5rem;
-        background: linear-gradient(
-          135deg,
-          var(--lp-primary) 0%,
-          var(--lp-primary-container) 100%
-        );
+        background-color: #ff8e68;
+        background-image: url("{{ url_for('static', filename='images/kynvera/register-panel-texture.png') }}");
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
         flex: 0 0 auto;
-        color: var(--lp-on-primary);
+        color: #fff;
       }
 
       @media (min-width: 768px) {
@@ -149,34 +191,13 @@
           flex-direction: column;
           justify-content: space-between;
           padding: 2.75rem 2rem;
+          border-right: none;
         }
       }
 
-      .register-progress::before {
-        content: "";
-        position: absolute;
-        inset: 0;
-        background-image: radial-gradient(
-          var(--lp-on-primary-container) 1px,
-          transparent 1px
-        );
-        background-size: 24px 24px;
-        opacity: 0.1;
-        pointer-events: none;
-      }
-
+      .register-progress::before,
       .register-progress::after {
-        content: "";
-        position: absolute;
-        bottom: -4rem;
-        left: -4rem;
-        width: 16rem;
-        height: 16rem;
-        border-radius: 50%;
-        background: var(--lp-primary-fixed-dim);
-        opacity: 0.06;
-        filter: blur(40px);
-        pointer-events: none;
+        display: none;
       }
 
       .progress-brand,
@@ -193,35 +214,23 @@
         align-items: center;
         justify-content: flex-start;
         gap: 0;
-        margin-bottom: 1.35rem;
+        margin-bottom: 0.7rem;
       }
 
-      .progress-brand img {
-        width: 140px;
-        height: 140px;
-        flex-shrink: 0;
-        margin-left: -0.5rem;
-        border-radius: 0;
+      .progress-brand-logo {
+        display: block;
+        height: clamp(1.35rem, 2.6vw, 1.65rem);
+        width: auto;
+        max-width: min(100%, 9.5rem);
         object-fit: contain;
         filter: brightness(0) invert(1);
-      }
-
-      .progress-brand span {
-        font-weight: 700;
-        font-size: 1.35rem;
-        letter-spacing: 0.02em;
-        white-space: nowrap;
-        flex-shrink: 0;
-        line-height: 1.1;
-        margin-left: -1.75rem;
       }
 
       .progress-kicker {
         font-size: 0.7rem;
         font-weight: 600;
         letter-spacing: 0.12em;
-
-        color: var(--lp-on-primary-container);
+        color: rgba(255, 255, 255, 0.85);
         margin: 0 0 0.65rem;
       }
 
@@ -236,23 +245,24 @@
       }
 
       .progress-copy h1 {
-        margin: 0 0 0.65rem;
+        margin: 0 0 0.4rem;
+        font-family: "Outfit", system-ui, sans-serif;
         font-size: clamp(1.65rem, 3vw, 2.1rem);
         font-weight: 800;
-        line-height: 1.15;
+        line-height: 1.12;
         letter-spacing: -0.02em;
-        color: var(--lp-on-primary);
+        color: #fff;
       }
 
       .progress-copy h1 span {
-        color: var(--lp-primary-fixed-dim);
+        color: rgba(255, 255, 255, 0.82);
       }
 
       .progress-copy p {
         margin: 0;
         color: rgba(255, 255, 255, 0.88);
         font-size: 0.95rem;
-        line-height: 1.55;
+        line-height: 1.45;
         max-width: 20rem;
       }
 
@@ -281,25 +291,27 @@
         gap: 0.75rem;
         padding: 0.85rem 1rem;
         border-radius: 0.75rem;
-        background: rgba(255, 255, 255, 0.1);
-        border: 1px solid rgba(255, 255, 255, 0.14);
+        background: rgba(255, 255, 255, 0.12);
+        border: 1px solid rgba(255, 255, 255, 0.18);
         transition:
           background 0.25s,
           border-color 0.25s,
-          transform 0.25s;
+          transform 0.25s,
+          box-shadow 0.25s;
         flex-shrink: 0;
         width: 100%;
         text-align: left;
         font: inherit;
-        color: inherit;
+        color: #fff;
         cursor: pointer;
         appearance: none;
         -webkit-appearance: none;
       }
 
       .step-card:hover:not(.active):not(:disabled) {
-        background: rgba(255, 255, 255, 0.16);
-        border-color: rgba(255, 255, 255, 0.28);
+        background: rgba(255, 255, 255, 0.18);
+        border-color: rgba(255, 255, 255, 0.32);
+        box-shadow: none;
       }
 
       .step-card:disabled {
@@ -320,8 +332,8 @@
       }
 
       .step-card.active {
-        background: var(--lp-surface-lowest);
-        border-color: var(--lp-surface-lowest);
+        background: #fff;
+        border-color: #fff;
         color: var(--lp-primary);
         transform: translateX(4px);
         box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
@@ -334,8 +346,9 @@
       }
 
       .step-card.done {
-        background: rgba(255, 255, 255, 0.16);
-        border-color: rgba(255, 255, 255, 0.22);
+        background: rgba(255, 255, 255, 0.18);
+        border-color: rgba(255, 255, 255, 0.28);
+        color: #fff;
       }
 
       .step-num {
@@ -348,17 +361,18 @@
         justify-content: center;
         font-weight: 800;
         font-size: 0.875rem;
-        background: rgba(255, 255, 255, 0.18);
-        color: var(--lp-on-primary);
+        background: rgba(255, 255, 255, 0.2);
+        color: #fff;
       }
 
       .step-card.active .step-num {
         background: var(--lp-primary-container);
-        color: var(--lp-on-primary);
+        color: #fff;
       }
 
       .step-card.done .step-num {
-        background: rgba(255, 255, 255, 0.28);
+        background: rgba(255, 255, 255, 0.32);
+        color: #fff;
       }
 
       .step-label {
@@ -488,7 +502,7 @@
       }
 
       .field input::placeholder {
-        color: rgba(112, 121, 114, 0.55);
+        color: rgba(113, 113, 122, 0.55);
       }
 
       .field input:focus,
@@ -516,7 +530,7 @@
       .alert.error {
         display: block;
         background: var(--lp-error-bg);
-        color: #93000a;
+        color: #932500;
       }
 
       .form-actions {
@@ -746,10 +760,13 @@
           <div>
             <div class="progress-brand">
               <img
-                src="{{ url_for('static', filename='logo.png') }}"
-                alt="Amaan"
+                class="progress-brand-logo"
+                src="{{ url_for('static', filename='images/kynvera/kynvera-wordmark.png') }}"
+                alt="Kynvera"
+                width="280"
+                height="69"
+                decoding="async"
               />
-              <span>Amaan Systems</span>
             </div>
             <div class="progress-copy">
               <h1>Get Started <span>with Us</span></h1>
@@ -944,8 +961,8 @@
                   <div class="success-icon" aria-hidden="true">✓</div>
                   <h2 id="step3-title">Your Account Is Ready!</h2>
                   <p class="lead">
-                    Welcome aboard. You can sign in now with the credentials
-                    below.
+                    Welcome aboard. Check your email for a temporary password,
+                    then sign in with the address below.
                   </p>
 
                   <div class="credential-card">
@@ -953,16 +970,16 @@
                       <span>Sign in with</span>
                       <span id="success-email">—</span>
                     </div>
-                    <div class="credential-row">
-                      <span>Default password</span>
-                      <code id="success-password">{{ default_password }}</code>
+                    <div class="credential-row" id="success-password-row" hidden>
+                      <span>Temporary password</span>
+                      <code id="success-password">—</code>
                     </div>
                   </div>
 
-                  <p class="success-note">
-                    For your security, go to <strong>Profile</strong> after
-                    logging in and <strong>reset your password</strong> to
-                    something only you know.
+                  <p class="success-note" id="success-email-note">
+                    A temporary password was sent to your email (when mail is
+                    configured). You will be asked to
+                    <strong>change your password</strong> on first login.
                   </p>
 
                   <a
@@ -1180,10 +1197,20 @@
               if (response.ok) {
                 document.getElementById("success-email").textContent =
                   data.login_hint || formData.email;
-                if (data.default_password) {
-                  document.getElementById("success-password").textContent =
-                    data.default_password;
+                const pwRow = document.getElementById("success-password-row");
+                const pwEl = document.getElementById("success-password");
+                const noteEl = document.getElementById("success-email-note");
+                if (data.email_sent) {
+                  if (noteEl) {
+                    noteEl.innerHTML =
+                      "Check your inbox for a temporary password. You will be asked to <strong>change your password</strong> on first login.";
+                  }
+                } else if (noteEl) {
+                  noteEl.innerHTML =
+                    "Welcome email could not be sent. Ask an administrator to reset your password, then <strong>change it</strong> on first login.";
                 }
+                if (pwRow) pwRow.hidden = true;
+                if (pwEl) pwEl.textContent = "—";
                 registrationComplete = true;
                 goToStep(3);
               } else {

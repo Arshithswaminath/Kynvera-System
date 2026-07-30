@@ -1,0 +1,61 @@
+{# Shared Add / Edit candidate modal (used on list + detail pages). #}
+<div class="hh-modal-backdrop" id="hhAddModal" role="dialog" aria-modal="true" aria-labelledby="hhAddTitle">
+  <div class="hh-modal hh-modal-wide">
+    <h2 id="hhAddTitle">Add Candidate</h2>
+    <p class="hh-modal-sub" id="hhAddSub">Enter candidate details, or import name and role from an Interview Assessment already in the system.</p>
+
+    <div class="hh-import-block" id="hhInterviewImportBlock">
+      <label class="hh-import-label" for="hhInterviewPick">Import from Interview Assessment</label>
+      <div class="hh-import-row">
+        <select id="hhInterviewPick" class="hh-select">
+          <option value="">Loading assessments…</option>
+        </select>
+        <button type="button" class="hh-btn hh-btn-secondary hh-btn-sm" id="hhInterviewApply" disabled>Use</button>
+      </div>
+      <p class="hh-import-hint">Uses structured form fields (candidate name, position) — the app does not read or OCR uploaded PDF scans.</p>
+    </div>
+
+    <form id="hhAddForm">
+      <div class="hh-field">
+        <label for="hhFullName">Full name *</label>
+        <input id="hhFullName" name="full_name" type="text" required autocomplete="name" placeholder="As on passport">
+      </div>
+      <div class="hh-field">
+        <label for="hhRole">Role / position *</label>
+        <input id="hhRole" name="role" type="text" required autocomplete="organization-title" placeholder="e.g. Product Designer">
+      </div>
+      <div class="hh-field">
+        <label for="hhDept">Department</label>
+        <input id="hhDept" name="department" type="text" placeholder="e.g. Operations">
+      </div>
+      <div class="hh-field-row">
+        <div class="hh-field">
+          <label for="hhPhone">Phone</label>
+          <input id="hhPhone" name="phone" type="tel" autocomplete="tel" placeholder="+971 …">
+        </div>
+        <div class="hh-field">
+          <label for="hhEmail">Email</label>
+          <input id="hhEmail" name="email" type="email" autocomplete="email" placeholder="name@example.com">
+        </div>
+      </div>
+      <div class="hh-field-row">
+        <div class="hh-field">
+          <label for="hhReplacementName">Replacement name</label>
+          <input id="hhReplacementName" name="replacement_name" type="text" autocomplete="name" placeholder="Employee being replaced">
+        </div>
+        <div class="hh-field">
+          <label for="hhReplacementEmpId">Replacement employee ID</label>
+          <input id="hhReplacementEmpId" name="replacement_employee_id" type="text" autocomplete="off" placeholder="e.g. EMP-01234">
+        </div>
+      </div>
+      <div class="hh-field">
+        <label for="hhComments">Any comments</label>
+        <textarea id="hhComments" name="comments" rows="3" maxlength="4000" placeholder="Optional notes for HR…"></textarea>
+      </div>
+      <div class="hh-modal-actions">
+        <button type="button" class="hh-btn hh-btn-ghost" data-close>Cancel</button>
+        <button type="submit" class="hh-btn hh-btn-primary" id="hhAddSubmit">Create checklist</button>
+      </div>
+    </form>
+  </div>
+</div>

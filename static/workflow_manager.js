@@ -424,7 +424,7 @@ class WorkflowManager {
         }
 
         if (workflowStatus === 'bd_procurement_review') {
-            if (this.userDesignation === 'business_development') {
+            if (this.userDesignation === 'business_development' || this.userDesignation === 'sales') {
                 const section = document.getElementById('bdSection');
                 if (section) section.style.display = 'block';
             }

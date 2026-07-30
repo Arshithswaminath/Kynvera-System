@@ -52,7 +52,7 @@ HR_FORM_TYPES = (
     "leave",
 )
 
-INSPECTION_MODULES = ("hvac_mep", "civil", "cleaning")
+INSPECTION_MODULES = ("hvac_mep",)
 
 
 def _delete_submission_by_string_id(app, submission_id_str):
@@ -69,16 +69,6 @@ def _inspection_form_data(module_type: str, visit: str, label: str) -> dict:
     site = f"Pytest {label} Site"
     if module_type == "hvac_mep":
         return {"site_name": site, "visit_date": visit, "items": []}
-    if module_type == "civil":
-        return {"site_name": site, "visit_date": visit, "work_items": []}
-    if module_type == "cleaning":
-        return {
-            "site_name": site,
-            "visit_date": visit,
-            "project_name": site,
-            "date_of_visit": visit,
-            "materials_required": [],
-        }
     raise ValueError(module_type)
 
 

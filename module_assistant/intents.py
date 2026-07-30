@@ -1,5 +1,5 @@
 """
-Intent router for the Amaan assistant (pattern + keyword scoring, no LLM).
+Intent router for the Kynvera assistant (pattern + keyword scoring, no LLM).
 """
 import re
 from dataclasses import dataclass, field
@@ -80,10 +80,10 @@ _INTENT_PATTERNS = {
     ],
     'my_inspections': [
         r'\bmy\s+inspections?\b',
-        r'\bmy\s+(hvac|civil|cleaning)\s+(forms?|inspections?|reports?)\b',
+        r'\bmy\s+(hvac|fire|inspection)\s+(forms?|inspections?|reports?)\b',
         r'\bmy\s+site\s+visits?\b',
         r'\bmy\s+inspection\s+submissions?\b',
-        r'\bhow\s+many\s+(hvac|civil|cleaning|inspection)\s+(forms?|submissions?)\b',
+        r'\bhow\s+many\s+(hvac|fire|inspection)\s+(forms?|submissions?)\b',
     ],
     'ticketing_help': [
         r'\b(work\s*order|ticket)s?\b',
@@ -91,7 +91,7 @@ _INTENT_PATTERNS = {
         r'\braise\s+a\s+(ticket|work\s*order)\b',
     ],
     'inspection_help': [
-        r'\b(hvac|mep|civil|cleaning)\b',
+        r'\b(hvac|mep|fire)\b',
         r'\binspection\s+(form|report|site|visit)\b',
         r'\bsite\s+(visit|inspection)\b',
         r'\bstart\s+an?\s+inspection\b',
@@ -159,7 +159,7 @@ _INTENT_PATTERNS = {
         r'\bhow\s+(do\s+i|to)\s+(submit|apply|create|start)\b',
         r'\bwhere\s+(is|can\s+i)\b.*\b(hr|inspection|procurement|ticket|leave)\b',
         r'\bhow\s+does\b.*\b(work|module|workflow)\b',
-        r'\bwhat\s+is\s+amaan\b',
+        r'\bwhat\s+is\s+(amaan|kynvera)\b',
         r'\bwhat\s+(modules?|features?)\b',
     ],
 }
@@ -174,9 +174,9 @@ _INTENT_KEYWORDS = {
     'change_password': {'password', 'reset', 'security'},
     'procurement_data': {'materials', 'material', 'properties', 'property', 'count', 'many', 'list', 'procurement', 'have'},
     'my_tickets': {'tickets', 'ticket', 'workorders', 'open', 'raised', 'work', 'orders'},
-    'my_inspections': {'inspections', 'inspection', 'hvac', 'civil', 'cleaning', 'site', 'visits'},
+    'my_inspections': {'inspections', 'inspection', 'hvac', 'fire', 'site', 'visits'},
     'ticketing_help': {'ticket', 'tickets', 'ticketing', 'workorder', 'work', 'order', 'service'},
-    'inspection_help': {'inspection', 'hvac', 'mep', 'civil', 'cleaning', 'site', 'visit'},
+    'inspection_help': {'inspection', 'hvac', 'mep', 'fire', 'site', 'visit'},
     'procurement_help': {'procurement', 'material', 'materials', 'pricing', 'property', 'properties'},
     'mmr_help': {'mmr', 'monthly', 'report', 'chargeable', 'schedule'},
     'bd_help': {'business', 'development', 'pipeline', 'deals', 'leads', 'contacts'},

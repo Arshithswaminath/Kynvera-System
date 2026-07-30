@@ -158,6 +158,13 @@ class PhotoUploadQueue {
       });
       
       xhr.open('POST', this.uploadEndpoint);
+      // Send the JWT as a Bearer header so the (now authenticated) upload endpoint
+      // authorizes via header — header auth is exempt from cookie CSRF, so uploads
+      // keep working after the endpoints were locked down.
+      try {
+        const _t = localStorage.getItem('access_token');
+        if (_t) xhr.setRequestHeader('Authorization', 'Bearer ' + _t);
+      } catch (e) { /* no token in storage; same-origin cookie still applies in dev */ }
       xhr.timeout = 60000; // 60 second timeout
       xhr.send(formData);
     });

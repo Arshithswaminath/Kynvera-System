@@ -19,11 +19,21 @@ def validate_config(app):
     """
     errors = []
     warnings = []
-    
+
     flask_env = app.config.get('FLASK_ENV', 'development')
-    
+
+    # Treat the deployment as production if FLASK_ENV/ENV say so, OR if we are
+    # running on Render (RENDER is set automatically). This makes the secret
+    # fail-closed checks below fire even if FLASK_ENV was accidentally left unset,
+    # instead of silently booting on a default SECRET_KEY.
+    is_production = (
+        str(flask_env).lower() in ('production', 'prod')
+        or (os.environ.get('ENV') or '').strip().lower() in ('production', 'prod')
+        or bool((os.environ.get('RENDER') or '').strip())
+    )
+
     # Critical validations (fail fast in production)
-    if flask_env == 'production':
+    if is_production:
         # Secret keys
         secret_key = app.config.get('SECRET_KEY')
         if not secret_key or secret_key in ['dev-secret', 'dev-secret-change-in-production', 'change-me', 'change-me-in-production']:
@@ -59,11 +69,11 @@ def validate_config(app):
             errors.append("DEBUG mode is enabled in production - security risk")
     
     # Warning validations (inform but don't fail)
-    if not app.config.get('REDIS_URL') and flask_env == 'production':
+    if not app.config.get('REDIS_URL') and is_production:
         warnings.append("REDIS_URL not configured - rate limiting and background jobs may not work optimally")
 
     base_url = (app.config.get('APP_BASE_URL') or os.environ.get('APP_BASE_URL') or '').strip()
-    if flask_env == 'production':
+    if is_production:
         if not base_url:
             warnings.append("APP_BASE_URL not set - email links and absolute file URLs may be wrong")
         elif 'localhost' in base_url or '127.0.0.1' in base_url:

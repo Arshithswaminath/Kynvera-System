@@ -30,7 +30,7 @@ if PROJECT_ROOT not in sys.path:
 from Injaaz import create_app  # noqa: E402
 from app.models import db, File, Notification, Submission  # noqa: E402
 
-INSPECTION_MODULES = ("hvac_mep", "civil", "cleaning")
+INSPECTION_MODULES = ("hvac_mep",)
 
 
 def _unlink_local_files(file_rows: list[File]) -> tuple[int, int]:

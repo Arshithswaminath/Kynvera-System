@@ -43,9 +43,9 @@ USER injaaz
 
 # Render will provide PORT at runtime. Provide sane defaults for local testing.
 ENV PORT=${PORT:-5000}
-ENV WEB_CONCURRENCY=${WEB_CONCURRENCY:-1}
+ENV WEB_CONCURRENCY=${WEB_CONCURRENCY:-2}
 
 EXPOSE 5000
 
 # Use shell form so environment variables like ${PORT} are expanded at runtime.
-CMD sh -c "gunicorn wsgi:app -w ${WEB_CONCURRENCY:-1} --threads 4 --bind 0.0.0.0:${PORT:-5000}"
+CMD sh -c "gunicorn wsgi:app -w ${WEB_CONCURRENCY:-2} --threads 4 --timeout 120 --worker-class gthread --bind 0.0.0.0:${PORT:-5000}"

@@ -11,7 +11,7 @@
       rel="stylesheet"
       href="{{ url_for('static', filename='css/design-tokens.css') }}"
     />
-    <title>Submitted Forms - Amaan Application</title>
+    <title>Submitted Forms — Kynvera</title>
     <link
       rel="icon"
       type="image/png"
@@ -40,10 +40,10 @@
 
     <style>
       :root {
-        --primary: #d21725;
-        --primary-light: #e8323f;
-        --primary-dark: #a8121e;
-        --secondary: #fdeaec;
+        --primary: #ff8e68;
+        --primary-light: #f97e54;
+        --primary-dark: #e05f36;
+        --secondary: #fff4ef;
         --text-dark: #1a1a1a;
         --text-light: #6b7280;
         --background: #ffffff;
@@ -378,14 +378,14 @@
       }
 
       .submission-card:hover {
-        box-shadow: 0 4px 12px rgba(210, 23, 37, 0.1);
+        box-shadow: 0 4px 12px rgba(255, 142, 104, 0.1);
         border-color: var(--primary);
       }
 
       .submission-card.submission-card--highlight {
         outline: 2px solid var(--primary);
         outline-offset: 2px;
-        box-shadow: 0 0 0 4px rgba(210, 23, 37, 0.12);
+        box-shadow: 0 0 0 4px rgba(255, 142, 104, 0.12);
       }
 
       .submission-header {
@@ -440,7 +440,7 @@
       }
 
       .status-rejected {
-        background: #ffebee;
+        background: #fff0eb;
         color: #f44336;
       }
 
@@ -817,6 +817,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{{ url_for('static', filename='js/hr_submission_full_form_url.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/hr_revoke.js') }}"></script>
 
     <script>
       // Get status display text and class
@@ -914,10 +915,10 @@
               "Approved through the workflow (awaiting completion / archive).",
           },
           withdrawn: {
-            text: "Withdrawn",
+            text: "Revoked",
             class: "status-rejected",
             message:
-              "You withdrew this request. It will not continue through approval.",
+              "This request was revoked and is kept for history. You can start a new form of the same type anytime.",
           },
           closed_by_admin: {
             text: "Closed",
@@ -1030,8 +1031,6 @@
         const moduleMap = {
           hvac: "hvac-mep",
           hvac_mep: "hvac-mep",
-          civil: "civil",
-          cleaning: "cleaning",
         };
         return moduleMap[m] || m;
       }
@@ -1235,27 +1234,81 @@
         });
       })();
 
-      async function withdrawHrSubmission(submissionIdRaw) {
+      function promptOpenNewHrForm(moduleTypeRaw, fromWithdrawnSid) {
+        const mod = (moduleTypeRaw != null ? String(moduleTypeRaw) : "").trim();
+        const fromSid = (
+          fromWithdrawnSid != null ? String(fromWithdrawnSid) : ""
+        ).trim();
+        const newUrl =
+          typeof getHrNewFormUrl === "function"
+            ? getHrNewFormUrl(mod, fromSid || null)
+            : null;
+        if (!newUrl) {
+          return;
+        }
+        openSfConfirm({
+          title: "Open a new form?",
+          messages: [
+            "Your withdrawn request stays in history.",
+            "Open a blank form of the same type to submit a new request?",
+          ],
+          confirmLabel: "Open new form",
+          confirmVariant: "primary",
+          onConfirm: () => {
+            window.location.href = newUrl;
+          },
+        });
+      }
+
+      function withdrawHrSubmission(submissionIdRaw, moduleTypeRaw) {
+        const sid = (
+          submissionIdRaw != null ? String(submissionIdRaw) : ""
+        ).trim();
+        const mod = (moduleTypeRaw != null ? String(moduleTypeRaw) : "").trim();
+        if (!sid) return;
+        if (typeof openHrRevokeModal !== "function") {
+          showSfToast("Revoke UI failed to load. Refresh and try again.", "error");
+          return;
+        }
+        openHrRevokeModal({
+          submissionId: sid,
+          moduleType: mod,
+          onSuccess: async function () {
+            showSfToast("Request revoked and kept in history.", "success");
+            await loadSubmissions();
+          },
+        });
+      }
+
+      async function cancelReviseHrSubmission(submissionIdRaw) {
         const sid = (
           submissionIdRaw != null ? String(submissionIdRaw) : ""
         ).trim();
         if (!sid) return;
+        const remark = window.prompt(
+          "Cancel remark (required). The signed form stays on audit and a linked revision will open for re-signoff:",
+        );
+        if (remark == null) return;
+        if (String(remark).trim().length < 3) {
+          showSfToast("Please enter a cancel remark (at least 3 characters).", "error");
+          return;
+        }
         openSfConfirm({
-          title: "Withdraw this HR request?",
+          title: "Cancel & open linked revision?",
           messages: [
-            "Your reporting manager will be notified.",
-            "This cannot be undone from this page.",
+            "The original signed form is kept for audit.",
+            "A new linked submission will restart approval from your reporting manager.",
           ],
-          confirmLabel: "Withdraw",
+          confirmLabel: "Cancel & revise",
           confirmVariant: "danger",
           onConfirm: async () => {
             try {
               const res = await authenticatedFetch(
-                `/api/workflow/submissions/${encodeURIComponent(sid)}/withdraw`,
+                `/api/workflow/submissions/${encodeURIComponent(sid)}/cancel-and-revise`,
                 {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
-                  body: "{}",
+                  body: JSON.stringify({ remark: String(remark).trim() }),
                 },
               );
               const payload = await res.json().catch(() => ({}));
@@ -1263,16 +1316,23 @@
                 showSfToast(
                   payload.error ||
                     payload.message ||
-                    "Could not withdraw this form.",
+                    "Could not cancel and revise.",
                   "error",
                 );
                 return;
               }
-              showSfToast(payload.message || "Request withdrawn.", "success");
+              const newId = payload.new_submission_id;
+              const mod =
+                (payload.new_submission && payload.new_submission.module_type) || "";
+              showSfToast(payload.message || "Linked revision opened.", "success");
+              if (newId && typeof getHrSubmissionFullFormViewUrl === "function" && mod) {
+                window.location.href = getHrSubmissionFullFormViewUrl(mod, newId);
+                return;
+              }
               await loadSubmissions();
             } catch (e) {
               showSfToast(
-                "Network error — could not withdraw. Try again.",
+                "Network error — could not cancel and revise. Try again.",
                 "error",
               );
             }
@@ -1586,10 +1646,34 @@
  </a>
  `
                   : "";
+              const hrModType = String(
+                submission.module_type || submission.module || "",
+              ).trim();
+              const hrWs = String(
+                submission.workflow_status || submission.status || "",
+              )
+                .trim()
+                .toLowerCase();
               const hrWithdrawBtn =
-                !isDraft && isHrSubmission && submission.can_withdraw_hr
-                  ? `<button type="button" class="btn-custom btn-outline-custom" style="border-color:#b91c1c;color:#b91c1c" onclick='withdrawHrSubmission(${JSON.stringify(submission.submission_id || "")})'>Withdraw</button>`
+                !isDraft &&
+                isHrSubmission &&
+                (submission.can_revoke_hr || submission.can_withdraw_hr)
+                  ? `<button type="button" class="btn-custom btn-outline-custom" style="border-color:#b91c1c;color:#b91c1c" onclick='withdrawHrSubmission(${JSON.stringify(submission.submission_id || "")}, ${JSON.stringify(hrModType)})'>Revoke</button>`
                   : "";
+              const hrCancelReviseBtn =
+                !isDraft && isHrSubmission && submission.can_cancel_revise_hr
+                  ? `<button type="button" class="btn-custom btn-outline-custom" style="border-color:#92400e;color:#92400e" onclick='cancelReviseHrSubmission(${JSON.stringify(submission.submission_id || "")})'>Cancel &amp; revise</button>`
+                  : "";
+              const hrStartNewUrl =
+                !isDraft &&
+                isHrSubmission &&
+                hrWs === "withdrawn" &&
+                typeof getHrNewFormUrl === "function"
+                  ? getHrNewFormUrl(hrModType, submission.submission_id || "")
+                  : null;
+              const hrStartNewBtn = hrStartNewUrl
+                ? `<a href="${escapeHtml(hrStartNewUrl)}" class="btn-custom btn-outline-custom" style="border-color:#0f766e;color:#0f766e">Start new</a>`
+                : "";
 
               return `
  <div class="submission-card ${isDraft ? "draft-card" : ""}" data-sf-submission-id="${escapeHtml(submission.submission_id || "")}">
@@ -1661,7 +1745,7 @@
  ${
    isAdmin && submission.reviewers && submission.reviewers.length > 0
      ? `
- <div class="reviewers-section" style="margin-top: 1rem; margin-bottom: 1rem; padding: 1rem; background: #f8faf9; border-radius: 8px; border: 1px solid #e5e7eb;">
+ <div class="reviewers-section" style="margin-top: 1rem; margin-bottom: 1rem; padding: 1rem; background: #f9f9f9; border-radius: 8px; border: 1px solid #e5e7eb;">
  <h6 style="color: var(--primary); font-weight: 600; margin-bottom: 0.75rem; font-size: 0.95rem;">📋 Reviewer Comments</h6>
  ${submission.reviewers
    .map((reviewer, index) => {
@@ -1724,6 +1808,8 @@
  }
  ${downloadsBlock}
  ${hrWithdrawBtn}
+ ${hrCancelReviseBtn}
+ ${hrStartNewBtn}
  `
  }
  </div>

@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master, develop, amaan-test-case]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            requirements-prods.txt
+            requirements-dev.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-prods.txt
+          if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+          pip install pytest flake8
+
+      - name: Lint (selected packages)
+        run: |
+          flake8 app common module_hr module_operations module_finance \
+            --count --select=E9,F63,F7,F82 --show-source --statistics
+
+      - name: Run pytest
+        env:
+          FLASK_ENV: testing
+          TESTING: "true"
+          SECRET_KEY: test-secret-key
+          JWT_SECRET_KEY: test-jwt-secret
+          DATABASE_URL: sqlite:///:memory:
+          RUN_MMR_SCHEDULER: "false"
+        run: |
+          pytest tests/ -q --tb=short

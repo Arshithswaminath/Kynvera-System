@@ -10,7 +10,7 @@ import calendar
 import logging
 import tempfile
 from pathlib import Path
-from datetime import datetime, timezone, date
+from datetime import datetime, timezone, date, timedelta
 from decimal import Decimal
 from flask import (
     Blueprint, render_template, request, jsonify,
@@ -169,6 +169,12 @@ def _migrate_ticket_columns(app):
         ('finance_confirmed_by_id',        'INTEGER'),
         ('finance_invoice_ref',            'TEXT'),
         ('finance_contract_id',            'INTEGER'),
+        ('sla_due_at',                     'TEXT'),
+        ('sla_breached_at',                'TEXT'),
+        ('payment_status',                 'TEXT'),
+        ('payment_due_date',               'DATE'),
+        ('paid_at',                        'TEXT'),
+        ('paid_by_id',                     'INTEGER'),
     ]
     with app.app_context():
         from app.models import db
@@ -250,6 +256,58 @@ def _has_access(user: User) -> bool:
     if user is None:
         return False
     return bool(user.role == 'admin' or getattr(user, 'access_ticketing', False))
+
+
+def _can_see_project_value(user: User) -> bool:
+    """Contract value ACL: Sales / Finance / admin (and GM)."""
+    if user is None:
+        return False
+    if user.role == 'admin':
+        return True
+    if bool(getattr(user, 'access_finance', False)):
+        return True
+    if bool(getattr(user, 'access_business_development', False)):
+        return True
+    if bool(getattr(user, 'access_sales_manager', False)):
+        return True
+    desig = str(getattr(user, 'designation', '') or '').strip().lower()
+    return desig in (
+        'sales', 'business_development', 'finance', 'finance_manager',
+        'general_manager',
+    )
+
+
+def _deduct_store_stock(material_name: str, qty: float):
+    """Decrement matching store catalog quantity when materials are used on a job."""
+    if not material_name or not qty:
+        return
+    from app.models import Submission
+    from sqlalchemy.orm.attributes import flag_modified
+    from common.form_data_utils import shallow_copy_form_data
+
+    name_l = material_name.strip().lower()
+    subs = Submission.query.filter(Submission.module_type == 'procurement_material').all()
+    for sub in subs:
+        fd = sub.form_data or {}
+        if (fd.get('material_name') or '').strip().lower() != name_l:
+            continue
+        fd = shallow_copy_form_data(fd)
+        try:
+            current = float(fd.get('quantity') or 0)
+        except (TypeError, ValueError):
+            current = 0.0
+        fd['quantity'] = max(0.0, current - float(qty))
+        fd['total_price'] = float(fd.get('quantity') or 0) * float(fd.get('unit_price') or 0)
+        sub.form_data = fd
+        flag_modified(sub, 'form_data')
+        try:
+            reorder = float(fd.get('reorder_level') or 0)
+            if reorder > 0 and fd['quantity'] <= reorder:
+                from module_store.routes import _send_restock_alert
+                _send_restock_alert(fd.get('material_name'), fd['quantity'], reorder)
+        except Exception:
+            pass
+        break
 
 
 # Designations that may see every ticket (read + list) like admins.
@@ -982,6 +1040,8 @@ def create_ticket():
                 }), 400
             source_cd_id = cd_notif.id
 
+    from common.sla import compute_sla_due_at
+    priority_val = data['priority'].strip()
     ticket = Ticket(
         ticket_id=_generate_ticket_id(),
         reporter_id=user.id,
@@ -992,7 +1052,7 @@ def create_ticket():
         service_group=data['service_group'].strip(),
         category=data['category'].strip(),
         fault_type=data['fault_type'].strip(),
-        priority=data['priority'].strip(),
+        priority=priority_val,
         work_description=data['work_description'].strip(),
         property_name=data.get('property_name', '').strip() or None,
         zone=data.get('zone', '').strip() or None,
@@ -1002,6 +1062,8 @@ def create_ticket():
         projected_cost=float(data['projected_cost']) if data.get('projected_cost') else None,
         source_inspection_notif_id=source_cd_id,
         status='pending_supervisor',
+        sla_due_at=compute_sla_due_at(priority_val),
+        payment_status='n_a',
     )
     db.session.add(ticket)
     db.session.flush()  # get ticket.id
@@ -1072,6 +1134,9 @@ def ticket_detail(ticket_id):
     base_cost   = mp_total + mat_total
     actual_price = round(base_cost * (1 + overhead / 100.0), 2)
 
+    from common.sla import sla_state_for_ticket
+    sla_state = sla_state_for_ticket(ticket)
+
     return render_template(
         'ticket_detail.html',
         user=user,
@@ -1092,6 +1157,7 @@ def ticket_detail(ticket_id):
         supervisor_team=[],  # legacy template var (unused)
         base_cost=base_cost,
         actual_price=actual_price,
+        sla_state=sla_state,
         sidebar_stats=_get_sidebar_stats(user),
         active_page='ticketing',
     )
@@ -1508,6 +1574,10 @@ def add_material(ticket_id):
     )
     db.session.add(mat)
     _recalc_total_cost(ticket)
+    try:
+        _deduct_store_stock(name, qty)
+    except Exception as exc:
+        logger.warning('Store stock deduct failed for %s: %s', name, exc)
     db.session.commit()
 
     return jsonify({'success': True, 'material': mat.to_dict(), 'total_cost': ticket.total_cost})
@@ -1559,6 +1629,10 @@ def add_materials_bulk(ticket_id):
         )
         db.session.add(mat)
         added.append(mat)
+        try:
+            _deduct_store_stock(name, qty)
+        except Exception as exc:
+            logger.warning('Store stock deduct failed for %s: %s', name, exc)
 
     _recalc_total_cost(ticket)
     db.session.commit()
@@ -1575,6 +1649,214 @@ def add_materials_bulk(ticket_id):
 # ---------------------------------------------------------------------------
 # Delete material
 # ---------------------------------------------------------------------------
+
+
+@ticketing_bp.route('/api/tickets/<string:ticket_id>/materials/from-set', methods=['POST'])
+@jwt_required()
+def add_materials_from_set(ticket_id):
+    """Expand a MaterialSet onto the ticket as confirmed lines (prices included for cost)."""
+    from app.models import MaterialSet
+    user = _current_user()
+    if not _has_access(user):
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+    ticket = Ticket.query.filter_by(ticket_id=ticket_id).first_or_404()
+    deny = _api_forbid_unless_ticket_visible(user, ticket)
+    if deny:
+        return deny
+    data = request.get_json(silent=True) or {}
+    set_id = (data.get('set_id') or '').strip()
+    mset = MaterialSet.query.filter_by(set_id=set_id, is_active=True).first()
+    if not mset:
+        return jsonify({'success': False, 'error': 'Material set not found'}), 404
+    added = []
+    for it in mset.items:
+        qty = float(it.quantity or 1)
+        unit_price = float(it.unit_price or 0)
+        mat = TicketMaterial(
+            ticket_id=ticket.id,
+            material_name=it.material_name,
+            quantity=qty,
+            unit=it.unit,
+            unit_price=unit_price,
+            total_price=round(qty * unit_price, 2),
+            from_procurement=bool(it.procurement_ref),
+            procurement_ref=it.procurement_ref,
+            notes=f'Set: {mset.name} ({mset.set_id})',
+        )
+        db.session.add(mat)
+        added.append(mat)
+        try:
+            _deduct_store_stock(it.material_name, qty)
+        except Exception as exc:
+            logger.warning('Store stock deduct failed for %s: %s', it.material_name, exc)
+    _recalc_total_cost(ticket)
+    db.session.commit()
+    return jsonify({
+        'success': True, 'added': len(added),
+        'materials': [m.to_dict() for m in added],
+        'total_cost': ticket.total_cost,
+    })
+
+
+@ticketing_bp.route('/api/tickets/<string:ticket_id>/materials/adhoc', methods=['GET'])
+@jwt_required()
+def list_adhoc_materials(ticket_id):
+    from app.models import AdHocMaterialRequest
+    user = _current_user()
+    if not _has_access(user):
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+    ticket = Ticket.query.filter_by(ticket_id=ticket_id).first_or_404()
+    deny = _api_forbid_unless_ticket_visible(user, ticket)
+    if deny:
+        return deny
+    rows = AdHocMaterialRequest.query.filter_by(ticket_id=ticket.id).order_by(
+        AdHocMaterialRequest.id.desc()
+    ).all()
+    see_price = user.role == 'admin' or bool(getattr(user, 'access_finance', False)) or str(
+        getattr(user, 'designation', '') or ''
+    ).lower() in ('general_manager', 'operations_manager', 'finance', 'finance_manager')
+    return jsonify({
+        'success': True,
+        'requests': [r.to_dict(include_prices=see_price) for r in rows],
+    })
+
+
+@ticketing_bp.route('/api/tickets/<string:ticket_id>/materials/adhoc', methods=['POST'])
+@jwt_required()
+def create_adhoc_material(ticket_id):
+    """Ad-hoc material request — not attached / not priced until OM then GM approve."""
+    import uuid
+    from app.models import AdHocMaterialRequest
+    user = _current_user()
+    if not _has_access(user):
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+    ticket = Ticket.query.filter_by(ticket_id=ticket_id).first_or_404()
+    deny = _api_forbid_unless_ticket_visible(user, ticket)
+    if deny:
+        return deny
+    data = request.get_json(silent=True) or {}
+    name = (data.get('material_name') or '').strip()
+    if not name:
+        return jsonify({'success': False, 'error': 'Material name required'}), 400
+    try:
+        qty = float(data.get('quantity', 1))
+        unit_price = float(data.get('unit_price', 0) or 0)
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'error': 'Invalid quantity/price'}), 400
+    req = AdHocMaterialRequest(
+        request_id='ADH-' + uuid.uuid4().hex[:8].upper(),
+        ticket_id=ticket.id,
+        material_name=name,
+        quantity=qty,
+        unit=(data.get('unit') or '').strip() or None,
+        unit_price=unit_price,
+        reason=(data.get('reason') or '').strip() or None,
+        status='pending',
+        requested_by_id=user.id,
+    )
+    db.session.add(req)
+    db.session.commit()
+    return jsonify({'success': True, 'request': req.to_dict()}), 201
+
+
+def _is_om(user):
+    if not user:
+        return False
+    if user.role == 'admin':
+        return True
+    return str(getattr(user, 'designation', '') or '').lower() == 'operations_manager'
+
+
+def _is_gm(user):
+    if not user:
+        return False
+    if user.role == 'admin':
+        return True
+    return str(getattr(user, 'designation', '') or '').lower() == 'general_manager'
+
+
+@ticketing_bp.route('/api/tickets/<string:ticket_id>/materials/adhoc/<int:req_id>/approve-om', methods=['POST'])
+@jwt_required()
+def approve_adhoc_om(ticket_id, req_id):
+    from datetime import datetime, timezone
+    from app.models import AdHocMaterialRequest
+    user = _current_user()
+    if not _is_om(user):
+        return jsonify({'success': False, 'error': 'Operations Manager approval required'}), 403
+    ticket = Ticket.query.filter_by(ticket_id=ticket_id).first_or_404()
+    req = db.session.get(AdHocMaterialRequest, req_id)
+    if not req or req.ticket_id != ticket.id:
+        return jsonify({'success': False, 'error': 'Request not found'}), 404
+    if req.status not in ('pending',):
+        return jsonify({'success': False, 'error': f'Cannot OM-approve from status {req.status}'}), 400
+    req.status = 'om_approved'
+    req.om_approved_by_id = user.id
+    req.om_approved_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    db.session.commit()
+    return jsonify({'success': True, 'request': req.to_dict()})
+
+
+@ticketing_bp.route('/api/tickets/<string:ticket_id>/materials/adhoc/<int:req_id>/approve-gm', methods=['POST'])
+@jwt_required()
+def approve_adhoc_gm(ticket_id, req_id):
+    """GM final approval — attaches TicketMaterial and includes price in totals."""
+    from datetime import datetime, timezone
+    from app.models import AdHocMaterialRequest
+    user = _current_user()
+    if not _is_gm(user):
+        return jsonify({'success': False, 'error': 'General Manager approval required'}), 403
+    ticket = Ticket.query.filter_by(ticket_id=ticket_id).first_or_404()
+    req = db.session.get(AdHocMaterialRequest, req_id)
+    if not req or req.ticket_id != ticket.id:
+        return jsonify({'success': False, 'error': 'Request not found'}), 404
+    if req.status != 'om_approved':
+        return jsonify({'success': False, 'error': 'OM approval required before GM'}), 400
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    req.status = 'approved'
+    req.gm_approved_by_id = user.id
+    req.gm_approved_at = now
+    req.decided_by_id = user.id
+    req.decided_at = now
+    qty = float(req.quantity or 1)
+    unit_price = float(req.unit_price or 0)
+    mat = TicketMaterial(
+        ticket_id=ticket.id,
+        material_name=req.material_name,
+        quantity=qty,
+        unit=req.unit,
+        unit_price=unit_price,
+        total_price=round(qty * unit_price, 2),
+        from_procurement=False,
+        notes=f'Ad-hoc approved ({req.request_id})',
+    )
+    db.session.add(mat)
+    _recalc_total_cost(ticket)
+    db.session.commit()
+    return jsonify({'success': True, 'request': req.to_dict(), 'material': mat.to_dict(), 'total_cost': ticket.total_cost})
+
+
+@ticketing_bp.route('/api/tickets/<string:ticket_id>/materials/adhoc/<int:req_id>/reject', methods=['POST'])
+@jwt_required()
+def reject_adhoc_material(ticket_id, req_id):
+    from datetime import datetime, timezone
+    from app.models import AdHocMaterialRequest
+    user = _current_user()
+    if not (_is_om(user) or _is_gm(user)):
+        return jsonify({'success': False, 'error': 'OM or GM required to reject'}), 403
+    ticket = Ticket.query.filter_by(ticket_id=ticket_id).first_or_404()
+    req = db.session.get(AdHocMaterialRequest, req_id)
+    if not req or req.ticket_id != ticket.id:
+        return jsonify({'success': False, 'error': 'Request not found'}), 404
+    if req.status in ('approved', 'rejected'):
+        return jsonify({'success': False, 'error': 'Already finalized'}), 400
+    data = request.get_json(silent=True) or {}
+    req.status = 'rejected'
+    req.decided_by_id = user.id
+    req.decided_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    req.decision_note = (data.get('note') or '').strip() or None
+    db.session.commit()
+    return jsonify({'success': True, 'request': req.to_dict()})
+
 
 @ticketing_bp.route('/api/tickets/<string:ticket_id>/materials/<int:mat_id>', methods=['DELETE'])
 @jwt_required()
@@ -2876,13 +3158,20 @@ def settings_list_projects():
     user = _current_user()
     if not _has_access(user):
         return jsonify({'success': False}), 403
+    see_value = _can_see_project_value(user)
     projects = (
         TicketProject.query.options(joinedload(TicketProject.bd_project))
         .filter_by(is_active=True)
         .order_by(TicketProject.sort_order, TicketProject.name)
         .all()
     )
-    return jsonify({'success': True, 'projects': [p.to_dict(with_property_count=True) for p in projects]})
+    return jsonify({
+        'success': True,
+        'can_see_project_value': see_value,
+        'projects': [
+            p.to_dict(with_property_count=True, include_value=see_value) for p in projects
+        ],
+    })
 
 
 @ticketing_bp.route('/api/settings/projects', methods=['POST'])
@@ -2910,9 +3199,12 @@ def settings_create_project():
     if err:
         return jsonify({'success': False, 'error': err}), 400
 
-    val_f, err = _parse_project_value(data.get('project_value'))
-    if err:
-        return jsonify({'success': False, 'error': err}), 400
+    see_value = _can_see_project_value(user)
+    val_f = None
+    if see_value and 'project_value' in data:
+        val_f, err = _parse_project_value(data.get('project_value'))
+        if err:
+            return jsonify({'success': False, 'error': err}), 400
 
     p = TicketProject(
         name=name,
@@ -2922,11 +3214,16 @@ def settings_create_project():
         bd_project_id=bid,
         project_end_date=end_f,
         renewal_date=renew_f,
-        project_value=val_f,
+        project_code=(data.get('project_code') or '').strip() or None,
+        project_value=val_f if see_value else None,
     )
     db.session.add(p)
     db.session.commit()
-    return jsonify({'success': True, 'project': p.to_dict(with_property_count=True)}), 201
+    return jsonify({
+        'success': True,
+        'can_see_project_value': see_value,
+        'project': p.to_dict(with_property_count=True, include_value=see_value),
+    }), 201
 
 
 @ticketing_bp.route('/api/settings/projects/<int:pid>', methods=['PUT'])
@@ -2964,7 +3261,10 @@ def settings_update_project(pid):
             return jsonify({'success': False, 'error': err}), 400
         p.project_end_date = end_f
         p.renewal_date = renew_f
-    if 'project_value' in data:
+    if 'project_code' in data:
+        p.project_code = (data.get('project_code') or '').strip() or None
+    see_value = _can_see_project_value(user)
+    if see_value and 'project_value' in data:
         val_f, err = _parse_project_value(data.get('project_value'))
         if err:
             return jsonify({'success': False, 'error': err}), 400
@@ -2972,7 +3272,11 @@ def settings_update_project(pid):
     if 'is_active' in data:
         p.is_active = bool(data['is_active'])
     db.session.commit()
-    return jsonify({'success': True, 'project': p.to_dict(with_property_count=True)})
+    return jsonify({
+        'success': True,
+        'can_see_project_value': see_value,
+        'project': p.to_dict(with_property_count=True, include_value=see_value),
+    })
 
 
 @ticketing_bp.route('/api/settings/projects/<int:pid>', methods=['DELETE'])
@@ -2999,10 +3303,11 @@ def settings_location_tree():
     if not _has_access(user):
         return jsonify({'success': False}), 403
 
+    see_value = _can_see_project_value(user)
     projects = TicketProject.query.filter_by(is_active=True).order_by(TicketProject.name).all()
     tree = []
     for proj in projects:
-        pd = proj.to_dict()
+        pd = proj.to_dict(include_value=see_value)
         pd['properties'] = []
         for prop in proj.properties.filter_by(is_active=True).order_by(TicketProperty.name):
             proD = prop.to_dict()
@@ -3034,7 +3339,12 @@ def settings_location_tree():
             proD['zones'].append(zD)
         standalone_list.append(proD)
 
-    return jsonify({'success': True, 'tree': tree, 'standalone_properties': standalone_list})
+    return jsonify({
+        'success': True,
+        'can_see_project_value': see_value,
+        'tree': tree,
+        'standalone_properties': standalone_list,
+    })
 
 
 @ticketing_bp.route('/api/settings/properties', methods=['POST'])
@@ -3701,6 +4011,12 @@ def finance_confirm_ticket(ticket_id):
     ticket.finance_confirmed_at = datetime.now(timezone.utc).replace(tzinfo=None)
     ticket.finance_confirmed_by_id = user.id
     ticket.finance_invoice_ref = invoice_ref
+    if ticket.is_chargeable or ticket.selling_price or ticket.actual_price:
+        ticket.payment_status = 'unpaid'
+        if not ticket.payment_due_date:
+            ticket.payment_due_date = (
+                datetime.now(timezone.utc).replace(tzinfo=None).date() + timedelta(days=30)
+            )
 
     if ticket.status == 'pending_gm_approval':
         # Finance finished first — GM approval is the final gate, so don't close yet.
@@ -3746,6 +4062,48 @@ def finance_confirm_ticket(ticket_id):
     db.session.commit()
     _send_completion_emails(ticket, user, custom_to=custom_to, custom_cc=custom_cc, custom_body=custom_body)
     return jsonify({'success': True, 'status': 'closed', 'invoice_ref': invoice_ref})
+
+
+@ticketing_bp.route('/api/tickets/<string:ticket_id>/mark-paid', methods=['POST'])
+@jwt_required()
+def mark_ticket_paid(ticket_id):
+    """Finance marks invoice paid → confirmation email to job owner."""
+    user = _current_user()
+    _desig = (getattr(user, 'designation', None) or '').strip().lower()
+    _may = bool(user and (
+        user.role == 'admin'
+        or _desig in ('finance', 'general_manager', 'operations_manager')
+        or getattr(user, 'access_finance', False)
+        or getattr(user, 'access_ticketing', False)
+    ))
+    if not _may:
+        return jsonify({'success': False, 'error': 'You do not have permission to mark invoices paid'}), 403
+
+    ticket = Ticket.query.filter_by(ticket_id=ticket_id).first_or_404()
+    if ticket.payment_status == 'paid':
+        return jsonify({'success': True, 'payment_status': 'paid', 'message': 'Already marked paid'})
+
+    ticket.payment_status = 'paid'
+    ticket.paid_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    ticket.paid_by_id = user.id
+    _add_note(
+        ticket, user,
+        f'Payment marked as paid by {user.full_name}. '
+        f'{("ERP ref: " + ticket.finance_invoice_ref + ". ") if ticket.finance_invoice_ref else ""}',
+        note_type='status_change',
+    )
+    db.session.commit()
+    try:
+        from app.tasks.reminder_jobs import send_paid_confirmation_for_ticket
+        send_paid_confirmation_for_ticket(ticket, marked_by=user)
+        db.session.commit()
+    except Exception as exc:
+        logger.warning('Paid confirmation email failed for %s: %s', ticket_id, exc)
+    return jsonify({
+        'success': True,
+        'payment_status': 'paid',
+        'paid_at': ticket.paid_at.isoformat() if ticket.paid_at else None,
+    })
 
 
 # ---------------------------------------------------------------------------

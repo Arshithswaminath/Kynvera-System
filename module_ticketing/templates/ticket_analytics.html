@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Analytics — Amaan</title>
+  <title>Analytics — Kynvera</title>
   {% include 'partials/caveat_font.html' ignore missing %}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
@@ -62,7 +62,7 @@
     .an-bar-row { display:grid; grid-template-columns: 150px 1fr 80px; gap:10px; align-items:center; padding:5px 0; }
     .an-bar-label { font-size:.78rem; color:#334155; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .an-bar-track { height:18px; background:#f1f5f9; border-radius:6px; overflow:hidden; }
-    .an-bar-fill { height:100%; border-radius:6px; background:linear-gradient(90deg,#d21725,#e8323f); }
+    .an-bar-fill { height:100%; border-radius:6px; background:linear-gradient(90deg,#ff8e68,#f97e54); }
     .an-bar-fill.muted { background:linear-gradient(90deg,#94a3b8,#cbd5e1); }
     .an-bar-fill.bottleneck { background:linear-gradient(90deg,#b91c1c,#ef4444); }
     .an-bar-val { font-size:.76rem; font-weight:700; color:#475569; text-align:right; font-variant-numeric:tabular-nums; }
@@ -70,7 +70,7 @@
 
     .an-empty { text-align:center; color:#94a3b8; font-size:.85rem; padding:26px 0; }
     .an-loading { text-align:center; color:#64748b; padding:40px 0; font-size:.88rem; }
-    .an-spin { width:30px; height:30px; border:3px solid #e2e8f0; border-top-color:#d21725; border-radius:50%; animation:anspin .8s linear infinite; margin:0 auto 12px; }
+    .an-spin { width:30px; height:30px; border:3px solid #e2e8f0; border-top-color:#ff8e68; border-radius:50%; animation:anspin .8s linear infinite; margin:0 auto 12px; }
     @keyframes anspin { to { transform:rotate(360deg); } }
 
     @media (max-width: 1000px) { .an-grid { grid-template-columns:1fr; } .an-kpi-row { grid-template-columns:repeat(2,1fr); } }
@@ -146,7 +146,7 @@
     const rows = d.breach.rows || [];
     const body = rows.length ? rows.map(r => `
       <tr>
-        <td><a href="{{ url_for('ticketing.dashboard') }}" style="color:#d21725;font-weight:700;text-decoration:none;">${esc(r.ticket_id)}</a></td>
+        <td><a href="{{ url_for('ticketing.dashboard') }}" style="color:#ff8e68;font-weight:700;text-decoration:none;">${esc(r.ticket_id)}</a></td>
         <td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(r.title)}</td>
         <td><span class="an-prio ${r.priority}">${esc(r.priority)}</span></td>
         <td>${esc(labelOf(d.meta.status_labels, r.status))}</td>

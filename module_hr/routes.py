@@ -10,6 +10,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy import or_
 from sqlalchemy.orm.attributes import flag_modified
 from app.models import db, User, Submission, Notification
+from app.auth.routes import rate_limit_exempt_if_available
 from common.form_data_utils import shallow_copy_form_data as _mutable_form_data
 from common.datetime_utils import (
     format_naive_utc_in_dubai,
@@ -53,7 +54,8 @@ from module_hr.hr_management_chain import (
 
 from module_hr.hr_signoff_activity import compute_hr_signoff_activity, hr_workflow_status_label
 from module_hr.hr_visibility import (
-    filter_hr_submissions_for_user,
+    filter_pending_hr_review_actionable,
+    pending_hr_review_sign_meta,
     user_has_visible_pending_hr_review,
     user_sees_org_wide_hr_inbox,
 )
@@ -549,8 +551,23 @@ def hr_dashboard():
     is_gm = user.designation == 'general_manager'
     if not _role_is_admin(user) and not is_hr and not is_gm:
         return redirect('/hr/my-requests')
+
+    org_wide_hr = user_sees_org_wide_hr_inbox(user)
+    is_admin = _role_is_admin(user)
+    show_org_hr_workflows = bool(org_wide_hr or is_admin)
+    show_gm_workflows = bool(is_admin or is_gm)
+    # Personal Pending / Approved for staff with module access who are not org HR/GM/admin
+    show_my_forms_tracking = not org_wide_hr and not is_gm and not is_admin
     
-    return render_template('hr_dashboard.html', user=user, supported_docx_forms=get_supported_docx_forms(), supported_pdf_forms=get_supported_pdf_forms())
+    return render_template(
+        'hr_dashboard.html',
+        user=user,
+        supported_docx_forms=get_supported_docx_forms(),
+        supported_pdf_forms=get_supported_pdf_forms(),
+        show_org_hr_workflows=show_org_hr_workflows,
+        show_gm_workflows=show_gm_workflows,
+        show_my_forms_tracking=show_my_forms_tracking,
+    )
 
 
 @hr_bp.route('/pending-review')
@@ -880,28 +897,64 @@ def submit_hr_form():
 
 
 _MY_HR_APPROVED_STATUSES = frozenset({'approved', 'completed'})
+_MY_HR_REVOKED_STATUSES = frozenset({'withdrawn'})
 
 
 def _classify_own_hr_status(status: str) -> str:
-    """Return pending | approved | rejected for the submitter's own forms."""
-    st = (status or '').strip()
+    """Return pending | approved | rejected | revoked for the submitter's own forms."""
+    st = (status or '').strip().lower()
     if st in _MY_HR_APPROVED_STATUSES:
         return 'approved'
+    if st in _MY_HR_REVOKED_STATUSES:
+        return 'revoked'
     if st == 'rejected' or st == 'closed_by_admin':
         return 'rejected'
     return 'pending'
 
 
+def _own_hr_can_revoke(user: User, submission: Submission) -> bool:
+    if not user or not submission:
+        return False
+    if submission.user_id != user.id:
+        return False
+    if getattr(submission, 'status', None) == 'draft':
+        return False
+    mt = (submission.module_type or '')
+    if not isinstance(mt, str) or not mt.startswith('hr_'):
+        return False
+    ws = str(getattr(submission, 'workflow_status', '') or '').strip().lower()
+    if ws in ('withdrawn', 'closed_by_admin'):
+        return False
+    return True
+
+
+def _hr_inbox_can_revoke(user: User, submission: Submission) -> bool:
+    """Org-wide HR may revoke non-terminal HR forms from the Pending HR Review inbox."""
+    if not user or not submission:
+        return False
+    if not user_sees_org_wide_hr_inbox(user):
+        return False
+    if getattr(submission, 'status', None) == 'draft':
+        return False
+    mt = (submission.module_type or '')
+    if not isinstance(mt, str) or not mt.startswith('hr_'):
+        return False
+    ws = str(getattr(submission, 'workflow_status', '') or '').strip().lower()
+    if ws in ('withdrawn', 'closed_by_admin'):
+        return False
+    return True
+
+
 @hr_bp.route('/api/my-submissions')
 @jwt_required()
 def get_my_submissions():
-    """Get current user's own HR submissions (optional ?view=pending|approved|rejected|all)."""
+    """Get current user's own HR submissions (optional ?view=pending|approved|revoked|rejected|all)."""
     user = get_current_user()
     if not user:
         return jsonify({'error': 'User not found'}), 404
 
     view = (request.args.get('view') or 'all').strip().lower()
-    if view not in ('all', 'pending', 'approved', 'rejected'):
+    if view not in ('all', 'pending', 'approved', 'rejected', 'revoked'):
         view = 'all'
 
     submissions = Submission.query.filter(
@@ -909,7 +962,7 @@ def get_my_submissions():
         Submission.user_id == user.id
     ).order_by(Submission.created_at.desc()).all()
 
-    pending_n = approved_n = rejected_n = 0
+    pending_n = approved_n = rejected_n = revoked_n = 0
     filtered = []
     for s in submissions:
         bucket = _classify_own_hr_status(s.workflow_status)
@@ -917,10 +970,18 @@ def get_my_submissions():
             pending_n += 1
         elif bucket == 'approved':
             approved_n += 1
+        elif bucket == 'revoked':
+            revoked_n += 1
         else:
             rejected_n += 1
         if view == 'all' or bucket == view:
             filtered.append(s)
+
+    out = []
+    for s in filtered:
+        row = s.to_dict()
+        row['can_revoke_hr'] = _own_hr_can_revoke(user, s)
+        out.append(row)
 
     return jsonify({
         'success': True,
@@ -929,9 +990,10 @@ def get_my_submissions():
             'pending': pending_n,
             'approved': approved_n,
             'rejected': rejected_n,
+            'revoked': revoked_n,
             'total': len(submissions),
         },
-        'submissions': [s.to_dict() for s in filtered],
+        'submissions': out,
     })
 
 
@@ -955,6 +1017,8 @@ def get_user_permissions():
         'success': True,
         'permissions': {
             'can_review_hr': can_review_hr,
+            # Count-independent: used to always show Pending/Approved cards even when empty
+            'show_org_hr_workflows': bool(org_wide_hr or is_admin),
             'can_approve_gm': is_admin or is_gm,
             'is_admin': is_admin,
             'full_access': is_admin,
@@ -1340,7 +1404,7 @@ def my_mgmt_signoffs():
 @hr_bp.route('/api/pending-hr-review')
 @jwt_required()
 def get_pending_hr_review():
-    """Get submissions pending HR review (org-wide for HR managers; personalized otherwise)."""
+    """Get submissions pending HR review (org-wide for HR managers; assignees otherwise)."""
     user = get_current_user()
     if not user:
         return jsonify({'error': 'User not found'}), 404
@@ -1350,7 +1414,7 @@ def get_pending_hr_review():
         Submission.workflow_status.in_(['hr_review', WF_MGMT_HR]),
     ).order_by(Submission.created_at.desc()).all()
 
-    visible = filter_hr_submissions_for_user(user, submissions)
+    visible = filter_pending_hr_review_actionable(user, submissions)
     if not user_sees_org_wide_hr_inbox(user) and not visible:
         return jsonify({'error': 'Access denied'}), 403
 
@@ -1361,12 +1425,75 @@ def get_pending_hr_review():
         if submitter:
             data['submitter_name'] = submitter.full_name or submitter.username
             data['submitter_email'] = submitter.email
+        data['can_revoke_hr'] = _own_hr_can_revoke(user, s)
+        data['can_hr_revoke'] = _hr_inbox_can_revoke(user, s)
+        data['can_revoke'] = bool(data['can_revoke_hr'] or data['can_hr_revoke'])
+        meta = pending_hr_review_sign_meta(user, s)
+        data['can_sign'] = bool(meta.get('can_sign'))
+        data['sign_mode'] = meta.get('sign_mode')
         result.append(data)
 
     return jsonify({
         'success': True,
         'submissions': result
     })
+
+
+@hr_bp.route('/api/revoked-hr-submissions')
+@jwt_required()
+def get_revoked_hr_submissions():
+    """Org-wide HR: withdrawn HR forms kept as history (recent)."""
+    user = get_current_user()
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    if not user_sees_org_wide_hr_inbox(user):
+        return jsonify({'error': 'Access denied'}), 403
+
+    submissions = (
+        Submission.query.filter(
+            Submission.module_type.like('hr_%'),
+            Submission.workflow_status == 'withdrawn',
+        )
+        .order_by(Submission.updated_at.desc())
+        .limit(100)
+        .all()
+    )
+
+    result = []
+    for s in submissions:
+        data = s.to_dict()
+        submitter = db.session.get(User, s.user_id)
+        if submitter:
+            data['submitter_name'] = submitter.full_name or submitter.username
+        fd = s.form_data if isinstance(s.form_data, dict) else {}
+        data['revoke_comment'] = (fd.get('revoke_comment') or '').strip()
+        data['revoked_at'] = fd.get('revoked_at') or fd.get('withdrawn_at')
+        data['revoked_by_display'] = (
+            fd.get('revoked_by_display') or fd.get('withdrawn_by_display') or ''
+        ).strip()
+        data['revoked_by_role'] = (fd.get('revoked_by_role') or '').strip()
+        result.append(data)
+
+    return jsonify({
+        'success': True,
+        'submissions': result,
+    })
+
+
+@hr_bp.route('/api/submissions/<submission_id>/revoke', methods=['POST'])
+@jwt_required()
+def hr_api_revoke_submission(submission_id):
+    """HR-module alias of workflow revoke/withdraw (same impl; inbox-friendly URL)."""
+    from app.workflow.routes import _revoke_hr_submission_impl
+
+    try:
+        return _revoke_hr_submission_impl(submission_id)
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(
+            'Error revoking HR submission via /hr/api: %s', str(e), exc_info=True
+        )
+        return jsonify({'success': False, 'error': 'Failed to revoke submission'}), 500
 
 
 @hr_bp.route('/api/pending-gm-approval')
@@ -1427,6 +1554,9 @@ def get_approved_hr_submissions():
         submitter = db.session.get(User, s.user_id)
         if submitter:
             data['submitter_name'] = submitter.full_name or submitter.username
+        data['can_revoke_hr'] = _own_hr_can_revoke(user, s)
+        data['can_hr_revoke'] = _hr_inbox_can_revoke(user, s)
+        data['can_revoke'] = bool(data['can_revoke_hr'] or data['can_hr_revoke'])
         result.append(data)
     
     return jsonify({
@@ -1744,9 +1874,10 @@ def get_notifications():
 
 
 @hr_bp.route('/api/notifications/unread-count')
+@rate_limit_exempt_if_available
 @jwt_required()
 def get_unread_count():
-    """Get count of unread notifications"""
+    """Get count of unread notifications (polled by navbar; exempt from default limit)."""
     user = get_current_user()
     if not user:
         return jsonify({'error': 'User not found'}), 404
@@ -1789,3 +1920,12 @@ def mark_all_notifications_read():
     db.session.commit()
     
     return jsonify({'success': True})
+
+
+# Leave balances API (Attendance lives under Operations)
+from module_hr.attendance_api import register_attendance_routes
+register_attendance_routes(hr_bp)
+
+# Hiring Document Tracker (standalone checklist under /hr/hiring)
+from .hiring_documents import register_hiring_document_routes
+register_hiring_document_routes(hr_bp)

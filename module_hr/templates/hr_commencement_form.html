@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
   
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
-<title>Commencement Form — INJAAZ</title>
+<title>Commencement Form — Kynvera</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
@@ -89,7 +89,7 @@
             <h1>Commencement Form</h1>
             <p class="hd-sub">AMAAN FACILITY MANAGEMENT</p>
           </div>
-          <img src="{{ url_for('static', filename='logo.png') }}" alt="AMAAN" class="hd-logo">
+          <img src="{{ url_for('static', filename='images/kynvera/kynvera-wordmark.png') }}" alt="Kynvera" class="hd-logo">
         </div>
 
         <form id="hrForm">
@@ -133,7 +133,7 @@
               </section>
               <p class="doc-intro" style="font-size:.85rem;margin-top:1rem;">If you need assistance with Salary letter required to open new bank account, please forward an email to HR Department at joana@ajmanholding.ae</p>
               <div class="step-nav">
-                <button type="button" class="btn-ghost hr-comm-save-draft-btn" style="font-weight:600;border:1px solid var(--bd,#dde8e2)">Save progress</button>
+                <button type="button" class="btn-ghost hr-comm-save-draft-btn" style="font-weight:600;border:1px solid var(--bd,#e1e1e4)">Save progress</button>
                 <button type="button" class="btn-next" onclick="goToStep2()">Continue to Step 2 <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg></button>
               </div>
             </div>
@@ -166,7 +166,7 @@
                     <button type="button" class="btn-ghost" id="repOffSignerAdd">Add</button>
                   </div>
                   <div id="repOffSignerChips" style="margin-top:.4rem;display:flex;flex-wrap:wrap;gap:.2rem"></div>
-                  <p class="doc-intro" style="font-size:.8rem;margin-top:.35rem;color:var(--muted,#64748b)">Select exactly one colleague with an Amaan account — you cannot sign on their behalf here.</p>
+                  <p class="doc-intro" style="font-size:.8rem;margin-top:.35rem;color:var(--muted,#64748b)">Select exactly one colleague with a Kynvera account — you cannot sign on their behalf here.</p>
                 </div>
               </section>
               <div class="step-nav">
@@ -274,7 +274,7 @@ document.getElementById('hrForm').addEventListener('submit',async e=>{
   const fd=new FormData(e.target),data=Object.fromEntries(fd.entries());
   if(!data.employee_signature||!String(data.employee_signature).startsWith('data:image')){alert('Please add your Employee signature before submitting.');return}
   if(reporting_officer_signer_ids.length!==1){
-    alert('Select exactly one reporting officer with an Amaan account — they must sign on their own device (you cannot sign for them).');
+    alert('Select exactly one reporting officer with a Kynvera account — they must sign on their own device (you cannot sign for them).');
     return;
   }
   data.reporting_officer_signer_ids=[...reporting_officer_signer_ids];

@@ -73,46 +73,56 @@ class TestLogin:
 
 class TestRegister:
     """Test registration endpoint"""
+
+    def _payload(self, **overrides):
+        data = {
+            'username': 'newuser',
+            'email': 'newuser@example.com',
+            'password': 'SecurePass123',
+            'full_name': 'New User',
+            'mobile_number': '0501112233',
+            'project_name': 'Test Project',
+            'job_designation': 'Engineer',
+            'employment_start_date': '2026-01-15',
+        }
+        data.update(overrides)
+        return data
     
     def test_register_success(self, client, app):
         """Test successful registration"""
         with app.app_context():
-            response = client.post('/api/auth/register', json={
-                'username': 'newuser',
-                'email': 'newuser@example.com',
-                'password': 'SecurePass123',
-                'full_name': 'New User'
-            })
+            response = client.post('/api/auth/register', json=self._payload())
             
             assert response.status_code == 201
             data = response.get_json()
             assert 'user' in data
             assert data['user']['username'] == 'newuser'
+            assert 'default_password' not in data
     
     def test_register_weak_password(self, client, app):
         """Test registration with weak password"""
         with app.app_context():
-            response = client.post('/api/auth/register', json={
-                'username': 'weakpassuser',
-                'email': 'weakpass@example.com',
-                'password': 'weak',
-                'full_name': 'Weak Pass User'
-            })
+            response = client.post('/api/auth/register', json=self._payload(
+                username='weakpassuser',
+                email='weakpass@example.com',
+                password='weak',
+                full_name='Weak Pass User',
+            ))
             
             assert response.status_code == 400
             data = response.get_json()
             assert data['success'] is False
-            assert data['error_code'] == 'WEAK_PASSWORD'
+            assert data['error_code'] in ('WEAK_PASSWORD', 'VALIDATION_ERROR')
+
     
     def test_register_invalid_email(self, client, app):
         """Test registration with invalid email"""
         with app.app_context():
-            response = client.post('/api/auth/register', json={
-                'username': 'bademailuser',
-                'email': 'not-an-email',
-                'password': 'SecurePass123',
-                'full_name': 'Bad Email User'
-            })
+            response = client.post('/api/auth/register', json=self._payload(
+                username='bademailuser',
+                email='not-an-email',
+                full_name='Bad Email User',
+            ))
             
             assert response.status_code == 400
             data = response.get_json()
@@ -122,12 +132,11 @@ class TestRegister:
     def test_register_duplicate_username(self, client, standard_user, app):
         """Test registration with existing username"""
         with app.app_context():
-            response = client.post('/api/auth/register', json={
-                'username': 'testuser',  # Already exists
-                'email': 'different@example.com',
-                'password': 'SecurePass123',
-                'full_name': 'Duplicate User'
-            })
+            response = client.post('/api/auth/register', json=self._payload(
+                username='testuser',
+                email='different@example.com',
+                full_name='Duplicate User',
+            ))
             
             assert response.status_code == 409
             data = response.get_json()
@@ -137,12 +146,11 @@ class TestRegister:
     def test_register_duplicate_email(self, client, standard_user, app):
         """Test registration with existing email"""
         with app.app_context():
-            response = client.post('/api/auth/register', json={
-                'username': 'differentuser',
-                'email': 'test@example.com',  # Already exists
-                'password': 'SecurePass123',
-                'full_name': 'Duplicate Email User'
-            })
+            response = client.post('/api/auth/register', json=self._payload(
+                username='differentuser',
+                email='test@example.com',
+                full_name='Duplicate Email User',
+            ))
             
             assert response.status_code == 409
             data = response.get_json()

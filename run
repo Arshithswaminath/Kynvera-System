@@ -1,3 +1,11 @@
 #!/bin/bash
-source "$(dirname "$0")/venv/bin/activate"
-python "$(dirname "$0")/Amaan.py"
+# Local run — same create_app path as production WSGI (kynver via wsgi).
+# Default PORT=5001: macOS AirPlay/Control Center often owns 5000.
+# Do not use `python -c` here: Flask's debug reloader re-execs argv[0] as a
+# file and crashes with "can't open file '.../-c'".
+ROOT="$(cd "$(dirname "$0")" && pwd)"
+source "$ROOT/venv/bin/activate"
+export FLASK_ENV="${FLASK_ENV:-development}"
+export PORT="${PORT:-5001}"
+cd "$ROOT"
+exec python -m flask --app kynver:create_app run --host 0.0.0.0 --port "$PORT" --debug

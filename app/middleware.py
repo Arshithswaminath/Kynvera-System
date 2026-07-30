@@ -93,6 +93,85 @@ def admin_required(fn):
     return wrapper
 
 
+_SALES_DESIGNATIONS = frozenset({'sales', 'business_development'})
+_SALES_OVERSIGHT_DESIGNATIONS = frozenset({'general_manager', 'operations_manager'})
+
+
+def user_has_sales_designation(user) -> bool:
+    """True when workflow designation is Sales (or legacy Business Development)."""
+    if not user:
+        return False
+    des = (getattr(user, 'designation', None) or '').strip().lower()
+    return des in _SALES_DESIGNATIONS
+
+
+def user_has_bd_access(user) -> bool:
+    """Sales module access: Admin / GM / Ops, or Sales designation + Sales flag."""
+    if not user or not getattr(user, 'is_active', False):
+        return False
+    if user.role == 'admin':
+        return True
+    des = (getattr(user, 'designation', None) or '').strip().lower()
+    # Company oversight — may open Sales without designation Sales
+    if des in _SALES_OVERSIGHT_DESIGNATIONS:
+        return True
+    # Regular salesperson / sales manager: designation Sales + module flag
+    if des not in _SALES_DESIGNATIONS:
+        return False
+    return bool(
+        getattr(user, 'access_business_development', False)
+        or getattr(user, 'access_sales_manager', False)
+    )
+
+
+def user_sees_all_bd_deals(user) -> bool:
+    """Elevated users see every salesperson's pipeline."""
+    if not user:
+        return False
+    if user.role == 'admin':
+        return True
+    des = (getattr(user, 'designation', None) or '').strip().lower()
+    if des in _SALES_OVERSIGHT_DESIGNATIONS:
+        return True
+    # Sales Manager only when they also have a Sales designation (gate above)
+    if bool(getattr(user, 'access_sales_manager', False)) and user_has_sales_designation(user):
+        return True
+    return False
+
+
+def user_can_prepare_quotations(user) -> bool:
+    """Admin, or Sales/BD user explicitly granted quotation prepare access."""
+    if not user or not getattr(user, 'is_active', False):
+        return False
+    if user.role == 'admin':
+        return True
+    if not user_has_bd_access(user):
+        return False
+    return bool(getattr(user, 'access_quotations', False))
+
+
+def bd_access_required(fn):
+    """Allow admin or Sales / BD module users (not only admin role)."""
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        try:
+            verify_jwt_in_request()
+            from flask_jwt_extended import get_jwt_identity
+            user_id = get_jwt_identity()
+            if not user_id:
+                return jsonify({'error': 'Unauthorized'}), 401
+            user = User.query.get(user_id)
+            if not user or not user.is_active:
+                return jsonify({'error': 'User not found or inactive'}), 403
+            if not user_has_bd_access(user):
+                return jsonify({'error': 'Sales module access required'}), 403
+            return fn(*args, **kwargs)
+        except Exception as e:
+            current_app.logger.error(f"BD access check error: {str(e)}")
+            return jsonify({'error': 'Unauthorized'}), 401
+    return wrapper
+
+
 def inspector_required(fn):
     """Decorator to check if user has inspector or admin role"""
     @wraps(fn)

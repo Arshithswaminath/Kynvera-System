@@ -11,12 +11,10 @@ from sqlalchemy import or_
 
 from app.models import Notification, User, db
 
-INSPECTION_MODULE_TYPES = frozenset({'hvac_mep', 'civil', 'cleaning'})
+INSPECTION_MODULE_TYPES = frozenset({'hvac_mep'})
 
 MODULE_DISPLAY = {
     'hvac_mep': 'Fire Systems',
-    'civil': 'Civil Works',
-    'cleaning': 'Cleaning Services',
 }
 
 
@@ -132,7 +130,7 @@ def _operations_managers():
 def _bd_reviewers():
     out = []
     for u in User.query.filter(User.is_active == True).all():  # noqa: E712
-        if u.is_bd_inspection_reviewer() or getattr(u, 'designation', None) == 'business_development':
+        if u.is_bd_inspection_reviewer() or getattr(u, 'designation', None) in ('sales', 'business_development'):
             out.append(u)
     return out
 

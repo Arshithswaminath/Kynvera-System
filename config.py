@@ -54,6 +54,14 @@ if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
 FLASK_ENV = os.getenv("FLASK_ENV", "development")
 DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 
+# Production signal used to fail closed on missing secrets and to force secure
+# cookies. True when FLASK_ENV/ENV say production, or when running on Render
+# (RENDER is set automatically) even if FLASK_ENV was left unset.
+_IS_PRODUCTION = (
+    (os.getenv("FLASK_ENV") or os.getenv("ENV") or "").strip().lower() in ("production", "prod")
+    or bool((os.getenv("RENDER") or "").strip())
+)
+
 # REDIS (for rate limiting and background tasks)
 # Strip whitespace — common copy/paste issue from Render/Upstash dashboards
 _redis = (os.getenv("REDIS_URL") or "").strip()
@@ -76,16 +84,17 @@ JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=_jwt_access_hours)
 JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=_jwt_refresh_days)
 # JWT Cookie Settings - Enable cookie-based authentication for HTML links
 JWT_TOKEN_LOCATION = ['headers', 'cookies']  # Read from both headers and cookies
-JWT_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "false").lower() == "true"  # HTTPS only in production
+JWT_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "true" if _IS_PRODUCTION else "false").lower() == "true"  # HTTPS only; forced on in production
 JWT_COOKIE_HTTPONLY = True  # Prevent XSS attacks
 JWT_COOKIE_SAMESITE = 'Lax'  # CSRF protection
 JWT_ACCESS_COOKIE_NAME = 'access_token_cookie'
 JWT_REFRESH_COOKIE_NAME = 'refresh_token_cookie'
-# Flask-JWT-Extended defaults JWT_COOKIE_CSRF_PROTECT=True. When True, POST requests that use
-# the access JWT from cookies require X-CSRF-TOKEN. Multipart uploads (DocHub) do not send it → 401.
-# The SPA uses Authorization: Bearer from localStorage; cookies are a fallback. Default off; set
-# JWT_COOKIE_CSRF_PROTECT=true in env only if you add CSRF headers to all API calls.
-JWT_COOKIE_CSRF_PROTECT = os.getenv("JWT_COOKIE_CSRF_PROTECT", "false").lower() == "true"
+# Flask-JWT-Extended CSRF for cookie-based JWTs. SPA uses Authorization: Bearer
+# (CSRF not required for header auth). Enable by default in production so
+# cookie-only POSTs cannot be forged; override with JWT_COOKIE_CSRF_PROTECT=false.
+_flask_env = (os.getenv("FLASK_ENV") or os.getenv("ENV") or "").strip().lower()
+_csrf_default = "true" if _flask_env == "production" else "false"
+JWT_COOKIE_CSRF_PROTECT = os.getenv("JWT_COOKIE_CSRF_PROTECT", _csrf_default).lower() == "true"
 
 # EMAIL (Optional - for HVAC module email reports)
 MAIL_SERVER = os.getenv("MAIL_SERVER")
@@ -118,8 +127,16 @@ ASSISTANT_LLM_ENABLED = (
 # Application
 APP_BASE_URL = os.getenv("APP_BASE_URL", "http://localhost:5000")
 
+# Kynvera Hub (portal) ↔ product apps (separate deployments / URLs)
+# On kynvera-main set KYNVERA_HUB_MODE=true (default when unset on portal branch via code).
+# Default true on kynvera-main (portal). Product branches set KYNVERA_HUB_MODE=false.
+KYNVERA_HUB_MODE = os.getenv("KYNVERA_HUB_MODE", "true").lower() in ("1", "true", "yes")
+KYNVERA_HOME_URL = (os.getenv("KYNVERA_HOME_URL") or "").rstrip("/")
+KYNVERA_FIRE_APP_URL = (os.getenv("KYNVERA_FIRE_APP_URL") or "").rstrip("/")
+KYNVERA_MUNICIPALITY_APP_URL = (os.getenv("KYNVERA_MUNICIPALITY_APP_URL") or "").rstrip("/")
+
 # Security
-SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "false").lower() == "true"
+SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "true" if _IS_PRODUCTION else "false").lower() == "true"
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
 

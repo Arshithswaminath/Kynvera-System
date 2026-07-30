@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+  <title>Project — Sales — Kynvera</title>
+  <meta name="theme-color" content="#125435">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/bd-project-detail.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/signature_modal.css') }}">
+  <style>
+:root {
+  --accent:#ff8e68; --accent-2:#f97e54;
+  --g900:#9a3609; --g800:#ff8e68; --g700:#e05f36; --g600:#f97e54; --g500:#f97e54;
+  --g400:#4db87e; --g300:#86d4a8; --g200:#c0ecd4; --g100:#e4f7ed; --g50:#f2fbf6;
+  --white:#fff; --ink:#0c1f17; --ink2:#1e3a2e; --muted:#62626b; --subtle:#9a9aa1;
+  --line:#e7e7e8; --bg:#f5faf7; --card:#fff;
+  --amber:#c97d0e; --amber-bg:#fef6e4; --rose:#c0392b; --rose-bg:#fdf0ee;
+  --blue:#1a5fa8; --blue-bg:#e8f0fb; --violet:#6b3fa0; --violet-bg:#f3edfc;
+  --r-xs:6px; --r-sm:10px; --r-md:14px; --r-lg:20px; --r-xl:28px;
+  --sh-xs:0 1px 3px rgba(255, 142, 104,.07); --sh-sm:0 2px 10px rgba(255, 142, 104,.09);
+  --sh-md:0 6px 24px rgba(255, 142, 104,.11); --sh-lg:0 16px 48px rgba(255, 142, 104,.14);
+  --sh-glow:0 0 0 3px rgba(255, 142, 104,.12);
+  --pd-nav-box:72px;
+  --pd-nav-top:calc(var(--pd-nav-box) + 1px);
+  --pd-side:220px;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display",system-ui,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+  background:var(--bg);color:var(--ink);min-height:100vh;overflow-x:hidden;font-size:15px;
+}
+body.has-main-nav{padding-top:var(--pd-nav-top)}
+body.has-main-nav .nav{border-bottom:none}
+body.has-main-nav .nav.scrolled{box-shadow:none}
+@media(max-width:768px){body{--pd-nav-box:56px}}
+@media(max-width:600px){body{--pd-nav-box:64px}}
+
+.pd-page{max-width:1280px;margin:0 auto;padding:1rem 1.25rem 2.5rem}
+.pd-back{
+  display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--muted);
+  text-decoration:none;margin-bottom:12px;min-height:44px;padding:4px 0;
+}
+.pd-back:hover{color:var(--g800)}
+
+.pd-hero{
+  background:#fff;border:1.5px solid var(--line);border-radius:var(--r-lg);padding:1.15rem 1.35rem;
+  box-shadow:var(--sh-xs);margin-bottom:14px;
+}
+.pd-hero-row{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+.pd-hero-main{min-width:0;flex:1}
+.pd-hero-kicker{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--subtle);margin-bottom:4px}
+.pd-hero-title{font-size:1.45rem;font-weight:800;letter-spacing:-.02em;line-height:1.2;color:var(--ink);word-break:break-word}
+.pd-hero-sub{font-size:14px;color:var(--muted);margin-top:4px}
+.pd-chip-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.pd-chip{
+  display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:999px;
+  font-size:12px;font-weight:600;background:var(--g50);color:var(--g800);border:1px solid var(--line);
+}
+.pd-hero-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.pd-btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  padding:9px 16px;border-radius:var(--r-sm);font-family:inherit;font-size:13px;font-weight:700;
+  cursor:pointer;border:1.5px solid transparent;min-height:44px;line-height:1;white-space:nowrap;
+  transition:background .15s,border-color .15s,color .15s;
+}
+.pd-btn-primary{background:var(--g800);color:#fff;border-color:var(--g800)}
+.pd-btn-primary:hover{background:var(--g700)}
+.pd-btn-ghost{background:#fff;color:var(--ink2);border-color:var(--line)}
+.pd-btn-ghost:hover{border-color:var(--g300);color:var(--g800);background:var(--bg)}
+.pd-btn-outline{background:#fff;color:var(--g800);border-color:var(--g300)}
+.pd-btn-outline:hover{background:var(--g50)}
+.pd-btn:disabled{opacity:.55;cursor:not-allowed}
+
+.pd-layout{display:grid;grid-template-columns:var(--pd-side) minmax(0,1fr);gap:14px;align-items:start}
+.pd-side{
+  position:sticky;top:calc(var(--pd-nav-top) + 10px);
+  background:#fff;border:1.5px solid var(--line);border-radius:var(--r-md);padding:10px;box-shadow:var(--sh-xs);
+}
+.pd-side-label{
+  font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--subtle);
+  padding:8px 10px 6px;
+}
+.pd-nav-item{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  width:100%;text-align:left;padding:10px 12px;border:none;background:transparent;
+  border-radius:10px;font-family:inherit;font-size:13.5px;font-weight:600;color:var(--ink2);
+  cursor:pointer;min-height:44px;transition:background .12s,color .12s;
+}
+.pd-nav-item:hover{background:var(--g50);color:var(--g800)}
+.pd-nav-item.active{background:var(--g100);color:var(--g800)}
+.pd-nav-count{
+  font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px;background:var(--bg);color:var(--muted);
+}
+.pd-nav-item.active .pd-nav-count{background:var(--g800);color:#fff}
+
+.pd-main{min-width:0}
+.pd-panel{display:none}
+.pd-panel.active{display:block}
+.pd-panel-hd{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.pd-panel-title{font-size:17px;font-weight:800;color:var(--ink)}
+.pd-panel-sub{font-size:12.5px;color:var(--subtle);margin-top:2px}
+
+.pd-bento{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;
+}
+.pd-tile{
+  background:#fff;border:1.5px solid var(--line);border-radius:var(--r-md);padding:1rem 1.1rem;
+  box-shadow:var(--sh-xs);min-width:0;
+}
+.pd-tile.span-2{grid-column:span 2}
+.pd-tile-hd{
+  font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--subtle);
+  margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--line);
+}
+.pd-kv{display:grid;gap:10px}
+.pd-kv-row{display:grid;grid-template-columns:120px minmax(0,1fr);gap:8px;align-items:start}
+.pd-kv-k{font-size:12px;font-weight:600;color:var(--muted);padding-top:1px}
+.pd-kv-v{font-size:13.5px;font-weight:600;color:var(--ink);word-break:break-word}
+.pd-kv-v.muted{color:var(--subtle);font-weight:500}
+
+.pd-status-badge{
+  display:inline-flex;align-items:center;padding:4px 10px;border-radius:999px;
+  font-size:12px;font-weight:600;line-height:1.2;white-space:nowrap;
+}
+.pd-sb-active,.pd-sb-won,.pd-sb-approved,.pd-sb-accepted{background:#e7f7ee;color:#16794a}
+.pd-sb-prospect{background:var(--blue-bg);color:var(--blue)}
+.pd-sb-proposal,.pd-sb-sent,.pd-sb-pending_approval{background:var(--amber-bg);color:var(--amber)}
+.pd-sb-under_renewal{background:var(--violet-bg);color:var(--violet)}
+.pd-sb-lost,.pd-sb-rejected,.pd-sb-cancelled{background:var(--rose-bg);color:var(--rose)}
+.pd-sb-draft,.pd-sb-expired{background:var(--g50);color:var(--muted)}
+.pd-priority{
+  display:inline-flex;align-items:center;justify-content:center;min-width:42px;padding:3px 8px;
+  border-radius:6px;font-size:11.5px;font-weight:700;border:1.5px solid transparent;
+}
+.pd-pr-high{background:var(--rose-bg);color:var(--rose);border-color:rgba(192,57,43,.25)}
+.pd-pr-med{background:var(--amber-bg);color:var(--amber);border-color:rgba(201,125,14,.25)}
+.pd-pr-low{background:var(--g50);color:var(--muted);border-color:var(--line)}
+
+.pd-progress{margin-top:4px}
+.pd-progress-label{display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:var(--ink2);margin-bottom:6px}
+.pd-progress-bar{height:8px;background:var(--g50);border-radius:999px;overflow:hidden;border:1px solid var(--line)}
+.pd-progress-fill{height:100%;background:var(--g800);border-radius:999px;transition:width .35s ease}
+
+.pd-card{
+  background:#fff;border:1.5px solid var(--line);border-radius:var(--r-md);box-shadow:var(--sh-xs);overflow:hidden;
+}
+.pd-card-body{padding:1rem 1.1rem}
+.pd-notes{white-space:pre-wrap;font-size:14px;line-height:1.55;color:var(--ink2);min-height:80px}
+.pd-notes.muted{color:var(--subtle);font-weight:500}
+.pd-empty{padding:18px;color:var(--subtle);font-size:13.5px;text-align:center}
+
+.pd-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.pd-table{width:100%;border-collapse:collapse;min-width:560px}
+.pd-table th{
+  padding:10px 12px;font-size:11px;font-weight:700;letter-spacing:.45px;text-transform:uppercase;
+  color:var(--muted);background:var(--bg);border-bottom:1.5px solid var(--line);text-align:left;
+}
+.pd-table td{padding:12px;font-size:13.5px;border-bottom:1px solid var(--g50);vertical-align:middle}
+.pd-table tr:last-child td{border-bottom:none}
+.pd-table .actions{white-space:nowrap}
+
+.pd-fu-list,.pd-act-list{display:flex;flex-direction:column}
+.pd-fu-item,.pd-act-item{
+  display:flex;gap:12px;padding:12px 4px;border-bottom:1px solid var(--g50);align-items:flex-start;
+}
+.pd-fu-item:last-child,.pd-act-item:last-child{border-bottom:none}
+.pd-fu-ico,.pd-act-ico{
+  width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:15px;flex-shrink:0;background:var(--g50);border:2px solid #fff;box-shadow:var(--sh-xs);
+}
+.pd-fu-title,.pd-act-title{font-size:14px;font-weight:600;color:var(--ink)}
+.pd-fu-meta,.pd-act-meta{font-size:12.5px;color:var(--muted);margin-top:3px}
+.pd-fu-date{display:inline-flex;padding:2px 7px;border-radius:5px;font-size:12px;font-weight:600;margin-left:6px}
+.pd-fu-date.overdue{background:var(--rose-bg);color:var(--rose)}
+.pd-fu-date.today{background:var(--amber-bg);color:var(--amber)}
+.pd-fu-date.soon{background:var(--g100);color:var(--g800)}
+.pd-fu-date.later{background:var(--bg);color:var(--subtle)}
+
+.pd-contact-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.pd-contact-card{
+  background:#fff;border:1.5px solid var(--line);border-radius:var(--r-md);padding:1rem;box-shadow:var(--sh-xs);
+}
+.pd-cc-top{display:flex;gap:10px;align-items:center;margin-bottom:8px}
+.pd-cc-av{
+  width:40px;height:40px;border-radius:12px;background:var(--g100);color:var(--g800);
+  display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;
+}
+.pd-cc-name{font-size:14px;font-weight:700}
+.pd-cc-title{font-size:12px;color:var(--muted)}
+.pd-cc-line{font-size:13px;color:var(--ink2);margin-top:4px}
+
+/* Modals */
+.pd-modal-veil{
+  position:fixed;inset:0;background:rgba(8,24,15,.45);z-index:200;display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .22s;backdrop-filter:blur(5px);padding:1rem;
+}
+.pd-modal-veil.open{opacity:1;pointer-events:all}
+.pd-modal-box{
+  background:#fff;border-radius:var(--r-xl);width:560px;max-width:100%;max-height:90vh;overflow-y:auto;
+  box-shadow:var(--sh-lg);transform:scale(.96) translateY(10px);transition:transform .22s;
+}
+.pd-modal-veil.open .pd-modal-box{transform:scale(1) translateY(0)}
+.pd-modal-head{
+  padding:22px 24px 16px;border-bottom:1.5px solid var(--line);display:flex;align-items:center;gap:12px;
+  position:sticky;top:0;background:#fff;z-index:2;border-radius:var(--r-xl) var(--r-xl) 0 0;
+}
+.pd-modal-ico{
+  width:44px;height:44px;border-radius:13px;background:var(--g100);display:flex;align-items:center;justify-content:center;font-size:22px;
+}
+.pd-modal-title{font-size:17px;font-weight:700}
+.pd-modal-sub{font-size:12px;color:var(--subtle);margin-top:2px}
+.pd-modal-close{
+  margin-left:auto;width:36px;height:36px;border-radius:8px;border:1.5px solid var(--line);background:#fff;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:var(--subtle);
+}
+.pd-modal-close:hover{border-color:var(--rose);color:var(--rose)}
+.pd-modal-body{padding:20px 24px}
+.pd-field-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.pd-field-grid.solo{grid-template-columns:1fr}
+.pd-field-grid.trio{grid-template-columns:1fr 1fr 1fr}
+.pd-fld label{display:block;font-size:11.5px;font-weight:700;color:var(--muted);margin-bottom:6px;letter-spacing:.3px}
+.pd-fld input,.pd-fld select,.pd-fld textarea{
+  width:100%;padding:9px 12px;border:1.5px solid var(--line);border-radius:var(--r-sm);
+  font-family:inherit;font-size:13px;color:var(--ink);background:var(--bg);outline:none;resize:vertical;min-height:44px;
+}
+.pd-fld input:focus,.pd-fld select:focus,.pd-fld textarea:focus{border-color:var(--g800);background:#fff;box-shadow:var(--sh-glow)}
+.pd-fld input[readonly]{color:var(--muted);cursor:default}
+.pd-section-divider{
+  display:flex;align-items:center;gap:10px;margin:14px 0 12px;font-size:11px;font-weight:700;
+  color:var(--subtle);text-transform:uppercase;letter-spacing:.8px;
+}
+.pd-section-divider::before,.pd-section-divider::after{content:'';flex:1;height:1px;background:var(--line)}
+.pd-modal-foot{padding:12px 24px 20px;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+
+#pd-toast{
+  position:fixed;bottom:28px;right:28px;background:var(--g800);color:#fff;padding:12px 20px;border-radius:12px;
+  font-size:13.5px;font-weight:600;box-shadow:var(--sh-md);transform:translateY(70px);opacity:0;
+  transition:all .3s cubic-bezier(.34,1.56,.64,1);z-index:999;max-width:320px;
+}
+.pd-loading{padding:48px 16px;text-align:center;color:var(--subtle);font-weight:600}
+.pd-error{padding:24px;background:#fff;border:1.5px solid var(--rose-bg);border-radius:var(--r-md);color:var(--rose)}
+
+@media(max-width:960px){
+  .pd-layout{grid-template-columns:1fr}
+  .pd-side{
+    position:static;display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;
+    padding:8px;flex-wrap:nowrap;
+  }
+  .pd-side-label{display:none}
+  .pd-nav-item{flex-shrink:0;white-space:nowrap}
+  .pd-bento{grid-template-columns:1fr}
+  .pd-tile.span-2{grid-column:span 1}
+  .pd-contact-grid{grid-template-columns:1fr}
+  .pd-kv-row{grid-template-columns:1fr}
+}
+@media(max-width:768px){
+  .pd-page{padding:.75rem .85rem 2rem}
+  .pd-hero{padding:1rem}
+  .pd-hero-title{font-size:1.25rem}
+  .pd-hero-actions{width:100%}
+  .pd-hero-actions .pd-btn{flex:1 1 calc(50% - 4px)}
+  .pd-field-grid,.pd-field-grid.trio{grid-template-columns:1fr}
+  .pd-fld input,.pd-fld select,.pd-fld textarea{font-size:16px}
+  .pd-modal-body{padding:1rem}
+  .pd-modal-foot{padding:.875rem 1rem 1.1rem}
+  .pd-modal-foot .pd-btn{flex:1;min-width:0}
+  #pd-toast{left:16px;right:16px;bottom:16px;max-width:none}
+}
+  </style>
+</head>
+<body class="has-main-nav">
+  {% set active_page = 'bd-module' %}
+  {% include 'partials/main_navbar.html' with context %}
+
+  <div class="pd-page" id="pdRoot">
+    <a class="pd-back" href="/admin/bd">← Back to Sales</a>
+    <div id="pdLoading" class="pd-loading">Loading project…</div>
+    <div id="pdError" class="pd-error" style="display:none"></div>
+    <div id="pdWorkspace" style="display:none">
+      <header class="pd-hero">
+        <div class="pd-hero-row">
+          <div class="pd-hero-main">
+            <div class="pd-hero-kicker">Project workspace</div>
+            <h1 class="pd-hero-title" id="pdHeroTitle">—</h1>
+            <div class="pd-hero-sub" id="pdHeroSub">—</div>
+            <div class="pd-chip-row" id="pdHeroChips"></div>
+          </div>
+          <div class="pd-hero-actions">
+            <button type="button" class="pd-btn pd-btn-ghost" onclick="pdOpenEdit()">Edit details</button>
+            <button type="button" class="pd-btn pd-btn-primary" id="pdPromoteBtn" onclick="pdPromote()" style="display:none">Mark won / Promote</button>
+          </div>
+        </div>
+      </header>
+
+      <div class="pd-layout">
+        <aside class="pd-side" aria-label="Project sections">
+          <div class="pd-side-label">Setup details</div>
+          <button type="button" class="pd-nav-item active" data-panel="overview" onclick="pdShowPanel('overview',this)">Overview</button>
+          <button type="button" class="pd-nav-item" data-panel="contact" onclick="pdShowPanel('contact',this)">Contact</button>
+          <button type="button" class="pd-nav-item" data-panel="quotations" onclick="pdShowPanel('quotations',this)">
+            Quotations <span class="pd-nav-count" id="pdNavQuoteCount">0</span>
+          </button>
+          <button type="button" class="pd-nav-item" data-panel="followups" onclick="pdShowPanel('followups',this)">
+            Follow-ups <span class="pd-nav-count" id="pdNavFuCount">0</span>
+          </button>
+          <button type="button" class="pd-nav-item" data-panel="activity" onclick="pdShowPanel('activity',this)">Activity</button>
+          <button type="button" class="pd-nav-item" data-panel="notes" onclick="pdShowPanel('notes',this)">Notes</button>
+        </aside>
+
+        <div class="pd-main">
+          <section class="pd-panel active" id="pd-panel-overview">
+            <div class="pd-panel-hd">
+              <div>
+                <div class="pd-panel-title">General details</div>
+                <div class="pd-panel-sub">Identity, pipeline, commercials, and quotation summary</div>
+              </div>
+            </div>
+            <div class="pd-bento">
+              <div class="pd-tile">
+                <div class="pd-tile-hd">Contract / deal identity</div>
+                <div class="pd-kv" id="pdTileIdentity"></div>
+              </div>
+              <div class="pd-tile">
+                <div class="pd-tile-hd">Pipeline</div>
+                <div class="pd-kv" id="pdTilePipeline"></div>
+              </div>
+              <div class="pd-tile">
+                <div class="pd-tile-hd">Commercial</div>
+                <div class="pd-kv" id="pdTileCommercial"></div>
+              </div>
+              <div class="pd-tile">
+                <div class="pd-tile-hd">Quotations</div>
+                <div class="pd-kv" id="pdTileQuotes"></div>
+              </div>
+            </div>
+          </section>
+
+          <section class="pd-panel" id="pd-panel-contact">
+            <div class="pd-panel-hd">
+              <div>
+                <div class="pd-panel-title">Contact</div>
+                <div class="pd-panel-sub">Primary contact on this deal and related company contacts</div>
+              </div>
+            </div>
+            <div class="pd-bento" style="margin-bottom:12px">
+              <div class="pd-tile span-2">
+                <div class="pd-tile-hd">Primary contact</div>
+                <div class="pd-kv" id="pdPrimaryContact"></div>
+              </div>
+            </div>
+            <div class="pd-contact-grid" id="pdContactsGrid"></div>
+          </section>
+
+          <section class="pd-panel" id="pd-panel-quotations">
+            <div id="pdQuoteListView">
+              <div class="pd-panel-hd">
+                <div>
+                  <div class="pd-panel-title">Quotations</div>
+                  <div class="pd-panel-sub">Quotes linked to this project</div>
+                </div>
+                <button type="button" class="pd-btn pd-btn-primary" onclick="pdOpenQuote()">＋ New Quotation</button>
+              </div>
+              <div class="pd-card">
+                <div class="pd-table-wrap">
+                  <table class="pd-table">
+                    <thead>
+                      <tr><th>Quote #</th><th>Company</th><th>Status</th><th>Total</th><th>Timeline</th><th>Actions</th></tr>
+                    </thead>
+                    <tbody id="pdQuotesTbody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+            {% include 'partials/bd_quote_editor.html' %}
+          </section>
+
+          <section class="pd-panel" id="pd-panel-followups">
+            <div class="pd-panel-hd">
+              <div>
+                <div class="pd-panel-title">Follow-ups</div>
+                <div class="pd-panel-sub">Reminders tied to this deal or company</div>
+              </div>
+            </div>
+            <div class="pd-card"><div class="pd-card-body" id="pdFollowupsBody"></div></div>
+          </section>
+
+          <section class="pd-panel" id="pd-panel-activity">
+            <div class="pd-panel-hd">
+              <div>
+                <div class="pd-panel-title">Activity</div>
+                <div class="pd-panel-sub">Timeline for this project and company</div>
+              </div>
+            </div>
+            <div class="pd-card"><div class="pd-card-body" id="pdActivityBody"></div></div>
+          </section>
+
+          <section class="pd-panel" id="pd-panel-notes">
+            <div class="pd-panel-hd">
+              <div>
+                <div class="pd-panel-title">Notes</div>
+                <div class="pd-panel-sub">Deal context and working notes</div>
+              </div>
+              <button type="button" class="pd-btn pd-btn-ghost" onclick="pdOpenEdit()">Edit</button>
+            </div>
+            <div class="pd-card"><div class="pd-card-body"><div class="pd-notes" id="pdNotesBody"></div></div></div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% include 'partials/bd_project_workspace_modals.html' %}
+  {% include 'partials/signature_modal.html' %}
+
+  <script src="{{ url_for('static', filename='signature_pad.umd.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/signature_modal.js') }}"></script>
+  <script src="{{ url_for('static', filename='api-client.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/bd-project-detail.js') }}"></script>
+  <script>
+  document.addEventListener('DOMContentLoaded', function () {
+    if (typeof pdOpenProject === 'function') {
+      pdOpenProject({{ project_id|int }}, {});
+    }
+  });
+  </script>
+
+</body>
+</html>

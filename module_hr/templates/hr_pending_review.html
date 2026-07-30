@@ -10,7 +10,7 @@
       rel="stylesheet"
       href="{{ url_for('static', filename='css/design-tokens.css') }}"
     />
-    <title>Pending HR Review - Amaan Application</title>
+    <title>Pending HR Review — Kynvera</title>
     <link
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
       rel="stylesheet"
@@ -23,9 +23,9 @@
     <script src="{{ url_for('static', filename='js/hr_sign_pdf_preview.js') }}"></script>
     <style>
       :root {
-        --primary: #d21725;
-        --primary-light: #e8323f;
-        --primary-dark: #a8121e;
+        --primary: #ff8e68;
+        --primary-light: #f97e54;
+        --primary-dark: #e05f36;
       }
       body {
         background: #f1f5f9;
@@ -35,9 +35,9 @@
       .page-header {
         background: linear-gradient(
           135deg,
-          #e8323f 0%,
-          #d21725 55%,
-          #a8121e 100%
+          #f97e54 0%,
+          #ff8e68 55%,
+          #e05f36 100%
         );
         color: white;
         padding: 1.75rem 2rem;
@@ -45,7 +45,7 @@
         margin-bottom: 1.75rem;
         position: relative;
         overflow: hidden;
-        box-shadow: 0 8px 32px rgba(210, 23, 37, 0.28);
+        box-shadow: 0 8px 32px rgba(255, 142, 104, 0.28);
       }
       .page-header::before {
         content: "";
@@ -81,7 +81,7 @@
         display: inline-flex;
         align-items: center;
         gap: 0.4rem;
-        color: #d21725 !important;
+        color: #ff8e68 !important;
         background: rgba(255, 255, 255, 0.96);
         text-decoration: none;
         font-weight: 600;
@@ -138,7 +138,7 @@
         background: white;
         border-radius: 16px;
         overflow: hidden;
-        border: 1px solid rgba(210, 23, 37, 0.12);
+        border: 1px solid rgba(255, 142, 104, 0.12);
         box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
       }
       #pendingList {
@@ -174,7 +174,7 @@
         justify-content: space-between;
         background: linear-gradient(
           to right,
-          rgba(210, 23, 37, 0.05),
+          rgba(255, 142, 104, 0.05),
           transparent
         );
       }
@@ -200,13 +200,13 @@
         font-weight: 500;
         padding: 0.35rem 2rem 0.35rem 0.65rem;
         border-radius: 9px;
-        border: 1px solid rgba(210, 23, 37, 0.22);
+        border: 1px solid rgba(255, 142, 104, 0.22);
         background-color: #fef2f2;
         color: #7f1d1d;
       }
       .pending-sort-select:focus {
-        border-color: #d21725;
-        box-shadow: 0 0 0 3px rgba(210, 23, 37, 0.12);
+        border-color: #ff8e68;
+        box-shadow: 0 0 0 3px rgba(255, 142, 104, 0.12);
         outline: none;
       }
       .pending-list-header-left {
@@ -221,7 +221,7 @@
         margin: 0;
       }
       .pending-count-badge {
-        background: #d21725;
+        background: #ff8e68;
         color: white;
         font-size: 0.72rem;
         font-weight: 700;
@@ -328,7 +328,7 @@
       }
       .age-pill.aging {
         background: #fef2f2;
-        color: #d21725;
+        color: #ff8e68;
       }
       .age-pill.urgent {
         background: #fef2f2;
@@ -356,7 +356,7 @@
       }
 
       .btn-review-card {
-        background: linear-gradient(135deg, #e8323f, #d21725);
+        background: linear-gradient(135deg, #f97e54, #ff8e68);
         color: white;
         border: none;
         border-radius: 8px;
@@ -369,7 +369,48 @@
       .btn-review-card:hover {
         color: white;
         transform: translateY(-1px);
-        box-shadow: 0 4px 14px rgba(210, 23, 37, 0.38);
+        box-shadow: 0 4px 14px rgba(255, 142, 104, 0.38);
+      }
+      .review-card-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        align-items: center;
+        flex-shrink: 0;
+      }
+      .btn-revoke-card {
+        background: #fef2f2;
+        color: #b91c1c;
+        border: 1px solid #fecaca;
+        border-radius: 8px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        padding: 0.42rem 0.85rem;
+        transition: all 0.2s;
+        white-space: nowrap;
+        cursor: pointer;
+        font-family: inherit;
+      }
+      .btn-revoke-card:hover {
+        background: #fee2e2;
+        border-color: #f87171;
+        color: #991b1b;
+      }
+      .revoked-history-card {
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid #f1f5f9;
+      }
+      .revoked-history-card:last-child {
+        border-bottom: none;
+      }
+      .revoked-comment {
+        margin-top: 0.45rem;
+        font-size: 0.82rem;
+        color: #475569;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 0.45rem 0.65rem;
       }
 
       /* ── Empty State ──────────────────────────────────────── */
@@ -564,24 +605,31 @@
         box-shadow: 0 5px 16px rgba(5, 150, 105, 0.35);
       }
 
-      /* ── Full-screen "page-like" review overlay (matches hr_mgmt_sign) ── */
+      /* ── Page-like review overlay — sits below main navbar (keep nav visible) ── */
+      body.has-main-nav.modal-open #nav {
+        z-index: 1065;
+      }
+      #reviewModal {
+        --hr-review-nav-offset: 5.5rem;
+        z-index: 1055;
+      }
       #reviewModal .modal-dialog {
         max-width: none;
         width: 100vw;
-        height: 100dvh;
-        margin: 0;
+        height: calc(100dvh - var(--hr-review-nav-offset));
+        margin: var(--hr-review-nav-offset) 0 0 0;
         display: block;
         align-items: stretch;
       }
       #reviewModal .modal-content {
         width: 100vw;
-        min-height: 100dvh;
-        max-height: 100dvh;
-        height: 100dvh;
+        min-height: calc(100dvh - var(--hr-review-nav-offset));
+        max-height: calc(100dvh - var(--hr-review-nav-offset));
+        height: calc(100dvh - var(--hr-review-nav-offset));
         border: none;
         border-radius: 0;
         box-shadow: none;
-        background: #f8faf8;
+        background: #f9f9f9;
         display: flex;
         flex-direction: column;
         overflow: hidden;
@@ -597,7 +645,7 @@
         overflow-y: auto !important;
         overflow-x: hidden !important;
         padding: 0 !important;
-        background: #f8faf8 !important;
+        background: #f9f9f9 !important;
       }
 
       /* Page-style top bar */
@@ -607,7 +655,7 @@
         align-items: center;
         gap: 1rem;
         padding: 0.85rem clamp(0.75rem, 1.5vw, 1.75rem);
-        background: #f8faf8;
+        background: #f9f9f9;
         border-bottom: 1px solid rgba(15, 23, 42, 0.06);
       }
       .hr-page-back {
@@ -675,11 +723,11 @@
         font-weight: 700;
         letter-spacing: 0.06em;
 
-        color: #d21725;
+        color: #ff8e68;
         margin: 0 0 0.15rem;
       }
       .hr-preview-scroll {
-        max-height: calc(100dvh - 8rem);
+        max-height: calc(100dvh - var(--hr-review-nav-offset, 5.5rem) - 8rem);
         overflow: auto;
         -webkit-overflow-scrolling: touch;
         background: #f5f5f7;
@@ -727,7 +775,7 @@
       .hr-preview-zoom-fallback #rspPreviewFrame {
         width: 100%;
         min-height: 32rem;
-        height: calc(100dvh - 8rem);
+        height: calc(100dvh - var(--hr-review-nav-offset, 5.5rem) - 8rem);
         border: none;
         display: block;
         background: #f5f5f7;
@@ -747,7 +795,7 @@
       .hr-sign-col {
         position: sticky;
         top: 0;
-        max-height: calc(100dvh - 8rem);
+        max-height: calc(100dvh - var(--hr-review-nav-offset, 5.5rem) - 8rem);
         overflow-y: auto;
         min-width: 0;
         scrollbar-width: thin;
@@ -867,7 +915,7 @@
               width="17"
               height="17"
               fill="none"
-              stroke="#d21725"
+              stroke="#ff8e68"
               stroke-width="2.2"
               viewBox="0 0 24 24"
             >
@@ -898,9 +946,42 @@
           <div class="text-center py-5">
             <div
               class="spinner-border spinner-border-sm"
-              style="color: #d21725"
+              style="color: #ff8e68"
             ></div>
             <p class="mt-2 text-muted small mb-0">Loading requests...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Revoked history (org-wide HR) -->
+      <div
+        class="pending-list-container mt-4"
+        id="revokedHistorySection"
+        style="display: none"
+      >
+        <div class="pending-list-header">
+          <div class="pending-list-header-left">
+            <svg
+              width="17"
+              height="17"
+              fill="none"
+              stroke="#64748b"
+              stroke-width="2.2"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <h2>Revoked (history)</h2>
+            <span class="pending-count-badge" id="revokedCountBadge" style="display: none; background: #64748b">0</span>
+          </div>
+        </div>
+        <div id="revokedHistoryList">
+          <div class="text-center py-4">
+            <p class="text-muted small mb-0">Loading revoked history…</p>
           </div>
         </div>
       </div>
@@ -1018,9 +1099,19 @@
                           d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
                         />
                       </svg>
-                      Your Review
+                      <span id="hrReviewActionsHeading">Your Review</span>
                     </div>
 
+                    <div
+                      id="hrReviewReadonlyNotice"
+                      class="alert alert-light border"
+                      style="display: none; font-size: 0.88rem; margin: 0.75rem 0 0"
+                    >
+                      You can view this form, but you are not the assigned HR
+                      signer for this step. Waiting for HR (head office).
+                    </div>
+
+                    <div id="hrReviewActionBody">
                     <!-- HR-only leave fields (shown only for leave applications) -->
                     <div id="hrFormFields" style="display: none">
                       <label
@@ -1104,6 +1195,7 @@
 
                     <div style="touch-action: none; margin-top: 0.4rem">
                       <label
+                        id="hrSignatureLabel"
                         class="form-label"
                         style="
                           font-weight: 600;
@@ -1114,7 +1206,9 @@
                       >
                       <div class="review-sig-wrap">
                         <div class="review-sig-label">
-                          <span>Sign here to confirm your decision</span>
+                          <span id="hrSignatureHint"
+                            >Sign here to confirm your decision</span
+                          >
                           <button
                             type="button"
                             class="btn-clear-signature"
@@ -1150,6 +1244,7 @@
                       <button
                         type="button"
                         class="btn-approve"
+                        id="approveRequestBtn"
                         onclick="approveRequest()"
                       >
                         <svg
@@ -1166,8 +1261,11 @@
                             d="M5 13l4 4L19 7"
                           />
                         </svg>
-                        Approve &amp; Forward
+                        <span id="approveRequestBtnLabel"
+                          >Approve &amp; Forward</span
+                        >
                       </button>
+                    </div>
                     </div>
                   </div>
                 </div>
@@ -1269,6 +1367,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{{ url_for('static', filename='js/injaaz-uae-datetime.js') }}"></script>
     <script src="{{ url_for('static', filename='js/hr_submission_full_form_url.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/hr_revoke.js') }}"></script>
     <script>
       const HR_SUPPORTED_DOCX_FORMS = {{ (supported_docx_forms or [])|tojson }};
       const HR_SUPPORTED_PDF_FORMS = {{ (supported_pdf_forms or [])|tojson }};
@@ -1277,6 +1376,8 @@
       let currentSubmissionId = null;
       let currentFormType = null;
       let currentWorkflowStatus = '';
+      let currentCanSign = false;
+      let currentSignMode = null;
       let signaturePad = null;
       let hrPdfPreviewGen = 0;
 
@@ -1548,9 +1649,14 @@
       if (fd.total_days_requested)
       chips.push(`<span class="card-chip"><strong>Days:</strong> ${escapeHtml(String(fd.total_days_requested))}</span>`);
 
+      const sid = escapeHtml(s.submission_id || '');
+      const mod = escapeHtml(s.module_type || '');
+      // Always show Revoke on this inbox; API enforces submitter / org-wide HR.
+      const revokeBtn =
+        `<button type="button" class="btn-revoke-card" data-revoke-sid="${sid}" data-revoke-mod="${mod}">Revoke</button>`;
+
       return `
-      <div class="review-card"
-      onclick="openReview('${s.submission_id}', ${JSON.stringify(s).replace(/"/g, '&quot;')})">
+      <div class="review-card" data-open-review-sid="${sid}" role="button" tabindex="0">
       <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
       <div style="min-width:0;flex:1;">
       <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
@@ -1565,12 +1671,133 @@
       </div>
       ${chips.length ? `<div class="card-chips">${chips.join('')}</div>` : ''}
       </div>
-      <button class="btn-review-card" onclick="event.stopPropagation();openReview('${s.submission_id}', ${JSON.stringify(s).replace(/"/g, '&quot;')})">
+      <div class="review-card-actions">
+      ${revokeBtn}
+      <button type="button" class="btn-review-card" data-open-review-sid="${sid}">
       Review
       </button>
       </div>
+      </div>
       </div>`;
       }).join('');
+
+      container.querySelectorAll('[data-open-review-sid]').forEach((el) => {
+        const open = (e) => {
+          if (e.target.closest('[data-revoke-sid]')) return;
+          e.preventDefault();
+          e.stopPropagation();
+          const id = el.getAttribute('data-open-review-sid');
+          const match = pendingListCache.find((row) => String(row.submission_id || '') === String(id || ''));
+          if (match) openReview(match.submission_id, match);
+        };
+        el.addEventListener('click', open);
+        if (el.classList.contains('review-card')) {
+          el.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') open(e);
+          });
+        }
+      });
+
+      container.querySelectorAll('[data-revoke-sid]').forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (typeof openHrRevokeModal !== 'function') return;
+          openHrRevokeModal({
+            submissionId: btn.getAttribute('data-revoke-sid'),
+            moduleType: btn.getAttribute('data-revoke-mod'),
+            actorRole: 'hr',
+            onSuccess: function () {
+              loadPending();
+              loadRevokedHistory();
+            },
+          });
+        });
+      });
+      }
+
+      function renderRevokedHistory(submissions) {
+        const section = document.getElementById('revokedHistorySection');
+        const list = document.getElementById('revokedHistoryList');
+        const badge = document.getElementById('revokedCountBadge');
+        if (!section || !list) return;
+        section.style.display = '';
+        const rows = Array.isArray(submissions) ? submissions : [];
+        if (badge) {
+          badge.textContent = String(rows.length);
+          badge.style.display = rows.length ? 'inline-block' : 'none';
+        }
+        if (!rows.length) {
+          list.innerHTML =
+            '<div class="empty-state py-4"><p class="text-muted small mb-0">No revoked forms in history yet.</p></div>';
+          return;
+        }
+        list.innerHTML = rows
+          .map((s) => {
+            const sid = escapeHtml(s.submission_id || '');
+            const who = escapeHtml(s.submitter_name || 'Unknown');
+            const revokedBy = escapeHtml(s.revoked_by_display || '—');
+            const role = String(s.revoked_by_role || '').toLowerCase() === 'hr' ? 'HR' : 'Submitter';
+            const comment = escapeHtml(s.revoke_comment || '');
+            const when =
+              typeof InjaazDateTimeUAE !== 'undefined'
+                ? InjaazDateTimeUAE.formatDateMed(s.revoked_at || s.updated_at)
+                : '';
+            const viewHref =
+              (typeof getHrSubmissionFullFormViewUrl === 'function'
+                ? getHrSubmissionFullFormViewUrl(s.module_type, s.submission_id)
+                : null) ||
+              '/hr/print/' + encodeURIComponent(s.submission_id || '');
+            const pdfHref = '/hr/download-pdf/' + encodeURIComponent(s.submission_id || '');
+            return `
+            <div class="revoked-history-card">
+              <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                <div style="min-width:0;flex:1;">
+                  <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+                    <span class="form-type-badge ${getFormTypeClass(s.module_type)}">${getFormTypeLabel(s.module_type)}</span>
+                    <span class="card-chip" style="background:#f1f5f9;color:#64748b;">Revoked</span>
+                  </div>
+                  <div style="font-weight:700;font-size:0.92rem;color:#1e293b;">${sid}</div>
+                  <div style="font-size:0.8rem;color:#64748b;margin-top:0.15rem;">
+                    From <strong style="color:#374151;">${who}</strong>
+                    &nbsp;·&nbsp; Revoked by ${revokedBy} (${role})
+                    ${when ? '&nbsp;·&nbsp; ' + when : ''}
+                  </div>
+                  ${comment ? '<div class="revoked-comment"><strong>Comment:</strong> ' + comment + '</div>' : ''}
+                </div>
+                <div class="review-card-actions">
+                  <a class="btn-review-card" style="text-decoration:none;display:inline-flex;align-items:center;" href="${escapeHtml(viewHref)}">View</a>
+                  <a class="btn-revoke-card" style="text-decoration:none;display:inline-flex;align-items:center;" href="${escapeHtml(pdfHref)}">PDF</a>
+                </div>
+              </div>
+            </div>`;
+          })
+          .join('');
+      }
+
+      async function loadRevokedHistory() {
+        const section = document.getElementById('revokedHistorySection');
+        if (!section) return;
+        try {
+          const response = await fetch('/hr/api/revoked-hr-submissions', {
+            headers: { Authorization: 'Bearer ' + token },
+          });
+          if (response.status === 403) {
+            section.style.display = 'none';
+            return;
+          }
+          if (!response.ok) throw new Error('Failed to load revoked history');
+          const data = await response.json();
+          renderRevokedHistory(data.submissions || []);
+        } catch (err) {
+          console.error(err);
+          section.style.display = '';
+          const list = document.getElementById('revokedHistoryList');
+          if (list) {
+            list.innerHTML =
+              '<div class="alert alert-light border m-3 small mb-0">Could not load revoked history.</div>';
+          }
+        }
       }
 
       /* ── Load pending list ────────────────────────────────── */
@@ -1580,11 +1807,26 @@
       const data = await response.json();
       pendingListCache = Array.isArray(data.submissions) ? data.submissions : [];
       renderPendingListFromCache();
+      const params = new URLSearchParams(window.location.search || '');
+      const openSid = (params.get('submission') || '').trim();
+      if (openSid) {
+        const match = pendingListCache.find((s) => String(s.submission_id || '') === openSid);
+        if (match) {
+          openReview(match.submission_id, match);
+          try {
+            params.delete('submission');
+            const qs = params.toString();
+            const next = window.location.pathname + (qs ? '?' + qs : '') + (window.location.hash || '');
+            window.history.replaceState({}, '', next);
+          } catch (e) {}
+        }
+      }
       } catch (error) {
       console.error('Error:', error);
       pendingListCache = [];
       document.getElementById('pendingList').innerHTML = '<div class="alert alert-danger m-3">Error loading requests</div>';
       }
+      loadRevokedHistory();
       }
 
       document.getElementById('pendingListSortOrder')?.addEventListener('change', () => renderPendingListFromCache());
@@ -1682,10 +1924,18 @@
       currentSubmissionId = submissionId;
       currentFormType = submission.module_type || submission.form_type;
       currentWorkflowStatus = submission.workflow_status || '';
+      currentSignMode =
+        submission.sign_mode ||
+        (currentWorkflowStatus === 'hr_mgmt_hr_head_office' ? 'mgmt_hr_ho' : 'legacy_hr');
+      currentCanSign =
+        typeof submission.can_sign === 'boolean'
+          ? submission.can_sign
+          : false;
 
       const formTypeClean = (currentFormType || '').replace('hr_', '');
-
+      const formData = submission.form_data || {};
       const modType = submission.module_type || submission.form_type || '';
+      const isMgmtHo = currentSignMode === 'mgmt_hr_ho';
 
       // Legacy header IDs (hidden) + page-bar ref pill
       const badge = document.getElementById('reviewHeaderBadge');
@@ -1703,10 +1953,48 @@
       if (signTitle) signTitle.textContent = FORM_CARD_TITLES[formTypeClean] || (FORM_TYPE_LABELS[formTypeClean] || 'HR Review');
       const signMeta = document.getElementById('hrSignMeta');
       if (signMeta) {
-      const submitterName = escapeHtml(submission.submitter_name || (formData && formData.submitted_by_name) || 'Employee');
-      signMeta.innerHTML =
-      '<strong>' + submitterName + '</strong> submitted an HR form requiring your review.' +
-      '<br>Ref: <code>' + escapeHtml(submission.submission_id || '') + '</code>';
+      const submitterName = escapeHtml(submission.submitter_name || formData.submitted_by_name || 'Employee');
+      if (currentCanSign) {
+        signMeta.innerHTML =
+          '<strong>' + submitterName + '</strong> submitted an HR form requiring your review.' +
+          '<br>Ref: <code>' + escapeHtml(submission.submission_id || '') + '</code>';
+      } else {
+        signMeta.innerHTML =
+          '<strong>' + submitterName + '</strong> submitted this form. It is waiting for an authorized HR signer.' +
+          '<br>Ref: <code>' + escapeHtml(submission.submission_id || '') + '</code>';
+      }
+      }
+
+      // Action panel: only authorized signers get Approve / Reject / signature
+      const actionBody = document.getElementById('hrReviewActionBody');
+      const readonlyNotice = document.getElementById('hrReviewReadonlyNotice');
+      const actionsHeading = document.getElementById('hrReviewActionsHeading');
+      if (actionBody) actionBody.style.display = currentCanSign ? '' : 'none';
+      if (readonlyNotice) readonlyNotice.style.display = currentCanSign ? 'none' : 'block';
+      if (actionsHeading) {
+        actionsHeading.textContent = currentCanSign ? 'Your Review' : 'Status';
+      }
+
+      const commentsEl = document.getElementById('reviewComments');
+      if (commentsEl) {
+        commentsEl.value = '';
+        commentsEl.placeholder = isMgmtHo
+          ? 'Optional note for the record…'
+          : 'Brief note for the GM...';
+      }
+      const sigLabel = document.getElementById('hrSignatureLabel');
+      if (sigLabel) {
+        sigLabel.textContent = isMgmtHo ? 'HR (head office) signature' : 'HR Signature';
+      }
+      const sigHint = document.getElementById('hrSignatureHint');
+      if (sigHint) {
+        sigHint.textContent = isMgmtHo
+          ? 'Sign here to complete HR head-office sign-off'
+          : 'Sign here to confirm your decision';
+      }
+      const approveLabel = document.getElementById('approveRequestBtnLabel');
+      if (approveLabel) {
+        approveLabel.textContent = isMgmtHo ? 'Sign & complete' : 'Approve & Forward';
       }
 
       // Hidden legacy iframe (kept so other code paths that read it do not break)
@@ -1738,26 +2026,25 @@
       pdfBtn.onclick = e => { e.preventDefault(); if (currentSubmissionId && supportsPdf) downloadHrPdf(currentSubmissionId); };
       }
 
-      const formData = submission.form_data || {};
-
-      // HR form fields
+      // HR form fields (legacy leave approve only)
       const hrFormFields = document.getElementById('hrFormFields');
       if (hrFormFields) {
-      const isLeave = formTypeClean === 'leave_application';
+      const isLeave = formTypeClean === 'leave_application' && currentSignMode === 'legacy_hr' && currentCanSign;
       hrFormFields.style.display = isLeave ? 'block' : 'none';
+      if (isLeave) {
       document.getElementById('hrChecked').value = formData.hr_checked || '';
       document.getElementById('hrBalanceCf').value = formData.hr_balance_cf || '';
       document.getElementById('hrContractYear').value = formData.hr_contract_year || '';
       document.getElementById('hrPaid').value = formData.hr_paid || '';
       document.getElementById('hrUnpaid').value = formData.hr_unpaid || '';
       }
-
-      // Clear comments
-      const commentsEl = document.getElementById('reviewComments');
-      if (commentsEl) commentsEl.value = '';
+      }
 
       bootstrap.Modal.getOrCreateInstance(document.getElementById('reviewModal')).show();
       loadHrPdfPreview(submission.submission_id);
+      if (currentCanSign && signaturePad) {
+        try { signaturePad.clear(); } catch (e) {}
+      }
       }
 
       /* ── PDF preview wiring (uses shared hr_sign_pdf_preview.js) ───────── */
@@ -1851,7 +2138,7 @@
 
       /* ── Approve / Reject ─────────────────────────────────── */
       async function approveRequest() {
-      if (!currentSubmissionId) return;
+      if (!currentSubmissionId || !currentCanSign) return;
       const comments = (document.getElementById('reviewComments') || {}).value || '';
       const signature = signaturePad && !signaturePad.isEmpty() ? signaturePad.toDataURL() : '';
       const payload = { comments, signature };
@@ -1868,7 +2155,7 @@
       }
       }
       try {
-      const isMgmtHrFinal = currentWorkflowStatus === 'hr_mgmt_hr_head_office';
+      const isMgmtHrFinal = currentSignMode === 'mgmt_hr_ho' || currentWorkflowStatus === 'hr_mgmt_hr_head_office';
       const url = isMgmtHrFinal
       ? `/hr/api/mgmt-signoff/${encodeURIComponent(currentSubmissionId)}/sign`
       : `/hr/api/hr-approve/${encodeURIComponent(currentSubmissionId)}`;
@@ -1896,7 +2183,7 @@
       }
 
       async function rejectRequest() {
-      if (!currentSubmissionId) return;
+      if (!currentSubmissionId || !currentCanSign) return;
       const reason = prompt('Please provide a reason for rejection:');
       if (!reason) return;
       try {
@@ -1926,6 +2213,40 @@
       document.body.appendChild(toast);
       setTimeout(() => toast.remove(), 5000);
       }
+
+      (function wireHrReviewReturnNav() {
+        function safeHrReturnUrl() {
+          try {
+            const raw = new URLSearchParams(window.location.search || '').get('return') || '';
+            if (!raw) return '';
+            const url = new URL(raw, window.location.origin);
+            if (url.origin !== window.location.origin) return '';
+            if (!url.pathname.startsWith('/hr')) return '';
+            return url.pathname + url.search + url.hash;
+          } catch (e) {
+            return '';
+          }
+        }
+        const returnUrl = safeHrReturnUrl();
+        if (!returnUrl) return;
+        document.querySelectorAll('a.back-link').forEach((a) => {
+          a.href = returnUrl;
+          a.innerHTML =
+            '<svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg> Back to Pending HR Review';
+        });
+        document.querySelectorAll('.hr-page-back').forEach((btn) => {
+          btn.removeAttribute('data-bs-dismiss');
+          btn.addEventListener(
+            'click',
+            (e) => {
+              e.preventDefault();
+              e.stopImmediatePropagation();
+              window.location.href = returnUrl;
+            },
+            true
+          );
+        });
+      })();
 
       loadPending();
     </script>

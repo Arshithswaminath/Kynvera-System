@@ -443,6 +443,31 @@ def send_email(recipient, subject, body, html_body=None, cc=None, attachments=No
         return False
 
 
+def send_email_async(recipient, subject, body, html_body=None, cc=None):
+    """
+    Send email via RQ when Redis is available; otherwise a background thread
+    (or sync if threading fails). Attachments are not supported on this path —
+    use send_email() for those.
+    """
+    try:
+        from app.tasks.job_runner import enqueue_or_run
+        from app.tasks.inspection_jobs import run_send_email_job
+
+        enqueue_or_run(
+            run_send_email_job,
+            recipient,
+            subject,
+            body,
+            html_body=html_body,
+            cc=cc,
+            description='send-email',
+        )
+        return True
+    except Exception:
+        logger.exception("send_email_async failed; falling back to sync send_email")
+        return send_email(recipient, subject, body, html_body=html_body, cc=cc)
+
+
 def is_deliverable_user_email(email):
     """True when email looks real (not missing / placeholder @amaan.local)."""
     e = (email or "").strip().lower()

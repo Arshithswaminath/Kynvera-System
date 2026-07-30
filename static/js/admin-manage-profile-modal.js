@@ -75,6 +75,7 @@
 
   let bindingsDone = false;
   let passwordResetConfirmContext = null;
+  let accountActionConfirmContext = null;
 
   function setProfileQuickToggleButton(tbtn, isActive) {
     if (!tbtn) return;
@@ -86,11 +87,11 @@
     tbtn.classList.toggle('is-activate', !isActive);
   }
 
-  function fillProfilePasswordField(user) {
+  function paintProfilePasswordField(user, stored) {
     const el = document.getElementById('profilePassword');
     const hint = document.getElementById('profilePasswordHint');
     if (!el) return;
-    const stored = user && user.admin_visible_password ? String(user.admin_visible_password) : '';
+    stored = stored ? String(stored) : '';
     el.value = stored;
     el.placeholder = stored ? '' : 'No password on file for admin view';
     el.dataset.storedPassword = stored;
@@ -107,6 +108,30 @@
         hint.textContent =
           'No password stored for admin view yet. Enter one and save, or use Reset password in Quick actions.';
       }
+    }
+  }
+
+  // The bulk /users directory list no longer ships every user's admin-visible
+  // password. Reveal the single user's stored password on demand from the
+  // admin single-user endpoint when the modal opens. Falls back gracefully to
+  // any value already cached on the directory object (e.g. just after a reset).
+  async function fillProfilePasswordField(user) {
+    const cached = user && user.admin_visible_password ? String(user.admin_visible_password) : '';
+    paintProfilePasswordField(user, cached);
+    if (cached || !user || user.id == null) return;
+    try {
+      const resp = await profileAuthenticatedFetch('/api/admin/users/' + user.id);
+      if (!resp || !resp.ok) return;
+      const data = await resp.json();
+      const fresh = data && data.user ? data.user.admin_visible_password : '';
+      if (fresh) {
+        patchDirectoryUserPassword(user.id, fresh);
+        // Only repaint if the admin hasn't started typing a new password.
+        const el = document.getElementById('profilePassword');
+        if (el && !el.value) paintProfilePasswordField(user, fresh);
+      }
+    } catch (e) {
+      /* leave the "no password on file" state; admin can still reset */
     }
   }
 
@@ -424,13 +449,89 @@
     }
   };
 
-  async function toggleUserActiveRemote(userId, currentStatus) {
-    const action = currentStatus ? 'deactivate' : 'activate';
-    if (!confirm('Are you sure you want to ' + action + ' this user?')) {
-      relockAdminProtect();
-      return;
+  w.openAccountActionConfirmModal = function openAccountActionConfirmModal(opts) {
+    opts = opts || {};
+    accountActionConfirmContext = {
+      action: opts.action,
+      userId: opts.userId,
+      username: opts.username || '',
+      fullName: opts.fullName || '',
+      currentStatus: opts.currentStatus,
+    };
+    const modal = document.getElementById('accountActionConfirmModal');
+    if (!modal) return;
+    const title = document.getElementById('accountActionConfirmTitle');
+    const intro = document.getElementById('accountActionConfirmIntro');
+    const note = document.getElementById('accountActionConfirmNote');
+    const btn = document.getElementById('accountActionConfirmBtn');
+    const label = opts.fullName || opts.username || 'this user';
+    const userIdLabel = opts.username || String(opts.userId || '');
+    const action = opts.action;
+
+    if (note) {
+      note.hidden = true;
+      note.textContent = '';
     }
 
+    if (action === 'delete') {
+      if (title) title.textContent = 'Delete account?';
+      if (intro) {
+        intro.textContent =
+          'Permanently delete ' + label + (userIdLabel ? ' (' + userIdLabel + ')' : '') + '?';
+      }
+      if (note) {
+        note.hidden = false;
+        note.textContent = 'This cannot be undone.';
+      }
+      if (btn) {
+        btn.textContent = 'Delete account';
+        btn.className = 'btn btn-account-danger';
+      }
+    } else if (action === 'deactivate') {
+      if (title) title.textContent = 'Deactivate account?';
+      if (intro) {
+        intro.textContent = 'Deactivate ' + label + '? They will not be able to sign in until reactivated.';
+      }
+      if (btn) {
+        btn.textContent = 'Deactivate';
+        btn.className = 'btn btn-account-danger';
+      }
+    } else if (action === 'unlock') {
+      if (title) title.textContent = 'Unlock password?';
+      if (intro) {
+        intro.textContent = 'Unlock ' + label + ' and issue a new temporary password?';
+      }
+      if (btn) {
+        btn.textContent = 'Unlock password';
+        btn.className = 'btn btn-reset';
+      }
+    } else {
+      if (title) title.textContent = 'Activate account?';
+      if (intro) {
+        intro.textContent = 'Activate ' + label + ' so they can sign in again?';
+      }
+      if (btn) {
+        btn.textContent = 'Activate';
+        btn.className = 'btn btn-account-activate';
+      }
+    }
+    ensurePortalModal(modal);
+    activatePortalModal(modal);
+  };
+
+  w.closeAccountActionConfirmModal = function closeAccountActionConfirmModal(opts) {
+    opts = opts || {};
+    const modal = document.getElementById('accountActionConfirmModal');
+    if (modal) modal.classList.remove('active');
+    accountActionConfirmContext = null;
+    const otherOpen =
+      (document.getElementById('passwordResetResultModal') || {}).classList &&
+      document.getElementById('passwordResetResultModal').classList.contains('active');
+    if (!otherOpen) document.body.style.overflow = '';
+    if (!opts.keepUnlock) relockAdminProtect();
+  };
+
+  async function runToggleUserActive(userId) {
     try {
       const response = await profileAuthenticatedFetch('/api/admin/users/' + userId + '/toggle-active', {
         method: 'POST',
@@ -455,36 +556,63 @@
     }
   }
 
-  w.profileModalResetPassword = function profileModalResetPassword() {
-    const uid = parseInt(document.getElementById('profileUserId').value, 10);
-    const u = directoryUsers().find(function (x) { return Number(x.id) === uid; });
-    closeUserProfileModal({ keepUnlock: true });
-    if (Number.isFinite(uid)) openPasswordResetConfirmModal(uid, u ? u.username : '');
-    else relockAdminProtect();
-  };
-
-  w.profileModalUnlockPassword = async function profileModalUnlockPassword() {
-    const uid = parseInt(document.getElementById('profileUserId').value, 10);
-    const u = directoryUsers().find(function (x) { return Number(x.id) === uid; });
-    if (!Number.isFinite(uid)) return;
-    if (!confirm('Unlock this account and issue a new temporary password?')) return;
+  async function runDeleteUser(userId, username) {
     try {
-      const response = await profileAuthenticatedFetch('/api/admin/users/' + uid + '/unlock-password', {
+      let currentUserId = null;
+      try {
+        const raw = localStorage.getItem('user');
+        if (raw) currentUserId = JSON.parse(raw).id;
+      } catch (_) { /* ignore */ }
+      if (Number(userId) === Number(currentUserId)) {
+        notify('You cannot delete your own account', 'error');
+        relockAdminProtect();
+        return;
+      }
+      const response = await profileAuthenticatedFetch('/api/admin/users/' + userId, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (handleUnauthorized(response)) {
+        relockAdminProtect();
+        return;
+      }
+      const data = await response.json();
+      if (data.success) {
+        notify(data.message || ('User ' + (username || '') + ' deleted'), 'success');
+        await CFG.reloadDirectory();
+      } else if (!notifyProtectedAccountError(data)) {
+        notify(data.error || data.message || 'Failed to delete user', 'error');
+      }
+    } catch (e) {
+      console.error(e);
+      notify('Error deleting user', 'error');
+    } finally {
+      relockAdminProtect();
+    }
+  }
+
+  async function runUnlockPassword(userId, username, fullName) {
+    try {
+      const response = await profileAuthenticatedFetch('/api/admin/users/' + userId + '/unlock-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });
-      if (handleUnauthorized(response)) return;
+      if (handleUnauthorized(response)) {
+        relockAdminProtect();
+        return;
+      }
       const data = await response.json();
       if (data.success) {
         const pw = data.temp_password || DEFAULT_RESET_DISPLAY_PASSWORD;
-        patchDirectoryUserPassword(uid, pw);
+        patchDirectoryUserPassword(userId, pw);
+        const u = directoryUsers().find(function (x) { return Number(x.id) === Number(userId); });
         if (u) u.password_locked = false;
-        closeUserProfileModal({ keepUnlock: true });
-        openPasswordResetResultModal(u ? u.username : '', pw);
+        openPasswordResetResultModal(username || '', pw);
         const intro = document.getElementById('passwordResetResultIntro');
         if (intro) {
-          intro.textContent = 'Password unlocked for "' + (u ? u.username : 'user')
-            + '". Share the temporary password below securely with the user.';
+          intro.textContent =
+            'Password unlocked for "' + (fullName || username || 'user') +
+            '". Share the temporary password below securely with the user.';
         }
         await CFG.reloadDirectory();
       } else if (!notifyProtectedAccountError(data)) {
@@ -493,7 +621,48 @@
     } catch (e) {
       console.error(e);
       notify('Error unlocking password', 'error');
+    } finally {
+      const res = document.getElementById('passwordResetResultModal');
+      if (!res || !res.classList.contains('active')) relockAdminProtect();
     }
+  }
+
+  w.submitAccountActionConfirm = async function submitAccountActionConfirm() {
+    const ctx = accountActionConfirmContext;
+    if (!ctx) return;
+    const action = ctx.action;
+    const uid = ctx.userId;
+    const username = ctx.username;
+    const fullName = ctx.fullName;
+    closeAccountActionConfirmModal({ keepUnlock: true });
+    if (action === 'delete') {
+      await runDeleteUser(uid, username);
+    } else if (action === 'unlock') {
+      await runUnlockPassword(uid, username, fullName);
+    } else {
+      await runToggleUserActive(uid);
+    }
+  };
+
+  w.profileModalResetPassword = function profileModalResetPassword() {
+    const uid = parseInt(document.getElementById('profileUserId').value, 10);
+    const u = directoryUsers().find(function (x) { return Number(x.id) === uid; });
+    closeUserProfileModal({ keepUnlock: true });
+    if (Number.isFinite(uid)) openPasswordResetConfirmModal(uid, u ? u.username : '');
+    else relockAdminProtect();
+  };
+
+  w.profileModalUnlockPassword = function profileModalUnlockPassword() {
+    const uid = parseInt(document.getElementById('profileUserId').value, 10);
+    const u = directoryUsers().find(function (x) { return Number(x.id) === uid; });
+    if (!Number.isFinite(uid)) return;
+    closeUserProfileModal({ keepUnlock: true });
+    openAccountActionConfirmModal({
+      action: 'unlock',
+      userId: uid,
+      username: u ? u.username : '',
+      fullName: u ? u.full_name : '',
+    });
   };
 
   w.profileModalViewActivity = function profileModalViewActivity() {
@@ -503,12 +672,31 @@
     else relockAdminProtect();
   };
 
-  w.profileModalToggleActive = async function profileModalToggleActive() {
+  w.profileModalToggleActive = function profileModalToggleActive() {
     const uid = parseInt(document.getElementById('profileUserId').value, 10);
     const u = directoryUsers().find(function (x) { return Number(x.id) === uid; });
     if (!u || !Number.isFinite(uid)) return;
     closeUserProfileModal({ keepUnlock: true });
-    await toggleUserActiveRemote(uid, u.is_active);
+    openAccountActionConfirmModal({
+      action: u.is_active ? 'deactivate' : 'activate',
+      userId: uid,
+      username: u.username,
+      fullName: u.full_name,
+      currentStatus: u.is_active,
+    });
+  };
+
+  w.profileModalDeleteAccount = function profileModalDeleteAccount() {
+    const uid = parseInt(document.getElementById('profileUserId').value, 10);
+    const u = directoryUsers().find(function (x) { return Number(x.id) === uid; });
+    if (!u || !Number.isFinite(uid)) return;
+    closeUserProfileModal({ keepUnlock: true });
+    openAccountActionConfirmModal({
+      action: 'delete',
+      userId: uid,
+      username: u.username,
+      fullName: u.full_name,
+    });
   };
 
   function applyAdminProfileLayout() {
@@ -589,15 +777,27 @@
         ? String(user.annual_leave_days)
         : '';
     }
+    const slEl = document.getElementById('profileSickLeaveDays');
+    if (slEl) {
+      slEl.value = user.sick_leave_days != null && user.sick_leave_days !== ''
+        ? String(user.sick_leave_days)
+        : '';
+    }
     const olEl = document.getElementById('profileOtherLeaveDays');
     if (olEl) {
       olEl.value = user.other_leave_days != null && user.other_leave_days !== ''
         ? String(user.other_leave_days)
         : '';
     }
+    const insEl = document.getElementById('profileInsuranceDetails');
+    if (insEl) {
+      insEl.value = user.insurance_details || '';
+    }
 
     document.getElementById('profileRole').value = user.role === 'admin' ? 'admin' : 'user';
-    document.getElementById('profileDesignation').value = user.designation || '';
+    // Legacy business_development rows map to Sales in the dropdown
+    const desig = user.designation === 'business_development' ? 'sales' : (user.designation || '');
+    document.getElementById('profileDesignation').value = desig;
 
     const rmSel = document.getElementById('profileReportingManager');
     if (rmSel) {
@@ -628,7 +828,7 @@
       if (isAdminTarget) {
         modNote.hidden = false;
         modNote.textContent = 'Administrators have full access to all modules by policy.';
-        ['accessFireInspection', 'accessHr', 'accessProcurement', 'accessBusinessDev', 'accessDocHub', 'accessReportGen', 'accessSubmittedForms', 'accessTicketing', 'accessOperations', 'accessOpsOvertime', 'accessOpsInvoices', 'accessOpsClients', 'accessOpsCheques', 'accessFinance'].forEach(function (id) {
+        ['accessFireApp', 'accessMunicipalityApp', 'accessFireInspection', 'accessHr', 'accessProcurement', 'accessBusinessDev', 'accessSalesManager', 'accessQuotations', 'accessDocHub', 'accessReportGen', 'accessSubmittedForms', 'accessTicketing', 'accessOperations', 'accessOpsOvertime', 'accessOpsTimesheet', 'accessOpsInvoices', 'accessOpsClients', 'accessOpsCheques', 'accessFinance'].forEach(function (id) {
           const cb = document.getElementById(id);
           if (cb) {
             cb.checked = true;
@@ -638,14 +838,22 @@
       } else {
         modNote.hidden = true;
         modNote.textContent = '';
+        const fireAppEl = document.getElementById('accessFireApp');
+        if (fireAppEl) fireAppEl.checked = !!user.access_fire_app;
+        const muniAppEl = document.getElementById('accessMunicipalityApp');
+        if (muniAppEl) muniAppEl.checked = !!user.access_municipality_app;
         const fireEl = document.getElementById('accessFireInspection');
         if (fireEl) {
-          fireEl.checked = !!(user.access_hvac || user.access_civil || user.access_cleaning);
+          fireEl.checked = !!user.access_hvac;
         }
         document.getElementById('accessHr').checked = !!user.access_hr;
         document.getElementById('accessProcurement').checked = !!user.access_procurement_module;
         const bd = document.getElementById('accessBusinessDev');
-        if (bd) bd.checked = !!user.access_business_development;
+        if (bd) bd.checked = !!user.access_business_development || !!user.access_sales_manager;
+        const sm = document.getElementById('accessSalesManager');
+        if (sm) sm.checked = !!user.access_sales_manager;
+        const aq = document.getElementById('accessQuotations');
+        if (aq) aq.checked = !!user.access_quotations;
         const dh = document.getElementById('accessDocHub');
         if (dh) dh.checked = user.can_access_dochub !== false;
         const rg = document.getElementById('accessReportGen');
@@ -657,12 +865,16 @@
         const ops = document.getElementById('accessOperations');
         const opsSubs = [
           document.getElementById('accessOpsOvertime'),
+          document.getElementById('accessOpsTimesheet'),
+          document.getElementById('accessOpsAttendance'),
           document.getElementById('accessOpsInvoices'),
           document.getElementById('accessOpsClients'),
           document.getElementById('accessOpsCheques'),
         ];
         const opsSubVals = [
           !!user.access_operations_overtime,
+          !!user.access_operations_timesheet,
+          !!user.access_operations_attendance,
           !!user.access_operations_invoices,
           !!user.access_operations_clients,
           !!user.access_operations_cheques,
@@ -707,6 +919,12 @@
             el.addEventListener('change', syncOpsFromSubs);
           }
         });
+        if (sm && !sm.dataset.salesMgrBound) {
+          sm.dataset.salesMgrBound = '1';
+          sm.addEventListener('change', function () {
+            if (sm.checked && bd) bd.checked = true;
+          });
+        }
       }
     }
 
@@ -748,12 +966,7 @@
     if (moduleType === 'hvac_mep') {
       return '/hvac-mep/form?edit=' + encodeURIComponent(submissionId) + '&review=true';
     }
-    if (moduleType === 'civil') {
-      return '/civil/form?edit=' + encodeURIComponent(submissionId) + '&review=true';
-    }
-    if (moduleType === 'cleaning') {
-      return '/cleaning/form?edit=' + encodeURIComponent(submissionId) + '&review=true';
-    }
+
     return '#';
   }
 
@@ -774,7 +987,8 @@
     const designationMap = {
       supervisor: 'Supervisor',
       operations_manager: 'Operations Manager',
-      business_development: 'Business Development',
+      sales: 'Sales',
+      business_development: 'Sales',
       procurement: 'Procurement',
       general_manager: 'General Manager',
       hr_manager: 'HR Manager',
@@ -806,8 +1020,8 @@
     if (submitted.length > 0) {
       html += '<table class="activity-table"><thead><tr><th>ID</th><th>Module</th><th>Site Name</th><th>Visit Date</th><th>Status</th><th>Created</th><th>Action</th></tr></thead><tbody>';
       submitted.forEach(function (form) {
-        const moduleClass = form.module_type === 'hvac_mep' ? 'hvac' : form.module_type === 'civil' ? 'civil' : 'cleaning';
-        const moduleLabel = form.module_type === 'hvac_mep' ? 'HVAC' : form.module_type === 'civil' ? 'Civil' : 'Cleaning';
+        const moduleClass = 'hvac';
+        const moduleLabel = 'Fire Systems';
         const statusClass = form.workflow_status === 'completed' ? 'completed' : form.workflow_status === 'rejected' ? 'rejected' : 'pending';
         const created = form.created_at ? new Date(form.created_at).toLocaleDateString() : '-';
         html +=
@@ -838,8 +1052,8 @@
       html +=
         '<table class="activity-table"><thead><tr><th>ID</th><th>Module</th><th>Site Name</th><th>Submitted By</th><th>Status</th><th>Date</th><th>Action</th></tr></thead><tbody>';
       reviewed.forEach(function (form) {
-        const moduleClass = form.module_type === 'hvac_mep' ? 'hvac' : form.module_type === 'civil' ? 'civil' : 'cleaning';
-        const moduleLabel = form.module_type === 'hvac_mep' ? 'HVAC' : form.module_type === 'civil' ? 'Civil' : 'Cleaning';
+        const moduleClass = 'hvac';
+        const moduleLabel = 'Fire Systems';
         const statusClass = form.workflow_status === 'completed' ? 'completed' : form.workflow_status === 'rejected' ? 'rejected' : 'pending';
         const created = form.created_at ? new Date(form.created_at).toLocaleDateString() : '-';
         html +=
@@ -909,10 +1123,13 @@
       if (e.key !== 'Escape') return;
       const res = document.getElementById('passwordResetResultModal');
       const conf = document.getElementById('passwordResetConfirmModal');
+      const acct = document.getElementById('accountActionConfirmModal');
       const prof = document.getElementById('accessModal');
       const act = document.getElementById('userActivityModal');
       if (res && res.classList.contains('active')) {
         closePasswordResetResultModal();
+      } else if (acct && acct.classList.contains('active')) {
+        closeAccountActionConfirmModal();
       } else if (conf && conf.classList.contains('active')) {
         closePasswordResetConfirmModal();
       } else if (prof && prof.classList.contains('active')) {
@@ -969,9 +1186,17 @@
             document.getElementById('profileAnnualLeaveDays')
               ? document.getElementById('profileAnnualLeaveDays').value.trim()
               : '',
+          sick_leave_days:
+            document.getElementById('profileSickLeaveDays')
+              ? document.getElementById('profileSickLeaveDays').value.trim()
+              : '',
           other_leave_days:
             document.getElementById('profileOtherLeaveDays')
               ? document.getElementById('profileOtherLeaveDays').value.trim()
+              : '',
+          insurance_details:
+            document.getElementById('profileInsuranceDetails')
+              ? document.getElementById('profileInsuranceDetails').value.trim()
               : '',
         };
         Object.assign(payload, profilePasswordPayload());
@@ -991,25 +1216,36 @@
           const fireOn = !!(document.getElementById('accessFireInspection') && document.getElementById('accessFireInspection').checked);
           // Fire system inspection is the only inspection product; keep legacy flags in sync.
           payload.access_hvac = fireOn;
+          payload.access_fire_app = !!(document.getElementById('accessFireApp') && document.getElementById('accessFireApp').checked);
+          payload.access_municipality_app = !!(document.getElementById('accessMunicipalityApp') && document.getElementById('accessMunicipalityApp').checked);
           payload.access_civil = false;
           payload.access_cleaning = false;
           payload.access_hr = document.getElementById('accessHr').checked;
           payload.access_procurement_module = document.getElementById('accessProcurement').checked;
-          payload.access_business_development = document.getElementById('accessBusinessDev').checked;
+          const salesMgrOn = !!(document.getElementById('accessSalesManager') && document.getElementById('accessSalesManager').checked);
+          payload.access_sales_manager = salesMgrOn;
+          payload.access_quotations = !!(document.getElementById('accessQuotations') && document.getElementById('accessQuotations').checked);
+          // Sales Manager implies Sales module access
+          payload.access_business_development = !!(document.getElementById('accessBusinessDev') && document.getElementById('accessBusinessDev').checked) || salesMgrOn;
           payload.access_report_generation = document.getElementById('accessReportGen').checked;
           payload.access_submitted_forms = document.getElementById('accessSubmittedForms').checked;
           const tgx = document.getElementById('accessTicketing');
           payload.access_ticketing = !!(tgx && tgx.checked);
           const opOt = document.getElementById('accessOpsOvertime');
+          const opTs = document.getElementById('accessOpsTimesheet');
+          const opAtt = document.getElementById('accessOpsAttendance');
           const opInv = document.getElementById('accessOpsInvoices');
           const opCli = document.getElementById('accessOpsClients');
           const opChq = document.getElementById('accessOpsCheques');
           payload.access_operations_overtime = !!(opOt && opOt.checked);
+          payload.access_operations_timesheet = !!(opTs && opTs.checked);
+          payload.access_operations_attendance = !!(opAtt && opAtt.checked);
           payload.access_operations_invoices = !!(opInv && opInv.checked);
           payload.access_operations_clients = !!(opCli && opCli.checked);
           payload.access_operations_cheques = !!(opChq && opChq.checked);
           const opx = document.getElementById('accessOperations');
           payload.access_operations = !!(opx && opx.checked) || payload.access_operations_overtime
+            || payload.access_operations_timesheet || payload.access_operations_attendance
             || payload.access_operations_invoices || payload.access_operations_clients
             || payload.access_operations_cheques;
           // View/Full level UI removed — Operations access always includes manage.
@@ -1107,6 +1343,7 @@
     try {
       ensurePortalModal(document.getElementById('passwordResetConfirmModal'));
       ensurePortalModal(document.getElementById('passwordResetResultModal'));
+      ensurePortalModal(document.getElementById('accountActionConfirmModal'));
       ensurePortalModal(document.getElementById('accessModal'));
     } catch (_) { /* ignore */ }
   }

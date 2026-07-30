@@ -34,6 +34,27 @@
     return '/hr/print/' + encodeURIComponent(sid);
   }
 
+  /**
+   * Blank create URL for the same HR form type (no edit id — fields stay empty).
+   * Optional fromWithdrawnSubmissionId is only a history pointer (?from_withdrawn=),
+   * never used to copy field values into the new form.
+   */
+  function getHrNewFormUrl(moduleType, fromWithdrawnSubmissionId) {
+    var m = String(moduleType || '').trim();
+    if (m.indexOf('hr_') !== 0) {
+      return null;
+    }
+    var base = HR_FORM_PATHS[m];
+    if (!base) {
+      return '/hr/';
+    }
+    var from = String(fromWithdrawnSubmissionId || '').trim();
+    if (from) {
+      return base + '?from_withdrawn=' + encodeURIComponent(from);
+    }
+    return base;
+  }
+
   /** View URL + embed=1 for iframes (no main app navbar inside the form page). */
   function getHrSubmissionFullFormEmbedUrl(moduleType, submissionId) {
     var u = getHrSubmissionFullFormViewUrl(moduleType, submissionId);
@@ -47,5 +68,6 @@
   }
 
   global.getHrSubmissionFullFormViewUrl = getHrSubmissionFullFormViewUrl;
+  global.getHrNewFormUrl = getHrNewFormUrl;
   global.getHrSubmissionFullFormEmbedUrl = getHrSubmissionFullFormEmbedUrl;
 })(typeof window !== 'undefined' ? window : globalThis);

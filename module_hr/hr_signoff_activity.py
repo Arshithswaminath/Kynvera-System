@@ -33,7 +33,7 @@ def hr_workflow_status_label(workflow_status: str | None, submission_status: str
     w = (workflow_status or "").strip().lower()
     s = (submission_status or "").strip().lower()
     if w == "withdrawn":
-        return "Withdrawn"
+        return "Revoked"
     if w in ("approved",) or s in ("completed",):
         return _WORKFLOW_LABELS.get(w) or "Approved — workflow complete"
     return _WORKFLOW_LABELS.get(w) or "In progress"
@@ -204,6 +204,33 @@ def compute_hr_signoff_activity(
                     "detail": (fd.get("hr_comments") or fd.get("hr_remarks") or "").strip(),
                 }
             )
+
+    revoke_at = fd.get("revoked_at") or fd.get("withdrawn_at") or fd.get("cancelled_for_revision_at")
+    if revoke_at:
+        is_cancel_revise = bool(
+            fd.get("cancelled_for_revision_at")
+            and not fd.get("revoked_at")
+            and not fd.get("withdrawn_at")
+        )
+        revoke_role = str(fd.get("revoked_by_role") or "").strip().lower()
+        revoke_who = (
+            (fd.get("revoked_by_display") or fd.get("withdrawn_by_display") or "").strip()
+            or ("HR" if revoke_role == "hr" else "Submitter")
+        )
+        if revoke_role == "hr" and revoke_who and not revoke_who.upper().startswith("HR"):
+            revoke_who = f"HR ({revoke_who})"
+        revoke_detail = (
+            fd.get("revoke_comment") or fd.get("cancel_revision_remark") or ""
+        ).strip()
+        raw.append(
+            {
+                "kind": "revoked",
+                "at": str(revoke_at).strip(),
+                "label": "Form cancelled for revision" if is_cancel_revise else "Form revoked",
+                "actor": revoke_who,
+                "detail": revoke_detail,
+            }
+        )
 
     raw = _dedupe_events(raw)
 

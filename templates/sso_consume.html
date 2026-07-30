@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Signing you in — Kynvera</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+  <style>
+    :root { color-scheme: light; }
+    body {
+      margin: 0; min-height: 100vh; display: grid; place-items: center;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      background: #f7f5f2; color: #1a1a1a;
+    }
+    .box { max-width: 28rem; padding: 2rem; text-align: center; }
+    h1 { font-size: 1.25rem; margin: 0 0 0.5rem; }
+    p { margin: 0; color: #555; line-height: 1.5; }
+    a { color: #c45c3e; }
+    .err { color: #9b1c1c; margin-top: 1rem; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    {% if error %}
+      <h1>Could not open this app</h1>
+      <p class="err">{{ error }}</p>
+      <p style="margin-top:1rem"><a href="/login">Sign in on this app</a></p>
+    {% else %}
+      <h1>Opening your workspace…</h1>
+      <p>Securely transferring your Kynvera session.</p>
+    {% endif %}
+  </div>
+  {% if not error %}
+  <script>
+    (function () {
+      var token = {{ token|tojson }};
+      var nextUrl = {{ next_url|tojson }};
+      if (!token) {
+        window.location.replace('/login');
+        return;
+      }
+      try {
+        localStorage.setItem('access_token', token);
+      } catch (e) {}
+      fetch('/api/auth/me', {
+        headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' }
+      }).then(function (r) {
+        return r.ok ? r.json() : null;
+      }).then(function (data) {
+        if (data && data.user) {
+          try { localStorage.setItem('user', JSON.stringify(data.user)); } catch (e) {}
+        }
+      }).catch(function () {}).finally(function () {
+        window.location.replace(nextUrl || '/dashboard');
+      });
+    })();
+  </script>
+  {% endif %}
+</body>
+</html>

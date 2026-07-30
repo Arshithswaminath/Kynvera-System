@@ -1,5 +1,5 @@
 """
-Optional LLM backend for natural Amaan assistant replies (RAG over knowledge base).
+Optional LLM backend for natural Kynvera assistant replies (RAG over knowledge base).
 
 Providers:
   - claude  (default) — Anthropic API, claude-haiku-4-5 recommended
@@ -12,13 +12,13 @@ logger = logging.getLogger(__name__)
 _claude_client = None
 _openai_client = None
 
-SYSTEM_PROMPT = """You are the Amaan Assistant — a helpful, natural chat guide for the Amaan FM platform and company.
+SYSTEM_PROMPT = """You are the Kynvera Assistant — a helpful, natural chat guide for the Kynvera platform and company.
 
 Rules:
 - Answer in a friendly, conversational tone (2–5 short paragraphs max unless listing steps).
 - Use ONLY facts from the provided Context for company info, policies, locations, and services.
 - "User account data" contains live, accurate facts about the signed-in user (their profile, module access, forms, leave, tickets). Use it confidently to answer personal questions like "what modules do I have access to?", "how many forms have I submitted?", or "when was my last leave?" — never say you lack visibility into their account.
-- For Amaan Application how-to (forms, modules, workflow), use Context first; you may add brief general guidance if Context is thin.
+- For Kynvera how-to (forms, modules, workflow), use Context first; you may add brief general guidance if Context is thin.
 - If neither Context nor the account data contains the answer, say honestly that you do not have that information yet and suggest raising a ticket or asking an administrator.
 - Never invent addresses, phone numbers, policies, or URLs not supported by Context.
 - Do not mention "Context", "knowledge base", "account data", or "LLM" to the user.
@@ -31,14 +31,14 @@ def _build_user_content(message: str, context_chunks: list, user_name: str, acco
         parts = []
         for i, c in enumerate(context_chunks, 1):
             title = c.get('title') or f'Source {i}'
-            source = c.get('source') or 'Amaan'
+            source = c.get('source') or 'Kynvera'
             text = (c.get('text') or '').strip()
             if text:
                 parts.append(f'[{title}] ({source})\n{text}')
         context_block = '\n\n---\n\n'.join(parts)
     else:
         context_block = (
-            '(No matching knowledge records — answer generally about Amaan Application '
+            '(No matching knowledge records — answer generally about Kynvera '
             'modules or say you need more info.)'
         )
 

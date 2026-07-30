@@ -1,5 +1,5 @@
 ﻿/**
- * Amaan Dashboard Styles
+ * Kynvera Dashboard Styles
  * Clean, minimal design with subtle animations
  */
 
@@ -7,24 +7,24 @@
  CSS Variables / Design Tokens
  =========================================== */
 :root {
-  --primary: var(--color-brand, #d21725);
-  --primary-light: var(--color-brand-light, #e8323f);
-  --primary-dark: var(--color-brand-dark, #a8121e);
+  --primary: var(--color-brand, #ff8e68);
+  --primary-light: var(--color-brand-light, #f97e54);
+  --primary-dark: var(--color-brand-dark, #e05f36);
   --secondary: #d9d9d9;
-  --text-dark: #111827;
-  --text-mid: #374151;
+  --text-dark: #191b23;
+  --text-mid: #5c616e;
   --text-light: #6b7280;
-  --text-muted: #9ca3af;
+  --text-muted: #9498a3;
   --logo-brand-color: #6b7280;
-  --bg-light: #f9fafb;
+  --bg-light: #fafafb;
   --white: #ffffff;
-  --bg-body: #faf8f8;
+  --bg-body: #f7f7f9;
   --bg-surface: #ffffff;
   --bg-card: #ffffff;
-  --border-color: #e5e7eb;
+  --border-color: #e9eaee;
   --border-light: #f3f4f6;
-  /* Main nav + module toolbars (matches BizFlow --line); avoids harsh “black” hairline on CDN/deploy */
-  --nav-hairline: #ede2e2;
+  /* Main nav + module toolbars — neutral hairline (Kynvera) */
+  --nav-hairline: #e9eaee;
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
   --shadow-md:
@@ -40,7 +40,8 @@
   /* iOS / system UI (SF on Apple devices) */
   --font-sans:
     -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
-    system-ui, "Segoe UI", "Helvetica Neue", sans-serif;
+    "SF Pro", ui-sans-serif, system-ui, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
 }
 
 /* ===========================================
@@ -54,7 +55,7 @@
 
 body {
   font-family: var(--font-sans);
-  background: var(--bg-body, #faf8f8);
+  background: var(--bg-body, #f7f7f9);
   color: var(--text-dark);
   overflow-x: hidden;
   line-height: 1.6;
@@ -69,11 +70,11 @@ body {
 html {
   scroll-behavior: smooth;
   /* PWA / iOS WKWebView: unpainted bands (esp. between sections) show black if html has no fill */
-  background-color: var(--bg-body, #faf8f8);
+  background-color: var(--bg-body, #f7f7f9);
   color-scheme: light;
 }
 
-/* Dashboard routes: one continuous #faf8f8 surface (mobile_responsive sets body white).
+/* Dashboard routes: one continuous whitish Kynvera surface (mobile_responsive sets body white).
  design-tokens.css uses :root:not([data-theme="light"]) under prefers-color-scheme:dark,
  which beats this file's :root and sets --bg-body to ~black — modules/footer then read "black block". */
 html:not([data-theme="dark"]) body.page-dashboard,
@@ -82,14 +83,14 @@ html:not([data-theme="dark"]) body.inspection-dashboard,
 html:not([data-theme="dark"]) body.inspection-form,
 html:not([data-theme="dark"]) body.operations-dashboard,
 html:not([data-theme="dark"]) body.review-dashboard {
-  --bg-body: #faf8f8;
-  --bg-light: #f9fafb;
-  --text-dark: #111827;
-  --text-mid: #374151;
+  --bg-body: #f7f7f9;
+  --bg-light: #fafafb;
+  --text-dark: #191b23;
+  --text-mid: #5c616e;
   --text-light: #6b7280;
-  --text-muted: #9ca3af;
+  --text-muted: #9498a3;
   --white: #ffffff;
-  --border-color: #e5e7eb;
+  --border-color: #e9eaee;
 }
 
 body.page-dashboard,
@@ -97,7 +98,7 @@ body.hr-dashboard,
 body.inspection-dashboard,
 body.operations-dashboard,
 body.review-dashboard {
-  background: var(--bg-body, #faf8f8) !important;
+  background: var(--bg-body, #f7f7f9) !important;
 }
 
 /* ===========================================
@@ -119,7 +120,7 @@ body.review-dashboard {
 
 .nav.scrolled {
   background: #ffffff;
-  box-shadow: 0 1px 3px rgba(210, 23, 37, 0.08);
+  box-shadow: 0 1px 3px rgba(255, 142, 104, 0.08);
 }
 
 .nav-container {
@@ -140,7 +141,7 @@ body.review-dashboard {
 .logo {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 1rem;
   text-decoration: none;
   color: inherit;
   transition: opacity 0.2s ease;
@@ -184,12 +185,14 @@ a.logo:active {
   filter: none;
 }
 
-/* Official nav mark — emblem-only crop fills its box, so a larger explicit size
- makes the logo visibly bigger; 56px stays within the 72px nav so height is unchanged. */
+/* Official nav mark — emblem-only crop fills its box */
 .logo img.logo-img-official {
-  height: 44px !important;
-  width: auto;
-  margin-left: -0.4rem;
+  height: 36px !important;
+  width: 36px !important;
+  margin-left: 0;
+  margin-right: 0;
+  border-radius: 8px;
+  object-fit: cover;
 }
 
 .logo-text {
@@ -197,10 +200,10 @@ a.logo:active {
   flex-direction: column;
   align-items: flex-start;
   justify-content: center;
-  gap: 0.1rem;
+  gap: 0.2rem;
   min-width: 0;
   text-align: left;
-  margin-left: 0.25rem;
+  margin-left: 0;
 }
 
 .logo-brand {
@@ -293,7 +296,7 @@ a.logo:active {
 
 .nav-menu a:hover {
   color: var(--primary);
-  background: rgba(210, 23, 37, 0.05);
+  background: rgba(255, 142, 104, 0.05);
 }
 
 /* Current route — beats Bootstrap link colour and drawer `!important` text colour */
@@ -311,7 +314,7 @@ a.logo:active {
   top: 100%;
   right: 0;
   min-width: 220px;
-  border: 1px solid rgba(210, 23, 37, 0.16);
+  border: 1px solid rgba(255, 142, 104, 0.16);
   border-radius: 12px;
   background: #fff;
   box-shadow: 0 10px 28px rgba(15, 23, 42, 0.14);
@@ -394,8 +397,8 @@ a.logo:active {
   font-size: 0.875rem;
   font-weight: 600;
   color: var(--primary);
-  background: rgba(210, 23, 37, 0.08);
-  border: 1px solid rgba(210, 23, 37, 0.25);
+  background: rgba(255, 142, 104, 0.08);
+  border: 1px solid rgba(255, 142, 104, 0.25);
   border-radius: var(--radius-sm);
   cursor: pointer;
   flex-shrink: 0;
@@ -404,7 +407,7 @@ a.logo:active {
   margin-right: 0.5rem;
 }
 .nav-save-draft-btn:hover {
-  background: rgba(210, 23, 37, 0.12);
+  background: rgba(255, 142, 104, 0.12);
   border-color: var(--primary);
   color: var(--primary);
 }
@@ -431,7 +434,7 @@ a.logo:active {
   cursor: pointer;
   flex-shrink: 0;
   white-space: nowrap;
-  box-shadow: 0 1px 2px rgba(210, 23, 37, 0.2);
+  box-shadow: 0 1px 2px rgba(255, 142, 104, 0.2);
 }
 
 .logout-btn::before {
@@ -443,7 +446,7 @@ a.logo:active {
   background: var(--primary-dark);
   border-color: var(--primary-dark);
   transform: none;
-  box-shadow: 0 2px 6px rgba(210, 23, 37, 0.28);
+  box-shadow: 0 2px 6px rgba(255, 142, 104, 0.28);
 }
 
 .logout-btn:active {
@@ -465,15 +468,15 @@ a.logo:active {
   background:
     radial-gradient(
       ellipse 70% 60% at 0% 50%,
-      rgba(210, 23, 37, 0.1) 0%,
+      rgba(255, 142, 104, 0.1) 0%,
       transparent 70%
     ),
     radial-gradient(
       ellipse 40% 40% at 100% 10%,
-      rgba(210, 23, 37, 0.05) 0%,
+      rgba(255, 142, 104, 0.05) 0%,
       transparent 60%
     ),
-    linear-gradient(160deg, #f9f5f5 0%, #fbfafa 50%, #faf8f8 100%);
+    linear-gradient(160deg, #fafafb 0%, #fafafb 50%, #f7f7f9 100%);
   position: relative;
   z-index: 1;
   overflow: hidden;
@@ -485,8 +488,8 @@ a.logo:active {
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(210, 23, 37, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(210, 23, 37, 0.04) 1px, transparent 1px);
+    linear-gradient(rgba(255, 142, 104, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 142, 104, 0.04) 1px, transparent 1px);
   background-size: 48px 48px;
   mask-image: linear-gradient(to bottom, black 0%, black 45%, transparent 95%);
   -webkit-mask-image: linear-gradient(
@@ -508,15 +511,15 @@ a.logo:active {
   background:
     radial-gradient(
       ellipse 70% 60% at 0% 50%,
-      rgba(210, 23, 37, 0.1) 0%,
+      rgba(255, 142, 104, 0.1) 0%,
       transparent 70%
     ),
     radial-gradient(
       ellipse 40% 40% at 100% 10%,
-      rgba(210, 23, 37, 0.05) 0%,
+      rgba(255, 142, 104, 0.05) 0%,
       transparent 60%
     ),
-    linear-gradient(160deg, #f9f5f5 0%, #fbfafa 50%, #faf8f8 100%);
+    linear-gradient(160deg, #fafafb 0%, #fafafb 50%, #f7f7f9 100%);
   overflow: hidden;
 }
 .inspection-page-content .hero,
@@ -538,21 +541,22 @@ a.logo:active {
   background:
     radial-gradient(
       ellipse 70% 60% at 0% 50%,
-      rgba(210, 23, 37, 0.1) 0%,
+      rgba(255, 142, 104, 0.1) 0%,
       transparent 70%
     ),
     radial-gradient(
       ellipse 40% 40% at 100% 10%,
-      rgba(210, 23, 37, 0.05) 0%,
+      rgba(255, 142, 104, 0.05) 0%,
       transparent 60%
     ),
-    linear-gradient(160deg, #f9f5f5 0%, #fbfafa 50%, #faf8f8 100%);
+    linear-gradient(160deg, #fafafb 0%, #fafafb 50%, #f7f7f9 100%);
   padding-bottom: 6rem;
 }
 
-/* HR hero: gradient at top full width, no glow orb */
+/* HR: comfortable gap under title before Workflows (not the shared 6rem) */
 .hero.hr-hero {
-  background: linear-gradient(180deg, #eef4f0 0%, #f2f7f4 45%, #faf8f8 100%);
+  background: linear-gradient(180deg, #f0f0f2 0%, #f4f4f5 45%, #f7f7f9 100%);
+  padding-bottom: 1.15rem;
 }
 .hero.hr-hero::after {
   display: none;
@@ -576,7 +580,7 @@ a.logo:active {
 
 /* Inspection hero: same green gradient at top as HR module, no grid */
 .hero.inspection-hero {
-  background: linear-gradient(180deg, #eef4f0 0%, #f2f7f4 45%, #faf8f8 100%);
+  background: linear-gradient(180deg, #f0f0f2 0%, #f4f4f5 45%, #f7f7f9 100%);
 }
 .hero.inspection-hero::before,
 .hero.inspection-hero::after {
@@ -585,7 +589,7 @@ a.logo:active {
 
 /* Submitted Forms (workflow history) hero — tighter bottom so stats sit closer to the list */
 .hero.review-hero {
-  background: linear-gradient(180deg, #eef4f0 0%, #f2f7f4 45%, #faf8f8 100%);
+  background: linear-gradient(180deg, #f0f0f2 0%, #f4f4f5 45%, #f7f7f9 100%);
   padding-bottom: 1.25rem;
 }
 .hero.review-hero::before,
@@ -595,7 +599,7 @@ a.logo:active {
 
 /* Procurement hero: match Inspection - gradient at top, no grid */
 .hero.proc-hero {
-  background: linear-gradient(180deg, #eef4f0 0%, #f2f7f4 45%, #faf8f8 100%);
+  background: linear-gradient(180deg, #f0f0f2 0%, #f4f4f5 45%, #f7f7f9 100%);
 }
 .hero.proc-hero::before,
 .hero.proc-hero::after {
@@ -605,7 +609,7 @@ a.logo:active {
 
 /* Review History dashboard: match HR/Inspection background */
 .review-dashboard {
-  background: #faf8f8;
+  background: #f7f7f9;
 }
 
 /* Grid fades gradually to bottom - no sharp cutoff (HR only; Procurement/Inspection use gradient only) */
@@ -629,7 +633,7 @@ a.logo:active {
   height: 420px;
   background: radial-gradient(
     circle,
-    rgba(210, 23, 37, 0.12) 0%,
+    rgba(255, 142, 104, 0.12) 0%,
     transparent 65%
   );
   border-radius: 50%;
@@ -668,8 +672,8 @@ a.logo:active {
   color: var(--primary);
   margin: 0 0 1.25rem 0;
   padding: 0.4rem 0.875rem;
-  background: rgba(210, 23, 37, 0.08);
-  border: 1px solid rgba(210, 23, 37, 0.2);
+  background: rgba(255, 142, 104, 0.08);
+  border: 1px solid rgba(255, 142, 104, 0.2);
   border-radius: 100px;
   width: fit-content;
   display: flex;
@@ -706,7 +710,7 @@ a.logo:active {
   background: linear-gradient(
     125deg,
     var(--primary) 0%,
-    #e8323f 30%,
+    #f97e54 30%,
     var(--primary-light) 60%,
     var(--primary) 100%
   );
@@ -762,8 +766,8 @@ a.logo:active {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #d21725;
-  box-shadow: 0 0 0 3px rgba(210, 23, 37, 0.2);
+  background: #ff8e68;
+  box-shadow: 0 0 0 3px rgba(255, 142, 104, 0.2);
   animation: liveDotPulse 2s ease-out infinite;
 }
 
@@ -800,7 +804,7 @@ a.logo:active {
 }
 .dashboard-widget-link:hover .dashboard-widget {
   box-shadow: 0 2px 16px rgba(0, 0, 0, 0.06);
-  border-color: rgba(210, 23, 37, 0.14);
+  border-color: rgba(255, 142, 104, 0.14);
 }
 .dashboard-widget {
   background: #ffffff;
@@ -923,7 +927,7 @@ a.logo:active {
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: rgba(210, 23, 37, 0.12);
+  background: rgba(255, 142, 104, 0.12);
   color: var(--primary);
   display: inline-flex;
   align-items: center;
@@ -1063,7 +1067,7 @@ a.logo:active {
 
 /* ---- Section ---- */
 .modules-section {
-  background: var(--bg-body, #faf8f8);
+  background: var(--bg-body, #f7f7f9);
   padding: 3rem 0 7rem;
   width: 100%;
   display: block !important;
@@ -1173,11 +1177,11 @@ body.page-dashboard .modules-section {
 }
 
 .module-card:hover {
-  border-color: rgba(210, 23, 37, 0.32);
+  border-color: rgba(255, 142, 104, 0.32);
   box-shadow:
     0 4px 16px rgba(0, 0, 0, 0.07),
-    0 12px 32px rgba(210, 23, 37, 0.09),
-    0 0 0 1.5px rgba(210, 23, 37, 0.1);
+    0 12px 32px rgba(255, 142, 104, 0.09),
+    0 0 0 1.5px rgba(255, 142, 104, 0.1);
   transform: translateY(-3px);
 }
 
@@ -1192,7 +1196,7 @@ body.page-dashboard .modules-section {
 .hr-dashboard .submissions-panel.module-card:hover {
   transform: none;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
-  border-color: rgba(210, 23, 37, 0.14) !important;
+  border-color: rgba(255, 142, 104, 0.14) !important;
 }
 
 .hr-dashboard .submissions-panel.module-card::before {
@@ -1232,7 +1236,7 @@ body.page-dashboard .modules-section {
 }
 
 .module-card:hover .module-icon {
-  background: rgba(210, 23, 37, 0.1);
+  background: rgba(255, 142, 104, 0.1);
   transform: scale(1.06);
 }
 
@@ -1302,7 +1306,7 @@ body.page-dashboard .modules-section {
  Footer
  =========================================== */
 .footer {
-  background: var(--bg-body, #faf8f8);
+  background: var(--bg-body, #f7f7f9);
   margin-top: auto;
   flex-shrink: 0;
   position: relative;
@@ -1452,13 +1456,13 @@ body.page-dashboard .modules-section {
   padding: 5rem 2rem 2rem !important;
 }
 
-/* Profile sheet — vertically centered with enough clearance below the nav */
+/* Profile sheet — centered, with modest clearance below the nav */
 #profileModal.contact-modal {
   align-items: center !important;
   justify-content: center !important;
   padding-top: max(
-    8rem,
-    calc(env(safe-area-inset-top, 0px) + 4.25rem + 4rem)
+    4.5rem,
+    calc(env(safe-area-inset-top, 0px) + 4.25rem + 0.75rem)
   ) !important;
   padding-right: 1.25rem !important;
   padding-bottom: max(
@@ -1630,7 +1634,7 @@ body.page-dashboard .modules-section {
 .form-control:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(210, 23, 37, 0.08);
+  box-shadow: 0 0 0 3px rgba(255, 142, 104, 0.08);
 }
 
 /* ===========================================
@@ -1764,7 +1768,7 @@ body.page-dashboard .modules-section {
 
   .mobile-menu-toggle:active,
   .mobile-menu-toggle.active {
-    background: rgba(210, 23, 37, 0.08) !important;
+    background: rgba(255, 142, 104, 0.08) !important;
     border: none !important;
     color: var(--primary) !important;
     box-shadow: none !important;
@@ -1834,7 +1838,7 @@ body.page-dashboard .modules-section {
     border: none !important;
     box-shadow: none !important;
     border-radius: 10px !important;
-    background: rgba(210, 23, 37, 0.04) !important;
+    background: rgba(255, 142, 104, 0.04) !important;
     margin: 0.2rem 0 0.35rem 0 !important;
     padding: 0.25rem !important;
     opacity: 1 !important;
@@ -1886,13 +1890,13 @@ body.page-dashboard .modules-section {
 
   .mobile-menu-drawer-list li a:hover,
   .mobile-menu-drawer-list a:hover {
-    background: rgba(210, 23, 37, 0.06) !important;
+    background: rgba(255, 142, 104, 0.06) !important;
     color: var(--primary) !important;
   }
 
   .mobile-menu-drawer-list li a:active,
   .mobile-menu-drawer-list a:active {
-    background: rgba(210, 23, 37, 0.1) !important;
+    background: rgba(255, 142, 104, 0.1) !important;
     color: var(--primary) !important;
   }
 
@@ -2139,7 +2143,7 @@ body.page-dashboard .modules-section {
 
   .logo {
     flex: 1 1 auto !important;
-    gap: 0.625rem !important;
+    gap: 0.85rem !important;
     min-width: 0 !important;
   }
 
@@ -2149,7 +2153,9 @@ body.page-dashboard .modules-section {
   }
 
   .logo img.logo-img-official {
-    height: 38px !important;
+    height: 32px !important;
+    width: 32px !important;
+    border-radius: 7px;
   }
 
   .logo-brand {
@@ -2271,7 +2277,7 @@ body.page-dashboard .modules-section {
 
   .nav-menu li a:active,
   .nav-menu a:active {
-    background: rgba(210, 23, 37, 0.08) !important;
+    background: rgba(255, 142, 104, 0.08) !important;
   }
 
   .nav-menu a:hover {
@@ -2311,7 +2317,7 @@ body.page-dashboard .modules-section {
   }
 
   .mobile-menu-toggle:active {
-    background: rgba(210, 23, 37, 0.08) !important;
+    background: rgba(255, 142, 104, 0.08) !important;
     color: var(--primary) !important;
     box-shadow: none !important;
   }
@@ -2390,7 +2396,7 @@ body.page-dashboard .modules-section {
     background: var(--primary) !important;
     border: 1px solid var(--primary) !important;
     color: #fff !important;
-    box-shadow: 0 1px 2px rgba(210, 23, 37, 0.2) !important;
+    box-shadow: 0 1px 2px rgba(255, 142, 104, 0.2) !important;
   }
 
   .logout-btn svg {
@@ -2433,7 +2439,7 @@ body.page-dashboard .modules-section {
   .module-card:active {
     transform: scale(0.985) !important;
     transition: transform 0.1s ease !important;
-    background: rgba(210, 23, 37, 0.02) !important;
+    background: rgba(255, 142, 104, 0.02) !important;
   }
 
   .module-card .module-number {
@@ -3046,7 +3052,7 @@ body.page-dashboard .modules-section {
 }
 
 .mark-all-read:hover {
-  background: rgba(210, 23, 37, 0.06);
+  background: rgba(255, 142, 104, 0.06);
 }
 
 .notification-list {
@@ -3189,12 +3195,12 @@ body.page-dashboard .modules-section {
 }
 
 .todo-nav-btn .todo-nav-badge {
-  background: var(--primary, #d21725);
+  background: var(--primary, #ff8e68);
   border-color: #fff;
 }
 
 .todo-panel-pop {
-  --todo-accent: #d21725;
+  --todo-accent: #ff8e68;
   --todo-accent-hover: #0f402a;
   --todo-surface: #f8fafc;
   --todo-border: #e2e8f0;
@@ -3313,7 +3319,7 @@ body.page-dashboard .modules-section {
 .todo-remind-input:focus {
   outline: none;
   border-color: var(--todo-accent);
-  box-shadow: 0 0 0 3px rgba(210, 23, 37, 0.12);
+  box-shadow: 0 0 0 3px rgba(255, 142, 104, 0.12);
 }
 
 .todo-new-input {
@@ -3337,7 +3343,7 @@ body.page-dashboard .modules-section {
 .todo-new-input:focus {
   outline: none;
   border-color: var(--todo-accent);
-  box-shadow: 0 0 0 3px rgba(210, 23, 37, 0.1);
+  box-shadow: 0 0 0 3px rgba(255, 142, 104, 0.1);
 }
 
 .todo-add-btn {
@@ -3513,7 +3519,7 @@ body.page-dashboard .modules-section {
 }
 
 .todo-clear-done:hover {
-  background: rgba(210, 23, 37, 0.09);
+  background: rgba(255, 142, 104, 0.09);
   color: var(--todo-accent-hover);
 }
 
@@ -3538,15 +3544,15 @@ body.page-dashboard .modules-section {
   color: #fff !important;
   text-decoration: none !important;
   border: none;
-  background: var(--primary, #d21725);
-  box-shadow: 0 2px 8px rgba(210, 23, 37, 0.22);
+  background: var(--primary, #ff8e68);
+  box-shadow: 0 2px 8px rgba(255, 142, 104, 0.22);
   transition:
     background 0.18s ease,
     box-shadow 0.18s ease;
 }
 .submission-view-pdf-btn:hover {
-  background: var(--primary-dark, #a8121e);
-  box-shadow: 0 3px 12px rgba(210, 23, 37, 0.28);
+  background: var(--primary-dark, #e05f36);
+  box-shadow: 0 3px 12px rgba(255, 142, 104, 0.28);
   color: #fff !important;
 }
 
@@ -3591,9 +3597,9 @@ body.page-dashboard .modules-section {
   font-weight: 700;
   font-size: 0.85rem;
   cursor: pointer;
-  background: #d21725;
+  background: #ff8e68;
   color: #fff;
 }
 .password-policy-banner .ppb-btn:hover {
-  background: #a8121e;
+  background: #e05f36;
 }

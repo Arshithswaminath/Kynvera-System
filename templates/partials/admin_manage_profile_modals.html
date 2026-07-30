@@ -49,7 +49,7 @@
           <div class="form-group" style="margin-bottom:0;grid-column:1/-1;">
             <label class="form-label" for="profileEmploymentStartDate">Joined company (dashboard tenure)</label>
             <input type="date" id="profileEmploymentStartDate" class="form-control" autocomplete="off">
-            <p class="admin-profile-hint" style="margin-top: 0.25rem;">Optional. Shown as “Days with Amaan” on the employee home dashboard.</p>
+            <p class="admin-profile-hint" style="margin-top: 0.25rem;">Optional. Shown as “Days with Kynvera” on the employee home dashboard.</p>
           </div>
         </div>
       </div>
@@ -66,8 +66,16 @@
             <input type="number" id="profileAnnualLeaveDays" class="form-control" min="0" max="366" step="1" placeholder="—">
           </div>
           <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label" for="profileSickLeaveDays">Sick leave (days)</label>
+            <input type="number" id="profileSickLeaveDays" class="form-control" min="0" max="366" step="1" placeholder="—">
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
             <label class="form-label" for="profileOtherLeaveDays">Other leave (days)</label>
             <input type="number" id="profileOtherLeaveDays" class="form-control" min="0" max="366" step="1" placeholder="—">
+          </div>
+          <div class="form-group" style="margin-bottom:0;grid-column:1/-1;">
+            <label class="form-label" for="profileInsuranceDetails">Insurance details</label>
+            <input type="text" id="profileInsuranceDetails" class="form-control" maxlength="255" placeholder="Policy / provider / notes">
           </div>
           <div class="form-group" style="margin-bottom:0;grid-column:1/-1;">
             <label class="form-label" for="profileReportingManager">Reporting manager (technician supervisor)</label>
@@ -98,7 +106,7 @@
               <option value="">None</option>
               <option value="supervisor">Supervisor</option>
               <option value="operations_manager">Operations manager</option>
-              <option value="business_development">Business development</option>
+              <option value="sales">Sales</option>
               <option value="procurement">Procurement</option>
               <option value="general_manager">General manager</option>
               <option value="hr_manager">HR manager</option>
@@ -114,6 +122,14 @@
         <p class="admin-profile-module-note" id="profileModuleNote" hidden></p>
         <p class="admin-profile-section-lead">Grant only what this account needs. Toggles save with the profile.</p>
         <div class="checkbox-group admin-profile-module-grid" id="profileModuleAccess">
+          <div class="checkbox-item">
+            <input type="checkbox" id="accessFireApp" name="access_fire_app">
+            <label for="accessFireApp"><span class="mod-tile-title">Fire System Application</span><span class="mod-tile-sub">Kynvera Hub launcher</span></label>
+          </div>
+          <div class="checkbox-item">
+            <input type="checkbox" id="accessMunicipalityApp" name="access_municipality_app">
+            <label for="accessMunicipalityApp"><span class="mod-tile-title">Municipality Application</span><span class="mod-tile-sub">Kynvera Hub launcher</span></label>
+          </div>
           <div class="checkbox-item">
             <input type="checkbox" id="accessFireInspection" name="access_fire_inspection">
             <label for="accessFireInspection"><span class="mod-tile-title">Fire system inspection</span><span class="mod-tile-sub">Forms &amp; Civil Defense hub</span></label>
@@ -142,6 +158,10 @@
               <li>
                 <input type="checkbox" id="accessOpsOvertime" name="access_operations_overtime">
                 <label for="accessOpsOvertime">Over time</label>
+                <input type="checkbox" id="accessOpsTimesheet" name="access_operations_timesheet">
+                <label for="accessOpsTimesheet">Duty / Timesheet</label>
+                <input type="checkbox" id="accessOpsAttendance" name="access_operations_attendance">
+                <label for="accessOpsAttendance">Attendance</label>
               </li>
               <li>
                 <input type="checkbox" id="accessOpsInvoices" name="access_operations_invoices">
@@ -165,9 +185,27 @@
             <input type="checkbox" id="accessSubmittedForms" name="access_submitted_forms">
             <label for="accessSubmittedForms"><span class="mod-tile-title">Submitted forms</span><span class="mod-tile-sub">Workflow inbox</span></label>
           </div>
-          <div class="checkbox-item">
-            <input type="checkbox" id="accessBusinessDev" name="access_business_development">
-            <label for="accessBusinessDev"><span class="mod-tile-title">Business development</span><span class="mod-tile-sub">Sales pipeline</span></label>
+          <div class="checkbox-item ops-access-card" id="accessSalesItem">
+            <div class="ops-access-top">
+              <input type="checkbox" id="accessBusinessDev" name="access_business_development">
+              <label for="accessBusinessDev" title="Sales module — own deals and outstanding">
+                <span class="mod-tile-title">Sales</span>
+                <span class="mod-tile-sub">Own pipeline &amp; outstanding</span>
+              </label>
+            </div>
+            <ul class="ops-submodules" aria-label="Sales options">
+              <li>
+                <input type="checkbox" id="accessSalesManager" name="access_sales_manager">
+                <label for="accessSalesManager">Can view all sales accounts</label>
+              </li>
+              <li>
+                <input type="checkbox" id="accessQuotations" name="access_quotations">
+                <label for="accessQuotations">Can prepare quotations</label>
+              </li>
+            </ul>
+            <p class="admin-profile-hint sales-access-hint">
+              Requires designation <strong>Sales</strong>. Without it, this checkbox has no effect.
+            </p>
           </div>
           <div class="checkbox-item">
             <input type="checkbox" id="accessDocHub" name="can_access_dochub">
@@ -220,6 +258,9 @@
           <button type="button" class="admin-quick-action btn-toggle" id="profileQuickToggleBtn" onclick="profileModalToggleActive()">
             <span class="admin-quick-action-label">Toggle active</span>
           </button>
+          <button type="button" class="admin-quick-action btn-delete" id="profileQuickDeleteBtn" onclick="profileModalDeleteAccount()">
+            <span class="admin-quick-action-label">Delete account</span>
+          </button>
         </div>
       </div>
       </div><!-- /.injz-mgmt-form-scroll -->
@@ -243,6 +284,23 @@
     <div class="modal-actions">
       <button type="button" class="btn btn-cancel" onclick="closePasswordResetConfirmModal()">Cancel</button>
       <button type="button" class="btn btn-reset" onclick="submitPasswordResetConfirm()">Reset password</button>
+    </div>
+  </div>
+</div>
+
+<div id="accountActionConfirmModal" class="modal admin-portal-modal injz-mgmt" role="dialog" aria-modal="true" aria-labelledby="accountActionConfirmTitle"
+     onclick="if(event.target===this)closeAccountActionConfirmModal()">
+  <div class="modal-content account-action-confirm-content" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h2 class="modal-title" id="accountActionConfirmTitle">Confirm</h2>
+    </div>
+    <div class="account-action-confirm-body">
+      <p id="accountActionConfirmIntro" class="account-action-confirm-intro"></p>
+      <p id="accountActionConfirmNote" class="account-action-confirm-note" hidden></p>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-cancel" onclick="closeAccountActionConfirmModal()">Cancel</button>
+      <button type="button" class="btn btn-reset" id="accountActionConfirmBtn" onclick="submitAccountActionConfirm()">Confirm</button>
     </div>
   </div>
 </div>
@@ -278,7 +336,7 @@
     </div>
     <div id="userActivityContent">
       <div style="text-align: center; padding: 2rem;">
-        <div class="spinner" style="border: 3px solid #f3f3f3; border-top: 3px solid var(--injz-pm-green,#d21725); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto;"></div>
+        <div class="spinner" style="border: 3px solid #f3f3f3; border-top: 3px solid var(--injz-pm-green,#ff8e68); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto;"></div>
         <p style="margin-top: 1rem; color: #666;">Loading user activity...</p>
       </div>
     </div>

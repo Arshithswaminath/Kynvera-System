@@ -31,41 +31,6 @@ class HVACSubmissionSchema(Schema):
         if value > date.today():
             raise ValidationError("Visit date cannot be in the future")
 
-class CivilWorkItemSchema(Schema):
-    """Schema for Civil work items"""
-    work_desc = fields.List(fields.Str(validate=validate.Length(min=1, max=500)))
-    work_qty = fields.List(fields.Str(validate=validate.Length(max=100)))
-    work_unit = fields.List(fields.Str(validate=validate.Length(max=50)))
-    work_status = fields.List(fields.Str(validate=validate.OneOf(['Pending', 'In Progress', 'Completed', 'N/A'])))
-
-class CivilSubmissionSchema(Schema):
-    """Schema for Civil form submission"""
-    project_name = fields.Str(required=True, validate=validate.Length(min=1, max=200))
-    location = fields.Str(required=True, validate=validate.Length(min=1, max=300))
-    visit_date = fields.Date(required=True)
-    inspector_name = fields.Str(required=True, validate=validate.Length(min=1, max=100))
-    tech_signature = fields.Str(required=False, allow_none=True)
-    op_signature = fields.Str(required=False, allow_none=True)
-    
-    @validates('visit_date')
-    def validate_visit_date(self, value):
-        """Ensure visit date is not in the future"""
-        if value > date.today():
-            raise ValidationError("Visit date cannot be in the future")
-
-class CleaningSubmissionSchema(Schema):
-    """Schema for Cleaning form submission"""
-    client_name = fields.Str(required=True, validate=validate.Length(min=1, max=200))
-    project_name = fields.Str(required=True, validate=validate.Length(min=1, max=200))
-    date_of_visit = fields.Date(required=True)
-    technician_name = fields.Str(required=False, validate=validate.Length(max=100))
-    
-    @validates('date_of_visit')
-    def validate_date(self, value):
-        """Ensure visit date is not in the future"""
-        if value > date.today():
-            raise ValidationError("Visit date cannot be in the future")
-
 class PhotoUploadSchema(Schema):
     """Schema for individual photo upload"""
     photo = fields.Raw(required=True)  # File upload

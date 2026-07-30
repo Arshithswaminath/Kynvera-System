@@ -184,9 +184,7 @@ function userHasInspectionNavAccess(user) {
   if (!user) return false;
   if (user.role === "admin") return true;
   return (
-    user.access_hvac === true ||
-    user.access_civil === true ||
-    user.access_cleaning === true
+    user.access_hvac === true
   );
 }
 
@@ -197,6 +195,20 @@ function userHasHrNavAccess(user) {
   const d = (user.designation || "").trim().toLowerCase();
   if (d === "hr_manager" || d === "general_manager") return true;
   return false;
+}
+
+/** Sales module tile/nav — matches app.middleware.user_has_bd_access */
+function userHasSalesModuleAccess(user) {
+  if (!user) return false;
+  if (user.role === "admin") return true;
+  const d = (user.designation || "").trim().toLowerCase();
+  if (d === "general_manager" || d === "operations_manager") return true;
+  const hasSalesDesig = d === "sales" || d === "business_development";
+  if (!hasSalesDesig) return false;
+  return (
+    user.access_business_development === true ||
+    user.access_sales_manager === true
+  );
 }
 
 function userHasSubmittedFormsModuleAccess(user) {
@@ -253,6 +265,8 @@ function applyProfileBasedNavVisibility(user) {
       (user.role === "admin" ||
         user.access_operations === true ||
         user.access_operations_overtime === true ||
+        user.access_operations_timesheet === true ||
+        user.access_operations_attendance === true ||
         user.access_operations_invoices === true ||
         user.access_operations_clients === true ||
         user.access_operations_cheques === true);
@@ -300,12 +314,7 @@ function checkAndShowAdminMenu(user) {
   }
   if (bdModuleMenuItem) {
     bdModuleMenuItem.style.display =
-      user &&
-      (user.role === "admin" ||
-        user.access_business_development === true ||
-        (user.designation && user.designation === "business_development"))
-        ? "list-item"
-        : "none";
+      user && userHasSalesModuleAccess(user) ? "list-item" : "none";
   }
 
   // Finance & Invoicing: admin, GM/OM, or explicit finance flag
@@ -431,6 +440,15 @@ function playDashboardModuleEntrance() {
 function updateModuleVisibility(user) {
   if (!user) return;
 
+  // Kynvera Hub portal: product app launchers only
+  if (
+    window.KynveraHub &&
+    typeof window.KynveraHub.updateHubModuleVisibility === "function" &&
+    window.KynveraHub.updateHubModuleVisibility(user)
+  ) {
+    return;
+  }
+
   const isAdmin = user.role === "admin";
 
   // Helper: if admin, always show; otherwise check specific access
@@ -440,9 +458,7 @@ function updateModuleVisibility(user) {
   const inspectionCard = document.getElementById("module-inspection");
   if (inspectionCard) {
     const hasInspectionAccess = shouldShowModule(
-      user.access_hvac === true ||
-        user.access_civil === true ||
-        user.access_cleaning === true,
+      user.access_hvac === true,
     );
     inspectionCard.style.display = hasInspectionAccess ? "block" : "none";
     inspectionCard.style.visibility = hasInspectionAccess
@@ -483,13 +499,10 @@ function updateModuleVisibility(user) {
     deviceMgmtCard.style.visibility = isAdmin ? "visible" : "hidden";
   }
 
-  // Business development / Sales
+  // Sales module — requires Sales designation + Sales flag (Admin/GM/Ops excepted)
   const bdCard = document.getElementById("module-bd");
   if (bdCard) {
-    const showBd = shouldShowModule(
-      user.access_business_development === true ||
-        (user.designation && user.designation === "business_development"),
-    );
+    const showBd = shouldShowModule(userHasSalesModuleAccess(user));
     bdCard.style.display = showBd ? "block" : "none";
     bdCard.style.visibility = showBd ? "visible" : "hidden";
   }
@@ -530,6 +543,8 @@ function updateModuleVisibility(user) {
     const showOperations = shouldShowModule(
       user.access_operations === true ||
         user.access_operations_overtime === true ||
+        user.access_operations_timesheet === true ||
+        user.access_operations_attendance === true ||
         user.access_operations_invoices === true ||
         user.access_operations_clients === true ||
         user.access_operations_cheques === true,
@@ -579,8 +594,6 @@ function updateModuleVisibility(user) {
     const showCdNotif = shouldShowModule(
       user.access_business_development === true ||
         user.access_hvac === true ||
-        user.access_civil === true ||
-        user.access_cleaning === true ||
         (user.designation &&
           [
             "business_development",
@@ -889,7 +902,7 @@ function loadProfileData() {
   }
 
   profileContent.innerHTML =
-    '<div style="text-align: center; padding: 2rem;"><div class="spinner" style="border: 4px solid rgba(210, 23, 37, 0.1); border-top: 4px solid var(--primary); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto;"></div><p style="margin-top: 1rem; color: var(--text-light);">Loading profile...</p></div>';
+    '<div style="text-align: center; padding: 2rem;"><div class="spinner" style="border: 4px solid rgba(255, 142, 104, 0.1); border-top: 4px solid var(--primary); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto;"></div><p style="margin-top: 1rem; color: var(--text-light);">Loading profile...</p></div>';
 
   fetch("/api/auth/me", {
     headers: {
@@ -980,9 +993,7 @@ function displayProfileData(user) {
     const modules = [];
     if (
       user.role === "admin" ||
-      user.access_hvac ||
-      user.access_civil ||
-      user.access_cleaning
+      user.access_hvac
     ) {
       modules.push("Fire system inspection");
     }
@@ -1060,9 +1071,7 @@ function getProfileCardHTML(
   const modules = [];
   if (
     user.role === "admin" ||
-    user.access_hvac ||
-    user.access_civil ||
-    user.access_cleaning
+    user.access_hvac
   ) {
     modules.push({ name: "Fire system inspection", color: "#3b82f6" });
   }
@@ -1139,7 +1148,7 @@ function getProfileCardHTML(
  position: relative;
  flex-shrink: 0;
  padding: 0.85rem 3.5rem 1rem 1.25rem;
- background: linear-gradient(135deg, #7a0d15 0%, #b01320 50%, #d21725 100%);
+ background: linear-gradient(135deg, #c2440c 0%, #f97e54 50%, #ff8e68 100%);
  border-radius: 0;
  margin: 0;
  overflow: hidden;
@@ -1329,7 +1338,7 @@ function getProfileCardHTML(
 
  .pro-tab.active {
  background: white;
- color: #d21725;
+ color: #ff8e68;
  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
  text-decoration: none;
  border-bottom: none;
@@ -1454,8 +1463,8 @@ function getProfileCardHTML(
  .pro-profile-edit input[type="text"]:focus,
  .pro-profile-edit input[type="date"]:focus {
  outline: none;
- border-color: #d21725;
- box-shadow: 0 0 0 3px rgba(210, 23, 37, 0.1);
+ border-color: #ff8e68;
+ box-shadow: 0 0 0 3px rgba(255, 142, 104, 0.1);
  }
 
  .pro-mini-lbl {
@@ -1494,8 +1503,8 @@ function getProfileCardHTML(
  }
 
  .pro-module-badge:hover {
- border-color: var(--badge-color, #d21725);
- background: color-mix(in srgb, var(--badge-color, #d21725) 8%, white);
+ border-color: var(--badge-color, #ff8e68);
+ background: color-mix(in srgb, var(--badge-color, #ff8e68) 8%, white);
  }
 
  .pro-no-access {
@@ -1602,7 +1611,7 @@ function getProfileCardHTML(
  }
 
  .pro-btn-primary {
- background: linear-gradient(135deg, #d21725 0%, #e8323f 100%);
+ background: linear-gradient(135deg, #ff8e68 0%, #f97e54 100%);
  color: white;
  box-shadow: none;
  }
@@ -1614,8 +1623,8 @@ function getProfileCardHTML(
 
  .pro-btn-outline {
  background: white;
- color: #d21725;
- border: 1.5px solid #d21725;
+ color: #ff8e68;
+ border: 1.5px solid #ff8e68;
  }
 
  .pro-btn-outline:hover {
@@ -1668,7 +1677,7 @@ function getProfileCardHTML(
  .pro-sig-header-icon {
  width: 32px;
  height: 32px;
- background: linear-gradient(135deg, #d21725 0%, #e8323f 100%);
+ background: linear-gradient(135deg, #ff8e68 0%, #f97e54 100%);
  border-radius: 8px;
  display: flex;
  align-items: center;
@@ -1766,7 +1775,7 @@ function getProfileCardHTML(
  font-size: 0.7rem;
  gap: 0.3rem;
  border-radius: 10px;
- -webkit-tap-highlight-color: rgba(210, 23, 37, 0.12);
+ -webkit-tap-highlight-color: rgba(255, 142, 104, 0.12);
  }
 
  .pro-tab svg {
@@ -1903,7 +1912,7 @@ function getProfileCardHTML(
  }
 
  .pro-sig-preview:hover {
- border-color: #d21725;
+ border-color: #ff8e68;
  background: #f0fdf4;
  }
 
@@ -1949,8 +1958,8 @@ function getProfileCardHTML(
 
  .pro-sig-comment:focus {
  outline: none;
- border-color: #d21725;
- box-shadow: 0 0 0 3px rgba(210,23,37,0.1);
+ border-color: #ff8e68;
+ box-shadow: 0 0 0 3px rgba(255, 142, 104,0.1);
  }
 
  .pro-sig-comment::placeholder {
@@ -3506,13 +3515,16 @@ function initNotifications() {
   // Load initial notification count
   loadNotificationCount();
 
-  // Poll for new notifications every 30 seconds
+  // Poll for new notifications every 30 seconds (pauses after 429)
   setInterval(loadNotificationCount, 30000);
 }
+
+let _notifPollPausedUntil = 0;
 
 async function loadNotificationCount() {
   const badge = document.getElementById("notificationBadge");
   if (!badge) return;
+  if (Date.now() < _notifPollPausedUntil) return;
 
   try {
     const token = localStorage.getItem("access_token");
@@ -3524,6 +3536,9 @@ async function loadNotificationCount() {
     if (response.ok) {
       const data = await response.json();
       updateNotificationBadge(data.unread_count || 0);
+    } else if (response.status === 429) {
+      // Back off 5 minutes so a hot limit doesn't spam the console/server
+      _notifPollPausedUntil = Date.now() + 5 * 60 * 1000;
     }
   } catch (error) {
     console.error("Error loading notification count:", error);

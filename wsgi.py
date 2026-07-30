@@ -13,10 +13,13 @@ logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 logger = logging.getLogger("wsgi")
 
 # Priority list: try the most likely module that holds your app first.
-# Note: 'Injaaz' is the primary app module in this repository.
+# Note: 'kynver' is the primary app module in this repository.
 candidates = [
+    ("kynver", "create_app"),
+    ("kynver", "app"),
     ("Injaaz", "create_app"),
     ("Injaaz", "app"),
+    ("Amaan", "create_app"),
     ("wsgi", "app"),
     ("app", "create_app"),
     ("app", "app"),
@@ -84,8 +87,8 @@ if app is None:
         *errors,
         "",
         "Please ensure your Flask app exposes one of the following examples:",
-        "  - Injaaz.py: def create_app(): return Flask(...)  (preferred for this repo)",
-        "  - Injaaz.py: app = Flask(__name__)",
+        "  - kynver.py: def create_app(): return Flask(...)  (preferred for this repo)",
+        "  - kynver.py: app = Flask(__name__)",
         "",
         "Common fixes:",
         "  - Ensure package/folder names are valid Python identifiers (no hyphens).",

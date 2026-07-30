@@ -176,6 +176,55 @@ def log_security_event(event_type, details, request_obj=None):
     
     logger.warning(f"SECURITY_EVENT: {log_data}")
 
+def is_blocked_host(hostname):
+    """
+    Return True if a hostname resolves to a loopback/private/link-local/reserved
+    address, so server-side URL fetches can't be pointed at internal systems (SSRF).
+
+    Mirrors the guard used by the assistant's KB fetcher (module_assistant.fetch_url).
+    """
+    import ipaddress
+    import socket
+
+    if not hostname:
+        return True
+    host = str(hostname).lower().strip('.')
+    if host in ('localhost', 'localhost.localdomain'):
+        return True
+    try:
+        infos = socket.getaddrinfo(host, None)
+    except Exception:
+        # Could not resolve — treat as unreachable rather than allowing it.
+        return True
+    for info in infos:
+        addr = info[4][0]
+        try:
+            ip = ipaddress.ip_address(addr.split('%')[0])
+        except ValueError:
+            continue
+        if (ip.is_private or ip.is_loopback or ip.is_link_local
+                or ip.is_reserved or ip.is_multicast or ip.is_unspecified):
+            return True
+    return False
+
+
+def assert_public_url(url):
+    """
+    Validate that ``url`` is an http(s) URL pointing at a public host, or raise
+    ValueError. Use before any server-side fetch of a stored/user-influenced URL.
+    """
+    from urllib.parse import urlparse
+
+    parsed = urlparse((url or '').strip())
+    if parsed.scheme.lower() not in ('http', 'https'):
+        raise ValueError('Only http and https URLs are allowed.')
+    if not parsed.hostname:
+        raise ValueError('URL has no host.')
+    if is_blocked_host(parsed.hostname):
+        raise ValueError('URL points to a private or unreachable host and was blocked.')
+    return url
+
+
 def check_cloudinary_configured():
     """
     Check if Cloudinary is properly configured

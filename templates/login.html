@@ -6,11 +6,11 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover"
     />
-    <title>Login | Amaan Application</title>
+    <title>Login | Kynvera</title>
     <link
       rel="icon"
       type="image/png"
-      href="{{ url_for('static', filename='favicon.png') }}"
+      href="{{ url_for('static', filename='favicon.png') }}?v=rounded"
     />
     <link
       rel="stylesheet"
@@ -19,7 +19,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0"
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0"
       rel="stylesheet"
     />
     <link
@@ -32,23 +32,27 @@
     />
     <style>
       :root {
-        --lp-primary: #a8121e;
-        --lp-primary-container: #d21725;
+        --lp-primary: #e05f36;
+        --lp-primary-container: #ff8e68;
         --lp-on-primary: #ffffff;
-        --lp-on-primary-container: #fca5a5;
-        --lp-primary-fixed-dim: #fca5a5;
-        --lp-surface: #fafafa;
+        --lp-on-primary-container: #ffb090;
+        --lp-primary-fixed-dim: #ffb090;
+        --lp-surface: #f7f5f4;
         --lp-surface-lowest: #ffffff;
-        --lp-surface-highest: #e4e4e7;
-        --lp-surface-high: #f4f4f5;
+        --lp-surface-highest: #f0eeed;
+        --lp-surface-high: #f6f4f3;
+        --lp-field-bg: #f2f2f3;
         --lp-on-surface: #18181b;
-        --lp-on-surface-variant: #3f3f46;
+        --lp-on-surface-variant: #52525b;
         --lp-outline: #71717a;
-        --lp-outline-variant: #d4d4d8;
+        --lp-outline-variant: #e4e4e7;
         --lp-error: #ba1a1a;
         --lp-error-bg: #ffdad6;
         --lp-success-bg: #dcfce7;
         --lp-success-text: #166534;
+        --lp-font:
+          "Outfit", -apple-system, BlinkMacSystemFont, "SF Pro Text",
+          system-ui, "Segoe UI", sans-serif;
       }
 
       .material-symbols-outlined {
@@ -76,9 +80,7 @@
 
       body.login-page {
         margin: 0;
-        font-family:
-          -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
-          system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+        font-family: var(--lp-font);
         color: var(--lp-on-surface);
         background: var(--lp-surface);
         display: flex;
@@ -118,11 +120,12 @@
         align-items: center;
         justify-content: center;
         padding: 2rem 1.5rem 2.5rem;
-        background: linear-gradient(
-          135deg,
-          var(--lp-primary) 0%,
-          var(--lp-primary-container) 100%
-        );
+        background-color: #ff8e68;
+        background-image: url("{{ url_for('static', filename='images/kynvera/login-canvas-texture.png') }}?v=3");
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        filter: none;
         flex: 0 1 auto;
         min-height: 0;
       }
@@ -178,6 +181,7 @@
           display: flex;
           flex-direction: column;
           align-items: flex-start;
+          position: static;
         }
         .login-hero-kicker,
         .login-hero-lede {
@@ -351,82 +355,56 @@
 
       @media (min-width: 768px) {
         .login-hero {
-          width: 55%;
-          flex: 0 0 55%;
+          width: 52%;
+          flex: 0 0 52%;
           max-width: none;
           align-self: stretch;
           padding: 2rem 2rem 2rem 3rem;
         }
       }
 
-      .login-hero::before {
-        content: "";
-        position: absolute;
-        inset: 0;
-        background-image: radial-gradient(
-          var(--lp-on-primary-container) 1px,
-          transparent 1px
-        );
-        background-size: 24px 24px;
-        opacity: 0.1;
-        pointer-events: none;
-      }
-
-      .login-hero::after {
-        content: "";
-        position: absolute;
-        bottom: -6rem;
-        left: -6rem;
-        width: 24rem;
-        height: 24rem;
-        border-radius: 50%;
-        background: var(--lp-primary-fixed-dim);
-        opacity: 0.05;
-        filter: blur(48px);
-        pointer-events: none;
-      }
-
       .login-hero-inner {
         position: relative;
         z-index: 1;
         max-width: 22rem;
+        text-align: left;
       }
 
       .login-hero-kicker {
         font-size: 0.75rem;
         font-weight: 600;
         letter-spacing: 0.12em;
-
-        color: var(--lp-on-primary-container);
+        color: rgba(255, 255, 255, 0.85);
         margin: 0 0 1rem;
       }
 
       .login-hero-title {
-        font-family:
-          -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
-          system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+        font-family: "Outfit", var(--lp-font);
         font-weight: 800;
-        font-size: clamp(1.85rem, 5vw, 3.25rem);
-        line-height: 1.1;
-        color: var(--lp-on-primary);
-        margin: 0 0 1.25rem;
+        font-size: clamp(2.1rem, 5.5vw, 3.5rem);
+        line-height: 1.02;
+        color: #fff;
+        margin: 0 0 1.15rem;
+        letter-spacing: -0.035em;
       }
 
       .login-hero-title span {
-        color: var(--lp-primary-fixed-dim);
+        color: #fff;
       }
 
       .login-hero-lede {
         margin: 0;
+        font-family: "Outfit", var(--lp-font);
         font-size: 1rem;
-        line-height: 1.6;
-        color: rgba(255, 255, 255, 0.9);
+        font-weight: 500;
+        line-height: 1.55;
+        color: rgba(255, 255, 255, 0.92);
         max-width: 20rem;
       }
 
       @media (min-width: 768px) {
         .login-hero-lede {
-          font-size: 1.125rem;
+          font-size: 1.05rem;
         }
       }
 
@@ -439,134 +417,166 @@
         min-width: 0;
         min-height: 0;
         overflow: hidden;
+        background: var(--lp-surface);
       }
 
       @media (min-width: 768px) {
         .login-canvas {
-          width: 45%;
-          flex: 0 0 45%;
-          padding: 2rem 1.5rem;
+          width: 48%;
+          flex: 0 0 48%;
+          padding: 2rem 2.25rem;
           min-width: 0;
           align-self: stretch;
+          background:
+            radial-gradient(
+              120% 80% at 100% 0%,
+              rgba(255, 142, 104, 0.08) 0%,
+              transparent 55%
+            ),
+            radial-gradient(
+              90% 70% at 0% 100%,
+              rgba(224, 95, 54, 0.05) 0%,
+              transparent 50%
+            ),
+            var(--lp-surface);
         }
       }
 
       .login-card {
         width: 100%;
-        max-width: 28rem;
+        max-width: 26rem;
         max-height: 100%;
         background: var(--lp-surface-lowest);
-        border-radius: 0.75rem;
-        padding: 0 1.5rem 1.5rem;
-        box-shadow: 0 12px 40px rgba(0, 59, 34, 0.06);
-        border: 1px solid rgba(192, 201, 192, 0.35);
+        border-radius: 1.5rem;
+        padding: 1.75rem 1.85rem 1.5rem;
+        box-shadow:
+          0 1px 2px rgba(24, 24, 27, 0.04),
+          0 16px 40px rgba(24, 24, 27, 0.07);
+        border: 1px solid rgba(228, 228, 231, 0.85);
         box-sizing: border-box;
-        overflow: hidden;
+        overflow-x: hidden;
+        overflow-y: auto;
+        animation: lp-card-in 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+      }
+
+      @keyframes lp-card-in {
+        from {
+          opacity: 0;
+          transform: translateY(12px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .login-card {
+          animation: none;
+        }
       }
 
       /* Mobile sheet inner sizing */
       @media (max-width: 767px) {
-        .login-card-logo {
-          margin-top: -0.5rem;
-          margin-bottom: calc(1rem - 40px);
-        }
-        .login-card-logo img {
-          display: block;
-          width: auto;
-          height: 150px;
+        .login-card {
+          padding: 0;
           border-radius: 0;
-          object-fit: contain;
-          margin-left: -0.75rem;
-          margin-right: auto;
+          box-shadow: none;
+          border: none;
+          background: transparent;
+          padding-top: 3.5rem;
+          animation: none;
+          max-width: 24rem;
         }
         .login-card-intro {
-          margin-bottom: 1.5rem;
+          margin-bottom: 1.2rem;
         }
         .login-card-intro h1 {
-          font-size: 1.5rem;
-          margin-bottom: 0.3rem;
+          font-size: 1.85rem;
+          margin-bottom: 0.2rem;
         }
         .login-card-intro .subtitle {
-          font-size: 0.875rem;
-          line-height: 1.5;
+          font-size: 0.9rem;
+          line-height: 1.4;
         }
         .form-group {
-          margin-bottom: 1.125rem;
+          margin-bottom: 0.9rem;
         }
         .lp-label {
-          margin-bottom: 0.35rem;
-        }
-        .lp-input-icon {
-          left: 1rem;
-          font-size: 1.35rem;
-          width: 1.35rem;
-          text-align: center;
+          margin-bottom: 0;
+          font-size: 0.8125rem;
         }
         input.lp-input[type="text"],
         input.lp-input[type="password"] {
-          padding: 0.95rem 1.125rem 0.95rem 3.35rem;
-          min-height: 52px;
-          border-radius: 0.65rem;
+          padding: 0.85rem 1rem;
+          min-height: 48px;
+          border-radius: 0.75rem;
           box-sizing: border-box;
+          font-size: 1rem;
+        }
+        .lp-input-wrap.has-pw-toggle input.lp-input {
+          padding-right: 2.75rem;
         }
         .register-link {
-          margin-top: 1.5rem;
+          margin-top: 1.1rem;
           margin-bottom: 0;
+          padding-top: 0;
+          border-top: none;
+          text-align: left;
         }
       }
 
       @media (min-width: 768px) {
         .login-card {
-          padding: 0.1rem 2rem 1.75rem;
+          max-width: min(28rem, 100%);
+          padding: 2rem 2.1rem 1.65rem;
           margin-top: 0;
+        }
+
+        .login-card-intro h1 {
+          font-size: 2.05rem;
         }
       }
 
-      .login-card-logo {
-        margin-top: -0.75rem;
-        margin-bottom: calc(1.25rem - 50px);
-      }
-
-      .login-card-logo img {
-        display: block;
-        width: auto;
-        height: 180px;
-        border-radius: 0;
-        object-fit: contain;
-        object-position: left center;
-        margin-left: -1.25rem;
-        margin-right: auto;
+      @media (min-width: 1100px) {
+        .login-card {
+          max-width: min(30rem, 100%);
+          padding: 2.1rem 2.35rem 1.75rem;
+        }
       }
 
       .login-card-intro {
-        margin-bottom: 1rem;
+        margin-bottom: 1.35rem;
+        text-align: left;
       }
 
       .login-card-intro h1 {
-        font-family:
-          -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
-          system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
-        font-size: 1.15rem;
-        font-weight: 700;
-        color: var(--lp-primary);
-        margin: 0 0 0.2rem;
+        font-family: "Outfit", var(--lp-font);
+        font-size: 1.95rem;
+        font-weight: 800;
+        letter-spacing: -0.04em;
+        color: var(--lp-on-surface);
+        margin: 0 0 0.35rem;
         text-align: left;
+        line-height: 1.1;
       }
 
       .login-card-intro .subtitle {
         margin: 0;
-        font-size: 0.775rem;
+        font-family: "Outfit", var(--lp-font);
+        font-size: 0.9375rem;
         color: var(--lp-on-surface-variant);
-        line-height: 1.4;
+        line-height: 1.45;
         text-align: left;
+        font-weight: 500;
       }
 
       .error-message {
         background: var(--lp-error-bg);
-        color: #93000a;
-        padding: 0.75rem 1rem;
+        color: #932500;
+        padding: 0.65rem 0.9rem;
         border-radius: 0.5rem;
-        margin-bottom: 1.25rem;
+        margin-bottom: 0.95rem;
         display: none;
         font-size: 0.875rem;
         line-height: 1.4;
@@ -575,79 +585,90 @@
       .success-message {
         background: var(--lp-success-bg);
         color: var(--lp-success-text);
-        padding: 0.75rem 1rem;
+        padding: 0.65rem 0.9rem;
         border-radius: 0.5rem;
-        margin-bottom: 1.25rem;
+        margin-bottom: 0.95rem;
         display: none;
         font-size: 0.875rem;
         line-height: 1.4;
       }
 
       .form-group {
-        margin-bottom: 0.875rem;
+        margin-bottom: 0.95rem;
+      }
+
+      .form-group.form-group-password {
+        margin-bottom: 1.15rem;
+      }
+
+      .lp-label-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        margin-bottom: 0.4rem;
+      }
+
+      .lp-label-row .lp-label {
+        margin-bottom: 0;
       }
 
       .lp-label {
         display: block;
-        margin-bottom: 0.25rem;
-        font-size: 0.625rem;
-        font-weight: 700;
-        letter-spacing: 0.08em;
-
-        color: var(--lp-outline);
+        margin-bottom: 0.4rem;
+        font-family: "Outfit", var(--lp-font);
+        font-size: 0.8125rem;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        color: #3f3f46;
       }
 
       .lp-input-wrap {
         position: relative;
         display: flex;
         align-items: center;
-        background: var(--lp-surface-highest);
-        border-radius: 0.45rem;
+        background: #fff;
+        border: 1px solid #e4e4e7;
+        border-radius: 0.75rem;
         transition:
           box-shadow 0.2s,
-          background 0.2s;
+          background 0.2s,
+          border-color 0.2s;
       }
 
       .lp-input-wrap:focus-within {
-        background: var(--lp-surface-lowest);
-        box-shadow: 0 0 0 2px var(--lp-primary-fixed-dim);
-      }
-
-      .lp-input-wrap:focus-within .lp-input-icon {
-        color: var(--lp-primary);
+        background: #fff;
+        border-color: rgba(224, 95, 54, 0.55);
+        box-shadow: 0 0 0 3px rgba(224, 95, 54, 0.12);
       }
 
       .lp-input-icon {
-        position: absolute;
-        left: 0.75rem;
-        top: 50%;
-        transform: translateY(-50%);
-        color: var(--lp-outline);
-        pointer-events: none;
-        transition: color 0.2s;
+        display: none;
       }
 
       .lp-pw-toggle {
         position: absolute;
-        right: 0.5rem;
+        right: 0.45rem;
         top: 50%;
         transform: translateY(-50%);
         background: none;
         border: none;
-        padding: 0.25rem;
+        padding: 0.35rem;
         cursor: pointer;
-        color: var(--lp-outline);
+        color: #a1a1aa;
         display: flex;
         align-items: center;
         justify-content: center;
-        border-radius: 0.25rem;
+        border-radius: 0.4rem;
         transition: color 0.2s;
         z-index: 1;
+        min-width: 36px;
+        min-height: 36px;
       }
       .lp-pw-toggle:hover,
       .lp-pw-toggle:focus,
       .lp-pw-toggle:active {
-        color: var(--lp-outline) !important;
+        color: var(--lp-primary) !important;
         transform: translateY(-50%) !important;
         background: transparent !important;
         outline: none !important;
@@ -660,18 +681,23 @@
       input.lp-input[type="text"],
       input.lp-input[type="password"] {
         width: 100%;
-        padding: 0.65rem 2.5rem 0.65rem 2.5rem;
+        padding: 0.8rem 1rem;
+        min-height: 2.85rem;
         border: none;
-        border-radius: 0.45rem;
-        font-size: 0.875rem;
-        font-family: inherit;
+        border-radius: 0.75rem;
+        font-size: 0.9375rem;
+        font-family: "Outfit", var(--lp-font);
         background: transparent;
         color: var(--lp-on-surface);
         box-sizing: border-box;
       }
 
+      .lp-input-wrap.has-pw-toggle input.lp-input {
+        padding-right: 2.7rem;
+      }
+
       input.lp-input::placeholder {
-        color: rgba(112, 121, 114, 0.55);
+        color: #a1a1aa;
       }
 
       input.lp-input:focus {
@@ -680,32 +706,35 @@
 
       .btn-login {
         width: 100%;
-        padding: 0.7rem 1.25rem;
-        margin-top: 0.35rem;
+        padding: 0.9rem 1.2rem;
+        margin-top: 0.1rem;
+        min-height: 3rem;
         background: var(--lp-primary-container);
         color: var(--lp-on-primary);
         border: none;
-        border-radius: 0.45rem;
-        font-size: 0.875rem;
+        border-radius: 0.75rem;
+        font-size: 0.975rem;
         font-weight: 700;
-        font-family: inherit;
+        font-family: "Outfit", var(--lp-font);
+        letter-spacing: -0.015em;
         cursor: pointer;
-        box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.1);
+        box-shadow: none;
         transition:
-          opacity 0.2s,
+          background 0.2s,
           transform 0.15s;
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 0.5rem;
+        gap: 0.45rem;
       }
 
       .btn-login:hover {
-        opacity: 0.92;
+        background: var(--lp-primary);
+        box-shadow: none;
       }
 
       .btn-login:active {
-        transform: scale(0.98);
+        transform: scale(0.985);
       }
 
       .btn-login:disabled {
@@ -716,40 +745,42 @@
       }
 
       .btn-login .material-symbols-outlined {
-        font-size: 1.125rem;
+        font-size: 1.2rem;
       }
 
       .loading {
         display: none;
         text-align: center;
         margin-top: 0.75rem;
-        color: var(--lp-primary-container);
+        color: var(--lp-primary);
         font-size: 0.875rem;
       }
 
       .register-link {
-        text-align: center;
-        margin-top: 1.75rem;
+        text-align: left;
+        margin-top: 1.25rem;
+        padding-top: 1.05rem;
+        border-top: 1px solid var(--lp-outline-variant);
         color: var(--lp-on-surface-variant);
+        font-family: "Outfit", var(--lp-font);
         font-size: 0.875rem;
       }
 
       .register-link a {
-        color: var(--lp-primary);
+        color: var(--lp-primary-container);
         text-decoration: none;
         font-weight: 700;
       }
 
       .register-link a:hover {
+        color: var(--lp-primary);
         text-decoration: underline;
         text-underline-offset: 4px;
         text-decoration-color: var(--lp-primary-fixed-dim);
       }
 
       .lp-forgot-row {
-        display: flex;
-        justify-content: flex-end;
-        margin: -0.35rem 0 0.85rem;
+        display: none;
       }
 
       .lp-forgot-link,
@@ -757,15 +788,18 @@
         background: none;
         border: none;
         padding: 0;
-        font-size: 0.82rem;
-        font-weight: 700;
-        color: var(--lp-primary);
+        font-size: 0.75rem;
+        font-weight: 600;
+        font-family: "Outfit", var(--lp-font);
+        color: var(--lp-primary-container);
         cursor: pointer;
         text-decoration: none;
+        white-space: nowrap;
       }
 
       .lp-forgot-link:hover,
       .lp-text-btn:hover {
+        color: var(--lp-primary);
         text-decoration: underline;
         text-underline-offset: 3px;
       }
@@ -862,15 +896,15 @@
  */
       @media (max-width: 768px) {
         body.login-page .login-card .lp-input-wrap {
-          background-color: var(--lp-surface-highest) !important;
-          border: 1.5px solid rgba(192, 201, 192, 0.7) !important;
-          border-radius: 0.65rem !important;
-          min-height: 52px !important;
+          background-color: #fff !important;
+          border: 1px solid #e4e4e7 !important;
+          border-radius: 0.75rem !important;
+          min-height: 48px !important;
         }
         body.login-page .login-card .lp-input-wrap:focus-within {
-          background-color: var(--lp-surface-lowest) !important;
-          border-color: var(--lp-primary-container) !important;
-          box-shadow: 0 0 0 2px var(--lp-primary-fixed-dim) !important;
+          background-color: #fff !important;
+          border-color: rgba(224, 95, 54, 0.55) !important;
+          box-shadow: 0 0 0 3px rgba(224, 95, 54, 0.12) !important;
         }
         body.login-page .login-card .lp-input-wrap input.lp-input[type="text"],
         body.login-page
@@ -878,9 +912,9 @@
           .lp-input-wrap
           input.lp-input[type="password"] {
           width: 100% !important;
-          padding: 0.95rem 3rem 0.95rem 3.5rem !important;
+          padding: 0.85rem 1rem !important;
           height: auto !important;
-          min-height: 52px !important;
+          min-height: 48px !important;
           background: transparent !important;
           border: none !important;
           border-radius: 0 !important;
@@ -888,13 +922,18 @@
           line-height: 1.45 !important;
           color: var(--lp-on-surface) !important;
         }
+        body.login-page
+          .login-card
+          .lp-input-wrap.has-pw-toggle
+          input.lp-input[type="password"] {
+          padding-right: 2.75rem !important;
+        }
         body.login-page .login-card .lp-input-wrap input.lp-input:focus {
           outline: none !important;
           box-shadow: none !important;
         }
         body.login-page .login-card .lp-input-icon {
-          left: 1rem !important;
-          font-size: 1.35rem !important;
+          display: none !important;
         }
       }
 
@@ -910,7 +949,7 @@
       <section class="login-hero" aria-hidden="false">
         <div class="login-hero-inner">
           <h2 class="login-hero-title">
-            All Operations.<br /><span>One Platform.</span>
+            All<br />Operations.<br />One Platform.
           </h2>
           <p class="login-hero-lede">
             The hub for your teams to run logistics, facilities, and day-to-day
@@ -962,18 +1001,9 @@
         </button>
 
         <div class="login-card">
-          <div class="login-card-logo">
-            <img
-              src="{{ url_for('static', filename='logo.png') }}"
-              alt="Amaan Logo"
-            />
-          </div>
-
           <div class="login-card-intro">
-            <h1>Welcome</h1>
-            <p class="subtitle">
-              Sign in to open your dashboard and continue where you left off.
-            </p>
+            <h1>Sign in</h1>
+            <p class="subtitle">Welcome back — enter your credentials.</p>
           </div>
 
           <div id="error-message" class="error-message"></div>
@@ -981,13 +1011,8 @@
 
           <form id="login-form">
             <div class="form-group">
-              <label class="lp-label" for="username">Username, full name, or email</label>
+              <label class="lp-label" for="username">Username</label>
               <div class="lp-input-wrap">
-                <span
-                  class="material-symbols-outlined lp-input-icon"
-                  aria-hidden="true"
-                  >person</span
-                >
                 <input
                   class="lp-input"
                   type="text"
@@ -995,19 +1020,19 @@
                   name="username"
                   required
                   autocomplete="username"
-                  placeholder="Username, full name, or email"
+                  placeholder="Your username"
                 />
               </div>
             </div>
 
-            <div class="form-group">
-              <label class="lp-label" for="password">Password</label>
-              <div class="lp-input-wrap">
-                <span
-                  class="material-symbols-outlined lp-input-icon"
-                  aria-hidden="true"
-                  >lock</span
-                >
+            <div class="form-group form-group-password">
+              <div class="lp-label-row">
+                <label class="lp-label" for="password">Password</label>
+                <button type="button" class="lp-forgot-link" id="forgot-open-btn">
+                  Forgot password?
+                </button>
+              </div>
+              <div class="lp-input-wrap has-pw-toggle">
                 <input
                   class="lp-input"
                   type="password"
@@ -1017,7 +1042,7 @@
                   autocomplete="off"
                   data-1p-ignore="true"
                   data-lpignore="true"
-                  placeholder="••••••••"
+                  placeholder="Your password"
                 />
                 <button
                   type="button"
@@ -1026,20 +1051,14 @@
                   aria-label="Show password"
                 >
                   <span class="material-symbols-outlined" id="pw-toggle-icon"
-                    >visibility_off</span
+                    >visibility</span
                   >
                 </button>
               </div>
             </div>
 
-            <div class="lp-forgot-row">
-              <button type="button" class="lp-forgot-link" id="forgot-open-btn">
-                Forgot password?
-              </button>
-            </div>
-
             <button type="submit" class="btn-login" id="login-btn">
-              <span>Sign in to dashboard</span>
+              <span>Continue</span>
               <span class="material-symbols-outlined" aria-hidden="true"
                 >arrow_forward</span
               >
@@ -1327,9 +1346,21 @@
             successMessage.textContent = "Login successful! Redirecting...";
             successMessage.style.display = "block";
 
-            // Redirect to dashboard
+            // Redirect: honor ?next=/path (e.g. /launch/fire) when safe
             setTimeout(() => {
-              window.location.href = "/dashboard";
+              let next = "/dashboard";
+              try {
+                const params = new URLSearchParams(window.location.search);
+                const raw = (params.get("next") || "").trim();
+                if (
+                  raw.startsWith("/") &&
+                  !raw.startsWith("//") &&
+                  !raw.includes("://")
+                ) {
+                  next = raw;
+                }
+              } catch (e) {}
+              window.location.href = next;
             }, 1000);
           } else {
             const code = data.error_code || data.code || "";

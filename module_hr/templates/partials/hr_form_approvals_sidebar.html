@@ -3,6 +3,20 @@
 {% set _card = hr_sidebar_card_class|default('tkt-card leave-sidebar-card') %}
 {% set _inner = hr_sidebar_card_inner_class|default('leave-sidebar-card--flush leave-sidebar-inner') %}
 <aside class="{{ _aside }}" aria-label="Approvals and signature status">
+  <div class="{{ _card }}" id="hrRevokeSidebarCard" style="display:none;">
+    <div class="tkt-card-header">
+      <h3>Revoke request</h3>
+    </div>
+    <div class="tkt-card-body">
+      <p style="margin:0 0 0.75rem;font-size:0.85rem;color:#64748b;line-height:1.45;">
+        Stop this request and keep it in history. A comment is required; you can open a new form afterward.
+      </p>
+      <button type="button" id="hrRevokeSidebarBtn" class="btn-custom btn-outline-custom"
+              style="min-height:44px;border-color:#b91c1c;color:#b91c1c;width:100%;font-weight:600;">
+        Revoke this form
+      </button>
+    </div>
+  </div>
   <div class="{{ _card }}">
     <div class="tkt-card-header">
       <h3>Signature status</h3>
@@ -27,6 +41,8 @@
       {% include 'partials/hr_recorded_signatures_panel.html' %}
     </div>
   </div>
+  <script src="{{ url_for('static', filename='js/hr_submission_full_form_url.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/hr_revoke.js') }}"></script>
   <script src="{{ url_for('static', filename='js/hr_mgmt_chain_submit.js') }}"></script>
   <script src="{{ url_for('static', filename='js/hr_signature_status_sidebar.js') }}"></script>
   <script src="{{ url_for('static', filename='js/hr_signoff_activity_sidebar.js') }}"></script>

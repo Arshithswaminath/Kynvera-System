@@ -19,7 +19,7 @@ from module_hr.replacement_signoff import pending_replacement_for_user
 _HR_REVIEW_STATUSES = frozenset({"hr_review", WF_MGMT_HR})
 _GM_REVIEW_STATUSES = frozenset({"gm_review", WF_MGMT_GM})
 _TERMINAL_STATUSES = frozenset(
-    {"approved", "completed", "closed_by_admin", "rejected"}
+    {"approved", "completed", "closed_by_admin", "rejected", "withdrawn"}
 )
 
 
@@ -110,8 +110,49 @@ def filter_hr_submissions_for_user(
     return [s for s in submissions if user_can_see_hr_submission(user, s)]
 
 
+def filter_pending_hr_review_actionable(
+    user: User | None, submissions: list[Submission]
+) -> list[Submission]:
+    """
+    Pending HR Review inbox: only forms this user can act on now.
+    Org-wide HR sees all hr_review / HO rows; others only if they are the current signer.
+    Submitters do not appear here solely as owners.
+    """
+    if not user:
+        return []
+    if user_sees_org_wide_hr_inbox(user):
+        return list(submissions)
+    return [s for s in submissions if user_is_pending_assignee(user, s)]
+
+
+def pending_hr_review_sign_meta(
+    user: User | None, submission: Submission | None
+) -> dict:
+    """can_sign + sign_mode for Pending HR Review UI."""
+    if not user or not _is_hr_submission(submission):
+        return {"can_sign": False, "sign_mode": None}
+    status = (submission.workflow_status or "").strip()
+    fd = submission.form_data if isinstance(submission.form_data, dict) else {}
+
+    if status == WF_MGMT_HR:
+        pend = pending_management_step_for_user(fd, status, user)
+        return {
+            "can_sign": bool(pend),
+            "sign_mode": "mgmt_hr_ho",
+        }
+
+    if status == "hr_review":
+        # Legacy forward-to-GM path: only org-wide HR may approve via hr_approve.
+        return {
+            "can_sign": user_sees_org_wide_hr_inbox(user),
+            "sign_mode": "legacy_hr",
+        }
+
+    return {"can_sign": False, "sign_mode": None}
+
+
 def user_has_visible_pending_hr_review(user: User | None) -> bool:
-    """True if Pending HR Review page/API would return at least one row."""
+    """True if Pending HR Review page/API would return at least one actionable row."""
     if not user:
         return False
     if user_sees_org_wide_hr_inbox(user):
@@ -125,7 +166,7 @@ def user_has_visible_pending_hr_review(user: User | None) -> bool:
         .limit(200)
         .all()
     )
-    return any(user_can_see_hr_submission(user, s) for s in rows)
+    return any(user_is_pending_assignee(user, s) for s in rows)
 
 
 def collect_personalized_hr_pending(user: User | None, limit: int = 300) -> list[Submission]:

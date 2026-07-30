@@ -20,7 +20,7 @@ def app():
     os.environ['SECRET_KEY'] = 'test-secret-key-for-testing'
     os.environ['JWT_SECRET_KEY'] = 'test-jwt-secret-key-for-testing'
     
-    from Injaaz import create_app
+    from kynver import create_app
     from app.models import db
     
     app = create_app()
@@ -118,8 +118,6 @@ def supervisor_user(app):
             is_active=True,
             password_changed=True,
             access_hvac=True,
-            access_civil=True,
-            access_cleaning=True
         )
         user.set_password('SuperPass123')
         db.session.add(user)
@@ -180,7 +178,7 @@ def sample_submission(app, supervisor_user):
     with app.app_context():
         submission = Submission(
             submission_id=random_id('sub'),
-            module_type='civil',
+            module_type='hvac_mep',
             site_name='Test Site',
             visit_date=datetime.now(timezone.utc).date(),
             form_data={'test': 'data'},

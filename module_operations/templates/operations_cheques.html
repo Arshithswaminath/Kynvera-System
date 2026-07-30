@@ -12,7 +12,7 @@
     />
     {% include 'partials/caveat_font.html' %}
     <title>Cheque Preparation - Operations</title>
-    <meta name="theme-color" content="#d21725" />
+    <meta name="theme-color" content="#ff8e68" />
     <link
       rel="icon"
       type="image/png"
@@ -40,9 +40,9 @@
     />
     <style>
       :root {
-        --primary: #d21725;
-        --primary-light: #e8323f;
-        --primary-pale: #fde8ea;
+        --primary: #ff8e68;
+        --primary-light: #f97e54;
+        --primary-pale: #fff4ef;
         --ops-ink: #0f172a;
         --ops-muted: #64748b;
         --ops-rule: #e2e8f0;
@@ -54,14 +54,14 @@
       }
       body.has-main-nav {
         font-family: var(--font-sans);
-        background: #faf8f8;
+        background: #f7f7f9;
         margin: 0;
         padding-top: var(--nav-top);
       }
       .chq-shell {
         display: flex;
         min-height: calc(100vh - var(--nav-top));
-        background: #faf8f8;
+        background: #f7f7f9;
       }
       /* Sidebar */
       .chq-sidebar {
@@ -261,7 +261,7 @@
       .chq-search input:focus {
         outline: none;
         border-color: var(--primary-light);
-        box-shadow: 0 0 0 3px rgba(210, 23, 37, 0.1);
+        box-shadow: 0 0 0 3px rgba(255, 142, 104, 0.1);
       }
       .chq-count {
         font-size: 0.82rem;
@@ -550,7 +550,7 @@
       .ops-field textarea:focus {
         outline: none;
         border-color: var(--primary-light);
-        box-shadow: 0 0 0 3px rgba(210, 23, 37, 0.12);
+        box-shadow: 0 0 0 3px rgba(255, 142, 104, 0.12);
       }
       .ops-field textarea {
         min-height: 120px;
@@ -654,7 +654,7 @@
       .chq-item textarea:focus {
         outline: none;
         border-color: var(--primary-light);
-        box-shadow: 0 0 0 2px rgba(210, 23, 37, 0.1);
+        box-shadow: 0 0 0 2px rgba(255, 142, 104, 0.1);
       }
       .chq-item-del {
         background: none;
@@ -754,14 +754,14 @@
         padding: 0.52rem 1.5rem;
         border-radius: 999px;
         margin-top: 0.15rem;
-        box-shadow: 0 3px 10px rgba(210, 23, 37, 0.25);
+        box-shadow: 0 3px 10px rgba(255, 142, 104, 0.25);
         transition:
           transform 0.12s ease,
           box-shadow 0.12s ease;
       }
       .sigc .sigc-sign-btn:hover {
         transform: translateY(-1px);
-        box-shadow: 0 6px 16px rgba(210, 23, 37, 0.3);
+        box-shadow: 0 6px 16px rgba(255, 142, 104, 0.3);
       }
       /* Signed state — same box size, transparent ink, badge-style X on corner */
       .sigc .sigc-box.has-sig {
@@ -920,7 +920,7 @@
       .ntf-row input:focus {
         outline: none;
         border-color: var(--primary-light);
-        box-shadow: 0 0 0 2px rgba(210, 23, 37, 0.1);
+        box-shadow: 0 0 0 2px rgba(255, 142, 104, 0.1);
       }
       .ntf-hint {
         font-size: 0.78rem;
@@ -1056,8 +1056,9 @@
               alerts on every status change.
             </p>
           </div>
-          {% if is_admin %}
+          {% if is_admin or can_create %}
           <div class="chq-topbar-actions">
+            {% if is_admin %}
             <button class="btn-ghost" id="notifBtn">
               <svg
                 width="16"
@@ -1075,6 +1076,8 @@
               </svg>
               Notification Settings
             </button>
+            {% endif %}
+            {% if can_create %}
             <button class="btn-primary" id="addBtn">
               <svg
                 width="16"
@@ -1092,6 +1095,7 @@
               </svg>
               New Cheque Request
             </button>
+            {% endif %}
           </div>
           {% endif %}
         </div>
@@ -1364,6 +1368,7 @@
     <script>
        (function(){
        const IS_ADMIN = {{ 'true' if is_admin else 'false' }};
+       const CAN_CREATE = {{ 'true' if can_create else 'false' }};
        const STATUSES = ['requested','verified','approved','prepared','submitted','cleared','rejected','cancelled'];
        const LABELS = {requested:'Requested', verified:'Verified', approved:'Approved', prepared:'Prepared',
        submitted:'Submitted', cleared:'Cleared', rejected:'Rejected', cancelled:'Cancelled'};
@@ -1449,7 +1454,7 @@
        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z"/></svg>
        <h3>No cheque requests yet</h3>
        <p>${IS_ADMIN ? 'Create your first cheque preparation request.' : 'Cheque requests created by admins will appear here.'}</p>
-       ${IS_ADMIN ? '<button class="btn-primary" id="emptyAddBtn">New Cheque Request</button>' : ''}
+       ${CAN_CREATE ? '<button class="btn-primary" id="emptyAddBtn">New Cheque Request</button>' : ''}
        </div>`;
        const b = document.getElementById('emptyAddBtn');
        if(b) b.addEventListener('click', ()=>openModal(null));

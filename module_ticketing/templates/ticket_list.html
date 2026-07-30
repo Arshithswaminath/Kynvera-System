@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>All Tickets — Amaan</title>
+  <title>All Tickets — Kynvera</title>
   {% include 'partials/caveat_font.html' ignore missing %}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
@@ -182,7 +182,14 @@
               </td>
               <td style="font-size:.82rem;">{{ t.project }}</td>
               <td style="font-size:.82rem;">{{ t.service_group }}</td>
-              <td><span class="tkt-badge badge-priority-{{ t.priority }}">{{ t.priority|capitalize }}</span></td>
+              <td>
+                <span class="tkt-badge badge-priority-{{ t.priority }}">{{ t.priority|capitalize }}</span>
+                {% if t.sla_breached_at %}
+                  <span class="tkt-badge" style="background:#fef2f2;color:#b91c1c;margin-left:4px;" title="SLA due {{ t.sla_due_at.strftime('%Y-%m-%d %H:%M') }}">SLA Breach</span>
+                {% elif t.sla_due_at and t.status not in ('closed','cancelled','resolved') %}
+                  <span class="tkt-badge" style="background:#eff6ff;color:#1d4ed8;margin-left:4px;" title="SLA due {{ t.sla_due_at.strftime('%Y-%m-%d %H:%M') }}">SLA</span>
+                {% endif %}
+              </td>
               <td>
                 <span class="tkt-badge badge-status-{{ t.status }}">{{ status_label }}</span>
               </td>

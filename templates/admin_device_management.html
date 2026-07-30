@@ -5,37 +5,37 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
   
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
-<title>Device Management — Amaan Admin</title>
+<title>Device Management — Kynvera Admin</title>
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}">
   <style>
     :root {
-      --green: #d21725;
-      --green-mid: #e8323f;
-      --green-light: #e8323f;
-      --green-pale: #fde8ea;
-      --green-glass: rgba(210,23,37,0.07);
-      --green-border: rgba(210,23,37,0.15);
-      --gray-50: #f4f6f5;
-      --gray-100: #e8edeb;
-      --gray-200: #d1ddd8;
-      --gray-400: #8fa99e;
-      --gray-600: #4a6359;
+      --green: #ff8e68;
+      --green-mid: #f97e54;
+      --green-light: #f97e54;
+      --green-pale: #fff4ef;
+      --green-glass: rgba(255, 142, 104,0.07);
+      --green-border: rgba(255, 142, 104,0.15);
+      --gray-50: #f5f5f5;
+      --gray-100: #eaeaeb;
+      --gray-200: #d5d5d9;
+      --gray-400: #9898a0;
+      --gray-600: #53535a;
       --gray-900: #0d2218;
       --danger: #c0392b;
       --warning: #d4850a;
       --info: #1565a8;
       --radius: 14px;
       --radius-sm: 8px;
-      --shadow-sm: 0 1px 3px rgba(210, 23, 37, 0.08), 0 1px 2px rgba(210, 23, 37, 0.06);
-      --shadow: 0 4px 16px rgba(210, 23, 37, 0.10), 0 1px 4px rgba(210, 23, 37, 0.08);
-      --shadow-lg: 0 12px 40px rgba(210, 23, 37, 0.14), 0 4px 12px rgba(210, 23, 37, 0.08);
-      --sb-bg: #d21725;
+      --shadow-sm: 0 1px 3px rgba(255, 142, 104, 0.08), 0 1px 2px rgba(255, 142, 104, 0.06);
+      --shadow: 0 4px 16px rgba(255, 142, 104, 0.10), 0 1px 4px rgba(255, 142, 104, 0.08);
+      --shadow-lg: 0 12px 40px rgba(255, 142, 104, 0.14), 0 4px 12px rgba(255, 142, 104, 0.08);
+      --sb-bg: #ff8e68;
       --sidebar-w: 288px;
-      --accent: #d21725;
-      --accent-2: #e8323f;
+      --accent: #ff8e68;
+      --accent-2: #f97e54;
       --dh-fs-sidebar: 16px;
       --dh-fs-sidebar-label: 12px;
       --dm-nav-top: 73px; /* 72px nav-container + 1px nav border-bottom */
@@ -52,7 +52,7 @@
 
     .dm-root {
       background:
-        radial-gradient(820px 520px at 10% -8%, rgba(210, 23, 37, 0.13), transparent 58%),
+        radial-gradient(820px 520px at 10% -8%, rgba(255, 142, 104, 0.13), transparent 58%),
         radial-gradient(760px 560px at 102% 2%, rgba(99, 102, 241, 0.12), transparent 55%),
         radial-gradient(680px 680px at 72% 116%, rgba(20, 160, 120, 0.10), transparent 55%),
         linear-gradient(180deg, #fbfcff 0%, #f3f6fc 100%);
@@ -116,7 +116,7 @@
       border-color: var(--green);
       background: white;
       width: 260px;
-      box-shadow: 0 0 0 3px rgba(210, 23, 37, 0.08);
+      box-shadow: 0 0 0 3px rgba(255, 142, 104, 0.08);
     }
     .dm-search-icon { position: absolute; left: 10px; color: var(--gray-400); font-size: 14px; }
     .dm-add-btn {
@@ -131,9 +131,9 @@
       font-weight: 600;
       cursor: pointer;
       transition: all 0.18s;
-      box-shadow: 0 2px 8px rgba(210, 23, 37, 0.25);
+      box-shadow: 0 2px 8px rgba(255, 142, 104, 0.25);
     }
-    .dm-add-btn:hover { background: var(--green-mid); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(210, 23, 37, 0.3); }
+    .dm-add-btn:hover { background: var(--green-mid); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(255, 142, 104, 0.3); }
 
     .dm-content { padding: 28px 32px; }
 
@@ -183,10 +183,10 @@
       font-size: 18px;
     }
     .dm-stat-icon { box-shadow: 0 6px 14px rgba(30, 38, 60, 0.10); }
-    .dm-stat-icon.green { background: linear-gradient(145deg, #ff5b6a, #d21725); }
+    .dm-stat-icon.green { background: linear-gradient(145deg, #ff845b, #ff8e68); }
     .dm-stat-icon.blue { background: linear-gradient(145deg, #6f8cff, #4257b2); }
     .dm-stat-icon.amber { background: linear-gradient(145deg, #f7b955, #d4850a); }
-    .dm-stat-icon.red { background: linear-gradient(145deg, #ff6f63, #c0392b); }
+    .dm-stat-icon.red { background: linear-gradient(145deg, #ff8a63, #c0392b); }
     .dm-stat-value { font-size: 30px; font-weight: 700; color: var(--gray-900); letter-spacing: -1px; line-height: 1; margin-bottom: 4px; }
     .dm-stat-label { font-size: 12.5px; color: var(--gray-400); font-weight: 500; }
 
@@ -248,7 +248,7 @@
       padding: 0 12px 12px;
       font-size: 11px;
       font-weight: 600;
-      color: var(--gray-500, #7c8c85);
+      color: var(--gray-500, #7f7f89);
       text-align: left;
       letter-spacing: 0.4px;
       
@@ -269,7 +269,7 @@
     }
     .dm-filters-toggle:hover { border-color: var(--green-border); background: #fff; }
     .dm-filters-toggle .dm-filters-caret { transition: transform 0.18s ease; color: var(--gray-400); }
-    .dm-filters-toggle[aria-expanded="true"] { border-color: var(--green); color: var(--green); background: rgba(210, 23, 37, 0.06); }
+    .dm-filters-toggle[aria-expanded="true"] { border-color: var(--green); color: var(--green); background: rgba(255, 142, 104, 0.06); }
     .dm-filters-toggle[aria-expanded="true"] .dm-filters-caret { transform: rotate(180deg); color: var(--green); }
     .dm-filters-badge {
       min-width: 17px; height: 17px; padding: 0 5px;
@@ -289,13 +289,13 @@
     .dm-filter-bar[hidden] { display: none; }
     .dm-fb-clear[hidden] { display: none; }
     .dm-fb-field { display: inline-flex; align-items: center; gap: 8px; }
-    .dm-fb-field label { font-size: 11.5px; font-weight: 600; color: var(--gray-500, #7c8c85);  letter-spacing: 0.4px; }
+    .dm-fb-field label { font-size: 11.5px; font-weight: 600; color: var(--gray-500, #7f7f89);  letter-spacing: 0.4px; }
     .dm-fb-clear {
       margin-left: auto; height: 30px; padding: 0 12px;
       font-size: 12px; font-weight: 600; color: var(--green);
       background: transparent; border: none; cursor: pointer; border-radius: 8px;
     }
-    .dm-fb-clear:hover { background: rgba(210, 23, 37, 0.08); }
+    .dm-fb-clear:hover { background: rgba(255, 142, 104, 0.08); }
     /* Filter pills (custom-styled selects) */
     .dm-col-filter {
       appearance: none; -webkit-appearance: none; -moz-appearance: none;
@@ -321,12 +321,12 @@
       transition: border-color 0.13s, box-shadow 0.13s, background-color 0.13s, color 0.13s;
     }
     .dm-col-filter:hover { border-color: var(--green-border); background-color: #fff; }
-    .dm-col-filter:focus-visible { outline: none; border-color: var(--green); box-shadow: 0 0 0 3px rgba(210, 23, 37, 0.12); }
+    .dm-col-filter:focus-visible { outline: none; border-color: var(--green); box-shadow: 0 0 0 3px rgba(255, 142, 104, 0.12); }
     .dm-col-filter.dm-col-active {
-      border-color: rgba(210, 23, 37, 0.45);
+      border-color: rgba(255, 142, 104, 0.45);
       color: var(--green);
       font-weight: 600;
-      background-color: rgba(210, 23, 37, 0.07);
+      background-color: rgba(255, 142, 104, 0.07);
       background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23d21725' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
     }
     .dm-col-filter option { color: var(--gray-900); font-weight: 500; }
@@ -341,7 +341,7 @@
     .dm-device-table tbody tr { cursor: pointer; transition: background 0.14s ease; }
     .dm-device-table tbody tr:hover td { background: rgba(255, 255, 255, 0.6); }
     .dm-device-table tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--green); }
-    .dm-device-table tbody tr.selected td { background: rgba(210, 23, 37, 0.06); }
+    .dm-device-table tbody tr.selected td { background: rgba(255, 142, 104, 0.06); }
 
     .dm-device-check {
       width: 16px; height: 16px;
@@ -409,7 +409,7 @@
       width: 7px; height: 7px;
       border-radius: 50%;
       flex-shrink: 0;
-      background: var(--gray-300, #c2cdc8);
+      background: var(--gray-300, #c5c5ca);
     }
     .dm-status-pill.online { color: #178a52; }
     .dm-status-pill.online::before { background: #21a065; box-shadow: 0 0 0 3px rgba(33, 160, 101, 0.18); }
@@ -426,7 +426,7 @@
     .dm-health-min { display: flex; align-items: center; gap: 9px; }
     .dm-health-min .dm-hbar { width: 48px; height: 6px; background: rgba(13, 34, 24, 0.08); border-radius: 6px; overflow: hidden; flex-shrink: 0; }
     .dm-health-min .dm-hbar i { display: block; height: 100%; border-radius: 6px; }
-    .dm-health-min .dm-hval { font-size: 12px; font-weight: 600; color: var(--gray-500, #7c8c85); font-variant-numeric: tabular-nums; }
+    .dm-health-min .dm-hval { font-size: 12px; font-weight: 600; color: var(--gray-500, #7f7f89); font-variant-numeric: tabular-nums; }
 
     .dm-action-btn {
       width: 28px; height: 28px;
@@ -616,7 +616,7 @@
     .dm-form-field input:focus, .dm-form-field select:focus {
       border-color: var(--green);
       background: white;
-      box-shadow: 0 0 0 3px rgba(210, 23, 37, 0.08);
+      box-shadow: 0 0 0 3px rgba(255, 142, 104, 0.08);
     }
     .dm-modal-footer { padding: 14px 24px 20px; display: flex; gap: 10px; justify-content: flex-end; }
     .dm-btn-cancel {
@@ -643,7 +643,7 @@
       font-weight: 600;
       cursor: pointer;
       transition: all 0.18s;
-      box-shadow: 0 2px 8px rgba(210, 23, 37, 0.25);
+      box-shadow: 0 2px 8px rgba(255, 142, 104, 0.25);
     }
     .dm-btn-save:hover { background: var(--green-mid); }
 
@@ -901,7 +901,7 @@
               <svg class="dm-donut-svg" viewBox="0 0 120 120" id="donutSvg">
                 <circle cx="60" cy="60" r="46" fill="none" stroke="#f0f0f0" stroke-width="14"/>
                 <text x="60" y="56" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="18" font-weight="700" fill="#0d2218" id="donutTotal">0</text>
-                <text x="60" y="70" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="9" fill="#8fa99e">Devices</text>
+                <text x="60" y="70" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="9" fill="#9898a0">Devices</text>
               </svg>
               <div class="dm-donut-legend" id="donutLegend"></div>
             </div>
@@ -1097,7 +1097,7 @@
   function healthRingColor(hc) {
     if (hc === 'good') return 'linear-gradient(90deg, #34d27b, #1f9d63)';
     if (hc === 'ok') return 'linear-gradient(90deg, #f7b955, #d4850a)';
-    return 'linear-gradient(90deg, #ff6f63, #c0392b)';
+    return 'linear-gradient(90deg, #ff8a63, #c0392b)';
   }
   function populateCompanyFilter() {
     const sel = document.getElementById('companyFilter');
@@ -1268,7 +1268,7 @@
     });
     const total = devicesData.length;
     const items = Object.entries(counts).sort((a,b) => b[1]-a[1]);
-    const colors = ['#d21725','#e8323f','#8ecfb0','#d1ddd8'];
+    const colors = ['#ff8e68','#f97e54','#8ecfb0','#d5d5d9'];
     document.getElementById('donutTotal').textContent = total;
 
     const circ = 2 * Math.PI * 46;

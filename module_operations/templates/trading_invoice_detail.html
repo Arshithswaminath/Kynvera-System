@@ -6,13 +6,13 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
   {% include 'partials/caveat_font.html' %}
   <title>{{ invoice.invoice_no }} - Trading Invoice</title>
-  <meta name="theme-color" content="#d21725">
+  <meta name="theme-color" content="#ff8e68">
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
   <style>
-    :root { --primary:#d21725; --primary-light:#e8323f; --ink:#0f172a; --muted:#64748b; --rule:#e6e8ec; --paper-rule:#eef1f5; }
+    :root { --primary:#ff8e68; --primary-light:#f97e54; --ink:#0f172a; --muted:#64748b; --rule:#e6e8ec; --paper-rule:#eef1f5; }
     body.ops-page { background:#eef1f4; }
     .ops-wrap { max-width: 880px; margin: 6.5rem auto 3rem; padding: 0 1.25rem; }
 
@@ -24,13 +24,13 @@
     .inv-actions { display:flex; gap:.55rem; flex-wrap:wrap; align-items:center; }
     .ops-btn { display:inline-flex; align-items:center; gap:.45rem; border:none; border-radius:10px; padding:.6rem 1.05rem; font-weight:600; font-size:.88rem; cursor:pointer; text-decoration:none; transition:transform .12s ease, box-shadow .12s ease, border-color .12s ease; }
     .ops-btn-primary { background:var(--primary); color:#fff; }
-    .ops-btn-primary:hover { transform:translateY(-1px); box-shadow:0 6px 16px rgba(210,23,37,.22); }
+    .ops-btn-primary:hover { transform:translateY(-1px); box-shadow:0 6px 16px rgba(255, 142, 104,.22); }
     .ops-btn-ghost { background:#fff; color:var(--ink); border:1px solid var(--rule); }
     .ops-btn-ghost:hover { border-color:var(--primary-light); }
-    .ops-btn-danger { background:#fff; color:#b91c1c; border:1px solid #f1c4c4; }
+    .ops-btn-danger { background:#fff; color:#b91c1c; border:1px solid #ffcdb8; }
     .ops-btn-danger:hover { background:#fef2f2; border-color:#e89a9a; }
     .status-sel { border:1px solid #cbd5e1; border-radius:10px; padding:.55rem .7rem; font-size:.86rem; font-family:inherit; background:#fff; color:var(--ink); }
-    .status-sel:focus { outline:none; border-color:var(--primary-light); box-shadow:0 0 0 3px rgba(210,23,37,.12); }
+    .status-sel:focus { outline:none; border-color:var(--primary-light); box-shadow:0 0 0 3px rgba(255, 142, 104,.12); }
     .view-tag { display:inline-flex; align-items:center; gap:.4rem; font-size:.78rem; font-weight:700; color:var(--muted); background:#fff; border:1px solid var(--rule); border-radius:999px; padding:.4rem .8rem; }
 
     /* The invoice "paper" document */
@@ -60,7 +60,7 @@
 
     /* Items table */
     .inv-table { width:100%; border-collapse:collapse; font-size:.88rem; margin-top:.2rem; }
-    .inv-table thead th { text-align:left; font-size:.7rem;  letter-spacing:.05em; color:#7a1019; background:#faf5f6; font-weight:700; padding:.7rem .85rem; }
+    .inv-table thead th { text-align:left; font-size:.7rem;  letter-spacing:.05em; color:#9a3609; background:#faf6f5; font-weight:700; padding:.7rem .85rem; }
     .inv-table thead th:first-child { border-top-left-radius:9px; }
     .inv-table thead th:last-child { border-top-right-radius:9px; }
     .inv-table tbody td { padding:.7rem .85rem; border-bottom:1px solid var(--paper-rule); color:var(--ink); vertical-align:top; }
@@ -78,7 +78,7 @@
     .inv-totals { width:300px; max-width:100%; margin-left:auto; }
     .inv-totals .row { display:flex; justify-content:space-between; padding:.4rem 0; color:var(--ink); font-size:.9rem; }
     .inv-totals .row .lbl { color:var(--muted); }
-    .inv-totals .grand { margin-top:.4rem; padding:.7rem .9rem; background:linear-gradient(90deg, rgba(210,23,37,.06), rgba(232,50,63,.04)); border-radius:10px; font-size:1.1rem; font-weight:800; color:var(--primary); }
+    .inv-totals .grand { margin-top:.4rem; padding:.7rem .9rem; background:linear-gradient(90deg, rgba(255, 142, 104,.06), rgba(249,126,84,.04)); border-radius:10px; font-size:1.1rem; font-weight:800; color:var(--primary); }
 
     .inv-thanks { margin-top:2rem; padding-top:1.3rem; border-top:1px solid var(--paper-rule); text-align:center; color:var(--muted); font-size:.8rem; }
 

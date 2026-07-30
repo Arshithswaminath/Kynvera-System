@@ -39,9 +39,7 @@ def fix_admin_user():
                 role='admin',
                 is_active=True,
                 access_hvac=True,
-                access_civil=True,
-                access_cleaning=True,
-                password_changed=False
+                                                password_changed=False
             )
             admin.set_password('Admin@123')
             
@@ -66,8 +64,6 @@ def fix_admin_user():
             admin.is_active = True
             admin.password_changed = False
             admin.access_hvac = True
-            admin.access_civil = True
-            admin.access_cleaning = True
             
             try:
                 db.session.commit()

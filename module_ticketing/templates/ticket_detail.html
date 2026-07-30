@@ -3,7 +3,7 @@
 <head>
  <meta charset="UTF-8">
  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
- <title>{{ ticket.ticket_id }} — Amaan</title>
+ <title>{{ ticket.ticket_id }} — Kynvera</title>
  {% include 'partials/caveat_font.html' ignore missing %}
  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
@@ -25,8 +25,49 @@
  }
 
  /* ── Header card ── */
- .tkt-header-card { background: linear-gradient(135deg, #a8121e 0%, #a8121e 100%); border-radius: 14px; padding: 20px 24px; color: #fff; margin-bottom: 20px; position: relative; overflow: hidden; }
+ .tkt-header-card { background: linear-gradient(135deg, #e05f36 0%, #e05f36 100%); border-radius: 14px; padding: 20px 24px; color: #fff; margin-bottom: 20px; position: relative; overflow: hidden; }
  .tkt-header-card::before { content: ''; position: absolute; top: -30px; right: -30px; width: 120px; height: 120px; border-radius: 50%; background: rgba(255,255,255,.06); }
+ .tkt-header-layout { display: flex; align-items: stretch; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+ .tkt-header-actions {
+ display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between;
+ gap: 14px; margin-left: auto;
+ }
+ .tkt-header-actions-btns { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; justify-content: flex-end; }
+
+ /* SLA — bottom-right of header */
+ .tkt-header-sla {
+ display: flex; align-items: center; gap: 10px;
+ padding: 8px 12px; border-radius: 10px;
+ background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.28);
+ text-align: left; max-width: 100%;
+ }
+ .tkt-header-sla-icon {
+ width: 28px; height: 28px; border-radius: 7px; flex-shrink: 0;
+ display: flex; align-items: center; justify-content: center;
+ background: rgba(255,255,255,.16); color: #fff;
+ }
+ .tkt-header-sla-label {
+ font-size: .62rem; font-weight: 700; letter-spacing: .07em;
+ text-transform: uppercase; opacity: .78; margin-bottom: 1px;
+ }
+ .tkt-header-sla-when { font-size: .86rem; font-weight: 700; letter-spacing: -0.01em; line-height: 1.2; }
+ .tkt-header-sla-state {
+ font-size: .68rem; font-weight: 700; padding: 3px 8px; border-radius: 999px;
+ background: rgba(255,255,255,.18); white-space: nowrap; flex-shrink: 0;
+ }
+ .tkt-header-sla--due_soon {
+ background: rgba(251,191,36,.22); border-color: rgba(253,224,71,.55);
+ }
+ .tkt-header-sla--due_soon .tkt-header-sla-state { background: rgba(251,191,36,.35); color: #fef3c7; }
+ .tkt-header-sla--breached {
+ background: rgba(0,0,0,.22); border-color: rgba(254,202,202,.55);
+ }
+ .tkt-header-sla--breached .tkt-header-sla-state { background: rgba(254,202,202,.28); color: #fecaca; }
+ @media (max-width: 720px) {
+ .tkt-header-actions { width: 100%; align-items: stretch; }
+ .tkt-header-actions-btns { justify-content: flex-start; }
+ .tkt-header-sla { width: 100%; justify-content: space-between; }
+ }
  .tkt-header-id { font-size: 1.05rem; font-weight: 800; letter-spacing: .04em; opacity: .9; }
  .tkt-header-title { font-size: 1.35rem; font-weight: 700; margin: 6px 0; line-height: 1.3; }
  .tkt-header-meta { font-size: .8rem; opacity: .75; }
@@ -45,22 +86,22 @@
  .stage-step::after { content: ''; position: absolute; top: 15px; left: calc(50% + 14px); width: calc(100% - 28px); height: 2px; background: #e2e8f0; z-index: 0; }
  .stage-step:last-child::after { display: none; }
  .stage-step.done::after { background: #16a34a; }
- .stage-step.active::after { background: linear-gradient(90deg, #d21725 0%, #e2e8f0 100%); }
+ .stage-step.active::after { background: linear-gradient(90deg, #ff8e68 0%, #e2e8f0 100%); }
  .stage-dot { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2.5px solid #e2e8f0; background: #fff; z-index: 1; position: relative; flex-shrink: 0; transition: all .2s; }
  .stage-step.done .stage-dot { background: #16a34a; border-color: #16a34a; color: #fff; }
- .stage-step.active .stage-dot { background: #d21725; border-color: #d21725; color: #fff; box-shadow: 0 0 0 4px rgba(210,23,37,.15); }
+ .stage-step.active .stage-dot { background: #ff8e68; border-color: #ff8e68; color: #fff; box-shadow: 0 0 0 4px rgba(255, 142, 104,.15); }
  .stage-step.pending .stage-dot { background: #f8fafc; }
  .stage-label { font-size: .65rem; font-weight: 600; text-align: center; color: #94a3b8; white-space: nowrap; }
- .stage-step.active .stage-label { color: #d21725; }
+ .stage-step.active .stage-label { color: #ff8e68; }
  .stage-step.done .stage-label { color: #16a34a; }
 
  /* ── Tabs ── */
  .detail-tabs { display: flex; gap: 0; border-bottom: 2px solid #e2e8f0; margin-bottom: 20px; overflow-x: auto; }
  .detail-tab { padding: 12px 22px; font-size: 1rem; font-weight: 700; cursor: pointer; color: #64748b; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: color .15s, border-color .15s; background: none; border-top: none; border-left: none; border-right: none; white-space: nowrap; display: flex; align-items: center; gap: 7px; }
- .detail-tab.active { color: #a8121e; border-bottom-color: #d21725; }
+ .detail-tab.active { color: #e05f36; border-bottom-color: #ff8e68; }
  .detail-tab:hover:not(.active) { color: #334155; background: #f8fafc; border-radius: 8px 8px 0 0; }
  .detail-tab .tab-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; border-radius: 9px; background: #e2e8f0; color: #64748b; font-size: .68rem; padding: 0 5px; }
- .detail-tab.active .tab-badge { background: #dbeafe; color: #d21725; }
+ .detail-tab.active .tab-badge { background: #dbeafe; color: #ff8e68; }
  .tab-panel { display: none; }
  .tab-panel.active { display: block; }
 
@@ -259,7 +300,7 @@
  /* ── Ticket detail: supervisor send (secondary — white surface, blue label) ── */
  body.tkt-detail-page .tkt-btn-supervisor-send {
  background: #fff !important;
- color: #d21725 !important;
+ color: #ff8e68 !important;
  border: 1.5px solid #bfdbfe !important;
  min-height: 40px;
  padding: 10px 18px !important;
@@ -281,7 +322,7 @@
  body.tkt-detail-page .tkt-btn-supervisor-send:hover {
  background: #eff6ff !important;
  border-color: #93c5fd !important;
- color: #a8121e !important;
+ color: #e05f36 !important;
  transform: translateY(-1px);
  box-shadow:
  0 2px 8px rgba(37, 99, 235, 0.12),
@@ -317,69 +358,45 @@
  gap: 8px;
  font-weight: 600;
  letter-spacing: -0.015em;
- border-radius: 11px !important;
- transition:
- background 0.18s ease,
- border-color 0.18s ease,
- color 0.18s ease,
- box-shadow 0.18s ease,
- transform 0.12s ease,
- filter 0.15s ease;
+ border-radius: 8px !important;
+ box-shadow: none !important;
+ transform: none !important;
+ filter: none !important;
+ transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
  }
  body.tkt-detail-page .tkt-btn:focus-visible:not(.detail-tab):not(.cat-tab) {
- outline: none;
+ outline: 2px solid #93c5fd;
+ outline-offset: 2px;
  }
 
  body.tkt-detail-page .tkt-btn-primary {
- background: linear-gradient(180deg, #e8323f 0%, #d21725 48%, #a8121e 100%) !important;
+ background: #ff8e68 !important;
  color: #fff !important;
  border: none !important;
- box-shadow:
- 0 2px 10px rgba(37, 99, 235, 0.32),
- 0 1px 2px rgba(15, 23, 42, 0.06);
  }
  body.tkt-detail-page .tkt-btn-primary:hover:not(:disabled) {
- filter: brightness(1.05);
- box-shadow:
- 0 4px 18px rgba(37, 99, 235, 0.4),
- 0 2px 6px rgba(15, 23, 42, 0.08);
- transform: translateY(-1px);
+ background: #e05f36 !important;
  }
  body.tkt-detail-page .tkt-btn-primary:active:not(:disabled) {
- transform: translateY(0);
- filter: brightness(0.97);
+ background: #8f2f0f !important;
  }
  body.tkt-detail-page .tkt-btn-primary:disabled {
  opacity: 0.52;
  cursor: not-allowed;
- transform: none !important;
- filter: none !important;
- box-shadow: 0 1px 4px rgba(37, 99, 235, 0.12);
- }
- body.tkt-detail-page .tkt-btn-primary:focus-visible {
- box-shadow:
- 0 0 0 3px rgba(147, 197, 253, 0.8),
- 0 2px 10px rgba(37, 99, 235, 0.32);
  }
 
  body.tkt-detail-page .tkt-btn-outline {
  background: #fff !important;
  color: #475569 !important;
  border: 1.5px solid #e2e8f0 !important;
- box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
  }
  body.tkt-detail-page .tkt-btn-outline:hover:not(:disabled) {
  border-color: #cbd5e1 !important;
  background: #f8fafc !important;
  color: #1e293b !important;
- box-shadow: 0 2px 8px rgba(15, 23, 42, 0.07);
- transform: translateY(-1px);
  }
  body.tkt-detail-page .tkt-btn-outline:active:not(:disabled) {
- transform: translateY(0);
- }
- body.tkt-detail-page .tkt-btn-outline:focus-visible {
- box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.45);
+ background: #f1f5f9 !important;
  }
 
  body.tkt-detail-page .tkt-btn-icon.tkt-btn-sm {
@@ -411,12 +428,11 @@
  }
 
  body.tkt-detail-page #saveAssignBtn {
- width: 100%;
- justify-content: center;
+ flex-shrink: 0;
  }
 
  /* ── Note variants ── */
- .note-system { background: #f0f7ff !important; border-color: #bfdbfe !important; color: #a8121e !important; font-style: italic; }
+ .note-system { background: #f0f7ff !important; border-color: #bfdbfe !important; color: #e05f36 !important; font-style: italic; }
  .note-assignment { background: #faf5ff !important; border-color: #e9d5ff !important; color: #7c3aed !important; }
 
  /* KV / data tables */
@@ -474,14 +490,14 @@
  border: 1.5px solid #e2e8f0; background: #fff; cursor: pointer;
  white-space: nowrap; color: #64748b; transition: all .15s;
  }
- .cat-tab.active { background: #a8121e; border-color: #a8121e; color: #fff; }
+ .cat-tab.active { background: #e05f36; border-color: #e05f36; color: #fff; }
  .cat-tab:hover:not(.active) { border-color: #93c5fd; color: #1e40af; background: #eff6ff; }
 
  /* Search inside catalog */
  .catalog-search-wrap { padding: 10px 20px; flex-shrink: 0; position: relative; }
  .catalog-search-wrap svg { position: absolute; left: 32px; top: 50%; transform: translateY(-50%); color: #94a3b8; }
  .catalog-search-input { width: 100%; box-sizing: border-box; padding: 10px 14px 10px 38px; border: 1.5px solid #e2e8f0; border-radius: 10px; font-size: .9rem; font-family: inherit; outline: none; transition: border-color .15s; }
- .catalog-search-input:focus { border-color: #d21725; }
+ .catalog-search-input:focus { border-color: #ff8e68; }
 
  /* Catalog item grid */
  .catalog-items-grid {
@@ -494,7 +510,7 @@
  user-select: none;
  }
  .cat-item:hover { border-color: #93c5fd; background: #f0f9ff; }
- .cat-item.selected { border-color: #d21725; background: #eff6ff; }
+ .cat-item.selected { border-color: #ff8e68; background: #eff6ff; }
  .cat-item .ci-check {
  position: absolute; top: 8px; right: 8px;
  width: 20px; height: 20px; border-radius: 50%;
@@ -502,33 +518,33 @@
  display: flex; align-items: center; justify-content: center;
  transition: all .15s;
  }
- .cat-item.selected .ci-check { background: #d21725; border-color: #d21725; }
+ .cat-item.selected .ci-check { background: #ff8e68; border-color: #ff8e68; }
  .cat-item .ci-name { font-size: .88rem; font-weight: 700; color: #1e293b; margin-bottom: 4px; padding-right: 26px; }
  .cat-item .ci-meta { display: flex; gap: 6px; flex-wrap: wrap; }
  .cat-item .ci-tag { font-size: .68rem; padding: 2px 7px; border-radius: 999px; background: #f1f5f9; color: #64748b; }
- .cat-item .ci-tag.brand { background: #dbeafe; color: #a8121e; }
+ .cat-item .ci-tag.brand { background: #dbeafe; color: #e05f36; }
  .cat-item .ci-tag.dept { background: #f3e8ff; color: #7c3aed; }
- .cat-item .ci-price { margin-top: 6px; font-size: .82rem; font-weight: 700; color: #a8121e; }
+ .cat-item .ci-price { margin-top: 6px; font-size: .82rem; font-weight: 700; color: #e05f36; }
  .cat-item .ci-qty-wrap { margin-top: 8px; display: none; align-items: center; gap: 6px; }
  .cat-item.selected .ci-qty-wrap { display: flex; }
  .cat-item .ci-qty-wrap label { font-size: .72rem; color: #64748b; white-space: nowrap; }
  .cat-item .ci-qty-wrap input { width: 60px; padding: 4px 8px; border: 1.5px solid #e2e8f0; border-radius: 6px; font-size: .85rem; outline: none; }
- .cat-item .ci-qty-wrap input:focus { border-color: #d21725; }
+ .cat-item .ci-qty-wrap input:focus { border-color: #ff8e68; }
 
  .cat-empty { text-align: center; padding: 40px 20px; color: #94a3b8; grid-column: 1/-1; }
  .cat-empty svg { opacity: .3; margin-bottom: 8px; }
 
- .catalog-sel-badge { background: #d21725; color: #fff; border-radius: 999px; font-size: .7rem; font-weight: 700; padding: 2px 8px; min-width: 20px; text-align: center; }
+ .catalog-sel-badge { background: #ff8e68; color: #fff; border-radius: 999px; font-size: .7rem; font-weight: 700; padding: 2px 8px; min-width: 20px; text-align: center; }
 
  /* ── User search picker ── */
  .user-search-picker { position: relative; }
  .usp-input { width: 100%; box-sizing: border-box; padding: 9px 36px 9px 12px; border: 1.5px solid #e2e8f0; border-radius: 9px; font-size: .88rem; font-family: inherit; outline: none; transition: border-color .15s; cursor: text; }
- .usp-input:focus { border-color: #d21725; }
+ .usp-input:focus { border-color: #ff8e68; }
  .usp-dropdown { position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: #fff; border: 1.5px solid #e2e8f0; border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.12); z-index: 200; max-height: 200px; overflow-y: auto; display: none; }
  .usp-dropdown.open { display: block; }
  .usp-option { display: flex; align-items: center; gap: 10px; padding: 8px 12px; cursor: pointer; transition: background .1s; }
  .usp-option:hover { background: #f0f9ff; }
- .usp-avatar { width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg,#d21725,#7c3aed); display: flex; align-items: center; justify-content: center; font-size: .68rem; font-weight: 800; color: #fff; flex-shrink: 0; }
+ .usp-avatar { width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg,#ff8e68,#7c3aed); display: flex; align-items: center; justify-content: center; font-size: .68rem; font-weight: 800; color: #fff; flex-shrink: 0; }
  .usp-name { font-size: .88rem; font-weight: 600; color: #1e293b; }
  .usp-empty { padding: 12px; font-size: .82rem; color: #94a3b8; text-align: center; }
 
@@ -566,11 +582,11 @@
  background: #fff;
  }
  .markup-option:hover { border-color: #93c5fd; background: #eff6ff; }
- .markup-option.selected { border-color: #d21725; background: #dbeafe; }
- .markup-option .mo-pct { font-size: 1.1rem; font-weight: 800; color: #a8121e; }
- .markup-option.selected .mo-pct { color: #a8121e; }
+ .markup-option.selected { border-color: #ff8e68; background: #dbeafe; }
+ .markup-option .mo-pct { font-size: 1.1rem; font-weight: 800; color: #e05f36; }
+ .markup-option.selected .mo-pct { color: #e05f36; }
  .markup-option .mo-label { font-size: .67rem; color: #64748b; margin-top: 2px; }
- .markup-option.selected .mo-label { color: #d21725; }
+ .markup-option.selected .mo-label { color: #ff8e68; }
 
  /* ── Pricing breakdown ── */
  .pricing-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid rgba(0,0,0,.06); font-size: .88rem; }
@@ -578,8 +594,8 @@
  .pricing-row.highlight { font-weight: 800; font-size: .96rem; }
  .pricing-row .pr-label { color: #475569; }
  .pricing-row.highlight .pr-label { color: #1e293b; }
- .pricing-row .pr-value { font-weight: 600; color: #a8121e; }
- .pricing-row.selling .pr-value { color: #a8121e; font-size: 1.05rem; }
+ .pricing-row .pr-value { font-weight: 600; color: #e05f36; }
+ .pricing-row.selling .pr-value { color: #e05f36; font-size: 1.05rem; }
 
  /* Sidebar cost summary */
  #costMp, #costMat, #costTotal { font-size: .96rem; }
@@ -689,7 +705,7 @@
  }
  body.tkt-detail-page button.status-btn.active {
  background: linear-gradient(135deg, #eff6ff 0%, #e0efff 100%) !important;
- border-color: #d21725 !important;
+ border-color: #ff8e68 !important;
  color: #0f172a !important;
  box-shadow:
  0 2px 10px rgba(37, 99, 235, 0.2),
@@ -715,13 +731,13 @@
  <span>/</span>
  <a href="{{ url_for('ticketing.ticket_list') }}" style="color:#94a3b8;text-decoration:none;">All Tickets</a>
  <span>/</span>
- <span style="color:#a8121e;font-weight:600;">{{ ticket.ticket_id }}</span>
+ <span style="color:#e05f36;font-weight:600;">{{ ticket.ticket_id }}</span>
  </div>
 
  <!-- ── Header card ── -->
  <div class="tkt-header-card">
- <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;">
- <div style="flex:1;">
+ <div class="tkt-header-layout">
+ <div style="flex:1;min-width:200px;">
  <div class="tkt-header-id">{{ ticket.ticket_id }}</div>
  <div class="tkt-header-title">{{ ticket.title }}</div>
  <div class="tkt-header-meta">
@@ -743,7 +759,8 @@
  {% endif %}
  </div>
  </div>
- <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+ <div class="tkt-header-actions">
+ <div class="tkt-header-actions-btns">
  {% set _btn_style = "display:inline-flex;align-items:center;justify-content:center;gap:8px;height:42px;padding:0 18px;border-radius:10px;font-size:.92rem;font-weight:700;white-space:nowrap;cursor:pointer;transition:filter .15s,transform .15s;box-sizing:border-box;" %}
  {# Lock rules: Finance stage locks everyone. GM-approval stage locks only the supervisor (GM/overwatch keep edit access). #}
  {% set _stage_locked = (ticket.status == 'pending_finance') or (ticket.status == 'pending_gm_approval' and user_is_supervisor and not ticketing_sees_all) %}
@@ -810,6 +827,26 @@
  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3"/></svg>
  Reopen
  </button>
+ {% endif %}
+ </div>
+
+ {% if ticket.sla_due_at and ticket.status not in ('closed','cancelled') %}
+ {% set _sla = sla_state if sla_state is defined else ('breached' if ticket.sla_breached_at else 'on_track') %}
+ {% set _sla_label = {'on_track': 'On track', 'due_soon': 'Due soon', 'breached': 'Breached'}.get(_sla, 'SLA') %}
+ <div class="tkt-header-sla tkt-header-sla--{{ _sla }}" role="status" aria-label="SLA {{ _sla_label }}">
+ <div class="tkt-header-sla-icon" aria-hidden="true">
+ {% if _sla == 'breached' %}
+ <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h18.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/></svg>
+ {% else %}
+ <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+ {% endif %}
+ </div>
+ <div>
+ <div class="tkt-header-sla-label">{% if _sla == 'breached' %}SLA Breached{% else %}SLA Due{% endif %}</div>
+ <div class="tkt-header-sla-when">{{ ticket.sla_due_at.strftime('%d %b %Y · %H:%M') }}</div>
+ </div>
+ <span class="tkt-header-sla-state">{{ _sla_label }}</span>
+ </div>
  {% endif %}
  </div>
  </div>
@@ -1135,27 +1172,50 @@
  </div>
  {% endif %}
 
- {# ─ CLOSED — final pricing summary ─ #}
+ {# ─ CLOSED — final pricing + central finance record ─ #}
  {% if ticket.status == 'closed' %}
  <div style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1.5px solid #86efac;border-radius:12px;padding:14px 18px;margin-bottom:16px;">
  <div style="font-size:.82rem;font-weight:800;letter-spacing:.05em;color:#15803d;margin-bottom:8px;">✓ Work Order Closed</div>
  <div style="display:flex;gap:24px;flex-wrap:wrap;">
- <div><div style="font-size:.74rem;color:#64748b;">Actual Price</div><div style="font-size:1rem;font-weight:700;color:#a8121e;">AED {{ '%.2f'|format(ticket.actual_price or 0) }}</div></div>
+ <div><div style="font-size:.74rem;color:#64748b;">Actual Price</div><div style="font-size:1rem;font-weight:700;color:#e05f36;">AED {{ '%.2f'|format(ticket.actual_price or 0) }}</div></div>
  {% if ticket.markup_pct %}<div><div style="font-size:.74rem;color:#64748b;">Markup Applied</div><div style="font-size:1rem;font-weight:700;color:#7c3aed;">{{ ticket.markup_pct|int }}%</div></div>{% endif %}
- {% if ticket.selling_price %}<div><div style="font-size:.74rem;color:#64748b;">Selling Price (Invoice)</div><div style="font-size:1.1rem;font-weight:800;color:#a8121e;">AED {{ '%.2f'|format(ticket.selling_price) }}</div></div>{% endif %}
+ {% if ticket.selling_price %}<div><div style="font-size:.74rem;color:#64748b;">Selling Price (Invoice)</div><div style="font-size:1.1rem;font-weight:800;color:#e05f36;">AED {{ '%.2f'|format(ticket.selling_price) }}</div></div>{% endif %}
  </div>
+ </div>
+ <div class="tkt-card" style="margin-bottom:16px;border:1.5px solid #e2e8f0;">
+   <div class="tkt-card-header"><h3>Central Invoice Record</h3></div>
+   <div class="tkt-card-body" style="display:grid;gap:10px;font-size:.88rem;">
+     <div style="display:flex;flex-wrap:wrap;gap:16px;">
+       <div><div style="font-size:.72rem;color:#64748b;font-weight:600;">SERVICE REPORT</div>
+         <a href="/tickets/{{ ticket.ticket_id }}/service-report/pdf" style="color:#e05f36;font-weight:700;">Download PDF</a></div>
+       <div><div style="font-size:.72rem;color:#64748b;font-weight:600;">APP INVOICE</div>
+         <a href="/tickets/{{ ticket.ticket_id }}/invoice" style="color:#e05f36;font-weight:700;">Download PDF</a></div>
+       <div><div style="font-size:.72rem;color:#64748b;font-weight:600;">ERP INVOICE #</div>
+         <div style="font-weight:700;">{{ ticket.finance_invoice_ref or '—' }}</div></div>
+       <div><div style="font-size:.72rem;color:#64748b;font-weight:600;">PAYMENT</div>
+         <div style="font-weight:700;color:{% if ticket.payment_status == 'paid' %}#15803d{% elif ticket.payment_status == 'unpaid' %}#b45309{% else %}#64748b{% endif %};">
+           {{ (ticket.payment_status or 'n_a')|upper }}
+           {% if ticket.payment_due_date %}<span style="font-weight:500;color:#64748b;"> · due {{ ticket.payment_due_date }}</span>{% endif %}
+         </div>
+       </div>
+     </div>
+     {% if ticket.payment_status == 'unpaid' and (user.role == 'admin' or user.designation in ('finance','general_manager','operations_manager') or user.access_finance) %}
+     <button type="button" class="tkt-btn tkt-btn-sm" id="markPaidBtn" style="background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;border:none;font-weight:700;width:fit-content;">
+       Mark as Paid
+     </button>
+     {% endif %}
+   </div>
  </div>
  {% endif %}
-
  <!-- Work Description -->
  <div class="tkt-card">
  <div class="tkt-card-header"><h3>Work Description</h3></div>
  <div class="tkt-card-body">
  <p style="font-size:.9rem;line-height:1.75;white-space:pre-wrap;margin:0;color:#374151;">{{ ticket.work_description }}</p>
  {% if ticket.service_report_notes %}
- <div style="margin-top:12px;padding:12px 14px;background:#eff6ff;border-radius:8px;border-left:3px solid #d21725;">
+ <div style="margin-top:12px;padding:12px 14px;background:#eff6ff;border-radius:8px;border-left:3px solid #ff8e68;">
  <div style="font-size:.76rem;font-weight:700;color:#1e40af;margin-bottom:4px;">SERVICE REPORT NOTES</div>
- <p style="font-size:.88rem;color:#a8121e;margin:0;white-space:pre-wrap;">{{ ticket.service_report_notes }}</p>
+ <p style="font-size:.88rem;color:#e05f36;margin:0;white-space:pre-wrap;">{{ ticket.service_report_notes }}</p>
  </div>
  {% endif %}
  </div>
@@ -1374,7 +1434,7 @@
  </h3>
  {% if ticket.status not in ('closed', 'pending_verification') %}
  <div style="display:flex;gap:6px;">
- <button class="tkt-btn tkt-btn-primary tkt-btn-sm" id="openCatalogBtn" style="background:linear-gradient(135deg,#d21725,#a8121e);gap:5px;">
+ <button class="tkt-btn tkt-btn-primary tkt-btn-sm" id="openCatalogBtn" style="background:linear-gradient(135deg,#ff8e68,#e05f36);gap:5px;">
  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z"/></svg>
  Browse Catalog
  </button>
@@ -1407,13 +1467,31 @@
  <div class="catalog-inline-box" id="catalogInlineBox">
  <div class="catalog-inline-header">
  <div>
- <div style="font-size:.9rem;font-weight:800;color:#a8121e;">Browse Material Catalog</div>
- <div style="font-size:.74rem;color:#64748b;">Select procurement materials, then add to this ticket.</div>
+ <div style="font-size:.9rem;font-weight:800;color:#e05f36;">Browse Material Catalog</div>
+ <div style="font-size:.74rem;color:#64748b;">Pick a Set (bundle) or catalog lines. Ad-hoc extras need OM then GM approval before they attach or add price.</div>
  </div>
  <button class="tkt-btn tkt-btn-outline tkt-btn-sm" id="collapseCatalogBtn">Done</button>
  </div>
+ <div style="display:flex;gap:8px;padding:8px 16px 0;">
+ <button type="button" class="tkt-btn tkt-btn-outline tkt-btn-sm" id="catalogModeLines">Catalog lines</button>
+ <button type="button" class="tkt-btn tkt-btn-primary tkt-btn-sm" id="catalogModeSets">Material Sets</button>
+ </div>
+ <div id="setsPickerPanel" style="display:none;padding:12px 16px;">
+ <div id="setsPickerList" style="display:grid;gap:8px;"></div>
+ </div>
+ <div id="adhocPanel" style="padding:8px 16px 0;">
+ <div style="font-size:.8rem;font-weight:700;margin-bottom:6px;">Ad-hoc material (needs OM → GM)</div>
+ <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:end;">
+ <input id="adhocName" placeholder="Material name" style="flex:1;min-width:140px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
+ <input id="adhocQty" type="number" step="0.01" value="1" placeholder="Qty" style="width:70px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
+ <input id="adhocUnit" placeholder="Unit" style="width:70px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
+ <input id="adhocPrice" type="number" step="0.01" value="0" placeholder="Unit price" style="width:90px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;">
+ <button type="button" class="tkt-btn tkt-btn-outline tkt-btn-sm" id="adhocSubmitBtn">Request approval</button>
+ </div>
+ <div id="adhocList" style="margin-top:8px;font-size:.8rem;"></div>
+ </div>
 
- <div class="catalog-inline-body">
+ <div class="catalog-inline-body" id="catalogLinesBody">
  <div class="cat-tabs" id="catalogCatTabs">
  <button class="cat-tab active" data-dept="All">All</button>
  </div>
@@ -1430,7 +1508,7 @@
 
  <div class="catalog-inline-footer">
  <div style="font-size:.84rem;color:#64748b;">
- <span id="catalogSelectedCount" style="font-weight:700;color:#a8121e;">0</span> items selected
+ <span id="catalogSelectedCount" style="font-weight:700;color:#e05f36;">0</span> items selected
  <span id="catalogSelTotal" style="margin-left:8px;"></span>
  </div>
  <div style="display:flex;gap:8px;">
@@ -1451,7 +1529,7 @@
  <tr id="mat-row-{{ m.id }}">
  <td>
  {{ m.material_name }}
- {% if m.from_procurement %}<span style="font-size:.68rem;background:#dbeafe;color:#a8121e;padding:2px 6px;border-radius:3px;margin-left:4px;font-weight:700;">catalog</span>{% endif %}
+ {% if m.from_procurement %}<span style="font-size:.68rem;background:#dbeafe;color:#e05f36;padding:2px 6px;border-radius:3px;margin-left:4px;font-weight:700;">catalog</span>{% endif %}
  {% if m.notes %}<div style="font-size:.72rem;color:#94a3b8;">{{ m.notes }}</div>{% endif %}
  </td>
  <td>{{ m.quantity }}</td>
@@ -1557,14 +1635,14 @@
  {% set initials = (parts[0][:1] + (parts[-1][:1] if parts|length > 1 else '')) | upper %}
  <div style="font-size:.68rem;font-weight:700;color:#94a3b8;letter-spacing:.06em;padding:2px 2px 6px;margin-bottom:2px;">Currently Assigned</div>
  <div class="team-member-row" id="team-{{ tm.sidebar_row_id }}" data-uid="{{ tm.user_id }}" data-name="{{ tm.name }}"
- style="display:flex;align-items:center;gap:10px;padding:10px 10px 10px 9px;border-radius:10px;background:#fff3f4;border:1.5px solid #fbbdc1;margin-bottom:10px;">
- <div style="width:36px;height:36px;flex-shrink:0;border-radius:50%;background:#d21725;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;color:#fff;letter-spacing:.5px;box-shadow:0 0 0 3px rgba(210,23,37,.18);">
+ style="display:flex;align-items:center;gap:10px;padding:10px 10px 10px 9px;border-radius:10px;background:#fff6f3;border:1.5px solid #fbccbd;margin-bottom:10px;">
+ <div style="width:36px;height:36px;flex-shrink:0;border-radius:50%;background:#ff8e68;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;color:#fff;letter-spacing:.5px;box-shadow:0 0 0 3px rgba(255, 142, 104,.18);">
  {{ initials }}
  </div>
  <div style="flex:1;min-width:0;">
  <div style="font-size:.85rem;font-weight:700;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ tm.name }}</div>
  </div>
- <span style="flex-shrink:0;font-size:.71rem;font-weight:700;padding:5px 11px;border-radius:20px;background:#d21725;color:#fff;white-space:nowrap;">
+ <span style="flex-shrink:0;font-size:.71rem;font-weight:700;padding:5px 11px;border-radius:20px;background:#ff8e68;color:#fff;white-space:nowrap;">
  Assigned
  </span>
  </div>
@@ -1580,7 +1658,7 @@
  {% set initials = (parts[0][:1] + (parts[-1][:1] if parts|length > 1 else '')) | upper %}
  <div class="team-member-row" id="team-{{ tm.sidebar_row_id }}" data-uid="{{ tm.user_id }}" data-name="{{ tm.name }}"
  style="display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid #f1f5f9;">
- <div style="width:32px;height:32px;flex-shrink:0;border-radius:50%;background:linear-gradient(135deg,#e8323f,#a8121e);display:flex;align-items:center;justify-content:center;font-size:.67rem;font-weight:700;color:#fff;letter-spacing:.5px;">
+ <div style="width:32px;height:32px;flex-shrink:0;border-radius:50%;background:linear-gradient(135deg,#f97e54,#e05f36);display:flex;align-items:center;justify-content:center;font-size:.67rem;font-weight:700;color:#fff;letter-spacing:.5px;">
  {{ initials }}
  </div>
  <div style="flex:1;min-width:0;">
@@ -1605,14 +1683,15 @@
  <div class="tkt-card">
  <div class="tkt-card-header"><h3>Routing override</h3><span style="font-size:.68rem;color:#94a3b8;font-weight:600;margin-left:8px;white-space:nowrap;flex-shrink:0;align-self:center;">OPS / GM / ADMIN</span></div>
  <div class="tkt-card-body">
- <p style="font-size:.78rem;color:#64748b;margin:0 0 10px;">Assign a liaison supervisor account if needed. Supervisors still assign technicians from their team.</p>
- <select class="tkt-select" id="assignSelect" style="margin-bottom:10px;">
+ <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+ <select class="tkt-select" id="assignSelect" style="flex:1;min-width:160px;">
  <option value="">— Unassigned —</option>
  {% for u in supervisor_assignees %}
  <option value="{{ u.id }}" {% if ticket.assigned_to_id == u.id %}selected{% endif %}>{{ u.full_name }}</option>
  {% endfor %}
  </select>
- <button class="tkt-btn tkt-btn-primary tkt-btn-sm" id="saveAssignBtn" style="width:100%;">Update</button>
+ <button class="tkt-btn tkt-btn-primary tkt-btn-sm" id="saveAssignBtn">Update</button>
+ </div>
  </div>
  </div>
  {% endif %}
@@ -1660,7 +1739,7 @@
  <div class="tkt-status-section-title">Workflow stages</div>
  <div class="tkt-status-pick-grid">
  {% set wf_rows = [
- ('open', 'Open', '#d21725'),
+ ('open', 'Open', '#ff8e68'),
  ('assigned', 'Assigned', '#7c3aed'),
  ('site_attended', 'Site Attended', '#0891b2'),
  ('work_started', 'Work Started', '#9333ea'),
@@ -1680,7 +1759,7 @@
  {% set is_future = (not is_active) and (not is_done) %}
  <button type="button" class="tkt-btn tkt-btn-outline tkt-btn-sm status-btn{% if is_active %} active{% endif %}"
  data-status="{{ s }}" data-label="{{ lbl }}" data-color="{{ icon_color }}"
- style="justify-content:flex-start;align-items:center;gap:6px;{% if is_active %}background:rgba(210,23,37,.05);border-color:#d21725;color:#a8121e;{% elif is_done %}background:rgba(22,163,74,.04);border-color:#bbf7d0;{% elif is_future %}opacity:.65;{% endif %}">
+ style="justify-content:flex-start;align-items:center;gap:6px;{% if is_active %}background:rgba(255, 142, 104,.05);border-color:#ff8e68;color:#e05f36;{% elif is_done %}background:rgba(22,163,74,.04);border-color:#bbf7d0;{% elif is_future %}opacity:.65;{% endif %}">
  {% if is_active %}
  {# Clock — currently in progress #}
  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="{{ icon_color }}" width="14" height="14" style="flex-shrink:0;display:block;">
@@ -1736,7 +1815,7 @@
  <div id="statusCommentPanel" style="overflow:hidden;max-height:0;transition:max-height .35s cubic-bezier(.4,0,.2,1),opacity .3s ease,margin-top .3s ease;opacity:0;margin-top:0;">
  <div style="border-top:1px solid #e2e8f0;padding-top:14px;margin-top:4px;">
  <div style="font-size:.88rem;color:#64748b;margin-bottom:8px;">Moving to <strong id="statusCommentLabel"></strong> — optional note</div>
- <textarea id="statusCommentText" style="width:100%;box-sizing:border-box;padding:10px 13px;border:1.5px solid #e2e8f0;border-radius:9px;font-size:1rem;font-family:inherit;resize:none;min-height:72px;outline:none;transition:border-color .15s;line-height:1.6;" onfocus="this.style.borderColor='#d21725'" onblur="this.style.borderColor='#e2e8f0'" placeholder="Optional context for the activity log…"></textarea>
+ <textarea id="statusCommentText" style="width:100%;box-sizing:border-box;padding:10px 13px;border:1.5px solid #e2e8f0;border-radius:9px;font-size:1rem;font-family:inherit;resize:none;min-height:72px;outline:none;transition:border-color .15s;line-height:1.6;" onfocus="this.style.borderColor='#ff8e68'" onblur="this.style.borderColor='#e2e8f0'" placeholder="Optional context for the activity log…"></textarea>
  <div style="display:flex;gap:8px;margin-top:10px;justify-content:flex-end;">
  <button type="button" class="tkt-btn tkt-btn-outline tkt-btn-sm" id="statusCancelBtn">Cancel</button>
  <button type="button" class="tkt-btn tkt-btn-primary tkt-btn-sm" id="statusConfirmBtn" style="min-width:130px;">Confirm status</button>
@@ -1780,18 +1859,18 @@
  </div>
  <div style="display:flex;justify-content:space-between;font-size:.95rem;font-weight:700;padding:8px 4px;background:#dbeafe;border-radius:6px;margin-top:4px;">
  <span style="color:#1e40af;">Selling Price</span>
- <span id="costSelling" style="color:#a8121e;">AED {{ '%.2f'|format(ticket.selling_price or 0) }}</span>
+ <span id="costSelling" style="color:#e05f36;">AED {{ '%.2f'|format(ticket.selling_price or 0) }}</span>
  </div>
  {% else %}
  <div style="display:flex;justify-content:space-between;font-size:.95rem;font-weight:700;padding:8px 4px;background:#eff6ff;border-radius:6px;margin-top:4px;">
  <span>Actual Total</span>
- <span id="costTotal" style="color:#a8121e;">AED {{ '%.2f'|format(actual_price) }}</span>
+ <span id="costTotal" style="color:#e05f36;">AED {{ '%.2f'|format(actual_price) }}</span>
  </div>
  {% endif %}
  {% else %}
  <div style="display:flex;justify-content:space-between;font-size:.95rem;font-weight:700;padding:8px 0;background:#eff6ff;margin:0 -4px;padding:8px 4px;border-radius:6px;margin-top:4px;">
  <span>Total</span>
- <span id="costTotal" style="color:#a8121e;">AED {{ '%.2f'|format(mp_total + mat_total) }}</span>
+ <span id="costTotal" style="color:#e05f36;">AED {{ '%.2f'|format(mp_total + mat_total) }}</span>
  </div>
  {% endif %}
  <div style="margin-top:10px;font-size:.8rem;color:{% if ticket.is_chargeable %}#16a34a{% else %}#94a3b8{% endif %};font-weight:600;">
@@ -1815,7 +1894,7 @@
 <div class="tkt-modal-backdrop" id="supCloseModal">
  <div class="tkt-modal" style="max-width:540px;">
  <div class="tkt-modal-header">
- <h3 style="color:#a8121e;">Verify &amp; Close — {{ ticket.ticket_id }}</h3>
+ <h3 style="color:#e05f36;">Verify &amp; Close — {{ ticket.ticket_id }}</h3>
  <button class="tkt-modal-close" id="supCloseModalX"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg></button>
  </div>
  <div class="tkt-modal-body">
@@ -2011,7 +2090,7 @@
  </div>
  <div class="tkt-modal-footer">
  <button type="button" class="tkt-btn tkt-btn-outline" id="cancelReopenBtn">Cancel</button>
- <button type="button" class="tkt-btn tkt-btn-primary" id="confirmReopenBtn" style="gap:8px;display:inline-flex;align-items:center;border:none;background:linear-gradient(135deg,#d21725,#a8121e);">
+ <button type="button" class="tkt-btn tkt-btn-primary" id="confirmReopenBtn" style="gap:8px;display:inline-flex;align-items:center;border:none;background:linear-gradient(135deg,#ff8e68,#e05f36);">
  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="16" height="16" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3"/></svg>
  Reopen ticket
  </button>
@@ -2031,6 +2110,17 @@ const TICKET_ID = '{{ ticket.ticket_id }}';
 const ACTUAL_PRICE = {{ actual_price | tojson }};
 let procMaterials = {{ procurement_materials | tojson }};
 let _selectedMarkup = null;
+
+document.getElementById('markPaidBtn')?.addEventListener('click', async () => {
+  if (!confirm('Mark this job invoice as paid? The job owner will be notified by email.')) return;
+  const res = await tktFetch(`/tickets/api/tickets/${TICKET_ID}/mark-paid`, { method: 'POST', body: '{}' });
+  if (res.ok && res.data?.success) {
+    tktToast('Marked as paid', 'success');
+    location.reload();
+  } else {
+    tktToast(res.data?.error || 'Failed to mark paid', 'error');
+  }
+});
 
 // ── Tabs ──────────────────────────────────────────────────
 document.querySelectorAll('.detail-tab').forEach(tab => {
@@ -2057,8 +2147,8 @@ function openStatusPanel(status, label, color) {
  document.querySelectorAll('.status-btn').forEach(b => {
  const isThis = b.dataset.status === status;
  b.style.background = isThis ? '#eff6ff' : '';
- b.style.borderColor = isThis ? '#d21725' : '';
- b.style.color = isThis ? '#a8121e' : '';
+ b.style.borderColor = isThis ? '#ff8e68' : '';
+ b.style.color = isThis ? '#e05f36' : '';
  });
  if (panel) {
  panel.style.maxHeight = '0'; panel.style.opacity = '0'; panel.style.marginTop = '0';
@@ -2529,6 +2619,101 @@ document.getElementById('clearCatalogSelBtn')?.addEventListener('click', () => {
  _renderCatalogItems();
  _updateCatalogFooter();
 });
+
+document.getElementById('catalogModeSets')?.addEventListener('click', async () => {
+  document.getElementById('catalogLinesBody').style.display = 'none';
+  document.getElementById('setsPickerPanel').style.display = 'block';
+  const list = document.getElementById('setsPickerList');
+  list.innerHTML = '<div style="color:#64748b;font-size:.85rem;">Loading sets…</div>';
+  const res = await tktFetch('/store/api/catalog/sets');
+  const sets = (res.ok && res.data && res.data.sets) ? res.data.sets : [];
+  if (!sets.length) {
+    list.innerHTML = '<div style="color:#64748b;font-size:.85rem;">No material sets yet. Import sets in Store.</div>';
+    return;
+  }
+  list.innerHTML = sets.map(s => {
+    const items = (s.items || []).map(i => `${i.material_name} × ${i.quantity || 1}`).join(', ');
+    return `<div style="border:1px solid #e2e8f0;border-radius:10px;padding:10px;display:flex;justify-content:space-between;gap:10px;align-items:center;">
+      <div><div style="font-weight:700;">${s.name}</div>
+      <div style="font-size:.75rem;color:#64748b;">${s.item_count || 0} items — ${items}</div></div>
+      <button type="button" class="tkt-btn tkt-btn-primary tkt-btn-sm" data-set-id="${s.set_id}">Add set</button>
+    </div>`;
+  }).join('');
+});
+document.getElementById('catalogModeLines')?.addEventListener('click', () => {
+  document.getElementById('catalogLinesBody').style.display = '';
+  document.getElementById('setsPickerPanel').style.display = 'none';
+});
+document.getElementById('setsPickerList')?.addEventListener('click', async (e) => {
+  const btn = e.target.closest('[data-set-id]');
+  if (!btn) return;
+  const setId = btn.getAttribute('data-set-id');
+  btn.disabled = true;
+  const res = await tktFetch(`/tickets/api/tickets/${TICKET_ID}/materials/from-set`, {
+    method: 'POST', body: JSON.stringify({ set_id: setId }),
+  });
+  if (res.ok && res.data.success) {
+    tktToast(`Added ${res.data.added} items from set`, 'success');
+    setTimeout(() => location.reload(), 500);
+  } else {
+    tktToast((res.data && res.data.error) || 'Failed to add set', 'error');
+    btn.disabled = false;
+  }
+});
+async function _reloadAdhoc() {
+  const box = document.getElementById('adhocList');
+  if (!box) return;
+  const res = await tktFetch(`/tickets/api/tickets/${TICKET_ID}/materials/adhoc`);
+  const rows = (res.ok && res.data && res.data.requests) ? res.data.requests : [];
+  if (!rows.length) { box.innerHTML = ''; return; }
+  box.innerHTML = rows.map(r => `<div style="padding:6px 0;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;gap:8px;align-items:center;">
+    <span><strong>${r.material_name}</strong> × ${r.quantity} — <em>${r.status}</em></span>
+    <span style="display:flex;gap:4px;">
+      ${r.status==='pending'?`<button type="button" class="tkt-btn tkt-btn-outline tkt-btn-sm" data-adhoc-om="${r.id}">OM approve</button>`:''}
+      ${r.status==='om_approved'?`<button type="button" class="tkt-btn tkt-btn-primary tkt-btn-sm" data-adhoc-gm="${r.id}">GM approve</button>`:''}
+      ${r.status==='pending'||r.status==='om_approved'?`<button type="button" class="tkt-btn tkt-btn-danger tkt-btn-sm" data-adhoc-reject="${r.id}">Reject</button>`:''}
+    </span>
+  </div>`).join('');
+}
+document.getElementById('adhocSubmitBtn')?.addEventListener('click', async () => {
+  const material_name = document.getElementById('adhocName').value.trim();
+  if (!material_name) { tktToast('Material name required', 'error'); return; }
+  const body = {
+    material_name,
+    quantity: document.getElementById('adhocQty').value || 1,
+    unit: document.getElementById('adhocUnit').value || '',
+    unit_price: document.getElementById('adhocPrice').value || 0,
+  };
+  const res = await tktFetch(`/tickets/api/tickets/${TICKET_ID}/materials/adhoc`, {
+    method: 'POST', body: JSON.stringify(body),
+  });
+  if (res.ok && res.data.success) {
+    tktToast('Ad-hoc request submitted (pending OM → GM)', 'success');
+    document.getElementById('adhocName').value = '';
+    _reloadAdhoc();
+  } else {
+    tktToast((res.data && res.data.error) || 'Request failed', 'error');
+  }
+});
+document.getElementById('adhocList')?.addEventListener('click', async (e) => {
+  const om = e.target.getAttribute('data-adhoc-om');
+  const gm = e.target.getAttribute('data-adhoc-gm');
+  const rej = e.target.getAttribute('data-adhoc-reject');
+  let url = null;
+  if (om) url = `/tickets/api/tickets/${TICKET_ID}/materials/adhoc/${om}/approve-om`;
+  if (gm) url = `/tickets/api/tickets/${TICKET_ID}/materials/adhoc/${gm}/approve-gm`;
+  if (rej) url = `/tickets/api/tickets/${TICKET_ID}/materials/adhoc/${rej}/reject`;
+  if (!url) return;
+  const res = await tktFetch(url, { method: 'POST', body: JSON.stringify({}) });
+  if (res.ok && res.data.success) {
+    tktToast('Updated', 'success');
+    if (gm) setTimeout(() => location.reload(), 500);
+    else _reloadAdhoc();
+  } else {
+    tktToast((res.data && res.data.error) || 'Action failed', 'error');
+  }
+});
+_reloadAdhoc();
 
 document.getElementById('addCatalogItemsBtn')?.addEventListener('click', async () => {
  const items = Object.values(_catalogSelected).map(({item, qty}) => ({

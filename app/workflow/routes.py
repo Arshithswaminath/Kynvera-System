@@ -31,7 +31,9 @@ from module_hr.hr_visibility import (
 
 workflow_bp = Blueprint('workflow_bp', __name__, url_prefix='/api/workflow')
 
-HR_EMPLOYEE_POST_SUBMIT_EDIT_MINUTES = 30
+# Meeting 2: submitter may freely edit until RM/mgmt signs, within 15 days of submit.
+HR_EMPLOYEE_POST_SUBMIT_EDIT_DAYS = 15
+HR_EMPLOYEE_POST_SUBMIT_EDIT_MINUTES = HR_EMPLOYEE_POST_SUBMIT_EDIT_DAYS * 24 * 60
 
 
 def _hr_reporting_contact_user_ids_for_notification(submission, submitter):
@@ -115,13 +117,13 @@ def _hr_early_mgmt_signoff_closes_submitter_grace(form_data: dict) -> bool:
 
 
 def _hr_submitter_grace_time_still_running(submission) -> bool:
-    """True iff within HR_EMPLOYEE_POST_SUBMIT_EDIT_MINUTES of submission.created_at (non-draft)."""
+    """True iff within HR_EMPLOYEE_POST_SUBMIT_EDIT_DAYS of submission.created_at (non-draft)."""
     if getattr(submission, "status", None) == "draft":
         return False
     created = getattr(submission, "created_at", None)
     if created is None:
         return False
-    return utc_now_naive() < created + timedelta(minutes=HR_EMPLOYEE_POST_SUBMIT_EDIT_MINUTES)
+    return utc_now_naive() < created + timedelta(days=HR_EMPLOYEE_POST_SUBMIT_EDIT_DAYS)
 
 
 def _hr_submission_record_finalized_locked(submission) -> bool:
@@ -139,6 +141,40 @@ def _hr_submission_record_finalized_locked(submission) -> bool:
     if ws == "approved":
         return True
     return False
+
+
+def _hr_submitter_can_revoke(user, submission) -> bool:
+    """Original submitter may revoke pending or approved HR forms (not drafts / already terminal)."""
+    if not user or not submission or not _is_hr_module_submission(submission):
+        return False
+    if getattr(submission, "user_id", None) != getattr(user, "id", None):
+        return False
+    if getattr(submission, "status", None) == "draft":
+        return False
+    ws = str(getattr(submission, "workflow_status", "") or "").strip().lower()
+    if ws in ("withdrawn", "closed_by_admin"):
+        return False
+    return True
+
+
+def _hr_submission_status_revocable(submission) -> bool:
+    if not submission or not _is_hr_module_submission(submission):
+        return False
+    if getattr(submission, "status", None) == "draft":
+        return False
+    ws = str(getattr(submission, "workflow_status", "") or "").strip().lower()
+    if ws in ("withdrawn", "closed_by_admin"):
+        return False
+    return True
+
+
+def _user_can_revoke_hr_submission(user, submission) -> bool:
+    """Submitter or org-wide HR (admin / hr_manager) may revoke a non-terminal HR form."""
+    if not user or not _hr_submission_status_revocable(submission):
+        return False
+    if getattr(submission, "user_id", None) == getattr(user, "id", None):
+        return True
+    return bool(user_sees_org_wide_hr_inbox(user))
 
 
 def _is_hr_module_submission(submission) -> bool:
@@ -167,7 +203,7 @@ def _submitter_can_use_hr_employee_edit_grace_period(user, submission) -> bool:
 
 def _hr_submitter_grace_deadline_iso(submission):
     """
-    End of the 30-minute post-submit window for the original submitter’s employee self-edits.
+    End of the 15-day post-submit window for the original submitter’s employee self-edits.
     Returned on ?edit= hydration while the window is still open (countdown in UI).
     Omitted (None) once time passes or a reporting manager / GM (or prior chain step) signs.
     """
@@ -181,7 +217,7 @@ def _hr_submitter_grace_deadline_iso(submission):
     created = getattr(submission, "created_at", None)
     if created is None:
         return None
-    deadline = created + timedelta(minutes=HR_EMPLOYEE_POST_SUBMIT_EDIT_MINUTES)
+    deadline = created + timedelta(days=HR_EMPLOYEE_POST_SUBMIT_EDIT_DAYS)
     try:
         return naive_utc_isoformat_z(deadline)
     except Exception:
@@ -238,7 +274,7 @@ def _enforce_hr_record_fields_in_form_data(user, submission, form_data):
 def _hr_leave_edit_api_flags(user, submission) -> dict:
     """Hydration hints for HR forms (?edit=) — scoped to Submission row + user.
 
-    Post-submit: original submitter gets HR_EMPLOYEE_POST_SUBMIT_EDIT_MINUTES (see constant),
+    Post-submit: original submitter gets HR_EMPLOYEE_POST_SUBMIT_EDIT_DAYS (see constant),
     unless a reporting manager / GM signature (or an equivalent mgmt-chain step before HR) exists.
 
     Once that management sign-off exists, employee-facing sections are only editable by admin or
@@ -256,6 +292,7 @@ def _hr_leave_edit_api_flags(user, submission) -> dict:
             "submitter_employee_edit_window_closed": False,
             "submitter_grace_revoked_by_management_signature": False,
             "hr_request_approved_completed": False,
+            "can_revoke_hr": False,
         }
     ws = str(getattr(submission, "workflow_status", "") or "").strip().lower()
     if ws == "withdrawn":
@@ -268,6 +305,7 @@ def _hr_leave_edit_api_flags(user, submission) -> dict:
             "submitter_grace_revoked_by_management_signature": False,
             "hr_request_approved_completed": False,
             "hr_request_withdrawn": True,
+            "can_revoke_hr": False,
         }
     if _hr_submission_record_finalized_locked(submission):
         is_admin = _user_role_lower(user) == "admin"
@@ -278,6 +316,7 @@ def _hr_leave_edit_api_flags(user, submission) -> dict:
             "submitter_employee_edit_window_closed": False,
             "submitter_grace_revoked_by_management_signature": False,
             "hr_request_approved_completed": True,
+            "can_revoke_hr": _hr_submitter_can_revoke(user, submission),
         }
     anytime = _hr_anytime_line_editor(user, submission)
     grace_allowed = _submitter_can_use_hr_employee_edit_grace_period(user, submission)
@@ -318,6 +357,7 @@ def _hr_leave_edit_api_flags(user, submission) -> dict:
         "submitter_employee_edit_window_closed": hint_grace_closed,
         "submitter_grace_revoked_by_management_signature": grace_revoked_by_mgmt,
         "hr_request_approved_completed": False,
+        "can_revoke_hr": _hr_submitter_can_revoke(user, submission),
     }
 
 
@@ -472,49 +512,7 @@ def get_module_functions(module_type):
     if module_type == 'hvac_mep':
         from module_hvac_mep.routes import save_signature_dataurl, get_paths, process_job
         return save_signature_dataurl, get_paths, process_job
-    elif module_type == 'civil':
-        from module_civil.routes import save_signature_dataurl, process_job
-        # Civil uses app_paths() instead of get_paths(), create a wrapper
-        def get_paths_civil():
-            from module_civil.routes import app_paths
-            return app_paths()
-        return save_signature_dataurl, get_paths_civil, process_job
-    elif module_type == 'cleaning':
-        # Cleaning doesn't have these functions yet, use common utilities
-        from common.utils import upload_base64_to_cloud
-        import os
-        from config import GENERATED_DIR, UPLOADS_DIR, JOBS_DIR
-        from concurrent.futures import ThreadPoolExecutor
-        
-        def save_signature_dataurl_cleaning(dataurl, uploads_dir, prefix="signature"):
-            """Save signature for cleaning module"""
-            if not dataurl:
-                return None, None, None
-            try:
-                url, is_cloud = upload_base64_to_cloud(dataurl, folder="signatures", prefix=prefix, uploads_dir=uploads_dir)
-                if url:
-                    if is_cloud:
-                        return None, None, url
-                    else:
-                        filename = url.split('/')[-1]
-                        file_path = os.path.join(GENERATED_DIR, "uploads", "signatures", filename)
-                        return filename, file_path, url
-                raise Exception("Upload succeeded but no URL returned")
-            except Exception as e:
-                current_app.logger.error(f"Signature upload failed: {e}")
-                raise
-        
-        def get_paths_cleaning():
-            """Get paths for cleaning module"""
-            executor = current_app.config.get('EXECUTOR') if current_app else None
-            if not executor:
-                executor = ThreadPoolExecutor(max_workers=2)
-            return GENERATED_DIR, UPLOADS_DIR, JOBS_DIR, executor
-        
-        from module_cleaning.routes import process_job
-        return save_signature_dataurl_cleaning, get_paths_cleaning, process_job
-    else:
-        raise ValueError(f"Unknown module type: {module_type}")
+    raise ValueError(f"Unknown module type: {module_type}")
 
 # Valid designations for workflow
 VALID_DESIGNATIONS = [
@@ -644,7 +642,7 @@ def _inspection_reviewed_clauses_for_user(user):
     try:
         is_bd = user.is_bd_inspection_reviewer()
     except Exception:
-        is_bd = d == 'business_development'
+        is_bd = d in ('sales', 'business_development')
     if is_bd:
         clauses.append(and_(
             Submission.business_dev_id == uid,
@@ -902,7 +900,7 @@ def get_pending_submissions():
         return error_response('Failed to get pending submissions', status_code=500, error_code='DATABASE_ERROR')
 
 
-INSPECTION_MODULE_TYPES = ('hvac_mep', 'civil', 'cleaning')
+INSPECTION_MODULE_TYPES = ('hvac_mep',)
 INSPECTION_HISTORY_DESIGNATIONS = (
     'supervisor',
     'operations_manager',
@@ -974,7 +972,7 @@ def _inspection_history_query_for_user(base_query, user):
         ))
 
     is_bd = (
-        d == 'business_development'
+        d in ('sales', 'business_development')
         or bool(getattr(user, 'access_business_development', False))
         or (hasattr(user, 'is_bd_inspection_reviewer') and user.is_bd_inspection_reviewer())
     )
@@ -1986,8 +1984,6 @@ def get_my_submissions():
         inspections_map = {
             'hvac': 'Fire Systems',
             'hvac_mep': 'Fire Systems',
-            'civil': 'Civil Works',
-            'cleaning': 'Cleaning Services',
         }
 
         submissions_list = []
@@ -2113,21 +2109,8 @@ def get_my_submissions():
             supervisor_signature = None
             
             if isinstance(form_data, dict):
-                # Extract photos - handle different module formats
-                if submission.module_type in ['civil', 'cleaning']:
-                    # Civil and Cleaning: photos might be in work_items or directly in form_data
-                    if 'work_items' in form_data and isinstance(form_data['work_items'], list):
-                        for item in form_data['work_items']:
-                            if isinstance(item, dict) and 'photos' in item:
-                                item_photos = item.get('photos', [])
-                                if isinstance(item_photos, list):
-                                    photos.extend(item_photos)
-                    elif 'photo_urls' in form_data and isinstance(form_data['photo_urls'], list):
-                        photos = form_data['photo_urls']
-                    elif 'photos' in form_data and isinstance(form_data['photos'], list):
-                        photos = form_data['photos']
-                elif submission.module_type in ['hvac', 'hvac_mep']:
-                    # HVAC: photos are in items array
+                # Fire Systems: photos are in items array
+                if submission.module_type in ['hvac', 'hvac_mep']:
                     if 'items' in form_data and isinstance(form_data['items'], list):
                         for item in form_data['items']:
                             if isinstance(item, dict) and 'photos' in item:
@@ -2158,16 +2141,33 @@ def get_my_submissions():
             sub_dict['supervisor_signature'] = supervisor_signature
 
             if (mt or '').startswith('hr_'):
-                sub_dict['can_withdraw_hr'] = bool(
+                can_revoke = _hr_submitter_can_revoke(user, submission)
+                sub_dict['can_withdraw_hr'] = can_revoke
+                sub_dict['can_revoke_hr'] = can_revoke
+                fd_flags = form_data if isinstance(form_data, dict) else {}
+                mgmt_signed = _hr_early_mgmt_signoff_closes_submitter_grace(fd_flags)
+                already_superseded = bool(
+                    fd_flags.get('superseded_by_submission_id')
+                    or fd_flags.get('cancelled_for_revision_at')
+                )
+                ws_l = str(getattr(submission, 'workflow_status', '') or '').strip().lower()
+                sub_dict['can_cancel_revise_hr'] = bool(
                     submission.user_id == user.id
                     and submission.status != 'draft'
-                    and not _hr_submission_record_finalized_locked(submission)
+                    and mgmt_signed
+                    and not already_superseded
+                    and ws_l not in ('withdrawn', 'closed_by_admin', 'approved', 'completed')
+                    and str(getattr(submission, 'status', '') or '').strip().lower() != 'completed'
                 )
+                sub_dict['supersedes_submission_id'] = fd_flags.get('supersedes_submission_id')
+                sub_dict['superseded_by_submission_id'] = fd_flags.get('superseded_by_submission_id')
                 sub_dict['latest_activity'] = _hr_latest_activity_from_form_data(
                     form_data, submission.workflow_status, submission.status
                 )
             else:
                 sub_dict['can_withdraw_hr'] = False
+                sub_dict['can_revoke_hr'] = False
+                sub_dict['can_cancel_revise_hr'] = False
                 sub_dict['latest_activity'] = None
 
             submissions_list.append(sub_dict)
@@ -2581,12 +2581,12 @@ def approve_supervisor_resubmission(submission_id):
             GENERATED_DIR, UPLOADS_DIR, JOBS_DIR, EXECUTOR = get_paths_fn()
             
             if EXECUTOR:
-                EXECUTOR.submit(
-                    process_job_fn,
+                from app.tasks.inspection_jobs import enqueue_inspection_process
+                enqueue_inspection_process(
+                    submission.module_type,
                     submission.submission_id,
                     job_id,
-                    current_app.config,
-                    current_app._get_current_object()
+                    executor=EXECUTOR,
                 )
                 current_app.logger.info(f"✅ Regeneration job {job_id} queued for supervisor resubmission - submission {submission_id} ({submission.module_type})")
             else:
@@ -2870,12 +2870,12 @@ def approve_operations_manager(submission_id):
             GENERATED_DIR, UPLOADS_DIR, JOBS_DIR, EXECUTOR = get_paths_fn()
             
             if EXECUTOR:
-                EXECUTOR.submit(
-                    process_job_fn,
+                from app.tasks.inspection_jobs import enqueue_inspection_process
+                enqueue_inspection_process(
+                    submission.module_type,
                     submission.submission_id,
                     job_id,
-                    current_app.config,
-                    current_app._get_current_object()
+                    executor=EXECUTOR,
                 )
                 current_app.logger.info(f"✅ Regeneration job {job_id} queued for Operations Manager approval - submission {submission_id} ({submission.module_type})")
             else:
@@ -3071,12 +3071,12 @@ def approve_business_development(submission_id):
 
             GENERATED_DIR, UPLOADS_DIR, JOBS_DIR, EXECUTOR = get_paths_fn()
             if EXECUTOR:
-                EXECUTOR.submit(
-                    process_job_fn,
+                from app.tasks.inspection_jobs import enqueue_inspection_process
+                enqueue_inspection_process(
+                    submission.module_type,
                     submission.submission_id,
                     job_id,
-                    current_app.config,
-                    current_app._get_current_object()
+                    executor=EXECUTOR,
                 )
                 current_app.logger.info(f"✅ Regeneration job {job_id} queued for BD approval - submission {submission_id} ({submission.module_type})")
             else:
@@ -3255,12 +3255,12 @@ def approve_procurement(submission_id):
 
             GENERATED_DIR, UPLOADS_DIR, JOBS_DIR, EXECUTOR = get_paths_fn()
             if EXECUTOR:
-                EXECUTOR.submit(
-                    process_job_fn,
+                from app.tasks.inspection_jobs import enqueue_inspection_process
+                enqueue_inspection_process(
+                    submission.module_type,
                     submission.submission_id,
                     job_id,
-                    current_app.config,
-                    current_app._get_current_object()
+                    executor=EXECUTOR,
                 )
                 current_app.logger.info(f"✅ Regeneration job {job_id} queued for Procurement approval - submission {submission_id} ({submission.module_type})")
             else:
@@ -3442,12 +3442,12 @@ def approve_general_manager(submission_id):
             GENERATED_DIR, UPLOADS_DIR, JOBS_DIR, EXECUTOR = get_paths_fn()
             
             if EXECUTOR:
-                EXECUTOR.submit(
-                    process_job_fn,
+                from app.tasks.inspection_jobs import enqueue_inspection_process
+                enqueue_inspection_process(
+                    submission.module_type,
                     submission.submission_id,
                     job_id,
-                    current_app.config,
-                    current_app._get_current_object()
+                    executor=EXECUTOR,
                 )
                 current_app.logger.info(f"✅ Regeneration job {job_id} queued for General Manager approval - submission {submission_id} ({submission.module_type})")
             else:
@@ -3528,12 +3528,192 @@ def reject_submission(submission_id):
         return error_response('Failed to reject submission', status_code=500, error_code='DATABASE_ERROR')
 
 
+def _revoke_hr_submission_impl(submission_id):
+    """Shared revoke/withdraw: required comment; pending or approved; keep row as history.
+
+    Allowed for the original submitter or org-wide HR inbox (admin / hr_manager).
+    """
+    from module_hr.routes import create_notification, get_form_type_display
+
+    user_id = get_jwt_identity()
+    user = db.session.get(User, user_id)
+    if not user:
+        return error_response('User not found', status_code=404, error_code='NOT_FOUND')
+
+    submission = Submission.query.filter_by(submission_id=submission_id).first()
+    if not submission:
+        return error_response('Submission not found', status_code=404, error_code='NOT_FOUND')
+    if not _is_hr_module_submission(submission):
+        return error_response(
+            'Revoke is only available for HR forms',
+            status_code=400,
+            error_code='INVALID_MODULE',
+        )
+    if getattr(submission, 'status', None) == 'draft':
+        return error_response(
+            'Use delete draft instead of revoke',
+            status_code=400,
+            error_code='INVALID_STATUS',
+        )
+    if not _user_can_revoke_hr_submission(user, submission):
+        return error_response(
+            'You are not allowed to revoke this request',
+            status_code=403,
+            error_code='FORBIDDEN',
+        )
+    if not _hr_submission_status_revocable(submission):
+        return error_response(
+            'This request cannot be revoked (already revoked or closed)',
+            status_code=400,
+            error_code='NOT_REVOCABLE',
+        )
+
+    is_submitter = getattr(submission, 'user_id', None) == getattr(user, 'id', None)
+    revoked_by_role = 'submitter' if is_submitter else 'hr'
+
+    data = request.get_json(silent=True) or {}
+    comment = str(
+        data.get('comment')
+        or data.get('revoke_comment')
+        or data.get('remark')
+        or data.get('withdraw_remark')
+        or ''
+    ).strip()
+    if len(comment) < 3:
+        return error_response(
+            'A revoke comment is required (at least 3 characters)',
+            status_code=400,
+            error_code='COMMENT_REQUIRED',
+        )
+
+    fd = copy.deepcopy(_submission_form_data_dict(submission))
+    now_iso = naive_utc_isoformat_z(utc_now_naive())
+    display = (user.full_name or user.username or '').strip() or user.username
+    fd['withdrawn_at'] = now_iso
+    fd['withdrawn_by_user_id'] = user.id
+    fd['withdrawn_by_display'] = display
+    fd['revoked_at'] = now_iso
+    fd['revoked_by_user_id'] = user.id
+    fd['revoked_by_display'] = display
+    fd['revoke_comment'] = comment
+    fd['revoked_by_role'] = revoked_by_role
+
+    was_approved = (
+        str(getattr(submission, 'workflow_status', '') or '').strip().lower() in ('approved', 'completed')
+        or str(getattr(submission, 'status', '') or '').strip().lower() == 'completed'
+    )
+
+    submission.form_data = fd
+    submission.workflow_status = 'withdrawn'
+    submission.updated_at = utc_now_naive()
+    flag_modified(submission, 'form_data')
+
+    submitter_row = submission.user_id and db.session.get(User, submission.user_id)
+    form_label = get_form_type_display(submission.module_type)
+    display_name = (
+        fd.get('employee_name')
+        or (submitter_row and (submitter_row.full_name or submitter_row.username))
+        or user.username
+    )
+    phase = 'an approved' if was_approved else 'a pending'
+
+    if is_submitter:
+        ids = _hr_reporting_contact_user_ids_for_notification(submission, submitter_row or user)
+        for rid in ids:
+            target = db.session.get(User, rid)
+            if not target or not getattr(target, 'is_active', True):
+                continue
+            create_notification(
+                user_id=rid,
+                title='HR form revoked by employee',
+                message=(
+                    f'{display_name} revoked {phase} {form_label} ({submission.submission_id}). '
+                    f'Comment: {comment}'
+                ),
+                notification_type='hr_submitter_withdrawn',
+                submission_id=submission.submission_id,
+            )
+        notify_msg = 'Request revoked and kept in history. Your reporting manager was notified.'
+        audit_action = 'hr_submitter_revoke'
+    else:
+        # HR inbox revoke: notify the original submitter
+        if submitter_row and getattr(submitter_row, 'is_active', True):
+            create_notification(
+                user_id=submitter_row.id,
+                title='HR form revoked by HR',
+                message=(
+                    f'HR ({display}) revoked {phase} {form_label} ({submission.submission_id}). '
+                    f'Comment: {comment}'
+                ),
+                notification_type='hr_inbox_withdrawn',
+                submission_id=submission.submission_id,
+            )
+        notify_msg = 'Request revoked and kept in history. The employee has been notified.'
+        audit_action = 'hr_inbox_revoke'
+
+    db.session.commit()
+    log_audit(user_id, audit_action, 'submission', submission_id, {
+        'comment': comment,
+        'was_approved': was_approved,
+        'revoked_by_role': revoked_by_role,
+    })
+
+    return success_response(
+        {
+            'submission': submission.to_dict(include_form_data=False, include_latest_job=False),
+            'module_type': submission.module_type,
+            'submission_id': submission.submission_id,
+        },
+        message=notify_msg,
+    )
+
+
 @workflow_bp.route('/submissions/<submission_id>/withdraw', methods=['POST'])
 @jwt_required()
 def withdraw_hr_submission(submission_id):
-    """Original HR submitter withdraws before final approval; notifies reporting manager / supervisor (in-app)."""
+    """Submitter or org-wide HR revokes; requires comment; keeps history."""
     try:
+        return _revoke_hr_submission_impl(submission_id)
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error('Error withdrawing HR submission: %s', str(e), exc_info=True)
+        return error_response('Failed to revoke submission', status_code=500, error_code='DATABASE_ERROR')
+
+
+@workflow_bp.route('/submissions/<submission_id>/revoke', methods=['POST'])
+@jwt_required()
+def revoke_hr_submission(submission_id):
+    """Alias of withdraw — submitter or org-wide HR revoke with required comment."""
+    try:
+        return _revoke_hr_submission_impl(submission_id)
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error('Error revoking HR submission: %s', str(e), exc_info=True)
+        return error_response('Failed to revoke submission', status_code=500, error_code='DATABASE_ERROR')
+
+
+_HR_REVISION_STRIP_KEYS = frozenset({
+    'hr_mgmt_chain', 'gm_signature', 'reporting_to_signature', 'reporting_manager_signature',
+    'employee_signature', 'submitted_at', 'submitted_by_id', 'submitted_by_name',
+    'withdrawn_at', 'withdrawn_by_user_id', 'withdrawn_by_display',
+    'cancelled_for_revision_at', 'cancel_revision_remark', 'superseded_by_submission_id',
+    'submission_form_revision_history', 'submission_form_revision_count',
+    'submission_form_revision_at', 'submission_form_revision_by_id',
+    'submission_form_revision_by_name',
+})
+
+
+@workflow_bp.route('/submissions/<submission_id>/cancel-and-revise', methods=['POST'])
+@jwt_required()
+def cancel_and_revise_hr_submission(submission_id):
+    """After management has signed: cancel with remark and open a linked new submission for re-signoff."""
+    try:
+        import uuid
         from module_hr.routes import create_notification, get_form_type_display
+        from module_hr.hr_management_chain import (
+            init_management_chain_on_submit,
+            first_management_workflow_status,
+        )
 
         user_id = get_jwt_identity()
         user = db.session.get(User, user_id)
@@ -3545,71 +3725,133 @@ def withdraw_hr_submission(submission_id):
             return error_response('Submission not found', status_code=404, error_code='NOT_FOUND')
         if not _is_hr_module_submission(submission):
             return error_response(
-                'Withdraw is only available for HR forms',
+                'Cancel & revise is only available for HR forms',
                 status_code=400,
                 error_code='INVALID_MODULE',
             )
         if submission.user_id != user.id:
             return error_response(
-                'Only the employee who submitted this form may withdraw it',
+                'Only the employee who submitted this form may cancel and revise it',
                 status_code=403,
                 error_code='FORBIDDEN',
             )
         if getattr(submission, 'status', None) == 'draft':
+            return error_response('Drafts cannot use cancel & revise', status_code=400, error_code='INVALID_STATUS')
+
+        old_fd = _submission_form_data_dict(submission)
+        if not _hr_early_mgmt_signoff_closes_submitter_grace(old_fd):
             return error_response(
-                'Use delete draft instead of withdraw',
+                'Cancel & revise is only available after your reporting manager (or management) has signed. '
+                'Use Withdraw, or edit within the 15-day window before sign-off.',
+                status_code=400,
+                error_code='NOT_YET_SIGNED',
+            )
+        if old_fd.get('superseded_by_submission_id') or old_fd.get('cancelled_for_revision_at'):
+            return error_response(
+                'This request was already cancelled for revision',
+                status_code=400,
+                error_code='ALREADY_REVISED',
+            )
+        ws = str(getattr(submission, 'workflow_status', '') or '').strip().lower()
+        if ws in ('withdrawn', 'closed_by_admin'):
+            return error_response(
+                'This request cannot be revised in its current status',
                 status_code=400,
                 error_code='INVALID_STATUS',
             )
-        if _hr_submission_record_finalized_locked(submission):
+
+        data = request.get_json(silent=True) or {}
+        remark = str(data.get('remark') or data.get('cancel_remark') or '').strip()
+        if len(remark) < 3:
             return error_response(
-                'This request cannot be withdrawn (already approved, withdrawn, or completed)',
+                'A cancel remark is required (at least 3 characters)',
                 status_code=400,
-                error_code='NOT_WITHDRAWABLE',
+                error_code='REMARK_REQUIRED',
             )
 
-        fd = copy.deepcopy(_submission_form_data_dict(submission))
+        form_type = (submission.module_type or '').replace('hr_', '', 1)
+        new_sid = f"HR-{form_type.upper()}-{uuid.uuid4().hex[:8].upper()}"
         now_iso = naive_utc_isoformat_z(utc_now_naive())
-        fd['withdrawn_at'] = now_iso
-        fd['withdrawn_by_user_id'] = user.id
-        fd['withdrawn_by_display'] = (user.full_name or user.username or '').strip() or user.username
 
-        submission.form_data = fd
+        new_fd = copy.deepcopy(old_fd) if isinstance(old_fd, dict) else {}
+        for k in list(new_fd.keys()):
+            kl = str(k).lower()
+            if k in _HR_REVISION_STRIP_KEYS or kl.endswith('_signature') or kl.startswith('signature_'):
+                new_fd.pop(k, None)
+        new_fd['form_type'] = form_type
+        new_fd['supersedes_submission_id'] = submission.submission_id
+        new_fd['linked_from_submission_id'] = submission.submission_id
+        new_fd['revision_of_remark'] = remark
+        new_fd['submitted_by_id'] = user.id
+        new_fd['submitted_by_name'] = user.full_name or user.username
+        new_fd['submitted_at'] = now_iso
+
+        mgmt_err = init_management_chain_on_submit(new_fd, user)
+        if mgmt_err:
+            return error_response(mgmt_err, status_code=400, error_code='CHAIN_ERROR')
+        workflow_status = first_management_workflow_status(new_fd) or 'hr_review'
+
+        new_submission = Submission(
+            submission_id=new_sid,
+            user_id=user.id,
+            module_type=submission.module_type,
+            site_name=submission.site_name or (user.full_name or 'HR Form'),
+            visit_date=utc_now_naive().date(),
+            status='submitted',
+            workflow_status=workflow_status,
+            supervisor_id=user.id,
+            form_data=new_fd,
+        )
+        db.session.add(new_submission)
+
+        old_fd = copy.deepcopy(old_fd)
+        old_fd['cancelled_for_revision_at'] = now_iso
+        old_fd['cancel_revision_remark'] = remark
+        old_fd['cancelled_for_revision_by_user_id'] = user.id
+        old_fd['superseded_by_submission_id'] = new_sid
+        submission.form_data = old_fd
         submission.workflow_status = 'withdrawn'
         submission.updated_at = utc_now_naive()
         flag_modified(submission, 'form_data')
 
-        submitter_row = submission.user_id and db.session.get(User, submission.user_id)
         form_label = get_form_type_display(submission.module_type)
-        ids = _hr_reporting_contact_user_ids_for_notification(submission, submitter_row or user)
-        display_name = fd.get('employee_name') or (submitter_row and (submitter_row.full_name or submitter_row.username)) or user.username
-
-        for rid in ids:
+        display_name = old_fd.get('employee_name') or (user.full_name or user.username)
+        for rid in _hr_reporting_contact_user_ids_for_notification(submission, user):
             target = db.session.get(User, rid)
             if not target or not getattr(target, 'is_active', True):
                 continue
             create_notification(
                 user_id=rid,
-                title='HR form withdrawn by employee',
+                title='HR form cancelled for revision',
                 message=(
-                    f'{display_name} withdrew their {form_label} ({submission.submission_id}). '
-                    'No further approval action is needed on this request.'
+                    f'{display_name} cancelled {form_label} ({submission.submission_id}) '
+                    f'after sign-off and opened a linked revision ({new_sid}). '
+                    f'Remark: {remark}'
                 ),
-                notification_type='hr_submitter_withdrawn',
-                submission_id=submission.submission_id,
+                notification_type='hr_cancel_revise',
+                submission_id=new_sid,
             )
 
         db.session.commit()
-        log_audit(user_id, 'hr_submitter_withdraw', 'submission', submission_id, {})
+        log_audit(user_id, 'hr_cancel_and_revise', 'submission', submission_id, {
+            'new_submission_id': new_sid,
+            'remark': remark,
+        })
 
         return success_response(
-            {'submission': submission.to_dict(include_form_data=False, include_latest_job=False)},
-            message='Request withdrawn. Your reporting manager was notified.',
+            {
+                'old_submission_id': submission.submission_id,
+                'new_submission_id': new_sid,
+                'new_submission': new_submission.to_dict(
+                    include_form_data=False, include_latest_job=False
+                ),
+            },
+            message='Previous request kept for audit. Linked revision opened for re-signoff.',
         )
     except Exception as e:
         db.session.rollback()
-        current_app.logger.error('Error withdrawing HR submission: %s', str(e), exc_info=True)
-        return error_response('Failed to withdraw submission', status_code=500, error_code='DATABASE_ERROR')
+        current_app.logger.error('Error cancel-and-revise HR submission: %s', str(e), exc_info=True)
+        return error_response('Failed to cancel and revise', status_code=500, error_code='DATABASE_ERROR')
 
 
 @workflow_bp.route('/submissions/<submission_id>/update', methods=['PUT'])
@@ -3925,12 +4167,12 @@ def update_submission(submission_id):
                 GENERATED_DIR, UPLOADS_DIR, JOBS_DIR, EXECUTOR = get_paths_fn()
                 
                 if EXECUTOR:
-                    EXECUTOR.submit(
-                        process_job_fn,
+                    from app.tasks.inspection_jobs import enqueue_inspection_process
+                    enqueue_inspection_process(
+                        submission.module_type,
                         submission.submission_id,
                         job_id,
-                        current_app.config,
-                        current_app._get_current_object()
+                        executor=EXECUTOR,
                     )
                     current_app.logger.info(f"✅ Regeneration job {job_id} queued for submission {submission_id} ({submission.module_type})")
                 else:

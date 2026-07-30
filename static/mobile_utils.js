@@ -253,7 +253,7 @@ function showMobileToast(message, type = 'info', duration = 3000) {
     bottom: 20px;
     left: 50%;
     transform: translateX(-50%);
-    background: ${type === 'error' ? '#dc3545' : type === 'success' ? '#28a745' : '#d21725'};
+    background: ${type === 'error' ? '#dc3545' : type === 'success' ? '#28a745' : '#ff8e68'};
     color: white;
     padding: 12px 24px;
     border-radius: 8px;

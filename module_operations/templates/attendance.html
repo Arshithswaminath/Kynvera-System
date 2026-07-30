@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+  {% include 'partials/caveat_font.html' %}
+  <title>Attendance — Under deployment</title>
+  <meta name="theme-color" content="#ff8e68">
+  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <style>
+    .ops-wrap{max-width:1100px;margin:7rem auto 3rem;padding:0 1.25rem}
+    .badge-ud{display:inline-block;background:#fef3c7;color:#92400e;border:1px solid #f59e0b;border-radius:999px;padding:.2rem .7rem;font-size:.75rem;font-weight:700;margin-left:.5rem}
+    .ops-card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:1rem;margin-bottom:1rem}
+    table{width:100%;border-collapse:collapse;font-size:.88rem}
+    th,td{padding:.5rem .35rem;border-bottom:1px solid #e2e8f0;text-align:left}
+    .btn{background:#ff8e68;color:#fff;border:none;border-radius:8px;padding:.5rem .9rem;font-weight:600;cursor:pointer}
+    .btn-ghost{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:.45rem .8rem;cursor:pointer;color:#0f172a;text-decoration:none;display:inline-block}
+    select,input{padding:.35rem .45rem;border:1px solid #cbd5e1;border-radius:6px;font:inherit}
+  </style>
+</head>
+<body>
+  {% set active_page = 'operations' %}
+  {% include 'partials/main_navbar.html' with context %}
+  <div class="ops-wrap">
+    <h1>Attendance <span class="badge-ud">Under deployment</span></h1>
+    <p style="color:#64748b">Import biometric Excel, match technician master, edit day status and times.</p>
+    <div class="ops-card" style="display:flex;flex-wrap:wrap;gap:.75rem;align-items:center">
+      <a class="btn-ghost" href="/operations/api/attendance/template">Download template</a>
+      <input type="file" id="attFile" accept=".xlsx,.xls">
+      <input type="text" id="periodLabel" placeholder="Period label (optional)">
+      <button class="btn" id="importBtn">Import Excel</button>
+      <input type="text" id="projectFilter" placeholder="Filter by project">
+      <button class="btn-ghost" id="reloadBtn">Refresh</button>
+    </div>
+    <div class="ops-card" style="overflow:auto">
+      <table>
+        <thead><tr>
+          <th>Date</th><th>Staff</th><th>Code</th><th>Project</th><th>Status</th><th>Start</th><th>End</th><th>Hours</th><th></th>
+        </tr></thead>
+        <tbody id="attBody"></tbody>
+      </table>
+    </div>
+    <a class="btn-ghost" href="/operations/">← Operations</a>
+  </div>
+  <script src="{{ url_for('static', filename='api-client.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+  <script>
+    const STATUSES = {{ day_statuses|tojson }};
+    async function load(){
+      const project = document.getElementById('projectFilter').value.trim();
+      const url = '/operations/api/attendance' + (project ? ('?project='+encodeURIComponent(project)) : '');
+      const res = await ApiClient.fetch(url);
+      const data = await res.json();
+      const rows = data.entries || [];
+      document.getElementById('attBody').innerHTML = rows.map(r => {
+        const opts = STATUSES.map(s => `<option value="${s}" ${s===r.day_status?'selected':''}>${s}</option>`).join('');
+        return `<tr data-id="${r.id}">
+          <td>${r.work_date||''}</td><td>${r.staff_name||''}</td><td>${r.employee_code||''}</td><td>${r.project_name||''}</td>
+          <td><select class="st">${opts}</select></td>
+          <td><input class="stt" type="time" value="${r.start_time||''}"></td>
+          <td><input class="ent" type="time" value="${r.end_time||''}"></td>
+          <td>${r.hours??''}</td>
+          <td><button class="btn-ghost save">Save</button></td>
+        </tr>`;
+      }).join('') || '<tr><td colspan="9">No attendance rows.</td></tr>';
+    }
+    document.getElementById('importBtn').onclick = async ()=>{
+      const f = document.getElementById('attFile').files[0];
+      if(!f){ alert('Choose an Excel file'); return; }
+      const fd = new FormData();
+      fd.append('file', f);
+      fd.append('period_label', document.getElementById('periodLabel').value || '');
+      const res = await ApiClient.fetch('/operations/api/attendance/import', {method:'POST', body:fd});
+      const data = await res.json();
+      alert(data.message || data.error || 'Done');
+      load();
+    };
+    document.getElementById('reloadBtn').onclick = load;
+    document.getElementById('attBody').addEventListener('click', async (e)=>{
+      if(!e.target.classList.contains('save')) return;
+      const tr = e.target.closest('tr');
+      const id = tr.getAttribute('data-id');
+      const body = {
+        day_status: tr.querySelector('.st').value,
+        start_time: tr.querySelector('.stt').value,
+        end_time: tr.querySelector('.ent').value,
+      };
+      const res = await ApiClient.fetch('/operations/api/attendance/'+id, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+      const data = await res.json();
+      if(!res.ok){ alert(data.error||'Update failed'); return; }
+      load();
+    });
+    load();
+  </script>
+</body>
+</html>

@@ -2,19 +2,20 @@
 """
 Capture screenshots for Injaaz HTML routes.
 
-Two modes:
-  --segmented (default): fixed viewport, scroll down step-by-step, one PNG per viewport
-                       (better on Windows than a single ultra-tall full_page PNG).
-  --full-page:         one Playwright full_page screenshot per URL.
+Three modes:
+  --desktop (default): visible desktop viewport only (no full-page scroll). Zoom defaults to 75%.
+  --segmented:         scroll step-by-step, one PNG per viewport slice.
+  --full-page:         one tall PNG per URL (not desktop ratio).
 
 Prerequisites:
     pip install playwright
     playwright install chromium
 
-Usage (app must be running, e.g. python Injaaz.py):
+Usage (app must be running, e.g. ./run):
 
     python scripts/capture_full_page_screenshots.py \\
-        --base-url http://127.0.0.1:5000 \\
+        --base-url http://127.0.0.1:5001 \\
+        --desktop --viewport 1920x1080 --zoom 75 \\
         --stamp my_run \\
         --login-user admin --login-password 'Admin@123'
 """
@@ -40,9 +41,14 @@ SKIP_PATH_SUBSTRINGS = (
     "/api/admin",
     "/api/docs",
     "/api/reports",
+    "/api/assistant",
     "/hr/api/",
     "/admin/mmr/api/",
     "/store/api/",
+    "/finance/api/",
+    "/operations/api/",
+    "/tickets/api/",
+    "/inspection/api/",
     "/health",
     "/manifest.json",
     "/favicon.ico",
@@ -50,6 +56,11 @@ SKIP_PATH_SUBSTRINGS = (
 SKIP_SUFFIXES = ("/dropdowns",)
 SKIP_EXACT = {
     "/bd/email-module/attachments",
+}
+# HTML pages that live under /api/ prefixes
+HTML_API_ALLOWLIST = {
+    "/api/workflow/dashboard",
+    "/api/workflow/history",
 }
 
 SKIP_ENDPOINT_PREFIXES = (
@@ -60,8 +71,10 @@ SKIP_ENDPOINT_PREFIXES = (
 def _should_capture_path(path: str) -> bool:
     if path in SKIP_EXACT:
         return False
-    if path.startswith("/api/workflow/"):
-        return path in ("/api/workflow/dashboard", "/api/workflow/history")
+    if path in HTML_API_ALLOWLIST:
+        return True
+    if path.startswith("/api/"):
+        return False
     p = path.lower()
     for s in SKIP_PATH_SUBSTRINGS:
         if s in p:
@@ -137,17 +150,34 @@ def login_playwright(page, base: str, username: str, password: str, timeout_ms: 
     page.wait_for_load_state("load")
 
 
+def apply_browser_zoom(page, zoom_percent: int) -> None:
+    """Set Chromium page zoom (e.g. 75 = 75%) so more of the UI fits the viewport."""
+    if zoom_percent == 100:
+        return
+    factor = max(10, min(int(zoom_percent), 300)) / 100.0
+    page.evaluate(
+        """(z) => {
+            document.documentElement.style.zoom = String(z);
+            if (document.body) document.body.style.zoom = String(z);
+        }""",
+        factor,
+    )
+    page.wait_for_timeout(150)
+
+
 def capture_segmented(
     page,
     out_dir: Path,
     basename: str,
     wait_ms: int,
+    zoom_percent: int = 100,
 ) -> int:
     """
     Scroll by viewport height; save viewport-sized PNGs: {basename}_seg000.png, ...
     Returns number of segments written.
     """
     page.wait_for_timeout(wait_ms)
+    apply_browser_zoom(page, zoom_percent)
     page.evaluate("window.scrollTo(0, 0)")
     page.wait_for_timeout(200)
 
@@ -180,7 +210,7 @@ def capture_segmented(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Screenshots of Injaaz routes (segmented or full-page).")
+    parser = argparse.ArgumentParser(description="Screenshots of Injaaz routes (desktop viewport by default).")
     parser.add_argument("--base-url", default="http://127.0.0.1:5000", help="App base URL (no trailing slash)")
     parser.add_argument(
         "--out-dir",
@@ -191,13 +221,30 @@ def main() -> int:
     parser.add_argument("--stamp", default=None, help="Subfolder name (default: UTC timestamp)")
     parser.add_argument(
         "--viewport",
-        default="1280x800",
-        help="WxH viewport for segmented mode (default desktop 1280x800)",
+        default="1920x1080",
+        help="WxH browser viewport (default 1920x1080 desktop)",
     )
     parser.add_argument(
+        "--zoom",
+        type=int,
+        default=75,
+        help="Browser zoom percent before capture (default 75)",
+    )
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument(
+        "--desktop",
+        action="store_true",
+        help="One PNG per URL of the visible desktop viewport only (default).",
+    )
+    mode.add_argument(
         "--full-page",
         action="store_true",
-        help="One tall PNG per URL (Playwright full_page). Default is scroll segments.",
+        help="One tall PNG per URL (full scroll height — not desktop ratio).",
+    )
+    mode.add_argument(
+        "--segmented",
+        action="store_true",
+        help="Scroll the page and save one PNG per viewport slice.",
     )
     parser.add_argument("--login-user", default="admin", help="Username for /login")
     parser.add_argument("--login-password", default="Admin@123", help="Password for /login")
@@ -208,7 +255,13 @@ def main() -> int:
     parser.add_argument("--dry-run", action="store_true", help="List URLs only")
     args = parser.parse_args()
 
-    segmented = not args.full_page
+    if args.full_page:
+        capture_mode = "full_page"
+    elif args.segmented:
+        capture_mode = "segmented"
+    else:
+        # Default to desktop viewport capture (visible screen only)
+        capture_mode = "desktop"
 
     try:
         from playwright.sync_api import sync_playwright
@@ -225,7 +278,7 @@ def main() -> int:
     out_root: Path = args.out_dir / stamp
     out_root.mkdir(parents=True, exist_ok=True)
 
-    vw, vh = 1280, 800
+    vw, vh = 1920, 1080
     if "x" in args.viewport.lower():
         parts = args.viewport.lower().split("x", 1)
         vw, vh = int(parts[0]), int(parts[1])
@@ -236,11 +289,14 @@ def main() -> int:
     )
     meta = out_root / "_capture_mode.txt"
     meta.write_text(
-        f"segmented={segmented}\nviewport={vw}x{vh}\nlogin={not args.no_login}\n",
+        f"mode={capture_mode}\nviewport={vw}x{vh}\nzoom={args.zoom}%\nlogin={not args.no_login}\n",
         encoding="utf-8",
     )
 
-    print(f"Routes: {len(routes)} | Output: {out_root} | mode={'segmented' if segmented else 'full_page'}")
+    print(
+        f"Routes: {len(routes)} | Output: {out_root} | "
+        f"mode={capture_mode} | viewport={vw}x{vh} | zoom={args.zoom}%"
+    )
     if args.dry_run:
         for ep, path in routes:
             print(f"  {path}  ({ep})")
@@ -276,13 +332,20 @@ def main() -> int:
             basename = path_to_basename(path)
             try:
                 page.goto(url, wait_until="load", timeout=args.timeout_ms)
-                if segmented:
-                    n = capture_segmented(page, out_root, basename, args.wait_ms)
+                if capture_mode == "segmented":
+                    n = capture_segmented(
+                        page, out_root, basename, args.wait_ms, zoom_percent=args.zoom
+                    )
                     print(f"OK  {path} -> {basename}_seg000..seg{n-1:03d}.png ({n} segments)")
                 else:
                     target = out_root / f"{basename}.png"
                     page.wait_for_timeout(args.wait_ms)
-                    page.screenshot(path=str(target), full_page=True)
+                    apply_browser_zoom(page, args.zoom)
+                    # Desktop mode: visible viewport only. Never full_page unless asked.
+                    page.screenshot(
+                        path=str(target),
+                        full_page=(capture_mode == "full_page"),
+                    )
                     print(f"OK  {path} -> {basename}.png")
             except Exception as e:
                 print(f"ERR {path}: {e}", file=sys.stderr)

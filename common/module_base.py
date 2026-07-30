@@ -23,7 +23,7 @@ def process_report_job(sub_id, job_id, app, module_name, create_excel_report, cr
         sub_id: Submission ID
         job_id: Job ID
         app: Flask application instance
-        module_name: Module name ('hvac', 'civil', 'cleaning')
+        module_name: Module name ('hvac' / Fire Systems)
         create_excel_report: Function to create Excel report
         create_pdf_report: Function to create PDF report
     

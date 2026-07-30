@@ -200,8 +200,31 @@ def _run_automation(automation_id, app, force=False, trigger='scheduled'):
 # ──────────────────────────────────────────────────────────────────────────────
 
 def init_scheduler(app):
-    """Start the background scheduler and register a job for each enabled automation."""
+    """Start the background scheduler and register a job for each enabled automation.
+
+    Gating (safe for multi-worker):
+    - RUN_MMR_SCHEDULER=true/1/yes → always start (use on dedicated worker)
+    - RUN_MMR_SCHEDULER=false/0/no → never start on this process
+    - unset → start only when WEB_CONCURRENCY <= 1 (legacy single-web-worker)
+    """
     global _scheduler
+
+    flag = (os.environ.get('RUN_MMR_SCHEDULER') or '').strip().lower()
+    if flag in ('0', 'false', 'no', 'off'):
+        logger.info('Email Automation APScheduler skipped (RUN_MMR_SCHEDULER=%s)', flag or 'false')
+        return
+    if flag not in ('1', 'true', 'yes', 'on'):
+        try:
+            workers = int(os.environ.get('WEB_CONCURRENCY') or os.environ.get('WEB_WORKERS') or '1')
+        except ValueError:
+            workers = 1
+        if workers > 1:
+            logger.warning(
+                'Email Automation APScheduler skipped: WEB_CONCURRENCY=%s without '
+                'RUN_MMR_SCHEDULER=true (set the flag on a single worker service)',
+                workers,
+            )
+            return
 
     if _scheduler and _scheduler.running:
         return
@@ -214,6 +237,11 @@ def init_scheduler(app):
         _sync_all_jobs(app)
     except Exception:
         logger.exception('Automation scheduler: error registering jobs during init')
+
+    try:
+        _register_domain_jobs(app)
+    except Exception:
+        logger.exception('Domain reminder/SLA scheduler: error registering jobs')
 
 
 def _sync_all_jobs(app):
@@ -260,6 +288,47 @@ def _register_one(automation, app):
         'Automation scheduler: registered %s (%s)',
         jid, automation.schedule_summary(),
     )
+
+
+def _register_domain_jobs(app):
+    """Register SLA breach (hourly) and AMC/payment reminders (daily) on the shared scheduler."""
+    global _scheduler
+    if not _scheduler:
+        return
+    from apscheduler.triggers.cron import CronTrigger
+    from zoneinfo import ZoneInfo
+
+    dubai = ZoneInfo('Asia/Dubai')
+
+    def _sla_wrapper():
+        try:
+            from app.tasks.sla_jobs import run_sla_breach_scan
+            run_sla_breach_scan(app)
+        except Exception:
+            logger.exception('SLA breach scan failed')
+
+    def _daily_wrapper():
+        try:
+            from app.tasks.reminder_jobs import run_all_daily_reminders
+            run_all_daily_reminders(app)
+        except Exception:
+            logger.exception('Daily reminder jobs failed')
+
+    _scheduler.add_job(
+        _sla_wrapper,
+        CronTrigger(minute=15, timezone=dubai),
+        id='domain_sla_breach_hourly',
+        replace_existing=True,
+        misfire_grace_time=3600,
+    )
+    _scheduler.add_job(
+        _daily_wrapper,
+        CronTrigger(hour=8, minute=0, timezone=dubai),
+        id='domain_daily_reminders',
+        replace_existing=True,
+        misfire_grace_time=3600,
+    )
+    logger.info('Domain jobs registered: SLA hourly + daily AMC/payment reminders')
 
 
 def sync_automation_job(automation, app):

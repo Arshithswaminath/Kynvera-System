@@ -20,8 +20,6 @@ SCOPES = [
     ROOT / "module_mmr" / "templates",
     ROOT / "module_inspection" / "templates",
     ROOT / "module_hvac_mep" / "templates",
-    ROOT / "module_civil" / "templates",
-    ROOT / "module_cleaning" / "templates",
 ]
 
 # Match a font-family: ... ; (single line; multi-line rare in this codebase)

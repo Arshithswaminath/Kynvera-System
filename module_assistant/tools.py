@@ -1,5 +1,5 @@
 """
-Server-side data tools for the Amaan assistant.
+Server-side data tools for the Kynvera assistant.
 All queries are scoped to the authenticated user — never accept user_id from the client.
 """
 import json
@@ -11,7 +11,7 @@ from sqlalchemy import or_
 from app.models import DocHubDocument, Submission
 
 INSPECTION_MODULE_TYPES = (
-    'hvac_mep', 'civil', 'cleaning',
+    'hvac_mep',
 )
 HR_LEAVE_MODULE_TYPES = ('hr_leave_application', 'hr_leave')
 TERMINAL_WORKFLOW = ('completed', 'closed_by_admin', 'rejected')
@@ -66,7 +66,7 @@ def _user_can_review(user) -> bool:
         return True
     reviewer_designations = (
         'supervisor', 'manager', 'operations_manager',
-        'business_development', 'procurement', 'general_manager',
+        'sales', 'business_development', 'procurement', 'general_manager',
     )
     d = (getattr(user, 'designation', None) or '').strip().lower()
     if d in reviewer_designations:
@@ -395,13 +395,13 @@ def get_ticket_summary(user):
 
 def get_my_inspections_summary(user):
     """Inspection form submissions by the current user (fire system)."""
-    INSPECTION_TYPES = ('hvac_mep', 'civil', 'cleaning')
+    INSPECTION_TYPES = ('hvac_mep',)
     rows = Submission.query.filter(
         Submission.user_id == user.id,
         Submission.module_type.in_(INSPECTION_TYPES),
     ).order_by(Submission.created_at.desc()).all()
 
-    by_type = {'hvac_mep': 0, 'civil': 0, 'cleaning': 0}
+    by_type = {'hvac_mep': 0}
     for r in rows:
         mt = r.module_type
         if mt in by_type:
@@ -419,8 +419,6 @@ def get_my_inspections_summary(user):
     return {
         'total': len(rows),
         'hvac': by_type['hvac_mep'],
-        'civil': by_type['civil'],
-        'cleaning': by_type['cleaning'],
         'recent': recent,
         'has_data': len(rows) > 0,
     }
@@ -469,12 +467,6 @@ def get_account_context(user) -> str:
         lines.append("Module access: ALL modules (administrator).")
     else:
         def _has_module(attr):
-            if attr == 'access_hvac':
-                return bool(
-                    getattr(user, 'access_hvac', False)
-                    or getattr(user, 'access_civil', False)
-                    or getattr(user, 'access_cleaning', False)
-                )
             return bool(getattr(user, attr, False))
 
         granted = [

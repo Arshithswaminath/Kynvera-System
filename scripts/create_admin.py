@@ -36,9 +36,7 @@ def create_admin_user(username, email, password, full_name=None):
             role='admin',
             is_active=True,
             access_hvac=True,  # Admins have all access
-            access_civil=True,
-            access_cleaning=True
-        )
+                                )
         admin.set_password(password)
         
         try:

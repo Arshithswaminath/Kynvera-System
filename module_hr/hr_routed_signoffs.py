@@ -424,7 +424,7 @@ def send_slot_assignment_email(
 ) -> None:
     from flask import request
 
-    from common.email_service import is_email_configured, send_email
+    from common.email_service import is_email_configured, send_email_async
 
     if not recipient.email or not is_email_configured(app):
         return
@@ -452,7 +452,7 @@ def send_slot_assignment_email(
         f"<p style=\"color:#64748b;font-size:12px\">Reference: {submission.submission_id}</p>"
     )
     try:
-        send_email(recipient.email, subj, body, html_body=html)
+        send_email_async(recipient.email, subj, body, html_body=html)
     except Exception:
         app.logger.exception("routed signoff email failed for user %s", recipient.id)
 

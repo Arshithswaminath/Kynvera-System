@@ -43,24 +43,22 @@ These capabilities apply across the product:
 
 | Module | URL prefix (typical) | Role |
 |--------|----------------------|------|
-| **HVAC / MEP** | `/hvac-mep` | HVAC & MEP forms, generators, reporting |
-| **Civil** | `/civil` | Civil works forms and reports |
-| **Cleaning** | `/cleaning` | Cleaning services forms and reports |
-| **Inspection** | `/inspection` | Inspection workflows spanning relevant trades |
+| **Fire Systems** | `/hvac-mep` | Fire system inspection forms, generators, reporting |
+| **Inspection hub** | `/inspection` | Inspection landing + Civil Defense notification tracking |
 | **HR** | `/hr` | Human resources screens and APIs |
 | **Procurement** | `/procurement` | Procurement workflows |
 | **MMR (reports)** | `/admin/mmr` | CAFM Excel upload, analytics dashboard, Excel report generation, chargeable/non-chargeable rules, scheduled daily email (scheduler uses **Asia/Dubai** by default), optional network save paths |
 | **Business Development** | `/bd`, `/admin/bd` | BD-focused flows and admin entry |
 | **DocHub** | `/api/docs`, `/dochub` | Document hub for authorized users |
 
-Shared code lives under `app/`, `common/`, and domain folders such as `module_hvac_mep/`, `module_civil/`, etc.
+Shared code lives under `app/`, `common/`, and domain folders such as `module_hvac_mep/`, `module_inspection/`, etc.
 
 ---
 
 ## 5. How the pieces fit together
 
 1. Users authenticate and use the **dashboard**; permissions gate **admin**, **workflow**, and module routes.
-2. **Field modules** (HVAC, civil, cleaning, inspection) capture structured data and attachments.
+2. **Field modules** (Fire Systems inspection) capture structured data and attachments.
 3. **Workflow** advances records through review and history.
 4. **MMR** consumes CAFM exports, applies business rules (documented in `module_mmr/CHARGEABLE_RULES.md`), and produces reports and optional automated email.
 5. **DocHub** and **BD** add document-centric and commercial workflows on the same auth and data stack.

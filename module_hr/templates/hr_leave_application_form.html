@@ -11,7 +11,7 @@
       rel="stylesheet"
       href="{{ url_for('static', filename='css/design-tokens.css') }}"
     />
-    <title>Leave Application Form — INJAAZ</title>
+    <title>Leave Application Form — Kynvera</title>
     <link
       rel="stylesheet"
       href="{{ url_for('static', filename='animations.css') }}"
@@ -154,7 +154,7 @@
       .rep-pick-row .btn-inline:focus {
         outline: none;
         border-color: var(--pri) !important;
-        box-shadow: 0 0 0 3px rgba(210, 23, 37, 0.12) !important;
+        box-shadow: 0 0 0 3px rgba(255, 142, 104, 0.12) !important;
       }
       .rep-pick-row .btn-inline {
         flex: 0 0 auto;
@@ -171,7 +171,7 @@
       .rep-pick-row .btn-inline:hover {
         border-color: var(--pri) !important;
         color: var(--pri);
-        box-shadow: 0 0 0 3px rgba(210, 23, 37, 0.12) !important;
+        box-shadow: 0 0 0 3px rgba(255, 142, 104, 0.12) !important;
       }
       .rep-chip-list {
         display: flex;
@@ -496,9 +496,9 @@
             display: none;
             margin-bottom: 1rem;
             line-height: 1.5;
-            color: #a8121e;
+            color: #e05f36;
             background: #e8f5ed;
-            border: 1.5px solid var(--pri-sm, #c2dece);
+            border: 1.5px solid var(--pri-sm, #ceced2);
             border-radius: 12px;
             padding: 0.9rem 1.05rem;
           "
@@ -513,14 +513,14 @@
               display: none;
               margin-top: 0.62rem;
               padding-top: 0.62rem;
-              border-top: 1px solid rgba(168, 18, 30, 0.22);
+              border-top: 1px solid rgba(224, 95, 54, 0.22);
               font-size: 0.98rem;
               font-weight: 600;
               line-height: 1.45;
-              color: #a8121e;
+              color: #e05f36;
             "
           >
-            <strong>30-minute submitter edit (live):</strong>
+            <strong>15-day submitter edit (live):</strong>
             <span
               id="submissionEditGraceCountdownTick"
               aria-live="polite"
@@ -567,11 +567,10 @@
                 color: #92400e;
               "
             >
-              <strong>30-minute employee edit window has ended.</strong> You
+              <strong>15-day employee edit window has ended.</strong> You
               can't change employee fields on this page anymore; your submission
-              stays on record. Reporting manager / HR / GM / admin can still
-              edit as needed — use PDF for reference or contact HR for
-              corrections.
+              stays on record. To revise after management has signed, cancel
+              with a remark and open a new linked submission from My Forms.
             </div>
             <div
               id="submissionGraceExpiredHintMgmt"
@@ -661,8 +660,8 @@
                   <p class="hd-sub">AMAAN FACILITY MANAGEMENT</p>
                 </div>
                 <img
-                  src="{{ url_for('static', filename='logo.png') }}"
-                  alt="AMAAN"
+                  src="{{ url_for('static', filename='images/kynvera/kynvera-wordmark.png') }}"
+                  alt="Kynvera"
                   class="hd-logo"
                 />
               </div>
@@ -833,6 +832,20 @@
                       >
                         Check the appropriate box whichever is applicable
                       </p>
+                      <div
+                        id="leaveBalanceBanner"
+                        style="
+                          display: none;
+                          margin-bottom: 0.85rem;
+                          padding: 0.65rem 0.85rem;
+                          border-radius: 10px;
+                          background: #f0f9ff;
+                          border: 1px solid #bae6fd;
+                          color: #0c4a6e;
+                          font-size: 0.86rem;
+                          line-height: 1.45;
+                        "
+                      ></div>
                       <div class="leave-grid">
                         <label class="leave-opt"
                           ><input
@@ -1008,7 +1021,7 @@
                           line-height: 1.45;
                         "
                       >
-                        Select teammates with <strong>Amaan</strong> accounts.
+                        Select teammates with <strong>Kynvera</strong> accounts.
                         Each person listed will be asked to sign digitally on
                         their own device before HR sees this leave request. You
                         cannot capture their signature here.
@@ -2548,6 +2561,32 @@
     </script>
     <script src="{{ url_for('static', filename='api-client.js') }}"></script>
     <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+    <script>
+      (async function loadLeaveBalances() {
+        const banner = document.getElementById('leaveBalanceBanner');
+        if (!banner) return;
+        try {
+          const token = localStorage.getItem('access_token');
+          if (!token) return;
+          const res = await fetch('/hr/api/leave-balances/me', {
+            headers: { Authorization: 'Bearer ' + token },
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok || data.success === false) return;
+          const annual = data.annual_leave_days;
+          const sick = data.sick_leave_days;
+          const parts = [];
+          if (annual != null && annual !== '') parts.push('Annual leave remaining: <strong>' + annual + '</strong> days');
+          if (sick != null && sick !== '') parts.push('Sick leave remaining: <strong>' + sick + '</strong> days');
+          if (!parts.length) {
+            banner.style.display = 'none';
+            return;
+          }
+          banner.innerHTML = parts.join(' · ');
+          banner.style.display = '';
+        } catch (_) { /* ignore */ }
+      })();
+    </script>
     <script>
       /* Signature status sidebar card — mirrors duty resumption refreshDutySignatureSummary */
       function leaveSigFieldHasCapture(hiddenId, imgId) {

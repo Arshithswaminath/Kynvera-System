@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover"
     />
-    <title>GM Approval - HR Requests - Amaan Application</title>
+    <title>GM Approval - HR Requests — Kynvera</title>
     <link
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
       rel="stylesheet"
@@ -19,8 +19,8 @@
     <script src="{{ url_for('static', filename='js/hr_sign_pdf_preview.js') }}"></script>
     <style>
       :root {
-        --primary: #d21725;
-        --primary-light: #e8323f;
+        --primary: #ff8e68;
+        --primary-light: #f97e54;
         --gm-navy: #1e4a7a;
         --gm-navy-mid: #163d63;
         --gm-navy-deep: #0f2942;
@@ -771,22 +771,30 @@
         cursor: pointer;
       }
 
-      /* ── Full-screen "page-like" approval overlay (matches hr_mgmt_sign) ── */
+      /* ── Page-like approval overlay — sits below main navbar (keep nav visible) ── */
+      body.has-main-nav.modal-open #nav {
+        z-index: 1065;
+      }
+      #approvalModal {
+        --gm-review-nav-offset: 5.5rem;
+        z-index: 1055;
+      }
       #approvalModal .modal-dialog {
         max-width: none;
         width: 100vw;
-        height: 100dvh;
-        margin: 0;
+        height: calc(100dvh - var(--gm-review-nav-offset));
+        margin: var(--gm-review-nav-offset) 0 0 0;
         display: block;
       }
       #approvalModal .modal-content {
         width: 100vw;
-        min-height: 100dvh;
-        max-height: 100dvh;
+        min-height: calc(100dvh - var(--gm-review-nav-offset));
+        max-height: calc(100dvh - var(--gm-review-nav-offset));
+        height: calc(100dvh - var(--gm-review-nav-offset));
         border: none;
         border-radius: 0;
         box-shadow: none;
-        background: #f8faf8;
+        background: #f9f9f9;
         display: flex;
         flex-direction: column;
         overflow: hidden;
@@ -798,7 +806,7 @@
       #approvalModal .modal-body {
         flex: 1 1 auto;
         min-height: 0;
-        background: #f8faf8;
+        background: #f9f9f9;
         padding: 0;
         overflow-y: auto;
         overflow-x: hidden;
@@ -810,7 +818,7 @@
         align-items: center;
         gap: 1rem;
         padding: 0.85rem clamp(0.75rem, 1.5vw, 1.75rem);
-        background: #f8faf8;
+        background: #f9f9f9;
         border-bottom: 1px solid rgba(15, 23, 42, 0.06);
       }
       .gm-page-back {
@@ -883,7 +891,7 @@
         margin: 0 0 0.15rem;
       }
       .gm-preview-scroll {
-        max-height: calc(100dvh - 7rem);
+        max-height: calc(100dvh - var(--gm-review-nav-offset, 5.5rem) - 7rem);
         overflow: auto;
         -webkit-overflow-scrolling: touch;
         background: #f5f5f7;
@@ -935,7 +943,7 @@
       .gm-preview-zoom-fallback #rspPreviewFrame {
         width: 100%;
         min-height: 32rem;
-        height: calc(100dvh - 7rem);
+        height: calc(100dvh - var(--gm-review-nav-offset, 5.5rem) - 7rem);
         border: none;
         display: block;
         background: #f5f5f7;
@@ -955,7 +963,7 @@
       .gm-sign-col {
         position: sticky;
         top: 0;
-        max-height: calc(100dvh - 7rem);
+        max-height: calc(100dvh - var(--gm-review-nav-offset, 5.5rem) - 7rem);
         overflow-y: auto;
         min-width: 0;
         scrollbar-width: thin;
@@ -1805,6 +1813,20 @@
       const data = await response.json();
       pendingListCache = Array.isArray(data.submissions) ? data.submissions : [];
       renderPendingListFromCache();
+      const params = new URLSearchParams(window.location.search || '');
+      const openSid = (params.get('submission') || '').trim();
+      if (openSid) {
+        const match = pendingListCache.find((s) => String(s.submission_id || '') === openSid);
+        if (match) {
+          openApproval(match.submission_id, match);
+          try {
+            params.delete('submission');
+            const qs = params.toString();
+            const next = window.location.pathname + (qs ? '?' + qs : '') + (window.location.hash || '');
+            window.history.replaceState({}, '', next);
+          } catch (e) {}
+        }
+      }
       } catch (error) {
       console.error('Error:', error);
       pendingListCache = [];
@@ -2016,6 +2038,40 @@
       document.body.appendChild(toast);
       setTimeout(() => toast.remove(), 5000);
       }
+
+      (function wireGmReviewReturnNav() {
+        function safeHrReturnUrl() {
+          try {
+            const raw = new URLSearchParams(window.location.search || '').get('return') || '';
+            if (!raw) return '';
+            const url = new URL(raw, window.location.origin);
+            if (url.origin !== window.location.origin) return '';
+            if (!url.pathname.startsWith('/hr')) return '';
+            return url.pathname + url.search + url.hash;
+          } catch (e) {
+            return '';
+          }
+        }
+        const returnUrl = safeHrReturnUrl();
+        if (!returnUrl) return;
+        document.querySelectorAll('a.back-link').forEach((a) => {
+          a.href = returnUrl;
+          a.innerHTML =
+            '<svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg> Back to GM Final Approval';
+        });
+        document.querySelectorAll('.gm-page-back').forEach((btn) => {
+          btn.removeAttribute('data-bs-dismiss');
+          btn.addEventListener(
+            'click',
+            (e) => {
+              e.preventDefault();
+              e.stopImmediatePropagation();
+              window.location.href = returnUrl;
+            },
+            true
+          );
+        });
+      })();
 
       loadPending();
     </script>

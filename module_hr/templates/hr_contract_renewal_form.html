@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
   
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
-<title>Employee Contract Renewal Assessment — INJAAZ</title>
+<title>Employee Contract Renewal Assessment — Kynvera</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
@@ -13,7 +13,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/ticketing.css') }}">
   <style>
     .eval-param-list{display:flex;flex-direction:column;gap:1.25rem}
-    .eval-param{background:rgba(248,252,249,.6);border:1px solid rgba(194,222,206,.5);border-radius:var(--r);padding:1rem 1.25rem}
+    .eval-param{background:rgba(248,252,249,.6);border:1px solid rgba(222,222,226,.5);border-radius:var(--r);padding:1rem 1.25rem}
     .eval-param-hd{font-size:.95rem;color:var(--pri-d);margin-bottom:.75rem}
     .eval-row{display:flex;align-items:center;gap:1rem;margin-bottom:.5rem}
     .eval-row .eval-label{flex:1;font-size:.85rem;color:var(--ink2)}
@@ -85,7 +85,7 @@
             <h1>Employee Contract Renewal Assessment</h1>
             <p class="hd-sub">AMAAN FACILITY MANAGEMENT</p>
           </div>
-          <img src="{{ url_for('static', filename='logo.png') }}" alt="AMAAN" class="hd-logo">
+          <img src="{{ url_for('static', filename='images/kynvera/kynvera-wordmark.png') }}" alt="Kynvera" class="hd-logo">
         </div>
 
         <form id="hrForm" novalidate>
@@ -269,7 +269,7 @@ document.getElementById('hrForm').addEventListener('submit',async e=>{
   }
   const fd=new FormData(form),data=Object.fromEntries(fd.entries());
   data.form_type='contract_renewal';
-  if(contract_evaluator_signer_ids.length!==1){goToStep2();alert('Select exactly one evaluator with an Amaan account — they sign digitally on their device (you cannot sign for them).');return}
+  if(contract_evaluator_signer_ids.length!==1){goToStep2();alert('Select exactly one evaluator with a Kynvera account — they sign digitally on their device (you cannot sign for them).');return}
   data.evaluator_signer_ids=[...contract_evaluator_signer_ids];
   const btn=form.querySelector('.btn-submit');
   btn.disabled=true;btn.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="spin"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Submitting…';

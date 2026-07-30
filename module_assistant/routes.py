@@ -1,5 +1,5 @@
 """
-Amaan Live Assistant API routes.
+Kynvera Live Assistant API routes.
 """
 import logging
 

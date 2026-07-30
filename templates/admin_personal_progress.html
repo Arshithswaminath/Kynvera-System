@@ -3,15 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
-  <meta name="theme-color" content="#d21725">
-  <title>Personal progress | Amaan Admin</title>
+  <meta name="theme-color" content="#ff8e68">
+  <title>Personal progress | Kynvera Admin</title>
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
   <style>
 :root {
-  --pp-accent:#d21725; --pp-accent2:#e8323f; --pp-line:#e2ede8; --pp-bg:#f5faf7; --pp-card:#fff;
-  --pp-ink:#0c1f17; --pp-muted:#587569; --pp-r:12px; --pp-sh:0 4px 24px rgba(210, 23, 37, .1);
+  --pp-accent:#ff8e68; --pp-accent2:#f97e54; --pp-line:#e7e7e8; --pp-bg:#f5faf7; --pp-card:#fff;
+  --pp-ink:#0c1f17; --pp-muted:#62626b; --pp-r:12px; --pp-sh:0 4px 24px rgba(255, 142, 104, .1);
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;background:var(--pp-bg);color:var(--pp-ink);min-height:100vh;font-size:15px;line-height:1.45}
@@ -24,13 +24,13 @@ body.has-main-nav{padding-top:5.5rem}
 .pp-toolbar{display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;margin-bottom:1.25rem}
 .pp-chip{border:1.5px solid var(--pp-line);background:var(--pp-card);padding:.45rem .85rem;border-radius:999px;font-size:.82rem;font-weight:600;color:var(--pp-muted);cursor:pointer;min-height:44px}
 .pp-chip.on{background:var(--pp-accent);color:#fff;border-color:var(--pp-accent)}
-.pp-btn{background:var(--pp-accent);color:#fff;border:none;padding:.65rem 1.1rem;border-radius:var(--pp-r);font-weight:700;font-size:.9rem;cursor:pointer;min-height:44px;box-shadow:0 2px 12px rgba(210, 23, 37, .25)}
+.pp-btn{background:var(--pp-accent);color:#fff;border:none;padding:.65rem 1.1rem;border-radius:var(--pp-r);font-weight:700;font-size:.9rem;cursor:pointer;min-height:44px;box-shadow:0 2px 12px rgba(255, 142, 104, .25)}
 .pp-btn:hover{background:var(--pp-accent2)}
 .pp-btn-ghost{background:var(--pp-card);color:var(--pp-accent);border:1.5px solid var(--pp-line)}
 .pp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1rem}
 .pp-card{background:var(--pp-card);border:1.5px solid var(--pp-line);border-radius:16px;padding:1.1rem 1.15rem;cursor:pointer;transition:box-shadow .2s,border-color .2s;position:relative}
 .pp-card:hover{box-shadow:var(--pp-sh);border-color:#c0ecd4}
-.pp-card.focus{border-color:var(--pp-accent);box-shadow:0 0 0 2px rgba(210, 23, 37, .12)}
+.pp-card.focus{border-color:var(--pp-accent);box-shadow:0 0 0 2px rgba(255, 142, 104, .12)}
 .pp-card-top{display:flex;gap:.65rem;align-items:flex-start}
 .pp-icon{width:42px;height:42px;border-radius:12px;background:#e4f7ed;display:flex;align-items:center;justify-content:center;font-size:1.25rem;flex-shrink:0}
 .pp-card-title{font-weight:800;font-size:1.02rem;line-height:1.25;flex:1;min-width:0}
@@ -38,11 +38,11 @@ body.has-main-nav{padding-top:5.5rem}
 .pp-b-planning{background:#e8f0fb;color:#1a5fa8}
 .pp-b-active{background:#e4f7ed;color:var(--pp-accent)}
 .pp-b-on_hold{background:#fef6e4;color:#b45309}
-.pp-b-done{background:#e8ece9;color:#334433}
+.pp-b-done{background:#e9e9eb;color:#39393e}
 .pp-b-archived{background:#f1f5f9;color:#64748b}
 .pp-meta{font-size:.8rem;color:var(--pp-muted);margin-top:.5rem;display:flex;flex-wrap:wrap;gap:.5rem .85rem}
-.pp-bar{height:6px;background:#e2ede8;border-radius:99px;overflow:hidden;margin-top:.75rem}
-.pp-bar>div{height:100%;background:linear-gradient(90deg,var(--pp-accent),#e8323f);border-radius:99px;transition:width .4s ease}
+.pp-bar{height:6px;background:#e7e7e8;border-radius:99px;overflow:hidden;margin-top:.75rem}
+.pp-bar>div{height:100%;background:linear-gradient(90deg,var(--pp-accent),#f97e54);border-radius:99px;transition:width .4s ease}
 .pp-tags{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.6rem}
 .pp-tag{font-size:.72rem;font-weight:600;padding:.15rem .45rem;border-radius:6px;background:var(--pp-bg);color:var(--pp-muted)}
 .pp-empty{text-align:center;padding:3rem 1.5rem;color:var(--pp-muted);border:2px dashed var(--pp-line);border-radius:16px;background:rgba(255,255,255,.6)}
@@ -67,7 +67,7 @@ body.has-main-nav{padding-top:5.5rem}
 .pp-fld label{display:block;font-size:.72rem;font-weight:700;color:var(--pp-muted);margin-bottom:.35rem}
 .pp-fld input,.pp-fld select,.pp-fld textarea{width:100%;padding:.55rem .65rem;border:1.5px solid var(--pp-line);border-radius:10px;font-size:16px;font-family:inherit;background:#fafdfb}
 .pp-fld textarea{min-height:72px;resize:vertical}
-.pp-fld input:focus,.pp-fld select:focus,.pp-fld textarea:focus{outline:none;border-color:var(--pp-accent);box-shadow:0 0 0 3px rgba(210, 23, 37, .12)}
+.pp-fld input:focus,.pp-fld select:focus,.pp-fld textarea:focus{outline:none;border-color:var(--pp-accent);box-shadow:0 0 0 3px rgba(255, 142, 104, .12)}
 .pp-check{display:flex;align-items:center;gap:.5rem;font-weight:600;font-size:.9rem;cursor:pointer;user-select:none}
 .pp-check input{width:18px;height:18px;accent-color:var(--pp-accent)}
 .pp-step{border:1.5px solid var(--pp-line);border-radius:12px;padding:.65rem .7rem;margin-bottom:.55rem;background:#fafdfb}
@@ -79,7 +79,7 @@ body.has-main-nav{padding-top:5.5rem}
 .pp-step-row{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
 @media(max-width:560px){.pp-step-row{grid-template-columns:1fr}}
 @media(max-width:768px){
-  .pp-fld input,.pp-fld select,.pp-fld textarea{padding:.65rem .875rem;min-height:44px;border:1.5px solid rgba(210, 23, 37, 0.2)}
+  .pp-fld input,.pp-fld select,.pp-fld textarea{padding:.65rem .875rem;min-height:44px;border:1.5px solid rgba(255, 142, 104, 0.2)}
   .pp-fld label{font-size:.75rem}
   .pp-m-foot{gap:.5rem}
   .pp-m-foot .pp-btn{width:100%}
@@ -135,7 +135,7 @@ body.has-main-nav{padding-top:5.5rem}
           <div class="pp-fields">
             <div class="pp-fld" style="grid-column:1/-1">
               <label for="ppTitle">Title</label>
-              <input id="ppTitle" maxlength="255" placeholder="e.g. Amaan — Personal progress module" autocomplete="off">
+              <input id="ppTitle" maxlength="255" placeholder="e.g. Kynvera — Personal progress module" autocomplete="off">
             </div>
             <div class="pp-fld" style="grid-column:1/-1">
               <label for="ppSummary">Summary / objective</label>

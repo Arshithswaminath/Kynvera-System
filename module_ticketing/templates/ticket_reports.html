@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reports — Amaan</title>
+  <title>Reports — Kynvera</title>
   {% include 'partials/caveat_font.html' ignore missing %}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
@@ -41,7 +41,7 @@
       font-size: .66rem;
       font-weight: 700;
       color: #fff;
-      background: #d21725;
+      background: #ff8e68;
       border-radius: 20px;
       padding: 2px 9px;
       margin-left: 4px;
@@ -74,7 +74,7 @@
       min-width: 150px;
     }
     .rpt-filter-field input:focus,
-    .rpt-filter-field select:focus { border-color: #d21725; }
+    .rpt-filter-field select:focus { border-color: #ff8e68; }
     .rpt-filter-clear {
       height: 38px;
       padding: 0 14px;
@@ -88,13 +88,13 @@
       transition: border-color .15s, color .15s;
       font-family: inherit;
     }
-    .rpt-filter-clear:hover { border-color: #d21725; color: #d21725; }
+    .rpt-filter-clear:hover { border-color: #ff8e68; color: #ff8e68; }
     .rpt-filter-apply {
       height: 38px;
       padding: 0 18px;
       border: none;
       border-radius: 9px;
-      background: linear-gradient(135deg, #e8323f, #d21725);
+      background: linear-gradient(135deg, #f97e54, #ff8e68);
       font-size: .82rem;
       font-weight: 700;
       color: #fff;
@@ -102,14 +102,14 @@
       transition: filter .15s, transform .12s, box-shadow .15s;
       font-family: inherit;
     }
-    .rpt-filter-apply:hover { filter: brightness(1.08); box-shadow: 0 3px 10px rgba(210,23,37,.3); }
+    .rpt-filter-apply:hover { filter: brightness(1.08); box-shadow: 0 3px 10px rgba(255, 142, 104,.3); }
     .rpt-filter-apply:active { transform: scale(.97); }
     .rpt-filter-apply.pending {
       animation: rptpulse 1.4s ease-in-out infinite;
     }
     @keyframes rptpulse {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(210,23,37,.35); }
-      50% { box-shadow: 0 0 0 6px rgba(210,23,37,0); }
+      0%, 100% { box-shadow: 0 0 0 0 rgba(255, 142, 104,.35); }
+      50% { box-shadow: 0 0 0 6px rgba(255, 142, 104,0); }
     }
     .rpt-filter-hint { font-size: .74rem; color: #94a3b8; margin-top: 10px; }
 
@@ -139,7 +139,7 @@
     }
     .rpt-card:hover .rpt-icon {
       transform: scale(1.05);
-      box-shadow: 0 5px 14px rgba(210,23,37,.32);
+      box-shadow: 0 5px 14px rgba(255, 142, 104,.32);
     }
 
     .rpt-card-body { padding: 20px 20px 16px; display: flex; flex-direction: column; gap: 13px; flex: 1; }
@@ -149,8 +149,8 @@
       height: 46px;
       flex-shrink: 0;
       border-radius: 13px;
-      background: linear-gradient(135deg, #d21725, #a8121e);
-      box-shadow: 0 3px 10px rgba(210,23,37,.28);
+      background: linear-gradient(135deg, #ff8e68, #e05f36);
+      box-shadow: 0 3px 10px rgba(255, 142, 104,.28);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -231,15 +231,15 @@
     }
     .rpt-dl-btn:active { transform: scale(.97); }
     .rpt-dl-btn.pdf {
-      color: #d21725;
-      background: #fff1f2;
+      color: #ff8e68;
+      background: #fff4f1;
       border: 1.5px solid #fecdd3;
     }
     .rpt-dl-btn.pdf:hover {
-      background: #d21725;
-      border-color: #d21725;
+      background: #ff8e68;
+      border-color: #ff8e68;
       color: #fff;
-      box-shadow: 0 3px 10px rgba(210,23,37,.3);
+      box-shadow: 0 3px 10px rgba(255, 142, 104,.3);
     }
     .rpt-dl-btn.excel {
       color: #15803d;
@@ -407,7 +407,7 @@
     const hint = document.getElementById('rptFilterHint');
     if (dirty) {
       hint.textContent = 'You have unapplied changes — click Apply Filters to use them in the downloads.';
-      hint.style.color = '#d21725';
+      hint.style.color = '#ff8e68';
     } else {
       hint.textContent = appliedCount > 0
         ? 'Filters applied — every download below will use them.'

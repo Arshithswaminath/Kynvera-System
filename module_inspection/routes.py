@@ -1,5 +1,5 @@
 """
-Inspection Form Module - HVAC, Civil, Cleaning forms + Civil Defense notification tracking.
+Inspection Form Module - Fire Systems hub + Civil Defense notification tracking.
 URL prefix: /inspection
 """
 import uuid
@@ -17,16 +17,12 @@ inspection_bp = Blueprint('inspection_bp', __name__, url_prefix='/inspection',
 
 
 def _has_inspection_access(user):
-    """User has access if they have any of HVAC, Civil, or Cleaning access, or are admin."""
+    """User has access if they have Fire Systems access, or are admin."""
     if not user:
         return False
     if user.role == 'admin':
         return True
-    return (
-        getattr(user, 'access_hvac', False) or
-        getattr(user, 'access_civil', False) or
-        getattr(user, 'access_cleaning', False)
-    )
+    return bool(getattr(user, 'access_hvac', False))
 
 
 def _has_notif_write_access(user):
@@ -35,7 +31,7 @@ def _has_notif_write_access(user):
         return False
     if user.role == 'admin':
         return True
-    return getattr(user, 'designation', None) in ('business_development',) or \
+    return getattr(user, 'designation', None) in ('sales', 'business_development') or \
            getattr(user, 'access_business_development', False) or \
            _has_inspection_access(user)
 

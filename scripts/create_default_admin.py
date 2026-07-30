@@ -30,8 +30,6 @@ def create_default_admin():
             existing.set_password(password)
             existing.is_active = True
             existing.access_hvac = True
-            existing.access_civil = True
-            existing.access_cleaning = True
             db.session.commit()
             print("=" * 60)
             print("[SUCCESS] Admin Password Reset!")
@@ -59,9 +57,7 @@ def create_default_admin():
             role='admin',
             is_active=True,
             access_hvac=True,
-            access_civil=True,
-            access_cleaning=True
-        )
+                                )
         admin.set_password(password)
         
         try:

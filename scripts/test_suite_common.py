@@ -287,6 +287,57 @@ def fake_trading_invoice():
     return invoice, client, items
 
 
+def fake_quotation():
+    """Synthetic sales quotation for PDF suite (no DB required)."""
+    items = [
+        types.SimpleNamespace(
+            description="Annual Fire Systems AMC — Ajman Tower",
+            details="Quarterly inspection + call-outs",
+            quantity=1,
+            unit="lot",
+            unit_price=12500.0,
+            total_price=12500.0,
+        ),
+        types.SimpleNamespace(
+            description="Spare parts kit — detectors & modules",
+            details="As per approved BOM",
+            quantity=1,
+            unit="set",
+            unit_price=3200.0,
+            total_price=3200.0,
+        ),
+    ]
+    return types.SimpleNamespace(
+        quote_no="QT-TEST-0001",
+        ref_no="ASQ/2026/TEST-001",
+        company_name="Demo Client LLC",
+        contact_name="Ahmed Al-Rashid",
+        kind_attn="Mr. Ahmed Al-Rashid",
+        client_tel="+971 4 123 4567",
+        subject="Quotation for Fire Systems Annual Maintenance",
+        project_name="Ajman Tower — Fire Systems AMC",
+        intro_text=None,
+        quote_date=date.today(),
+        bd_project=None,
+        items=items,
+        subtotal=15700.0,
+        discount_amount=200.0,
+        tax_pct=5.0,
+        tax_amount=775.0,
+        grand_total=16275.0,
+        amount_in_words=None,
+        notes=None,
+        notes_text=None,
+        exclusions_text=None,
+        terms_text=None,
+        signatory_name=None,
+        signatory_email=None,
+        signatory_phone=None,
+        signoff_label=None,
+        prepared_signature=None,
+    )
+
+
 def sample_finance_payload() -> dict:
     """Synthetic finance dashboard payload (no DB required)."""
     today = date.today()

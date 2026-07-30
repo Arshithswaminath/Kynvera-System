@@ -5,20 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
   
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
-<title>HR Module - Amaan Application</title>
-  <meta name="theme-color" content="#d21725">
+<title>HR Module — Kynvera</title>
+  <meta name="theme-color" content="#ff8e68">
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-forms.css') }}">
   <style>
-    :root { --primary: #d21725; --primary-light: #e8323f; --secondary: #6366f1; }
+    :root { --primary: #ff8e68; --primary-light: #f97e54; --secondary: #6366f1; }
     .hr-hero::before { display: none; }
     .hr-hero { padding: 9rem 0 5rem; }
     .hr-modules-section::before { display: none; }
-    .hr-dashboard { background: #F8FAF8; }
-    .hr-dashboard .modules-section { background: #F8FAF8 !important; }
+    .hr-dashboard { background: #f9f9f9; }
+    .hr-dashboard .modules-section { background: #f9f9f9 !important; }
     .hr-hero .hero-content { gap: 2.5rem; align-items: stretch; }
     .hr-hero .hero-left { flex: 0 0 auto; max-width: 280px; }
     .hr-hero .hero-right { flex: 1; min-width: 0; display: flex; justify-content: flex-end; }
@@ -77,8 +77,8 @@
       background: rgba(255, 255, 255, 0.55);
     }
     body.hr-my-req-focused .my-req-view-tab.active {
-      background: #d21725;
-      border-color: #d21725;
+      background: #ff8e68;
+      border-color: #ff8e68;
     }
     #myReqHeroTabs { display: none; }
     @media (max-width: 420px) {
@@ -99,6 +99,13 @@
       color: #0369a1;
     }
     .status-approved { background: #d1fae5; color: #047857; }
+    .request-card-actions { display:flex; flex-wrap:wrap; gap:0.4rem; margin-top:0.65rem; }
+    .request-card-actions a, .request-card-actions button {
+      min-height:36px; padding:0.35rem 0.7rem; border-radius:8px; font-size:0.78rem; font-weight:600;
+      cursor:pointer; text-decoration:none; border:1px solid #cbd5e1; background:#fff; color:#334155; font-family:inherit;
+    }
+    .request-card-actions .hr-btn-revoke { border-color:#fecaca; color:#b91c1c; background:#fef2f2; }
+    .request-card-actions .hr-btn-new { border-color:#bbf7d0; color:#166534; background:#f0fdf4; }
     .status-rejected { background: #fee2e2; color: #dc2626; }
     .status-submitted { background: #e0e7ff; color: #4338ca; }
     .form-type-badge { padding: 0.25rem 0.5rem; border-radius: 6px; font-size: 0.7rem; font-weight: 600;  }
@@ -166,8 +173,8 @@
       font-weight: 700;
       letter-spacing: 0.04em;
       text-transform: uppercase;
-      color: #d21725;
-      background: rgba(210, 23, 37, 0.08);
+      color: #ff8e68;
+      background: rgba(255, 142, 104, 0.08);
       padding: 0.22rem 0.45rem;
       border-radius: 6px;
       white-space: nowrap;
@@ -215,9 +222,9 @@
       border-radius: 999px; cursor: pointer; display: inline-flex; align-items: center; gap: 0.4rem;
       transition: border-color 0.15s, color 0.15s, background 0.15s;
     }
-    .my-req-view-tab:hover { border-color: rgba(210,23,37,0.35); color: #d21725; }
+    .my-req-view-tab:hover { border-color: rgba(255, 142, 104,0.35); color: #ff8e68; }
     .my-req-view-tab.active {
-      background: #d21725; border-color: #d21725; color: #fff;
+      background: #ff8e68; border-color: #ff8e68; color: #fff;
     }
     .my-req-tab-count {
       font-size: 0.7rem; font-weight: 700; min-width: 1.25rem; text-align: center;
@@ -396,7 +403,7 @@
         <div class="my-req-view-tabs" id="myReqHeroTabs" role="tablist" aria-label="Filter my HR forms">
           <button type="button" class="my-req-view-tab" data-view="pending" role="tab">Pending <span class="my-req-tab-count" id="tabCountPendingHero">0</span></button>
           <button type="button" class="my-req-view-tab" data-view="approved" role="tab">Approved <span class="my-req-tab-count" id="tabCountApprovedHero">0</span></button>
-          <button type="button" class="my-req-view-tab" data-view="all" role="tab">All <span class="my-req-tab-count" id="tabCountAllHero">0</span></button>
+          <button type="button" class="my-req-view-tab" data-view="revoked" role="tab">Revoked <span class="my-req-tab-count" id="tabCountRevokedHero">0</span></button>
         </div>
       </div>
       <div class="hero-right"></div>
@@ -431,7 +438,7 @@
       <div class="my-req-view-tabs" id="myReqSectionTabs" role="tablist" aria-label="Filter my HR forms">
         <button type="button" class="my-req-view-tab" data-view="pending" role="tab">Pending <span class="my-req-tab-count" id="tabCountPending">0</span></button>
         <button type="button" class="my-req-view-tab" data-view="approved" role="tab">Approved <span class="my-req-tab-count" id="tabCountApproved">0</span></button>
-        <button type="button" class="my-req-view-tab" data-view="all" role="tab">All <span class="my-req-tab-count" id="tabCountAll">0</span></button>
+        <button type="button" class="my-req-view-tab" data-view="revoked" role="tab">Revoked <span class="my-req-tab-count" id="tabCountRevoked">0</span></button>
       </div>
       <div id="requestsList" class="my-requests-list">
         <div style="text-align: center; padding: 3rem; color: #64748b;">
@@ -443,6 +450,8 @@
   </section>
 
   <script src="{{ url_for('static', filename='js/injaaz-uae-datetime.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/hr_submission_full_form_url.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/hr_revoke.js') }}"></script>
   <script>
     (function redirectLegacySubmissionModalLink() {
       try {
@@ -459,12 +468,12 @@
     try {
       const sp = new URLSearchParams(window.location.search || '');
       const v = (sp.get('view') || '').trim().toLowerCase();
-      if (v === 'pending' || v === 'approved' || v === 'all' || v === 'rejected') currentView = v;
+      if (v === 'pending' || v === 'approved' || v === 'revoked' || v === 'all' || v === 'rejected') currentView = v;
       else if (!v) currentView = 'all';
     } catch (e) {}
 
     function applyFocusedListMode() {
-      const focused = currentView === 'pending' || currentView === 'approved';
+      const focused = currentView === 'pending' || currentView === 'approved' || currentView === 'revoked';
       document.body.classList.toggle('hr-my-req-focused', focused);
       const catalog = document.getElementById('hrFormsCatalogBlock');
       const back = document.getElementById('myReqBackLink');
@@ -481,6 +490,8 @@
           title.innerHTML = 'My <span class="hero-title-accent">Pending</span>&nbsp;Forms';
         } else if (currentView === 'approved') {
           title.innerHTML = 'My <span class="hero-title-accent">Approved</span>&nbsp;Forms';
+        } else if (currentView === 'revoked') {
+          title.innerHTML = 'My <span class="hero-title-accent">Revoked</span>&nbsp;Forms';
         } else {
           title.innerHTML = 'HR <span class="hero-title-accent">Forms</span>';
         }
@@ -490,8 +501,10 @@
           sub.style.display = 'block';
           sub.textContent =
             currentView === 'pending'
-              ? 'Your HR forms that are still waiting for signatures or approval.'
-              : 'Your HR forms that have been fully approved.';
+              ? 'Your HR forms still waiting for signatures or approval. You can revoke with a comment.'
+              : currentView === 'approved'
+                ? 'Your fully approved HR forms. You can still revoke them (kept in history).'
+                : 'Revoked forms kept for history. You can start a new request of the same type.';
         } else {
           sub.style.display = 'none';
           sub.textContent = '';
@@ -503,7 +516,7 @@
       }
       if (lead) {
         lead.textContent =
-          'Only your own HR forms. Pending = still in approval; Approved = completed.';
+          'Only your own HR forms. Pending / Approved / Revoked. Revoked forms stay in history.';
       }
       if (focused) {
         const rb = document.getElementById('replacementSignBanner');
@@ -525,8 +538,10 @@
         hr_mgmt_gm: 'Management: GM',
         hr_mgmt_hr_head_office: 'Management: HR (HO)',
         approved: 'Approved',
+        completed: 'Approved',
         rejected: 'Rejected',
         submitted: 'Submitted',
+        withdrawn: 'Revoked',
       };
       return labels[status] || status;
     }
@@ -534,7 +549,11 @@
     function getFormTypeClass(type) { const t = type.replace('hr_', ''); return `type-${t}`; }
     function escapeHtml(text) { if (!text) return ''; const div = document.createElement('div'); div.textContent = text; return div.innerHTML; }
 
-    function hrFormHrefForSubmission(submissionId) {
+    function hrFormHrefForSubmission(submissionId, moduleType) {
+      if (typeof getHrSubmissionFullFormViewUrl === 'function') {
+        const u = getHrSubmissionFullFormViewUrl(moduleType, submissionId);
+        if (u) return u;
+      }
       return '/hr/print/' + encodeURIComponent(submissionId || '');
     }
 
@@ -569,18 +588,18 @@
         const countIds = [
           'tabCountPending',
           'tabCountApproved',
-          'tabCountAll',
+          'tabCountRevoked',
           'tabCountPendingHero',
           'tabCountApprovedHero',
-          'tabCountAllHero',
+          'tabCountRevokedHero',
         ];
         const values = [
           counts.pending || 0,
           counts.approved || 0,
-          counts.total || 0,
+          counts.revoked || 0,
           counts.pending || 0,
           counts.approved || 0,
-          counts.total || 0,
+          counts.revoked || 0,
         ];
         countIds.forEach((id, i) => {
           const el = document.getElementById(id);
@@ -590,26 +609,50 @@
         if (data.submissions && data.submissions.length > 0) {
           container.className = 'my-requests-list';
           container.innerHTML = data.submissions.map((s) => {
-            const href = hrFormHrefForSubmission(s.submission_id);
+            const href = hrFormHrefForSubmission(s.submission_id, s.module_type);
             const emp = (s.form_data && s.form_data.employee_name) ? escapeHtml(s.form_data.employee_name) : '';
+            const canRevoke = !!s.can_revoke_hr;
+            const isRevoked = String(s.workflow_status || '').toLowerCase() === 'withdrawn';
+            let actions = '<div class="request-card-actions"><a href="' + href + '">View</a>';
+            if (canRevoke) {
+              actions += '<button type="button" class="hr-btn-revoke" data-revoke-sid="' + escapeHtml(s.submission_id || '') + '" data-revoke-mod="' + escapeHtml(s.module_type || '') + '">Revoke</button>';
+            }
+            if (isRevoked && typeof getHrNewFormUrl === 'function') {
+              actions += '<a class="hr-btn-new" href="' + escapeHtml(getHrNewFormUrl(s.module_type, s.submission_id)) + '">Start new</a>';
+            }
+            actions += '</div>';
             return `
-            <a class="request-card" href="${href}" aria-label="Open submitted form ${escapeHtml(s.submission_id)}">
+            <div class="request-card">
               <div class="request-card-top">
                 <span class="form-type-badge ${getFormTypeClass(s.module_type)}">${getFormTypeLabel(s.module_type)}</span>
-                <span class="request-card-submitted">Submitted</span>
+                <span class="request-card-submitted">${isRevoked ? 'Revoked' : 'Submitted'}</span>
               </div>
               <h3 class="request-card-title">${escapeHtml(s.submission_id)}</h3>
               <p class="request-card-meta">${InjaazDateTimeUAE.formatDateMed(s.created_at)}${emp ? '<br>' + emp : ''}</p>
               <div class="request-card-status">${escapeHtml(getStatusLabel(s.workflow_status))}</div>
-            </a>`;
+              ${actions}
+            </div>`;
           }).join('');
+          container.querySelectorAll('[data-revoke-sid]').forEach((btn) => {
+            btn.addEventListener('click', (e) => {
+              e.preventDefault();
+              if (typeof openHrRevokeModal !== 'function') return;
+              openHrRevokeModal({
+                submissionId: btn.getAttribute('data-revoke-sid'),
+                moduleType: btn.getAttribute('data-revoke-mod'),
+                onSuccess: function () { loadRequests(); },
+              });
+            });
+          });
         } else {
           const emptyMsg =
             currentView === 'pending'
               ? 'No pending HR forms right now.'
               : currentView === 'approved'
                 ? 'No approved HR forms yet.'
-                : 'Use the forms above to submit your first HR request';
+                : currentView === 'revoked'
+                  ? 'No revoked HR forms yet.'
+                  : 'Use the forms above to submit your first HR request';
           container.className = 'my-requests-list';
           container.innerHTML = `
             <div class="request-card-empty">
@@ -661,13 +704,13 @@
         wrap.innerHTML = '<div style="background:#faf5ff;border:1px solid #e9d5ff;border-radius:14px;padding:1rem 1.1rem;"><div style="font-weight:700;color:#5b21b6;margin-bottom:0.55rem;font-size:.95rem">Your signature is required</div>' +
           d.submissions.map(s => {
             const sid = encodeURIComponent(s.submission_id);
-            return `<div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.65rem;margin-top:.55rem;padding-top:.55rem;border-top:1px solid #ede9fe"><div><strong>${escapeHtml(s.submitter_display||'Colleague')}</strong><span style="color:#64748b;margin-left:.4rem">${escapeHtml(s.submission_id)}</span><div style="font-size:.82rem;color:#64748b;margin-top:.2rem">${escapeHtml(getFormTypeLabel(s.module_type))}${s.pending_slot_label ? ' · ' + escapeHtml(s.pending_slot_label) : ''}</div></div><a href="/hr/replacement-sign/${sid}" style="flex-shrink:0;background:#d21725;color:#fff;text-decoration:none;padding:.45rem .85rem;border-radius:10px;font-weight:600;font-size:.82rem;">Open · Sign</a></div>`;
+            return `<div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.65rem;margin-top:.55rem;padding-top:.55rem;border-top:1px solid #ede9fe"><div><strong>${escapeHtml(s.submitter_display||'Colleague')}</strong><span style="color:#64748b;margin-left:.4rem">${escapeHtml(s.submission_id)}</span><div style="font-size:.82rem;color:#64748b;margin-top:.2rem">${escapeHtml(getFormTypeLabel(s.module_type))}${s.pending_slot_label ? ' · ' + escapeHtml(s.pending_slot_label) : ''}</div></div><a href="/hr/replacement-sign/${sid}" style="flex-shrink:0;background:#ff8e68;color:#fff;text-decoration:none;padding:.45rem .85rem;border-radius:10px;font-weight:600;font-size:.82rem;">Open · Sign</a></div>`;
           }).join('') + '</div>';
       } catch(e){ wrap.style.display='none'; }
     }
 
     applyFocusedListMode();
-    if (currentView !== 'pending' && currentView !== 'approved') {
+    if (currentView !== 'pending' && currentView !== 'approved' && currentView !== 'revoked') {
       loadReplacementBanner();
       loadMgmtChainBanner();
     }
