@@ -1266,22 +1266,60 @@ def _resolve_email_intake_reporter(from_email: str):
     return _email_intake_user()
 
 
-def _process_inbound_email_intake(intake: dict):
-    """Parse one normalized inbound email into a draft Ticket."""
-    message_id = (intake.get('message_id') or '').strip() or None
-    from_email = (intake.get('from_email') or '').strip().lower() or None
-    from_name = (intake.get('from_name') or '').strip() or None
-    to_email = (intake.get('to_email') or '').strip() or None
-    subject = (intake.get('subject') or '').strip()
+def _clip_str(value, limit):
+    """Truncate strings to DB column limits; leave None unchanged."""
+    if value is None:
+        return None
+    text = str(value)
+    return text if len(text) <= limit else text[:limit]
+
+
+def _inbound_message_already_processed(message_id: str) -> bool:
+    """True when this Message-Id already produced a ticket or a successful intake.
+
+    Failed ('error') rows must NOT count — otherwise a transient failure permanently
+    poisons the Message-Id and Mailjet retries (or later re-POSTs) are ignored.
+    """
+    if not message_id:
+        return False
+    if Ticket.query.filter_by(source_message_id=message_id).first():
+        return True
+    return TicketEmailIntake.query.filter(
+        TicketEmailIntake.message_id == message_id,
+        TicketEmailIntake.status.in_(('processed', 'duplicate')),
+    ).first() is not None
+
+
+def _process_inbound_email_intake(intake: dict) -> bool:
+    """Parse one normalized inbound email into a draft Ticket.
+
+    Returns True when the webhook should acknowledge success (draft created or
+    already-processed duplicate). Returns False on processing failure so the
+    provider can retry (non-200).
+    """
+    message_id = _clip_str((intake.get('message_id') or '').strip() or None, 255)
+    from_email = _clip_str((intake.get('from_email') or '').strip().lower() or None, 255)
+    from_name = _clip_str((intake.get('from_name') or '').strip() or None, 255)
+    to_email = _clip_str((intake.get('to_email') or '').strip() or None, 255)
+    subject = _clip_str((intake.get('subject') or '').strip(), 500) or ''
     body = (intake.get('body') or '').strip()
 
-    if message_id and TicketEmailIntake.query.filter_by(message_id=message_id).first():
+    if message_id and _inbound_message_already_processed(message_id):
         logger.info('Duplicate inbound email ignored (Message-Id=%s)', message_id)
-        return
+        try:
+            db.session.add(TicketEmailIntake(
+                from_email=from_email, from_name=from_name, to_email=to_email,
+                subject=subject or None, raw_body=body, message_id=message_id,
+                status='duplicate',
+            ))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+        return True
 
     intake_log = TicketEmailIntake(
         from_email=from_email, from_name=from_name, to_email=to_email,
-        subject=subject, raw_body=body, message_id=message_id, status='processed',
+        subject=subject or None, raw_body=body, message_id=message_id, status='processed',
     )
     db.session.add(intake_log)
 
@@ -1293,9 +1331,12 @@ def _process_inbound_email_intake(intake: dict):
         subj_fields = _parse_intake_subject(subject)
         body_fields = _parse_intake_body(body)
 
-        project = subj_fields.get('project') or ''
+        project = _clip_str(subj_fields.get('project') or '', 160) or ''
         proj_supervisor_id = _resolve_project_supervisor_id(project) if project else None
-        title = (subj_fields.get('title') or subject or 'New ticket from email').strip()[:255]
+        title = _clip_str(
+            (subj_fields.get('title') or subject or 'New ticket from email').strip(),
+            255,
+        )
 
         ticket = Ticket(
             ticket_id=_generate_ticket_id(),
@@ -1303,20 +1344,20 @@ def _process_inbound_email_intake(intake: dict):
             assigned_to_id=proj_supervisor_id,
             supervisor_id=proj_supervisor_id,
             title=title,
-            project=project or 'Unassigned',
+            project=_clip_str(project or 'Unassigned', 160),
             service_group='Unclassified',
-            category=subj_fields.get('category') or 'Unclassified',
+            category=_clip_str(subj_fields.get('category') or 'Unclassified', 120),
             fault_type='Unclassified',
             priority=subj_fields.get('priority') or 'medium',
             work_description=body_fields.get('description') or '(No description provided)',
-            property_name=body_fields.get('property_name'),
-            zone=body_fields.get('zone'),
-            base_unit=body_fields.get('base_unit'),
+            property_name=_clip_str(body_fields.get('property_name'), 160),
+            zone=_clip_str(body_fields.get('zone'), 120),
+            base_unit=_clip_str(body_fields.get('base_unit'), 120),
             status='draft',
             source='email',
             source_sender_email=from_email,
             source_sender_name=from_name,
-            source_subject=subject,
+            source_subject=subject or None,
             source_message_id=message_id,
         )
         db.session.add(ticket)
@@ -1363,16 +1404,22 @@ def _process_inbound_email_intake(intake: dict):
         intake_log.ticket_id = ticket.id
         _notify_new_draft_ticket(ticket)
         db.session.commit()
+        return True
     except Exception as exc:
         db.session.rollback()
-        err_log = TicketEmailIntake(
-            from_email=from_email, from_name=from_name, to_email=to_email,
-            subject=subject, raw_body=body, message_id=message_id,
-            status='error', error_message=str(exc)[:2000],
-        )
-        db.session.add(err_log)
-        db.session.commit()
+        try:
+            err_log = TicketEmailIntake(
+                from_email=from_email, from_name=from_name, to_email=to_email,
+                subject=subject or None, raw_body=body, message_id=message_id,
+                status='error', error_message=str(exc)[:2000],
+            )
+            db.session.add(err_log)
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            logger.error('Failed to persist inbound email error log', exc_info=True)
         logger.error('Inbound email processing failed: %s', exc, exc_info=True)
+        return False
 
 
 @ticketing_bp.route('/api/inbound-email/<secret_token>', methods=['POST'])
@@ -1391,10 +1438,14 @@ def inbound_email_webhook(secret_token):
 
     try:
         intake = _normalize_mailjet_parse_payload(payload)
-        _process_inbound_email_intake(intake)
+        ok = _process_inbound_email_intake(intake)
     except Exception:
         logger.error('Unhandled error processing inbound email', exc_info=True)
+        return jsonify({'success': False, 'error': 'Internal error'}), 500
 
+    if not ok:
+        # Non-200 so Mailjet retries. Error rows do not poison Message-Id de-dupe.
+        return jsonify({'success': False, 'error': 'Processing failed'}), 500
     return jsonify({'success': True}), 200
 
 
