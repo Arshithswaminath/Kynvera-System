@@ -91,11 +91,15 @@
           <!-- Pricing -->
           <div class="proc-form-section-label">Quantity &amp; Pricing</div>
           <div class="row g-3 mb-4">
-            <div class="col-md-4">
+            <div class="col-md-3">
               <label class="proc-form-label">Quantity <span class="req">*</span></label>
               <input type="number" class="proc-form-control" name="quantity" id="quantity" required min="0" step="0.01" value="1" oninput="calculateTotal()">
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
+              <label class="proc-form-label">Reorder Level</label>
+              <input type="number" class="proc-form-control" name="reorder_level" id="reorder_level" min="0" step="0.01" value="0" title="Alert when stock falls to this level">
+            </div>
+            <div class="col-md-3">
               <label class="proc-form-label">Unit</label>
               <select class="proc-form-select" name="unit" id="unitSelect" onchange="updatePreview()">
                 <option value="pcs">Pieces (pcs)</option>
@@ -109,7 +113,7 @@
                 <option value="bag">Bag</option>
               </select>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
               <label class="proc-form-label">Unit Price (AED) <span class="req">*</span></label>
               <div class="proc-input-with-prefix">
                 <span class="proc-input-prefix">AED</span>

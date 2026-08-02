@@ -3,30 +3,32 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
-  <title>Sales — Amaan Application</title>
+  <title>Sales — Kynvera</title>
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/bd-project-detail.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/signature_modal.css') }}">
   <style>
 :root {
   --radius:10px;
   --sidebar-w:260px;
-  --accent:#d21725;
-  --accent-2:#e8323f;
-  --sb-bg:#d21725;
+  --accent:#ff8e68;
+  --accent-2:#f97e54;
+  --sb-bg:#ff8e68;
   --dh-fs-sidebar:16px;
   --dh-fs-sidebar-label:12px;
-  --g900:#7a0e16; --g800:#d21725; --g700:#c81520; --g600:#d81c28; --g500:#e8323f;
+  --g900:#9a3609; --g800:#ff8e68; --g700:#e05f36; --g600:#f97e54; --g500:#f97e54;
   --g400:#4db87e; --g300:#86d4a8; --g200:#c0ecd4; --g100:#e4f7ed; --g50:#f2fbf6;
-  --white:#fff; --ink:#0c1f17; --ink2:#1e3a2e; --muted:#587569; --subtle:#8eada3;
-  --line:#e2ede8; --bg:#f5faf7; --card:#fff;
+  --white:#fff; --ink:#0c1f17; --ink2:#1e3a2e; --muted:#62626b; --subtle:#9a9aa1;
+  --line:#e7e7e8; --bg:#f5faf7; --card:#fff;
   --amber:#c97d0e; --amber-bg:#fef6e4; --rose:#c0392b; --rose-bg:#fdf0ee;
   --blue:#1a5fa8; --blue-bg:#e8f0fb; --violet:#6b3fa0; --violet-bg:#f3edfc;
   --r-xs:6px; --r-sm:10px; --r-md:14px; --r-lg:20px; --r-xl:28px;
-  --sh-xs:0 1px 3px rgba(210, 23, 37, .07); --sh-sm:0 2px 10px rgba(210, 23, 37, .09);
-  --sh-md:0 6px 24px rgba(210, 23, 37, .11); --sh-lg:0 16px 48px rgba(210, 23, 37, .14);
-  --sh-glow:0 0 0 3px rgba(210, 23, 37, .12);
+  --sh-xs:0 1px 3px rgba(255, 142, 104, .07); --sh-sm:0 2px 10px rgba(255, 142, 104, .09);
+  --sh-md:0 6px 24px rgba(255, 142, 104, .11); --sh-lg:0 16px 48px rgba(255, 142, 104, .14);
+  --sh-glow:0 0 0 3px rgba(255, 142, 104, .12);
 }
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
 html{scroll-behavior:smooth}
@@ -44,11 +46,12 @@ body.has-main-nav .nav.scrolled{box-shadow:none}
 @media(max-width:768px){body{--bf-nav-box:56px}}
 @media(max-width:600px){body{--bf-nav-box:64px}}
 
-.bf-shell{display:flex;min-height:calc(100vh - var(--bf-nav-top))}
+/* Stretch shell like Finance/DocHub so the red sidebar matches main content height */
+.bf-shell{display:flex;align-items:stretch;min-height:calc(100vh - var(--bf-nav-top))}
 
-/* Sidebar: layout + admin nav offset; visual tokens match DocHub (dochub-page.css .dh-sidebar, .sb-*) */
+/* Sidebar: stretch with content (same as .dh-sidebar in dochub-page.css) — not viewport-locked sticky */
 .bf-sidebar.dh-sidebar{
-  position:sticky;top:var(--bf-nav-top);height:calc(100vh - var(--bf-nav-top));z-index:40;flex-shrink:0;overflow:hidden;
+  position:relative;align-self:stretch;height:auto;min-height:calc(100vh - var(--bf-nav-top));z-index:40;flex-shrink:0;overflow:hidden;
 }
 
 .bf-main{flex:1;display:flex;flex-direction:column;min-height:calc(100vh - var(--bf-nav-top));min-width:0}
@@ -57,13 +60,14 @@ body.has-main-nav .nav.scrolled{box-shadow:none}
 .bf-topbar-title{font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;font-size:20px;font-weight:700;color:var(--ink);letter-spacing:-.3px}
 .bf-topbar-title span{color:var(--subtle);font-style:italic;font-size:16px;margin-right:6px}
 .bf-topbar-space{flex:1}
-.bf-tb-search{position:relative;display:flex;align-items:center}
-.bf-tb-search input{padding:8px 14px 8px 36px;border:1.5px solid var(--line);border-radius:var(--r-sm);font-family:inherit;font-size:14px;color:var(--ink);background:var(--bg);width:220px;outline:none;transition:all .18s}
-.bf-tb-search input:focus{border-color:var(--g800);background:#fff;width:260px;box-shadow:var(--sh-glow)}
-.bf-tb-search .si{position:absolute;left:11px;color:var(--subtle);font-size:14px;pointer-events:none}
-.bf-tb-cta{display:flex;align-items:center;gap:8px;padding:9px 18px;background:var(--g800);color:#fff;border:none;border-radius:var(--r-sm);font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;transition:background .18s;box-shadow:none!important;filter:none;-webkit-appearance:none;appearance:none}
+.bf-tb-cta{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:9px 18px;background:var(--g800);color:#fff;border:none;border-radius:var(--r-sm);font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;transition:background .18s,border-color .18s,color .18s;box-shadow:none!important;filter:none;-webkit-appearance:none;appearance:none;line-height:1;white-space:nowrap}
 .bf-tb-cta:hover,.bf-tb-cta:focus,.bf-tb-cta:active{background:var(--g700);transform:none;box-shadow:none!important;filter:none}
 .bf-card-hd-actions .bf-tb-cta{box-shadow:none!important;filter:none}
+.bf-tb-cta.sm{padding:8px 14px;font-size:12.5px;gap:6px;min-height:34px}
+.bf-tb-cta.ghost{background:#fff;color:var(--ink2);border:1.5px solid var(--line)}
+.bf-tb-cta.ghost:hover,.bf-tb-cta.ghost:focus,.bf-tb-cta.ghost:active{background:var(--bg);border-color:var(--g300);color:var(--g800)}
+.bf-tb-cta .bf-ico{display:inline-flex;width:14px;height:14px;flex-shrink:0;align-items:center;justify-content:center}
+.bf-tb-cta .bf-ico svg{width:100%;height:100%;display:block}
 
 .bf-view-tabs{background:#fff;border-bottom:1.5px solid var(--line);padding:0 32px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
 .bf-view-tabs-inner{display:flex;align-items:center;gap:2px;flex-wrap:wrap}
@@ -79,11 +83,11 @@ body.has-main-nav .nav.scrolled{box-shadow:none}
 .bf-view-section{display:none}
 .bf-view-section.active{display:block}
 
-.bf-kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:10px}
-@media(max-width:1200px){.bf-kpi-row{grid-template-columns:repeat(3,1fr)}}
+.bf-kpi-row{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin-bottom:10px}
+@media(max-width:1280px){.bf-kpi-row{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:700px){.bf-kpi-row{grid-template-columns:1fr}}
 
-.bf-kpi-card{background:#fff;border-radius:var(--r-sm);border:1.5px solid var(--line);padding:10px 12px;box-shadow:none;transition:border-color .18s;animation:none;cursor:default;position:relative;overflow:hidden}
+.bf-kpi-card{background:#fff;border-radius:var(--r-sm);border:1.5px solid var(--line);padding:10px 10px;box-shadow:none;transition:border-color .18s;animation:none;cursor:default;position:relative;overflow:hidden;min-width:0}
 .bf-kpi-card:hover{transform:none;box-shadow:none;border-color:var(--g300)}
 .bf-kpi-card::after{content:'';position:absolute;top:-18px;right:-18px;width:48px;height:48px;border-radius:50%;opacity:.06}
 .bf-kpi-card.c1::after{background:var(--g800)}
@@ -91,10 +95,10 @@ body.has-main-nav .nav.scrolled{box-shadow:none}
 .bf-kpi-card.c3::after{background:var(--blue)}
 .bf-kpi-card.c4::after{background:var(--g500)}
 .bf-kpi-card.c5::after{background:var(--rose)}
-.bf-kpi-label{font-size:10.5px;font-weight:600;color:var(--subtle);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
-.bf-kpi-val{font-size:20px;font-weight:800;color:var(--ink);letter-spacing:-.5px;line-height:1.1;margin-bottom:4px}
-.bf-kpi-val.serif{font-family:inherit;font-size:20px;font-weight:800}
-.bf-kpi-trend{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;padding:2px 6px;border-radius:20px}
+.bf-kpi-label{font-size:10px;font-weight:600;color:var(--subtle);text-transform:uppercase;letter-spacing:.35px;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bf-kpi-val{font-size:18px;font-weight:800;color:var(--ink);letter-spacing:-.5px;line-height:1.1;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bf-kpi-val.serif{font-family:inherit;font-size:18px;font-weight:800}
+.bf-kpi-trend{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;padding:2px 6px;border-radius:20px;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bf-kpi-trend.up{background:var(--g100);color:var(--g800)}
 .bf-kpi-trend.dn{background:var(--rose-bg);color:var(--rose)}
 .bf-kpi-trend.neu{background:var(--bg);color:var(--muted)}
@@ -141,7 +145,7 @@ body.has-main-nav .nav.scrolled{box-shadow:none}
 .bf-winrate-progress{min-width:0}
 .bf-winrate-label{font-size:11px;color:var(--muted);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
 .bf-winrate-bar{height:10px;background:var(--line);border-radius:999px;overflow:hidden;position:relative}
-.bf-winrate-fill{height:100%;width:0;background:linear-gradient(90deg,#d21725,#e8323f);border-radius:999px;transition:width .55s ease}
+.bf-winrate-fill{height:100%;width:0;background:linear-gradient(90deg,#ff8e68,#f97e54);border-radius:999px;transition:width .55s ease}
 .bf-winrate-pct{margin-top:6px;font-size:22px;font-weight:800;color:var(--g800);line-height:1}
 .bf-winrate-pulse{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;min-width:0}
 .bf-pulse-tile{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 10px 9px;min-width:0}
@@ -189,31 +193,51 @@ body.has-main-nav .nav.scrolled{box-shadow:none}
 .bf-fu-date.soon{background:var(--g100);color:var(--g800)}
 .bf-fu-date.later{background:var(--bg);color:var(--subtle)}
 
-.bf-proj-table{width:100%;border-collapse:collapse}
-.bf-proj-table th{padding:9px 16px;font-size:11.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--subtle);background:var(--bg);border-bottom:1.5px solid var(--line);text-align:left}
-.bf-proj-table td{padding:13px 16px;font-size:14px;border-bottom:1px solid var(--g50);vertical-align:middle}
+.bf-proj-table{width:100%;border-collapse:collapse;table-layout:fixed}
+.bf-proj-table th{padding:10px 12px;font-size:11px;font-weight:700;letter-spacing:.45px;text-transform:uppercase;color:var(--muted);background:var(--bg);border-bottom:1.5px solid var(--line);text-align:left;white-space:nowrap;vertical-align:middle}
+.bf-proj-table td{padding:12px;font-size:13.5px;border-bottom:1px solid var(--g50);vertical-align:middle;line-height:1.3}
 .bf-proj-table tbody tr{cursor:pointer;transition:background .12s}
 .bf-proj-table tbody tr:hover{background:var(--g50)}
 .bf-proj-table tbody tr:last-child td{border-bottom:none}
-.bf-proj-name-cell{display:flex;align-items:center;gap:10px}
+
+/* Projects table: consistent column widths + header/cell alignment */
+#bfProjectsTable th:nth-child(1),#bfProjectsTable td:nth-child(1){width:26%;min-width:180px}
+#bfProjectsTable th:nth-child(2),#bfProjectsTable td:nth-child(2){width:12%}
+#bfProjectsTable th:nth-child(3),#bfProjectsTable td:nth-child(3){width:9%;text-align:center}
+#bfProjectsTable th:nth-child(4),#bfProjectsTable td:nth-child(4){width:10%;text-align:right}
+#bfProjectsTable th:nth-child(5),#bfProjectsTable td:nth-child(5){width:12%}
+#bfProjectsTable th:nth-child(6),#bfProjectsTable td:nth-child(6){width:13%}
+#bfProjectsTable th:nth-child(7),#bfProjectsTable td:nth-child(7){width:18%}
+
+.bf-proj-name-cell{display:flex;align-items:center;gap:10px;min-width:0}
 .bf-proj-avatar{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
-.bf-proj-n{font-size:14.5px;font-weight:600;color:var(--ink)}
-.bf-proj-co{font-size:12px;color:var(--subtle);margin-top:2px}
-.bf-status-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:12.5px;font-weight:600}
-.bf-status-badge::before{content:'';width:6px;height:6px;border-radius:50%;flex-shrink:0}
-.bf-sb-active{background:var(--g100);color:var(--g800)}
+.bf-proj-name-meta{min-width:0;flex:1}
+.bf-proj-n{font-size:14px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bf-proj-co{font-size:12px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bf-status-badge{display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:600;line-height:1.2;white-space:nowrap;max-width:100%}
+.bf-status-badge::before{content:'';width:6px;height:6px;border-radius:50%;flex-shrink:0;background:currentColor;opacity:.85}
+.bf-sb-active{background:#e7f7ee;color:#16794a}
 .bf-sb-prospect{background:var(--blue-bg);color:var(--blue)}
 .bf-sb-proposal{background:var(--amber-bg);color:var(--amber)}
-.bf-sb-won{background:var(--g100);color:var(--g700)}
+.bf-sb-under_renewal{background:var(--violet-bg);color:var(--violet)}
+.bf-sb-won{background:#e7f7ee;color:#16794a}
 .bf-sb-lost{background:var(--rose-bg);color:var(--rose)}
-.bf-priority-tag{display:inline-flex;padding:3px 8px;border-radius:5px;font-size:12px;font-weight:700;border:1.5px solid transparent}
-.bf-pr-high{background:var(--rose-bg);color:var(--rose);border-color:#f5c0bb}
+.bf-priority-tag{display:inline-flex;align-items:center;justify-content:center;min-width:42px;padding:3px 8px;border-radius:6px;font-size:11.5px;font-weight:700;letter-spacing:.02em;border:1.5px solid transparent;line-height:1.2}
+.bf-pr-high{background:var(--rose-bg);color:var(--rose);border-color:#f5c9bb}
 .bf-pr-med{background:var(--amber-bg);color:var(--amber);border-color:#f5d8a3}
-.bf-pr-low{background:var(--g100);color:var(--g700);border-color:var(--g200)}
-.bf-value-tag{font-family:ui-monospace,monospace;font-size:13px;font-weight:500;color:var(--ink2)}
-.bf-pm-label{display:flex;justify-content:space-between;font-size:11px;font-weight:600;color:var(--muted);margin-bottom:4px}
-.bf-pm-bar{height:5px;background:var(--line);border-radius:3px;overflow:hidden}
-.bf-pm-fill{height:100%;border-radius:3px;background:var(--g800)}
+.bf-pr-low{background:var(--g100);color:#16794a;border-color:var(--g200)}
+.bf-value-tag{display:inline-block;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;font-weight:600;color:var(--ink2);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.bf-pm-cell{display:flex;flex-direction:column;justify-content:center;gap:5px;min-width:0;width:100%}
+.bf-pm-label{display:flex;align-items:center;font-size:11.5px;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums;line-height:1}
+.bf-pm-bar{height:6px;background:var(--line);border-radius:999px;overflow:hidden;width:100%}
+.bf-pm-fill{height:100%;border-radius:999px;background:var(--g800);min-width:0}
+.bf-owner-cell{font-size:13px;font-weight:600;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bf-next-cell{min-width:0}
+.bf-next-main{font-size:12.5px;color:var(--ink2);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bf-next-date{font-size:11px;color:var(--muted);font-weight:600;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media(max-width:900px){
+  #bfProjectsTable{min-width:860px}
+}
 
 .bf-contacts-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;padding:16px 18px 18px}
 @media(max-width:900px){.bf-contacts-grid{grid-template-columns:1fr 1fr}}
@@ -285,6 +309,7 @@ body.has-main-nav .nav.scrolled{box-shadow:none}
 .bf-kpi-card:nth-child(3){animation-delay:.12s}
 .bf-kpi-card:nth-child(4){animation-delay:.16s}
 .bf-kpi-card:nth-child(5){animation-delay:.2s}
+.bf-kpi-card:nth-child(6){animation-delay:.24s}
 
 @media(max-width:900px){.bf-sidebar{display:none}.bf-main{margin-left:0}}
 @media(max-width:768px){
@@ -305,7 +330,7 @@ body.has-main-nav .nav.scrolled{box-shadow:none}
   .bf-field-grid.trio{grid-template-columns:1fr}
   .bf-fld input,.bf-fld select,.bf-fld textarea{
     font-size:16px;padding:0.65rem 0.875rem;min-height:44px;
-    border:1.5px solid rgba(210, 23, 37, 0.2);border-radius:10px
+    border:1.5px solid rgba(255, 142, 104, 0.2);border-radius:10px
   }
   .bf-fld label{font-size:12px;margin-bottom:4px}
   .bf-modal-body{padding:1rem}
@@ -372,14 +397,11 @@ body.has-main-nav .nav.scrolled{box-shadow:none}
           <div class="bf-view-tab" data-view="contacts" onclick="bfSwitchView('contacts',this)">Contacts</div>
           <div class="bf-view-tab" data-view="prospects" onclick="bfSwitchView('prospects',this)">Prospects</div>
           <div class="bf-view-tab" data-view="proposals" onclick="bfSwitchView('proposals',this)">Proposals</div>
+          <div class="bf-view-tab" data-view="quotations" onclick="bfSwitchView('quotations',this)">Quotations</div>
           <div class="bf-view-tab" data-view="activities" onclick="bfSwitchView('activities',this)">Activities</div>
           <div class="bf-view-tab" data-view="analytics" onclick="bfSwitchView('analytics',this)">Analytics</div>
         </div>
         <div class="bf-view-tabs-actions">
-          <div class="bf-tb-search">
-            <span class="si">🔍</span>
-            <input type="text" placeholder="Search projects, contacts, deals…">
-          </div>
           <button type="button" class="bf-tb-cta" onclick="bfOpenModal()">＋ New Project</button>
         </div>
       </div>
@@ -392,6 +414,13 @@ body.has-main-nav .nav.scrolled{box-shadow:none}
             <div class="bf-kpi-card c3"><div class="bf-kpi-label">Win Rate</div><div class="bf-kpi-val" id="bfKpiWinRate">0<span style="font-size:16px;font-weight:500">%</span></div><span class="bf-kpi-trend up">Live</span></div>
             <div class="bf-kpi-card c4"><div class="bf-kpi-label">Avg. Deal Size</div><div class="bf-kpi-val serif" id="bfKpiAvgDeal">$0</div><span class="bf-kpi-trend neu">Live</span></div>
             <div class="bf-kpi-card c5"><div class="bf-kpi-label">Overdue Follow-ups</div><div class="bf-kpi-val" style="color:var(--rose)" id="bfKpiOverdue">0</div><span class="bf-kpi-trend dn">Live</span></div>
+            <div class="bf-kpi-card c2"><div class="bf-kpi-label">My Outstanding</div><div class="bf-kpi-val serif" id="bfKpiOutstanding">$0</div><span class="bf-kpi-trend neu">Issued unpaid</span></div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px;padding:0 2px;">
+            <button type="button" class="bf-pill-tab active" data-bd-view="all" onclick="bfSetScopeView('all',this)">All</button>
+            <button type="button" class="bf-pill-tab" data-bd-view="active" onclick="bfSetScopeView('active',this)">Active</button>
+            <button type="button" class="bf-pill-tab" data-bd-view="lost" onclick="bfSetScopeView('lost',this)">Lost</button>
+            <button type="button" class="bf-pill-tab" data-bd-view="renewal" onclick="bfSetScopeView('renewal',this)">Under Renewal</button>
           </div>
           <div class="bf-dash-grid">
             <div class="bf-dash-main">
@@ -401,8 +430,8 @@ body.has-main-nav .nav.scrolled{box-shadow:none}
                   <div class="bf-stage-row"><div class="bf-stage-label"><div class="bf-stage-dot" style="background:#1a5fa8"></div>Prospecting</div><div class="bf-stage-bar-wrap"><div class="bf-stage-bar-fill" style="width:0;background:linear-gradient(90deg,#1a5fa8,#2e80d8)" id="bfSb1"><span class="bf-stage-bar-label"></span></div></div><div class="bf-stage-count">0</div><div class="bf-stage-val">$0</div></div>
                   <div class="bf-stage-row"><div class="bf-stage-label"><div class="bf-stage-dot" style="background:#6b3fa0"></div>Qualifying</div><div class="bf-stage-bar-wrap"><div class="bf-stage-bar-fill" style="width:0;background:linear-gradient(90deg,#6b3fa0,#8b5dc0)" id="bfSb2"><span class="bf-stage-bar-label"></span></div></div><div class="bf-stage-count">0</div><div class="bf-stage-val">$0</div></div>
                   <div class="bf-stage-row"><div class="bf-stage-label"><div class="bf-stage-dot" style="background:#c97d0e"></div>Proposal</div><div class="bf-stage-bar-wrap"><div class="bf-stage-bar-fill" style="width:0;background:linear-gradient(90deg,#c97d0e,#f0a030)" id="bfSb3"><span class="bf-stage-bar-label"></span></div></div><div class="bf-stage-count">0</div><div class="bf-stage-val">$0</div></div>
-                  <div class="bf-stage-row"><div class="bf-stage-label"><div class="bf-stage-dot" style="background:#d21725"></div>Negotiation</div><div class="bf-stage-bar-wrap"><div class="bf-stage-bar-fill" style="width:0;background:linear-gradient(90deg,#d21725,#d81c28)" id="bfSb4"><span class="bf-stage-bar-label"></span></div></div><div class="bf-stage-count">0</div><div class="bf-stage-val">$0</div></div>
-                  <div class="bf-stage-row"><div class="bf-stage-label"><div class="bf-stage-dot" style="background:#e8323f"></div>Closing</div><div class="bf-stage-bar-wrap"><div class="bf-stage-bar-fill" style="width:0;background:linear-gradient(90deg,#e8323f,#40c87d)" id="bfSb5"><span class="bf-stage-bar-label"></span></div></div><div class="bf-stage-count">0</div><div class="bf-stage-val">$0</div></div>
+                  <div class="bf-stage-row"><div class="bf-stage-label"><div class="bf-stage-dot" style="background:#ff8e68"></div>Negotiation</div><div class="bf-stage-bar-wrap"><div class="bf-stage-bar-fill" style="width:0;background:linear-gradient(90deg,#ff8e68,#f97e54)" id="bfSb4"><span class="bf-stage-bar-label"></span></div></div><div class="bf-stage-count">0</div><div class="bf-stage-val">$0</div></div>
+                  <div class="bf-stage-row"><div class="bf-stage-label"><div class="bf-stage-dot" style="background:#f97e54"></div>Closing</div><div class="bf-stage-bar-wrap"><div class="bf-stage-bar-fill" style="width:0;background:linear-gradient(90deg,#f97e54,#40c87d)" id="bfSb5"><span class="bf-stage-bar-label"></span></div></div><div class="bf-stage-count">0</div><div class="bf-stage-val">$0</div></div>
                   <div class="bf-winrate-wrap">
                     <div class="bf-winrate-progress">
                       <div class="bf-winrate-label">Win rate</div>
@@ -490,9 +519,13 @@ body.has-main-nav .nav.scrolled{box-shadow:none}
         </div>
 
         <div class="bf-view-section" id="bf-v-projects">
-          <div class="bf-card"><div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">Active Projects</div><div class="bf-card-hd-sub" id="bfProjectsSub">0 projects · $0 total value</div></div><div class="bf-card-hd-actions"><input type="file" id="bfProjectExcelInput" accept=".xlsx,.xls" style="display:none" onchange="bfImportProjectsFromExcel(this)"><button type="button" class="bf-tb-cta" style="font-size:12px;padding:7px 14px;background:#fff;color:var(--g800);border:1.5px solid var(--g300)" onclick="document.getElementById('bfProjectExcelInput').click()">⭳ Import Excel</button><button type="button" class="bf-tb-cta" style="font-size:12px;padding:7px 14px" onclick="bfOpenModal()">＋ Add</button></div></div>
+          <div class="bf-card"><div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">Active Projects</div><div class="bf-card-hd-sub" id="bfProjectsSub">0 projects · $0 total value</div></div><div class="bf-card-hd-actions"><input type="file" id="bfProjectExcelInput" accept=".xlsx,.xls" style="display:none" onchange="bfImportProjectsFromExcel(this)"><button type="button" class="bf-tb-cta sm ghost" onclick="document.getElementById('bfProjectExcelInput').click()" title="Import projects from Excel"><span class="bf-ico" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 2.5v7.2M5.4 7.1 8 9.7l2.6-2.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 11.2V12a1.5 1.5 0 0 0 1.5 1.5h7A1.5 1.5 0 0 0 13 12v-.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>Import</button><button type="button" class="bf-tb-cta sm" onclick="bfOpenModal()" title="Add project"><span class="bf-ico" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 3.2v9.6M3.2 8h9.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>Add</button></div></div>
             <div style="overflow-x:auto"><table class="bf-proj-table" id="bfProjectsTable"><thead><tr><th>Project</th><th>Status</th><th>Priority</th><th>Value</th><th>Progress</th><th>Owner</th><th>Next Action</th></tr></thead><tbody id="bfProjTbody"></tbody></table></div>
           </div>
+        </div>
+
+        <div class="bf-view-section" id="bf-v-project-detail">
+          {% include 'partials/bd_project_workspace.html' %}
         </div>
 
         <div class="bf-view-section" id="bf-v-pipeline"><div class="bf-card"><div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">Deal Pipeline</div><div class="bf-card-hd-sub">Grouped by stage with values and counts</div></div><div class="bf-card-hd-actions"><button type="button" class="bf-tb-cta" style="font-size:12px;padding:7px 14px" onclick="bfOpenModal()">＋ New Deal</button></div></div><div style="overflow-x:auto"><table class="bf-proj-table"><thead><tr><th>Stage</th><th>Deals</th><th>Total Value</th><th>Share</th></tr></thead><tbody id="bfPipelineTbody"></tbody></table></div></div></div>
@@ -507,6 +540,8 @@ body.has-main-nav .nav.scrolled{box-shadow:none}
 
         <div class="bf-view-section" id="bf-v-proposals"><div class="bf-card"><div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">Proposals</div><div class="bf-card-hd-sub">In-progress proposal and negotiation deals</div></div></div><div style="overflow-x:auto"><table class="bf-proj-table"><thead><tr><th>Project</th><th>Stage</th><th>Priority</th><th>Value</th><th>Progress</th></tr></thead><tbody id="bfProposalsTbody"></tbody></table></div></div></div>
 
+        <div class="bf-view-section" id="bf-v-quotations"><div class="bf-card"><div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">Quotations</div><div class="bf-card-hd-sub">Each quote is created from a project · submit for e-sign approval, attach LPO</div></div><div class="bf-card-hd-actions"><button type="button" class="bf-tb-cta" style="font-size:12px;padding:7px 14px;background:#fff;color:var(--g800);border:1.5px solid var(--g300)" onclick="bfGoCreateQuoteFromProjects()">Create from Projects →</button></div></div><div style="overflow-x:auto"><table class="bf-proj-table"><thead><tr><th>Quote #</th><th>Project</th><th>Company</th><th>Status</th><th>Total</th><th>Actions</th></tr></thead><tbody id="bfQuotesTbody"></tbody></table></div></div></div>
+
         <div class="bf-view-section" id="bf-v-analytics"><div class="bf-card"><div class="bf-card-hd"><div class="bf-card-hd-info"><div class="bf-card-hd-title">Analytics</div><div class="bf-card-hd-sub">BD intelligence &amp; insights</div></div></div><div id="bfAnalyticsBody" style="padding:22px;color:var(--ink2)"></div></div></div>
       </div>
     </div>
@@ -518,33 +553,115 @@ body.has-main-nav .nav.scrolled{box-shadow:none}
       <div class="bf-modal-body">
         <div class="bf-field-grid"><div class="bf-fld"><label>Project Name</label><input id="bfFldName" placeholder="e.g. Nexus Corp — Platform Deal"></div><div class="bf-fld"><label>Company</label><input id="bfFldCompany" placeholder="Client company name"></div></div>
         <div class="bf-field-grid trio"><div class="bf-fld"><label>Value (USD)</label><input id="bfFldValue" type="number" min="0" step="1" placeholder="e.g. 250000"></div><div class="bf-fld"><label>Stage</label><select id="bfFldStage"><option value="prospecting">Prospecting</option><option value="qualifying">Qualifying</option><option value="proposal">Proposal</option><option value="negotiation">Negotiation</option><option value="closing">Closing</option></select></div><div class="bf-fld"><label>Priority</label><select id="bfFldPriority"><option value="high">High</option><option value="med" selected>Medium</option><option value="low">Low</option></select></div></div>
-        <div class="bf-field-grid trio"><div class="bf-fld"><label>Status</label><select id="bfFldStatus"><option value="active" selected>Active</option><option value="prospect">Prospect</option><option value="proposal">Proposal</option><option value="won">Won</option><option value="lost">Lost</option></select></div><div class="bf-fld"><label>Progress (%)</label><input id="bfFldProgress" type="number" min="0" max="100" step="1" placeholder="0-100"></div><div class="bf-fld"><label>Next Action</label><input id="bfFldNextAction" placeholder="e.g. Contract review"></div></div>
-        <div class="bf-field-grid"><div class="bf-fld"><label>Owner</label><input id="bfFldOwner" placeholder="Assigned team member"></div><div class="bf-fld"><label>Expected Close</label><input id="bfFldCloseDate" type="date"></div></div>
+        <div class="bf-field-grid trio"><div class="bf-fld"><label>Status</label><select id="bfFldStatus"><option value="active" selected>Active</option><option value="prospect">Prospect</option><option value="proposal">Proposal</option><option value="under_renewal">Under Renewal</option><option value="won">Won</option><option value="lost">Lost</option></select></div><div class="bf-fld"><label>Progress (%)</label><input id="bfFldProgress" type="number" min="0" max="100" step="1" placeholder="0-100"></div><div class="bf-fld"><label>Next Action</label><input id="bfFldNextAction" placeholder="e.g. Contract review"></div></div>
+        <div class="bf-field-grid"><div class="bf-fld"><label>Owner</label><select id="bfFldOwnerUser"><option value="">Me (default)</option></select><input id="bfFldOwner" placeholder="Display name (optional)" style="margin-top:6px"></div><div class="bf-fld"><label>Expected Close</label><input id="bfFldCloseDate" type="date"></div></div>
         <div class="bf-section-divider">Contact</div>
         <div class="bf-field-grid"><div class="bf-fld"><label>Primary Contact</label><input id="bfFldContactName" placeholder="Contact full name"></div><div class="bf-fld"><label>Contact Email</label><input id="bfFldContactEmail" placeholder="email@company.com"></div></div>
         <div class="bf-section-divider">Details</div>
         <div class="bf-field-grid solo"><div class="bf-fld"><label>Notes / Description</label><textarea id="bfFldNotes" rows="3" placeholder="Key details, requirements, context…"></textarea></div></div>
       </div>
-      <div class="bf-modal-foot"><button type="button" class="bf-btn-cancel" onclick="bfCloseModal()">Cancel</button><button type="button" class="bf-btn-primary" id="bfProjectSaveBtn" onclick="bfSaveProject()">Save Project</button></div>
+      <div class="bf-modal-foot">
+        <button type="button" class="bf-btn-cancel" onclick="bfCloseModal()">Cancel</button>
+        <button type="button" class="bf-btn-primary" id="bfProjectSaveBtn" onclick="bfSaveProject()">Save Project</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="bf-modal-veil" id="bfQuoteModal" onclick="if(event.target===this)bfCloseQuoteModal()">
+    <div class="bf-modal-box" onclick="event.stopPropagation()" style="width:min(520px,96vw)">
+      <div class="bf-modal-head">
+        <div class="bf-modal-head-ico">📄</div>
+        <div>
+          <div class="bf-modal-head-title" id="bfQuoteModalTitle">New Quotation</div>
+          <div class="bf-modal-head-sub" id="bfQuoteModalSub">Open the project workspace for the full quotation editor</div>
+        </div>
+        <div class="bf-modal-close" onclick="bfCloseQuoteModal()">✕</div>
+      </div>
+      <div class="bf-modal-body">
+        <input type="hidden" id="bfQuoteProjectId" value="">
+        <p style="margin:0 0 12px;font-size:13px;color:var(--muted);line-height:1.45">Quotations use the client letter format (multi-line items, NOTE / EXCLUSION / TERMS, stamp &amp; e-signatures). Create and edit them inside the project workspace.</p>
+        <div class="bf-field-grid"><div class="bf-fld"><label>Project</label><input id="bfQuoteProjectName" readonly></div><div class="bf-fld"><label>Company</label><input id="bfQuoteCompany" readonly></div></div>
+      </div>
+      <div class="bf-modal-foot">
+        <button type="button" class="bf-btn-cancel" onclick="bfCloseQuoteModal()">Cancel</button>
+        <button type="button" class="bf-btn-primary" id="bfQuoteSaveBtn" onclick="bfOpenQuoteInWorkspace()">Open quotation editor</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="bf-modal-veil" id="bfContactModal" onclick="if(event.target===this)bfCloseContactModal()">
+    <div class="bf-modal-box" onclick="event.stopPropagation()">
+      <div class="bf-modal-head">
+        <div class="bf-modal-head-ico">👤</div>
+        <div>
+          <div class="bf-modal-head-title">Add Contact</div>
+          <div class="bf-modal-head-sub">Save a person to your BD contacts</div>
+        </div>
+        <div class="bf-modal-close" onclick="bfCloseContactModal()">✕</div>
+      </div>
+      <div class="bf-modal-body">
+        <div class="bf-field-grid"><div class="bf-fld"><label>Contact name</label><input id="bfContactName" placeholder="Full name"></div><div class="bf-fld"><label>Company</label><input id="bfContactCompany" placeholder="Company (optional)"></div></div>
+        <div class="bf-field-grid"><div class="bf-fld"><label>Title</label><input id="bfContactTitle" placeholder="Job title (optional)"></div><div class="bf-fld"><label>Email</label><input id="bfContactEmail" type="email" placeholder="email@company.com"></div></div>
+      </div>
+      <div class="bf-modal-foot">
+        <button type="button" class="bf-btn-cancel" onclick="bfCloseContactModal()">Cancel</button>
+        <button type="button" class="bf-btn-primary" onclick="bfSaveContact()">Save Contact</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="bf-modal-veil" id="bfFollowupModal" onclick="if(event.target===this)bfCloseFollowupModal()">
+    <div class="bf-modal-box" onclick="event.stopPropagation()">
+      <div class="bf-modal-head">
+        <div class="bf-modal-head-ico">🗓️</div>
+        <div>
+          <div class="bf-modal-head-title">Add Follow-up</div>
+          <div class="bf-modal-head-sub">Schedule a reminder for your pipeline</div>
+        </div>
+        <div class="bf-modal-close" onclick="bfCloseFollowupModal()">✕</div>
+      </div>
+      <div class="bf-modal-body">
+        <div class="bf-field-grid solo"><div class="bf-fld"><label>Follow-up title</label><input id="bfFollowupTitle" placeholder="e.g. Send revised proposal"></div></div>
+        <div class="bf-field-grid"><div class="bf-fld"><label>Company</label><input id="bfFollowupCompany" placeholder="Company (optional)"></div><div class="bf-fld"><label>Due date</label><input id="bfFollowupDue" type="date"></div></div>
+      </div>
+      <div class="bf-modal-foot">
+        <button type="button" class="bf-btn-cancel" onclick="bfCloseFollowupModal()">Cancel</button>
+        <button type="button" class="bf-btn-primary" onclick="bfSaveFollowup()">Save Follow-up</button>
+      </div>
     </div>
   </div>
 
   <div id="bf-toast"></div>
+  {% include 'partials/bd_project_workspace_modals.html' %}
+  {% include 'partials/signature_modal.html' %}
 
+  <script src="{{ url_for('static', filename='signature_pad.umd.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/signature_modal.js') }}"></script>
   <script src="{{ url_for('static', filename='api-client.js') }}"></script>
   <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/bd-project-detail.js') }}"></script>
   <script>
 (function(){
 let projects = [];
 let followups = [];
 let contacts = [];
 let activityLog = [];
-let bdStats = { total_pipeline: 0, active_deals: 0, win_rate: 0, avg_deal_size: 0, overdue_followups: 0, stage_stats: [] };
+let quotations = [];
+let bdOwners = [];
+let bdScopeView = 'all';
+let bdStats = { total_pipeline: 0, active_deals: 0, win_rate: 0, avg_deal_size: 0, overdue_followups: 0, stage_stats: [], my_outstanding: 0 };
 let pipelineDisplayMode = 'value';
 let editingProjectId = null;
 
 function esc(t){if(t===null||t===undefined)return'';const d=document.createElement('div');d.textContent=String(t);return d.innerHTML}
 function money(n){const v=Number(n||0);return '$'+v.toLocaleString(undefined,{maximumFractionDigits:0})}
+function statusSlug(s){return String(s||'active').toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'')}
+function statusLabel(s){
+  const raw=String(s||'active').trim();
+  if(!raw) return 'Active';
+  return raw.replace(/[_-]+/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+}
+function prioritySlug(p){return p==='high'?'high':p==='low'?'low':'med'}
 function authHeaders(){const token=localStorage.getItem('access_token');return{'Content-Type':'application/json','Authorization':'Bearer '+token}}
 
 async function apiGet(url){
@@ -592,12 +709,70 @@ function getPipelineMetric(item){
   return Number(item?.value||0);
 }
 
+function bfCloseProjectDetail(){
+  try{
+    const url=new URL(window.location.href);
+    url.searchParams.delete('project');
+    url.hash='';
+    history.replaceState(null,'',url.pathname+url.search);
+  }catch(_){}
+  const tab=document.querySelector('.bf-view-tab[data-view="projects"]');
+  const nav=document.querySelector('.bf-sidebar .sb-nav-item[data-view="projects"]');
+  if(nav){
+    document.querySelectorAll('.bf-sidebar .sb-nav-item[data-view]').forEach(n=>n.classList.remove('active'));
+    nav.classList.add('active');
+  }
+  bfSwitchView('projects',tab||null);
+}
+
+async function bfOpenProjectDetail(projectId, panel){
+  const id=Number(projectId||0);
+  if(!id){bfToast('Project not found');return;}
+  if(typeof pdOpenProject!=='function'){
+    window.location.href='/admin/bd?project='+id+(panel?'#'+panel:'');
+    return;
+  }
+  document.querySelectorAll('.bf-view-section').forEach(v=>v.classList.remove('active'));
+  const sec=document.getElementById('bf-v-project-detail');
+  if(sec)sec.classList.add('active');
+  document.querySelectorAll('.bf-view-tab').forEach(t=>t.classList.toggle('active',t.dataset.view==='projects'));
+  document.querySelectorAll('.bf-sidebar .sb-nav-item[data-view]').forEach(n=>{
+    n.classList.toggle('active',n.dataset.view==='projects');
+  });
+  try{
+    const url=new URL(window.location.href);
+    url.searchParams.set('project',String(id));
+    if(panel)url.hash=panel; else url.hash='';
+    history.replaceState(null,'',url.pathname+url.search+url.hash);
+  }catch(_){}
+  try{
+    await pdOpenProject(id,{onBack:bfCloseProjectDetail,panel:panel||null});
+  }catch(e){
+    bfToast(e.message||'Failed to open project');
+    bfCloseProjectDetail();
+  }
+}
+
 function renderProjects(){
   const tbody=document.getElementById('bfProjTbody');if(!tbody)return;
   const totalValue=projects.reduce((sum,p)=>sum+Number(p.valueAmount||0),0);
   const sub=document.getElementById('bfProjectsSub');
   if(sub){sub.textContent=`${projects.length} projects · ${money(totalValue)} total value`;}
-  tbody.innerHTML=projects.map((p)=>`<tr onclick="bfOpenProjectEditor(${Number(p.id||0)})" title="Click to edit project"><td><div class="bf-proj-name-cell"><div class="bf-proj-avatar" style="background:${p.bg||'#fde8ea'}">${p.icon||'🏢'}</div><div><div class="bf-proj-n">${esc(p.name)}</div><div class="bf-proj-co">${esc(p.co)}</div></div></div></td><td><span class="bf-status-badge bf-sb-${esc((p.status||'active').toLowerCase())}">${esc((p.status||'active').charAt(0).toUpperCase()+(p.status||'active').slice(1))}</span></td><td><span class="bf-priority-tag bf-pr-${p.priority==='high'?'high':p.priority==='low'?'low':'med'}">${esc((p.priority||'med').toUpperCase())}</span></td><td><span class="bf-value-tag">${esc(p.value||money(p.valueAmount))}</span></td><td><div><div class="bf-pm-label"><span>${Number(p.progress||0)}%</span></div><div class="bf-pm-bar"><div class="bf-pm-fill" style="width:${Number(p.progress||0)}%"></div></div></div></td><td style="font-size:12.5px;font-weight:600;color:var(--ink2)">${esc(p.owner||'Unassigned')}</td><td><div style="font-size:12px;color:var(--ink2);font-weight:500">${esc(p.next||'No action')}</div><div style="font-size:11px;color:var(--subtle);font-weight:600;margin-top:2px">${esc(p.nextDate||'')}</div></td></tr>`).join('')||'<tr><td colspan="7" style="padding:16px;color:var(--subtle)">No projects yet. Add your first project.</td></tr>';
+  tbody.innerHTML=projects.map((p)=>{
+    const st=statusSlug(p.status);
+    const pct=Math.max(0,Math.min(100,Number(p.progress||0)));
+    const nextDate=p.nextDate?`<div class="bf-next-date">${esc(p.nextDate)}</div>`:'';
+    const pid=Number(p.id||0);
+    return `<tr onclick="bfOpenProjectDetail(${pid})" title="Open project workspace">
+      <td><div class="bf-proj-name-cell"><div class="bf-proj-avatar" style="background:${p.bg||'#fff4ef'}">${p.icon||'🏢'}</div><div class="bf-proj-name-meta"><div class="bf-proj-n">${esc(p.name)}</div><div class="bf-proj-co">${esc(p.co)}</div></div></div></td>
+      <td><span class="bf-status-badge bf-sb-${esc(st)}">${esc(statusLabel(p.status))}</span></td>
+      <td><span class="bf-priority-tag bf-pr-${prioritySlug(p.priority)}">${esc((p.priority||'med').toUpperCase())}</span></td>
+      <td><span class="bf-value-tag">${esc(p.value||money(p.valueAmount))}</span></td>
+      <td><div class="bf-pm-cell"><div class="bf-pm-label">${pct}%</div><div class="bf-pm-bar"><div class="bf-pm-fill" style="width:${pct}%"></div></div></div></td>
+      <td><div class="bf-owner-cell">${esc(p.owner||'Unassigned')}</div></td>
+      <td><div class="bf-next-cell"><div class="bf-next-main">${esc(p.next||'No action')}</div>${nextDate}</div></td>
+    </tr>`;
+  }).join('')||'<tr><td colspan="7" style="padding:16px;color:var(--subtle)">No projects yet. Add your first project.</td></tr>';
 }
 
 function renderFollowups(targetId='bfFuList',limit=null){
@@ -623,7 +798,15 @@ function renderContacts(){
 
 function renderActivities(){
   const tl=document.getElementById('bfActTimeline');if(!tl)return;
-  tl.innerHTML=activityLog.map(a=>`<div class="bf-tl-item"><div class="bf-tl-icon" style="background:${a.bg||'#fde8ea'}">${a.icon||'📝'}</div><div class="bf-tl-content"><div class="bf-tl-title">${esc(a.title)}</div><div class="bf-tl-desc">${esc(a.desc||'')}</div><div class="bf-tl-time">${esc(a.time?new Date(a.time).toLocaleString():'')}</div><span class="bf-tl-badge">${esc(a.badge||'')}</span></div></div>`).join('')||'<div style="padding:16px;color:var(--subtle)">No activity yet.</div>';
+  const fmt24=(iso)=>{
+    if(!iso) return '';
+    const s=String(iso);
+    const d=new Date(/Z$|[+-]\d{2}:?\d{2}$/.test(s)?s:s+'Z');
+    if(isNaN(d.getTime())) return '';
+    const p=n=>String(n).padStart(2,'0');
+    return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+  };
+  tl.innerHTML=activityLog.map(a=>`<div class="bf-tl-item"><div class="bf-tl-icon" style="background:${a.bg||'#fff4ef'}">${a.icon||'📝'}</div><div class="bf-tl-content"><div class="bf-tl-title">${esc(a.title)}</div><div class="bf-tl-desc">${esc(a.desc||'')}</div><div class="bf-tl-time">${esc(a.time?fmt24(a.time):'')}</div><span class="bf-tl-badge">${esc(a.badge||'')}</span></div></div>`).join('')||'<div style="padding:16px;color:var(--subtle)">No activity yet.</div>';
 }
 
 function renderPipeline(){
@@ -763,12 +946,12 @@ function renderRevenueTrend(){
     }
   }
 
-  const labelTexts=pts.map(p=>`<text x="${p.x.toFixed(1)}" y="${H-8}" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="9" fill="${p===pts[bestIdx]?'#d21725':'#8eada3'}" font-weight="${p===pts[bestIdx]?'700':'600'}" text-anchor="middle">${esc(p.label)}</text>`).join('');
-  const dots=pts.map((p,i)=>`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${i===bestIdx?4.5:3}" fill="#fff" stroke="#d21725" stroke-width="${i===bestIdx?2.5:1.75}"><title>${esc(p.label)}: ${money(p.v)}</title></circle>`).join('');
+  const labelTexts=pts.map(p=>`<text x="${p.x.toFixed(1)}" y="${H-8}" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="9" fill="${p===pts[bestIdx]?'#ff8e68':'#9a9aa1'}" font-weight="${p===pts[bestIdx]?'700':'600'}" text-anchor="middle">${esc(p.label)}</text>`).join('');
+  const dots=pts.map((p,i)=>`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${i===bestIdx?4.5:3}" fill="#fff" stroke="#ff8e68" stroke-width="${i===bestIdx?2.5:1.75}"><title>${esc(p.label)}: ${money(p.v)}</title></circle>`).join('');
   svg.innerHTML=`
-    <defs><linearGradient id="bfAreaGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#d21725" stop-opacity=".2"/><stop offset="100%" stop-color="#d21725" stop-opacity="0"/></linearGradient></defs>
+    <defs><linearGradient id="bfAreaGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ff8e68" stop-opacity=".2"/><stop offset="100%" stop-color="#ff8e68" stop-opacity="0"/></linearGradient></defs>
     <path d="M ${area} Z" fill="url(#bfAreaGrad)"/>
-    <polyline points="${line}" fill="none" stroke="#d21725" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <polyline points="${line}" fill="none" stroke="#ff8e68" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
     ${dots}
     ${labelTexts}
   `;
@@ -818,7 +1001,7 @@ function renderClosingThisWeek(){
     else if(p._closeDays===0){dueCls='soon';dueLabel='Today';}
     else if(p._closeDays===1){dueCls='soon';dueLabel='Tomorrow';}
     else if(p._closeDays<=3){dueCls='soon';dueLabel=`${p._closeDays}d`;}
-    return `<div class="bf-closing-item" onclick="bfOpenProjectEditor(${Number(p.id||0)})" title="Open deal">
+    return `<div class="bf-closing-item" onclick="bfOpenProjectDetail(${Number(p.id||0)})" title="Open project workspace">
       <div class="bf-closing-top"><div class="bf-closing-name">${esc(p.name)}</div><span class="bf-closing-due ${dueCls}">${esc(dueLabel)}</span></div>
       <div class="bf-closing-co">${esc(p.co||p.company||'')}</div>
       <div class="bf-closing-meta"><span class="bf-closing-next">${esc(p.next||'No next action')}</span><span class="bf-closing-val">${esc(p.value||money(p.valueAmount))}</span></div>
@@ -837,6 +1020,7 @@ function updateDashboardStats(){
   const elWin=document.getElementById('bfKpiWinRate');if(elWin)elWin.innerHTML=`${win}<span style="font-size:16px;font-weight:500">%</span>`;
   const elAvg=document.getElementById('bfKpiAvgDeal');if(elAvg)elAvg.textContent=money(avg);
   const elOverdue=document.getElementById('bfKpiOverdue');if(elOverdue)elOverdue.textContent=String(overdue);
+  const elOut=document.getElementById('bfKpiOutstanding');if(elOut)elOut.textContent=money(bdStats.my_outstanding||bdStats.overall_outstanding||0);
 
   const stages=bdStats.stage_stats||[];
   const maxMetric=Math.max(1,...stages.map(s=>getPipelineMetric(s)));
@@ -989,6 +1173,16 @@ function bfSetPipelineMode(mode,btn){
 }
 
 function bfSwitchView(view,el){
+  if(view&&view!=='project-detail'){
+    try{
+      const url=new URL(window.location.href);
+      if(url.searchParams.has('project')){
+        url.searchParams.delete('project');
+        url.hash='';
+        history.replaceState(null,'',url.pathname+url.search);
+      }
+    }catch(_){}
+  }
   document.querySelectorAll('.bf-view-section').forEach(v=>v.classList.remove('active'));
   document.querySelectorAll('.bf-view-tab').forEach(t=>t.classList.remove('active'));
   const sec=document.getElementById('bf-v-'+view);if(sec)sec.classList.add('active');
@@ -1003,6 +1197,7 @@ function bfSetNav(el,view){
 }
 
 function getProjectFormPayload(){
+  const ownerSel=(document.getElementById('bfFldOwnerUser')||{}).value;
   return {
     name:(document.getElementById('bfFldName')||{}).value||'',
     company:(document.getElementById('bfFldCompany')||{}).value||'',
@@ -1012,6 +1207,7 @@ function getProjectFormPayload(){
     status:(document.getElementById('bfFldStatus')||{}).value||'active',
     progress:Number((document.getElementById('bfFldProgress')||{}).value||0),
     owner:(document.getElementById('bfFldOwner')||{}).value||'',
+    owner_user_id:ownerSel?Number(ownerSel):null,
     expected_close_date:(document.getElementById('bfFldCloseDate')||{}).value||null,
     primary_contact_name:(document.getElementById('bfFldContactName')||{}).value||'',
     primary_contact_email:(document.getElementById('bfFldContactEmail')||{}).value||'',
@@ -1029,6 +1225,8 @@ function setProjectFormData(p){
   (document.getElementById('bfFldStatus')||{}).value=(p?.status||'active');
   (document.getElementById('bfFldProgress')||{}).value=Number(p?.progress||0);
   (document.getElementById('bfFldOwner')||{}).value=p?.owner||'';
+  const ou=document.getElementById('bfFldOwnerUser');
+  if(ou)ou.value=p?.ownerUserId||p?.owner_user_id||'';
   (document.getElementById('bfFldCloseDate')||{}).value=(p?.expectedCloseDate||'').slice(0,10);
   (document.getElementById('bfFldContactName')||{}).value=p?.primaryContactName||'';
   (document.getElementById('bfFldContactEmail')||{}).value=p?.primaryContactEmail||'';
@@ -1132,26 +1330,60 @@ async function bfImportProjectsFromExcel(input){
   }
 }
 
-async function bfOpenContactPrompt(){
-  const name=window.prompt('Contact name');
-  if(!name) return;
-  const company=window.prompt('Company','');
-  const title=window.prompt('Title','');
-  const email=window.prompt('Email (optional)','');
+function bfOpenContactPrompt(){
+  const nameEl=document.getElementById('bfContactName');
+  const companyEl=document.getElementById('bfContactCompany');
+  const titleEl=document.getElementById('bfContactTitle');
+  const emailEl=document.getElementById('bfContactEmail');
+  if(nameEl)nameEl.value='';
+  if(companyEl)companyEl.value='';
+  if(titleEl)titleEl.value='';
+  if(emailEl)emailEl.value='';
+  const m=document.getElementById('bfContactModal');
+  if(m)m.classList.add('open');
+  if(nameEl)setTimeout(()=>nameEl.focus(),50);
+}
+function bfCloseContactModal(){
+  const m=document.getElementById('bfContactModal');
+  if(m)m.classList.remove('open');
+}
+async function bfSaveContact(){
+  const name=(document.getElementById('bfContactName')?.value||'').trim();
+  if(!name){bfToast('Contact name is required');return;}
+  const company=(document.getElementById('bfContactCompany')?.value||'').trim();
+  const title=(document.getElementById('bfContactTitle')?.value||'').trim();
+  const email=(document.getElementById('bfContactEmail')?.value||'').trim();
   try{
     await apiPost('/api/admin/bd/contacts',{name,company,title,email});
+    bfCloseContactModal();
     bfToast('✅ Contact added');
     await loadBDData();
   }catch(e){bfToast('❌ '+(e.message||'Failed to add contact'));}
 }
 
-async function bfOpenFollowupPrompt(){
-  const title=window.prompt('Follow-up title');
-  if(!title) return;
-  const company=window.prompt('Company (optional)','');
-  const dueDate=window.prompt('Due date (YYYY-MM-DD, optional)','');
+function bfOpenFollowupPrompt(){
+  const titleEl=document.getElementById('bfFollowupTitle');
+  const companyEl=document.getElementById('bfFollowupCompany');
+  const dueEl=document.getElementById('bfFollowupDue');
+  if(titleEl)titleEl.value='';
+  if(companyEl)companyEl.value='';
+  if(dueEl)dueEl.value='';
+  const m=document.getElementById('bfFollowupModal');
+  if(m)m.classList.add('open');
+  if(titleEl)setTimeout(()=>titleEl.focus(),50);
+}
+function bfCloseFollowupModal(){
+  const m=document.getElementById('bfFollowupModal');
+  if(m)m.classList.remove('open');
+}
+async function bfSaveFollowup(){
+  const title=(document.getElementById('bfFollowupTitle')?.value||'').trim();
+  if(!title){bfToast('Follow-up title is required');return;}
+  const company=(document.getElementById('bfFollowupCompany')?.value||'').trim();
+  const dueDate=(document.getElementById('bfFollowupDue')?.value||'').trim();
   try{
     await apiPost('/api/admin/bd/followups',{title,company,due_at:dueDate?`${dueDate}T09:00:00`:null,followup_type:'note'});
+    bfCloseFollowupModal();
     bfToast('✅ Follow-up added');
     await loadBDData();
   }catch(e){bfToast('❌ '+(e.message||'Failed to add follow-up'));}
@@ -1288,13 +1520,151 @@ function buildDemoBdPayload(){
   };
 }
 
+function populateOwnerSelect(){
+  const sel=document.getElementById('bfFldOwnerUser');
+  if(!sel)return;
+  const cur=sel.value;
+  sel.innerHTML='<option value="">Me (default)</option>'+(bdOwners||[]).map(o=>`<option value="${o.id}">${esc(o.name)}</option>`).join('');
+  if(cur)sel.value=cur;
+}
+
+function renderQuotations(){
+  const tb=document.getElementById('bfQuotesTbody');
+  if(!tb)return;
+  tb.innerHTML=(quotations||[]).map(q=>{
+    const projectLabel=q.bd_project_name||(q.bd_project_id?`Project #${q.bd_project_id}`:'—');
+    return `<tr>
+    <td style="font-weight:700">${esc(q.ref_no||q.quote_no)}</td>
+    <td>${q.bd_project_id?`<a href="#" onclick="bfOpenProjectDetail(${q.bd_project_id},'quotations');return false" style="color:var(--g800);font-weight:600">${esc(projectLabel)}</a>`:esc(projectLabel)}</td>
+    <td>${esc(q.company_name)}</td>
+    <td><span class="bf-status-badge">${esc(q.status||'draft')}</span></td>
+    <td>${money(q.grand_total)}</td>
+    <td style="white-space:nowrap">
+      <button type="button" class="bf-tb-cta" style="font-size:11px;padding:4px 8px;background:#fff;color:var(--g800);border:1px solid var(--g300)" onclick="bfQuotePdf(${q.id})">PDF</button>
+      ${q.status==='draft'||q.status==='sent'||q.status==='rejected'?`<button type="button" class="bf-tb-cta" style="font-size:11px;padding:4px 8px;margin-left:4px" onclick="bfQuoteSubmit(${q.id})">Submit</button>`:''}
+      ${q.status==='pending_approval'?`<button type="button" class="bf-tb-cta" style="font-size:11px;padding:4px 8px;margin-left:4px;background:#16a34a" onclick="bfQuoteApprove(${q.id})">Approve</button>`:''}
+      ${q.status==='pending_approval'?`<button type="button" class="bf-tb-cta" style="font-size:11px;padding:4px 8px;margin-left:4px;background:#fff;color:#b91c1c;border:1px solid #fecaca" onclick="bfQuoteReject(${q.id})">Reject</button>`:''}
+      ${q.status==='approved'?`<button type="button" class="bf-tb-cta" style="font-size:11px;padding:4px 8px;margin-left:4px" onclick="bfQuoteInvoice(${q.id})">Invoice</button>`:''}
+    </td>
+  </tr>`;
+  }).join('')||'<tr><td colspan="6" style="padding:16px;color:var(--subtle)">No quotations yet. Open a project and create a quotation from its workspace.</td></tr>';
+}
+
+async function bfSetScopeView(view,btn){
+  bdScopeView=view||'all';
+  document.querySelectorAll('[data-bd-view]').forEach(b=>b.classList.toggle('active',b.dataset.bdView===bdScopeView));
+  await loadBDData();
+}
+
+let quoteProjectId=null;
+
+function bfGoCreateQuoteFromProjects(){
+  bfSwitchView('projects',document.querySelector('.bf-view-tab[data-view="projects"]'));
+  bfToast('Open a project, then create a quotation there');
+}
+
+function bfOpenQuoteForProject(projectId){
+  bfOpenProjectDetail(projectId,'quotations');
+}
+
+/** Standalone quotes are not allowed — open a project workspace instead */
+function bfOpenQuotePrompt(){
+  bfGoCreateQuoteFromProjects();
+}
+
+function bfCloseQuoteModal(){
+  quoteProjectId=null;
+  const m=document.getElementById('bfQuoteModal');
+  if(m)m.classList.remove('open');
+}
+function bfOpenQuoteInWorkspace(){
+  const projectId=Number(document.getElementById('bfQuoteProjectId')?.value||quoteProjectId||0);
+  bfCloseQuoteModal();
+  if(!projectId){bfGoCreateQuoteFromProjects();return;}
+  bfOpenProjectDetail(projectId,'quotations');
+  setTimeout(()=>{ if(typeof pdOpenQuote==='function') pdOpenQuote(); },350);
+}
+async function bfSaveQuote(){ bfOpenQuoteInWorkspace(); }
+
+async function loadQuotations(){
+  try{
+    const data=await apiGet('/api/admin/bd/quotations');
+    quotations=data.quotations||[];
+  }catch(e){quotations=[];}
+  renderQuotations();
+}
+
+async function bfQuotePdf(id){
+  const token=localStorage.getItem('access_token');
+  window.open(`/api/admin/bd/quotations/${id}/pdf?access_token=`+encodeURIComponent(token||''),'_blank');
+  // Prefer fetch blob with auth header
+  try{
+    const r=await fetch(`/api/admin/bd/quotations/${id}/pdf`,{headers:{Authorization:'Bearer '+token}});
+    if(!r.ok)throw new Error('PDF failed');
+    const blob=await r.blob();
+    const url=URL.createObjectURL(blob);
+    window.open(url,'_blank');
+  }catch(e){bfToast(e.message||'PDF failed');}
+}
+function bfEnsureSigModal(cb){
+  if(!window.InjaazSignatureModal){bfToast('Signature pad failed to load — refresh the page');return;}
+  try{
+    const token=localStorage.getItem('access_token');
+    fetch('/api/auth/me',{headers:{Authorization:'Bearer '+(token||'')}})
+      .then(r=>r.ok?r.json():null)
+      .then(data=>{
+        const saved=data&&data.user&&data.user.default_signature;
+        if(saved) InjaazSignatureModal.setSavedSignature(saved);
+      }).catch(()=>{});
+  }catch(_){}
+  cb();
+}
+async function bfQuoteSubmit(id){
+  bfEnsureSigModal(()=>{
+    InjaazSignatureModal.open({
+      title:'Sign & submit quotation',
+      onApply: async function(dataUrl){
+        try{
+          await apiPost(`/api/admin/bd/quotations/${id}/submit`,{signature:dataUrl});
+          bfToast('Submitted');await loadQuotations();
+        }catch(e){bfToast(e.message||'Failed');}
+      }
+    });
+  });
+}
+function bfQuoteApprove(id){
+  bfEnsureSigModal(()=>{
+    InjaazSignatureModal.open({
+      title:'Approve quotation',
+      onApply: async function(dataUrl){
+        try{
+          await apiPost(`/api/admin/bd/quotations/${id}/approve`,{signature:dataUrl});
+          bfToast('Approved');await loadQuotations();
+        }catch(e){bfToast(e.message||'Failed');}
+      }
+    });
+  });
+}
+async function bfQuoteReject(id){
+  const notes=prompt('Rejection notes (optional)')||'';
+  try{await apiPost(`/api/admin/bd/quotations/${id}/reject`,{notes});bfToast('Rejected');await loadQuotations();}
+  catch(e){bfToast(e.message||'Failed');}
+}
+async function bfQuoteInvoice(id){
+  try{await apiPost(`/api/admin/bd/quotations/${id}/generate-invoice`,{});bfToast('Invoice draft created');await loadQuotations();}
+  catch(e){bfToast(e.message||'Failed');}
+}
+
 function applyBdPayload(data,fromDemo){
   projects=data.projects||[];
   followups=data.followups||[];
   contacts=data.contacts||[];
   activityLog=data.activities||[];
   bdStats=data.stats||bdStats;
+  bdOwners=data.owners||[];
+  populateOwnerSelect();
   renderAll();
+  renderQuotations();
   if(fromDemo){
     bfToast('Showing sample Sales data');
   }
@@ -1302,13 +1672,16 @@ function applyBdPayload(data,fromDemo){
 
 async function loadBDData(){
   try{
-    const data=await apiGet('/api/admin/bd/dashboard-data');
+    const q=bdScopeView&&bdScopeView!=='all'?`?view=${encodeURIComponent(bdScopeView)}`:'';
+    const data=await apiGet('/api/admin/bd/dashboard-data'+q);
     const liveProjects=data.projects||[];
-    if(!liveProjects.length){
+    if(!liveProjects.length && bdScopeView==='all'){
       applyBdPayload(buildDemoBdPayload(),true);
+      await loadQuotations();
       return;
     }
     applyBdPayload(data,false);
+    await loadQuotations();
   }catch(e){
     applyBdPayload(buildDemoBdPayload(),true);
   }
@@ -1319,15 +1692,44 @@ window.bfSetNav=bfSetNav;
 window.bfOpenModal=bfOpenModal;
 window.bfCloseModal=bfCloseModal;
 window.bfOpenProjectEditor=bfOpenProjectEditor;
+window.bfOpenProjectDetail=bfOpenProjectDetail;
+window.bfCloseProjectDetail=bfCloseProjectDetail;
 window.bfSaveProject=bfSaveProject;
 window.bfImportProjectsFromExcel=bfImportProjectsFromExcel;
 window.bfOpenContactPrompt=bfOpenContactPrompt;
+window.bfCloseContactModal=bfCloseContactModal;
+window.bfSaveContact=bfSaveContact;
 window.bfOpenFollowupPrompt=bfOpenFollowupPrompt;
+window.bfCloseFollowupModal=bfCloseFollowupModal;
+window.bfSaveFollowup=bfSaveFollowup;
 window.bfToast=bfToast;
 window.bfSetPipelineMode=bfSetPipelineMode;
+window.bfSetScopeView=bfSetScopeView;
+window.bfOpenQuotePrompt=bfOpenQuotePrompt;
+window.bfOpenQuoteForProject=bfOpenQuoteForProject;
+window.bfGoCreateQuoteFromProjects=bfGoCreateQuoteFromProjects;
+window.bfCloseQuoteModal=bfCloseQuoteModal;
+window.bfSaveQuote=bfSaveQuote;
+window.bfOpenQuoteInWorkspace=bfOpenQuoteInWorkspace;
+window.bfQuotePdf=bfQuotePdf;
+window.bfQuoteSubmit=bfQuoteSubmit;
+window.bfQuoteApprove=bfQuoteApprove;
+window.bfQuoteReject=bfQuoteReject;
+window.bfQuoteInvoice=bfQuoteInvoice;
+
+function bfOpenProjectFromQuery(){
+  try{
+    const params=new URLSearchParams(window.location.search);
+    const pid=params.get('project');
+    if(!pid)return;
+    const hash=(location.hash||'').replace(/^#/,'').trim();
+    const panel=['overview','contact','quotations','followups','activity','notes'].includes(hash)?hash:null;
+    bfOpenProjectDetail(pid,panel);
+  }catch(_){}
+}
 
 loadUser();
-loadBDData();
+loadBDData().then(bfOpenProjectFromQuery);
 })();
   </script>
 </body>

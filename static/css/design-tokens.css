@@ -1,7 +1,7 @@
 /**
- * Injaaz Design System - Design Tokens
+ * Kynvera Design System - Design Tokens
  * Central source of truth for all design values
- * Version: 1.0.0
+ * Version: 2.0.0 — Kynvera coral theme
  */
 
 :root {
@@ -9,24 +9,24 @@
    * COLOR PALETTE
    * ============================================ */
   
-  /* Primary Colors - Brand Red */
-  --color-primary-50: #fdf2f3;
-  --color-primary-100: #fbe1e3;
-  --color-primary-200: #f6c6ca;
-  --color-primary-300: #ef9aa1;
-  --color-primary-400: #e35b66;
-  --color-primary-500: #d21725;
-  --color-primary-600: #b01320;
-  --color-primary-700: #a8121e;
-  --color-primary-800: #7a0d15;
-  --color-primary-900: #6e0f17;
-  --color-primary-950: #45070c;
+  /* Primary Colors - Kynvera Coral Theme */
+  --color-primary-50: #fff4ef;
+  --color-primary-100: #ffe6db;
+  --color-primary-200: #ffcdb8;
+  --color-primary-300: #ffb090;
+  --color-primary-400: #ff9a78;
+  --color-primary-500: #ff8e68;
+  --color-primary-600: #f97e54;
+  --color-primary-700: #e05f36;
+  --color-primary-800: #c2440c;
+  --color-primary-900: #9a3609;
+  --color-primary-950: #5c1f05;
 
   /* Brand Colors */
-  --color-brand: #d21725;
-  --color-brand-light: #e8323f;
-  --color-brand-dark: #a8121e;
-  --color-brand-accent: #fdeaec;
+  --color-brand: #ff8e68;
+  --color-brand-light: #f97e54;
+  --color-brand-dark: #e05f36;
+  --color-brand-accent: #fff4ef;
   
   /* Neutral Colors */
   --color-neutral-0: #ffffff;
@@ -72,10 +72,13 @@
    * ============================================ */
   
   /* Font families — iOS/macOS: San Francisco via -apple-system; others fall through system-ui / platform UI */
-  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "SF Pro", ui-sans-serif, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-body: var(--font-sans);
+  --font-ui: var(--font-sans);
+  --font-display: var(--font-sans);
   /* Footer “built by” name — Caveat (loaded in base_head / about) */
   --font-footer-author: "Caveat", "Segoe Script", "Apple Chancery", cursive;
-  /* Author name colour — brand green on light UI; mint on dark footers */
+  /* Author name colour — brand coral on light UI; soft coral on dark footers */
   --text-footer-author: var(--color-brand);
   --text-footer-author-on-dark: var(--color-primary-300);
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", monospace;
@@ -179,7 +182,7 @@
   --shadow-none: 0 0 #0000;
   
   /* Colored Shadows */
-  --shadow-primary: 0 4px 14px 0 rgb(18 84 53 / 0.25);
+  --shadow-primary: 0 4px 14px 0 rgb(255 142 104 / 0.25);
   --shadow-success: 0 4px 14px 0 rgb(34 197 94 / 0.25);
   --shadow-error: 0 4px 14px 0 rgb(239 68 68 / 0.25);
   
@@ -245,7 +248,7 @@
    * ============================================ */
   
   /* Backgrounds */
-  --bg-body: var(--color-neutral-50);
+  --bg-body: #f7f7f9;
   --bg-surface: var(--color-neutral-0);
   --bg-surface-elevated: var(--color-neutral-0);
   --bg-muted: var(--color-neutral-100);
@@ -350,8 +353,47 @@ body {
   line-height: var(--leading-normal);
   color: var(--text-primary);
   background-color: var(--bg-body);
+  text-rendering: optimizeLegibility;
   transition: background-color var(--duration-300) var(--ease-in-out),
               color var(--duration-300) var(--ease-in-out);
+}
+
+/* App-wide UI typography — inherit SF / system stack (mono + footer author excluded) */
+button,
+input,
+select,
+textarea,
+optgroup,
+label,
+legend,
+keygen,
+.dh-page-root,
+.admin-dh-page-root,
+table,
+th,
+td,
+h1, h2, h3, h4, h5, h6,
+p,
+a,
+li,
+span:not(.material-symbols-outlined):not(.ms-icon):not(.footer-built-by-name) {
+  font-family: inherit;
+}
+
+code,
+pre,
+kbd,
+samp,
+.mono,
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+.font-footer-author,
+.site-footer-author,
+.footer-author-name,
+.footer-built-by-name {
+  font-family: var(--font-footer-author);
 }
 
 /* Focus visible for accessibility */

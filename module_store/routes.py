@@ -24,8 +24,8 @@ CATALOG_DEPARTMENTS = [
 
 CATALOG_DEPT_META = {
     'Fire Alarm': {
-        'color': '#d21725',
-        'gradient': 'linear-gradient(135deg,#e8323f,#d21725)',
+        'color': '#dc2626',
+        'gradient': 'linear-gradient(135deg,#ef4444,#dc2626)',
         'desc': 'Control panels, smoke/heat detectors, MCPs, sounders, strobes & alarm cabling.',
         'title': 'Fire Alarm Materials',
         'css_var': 'fire-alarm',
@@ -91,6 +91,18 @@ def materials_list():
     return render_template('store_materials.html', user=user)
 
 
+@store_bp.route('/sets')
+@jwt_required()
+def material_sets_page():
+    """Material Sets master data (used by ticket material picker)."""
+    user = get_current_user()
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    if user.role != 'admin' and not getattr(user, 'access_procurement_module', False):
+        return jsonify({'error': 'Access denied'}), 403
+    return render_template('store_sets.html', user=user)
+
+
 @store_bp.route('/add-material')
 @jwt_required()
 def add_material_form():
@@ -122,17 +134,29 @@ def get_materials():
     ).order_by(Submission.created_at.desc()).all()
     
     materials = []
+    low_stock = 0
     for sub in submissions:
         if sub.form_data:
             material = sub.form_data.copy()
             material['id'] = sub.submission_id
             material['created_at'] = sub.created_at.isoformat() if sub.created_at else None
+            try:
+                qty = float(material.get('quantity') or 0)
+                reorder = float(material.get('reorder_level') or 0)
+            except (TypeError, ValueError):
+                qty, reorder = 0.0, 0.0
+            material['quantity'] = qty
+            material['reorder_level'] = reorder
+            material['low_stock'] = bool(reorder > 0 and qty <= reorder)
+            if material['low_stock']:
+                low_stock += 1
             materials.append(material)
     
     return jsonify({
         'success': True,
         'materials': materials,
-        'total': len(materials)
+        'total': len(materials),
+        'low_stock_count': low_stock,
     })
 
 
@@ -203,6 +227,7 @@ def add_material():
             'description': data.get('description', ''),
             'unit': data.get('unit', 'pcs'),
             'quantity': float(data.get('quantity', 0)),
+            'reorder_level': float(data.get('reorder_level', 0) or 0),
             'unit_price': float(data.get('unit_price', 0)),
             'total_price': float(data.get('quantity', 0)) * float(data.get('unit_price', 0)),
             'supplier': data.get('supplier', ''),
@@ -243,6 +268,154 @@ def delete_material(material_id):
         'success': True,
         'message': 'Material deleted successfully'
     })
+
+
+@store_bp.route('/api/materials/<material_id>/stock', methods=['PATCH'])
+@jwt_required()
+def adjust_material_stock(material_id):
+    """Update stock quantity and/or reorder threshold for a catalog material."""
+    user = get_current_user()
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    if user.role != 'admin' and not getattr(user, 'access_procurement_module', False):
+        return jsonify({'error': 'Access denied'}), 403
+
+    submission = Submission.query.filter_by(submission_id=material_id).first()
+    if not submission or submission.module_type != 'procurement_material':
+        return jsonify({'error': 'Material not found'}), 404
+
+    data = request.get_json(silent=True) or {}
+    fd = shallow_copy_form_data(submission.form_data or {})
+    if 'quantity' in data:
+        try:
+            fd['quantity'] = float(data.get('quantity'))
+        except (TypeError, ValueError):
+            return jsonify({'error': 'Invalid quantity'}), 400
+    if 'reorder_level' in data:
+        try:
+            fd['reorder_level'] = float(data.get('reorder_level') or 0)
+        except (TypeError, ValueError):
+            return jsonify({'error': 'Invalid reorder_level'}), 400
+    if 'delta' in data:
+        try:
+            fd['quantity'] = float(fd.get('quantity') or 0) + float(data.get('delta'))
+        except (TypeError, ValueError):
+            return jsonify({'error': 'Invalid delta'}), 400
+    fd['total_price'] = float(fd.get('quantity') or 0) * float(fd.get('unit_price') or 0)
+    submission.form_data = fd
+    from sqlalchemy.orm.attributes import flag_modified
+    flag_modified(submission, 'form_data')
+    db.session.commit()
+
+    qty = float(fd.get('quantity') or 0)
+    reorder = float(fd.get('reorder_level') or 0)
+    low = bool(reorder > 0 and qty <= reorder)
+    if low:
+        try:
+            _send_restock_alert(fd.get('material_name'), qty, reorder, user)
+        except Exception:
+            current_app.logger.exception('Restock alert failed')
+
+    return jsonify({
+        'success': True,
+        'material': {**fd, 'id': submission.submission_id, 'low_stock': low},
+    })
+
+
+def _send_restock_alert(name, qty, reorder, actor=None):
+    from common.email_service import send_email, is_email_configured
+    if not is_email_configured():
+        return
+    recipients = set()
+    for u in User.query.filter(User.is_active.is_(True)).all():
+        des = (getattr(u, 'designation', None) or '').strip().lower()
+        if u.role == 'admin' or des in ('procurement', 'operations_manager') or getattr(u, 'access_procurement_module', False):
+            if u.email:
+                recipients.add(u.email.strip().lower())
+    if not recipients:
+        return
+    subject = f'[Restock Alert] {name} is below reorder level'
+    body = (
+        f'Material "{name}" stock is {qty:g} (reorder level {reorder:g}).\n'
+        f'Please restock.\n'
+    )
+    send_email(list(recipients), subject, body)
+
+
+@store_bp.route('/api/stock-alerts', methods=['GET'])
+@jwt_required()
+def stock_alerts():
+    """Materials at or below reorder level."""
+    user = get_current_user()
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    if user.role != 'admin' and not getattr(user, 'access_procurement_module', False):
+        return jsonify({'error': 'Access denied'}), 403
+
+    submissions = Submission.query.filter(
+        Submission.module_type == 'procurement_material'
+    ).all()
+    alerts = []
+    for sub in submissions:
+        fd = sub.form_data or {}
+        try:
+            qty = float(fd.get('quantity') or 0)
+            reorder = float(fd.get('reorder_level') or 0)
+        except (TypeError, ValueError):
+            continue
+        if reorder > 0 and qty <= reorder:
+            alerts.append({
+                'id': sub.submission_id,
+                'material_name': fd.get('material_name'),
+                'quantity': qty,
+                'reorder_level': reorder,
+                'unit': fd.get('unit'),
+                'property': fd.get('property'),
+                'category': fd.get('category'),
+            })
+    alerts.sort(key=lambda a: a['quantity'])
+    return jsonify({'success': True, 'alerts': alerts, 'total': len(alerts)})
+
+
+@store_bp.route('/api/consumption-ledger', methods=['GET'])
+@jwt_required()
+def consumption_ledger():
+    """Job material usage log: which materials were used on which tickets."""
+    user = get_current_user()
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    if user.role != 'admin' and not getattr(user, 'access_procurement_module', False):
+        return jsonify({'error': 'Access denied'}), 403
+
+    from app.models import TicketMaterial, Ticket
+    limit = max(1, min(500, request.args.get('limit', 100, type=int)))
+    q = request.args.get('q', '').strip().lower()
+
+    rows = (
+        db.session.query(TicketMaterial, Ticket)
+        .join(Ticket, Ticket.id == TicketMaterial.ticket_id)
+        .order_by(TicketMaterial.id.desc())
+        .limit(limit * 3)
+        .all()
+    )
+    ledger = []
+    for mat, ticket in rows:
+        name = mat.material_name or ''
+        if q and q not in name.lower() and q not in (ticket.ticket_id or '').lower():
+            continue
+        ledger.append({
+            'material_name': name,
+            'quantity': mat.quantity,
+            'unit': mat.unit,
+            'ticket_id': ticket.ticket_id,
+            'ticket_title': ticket.title,
+            'project': ticket.project,
+            'status': ticket.status,
+            'message': f'{mat.quantity:g} {mat.unit or "pcs"} {name} used on Job {ticket.ticket_id}',
+        })
+        if len(ledger) >= limit:
+            break
+    return jsonify({'success': True, 'entries': ledger, 'total': len(ledger)})
 
 
 @store_bp.route('/api/import-excel', methods=['POST'])
@@ -1045,3 +1218,5 @@ def add_to_catalog():
     db.session.commit()
     return jsonify({'success': True, 'id': submission_id, 'existing': False}), 201
 
+from module_store.sets_api import register_sets_routes
+register_sets_routes(store_bp)

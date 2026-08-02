@@ -11,22 +11,23 @@ body.admin-v4 .admin-dh-main .container.admin-content.admin-neat-glow {
   --neat-card: hsl(0 0% 100%);
   --neat-border: hsl(215 18% 89%);
   --neat-muted: hsl(215 14% 46%);
-  --neat-primary: hsl(354 85% 42%);
-  --neat-primary-soft: hsl(354 80% 95%);
+  /* Kynvera coral — match design-tokens (#ff8e68 / #e05f36), not burnt red */
+  --neat-primary: #e05f36;
+  --neat-primary-soft: #fff4ef;
   --neat-info: hsl(211 92% 50%);
   --neat-warn: hsl(38 92% 50%);
-  --neat-success: hsl(354 85% 42%);
+  --neat-success: #e05f36;
   --neat-r: 0.625rem; /* 10px card radius */
   --neat-r-hero: 0.875rem; /* 14px hero radius */
   --neat-sh:
     0 1px 2px hsl(222 47% 11% / 0.05), 0 2px 8px hsl(222 47% 11% / 0.05);
   --neat-sh-hover:
-    0 0 0 1px hsl(354 85% 42% / 0.1), 0 4px 16px -4px hsl(354 85% 42% / 0.18);
+    0 0 0 1px rgba(255, 142, 104, 0.14), 0 4px 16px -4px rgba(224, 95, 54, 0.22);
   --gradient-hero: linear-gradient(
     135deg,
-    hsl(354 85% 28%) 0%,
-    hsl(354 85% 38%) 52%,
-    hsl(354 70% 46%) 100%
+    #e05f36 0%,
+    #f97e54 48%,
+    #ff8e68 100%
   );
 
   /* Centered column — very wide cap (≈2016px @ 16px root). */
@@ -62,7 +63,7 @@ body.admin-v4
   padding: 1.75rem 1.75rem 1.85rem;
   background: var(--gradient-hero);
   color: #fff;
-  box-shadow: 0 8px 32px -10px hsl(354 85% 25% / 0.5);
+  box-shadow: 0 8px 32px -10px rgba(224, 95, 54, 0.45);
   margin-top: 0.65rem;
   margin-bottom: 0.65rem;
   min-height: 212px;
@@ -90,7 +91,7 @@ body.admin-v4
   right: -5rem;
   width: 20rem;
   height: 20rem;
-  background: hsl(354 85% 55% / 0.28);
+  background: rgba(255, 255, 255, 0.22);
 }
 body.admin-v4
   .admin-dh-main
@@ -100,7 +101,7 @@ body.admin-v4
   left: 22%;
   width: 14rem;
   height: 14rem;
-  background: hsl(354 85% 60% / 0.18);
+  background: rgba(255, 142, 104, 0.35);
 }
 body.admin-v4
   .admin-dh-main
@@ -175,7 +176,7 @@ body.admin-v4
   .container.admin-content.admin-neat-glow
   .neat-hero-title
   .neat-amp {
-  color: hsl(354 80% 82%);
+  color: #ffe6db;
 }
 
 /* Desc + clock */
@@ -239,7 +240,7 @@ body.admin-v4
   .container.admin-content.admin-neat-glow
   .neat-hero-btn--solid {
   background: #fff;
-  color: hsl(354 85% 30%);
+  color: #e05f36;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
 }
 body.admin-v4
@@ -342,7 +343,7 @@ body.admin-v4
   .admin-dh-main
   .container.admin-content.admin-neat-glow
   .neat-kpi-ico--ok {
-  background: hsl(354 85% 42% / 0.12);
+  background: hsl(14 85% 42% / 0.12);
   color: var(--neat-success);
 }
 body.admin-v4
@@ -426,7 +427,7 @@ body.admin-v4
   .admin-dh-main
   .container.admin-content.admin-neat-glow
   .admin-v4-quick:hover {
-  border-color: hsl(354 80% 70%) !important;
+  border-color: hsl(14 80% 70%) !important;
   box-shadow: var(--neat-sh-hover) !important;
   transform: translateY(-1px);
 }
@@ -917,8 +918,8 @@ body.admin-v4
   .admin-dh-main
   .container.admin-content.admin-neat-glow
   .neat-act-ico-a {
-  background: hsl(354 80% 95%) !important;
-  color: hsl(354 85% 40%) !important;
+  background: hsl(14 80% 95%) !important;
+  color: hsl(14 85% 40%) !important;
 }
 body.admin-v4
   .admin-dh-main
@@ -969,7 +970,7 @@ body.admin-v4
   background: linear-gradient(
     165deg,
     hsl(210 40% 99%) 0%,
-    hsl(354 35% 97%) 100%
+    hsl(14 35% 97%) 100%
   );
   box-shadow: var(--neat-sh);
   padding: 0.82rem 0.92rem;
@@ -1053,7 +1054,7 @@ body.admin-v4
   .admin-dh-main
   .container.admin-content.admin-neat-glow
   .neat-side-metric-ico--d {
-  background: hsl(354 80% 95%) !important;
+  background: hsl(14 80% 95%) !important;
   color: var(--neat-success);
 }
 body.admin-v4
@@ -1084,7 +1085,7 @@ body.admin-v4
   .admin-dh-main
   .container.admin-content.admin-neat-glow
   .neat-side-fill-jump:hover {
-  color: hsl(354 85% 35%);
+  color: hsl(14 85% 35%);
 }
 
 /* Mobile rail */
@@ -1193,7 +1194,7 @@ body.admin-v4
   .neat-anim {
   animation: neatFadeUp 0.4s cubic-bezier(0.4, 0, 0.2, 1) both;
 }
-/* Opacity-only entrance (no translateY) avoids GPU “smear” with pink/red UI under load */
+/* Opacity-only entrance (no translateY) avoids GPU “smear” with coral brand UI under load */
 body.admin-v4
   .admin-dh-main
   .container.admin-content.admin-neat-glow

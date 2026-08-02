@@ -62,12 +62,8 @@ def regenerate_excel(submission_id):
         form_data = form_data_wrapper.get('data', form_data_wrapper) if isinstance(form_data_wrapper, dict) else form_data_wrapper
         
         # Generate report based on module type
-        if module_type == 'civil':
-            from module_civil.civil_generators import create_excel_report
-        elif module_type == 'hvac_mep':
+        if module_type == 'hvac_mep':
             from module_hvac_mep.hvac_generators import create_excel_report
-        elif module_type == 'cleaning':
-            from module_cleaning.cleaning_generators import create_excel_report
         else:
             return jsonify({'error': f'Unknown module type: {module_type}'}), 400
         
@@ -118,12 +114,8 @@ def regenerate_pdf(submission_id):
         form_data = form_data_wrapper.get('data', form_data_wrapper) if isinstance(form_data_wrapper, dict) else form_data_wrapper
         
         # Generate report based on module type
-        if module_type == 'civil':
-            from module_civil.civil_generators import create_pdf_report
-        elif module_type == 'hvac_mep':
+        if module_type == 'hvac_mep':
             from module_hvac_mep.hvac_generators import create_pdf_report
-        elif module_type == 'cleaning':
-            from module_cleaning.cleaning_generators import create_pdf_report
         else:
             return jsonify({'error': f'Unknown module type: {module_type}'}), 400
         

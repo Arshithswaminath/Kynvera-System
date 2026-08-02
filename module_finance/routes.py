@@ -15,6 +15,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy import func
 
 from app.models import db, User, Ticket, FinanceContract, FinanceMonthlyReport, FinanceSettings
+from common.ownership import forbid_unless_owner_or_elevated
 
 logger = logging.getLogger(__name__)
 
@@ -931,6 +932,9 @@ def api_update_contract(cid):
     if not user or not _finance_write_access(user):
         return jsonify({'error': 'Admin or GM only'}), 403
     contract = FinanceContract.query.get_or_404(cid)
+    denied = forbid_unless_owner_or_elevated(user, contract)
+    if denied:
+        return denied
     data = request.get_json() or {}
     if 'project_name' in data and 'client_name' not in data:
         data['client_name'] = data.get('project_name')
@@ -959,6 +963,9 @@ def api_delete_contract(cid):
     if not user or not _finance_write_access(user):
         return jsonify({'error': 'Admin or GM only'}), 403
     contract = FinanceContract.query.get_or_404(cid)
+    denied = forbid_unless_owner_or_elevated(user, contract)
+    if denied:
+        return denied
     db.session.delete(contract)
     db.session.commit()
     return jsonify({'success': True})

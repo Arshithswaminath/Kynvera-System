@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>New Work Order — Amaan</title>
+    <title>New Work Order — Kynvera</title>
     {% include 'partials/caveat_font.html' ignore missing %}
     <link
       rel="stylesheet"
@@ -215,7 +215,7 @@
         font-size: 0.7rem;
         font-weight: 600;
         background: #dbeafe;
-        color: #a8121e;
+        color: #e05f36;
       }
       .tkt-ac-item-meta {
         flex-shrink: 0;
@@ -239,7 +239,7 @@
         align-items: center;
         gap: 8px;
         font-size: 0.78rem;
-        color: #d21725;
+        color: #ff8e68;
         margin-bottom: 6px;
         padding: 6px 10px;
         background: #eff6ff;
@@ -306,7 +306,7 @@
         white-space: nowrap;
       }
       .tkt-step.active {
-        color: #a8121e;
+        color: #e05f36;
       }
       .tkt-step.done {
         color: #16a34a;
@@ -325,8 +325,8 @@
         flex-shrink: 0;
       }
       .tkt-step.active .tkt-step-num {
-        background: #a8121e;
-        border-color: #a8121e;
+        background: #e05f36;
+        border-color: #e05f36;
         color: #fff;
       }
       .tkt-step.done .tkt-step-num {
@@ -1068,9 +1068,9 @@
                               gap: 10px;
                               margin-bottom: 16px;
                               padding: 11px 14px;
-                              background: #fff1f2;
+                              background: #fff4f1;
                               border: 1px solid #fecdd3;
-                              border-left: 3px solid #d21725;
+                              border-left: 3px solid #ff8e68;
                               border-radius: 10px;
                             "
                           >
@@ -1079,7 +1079,7 @@
                               fill="none"
                               viewBox="0 0 24 24"
                               stroke-width="1.8"
-                              stroke="#d21725"
+                              stroke="#ff8e68"
                               width="18"
                               height="18"
                             >
@@ -1150,7 +1150,7 @@
                                 margin-left: auto;
                                 background: none;
                                 border: none;
-                                color: #d21725;
+                                color: #ff8e68;
                                 font-size: 0.78rem;
                                 font-weight: 600;
                                 cursor: pointer;
@@ -1214,13 +1214,7 @@
                                   {% for u in all_users %}
                                   <option
                                     value="{{ u.id }}"
-                                    {%
-                                    if
-                                    u.id=""
-                                    ="user.id"
-                                    %}selected{%
-                                    endif
-                                    %}
+                                    {% if u.id == user.id %}selected{% endif %}
                                   >
                                     {{ u.full_name }}{% if u.job_designation %}
                                     — {{ u.job_designation }}{% endif %}
@@ -2369,9 +2363,11 @@
         } else {
           document.getElementById("projLoadHint").style.display = "none";
           projects.forEach((p) => {
+            const codeBit = p.project_code ? `[${p.project_code}] ` : "";
+            const clientBit = p.client_name ? " — " + p.client_name : "";
             projSel.insertAdjacentHTML(
               "beforeend",
-              `<option value="${p.name}">${p.name}${p.client_name ? " — " + p.client_name : ""}</option>`,
+              `<option value="${p.name}">${codeBit}${p.name}${clientBit}</option>`,
             );
           });
         }

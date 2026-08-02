@@ -58,10 +58,15 @@ async function submitForm(modulePrefix, formElement, pads) {
 
 async function pollJobStatus(modulePrefix, jobId, onUpdate, interval=1500) {
     const statusUrl = `${modulePrefix}/status/${jobId}`;
+    const authHeaders = {};
+    try {
+        const token = localStorage.getItem('access_token');
+        if (token) authHeaders['Authorization'] = 'Bearer ' + token;
+    } catch (_) {}
     return new Promise((resolve, reject) => {
         const id = setInterval(async () => {
             try {
-                const r = await fetch(statusUrl);
+                const r = await fetch(statusUrl, { headers: authHeaders, credentials: 'same-origin' });
                 if (!r.ok) throw new Error('Job not found');
                 const js = await r.json();
                 if (onUpdate) onUpdate(js);

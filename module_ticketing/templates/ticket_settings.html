@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
-  <title>Work Order Settings — Amaan</title>
+  <title>Work Order Settings — Kynvera</title>
   {% include 'partials/caveat_font.html' ignore missing %}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
@@ -32,8 +32,8 @@
       color:#64748b; border-bottom:2.5px solid transparent; margin-bottom:-2px;
       transition:color .15s, border-color .15s; background:none; border-top:none; border-left:none; border-right:none;
     }
-    .settings-tab.active { color:#a8121e; border-bottom-color:#d21725; }
-    .settings-tab:hover { color:#a8121e; }
+    .settings-tab.active { color:#e05f36; border-bottom-color:#ff8e68; }
+    .settings-tab:hover { color:#e05f36; }
     .settings-panel { display:none; }
     .settings-panel.active { display:block; }
 
@@ -54,11 +54,11 @@
       display:flex; gap:8px; padding:6px 10px 6px 12px; align-items:center; margin-top:2px;
     }
     .loc-add-row input { flex:1; padding:5px 10px; border:1.5px solid #cbd5e1; border-radius:6px; font-size:.82rem; }
-    .loc-add-row input:focus { border-color:#d21725; outline:none; }
+    .loc-add-row input:focus { border-color:#ff8e68; outline:none; }
 
     .tmpl-badge {
       display:inline-block; padding:2px 7px; border-radius:4px; font-size:.72rem; font-weight:600;
-      background:#dbeafe; color:#a8121e; margin-right:3px;
+      background:#dbeafe; color:#e05f36; margin-right:3px;
     }
     .proj-card {
       display:flex; align-items:center; gap:10px; padding:12px 16px;
@@ -426,7 +426,7 @@
     .fault-cat-table tbody tr:hover { background: rgba(0, 122, 255, 0.04); }
     .fault-cat-code {
       font-weight: 600;
-      color: #a8121e;
+      color: #e05f36;
       font-variant-numeric: tabular-nums;
     }
     .fault-cat-name-cell { min-width: 180px; max-width: 420px; }
@@ -533,6 +533,10 @@
                 <input class="tkt-input" id="projName" type="text" placeholder="e.g. Tower A Residential">
               </div>
               <div class="tkt-field">
+                <label>Project code</label>
+                <input class="tkt-input" id="projCode" type="text" placeholder="e.g. PRJ-001" maxlength="60">
+              </div>
+              <div class="tkt-field">
                 <label>Client Name</label>
                 <input class="tkt-input" id="projClient" type="text" placeholder="e.g. Al Futtaim Group">
               </div>
@@ -556,7 +560,7 @@
                 <input class="tkt-input" id="projCreateRenew" type="date">
                 <span style="font-size:.72rem;color:#64748b;">Auto-fills one month before end date.</span>
               </div>
-              <div class="tkt-field">
+              <div class="tkt-field" id="projCreateValueWrap">
                 <label>Value (AED)</label>
                 <input class="tkt-input" id="projCreateValue" type="number" step="0.01" min="0" placeholder="Optional">
               </div>
@@ -764,6 +768,10 @@
           <input class="tkt-input" id="projModalName" type="text" autocomplete="organization">
         </div>
         <div class="tkt-field" style="margin:0;">
+          <label for="projModalCode">Project code</label>
+          <input class="tkt-input" id="projModalCode" type="text" maxlength="60" placeholder="e.g. PRJ-001" autocomplete="off">
+        </div>
+        <div class="tkt-field" style="margin:0;">
           <label for="projModalClient">Client name</label>
           <input class="tkt-input" id="projModalClient" type="text" autocomplete="off">
         </div>
@@ -787,7 +795,7 @@
             </span>
           </div>
         </div>
-        <div class="tkt-field" style="margin:0;">
+        <div class="tkt-field" style="margin:0;" id="projModalValueWrap">
           <label for="projModalValue">Contract value (AED)</label>
           <input class="tkt-input" id="projModalValue" type="number" step="0.01" min="0" placeholder="Optional">
         </div>
@@ -830,6 +838,7 @@ document.querySelectorAll('.settings-tab').forEach(tab => {
 // ── Load options ──────────────────────────────────────────
 let _options = {};
 let _projects = [];
+let _canSeeProjectValue = false;
 let _locationTree = [];
 let _supervisors = [];
 let _bdProjects = [];
@@ -917,9 +926,15 @@ async function loadAll() {
   ]);
   _options = optRes.data.options || {};
   _projects = projRes.data.projects || [];
+  _canSeeProjectValue = !!(projRes.data && projRes.data.can_see_project_value);
   _locationTree = locRes.data.tree || [];
   _supervisors = (supRes.ok && supRes.data.success) ? (supRes.data.supervisors || []) : [];
   _bdProjects = (bdRes.ok && bdRes.data.success) ? (bdRes.data.projects || []) : [];
+
+  const createValWrap = document.getElementById('projCreateValueWrap');
+  if (createValWrap) createValWrap.style.display = _canSeeProjectValue ? '' : 'none';
+  const modalValWrap = document.getElementById('projModalValueWrap');
+  if (modalValWrap) modalValWrap.style.display = _canSeeProjectValue ? '' : 'none';
 
   fillSupervisorDropdown(document.getElementById('projSupervisor'), '');
   fillBdProjectDropdown(document.getElementById('projBdLink'), '');
@@ -996,6 +1011,8 @@ function openProjectModal(id) {
   }
 
   document.getElementById('projModalName').value = p.name || '';
+  const codeEl = document.getElementById('projModalCode');
+  if (codeEl) codeEl.value = p.project_code || '';
   document.getElementById('projModalClient').value = p.client_name || '';
   document.getElementById('projModalDesc').value = p.description || '';
   fillSupervisorDropdown(document.getElementById('projModalSupervisor'), p.supervisor_id);
@@ -1004,6 +1021,8 @@ function openProjectModal(id) {
   document.getElementById('projModalRenew').value = (p.renewal_date || '').slice(0, 10);
   const pv = p.project_value;
   document.getElementById('projModalValue').value = (pv != null && pv !== '') ? String(pv) : '';
+  const modalValWrap = document.getElementById('projModalValueWrap');
+  if (modalValWrap) modalValWrap.style.display = _canSeeProjectValue ? '' : 'none';
 
   modal.classList.add('is-open');
   modal.setAttribute('aria-hidden', 'false');
@@ -1042,18 +1061,22 @@ async function saveProjectModal() {
   const endVal = (document.getElementById('projModalEnd').value || '').trim();
   const renewVal = (document.getElementById('projModalRenew').value || '').trim();
   const valRaw = document.getElementById('projModalValue').value;
-  const res = await tktFetch(`/tickets/api/settings/projects/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify({
+  const payload = {
       name,
+      project_code: (document.getElementById('projModalCode')?.value || '').trim() || null,
       client_name: document.getElementById('projModalClient').value.trim(),
       description: document.getElementById('projModalDesc').value.trim(),
       supervisor_id: supVal,
       bd_project_id: bdVal,
       project_end_date: endVal || null,
       renewal_date: renewVal || null,
-      project_value: valRaw === '' ? null : valRaw,
-    }),
+  };
+  if (_canSeeProjectValue) {
+    payload.project_value = valRaw === '' ? null : valRaw;
+  }
+  const res = await tktFetch(`/tickets/api/settings/projects/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
   });
   if (res.ok && res.data.success) {
     const ix = _projects.findIndex(x => x.id === id);
@@ -1090,10 +1113,10 @@ function renderProjects(list) {
       <div class="proj-card" id="proj-${p.id}" role="button" tabindex="0"
            aria-label="${tktEsc(`Open details for ${p.name || 'project'}`)}">
         <div style="width:38px;height:38px;border-radius:10px;background:#eff6ff;display:flex;align-items:center;justify-content:center;flex-shrink:0;pointer-events:none;">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="#d21725" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Z"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="#ff8e68" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Z"/></svg>
         </div>
         <div style="flex:1;min-width:0;pointer-events:none;">
-          <div class="proj-card-name">${tktEsc(p.name)}</div>
+          <div class="proj-card-name">${tktEsc(p.name)}${p.project_code ? ` <span style="font-weight:500;color:#64748b;font-size:.85em;">(${tktEsc(p.project_code)})</span>` : ''}</div>
           <div class="proj-card-meta">${p.client_name ? tktEsc(p.client_name) : 'No client'}</div>
           ${supLine}
           ${descPreview}
@@ -1164,17 +1187,21 @@ document.getElementById('saveProjectBtn').addEventListener('click', async () => 
   const cEnd = (document.getElementById('projCreateEnd').value || '').trim();
   const cRenew = (document.getElementById('projCreateRenew').value || '').trim();
   const cValRaw = document.getElementById('projCreateValue').value;
-  const res = await tktFetch('/tickets/api/settings/projects', {
-    method: 'POST', body: JSON.stringify({
+  const createPayload = {
       name,
+      project_code: (document.getElementById('projCode')?.value || '').trim() || null,
       client_name: document.getElementById('projClient').value.trim(),
       description: document.getElementById('projDesc').value.trim(),
       supervisor_id: supRaw,
       bd_project_id: bdId,
       project_end_date: cEnd || null,
       renewal_date: cRenew || null,
-      project_value: cValRaw === '' ? null : cValRaw,
-    }),
+  };
+  if (_canSeeProjectValue) {
+    createPayload.project_value = cValRaw === '' ? null : cValRaw;
+  }
+  const res = await tktFetch('/tickets/api/settings/projects', {
+    method: 'POST', body: JSON.stringify(createPayload),
   });
   if (res.ok && res.data.success) {
     _projects.push(res.data.project);
@@ -1182,6 +1209,7 @@ document.getElementById('saveProjectBtn').addEventListener('click', async () => 
     populateProjectDropdowns();
     document.getElementById('addProjectForm').classList.remove('open');
     document.getElementById('projName').value = '';
+    if (document.getElementById('projCode')) document.getElementById('projCode').value = '';
     document.getElementById('projClient').value = '';
     document.getElementById('projDesc').value = '';
     document.getElementById('projCreateEnd').value = '';
@@ -1289,7 +1317,7 @@ function buildPropNode(prop) {
   wrap.innerHTML = `
     <div class="loc-node-header" onclick="toggleLocNode(this)">
       <svg class="loc-node-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="#d21725" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Z"/></svg>
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="#ff8e68" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Z"/></svg>
       <span class="loc-node-label">${prop.name}</span>
       <button class="tkt-btn tkt-btn-danger tkt-btn-sm tkt-btn-icon" onclick="event.stopPropagation();deleteProp(${prop.id})" title="Delete">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="12" height="12"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
@@ -1604,7 +1632,7 @@ function renderTemplates(list) {
     d.style.alignItems = 'flex-start';
     d.innerHTML = `
       <div style="display:flex;align-items:center;gap:8px;width:100%;">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="#d21725" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="#ff8e68" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z"/></svg>
         <span style="font-weight:700;font-size:.9rem;flex:1;">${t.title}</span>
         <button class="tkt-btn tkt-btn-danger tkt-btn-sm tkt-btn-icon" onclick="deleteTmpl(${t.id})">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>

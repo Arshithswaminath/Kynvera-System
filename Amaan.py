@@ -751,6 +751,11 @@ def create_app():
     app.config['UPLOADS_DIR'] = UPLOADS_DIR
     app.config['JOBS_DIR'] = JOBS_DIR
     app.config['EXECUTOR'] = executor
+
+    @app.context_processor
+    def inject_kynvera_hub():
+        from common.kynvera_hub import hub_public_config
+        return {'hub': hub_public_config()}
     
     # Ensure directories exist (critical for Render deployment)
     try:
@@ -1117,10 +1122,40 @@ def create_app():
         # Clear any local storage via JS or just redirect
         return render_template('logout.html')
     
+
     @app.route('/dashboard')
     def dashboard():
         """Protected dashboard - requires authentication"""
-        return render_template('dashboard.html')
+        from common.kynvera_hub import hub_public_config
+        return render_template('dashboard.html', hub=hub_public_config())
+
+    @app.route('/api/hub/config')
+    def hub_config():
+        from common.kynvera_hub import hub_public_config
+        return jsonify(hub_public_config())
+
+    @app.route('/sso/consume')
+    def sso_consume():
+        """Accept a JWT from the Kynvera hub and establish a local session."""
+        from flask_jwt_extended import decode_token
+        from common.kynvera_hub import sanitize_next_path
+
+        token = (request.args.get('token') or '').strip()
+        next_path = sanitize_next_path(request.args.get('next'), '/dashboard')
+        error = None
+        if not token:
+            error = 'Missing access token.'
+        else:
+            try:
+                decode_token(token)
+            except Exception:
+                error = 'Invalid or expired token. Please sign in again from Kynvera Home.'
+        return render_template(
+            'sso_consume.html',
+            token='' if error else token,
+            next_url=next_path,
+            error=error,
+        )
     
     @app.route('/about')
     def about():
@@ -1246,4 +1281,5 @@ if __name__ == '__main__':
     print(f"\n  Running on branch: [{branch}]\n")
     app = create_app()
     # For local development use debug=True. Remove or set False in production.
-    app.run(debug=False, host='0.0.0.0', port=5001)
+    port = int(os.environ.get('PORT', '5003'))
+    app.run(debug=False, host='0.0.0.0', port=port)

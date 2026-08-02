@@ -26,7 +26,7 @@ def compose_greeting(user):
     name = (getattr(user, 'full_name', None) or getattr(user, 'username', None) or 'there').split()[0]
     return _base_payload(
         'greeting',
-        f"Hello {name}! I'm the Amaan assistant. Ask me anything — I'm here to help.",
+        f"Hello {name}! I'm the Kynvera assistant. Ask me anything — I'm here to help.",
         suggestions=[
             'How many pending forms?',
             'When was my last leave?',
@@ -221,7 +221,7 @@ def compose_change_password():
         actions=[
             {'label': 'Open Profile → Security', 'href': '#', 'kind': 'profile_security'},
         ],
-        sources=[{'title': 'Account security', 'source': 'Amaan Help'}],
+        sources=[{'title': 'Account security', 'source': 'Kynvera Help'}],
     )
 
 
@@ -231,7 +231,7 @@ def compose_module_help(query: str, intent: str = 'module_help'):
         return compose_contact_admin(unknown=True)
 
     best = matches[0]
-    sources = [{'title': m.get('question', ''), 'source': m.get('source', 'Amaan Help')} for m in matches]
+    sources = [{'title': m.get('question', ''), 'source': m.get('source', 'Kynvera Help')} for m in matches]
     msg = best.get('answer', '')
     if len(matches) > 1 and matches[1].get('question') and matches[1].get('score', 0) >= best.get('score', 0) * 0.6:
         msg += f"\n\nRelated: {matches[1].get('question', '')}"
@@ -266,7 +266,7 @@ def compose_contact_admin(unknown: bool = False):
         actions=[
             {'label': 'Open Ticketing', 'href': '/tickets/', 'kind': 'link'},
         ],
-        suggestions=['How many pending forms?', 'Find a document', 'What is Amaan?'],
+        suggestions=['How many pending forms?', 'Find a document', 'What is Kynvera?'],
     )
 
 
@@ -411,7 +411,7 @@ def compose_my_inspections(data):
     total = data.get('total', 0)
     cards = [{'type': 'stat', 'label': 'Total inspections', 'value': str(total)}]
     parts = []
-    fire_count = int(data.get('hvac') or 0) + int(data.get('civil') or 0) + int(data.get('cleaning') or 0)
+    fire_count = int(data.get('hvac') or 0)
     if fire_count:
         cards.append({'type': 'stat', 'label': 'Fire system', 'value': str(fire_count)})
         parts.append(f"{fire_count} fire system")
@@ -448,7 +448,7 @@ def compose_llm_chat(message: str, user, intent: str = 'llm_chat'):
         return compose_fallback(message)
 
     sources = [
-        {'title': c.get('title', ''), 'source': c.get('source', 'Amaan Help')}
+        {'title': c.get('title', ''), 'source': c.get('source', 'Kynvera Help')}
         for c in chunks[:1]
         if c.get('text')
     ]
@@ -469,7 +469,7 @@ def compose_llm_chat(message: str, user, intent: str = 'llm_chat'):
         suggestions=[
             'How many pending forms?',
             'My last leave',
-            'Where is Amaan?',
+            'Where is Kynvera?',
             'Find a document',
         ],
     )

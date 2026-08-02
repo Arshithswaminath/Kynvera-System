@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+  <meta name="theme-color" content="#ff8e68">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>{{ candidate.full_name }} — Hiring Documents · Kynvera</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon-32.png') }}?v=curved">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}?v=curved">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-hiring.css') }}?v=83">
+  {% set active_page = 'hr' %}
+</head>
+<body class="hh-page">
+  {% include 'partials/hr_embed_optional_navbar.html' %}
+
+  <div class="hh-shell" id="hhDetailRoot" data-candidate-id="{{ candidate.id }}">
+    {% include 'partials/hr_hiring_sidebar.html' %}
+
+    <main class="hh-main hh-main-detail">
+      <a href="/hr/hiring" class="hh-back">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/>
+        </svg>
+        Back to list
+      </a>
+
+      <div class="hh-detail-hero">
+        <section class="hh-profile-card hh-profile-card-brand" id="hhDetailHeader" aria-label="Candidate summary">
+          <div class="hh-profile-main">
+            <div class="hh-avatar c0">{{ candidate.initials() }}</div>
+            <div class="hh-detail-meta">
+              <h1>{{ candidate.full_name }}</h1>
+              <p>{{ candidate.role or '—' }}{% if candidate.department %} · {{ candidate.department }}{% endif %}</p>
+            </div>
+          </div>
+          <div class="hh-profile-aside">
+            <button type="button" class="hh-btn hh-btn-sm hh-btn-on-brand-ghost" id="hhMarkAllSubmitted">Mark all submitted</button>
+            <button type="button" class="hh-btn hh-btn-sm hh-btn-on-brand-danger" id="hhDeleteCandidate">Delete</button>
+          </div>
+        </section>
+
+        <section class="hh-pipeline-panel" id="hhPipelinePanel" aria-label="Hiring pipeline status">
+          <div id="hhPipelineBody" class="hh-pipeline-body">
+            <div class="hh-loading"><div class="hh-spinner"></div>Loading pipeline…</div>
+          </div>
+          <select id="hhPipelineSelect" class="hh-visually-hidden" aria-label="Update pipeline status" tabindex="-1">
+            <optgroup label="Stages">
+              <option value="interview_completed">Interview completed</option>
+              <option value="gathering_documents">Gathering documents</option>
+              <option value="preparing_offer_letter">Preparing offer letter</option>
+              <option value="offer_letter_prepared">Offer letter prepared</option>
+              <option value="offer_letter_signed">Offer letter signed</option>
+              <option value="md_signed_offer_received">Signed offer letter from MD received</option>
+              <option value="visa_process_started">Visa process started</option>
+              <option value="candidate_employee">Candidate employee</option>
+            </optgroup>
+            <optgroup label="Process">
+              <option value="on_hold">On hold — pause process</option>
+            </optgroup>
+          </select>
+        </section>
+      </div>
+
+      <div class="hh-phases" id="hhDocSections">
+        <section class="hh-section">
+          <div class="hh-section-head">
+            <h2 class="hh-section-title">1. Identity &amp; clearance</h2>
+            <p class="hh-section-sub">Upload a file copy, or tap the document icon to mark handed over in person. For PCC, mark attested after the scan is uploaded.</p>
+          </div>
+          <div class="hh-checklist" id="hhChecklistPhase1">
+            <div class="hh-loading"><div class="hh-spinner"></div>Loading checklist…</div>
+          </div>
+        </section>
+
+        <section class="hh-section hh-section-phase2" id="hhPhase2Section">
+          <div class="hh-section-head">
+            <h2 class="hh-section-title">2. Offer, visa &amp; contract</h2>
+            <p class="hh-section-sub" id="hhPhase2Sub">Upload the department-signed offer letter, insurance paper, e-visa, and employment contract.</p>
+          </div>
+          <div class="hh-checklist" id="hhChecklistPhase2">
+            <div class="hh-loading"><div class="hh-spinner"></div>Loading checklist…</div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <input type="file" id="hhFileInput" class="hh-upload-zone" capture="environment">
+
+  {% include 'partials/hr_hiring_candidate_form_modal.html' %}
+
+  <script src="{{ url_for('static', filename='js/injaaz-uae-datetime.js') }}"></script>
+  <script src="{{ url_for('static', filename='api-client.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/hr-hiring.js') }}?v=60"></script>
+</body>
+</html>

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
   
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
-<title>Submitted Inspection Form - Amaan Application</title>
+<title>Submitted Inspection Form — Kynvera</title>
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
@@ -14,9 +14,9 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     
     :root {
-      --primary: #d21725;
-      --primary-light: #e8323f;
-      --primary-dark: #a8121e;
+      --primary: #ff8e68;
+      --primary-light: #f97e54;
+      --primary-dark: #e05f36;
       --secondary: #D9D9D9;
       --text-dark: #1a1a1a;
       --text-light: #6b6b6b;
@@ -30,7 +30,7 @@
     
     body {
       font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
-      background: var(--bg-body, #f8faf8);
+      background: var(--bg-body, #f9f9f9);
       color: var(--text-dark);
       line-height: 1.6;
     }
@@ -77,7 +77,7 @@
       border-radius: 16px;
       padding: 2rem;
       box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-      border: 1px solid rgba(210, 23, 37, 0.05);
+      border: 1px solid rgba(255, 142, 104, 0.05);
     }
     
     .filters {
@@ -105,7 +105,7 @@
     .search-input:focus {
       outline: none;
       border-color: var(--primary);
-      box-shadow: 0 0 0 4px rgba(210, 23, 37, 0.1);
+      box-shadow: 0 0 0 4px rgba(255, 142, 104, 0.1);
     }
     
     .search-icon {
@@ -298,8 +298,6 @@
         <select id="moduleFilter" class="search-input" style="width: auto; padding-left: 1rem;">
           <option value="">All Inspection Modules</option>
           <option value="hvac_mep">HVAC & MEP</option>
-          <option value="civil">Civil Works</option>
-          <option value="cleaning">Cleaning</option>
         </select>
         <select id="statusFilter" class="search-input" style="width: auto; padding-left: 1rem;">
           <option value="">All Statuses</option>
@@ -479,9 +477,7 @@
 
       submissions.forEach(sub => {
         const moduleNames = {
-          'hvac_mep': 'Fire Systems',
-          'civil': 'Civil Works',
-          'cleaning': 'Cleaning'
+          'hvac_mep': 'Fire Systems'
         };
         const getModuleDisplay = (mt) => moduleNames[mt] || mt;
         

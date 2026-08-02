@@ -22,6 +22,7 @@ from app.middleware import token_required
 from app.models import DocHubAccess, DocHubDocument, DocHubStar, User, db
 from common.error_responses import error_response, success_response
 from common.datetime_utils import utc_now_naive
+from common.security import assert_public_url
 
 docs_bp = Blueprint('docs_bp', __name__, url_prefix='/api/docs')
 
@@ -88,6 +89,8 @@ def _resolve_local_stored_path(stored_path):
 
 def _stream_remote_as_download(url, filename):
     """Proxy remote file so the browser still calls same-origin /api/docs/.../download (avoids CORS)."""
+    # SSRF guard: never let a stored URL point the server at an internal/private host.
+    assert_public_url(url)
     fn = secure_filename(filename or 'document') or 'document'
     mime, _ = mimetypes.guess_type(fn)
 
@@ -108,6 +111,8 @@ def _stream_remote_as_download(url, filename):
 
 
 def _download_url_to_temp(url, suffix):
+    # SSRF guard: never let a stored URL point the server at an internal/private host.
+    assert_public_url(url)
     fd, path = tempfile.mkstemp(suffix=suffix)
     os.close(fd)
     try:

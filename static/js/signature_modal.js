@@ -23,6 +23,7 @@
     previewImgId: null,
     hintId: null,
     onApply: null,
+    requireConfirm: false,
     pad: null,
     uploadDataUrl: null,
     savedSignature: null,
@@ -378,6 +379,13 @@
       alert('Please provide a signature before accepting.');
       return;
     }
+    if (state.requireConfirm) {
+      var chk = $('sigmConfirmCheck');
+      if (!chk || !chk.checked) {
+        alert('Please confirm the checkbox before signing.');
+        return;
+      }
+    }
     applyToField(state.targetInputId, state.previewImgId, dataUrl, state.hintId);
     if (typeof state.onApply === 'function') {
       try { state.onApply(dataUrl); } catch (e) { console.warn(e); }
@@ -405,7 +413,24 @@
     state.previewImgId = opts.previewImgId || null;
     state.hintId = opts.hintId || null;
     state.onApply = opts.onApply || null;
+    state.requireConfirm = !!(opts.confirmLabel || opts.requireConfirm);
     $('sigmTitle').textContent = opts.title || 'Signature';
+    var confirmWrap = $('sigmConfirmWrap');
+    var confirmText = $('sigmConfirmText');
+    var confirmChk = $('sigmConfirmCheck');
+    if (confirmWrap) {
+      if (state.requireConfirm) {
+        confirmWrap.hidden = false;
+        if (confirmText) {
+          confirmText.textContent = opts.confirmLabel ||
+            'I confirm the details shown on this document.';
+        }
+        if (confirmChk) confirmChk.checked = false;
+      } else {
+        confirmWrap.hidden = true;
+        if (confirmChk) confirmChk.checked = false;
+      }
+    }
     resetPanes();
     initPad();
     updateSavedButton();

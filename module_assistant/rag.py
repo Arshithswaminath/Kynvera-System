@@ -43,7 +43,7 @@ def _kb_chunks(query: str, limit: int) -> list:
         chunks.append({
             'id': m.get('id'),
             'title': m.get('question') or 'Knowledge',
-            'source': m.get('source') or 'Amaan Help',
+            'source': m.get('source') or 'Kynvera Help',
             'link': m.get('link'),
             'text': body,
             'score': m.get('score', 0),

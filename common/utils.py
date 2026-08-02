@@ -68,11 +68,58 @@ def random_id(prefix="job"):
 def ensure_dir(path):
     os.makedirs(path, exist_ok=True)
 
-def save_uploaded_file(file_storage, uploads_dir):
+# Executable / script / active-markup types are never legitimate business uploads
+# (photos, PDFs, Office docs, signatures). Blocking them stops an authenticated
+# user from staging a weaponizable file on our storage/CDN. A stricter positive
+# allow-list is a sensible follow-up; this deny-list is chosen to avoid rejecting
+# any real inspection photo or document.
+BLOCKED_UPLOAD_EXTENSIONS = {
+    'exe', 'dll', 'so', 'dylib', 'bin', 'msi', 'scr', 'com', 'bat', 'cmd',
+    'sh', 'bash', 'zsh', 'ps1', 'psm1', 'jar', 'app', 'deb', 'rpm',
+    'js', 'mjs', 'cjs', 'php', 'phtml', 'php3', 'php4', 'php5', 'py', 'pyc',
+    'pl', 'rb', 'asp', 'aspx', 'jsp', 'jspx', 'cgi', 'vbs', 'wsf',
+    'html', 'htm', 'xhtml', 'shtml', 'svg', 'svgz', 'xml', 'xht', 'htaccess',
+}
+
+# Generous cap so real phone photos (often 5–12 MB) always pass while a single
+# oversized upload cannot fill disk / exhaust memory. MAX_CONTENT_LENGTH in
+# config caps the whole request body as a second backstop.
+DEFAULT_MAX_UPLOAD_MB = 30
+
+
+class UploadValidationError(ValueError):
+    """Raised when an uploaded file fails type/size validation."""
+
+
+def _validate_upload(file_storage, max_size_mb):
+    """Reject dangerous extensions and oversized files. Raises UploadValidationError."""
+    name = (file_storage.filename or '')
+    ext = name.rsplit('.', 1)[-1].lower() if '.' in name else ''
+    if ext in BLOCKED_UPLOAD_EXTENSIONS:
+        raise UploadValidationError(f"File type .{ext} is not allowed.")
+    limit = (max_size_mb or DEFAULT_MAX_UPLOAD_MB) * 1024 * 1024
+    try:
+        stream = file_storage.stream
+        pos = stream.tell()
+        stream.seek(0, os.SEEK_END)
+        size = stream.tell()
+        stream.seek(pos)
+    except Exception:
+        size = None
+    if size is not None and size > limit:
+        raise UploadValidationError(
+            f"File is too large ({size // (1024 * 1024)} MB); max {max_size_mb or DEFAULT_MAX_UPLOAD_MB} MB."
+        )
+
+
+def save_uploaded_file(file_storage, uploads_dir, max_size_mb=None):
     """
     Save an incoming werkzeug FileStorage securely.
+    Validates the file type (deny-list) and size before writing.
     Returns saved filename (relative to uploads_dir).
+    Raises UploadValidationError on a disallowed type or oversized file.
     """
+    _validate_upload(file_storage, max_size_mb)
     ensure_dir(uploads_dir)
     filename = secure_filename(file_storage.filename)
     if not filename:
@@ -242,10 +289,14 @@ def save_uploaded_file_cloud(file_storage, uploads_dir, folder="uploads"):
         
     Returns:
         dict with 'url', 'public_id', 'is_cloud' keys
-        
+
     Raises:
-        Exception if both cloud and local storage fail
+        UploadValidationError if the file type/size is rejected.
+        Exception if both cloud and local storage fail.
     """
+    # Validate up front so a disallowed type/size is rejected cleanly and never
+    # reaches Cloudinary or the local-fallback retry path below.
+    _validate_upload(file_storage, None)
     try:
         import cloudinary.uploader
         from .retry_utils import upload_to_cloudinary_with_retry

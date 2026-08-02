@@ -4,42 +4,43 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
   <meta name="color-scheme" content="light">
-  <title>Kynvera - All Operations. One Platform.</title>
-  <meta name="description" content="Kynvera Hub — open Fire System and Municipality applications from one home.">
-  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='images/kynvera/kynvera-mark-32.png') }}">
-  <link rel="icon" type="image/png" sizes="48x48" href="{{ url_for('static', filename='images/kynvera/kynvera-mark-48.png') }}">
+  <title>Amaan Application - All Operations. One Platform.</title>
+  <meta name="description" content="Amaan Application — one platform for inspections, HR workflows, store inventory, work orders, finance, and approvals.">
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
-
-  <meta name="theme-color" content="#ff8e68">
+  
+  <!-- PWA Meta Tags -->
+  <meta name="theme-color" content="#d21725">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Kynvera">
+  <meta name="apple-mobile-web-app-title" content="Amaan Systems">
+  <meta name="mobile-web-app-capable" content="yes">
   <link rel="manifest" href="/manifest.json">
-  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='images/kynvera/kynvera-mark-180.png') }}">
   <link rel="apple-touch-icon" sizes="192x192" href="{{ url_for('static', filename='logo.png') }}">
   <script src="{{ url_for('static', filename='pwa-install.js') }}" defer></script>
-
+  
   {% include 'partials/caveat_font.html' %}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
-  <script>
-    window.__KYNVERA_HUB__ = {{ (hub or {})|tojson }};
-  </script>
 </head>
-<body class="page-dashboard{% if hub and hub.hub_mode %} page-dashboard-hub{% endif %}">
+<body class="page-dashboard">
   {% set active_page = 'home' %}
   {% include 'partials/main_navbar.html' with context %}
 
+  <!-- Dashboard: left hero + right stats widget -->
   <header class="hero hero-split">
     <div class="hero-content hero-split-inner">
       <div class="hero-left">
         <h1 class="hero-title">All Operations.<br><span class="hero-title-accent">One Platform.</span></h1>
-        <p class="hero-subtitle">Sign in once to Kynvera Home, then open the Fire System or Municipality application for your work.</p>
+        <p class="hero-subtitle">Amaan brings inspections, HR workflows, store inventory, work orders, and finance together — so teams can submit, track, and approve work from a single workspace.</p>
+        <div class="hero-cta-row">
+          <span class="hero-cta-stat">Site to office, one system</span>
+        </div>
       </div>
       <div class="hero-right">
+        <a href="/api/workflow/history" class="dashboard-widget-link" title="View all submissions">
         <div class="dashboard-widget">
           <div class="dashboard-widget-header">
             <div class="dashboard-widget-dots">
@@ -50,14 +51,14 @@
           <div class="dashboard-widget-body">
             <div class="dashboard-stats-grid" id="dashboard-stats-grid">
               <div class="dashboard-stat-card">
-                <div class="dashboard-stat-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.362 5.214A8.252 8.252 0 0 1 12 21 8.25 8.25 0 0 1 6.038 7.047 8.287 8.287 0 0 0 9 9.601a8.983 8.983 0 0 1 3.361-6.867 8.21 8.21 0 0 0 3 2.48Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M12 18a3.75 3.75 0 0 0 .495-7.468 5.99 5.99 0 0 0-1.925 3.547 5.975 5.975 0 0 1-2.133-1.001A3.75 3.75 0 0 0 12 18Z" /></svg></div>
-                <span class="dashboard-stat-label">Fire System</span>
-                <span class="dashboard-stat-value">App</span>
+                <div class="dashboard-stat-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div>
+                <span class="dashboard-stat-label" id="stat-label-0">Inspection forms</span>
+                <span class="dashboard-stat-value" id="stat-value-0">—</span>
               </div>
               <div class="dashboard-stat-card">
-                <div class="dashboard-stat-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Z" /></svg></div>
-                <span class="dashboard-stat-label">Municipality</span>
-                <span class="dashboard-stat-value">App</span>
+                <div class="dashboard-stat-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg></div>
+                <span class="dashboard-stat-label" id="stat-label-1">HR forms</span>
+                <span class="dashboard-stat-value" id="stat-value-1">—</span>
               </div>
               <div class="dashboard-stat-card">
                 <div class="dashboard-stat-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg></div>
@@ -65,49 +66,121 @@
                 <span class="dashboard-stat-value" id="stat-value-2">—</span>
               </div>
               <div class="dashboard-stat-card">
-                <div class="dashboard-stat-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></div>
-                <span class="dashboard-stat-label">Applications</span>
-                <span class="dashboard-stat-value">2</span>
+                <div class="dashboard-stat-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg></div>
+                <span class="dashboard-stat-label" id="stat-label-3">Forms to complete</span>
+                <span class="dashboard-stat-value" id="stat-value-3">—</span>
               </div>
             </div>
           </div>
         </div>
+        </a>
       </div>
     </div>
   </header>
 
   <div id="passwordPolicyBanner" class="password-policy-banner" hidden role="status" aria-live="polite"></div>
 
+  <!-- Modules Section -->
   <section class="modules-section" id="modules">
     <div class="modules-inner">
-      <h2 class="modules-section-label">Applications</h2>
+      <h2 class="modules-section-label">Modules</h2>
 
       <div class="modules-grid modules-grid--boot" id="modulesGrid">
 
-        <a href="#" class="module-card" id="module-fire-app" style="display: none;" role="button">
+        <!-- HR Module -->
+        <a href="/hr/" class="module-card" id="module-hr" style="display: none;">
           <div class="card-body">
-            <span class="module-number">Fire</span>
+            <span class="module-number">HR</span>
             <div class="module-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.362 5.214A8.252 8.252 0 0 1 12 21 8.25 8.25 0 0 1 6.038 7.047 8.287 8.287 0 0 0 9 9.601a8.983 8.983 0 0 1 3.361-6.867 8.21 8.21 0 0 0 3 2.48Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M12 18a3.75 3.75 0 0 0 .495-7.468 5.99 5.99 0 0 0-1.925 3.547 5.975 5.975 0 0 1-2.133-1.001A3.75 3.75 0 0 0 12 18Z" /></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" /></svg>
             </div>
-            <h2 class="module-title">Fire System Application</h2>
-            <p class="module-description">Fire-system inspections, HR, store, tickets, operations, and finance for the Kynvera Fire product.</p>
-            <span class="module-arrow">Open Fire System <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
+            <h2 class="module-title">HR Module</h2>
+            <p class="module-description">Leave requests, termination forms, long vacation applications, and asset management.</p>
+            <span class="module-arrow">Open HR <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
           </div>
         </a>
 
-        <a href="#" class="module-card" id="module-municipality-app" style="display: none;" role="button">
+        <!-- Email Automation card moved into the Operations hub (/operations/) -->
+
+        <!-- Fire system inspection -->
+        <a href="/inspection/" class="module-card" id="module-inspection" style="display: none;">
           <div class="card-body">
-            <span class="module-number">Municipality</span>
+            <span class="module-number">Inspection</span>
             <div class="module-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Z" /></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
             </div>
-            <h2 class="module-title">Municipality Application</h2>
-            <p class="module-description">Municipal operations — QHSE, procurement, FM assets, service tickets, and related workflows.</p>
-            <span class="module-arrow">Open Municipality <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
+            <h2 class="module-title">Inspection Module</h2>
+            <p class="module-description">Fire system inspection forms — alarm, sprinklers, pumps, extinguishers, and related checks.</p>
+            <span class="module-arrow">Open Forms <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
           </div>
         </a>
 
+        <!-- Store -->
+        <a href="/store/" class="module-card" id="module-store" style="display: none;">
+          <div class="card-body">
+            <span class="module-number">Store</span>
+            <div class="module-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m20.25 7.5-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z" /></svg>
+            </div>
+            <h2 class="module-title">Store</h2>
+            <p class="module-description">Material lists, quantity tracking, pricing management, and Excel import/export.</p>
+            <span class="module-arrow">Open Store <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
+          </div>
+        </a>
+
+        <!-- Service tickets / work orders (Admin → Module access: Service tickets) -->
+        <a href="/tickets/" class="module-card" id="module-ticketing" style="display: none;">
+          <div class="card-body">
+            <span class="module-number">Operations</span>
+            <div class="module-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-5.25h5.25M7.5 15h3M3.375 5.25c-.621 0-1.125.504-1.125 1.125v3.026a2.999 2.999 0 0 1 0 5.198v3.026c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125v-3.026a2.999 2.999 0 0 1 0-5.198V6.375c0-.621-.504-1.125-1.125-1.125H3.375Z" /></svg>
+            </div>
+            <h2 class="module-title">Service tickets</h2>
+            <p class="module-description">Create and track work orders, assignments, materials, and closures across your ticketing pipeline.</p>
+            <span class="module-arrow">Open tickets <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
+          </div>
+        </a>
+
+        <!-- Operations (Over Time + Trading Invoices) -->
+        <a href="/operations/" class="module-card" id="module-operations" style="display: none;">
+          <div class="card-body">
+            <span class="module-number">Operations</span>
+            <div class="module-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
+            </div>
+            <h2 class="module-title">Operations</h2>
+            <p class="module-description">Staff overtime records (with Excel import) and trading invoices for material sales to clients.</p>
+            <span class="module-arrow">Open Operations <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
+          </div>
+        </a>
+
+        <!-- Finance & Invoicing -->
+        <a href="/finance/" class="module-card" id="module-finance" style="display: none;">
+          <div class="card-body">
+            <span class="module-number">Finance</span>
+            <div class="module-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V10.5Zm-12 0h.008v.008H6V10.5Z" /></svg>
+            </div>
+            <h2 class="module-title">Finance & Invoicing</h2>
+            <p class="module-description">Contract management, monthly billing reports, costing calculator, and profit margin tracking.</p>
+            <span class="module-arrow">Open Finance <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
+          </div>
+        </a>
+
+        <!-- DocHub (document library) -->
+        <a href="/dochub" class="module-card" id="module-dochub" style="display: none;">
+          <div class="card-body">
+            <span class="module-number">Documents</span>
+            <div class="module-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44Z" /></svg>
+            </div>
+            <h2 class="module-title">DocHub</h2>
+            <p class="module-description">Company document library — browse collections, upload files, and manage shared documents.</p>
+            <span class="module-arrow">Open DocHub <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
+          </div>
+        </a>
+
+        <!-- Administrative (admin only) -->
         <a href="/admin/dashboard" class="module-card" id="module-admin" style="display: none;">
           <div class="card-body">
             <span class="module-number">Admin</span>
@@ -115,8 +188,74 @@
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
             </div>
             <h2 class="module-title">Administrative</h2>
-            <p class="module-description">Users, app entitlements, and portal settings for the Kynvera main account.</p>
+            <p class="module-description">Admin dashboard, team management, personal progress, and system-wide settings.</p>
             <span class="module-arrow">Open Admin <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
+          </div>
+        </a>
+
+        <!-- My submitted forms (enabled per user via Admin → Module access) -->
+        <a href="/workflow/submitted-forms" class="module-card" id="module-submitted-forms" style="display: none;">
+          <div class="card-body">
+            <span class="module-number">Workflow</span>
+            <div class="module-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" /></svg>
+            </div>
+            <h2 class="module-title">Submitted forms</h2>
+            <p class="module-description">One hub for your HR and inspection submissions, drafts, and workflow status.</p>
+            <span class="module-arrow">Open <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
+          </div>
+        </a>
+
+        <!-- Pending Review (reviewers only) -->
+        <a href="/workflow/pending-reviews" class="module-card" id="module-pending-review" style="display: none;">
+          <div class="card-body">
+            <span class="module-number">Workflow</span>
+            <div class="module-icon" style="position: relative;">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25ZM6.75 12h.008v.008H6.75V12Zm0 3h.008v.008H6.75V15Zm0 3h.008v.008H6.75V18Z" /></svg>
+              <span class="module-badge" id="modulePendingBadge" style="display: none;">0</span>
+            </div>
+            <h2 class="module-title">Pending Review</h2>
+            <p class="module-description">Review and approve submissions awaiting your signature and approval in the workflow process.</p>
+            <span class="module-arrow">View Pending <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
+          </div>
+        </a>
+
+        <!-- Device Management (admin only) -->
+        <a href="/admin/devices" class="module-card" id="module-device-management" style="display: none;">
+          <div class="card-body">
+            <span class="module-number">Admin</span>
+            <div class="module-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+            </div>
+            <h2 class="module-title">Device Management</h2>
+            <p class="module-description">Track and manage enrolled devices. Enroll new devices, view status, and export device lists.</p>
+            <span class="module-arrow">Open Devices <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
+          </div>
+        </a>
+
+        <!-- Sales (admin only) -->
+        <a href="/admin/bd" class="module-card" id="module-bd" style="display: none;">
+          <div class="card-body">
+            <span class="module-number">Sales</span>
+            <div class="module-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V10.5Zm-12 0h.008v.008H6V10.5Z" /></svg>
+            </div>
+            <h2 class="module-title">Sales</h2>
+            <p class="module-description">Pipeline, projects, follow-ups, contacts, and sales analytics — manage deals and relationships.</p>
+            <span class="module-arrow">Open Sales <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
+          </div>
+        </a>
+
+        <!-- Civil Defense Notifications (Amaan-specific) -->
+        <a href="/inspection/notifications" class="module-card" id="module-cd-notifications" style="display: none;">
+          <div class="card-body">
+            <span class="module-number">Civil Defense</span>
+            <div class="module-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0M3.124 7.5A8.969 8.969 0 0 1 5.292 3m13.416 0a8.969 8.969 0 0 1 2.168 4.5" /></svg>
+            </div>
+            <h2 class="module-title">Civil Defense Notifications</h2>
+            <p class="module-description">Track Civil Defense regulatory inspection notifications — log dates, site details, and notify Operations.</p>
+            <span class="module-arrow">Open Civil Defense Tracker <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg></span>
           </div>
         </a>
 
@@ -126,14 +265,18 @@
 
   <footer class="footer">
     <div class="footer-inner">
-      <div class="footer-brand">Kynvera</div>
-      <p class="footer-copy">© {{ now().year }} Kynvera / built by <span class="footer-built-by-name">Arshith Swaminath P</span></p>
+      <div class="footer-brand">Amaan Systems</div>
+      <p class="footer-copy">© {{ now().year }} Amaan Application / built by <span class="footer-built-by-name">Arshith Swaminath P</span></p>
     </div>
   </footer>
 
+  <!-- Profile & Contact modals are in main_navbar partial -->
+
+  <!-- External Scripts -->
   <script src="{{ url_for('static', filename='mobile_utils.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='signature_pad.umd.min.js') }}"></script>
   <script src="{{ url_for('static', filename='api-client.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/kynvera-hub.js') }}"></script>
   <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 </body>
 </html>
+

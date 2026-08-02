@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 # Cap how much of the response body we read (defends against huge pages).
 MAX_BYTES = 3 * 1024 * 1024  # 3 MB
 REQUEST_TIMEOUT = 10  # seconds
-USER_AGENT = 'AmaanAssistant/1.0 (+knowledge-base ingestion)'
+USER_AGENT = 'KynveraAssistant/1.0 (+knowledge-base ingestion)'
 
 # Tags whose text is noise, not content.
 _DROP_TAGS = ('script', 'style', 'nav', 'footer', 'header', 'aside',

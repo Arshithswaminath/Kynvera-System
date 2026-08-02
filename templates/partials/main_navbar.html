@@ -3,17 +3,22 @@
 {# Include with `with context` so routes can pass active_page: {% include 'partials/main_navbar.html' with context %} #}
 {# About: white full wordmark. Everywhere else: official mark (PNG). #}
 {% set _about_nav_logo = active_page is defined and active_page == 'about' %}
+{% set _kynvera_home_url = (hub.home_url if hub is defined and hub and hub.home_url else none) or (config.KYNVERA_HOME_URL if config is defined and config.get('KYNVERA_HOME_URL') else none) %}
+{% set _app_name = (hub.app_name if hub is defined and hub and hub.app_name else none) or (config.KYNVERA_APP_NAME if config is defined and config.get('KYNVERA_APP_NAME') else none) or 'Fire System' %}
 <nav class="nav" id="nav">
   <div class="nav-container">
-    <a href="/dashboard" class="logo" aria-label="Amaan Home">
-      <img src="{{ url_for('static', filename=('icons/Amaan - Edited.png' if _about_nav_logo else 'icons/Amaan-mark.png')) }}" alt="Amaan Facilities Management" class="{{ 'logo-img-about' if _about_nav_logo else 'logo-img-official' }}" width="{{ '200' if _about_nav_logo else '56' }}" height="{{ '56' if _about_nav_logo else '56' }}" decoding="async">
+    <a href="{{ _kynvera_home_url if _kynvera_home_url else '/dashboard' }}" class="logo" aria-label="Kynvera Home">
+      <img src="{{ url_for('static', filename=('images/kynvera/kynvera-wordmark.png' if _about_nav_logo else 'images/kynvera/kynvera-mark-96.png')) }}" alt="Kynvera" class="{{ 'logo-img-about' if _about_nav_logo else 'logo-img-official' }}" width="{{ '200' if _about_nav_logo else '56' }}" height="{{ '56' if _about_nav_logo else '56' }}" decoding="async">
       <div class="logo-text">
-        <span class="logo-brand">Amaan Systems</span>
-        <span id="welcome-text" class="nav-welcome">Amaan Systems</span>
+        <span class="logo-brand">Kynvera</span>
+        <span id="welcome-text" class="nav-welcome">Kynvera</span>
       </div>
     </a>
     <div class="nav-center">
       <ul class="nav-menu">
+        {% if _kynvera_home_url %}
+        <li><a href="{{ _kynvera_home_url }}">Kynvera Home</a></li>
+        {% endif %}
         <li><a href="/dashboard"{% if active_page == 'home' %} class="nav-current"{% endif %}>Home</a></li>
         <li><a href="/about"{% if active_page == 'about' %} class="nav-current"{% endif %}>About</a></li>
         <li><a href="javascript:void(0)" id="profileLink" role="button" onclick="if(typeof openProfileModal==='function'){openProfileModal();}">Profile</a></li>
@@ -21,7 +26,7 @@
           <a href="/inspection/"{% if active_page == 'inspection' %} class="nav-current"{% endif %}>Inspection Module</a>
         </li>
         <li id="hr-forms-menu-item" style="display: none;">
-          <a href="/hr/"{% if active_page == 'hr' %} class="nav-current"{% endif %}>HR Forms</a>
+          <a href="/hr/"{% if active_page == 'hr' %} class="nav-current"{% endif %}>HR Modules</a>
         </li>
         <li id="store-menu-item" style="display: none;">
           <a href="/store/"{% if active_page == 'store' %} class="nav-current"{% endif %}>Store</a>
@@ -29,7 +34,7 @@
         <li id="submitted-forms-menu-item" class="has-submenu has-submitted-dropdown" style="display: none;">
           <a href="/workflow/submitted-forms"{% if active_page == 'submitted-forms' %} class="nav-current"{% endif %}>
             Submitted forms
-            <span id="navSubmittedBadge" style="display: none; color: #d21725; font-size: 0.8rem; margin-left: 4px; font-weight: 700;">0</span>
+            <span id="navSubmittedBadge" style="display: none; color: #ff8e68; font-size: 0.8rem; margin-left: 4px; font-weight: 700;">0</span>
           </a>
           <ul class="nav-submenu">
             <li><a href="/workflow/submitted-forms?scope=hr">Submitted HR forms</a></li>
@@ -39,7 +44,7 @@
         <li id="pending-review-menu-item" style="display: none;">
           <a href="/workflow/pending-reviews"{% if active_page == 'pending-review' %} class="nav-current"{% endif %}>
             Pending Review
-            <span id="navPendingBadge" style="display: none; color: #d21725; font-size: 0.8rem; margin-left: 4px; font-weight: 700;">0</span>
+            <span id="navPendingBadge" style="display: none; color: #ff8e68; font-size: 0.8rem; margin-left: 4px; font-weight: 700;">0</span>
           </a>
         </li>
         <li id="admin-menu-item" style="display: none;">
@@ -71,7 +76,7 @@
           <span></span><span></span><span></span>
         </span>
       </button>
-      <button type="button" class="nav-assistant-btn is-coming-soon" id="navAssistantBtn" disabled aria-disabled="true" data-coming-soon="true" aria-label="Ask Amaan — coming soon" title="Ask Amaan — Coming soon">
+      <button type="button" class="nav-assistant-btn is-coming-soon" id="navAssistantBtn" disabled aria-disabled="true" data-coming-soon="true" aria-label="Ask Kynvera — coming soon" title="Ask Kynvera — Coming soon">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="18" height="18" aria-hidden="true">
           <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a49.255 49.255 0 0 0 4.365-1.238C20.864 15.052 22 13.714 22 12.015c0-4.746-4.03-8.511-9-8.511S4 7.269 4 12.015v.745Z" />
         </svg>
@@ -122,6 +127,7 @@
 </nav>
 <div class="mobile-menu-drawer" id="mobileMenuDrawer" aria-hidden="true">
   <ul class="mobile-menu-drawer-list" id="mobileMenuDrawerList"></ul>
+  <p class="mobile-menu-app-name" aria-label="Application">{{ _app_name }}</p>
 </div>
 <div class="mobile-overlay" id="mobileOverlay"></div>
 {% include 'partials/profile_modal.html' %}

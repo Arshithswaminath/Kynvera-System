@@ -7,8 +7,6 @@ from typing import Any
 
 MODULE_DISPLAY: dict[str, str] = {
     "hvac_mep": "Fire Systems",
-    "civil": "Civil Works",
-    "cleaning": "Cleaning Services",
     "procurement_material": "Procurement Request",
     "procurement_property": "Procurement Property",
     "catalog_material": "Material Catalog",
@@ -69,7 +67,7 @@ def format_visit_date_label(visit_date: date | datetime | str | None) -> str | N
     return d.strftime("%d %b %Y")
 
 
-INSPECTION_MODULE_TYPES = ("hvac_mep", "civil", "cleaning")
+INSPECTION_MODULE_TYPES = ("hvac_mep",)
 
 # Document number series — each category gets its own running sequence.
 SERIES_PREFIXES = ("HR", "INSP", "PRC", "TKT", "DOC")
@@ -165,7 +163,7 @@ def build_document_labels(submission: Any, module_display: str | None = None) ->
     mt = getattr(submission, "module_type", None) or ""
     module_label = module_display or get_module_display_name(mt)
 
-    if mt in ("hvac_mep", "civil", "cleaning"):
+    if mt in ("hvac_mep",):
         title = f"{module_label} Inspection"
     else:
         title = module_label

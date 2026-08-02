@@ -100,7 +100,7 @@ function showInstallButton() {
         position: fixed;
         top: 80px;
         right: 15px;
-        background: linear-gradient(135deg, #d21725 0%, #e8323f 100%);
+        background: linear-gradient(135deg, #ff8e68 0%, #f97e54 100%);
         color: white;
         border: 2px solid rgba(255, 255, 255, 0.2);
         padding: 12px 20px;
@@ -112,7 +112,7 @@ function showInstallButton() {
         display: flex;
         align-items: center;
         gap: 8px;
-        box-shadow: 0 4px 16px rgba(210, 23, 37, 0.4), 0 2px 8px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 4px 16px rgba(255, 142, 104, 0.4), 0 2px 8px rgba(0, 0, 0, 0.1);
         z-index: 9999;
         transition: all 0.3s ease;
         animation: slideInRight 0.5s ease, pulse 2s ease-in-out infinite;
@@ -121,11 +121,11 @@ function showInstallButton() {
       `;
       installBtn.addEventListener('mouseenter', () => {
         installBtn.style.transform = 'translateX(-2px) scale(1.05)';
-        installBtn.style.boxShadow = '0 6px 20px rgba(210, 23, 37, 0.5), 0 3px 10px rgba(0, 0, 0, 0.15)';
+        installBtn.style.boxShadow = '0 6px 20px rgba(255, 142, 104, 0.5), 0 3px 10px rgba(0, 0, 0, 0.15)';
       });
       installBtn.addEventListener('mouseleave', () => {
         installBtn.style.transform = 'translateX(0) scale(1)';
-        installBtn.style.boxShadow = '0 4px 16px rgba(210, 23, 37, 0.4), 0 2px 8px rgba(0, 0, 0, 0.1)';
+        installBtn.style.boxShadow = '0 4px 16px rgba(255, 142, 104, 0.4), 0 2px 8px rgba(0, 0, 0, 0.1)';
       });
       document.body.appendChild(installBtn);
     }
@@ -151,10 +151,10 @@ function showInstallButton() {
         
         @keyframes pulse {
           0%, 100% {
-            box-shadow: 0 4px 16px rgba(210, 23, 37, 0.4), 0 2px 8px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 16px rgba(255, 142, 104, 0.4), 0 2px 8px rgba(0, 0, 0, 0.1);
           }
           50% {
-            box-shadow: 0 4px 20px rgba(210, 23, 37, 0.6), 0 2px 12px rgba(0, 0, 0, 0.15), 0 0 0 4px rgba(210, 23, 37, 0.2);
+            box-shadow: 0 4px 20px rgba(255, 142, 104, 0.6), 0 2px 12px rgba(0, 0, 0, 0.15), 0 0 0 4px rgba(255, 142, 104, 0.2);
           }
         }
         
@@ -370,7 +370,7 @@ function showIOSInstallButton() {
         position: fixed;
         top: 80px;
         right: 15px;
-        background: linear-gradient(135deg, #d21725 0%, #e8323f 100%);
+        background: linear-gradient(135deg, #ff8e68 0%, #f97e54 100%);
         color: white;
         border: 2px solid rgba(255, 255, 255, 0.2);
         padding: 12px 20px;
@@ -382,7 +382,7 @@ function showIOSInstallButton() {
         display: flex;
         align-items: center;
         gap: 8px;
-        box-shadow: 0 4px 16px rgba(210, 23, 37, 0.4), 0 2px 8px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 4px 16px rgba(255, 142, 104, 0.4), 0 2px 8px rgba(0, 0, 0, 0.1);
         z-index: 9999;
         transition: all 0.3s ease;
         animation: slideInRight 0.5s ease, pulse 2s ease-in-out infinite;
@@ -427,7 +427,7 @@ function showIOSInstructions() {
       text-align: center;
       box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
     ">
-      <h2 style="color: #d21725; margin: 0 0 20px 0; font-size: 22px;">Install Amaan App</h2>
+      <h2 style="color: #ff8e68; margin: 0 0 20px 0; font-size: 22px;">Install Amaan App</h2>
       <div style="color: #333; line-height: 1.6; text-align: left; margin-bottom: 20px;">
         <p style="margin: 10px 0;"><strong>1.</strong> Tap the <strong>Share</strong> button 
         <svg width="16" height="16" viewBox="0 0 24 24" fill="#007AFF" style="vertical-align: middle; margin: 0 4px;">
@@ -441,7 +441,7 @@ function showIOSInstructions() {
         <p style="margin: 10px 0;"><strong>3.</strong> Tap <strong>"Add"</strong> to confirm</p>
       </div>
       <button onclick="this.parentElement.parentElement.remove()" style="
-        background: #d21725;
+        background: #ff8e68;
         color: white;
         border: none;
         padding: 12px 32px;
@@ -486,14 +486,14 @@ function showAndroidInstructions() {
       text-align: center;
       box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
     ">
-      <h2 style="color: #d21725; margin: 0 0 20px 0; font-size: 22px;">Install Amaan App</h2>
+      <h2 style="color: #ff8e68; margin: 0 0 20px 0; font-size: 22px;">Install Amaan App</h2>
       <div style="color: #333; line-height: 1.6; text-align: left; margin-bottom: 20px;">
         <p style="margin: 10px 0;"><strong>1.</strong> Tap the <strong>Menu</strong> button (⋮) in the browser</p>
         <p style="margin: 10px 0;"><strong>2.</strong> Select <strong>"Install app"</strong> or <strong>"Add to Home screen"</strong></p>
         <p style="margin: 10px 0;"><strong>3.</strong> Tap <strong>"Install"</strong> to confirm</p>
       </div>
       <button onclick="this.parentElement.parentElement.remove()" style="
-        background: #d21725;
+        background: #ff8e68;
         color: white;
         border: none;
         padding: 12px 32px;

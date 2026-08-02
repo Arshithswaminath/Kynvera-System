@@ -1,3 +1,10 @@
 #!/bin/bash
-source "$(dirname "$0")/venv/bin/activate"
-python "$(dirname "$0")/Amaan.py"
+# Local run — same create_app path as production.
+# Default PORT=5003 so this fire worktree does not collide with App-1 on 5001
+# (macOS AirPlay/Control Center often owns 5000).
+ROOT="$(cd "$(dirname "$0")" && pwd)"
+source "$ROOT/venv/bin/activate"
+export FLASK_ENV="${FLASK_ENV:-development}"
+export PORT="${PORT:-5003}"
+cd "$ROOT"
+exec python "$ROOT/Amaan.py"

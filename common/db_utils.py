@@ -48,7 +48,7 @@ def create_submission_db(module_type, form_data, site_name=None, visit_date=None
     Create a submission in the database
     
     Args:
-        module_type: 'civil', 'hvac_mep', or 'cleaning'
+        module_type: 'hvac_mep' (Fire Systems)
         form_data: Dictionary containing all form fields and file URLs
         site_name: Name of the site/project (optional)
         visit_date: Date of visit as string or date object (optional)

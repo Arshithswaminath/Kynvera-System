@@ -503,6 +503,159 @@
       '.';
   }
 
+  function escapeHtmlText(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function clearFromWithdrawnHistoryUi() {
+    var note = document.getElementById('hrFromWithdrawnNote');
+    var below = document.getElementById('hrFromWithdrawnBelow');
+    var legacy = document.getElementById('hrFromWithdrawnBanner');
+    if (note) note.remove();
+    if (below) below.remove();
+    if (legacy) legacy.remove();
+  }
+
+  function insertFromWithdrawnNote(pageInner) {
+    var note = document.createElement('div');
+    note.id = 'hrFromWithdrawnNote';
+    note.className = 'hr-from-withdrawn-note';
+    note.setAttribute('role', 'status');
+    note.textContent =
+      'Starting a fresh form. Fields below are empty. The revoked request is kept below.';
+    var stepBar = pageInner.querySelector('.step-bar');
+    var banners = document.getElementById('submissionViewBanner');
+    if (stepBar && stepBar.parentNode === pageInner) {
+      pageInner.insertBefore(note, stepBar);
+    } else if (banners && banners.parentNode) {
+      banners.parentNode.insertBefore(note, banners.nextSibling);
+    } else {
+      var back = pageInner.querySelector('.back-btn');
+      if (back && back.nextSibling) pageInner.insertBefore(note, back.nextSibling);
+      else pageInner.insertBefore(note, pageInner.firstChild);
+    }
+    return note;
+  }
+
+  function insertFromWithdrawnBelow(pageInner, form) {
+    var below = document.createElement('section');
+    below.id = 'hrFromWithdrawnBelow';
+    below.className = 'hr-from-withdrawn-below';
+    below.setAttribute('aria-label', 'Revoked history');
+    var layout = pageInner.querySelector('.leave-form-layout');
+    if (layout && layout.parentNode) {
+      if (layout.nextSibling) layout.parentNode.insertBefore(below, layout.nextSibling);
+      else layout.parentNode.appendChild(below);
+      return below;
+    }
+    var card = form && form.closest ? form.closest('.card') : null;
+    if (card && card.parentNode) {
+      if (card.nextSibling) card.parentNode.insertBefore(below, card.nextSibling);
+      else card.parentNode.appendChild(below);
+      return below;
+    }
+    pageInner.appendChild(below);
+    return below;
+  }
+
+  function fillFromWithdrawnBelow(below, moduleType, fromId, meta) {
+    var viewHref =
+      typeof global.getHrSubmissionFullFormViewUrl === 'function'
+        ? global.getHrSubmissionFullFormViewUrl(moduleType, fromId)
+        : null;
+    if (!viewHref) viewHref = '/hr/print/' + encodeURIComponent(fromId);
+    var pdfHref = '/hr/download-pdf/' + encodeURIComponent(fromId);
+    var fd = (meta && meta.form_data) || {};
+    var comment = String(fd.revoke_comment || '').trim();
+    var who = String(fd.revoked_by_display || fd.withdrawn_by_display || '').trim();
+    var role = String(fd.revoked_by_role || '').toLowerCase() === 'hr' ? 'HR' : who ? 'Submitter' : '';
+    var when = fmtLocalMaybeIso(fd.revoked_at || fd.withdrawn_at || (meta && meta.updated_at) || '');
+    var emp =
+      (fd.employee_name && String(fd.employee_name).trim()) ||
+      (meta && meta.submitter_name) ||
+      '';
+    var metaBits = [];
+    if (emp) metaBits.push('Employee: ' + escapeHtmlText(emp));
+    if (who) metaBits.push('Revoked by ' + escapeHtmlText(who) + (role ? ' (' + role + ')' : ''));
+    if (when) metaBits.push(escapeHtmlText(when));
+    below.innerHTML =
+      '<div class="hr-from-withdrawn-card">' +
+      '<div class="hr-from-withdrawn-card-hd">' +
+      '<h2>Revoked history</h2>' +
+      '<span class="hr-from-withdrawn-pill">Revoked</span>' +
+      '</div>' +
+      '<p class="hr-from-withdrawn-id"><code>' +
+      escapeHtmlText(fromId) +
+      '</code></p>' +
+      (metaBits.length
+        ? '<p class="hr-from-withdrawn-meta">' + metaBits.join(' · ') + '</p>'
+        : '') +
+      (comment
+        ? '<p class="hr-from-withdrawn-comment"><strong>Comment:</strong> ' +
+          escapeHtmlText(comment) +
+          '</p>'
+        : '') +
+      '<div class="hr-from-withdrawn-actions">' +
+      '<a class="hr-from-withdrawn-btn hr-from-withdrawn-btn-view" href="' +
+      escapeHtmlText(viewHref) +
+      '">View</a>' +
+      '<a class="hr-from-withdrawn-btn hr-from-withdrawn-btn-pdf" href="' +
+      escapeHtmlText(pdfHref) +
+      '">PDF</a>' +
+      '</div>' +
+      '</div>';
+  }
+
+  /**
+   * After revoke + "open new blank form": top note + history card below the form.
+   * Never hydrate fields from the revoked submission.
+   */
+  function renderFromWithdrawnHistory(moduleType) {
+    var params = new URLSearchParams(location.search || '');
+    var fromId = String(params.get('from_withdrawn') || '').trim();
+    var editId = String(params.get('edit') || '').trim();
+    if (editId || !fromId) {
+      clearFromWithdrawnHistoryUi();
+      return;
+    }
+    var pageInner = document.querySelector('.page-inner') || document.querySelector('.page');
+    if (!pageInner) return;
+    clearFromWithdrawnHistoryUi();
+    insertFromWithdrawnNote(pageInner);
+    var form = document.getElementById('hrForm') || pageInner.querySelector('form');
+    var below = insertFromWithdrawnBelow(pageInner, form);
+    fillFromWithdrawnBelow(below, moduleType, fromId, null);
+
+    var token = localStorage.getItem('access_token') || '';
+    if (!token) return;
+    fetch('/api/workflow/submissions/' + encodeURIComponent(fromId), {
+      headers: { Authorization: 'Bearer ' + token },
+    })
+      .then(function (r) {
+        return r.json().then(function (j) {
+          return { ok: r.ok, j: j };
+        });
+      })
+      .then(function (res) {
+        if (!res.ok || !res.j || res.j.success === false) return;
+        var still = document.getElementById('hrFromWithdrawnBelow');
+        if (!still) return;
+        fillFromWithdrawnBelow(still, moduleType || res.j.module_type, fromId, res.j);
+      })
+      .catch(function () {
+        /* keep id + View/PDF */
+      });
+  }
+
+  /** @deprecated alias — use renderFromWithdrawnHistory */
+  function showFromWithdrawnHistoryBanner(moduleType) {
+    renderFromWithdrawnHistory(moduleType);
+  }
+
   function fieldIsMgmtOrHr(el) {
     if (!el || !(el.closest && typeof el.closest === 'function')) return false;
     var chain = document.getElementById('hrMgmtChainSec');
@@ -1003,6 +1156,30 @@
     }
   }
 
+  function syncHrRevokeSidebar(payload, ctx) {
+    var card = document.getElementById('hrRevokeSidebarCard');
+    var btn = document.getElementById('hrRevokeSidebarBtn');
+    if (!card || !btn) return;
+    var can = !!(payload && payload.can_revoke_hr);
+    card.style.display = can ? '' : 'none';
+    if (!can) return;
+    if (btn._hrRevokeWired) return;
+    btn._hrRevokeWired = true;
+    btn.addEventListener('click', function () {
+      var sid = (ctx && ctx.hydrateId) || (payload && payload.submission_id) || '';
+      var mod = (payload && (payload.module_type || payload.module)) || '';
+      if (!sid || typeof global.openHrRevokeModal !== 'function') return;
+      global.openHrRevokeModal({
+        submissionId: sid,
+        moduleType: mod,
+        onSuccess: function () {
+          card.style.display = 'none';
+          window.location.reload();
+        },
+      });
+    });
+  }
+
   /**
    * Update banner, locks, save bar from API payload (no form repopulation).
    * Call after initial hydrate and after grace expiry refetch.
@@ -1021,6 +1198,7 @@
       syncGraceExpiredHintVisibility(false);
       var apr0 = document.getElementById('submissionApprovedRow');
       if (apr0) apr0.style.display = 'none';
+      syncHrRevokeSidebar({ can_revoke_hr: false }, ctx);
       return effectiveEmployeeEditUntilIso(payload);
     }
 
@@ -1028,6 +1206,7 @@
     var employeeEditUntilIso = effectiveEmployeeEditUntilIso(payload);
     var finalized = !!payload.hr_request_approved_completed;
     var withdrawn = !!payload.hr_request_withdrawn;
+    syncHrRevokeSidebar(payload, ctx);
 
     if (banner && btxt) {
       banner.style.display = 'block';
@@ -1052,10 +1231,19 @@
         btxt.textContent = parts.join('');
       }
       if (withdrawn && btxt) {
-        btxt.textContent =
-          ' You withdrew this request (' +
-          ctx.hydrateId +
-          '). It is no longer in the approval workflow. This page is for reference; use Download PDF if needed.';
+        var fdWithdrawn = payload.form_data || {};
+        var role = String(fdWithdrawn.revoked_by_role || '').toLowerCase();
+        if (role === 'hr') {
+          btxt.textContent =
+            ' This request (' +
+            ctx.hydrateId +
+            ') was revoked by HR and is kept in history. It is no longer in the approval workflow. This page is for reference; use Download PDF if needed.';
+        } else {
+          btxt.textContent =
+            ' This request (' +
+            ctx.hydrateId +
+            ') was revoked and is kept in history. It is no longer in the approval workflow. This page is for reference; use Download PDF if needed.';
+        }
       }
       syncGraceExpiredHintVisibility(!!payload.submitter_employee_edit_window_closed && !finalized && !withdrawn);
       syncGraceRevokedByMgmtHint(!finalized && !withdrawn && payload ? payload : {});
@@ -1199,6 +1387,9 @@
 
     wireSaveSubmit(form, opt, ctx);
 
+    var primaryMod = opt.moduleTypes[0];
+    renderFromWithdrawnHistory(primaryMod);
+
     function ingestSubmissionPayload(payload, urlEditSid) {
       if (!payload || payload.success === false) return;
       var mod = payload.module_type || payload.module;
@@ -1325,6 +1516,8 @@
   var api = (global.HrGenericFormEdit = global.HrGenericFormEdit || {});
   api.attach = attach;
   api.showRevisionBanner = showRevisionBanner;
+  api.renderFromWithdrawnHistory = renderFromWithdrawnHistory;
+  api.showFromWithdrawnHistoryBanner = showFromWithdrawnHistoryBanner;
   api.defaultPopulate = defaultPopulate;
   api.renderRecordedSignaturesPanel = renderRecordedSignaturesPanel;
   api.renderSignoffActivityPanel = renderSignoffActivityPanel;

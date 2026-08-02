@@ -547,7 +547,7 @@ def _email_mgmt_sign_request(
     step_label: str,
 ) -> None:
     """Email the person whose signature is required on the current management step."""
-    from common.email_service import is_email_configured, send_email
+    from common.email_service import is_email_configured, send_email_async
 
     if not recipient or not recipient.email or not is_email_configured(app):
         return
@@ -571,7 +571,7 @@ def _email_mgmt_sign_request(
         f"<p style=\"color:#64748b;font-size:12px\">Reference: {submission.submission_id}</p>"
     )
     try:
-        send_email(recipient.email, subj, body, html_body=html)
+        send_email_async(recipient.email, subj, body, html_body=html)
     except Exception:
         app.logger.exception(
             "mgmt chain sign email failed for user %s submission=%s",

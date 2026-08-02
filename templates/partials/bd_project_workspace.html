@@ -1,0 +1,136 @@
+<div class="pd-page pd-embedded" id="pdRoot">
+    <button type="button" class="pd-back" id="pdBackBtn" onclick="bfCloseProjectDetail()">← Back to Projects</button>
+    <div id="pdLoading" class="pd-loading">Loading project…</div>
+    <div id="pdError" class="pd-error" style="display:none"></div>
+    <div id="pdWorkspace" style="display:none">
+      <header class="pd-hero">
+        <div class="pd-hero-row">
+          <div class="pd-hero-main">
+            <div class="pd-hero-kicker">Project workspace</div>
+            <h1 class="pd-hero-title" id="pdHeroTitle">—</h1>
+            <div class="pd-hero-sub" id="pdHeroSub">—</div>
+            <div class="pd-chip-row" id="pdHeroChips"></div>
+          </div>
+          <div class="pd-hero-actions">
+            <button type="button" class="pd-btn pd-btn-ghost" onclick="pdOpenEdit()">Edit details</button>
+            <button type="button" class="pd-btn pd-btn-primary" id="pdPromoteBtn" onclick="pdPromote()" style="display:none">Mark won / Promote</button>
+          </div>
+        </div>
+      </header>
+
+      <div class="pd-layout">
+        <aside class="pd-side" aria-label="Project sections">
+          <div class="pd-side-label">Setup details</div>
+          <button type="button" class="pd-nav-item active" data-panel="overview" onclick="pdShowPanel('overview',this)">Overview</button>
+          <button type="button" class="pd-nav-item" data-panel="contact" onclick="pdShowPanel('contact',this)">Contact</button>
+          <button type="button" class="pd-nav-item" data-panel="quotations" onclick="pdShowPanel('quotations',this)">
+            Quotations <span class="pd-nav-count" id="pdNavQuoteCount">0</span>
+          </button>
+          <button type="button" class="pd-nav-item" data-panel="followups" onclick="pdShowPanel('followups',this)">
+            Follow-ups <span class="pd-nav-count" id="pdNavFuCount">0</span>
+          </button>
+          <button type="button" class="pd-nav-item" data-panel="activity" onclick="pdShowPanel('activity',this)">Activity</button>
+          <button type="button" class="pd-nav-item" data-panel="notes" onclick="pdShowPanel('notes',this)">Notes</button>
+        </aside>
+
+        <div class="pd-main">
+          <section class="pd-panel active" id="pd-panel-overview">
+            <div class="pd-panel-hd">
+              <div>
+                <div class="pd-panel-title">General details</div>
+                <div class="pd-panel-sub">Identity, pipeline, commercials, and quotation summary</div>
+              </div>
+            </div>
+            <div class="pd-bento">
+              <div class="pd-tile">
+                <div class="pd-tile-hd">Contract / deal identity</div>
+                <div class="pd-kv" id="pdTileIdentity"></div>
+              </div>
+              <div class="pd-tile">
+                <div class="pd-tile-hd">Pipeline</div>
+                <div class="pd-kv" id="pdTilePipeline"></div>
+              </div>
+              <div class="pd-tile">
+                <div class="pd-tile-hd">Commercial</div>
+                <div class="pd-kv" id="pdTileCommercial"></div>
+              </div>
+              <div class="pd-tile">
+                <div class="pd-tile-hd">Quotations</div>
+                <div class="pd-kv" id="pdTileQuotes"></div>
+              </div>
+            </div>
+          </section>
+
+          <section class="pd-panel" id="pd-panel-contact">
+            <div class="pd-panel-hd">
+              <div>
+                <div class="pd-panel-title">Contact</div>
+                <div class="pd-panel-sub">Primary contact on this deal and related company contacts</div>
+              </div>
+            </div>
+            <div class="pd-bento" style="margin-bottom:12px">
+              <div class="pd-tile span-2">
+                <div class="pd-tile-hd">Primary contact</div>
+                <div class="pd-kv" id="pdPrimaryContact"></div>
+              </div>
+            </div>
+            <div class="pd-contact-grid" id="pdContactsGrid"></div>
+          </section>
+
+          <section class="pd-panel" id="pd-panel-quotations">
+            <div id="pdQuoteListView">
+              <div class="pd-panel-hd">
+                <div>
+                  <div class="pd-panel-title">Quotations</div>
+                  <div class="pd-panel-sub">Quotes linked to this project</div>
+                </div>
+                <button type="button" class="pd-btn pd-btn-primary" data-pd-quote-create onclick="pdOpenQuote()">＋ New Quotation</button>
+              </div>
+              <div class="pd-card">
+                <div class="pd-table-wrap">
+                  <table class="pd-table">
+                    <thead>
+                      <tr><th>Quote #</th><th>Company</th><th>Status</th><th>Total</th><th>Timeline</th><th>Actions</th></tr>
+                    </thead>
+                    <tbody id="pdQuotesTbody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+            {% include 'partials/bd_quote_editor.html' %}
+          </section>
+
+          <section class="pd-panel" id="pd-panel-followups">
+            <div class="pd-panel-hd">
+              <div>
+                <div class="pd-panel-title">Follow-ups</div>
+                <div class="pd-panel-sub">Reminders tied to this deal or company</div>
+              </div>
+            </div>
+            <div class="pd-card"><div class="pd-card-body" id="pdFollowupsBody"></div></div>
+          </section>
+
+          <section class="pd-panel" id="pd-panel-activity">
+            <div class="pd-panel-hd">
+              <div>
+                <div class="pd-panel-title">Activity</div>
+                <div class="pd-panel-sub">Timeline for this project and company</div>
+              </div>
+            </div>
+            <div class="pd-card"><div class="pd-card-body" id="pdActivityBody"></div></div>
+          </section>
+
+          <section class="pd-panel" id="pd-panel-notes">
+            <div class="pd-panel-hd">
+              <div>
+                <div class="pd-panel-title">Notes</div>
+                <div class="pd-panel-sub">Deal context and working notes</div>
+              </div>
+              <button type="button" class="pd-btn pd-btn-ghost" onclick="pdOpenEdit()">Edit</button>
+            </div>
+            <div class="pd-card"><div class="pd-card-body"><div class="pd-notes" id="pdNotesBody"></div></div></div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>

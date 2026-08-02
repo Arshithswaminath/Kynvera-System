@@ -7,6 +7,7 @@ from flask_jwt_extended import (
     jwt_required, get_jwt_identity, get_jwt, get_jti
 )
 from datetime import datetime, timedelta, timezone
+from functools import wraps
 from app.models import db, User, Session, AuditLog
 from sqlalchemy.exc import IntegrityError
 from common.error_responses import error_response, success_response
@@ -24,13 +25,52 @@ def get_limiter():
 
 
 def rate_limit_if_available(limit_str):
-    """Decorator to apply rate limiting if limiter is available"""
+    """
+    Apply Flask-Limiter lazily.
+
+    Decorators run at import time (before create_app attaches app.limiter),
+    so we mark the view and wrap on first request / after blueprint registration.
+    """
     def decorator(f):
-        limiter = get_limiter()
-        if limiter:
-            return limiter.limit(limit_str)(f)
-        return f
+        @wraps(f)
+        def wrapped(*args, **kwargs):
+            return f(*args, **kwargs)
+
+        wrapped._injaaz_rate_limit = limit_str
+        return wrapped
     return decorator
+
+
+def rate_limit_exempt_if_available(f):
+    """Mark a view to be exempted from default Flask-Limiter limits after setup."""
+    f._injaaz_rate_limit_exempt = True
+    return f
+
+
+def apply_deferred_rate_limits(app):
+    """Re-wrap / exempt views that declared rate-limit markers once limiter exists."""
+    limiter = getattr(app, 'limiter', None)
+    if not limiter:
+        return 0
+    applied = 0
+    for endpoint, view in list(app.view_functions.items()):
+        if getattr(view, '_injaaz_rate_limit_exempt', False):
+            if not getattr(view, '_injaaz_rate_limit_exempt_applied', False):
+                limiter.exempt(view)
+                view._injaaz_rate_limit_exempt_applied = True
+                applied += 1
+            continue
+        limit_str = getattr(view, '_injaaz_rate_limit', None)
+        if not limit_str:
+            continue
+        if getattr(view, '_injaaz_rate_limit_applied', False):
+            continue
+        limited = limiter.limit(limit_str)(view)
+        limited._injaaz_rate_limit = limit_str
+        limited._injaaz_rate_limit_applied = True
+        app.view_functions[endpoint] = limited
+        applied += 1
+    return applied
 
 
 def validate_email(email):
@@ -167,6 +207,7 @@ def register():
                 return error_response(message, 400, 'WEAK_PASSWORD')
             password_changed = True
         else:
+            # Per-user random temp password — delivered via welcome email only
             password = get_default_registration_password()
             password_changed = False
 
@@ -208,9 +249,9 @@ def register():
         return jsonify({
             'message': 'User registered successfully',
             'user': user.to_client_dict(),
-            'default_password': password if not password_changed else None,
             'login_hint': email,
             'email_sent': email_sent,
+            'requires_password_change': not password_changed,
         }), 201
 
     except IntegrityError:
@@ -227,10 +268,8 @@ def register():
 def login():
     """Authenticate user and return JWT tokens"""
     try:
-        # Debug logging
         current_app.logger.info(f"Login attempt - Content-Type: {request.content_type}")
-        current_app.logger.info(f"Request data: {request.get_data(as_text=True)[:200]}")
-        
+
         data = request.get_json(force=True, silent=True)
         
         if not data:
@@ -245,7 +284,26 @@ def login():
         username = data['username'].strip()
         password = data['password']
         login_key = username.lower()
-        
+
+        # Per-account brute-force lockout (complements the per-IP rate limit above):
+        # too many failures for this username within the window temporarily locks it.
+        from common import login_guard
+        locked_for = login_guard.seconds_locked(login_key)
+        if locked_for:
+            log_audit(None, 'login_locked', details={'username': username})
+            minutes = max(1, locked_for // 60)
+            resp = error_response(
+                f'Too many failed attempts. This account is temporarily locked. '
+                f'Try again in about {minutes} minute(s).',
+                429,
+                'ACCOUNT_TEMPORARILY_LOCKED',
+            )
+            try:
+                resp[0].headers['Retry-After'] = str(locked_for)
+            except Exception:
+                pass
+            return resp
+
         # Username / email: case-insensitive (Arshith, arshith, ARSHITH all work)
         user = User.query.filter(
             (db.func.lower(User.username) == login_key)
@@ -263,9 +321,13 @@ def login():
                 user = next((u for u in name_matches if u.check_password(password)), None)
         
         if not user or not user.check_password(password):
-            # Log failed attempt
+            # Log failed attempt + count it toward the per-account lockout.
+            login_guard.record_failure(login_key)
             log_audit(None, 'login_failed', details={'username': username})
             return error_response('Invalid username or password', 401, 'INVALID_CREDENTIALS')
+
+        # Successful credential check — reset this account's failure counter.
+        login_guard.clear(login_key)
         
         if not user.is_active:
             return error_response('Account is disabled', 403, 'ACCOUNT_DISABLED')

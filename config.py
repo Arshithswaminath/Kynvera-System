@@ -118,6 +118,13 @@ ASSISTANT_LLM_ENABLED = (
 # Application
 APP_BASE_URL = os.getenv("APP_BASE_URL", "http://localhost:5000")
 
+# Kynvera Hub integration (product app — not the portal)
+KYNVERA_HUB_MODE = os.getenv("KYNVERA_HUB_MODE", "false").lower() in ("1", "true", "yes")
+KYNVERA_HOME_URL = (os.getenv("KYNVERA_HOME_URL") or "").rstrip("/")
+KYNVERA_FIRE_APP_URL = (os.getenv("KYNVERA_FIRE_APP_URL") or "").rstrip("/")
+KYNVERA_MUNICIPALITY_APP_URL = (os.getenv("KYNVERA_MUNICIPALITY_APP_URL") or "").rstrip("/")
+KYNVERA_APP_NAME = (os.getenv("KYNVERA_APP_NAME") or "Fire System").strip()
+
 # Security
 SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "false").lower() == "true"
 SESSION_COOKIE_HTTPONLY = True
