@@ -3,6 +3,18 @@
  * Extracted from inline scripts for better maintainability and caching
  */
 
+/* Reload can restore a non-zero scrollY, which makes the fixed nav feel clipped until you drag. */
+try {
+  if ('scrollRestoration' in history) {
+    history.scrollRestoration = 'manual';
+  }
+} catch (e) { /* ignore */ }
+window.addEventListener('pageshow', function () {
+  if (window.scrollY > 0 && window.scrollY < 80) {
+    window.scrollTo(0, 0);
+  }
+});
+
 // ===========================================
 // Utility Functions
 // ===========================================

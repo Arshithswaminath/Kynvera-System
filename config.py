@@ -105,6 +105,14 @@ TICKET_INTAKE_EMAIL = os.getenv("TICKET_INTAKE_EMAIL")
 # Application
 APP_BASE_URL = os.getenv("APP_BASE_URL", "http://localhost:5002")
 
+# Kynvera Hub integration (product app — not the portal)
+KYNVERA_HUB_MODE = os.getenv("KYNVERA_HUB_MODE", "false").lower() in ("1", "true", "yes")
+KYNVERA_HOME_URL = (os.getenv("KYNVERA_HOME_URL") or "").rstrip("/")
+KYNVERA_FIRE_APP_URL = (os.getenv("KYNVERA_FIRE_APP_URL") or "").rstrip("/")
+KYNVERA_MUNICIPALITY_APP_URL = (os.getenv("KYNVERA_MUNICIPALITY_APP_URL") or "").rstrip("/")
+# Display name shown as a tag under the mobile menu bar (e.g. Municipality, Fire)
+KYNVERA_APP_NAME = (os.getenv("KYNVERA_APP_NAME") or "Municipality").strip()
+
 # Injaaz Assistant — optional LLM for natural chat (RAG over knowledge base)
 # Provider: "claude" (default, Anthropic) or "openai"
 ASSISTANT_LLM_PROVIDER = (os.getenv("ASSISTANT_LLM_PROVIDER") or "claude").strip().lower()

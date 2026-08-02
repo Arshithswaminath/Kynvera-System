@@ -16,10 +16,11 @@
     padding-bottom: env(safe-area-inset-bottom);
   }
   
-  /* Fixed nav: account for notch */
+  /* Fixed nav: equal top/bottom pad (+ notch on top when present) */
   .nav,
   .navbar {
-    padding-top: max(0.75rem, env(safe-area-inset-top)) !important;
+    padding-top: calc(0.875rem + env(safe-area-inset-top, 0px)) !important;
+    padding-bottom: 0.875rem !important;
     padding-left: max(1rem, env(safe-area-inset-left)) !important;
     padding-right: max(1rem, env(safe-area-inset-right)) !important;
   }
@@ -88,7 +89,6 @@
     background: #ffffff !important;
   }
 
-  body.page-dashboard,
   body.hr-dashboard,
   body.inspection-dashboard,
   body.qhsi-dashboard,
@@ -98,7 +98,14 @@
     background: #f8faf8 !important;
   }
 
-  html:has(body.page-dashboard),
+  /* Keep continuous wash from dashboard.css — flat fill re-creates the hero/modules hairline */
+  body.page-dashboard {
+    background:
+      radial-gradient(ellipse 70% 55% at 0% 14%, rgba(255, 142, 104, 0.1) 0%, transparent 70%),
+      radial-gradient(ellipse 40% 35% at 100% 6%, rgba(255, 142, 104, 0.05) 0%, transparent 60%),
+      linear-gradient(180deg, #fff8f5 0%, #fafbfa 22%, #f7f7f9 48%, #f7f7f9 100%) !important;
+  }
+
   html:has(body.hr-dashboard),
   html:has(body.inspection-dashboard),
   html:has(body.qhsi-dashboard),
@@ -106,6 +113,10 @@
   html:has(body.review-dashboard),
   html:has(body.procurement-page) {
     background-color: #f8faf8 !important;
+  }
+
+  html:has(body.page-dashboard) {
+    background-color: #f7f7f9 !important;
   }
   
   /* Dashboard Header */

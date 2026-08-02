@@ -3,10 +3,12 @@
 {# Include with `with context` so routes can pass active_page: {% include 'partials/main_navbar.html' with context %} #}
 {# About: full wordmark. Everywhere else: Kynvera mark (PNG). #}
 {% set _about_nav_logo = active_page is defined and active_page == 'about' %}
+{% set _kynvera_home_url = (hub.home_url if hub is defined and hub and hub.home_url else none) or (config.KYNVERA_HOME_URL if config is defined and config.get('KYNVERA_HOME_URL') else none) %}
+{% set _app_name = (hub.app_name if hub is defined and hub and hub.app_name else none) or (config.KYNVERA_APP_NAME if config is defined and config.get('KYNVERA_APP_NAME') else none) or 'Municipality' %}
 <nav class="nav" id="nav">
   <div class="nav-container">
-    <a href="/dashboard" class="logo" aria-label="Kynvera Home">
-      <img src="{{ url_for('static', filename=('images/kynvera/kynvera-wordmark.png' if _about_nav_logo else 'images/kynvera/kynvera-mark-48.png')) }}" alt="Kynvera" class="{{ 'logo-img-about' if _about_nav_logo else 'logo-img-official' }}" width="{{ '200' if _about_nav_logo else '48' }}" height="{{ '40' if _about_nav_logo else '48' }}" decoding="async">
+    <a href="{{ _kynvera_home_url if _kynvera_home_url else '/dashboard' }}" class="logo" aria-label="Kynvera Home">
+      <img src="{{ url_for('static', filename=('images/kynvera/kynvera-wordmark.png' if _about_nav_logo else 'images/kynvera/kynvera-mark-96.png')) }}" alt="Kynvera" class="{{ 'logo-img-about' if _about_nav_logo else 'logo-img-official' }}" width="{{ '200' if _about_nav_logo else '56' }}" height="{{ '56' if _about_nav_logo else '56' }}" decoding="async">
       <div class="logo-text">
         <span class="logo-brand">Kynvera</span>
         <span id="welcome-text" class="nav-welcome">Kynvera</span>
@@ -14,6 +16,9 @@
     </a>
     <div class="nav-center">
       <ul class="nav-menu">
+        {% if _kynvera_home_url %}
+        <li><a href="{{ _kynvera_home_url }}">Kynvera Home</a></li>
+        {% endif %}
         <li><a href="/dashboard"{% if active_page == 'home' %} class="nav-current"{% endif %}>Home</a></li>
         <li><a href="/about"{% if active_page == 'about' %} class="nav-current"{% endif %}>About</a></li>
         <li><a href="javascript:void(0)" id="profileLink" role="button" onclick="if(typeof openProfileModal==='function'){openProfileModal();}">Profile</a></li>
@@ -114,6 +119,7 @@
 </nav>
 <div class="mobile-menu-drawer" id="mobileMenuDrawer" aria-hidden="true">
   <ul class="mobile-menu-drawer-list" id="mobileMenuDrawerList"></ul>
+  <p class="mobile-menu-app-name" aria-label="Application">{{ _app_name }}</p>
 </div>
 <div class="mobile-overlay" id="mobileOverlay"></div>
 {% include 'partials/profile_modal.html' %}
