@@ -4,7 +4,7 @@ import pytest
 
 @pytest.fixture
 def ticketing_user(app):
-    from app.models import db, User
+    from app.models import db, User, Ticket, TicketNote
 
     with app.app_context():
         user = User(
@@ -19,8 +19,14 @@ def ticketing_user(app):
         user.set_password('TktPass123')
         db.session.add(user)
         db.session.commit()
+        user_id = user.id
         yield user
-        db.session.delete(user)
+        # Tickets reference reporter_id NOT NULL — remove dependent rows first.
+        tickets = Ticket.query.filter_by(reporter_id=user_id).all()
+        for ticket in tickets:
+            TicketNote.query.filter_by(ticket_id=ticket.id).delete()
+            db.session.delete(ticket)
+        db.session.delete(db.session.get(User, user_id))
         db.session.commit()
 
 
