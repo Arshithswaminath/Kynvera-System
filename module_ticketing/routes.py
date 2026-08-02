@@ -165,7 +165,7 @@ def _register_ticketing_jinja_filters(state):
 
 
 def _migrate_ticket_columns(app):
-    """Add new supervisor-workflow columns to tickets table if they don't exist yet (SQLite-safe migration)."""
+    """Add new supervisor-workflow columns to tickets table if they don't exist yet."""
     new_cols = [
         ('supervisor_id',                  'INTEGER'),
         ('technician_id',                  'INTEGER'),
@@ -204,8 +204,16 @@ def _migrate_ticket_columns(app):
         try:
             conn = db.engine.raw_connection()
             cursor = conn.cursor()
-            cursor.execute("PRAGMA table_info(tickets)")
-            existing = {row[1] for row in cursor.fetchall()}
+            dialect = db.engine.dialect.name
+            if dialect == 'sqlite':
+                cursor.execute("PRAGMA table_info(tickets)")
+                existing = {row[1] for row in cursor.fetchall()}
+            else:
+                cursor.execute(
+                    "SELECT column_name FROM information_schema.columns "
+                    "WHERE table_name='tickets'"
+                )
+                existing = {row[0] for row in cursor.fetchall()}
             for col_name, col_type in new_cols:
                 if col_name not in existing:
                     try:
