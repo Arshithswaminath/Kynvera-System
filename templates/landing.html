@@ -9,171 +9,233 @@
 </head>
 <body class="landing">
 
-    <div class="landing-atmosphere" aria-hidden="true">
-        <span class="landing-blob landing-blob-a"></span>
-        <span class="landing-blob landing-blob-b"></span>
-        <span class="landing-blob landing-blob-c"></span>
-    </div>
+    {% include 'partials/landing_nav.html' %}
 
-    <nav class="landing-nav">
-        <div class="landing-nav-inner">
-            <a href="{{ url_for('index') }}" class="landing-brand" aria-label="Kynvera home">
-                <img class="landing-brand-mark" src="{{ url_for('static', filename='images/kynvera/kynvera-mark-48.png') }}" alt="">
-            </a>
-            <div class="landing-nav-actions">
-                <a href="{{ url_for('login_page') }}" class="btn-nav-signin">Sign in</a>
-                <a href="{{ url_for('register_page') }}" class="btn-coral">Get started</a>
-            </div>
-        </div>
-    </nav>
+    <main class="l-canvas">
 
-    <header class="landing-hero">
-        <img class="hero-brand" src="{{ url_for('static', filename='images/kynvera/kynvera-wordmark.png') }}" alt="Kynvera">
-        <h1>All your operations<br>on <span class="hero-highlight">one platform.</span></h1>
-        <p class="hero-sub">The hub for your teams to run logistics, facilities, and day-to-day operations in one place.</p>
-        <div class="hero-cta">
-            <a href="{{ url_for('login_page') }}" class="btn-coral">Sign in</a>
-            <a href="{{ url_for('register_page') }}" class="btn-ghost">Create an account</a>
-            <span class="hero-note" aria-hidden="true">
-                <svg viewBox="0 0 40 30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M36 4C28 14 18 18 5 19"/><path d="M11 13l-6 6 8 3"/></svg>
-                one login for everything!
-            </span>
-        </div>
-    </header>
+        <header class="l-section l-hero">
+            <h1>All your operations run on <span class="l-mark">one platform</span></h1>
 
-    <section class="landing-apps" id="landing-apps" aria-label="Applications">
-        <div class="landing-apps-inner">
-            <div class="landing-apps-grid landing-apps-grid--two">
+            <p class="l-hero-sub">One secure login opens Fire System and Ajman Municipality, with a shared identity and audit trail across everything your teams do.</p>
+        </header>
 
-                <a href="{{ url_for('launch_fire') }}" class="app-tile" id="landing-tile-fire">
-                    <span class="app-tile-icon" aria-hidden="true">
-                        <img src="{{ url_for('static', filename='images/kynvera/apps/fire-system.png') }}" alt="" width="72" height="72">
-                    </span>
-                    <span class="app-tile-label">Fire System</span>
-                </a>
+        <section class="l-section l-center" id="applications">
+            <span class="l-eyebrow">Applications</span>
+            <h2 class="l-h2">Everything your teams run, in one hub</h2>
+            <p class="l-lead">From field inspections to municipal approvals, each application shares the same login, the same roles, and the same history.</p>
 
-                <a href="{{ url_for('launch_municipality') }}" class="app-tile" id="landing-tile-municipality">
-                    <span class="app-tile-icon" aria-hidden="true">
-                        <img src="{{ url_for('static', filename='images/kynvera/apps/ajman-municipality.png') }}" alt="" width="72" height="72">
-                    </span>
-                    <span class="app-tile-label">Ajman Municipality</span>
-                </a>
-
+            <div class="l-tabs" role="tablist" aria-label="Kynvera applications">
+                <button type="button" class="l-tab" role="tab" id="tab-fire" aria-controls="panel-fire" aria-selected="true">Fire System</button>
+                <button type="button" class="l-tab" role="tab" id="tab-municipality" aria-controls="panel-municipality" aria-selected="false" tabindex="-1">Ajman Municipality</button>
             </div>
 
-            <p class="landing-apps-caption">
-                <strong>One workspace for your whole operation.</strong><br>
-                Each application simplifies a process and empowers your team — sign in to get started.
-            </p>
-        </div>
-    </section>
+            <div class="l-panels" id="landing-apps">
+                <div class="l-panel" id="panel-fire" role="tabpanel" aria-labelledby="tab-fire" tabindex="0">
+                    <div class="l-showcase">
+                        <div class="l-showcase-copy">
+                            <span class="l-showcase-icon l-showcase-icon--app" aria-hidden="true">
+                                <img src="{{ url_for('static', filename='images/kynvera/apps/fire-system-128.png') }}" alt="" width="42" height="42">
+                            </span>
+                            <h3>Fire System</h3>
+                            <p>Inspections, servicing and certification kept on one record, from the first site visit to the signed-off report.</p>
+                            <ul class="l-checks">
+                                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5"/></svg>Inspections and servicing in a single flow</li>
+                                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5"/></svg>Assets, drawings and site history in one record</li>
+                                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5"/></svg>Scheduled maintenance with automatic reminders</li>
+                                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5"/></svg>Reports your inspectors can file from the field</li>
+                            </ul>
+                            <div class="l-showcase-cta">
+                                <a href="{{ url_for('launch_fire') }}" class="l-btn l-btn--dark">
+                                    Open Fire System
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8"/></svg>
+                                </a>
+                            </div>
+                        </div>
+                        <div class="l-showcase-visual" aria-hidden="true">
+                            {% with mock_key = 'fire' %}{% include 'partials/landing_app_mock.html' %}{% endwith %}
+                        </div>
+                    </div>
+                </div>
 
-    <section class="landing-pillars" aria-labelledby="pillars-title">
-        <div class="landing-section-inner">
-            <p class="section-eyebrow">Why teams choose Kynvera</p>
-            <h2 id="pillars-title">Built for the way operations actually run</h2>
-            <p class="section-lead">From the field to the boardroom — every workflow shares one identity, one audit trail, and one place to act.</p>
+                <div class="l-panel" id="panel-municipality" role="tabpanel" aria-labelledby="tab-municipality" tabindex="0" hidden>
+                    <div class="l-showcase">
+                        <div class="l-showcase-copy">
+                            <span class="l-showcase-icon l-showcase-icon--app" aria-hidden="true">
+                                <img src="{{ url_for('static', filename='images/kynvera/apps/ajman-municipality-128.png') }}" alt="" width="42" height="42">
+                            </span>
+                            <h3>Ajman Municipality</h3>
+                            <p>Submissions, documents and approvals tracked end to end, so every application has an owner and a clear next step.</p>
+                            <ul class="l-checks">
+                                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5"/></svg>Submissions tracked from intake to approval</li>
+                                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5"/></svg>Documents, drawings and permits kept together</li>
+                                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5"/></svg>Review stages with a named owner at every step</li>
+                                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5"/></svg>A full audit trail on every application</li>
+                            </ul>
+                            <div class="l-showcase-cta">
+                                <a href="{{ url_for('launch_municipality') }}" class="l-btn l-btn--dark">
+                                    Open Ajman Municipality
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8"/></svg>
+                                </a>
+                            </div>
+                        </div>
+                        <div class="l-showcase-visual" aria-hidden="true">
+                            {% with mock_key = 'municipality' %}{% include 'partials/landing_app_mock.html' %}{% endwith %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-            <div class="pillars-grid">
-                <article class="pillar">
-                    <span class="pillar-index" aria-hidden="true">01</span>
+        <section class="l-section l-center" id="platform">
+            <span class="l-eyebrow">Platform</span>
+            <h2 class="l-h2">Built for the way operations actually run</h2>
+            <p class="l-lead">From the field to the boardroom, every workflow shares one identity, one audit trail, and one place to act.</p>
+
+            <div class="l-pillars">
+                <article class="l-pillar">
+                    <span class="l-pillar-num">01</span>
                     <h3>Unified access</h3>
-                    <p>One secure login unlocks Fire System and Municipality applications — without bouncing between tools.</p>
+                    <p>One secure login unlocks Fire System and Municipality applications, without bouncing between tools.</p>
                 </article>
-                <article class="pillar">
-                    <span class="pillar-index" aria-hidden="true">02</span>
+                <article class="l-pillar">
+                    <span class="l-pillar-num">02</span>
                     <h3>Field-ready workflows</h3>
-                    <p>Forms, reviews, and service work stay connected so nothing stalls between the site and the office.</p>
+                    <p>Forms, reviews and service work stay connected so nothing stalls between the site and the office.</p>
                 </article>
-                <article class="pillar">
-                    <span class="pillar-index" aria-hidden="true">03</span>
+                <article class="l-pillar">
+                    <span class="l-pillar-num">03</span>
                     <h3>Clear accountability</h3>
-                    <p>Roles, approvals, and history stay visible — so teams know who owns what, and leaders can trust the numbers.</p>
+                    <p>Roles, approvals and history stay visible, so teams know who owns what and leaders can trust the numbers.</p>
                 </article>
             </div>
-        </div>
-    </section>
+        </section>
 
-    <section class="landing-flow" aria-labelledby="flow-title">
-        <div class="landing-section-inner">
-            <p class="section-eyebrow">How it works</p>
-            <h2 id="flow-title">Three steps from sign-in to done</h2>
+        <section class="l-section l-center" id="how-it-works">
+            <span class="l-eyebrow">How it works</span>
+            <h2 class="l-h2">Three steps from sign-in to done</h2>
 
-            <ol class="flow-steps">
-                <li class="flow-step">
-                    <span class="flow-step-num">1</span>
-                    <div>
-                        <h3>Sign in once</h3>
-                        <p>Authenticate with your Kynvera credentials and optional MFA.</p>
-                    </div>
+            <ol class="l-steps">
+                <li class="l-step">
+                    <span class="l-step-num">1</span>
+                    <h3>Sign in once</h3>
+                    <p>Authenticate with your Kynvera credentials and optional multi-factor verification.</p>
                 </li>
-                <li class="flow-step">
-                    <span class="flow-step-num">2</span>
-                    <div>
-                        <h3>Open an application</h3>
-                        <p>Jump into Fire System or Ajman Municipality — no extra passwords.</p>
-                    </div>
+                <li class="l-step">
+                    <span class="l-step-num">2</span>
+                    <h3>Open an application</h3>
+                    <p>Jump into Fire System or Ajman Municipality with no extra passwords to remember.</p>
                 </li>
-                <li class="flow-step">
-                    <span class="flow-step-num">3</span>
-                    <div>
-                        <h3>Keep work moving</h3>
-                        <p>Submit, review, assign, and close loops across the whole operation.</p>
-                    </div>
+                <li class="l-step">
+                    <span class="l-step-num">3</span>
+                    <h3>Keep work moving</h3>
+                    <p>Submit, review, assign and close loops across the whole operation.</p>
                 </li>
             </ol>
-        </div>
-    </section>
+        </section>
 
-    <section class="landing-cta-band" aria-labelledby="cta-title">
-        <div class="landing-cta-inner">
-            <div class="landing-cta-copy">
-                <h2 id="cta-title">Ready to run everything from one place?</h2>
-                <p>Sign in to your workspace, or create an account to get your team onboarded.</p>
-            </div>
-            <div class="landing-cta-actions">
-                <a href="{{ url_for('login_page') }}" class="btn-coral">Sign in</a>
-                <a href="{{ url_for('register_page') }}" class="btn-ghost btn-ghost-on-warm">Create an account</a>
-            </div>
-        </div>
-    </section>
+        {# PLACEHOLDER: tier names, prices and limits are illustrative until commercial terms are set. #}
+        <section class="l-section l-center" id="pricing">
+            <span class="l-eyebrow">Pricing</span>
+            <h2 class="l-h2">Start small, add applications as you grow</h2>
+            <p class="l-lead">Every plan includes single sign-on across the hub, role-based access, and a full audit trail.</p>
 
-    <footer class="landing-footer">
-        <div class="landing-footer-top">
-            <div class="landing-footer-brand">
-                <a href="{{ url_for('index') }}" class="landing-brand" aria-label="Kynvera home">
-                    <img class="landing-brand-mark" src="{{ url_for('static', filename='images/kynvera/kynvera-mark-48.png') }}" alt="">
-                    <img class="landing-brand-wordmark" src="{{ url_for('static', filename='images/kynvera/kynvera-wordmark.png') }}" alt="Kynvera">
-                </a>
-                <p>All operations, one platform — Fire System and Municipality apps in a single hub.</p>
-            </div>
-            <div class="landing-footer-cols">
-                <div>
-                    <h3>Platform</h3>
-                    <ul>
-                        <li><a href="{{ url_for('login_page') }}">Sign in</a></li>
-                        <li><a href="{{ url_for('register_page') }}">Create an account</a></li>
-                        <li><a href="#landing-apps">Open applications</a></li>
+            <div class="l-plans">
+                <article class="l-plan">
+                    <div class="l-plan-head">
+                        <span class="l-plan-name">Starter</span>
+                    </div>
+                    <p class="l-plan-price">Free <span>for one team</span></p>
+                    <p class="l-plan-desc">For a single team getting their first application live.</p>
+                    <ul class="l-checks">
+                        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5"/></svg>One application</li>
+                        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5"/></svg>Up to 10 users</li>
+                        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5"/></svg>Standard workflows</li>
+                        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5"/></svg>Email support</li>
                     </ul>
-                </div>
-                <div>
-                    <h3>Applications</h3>
-                    <ul>
-                        <li><a href="{{ url_for('launch_fire') }}">Fire System</a></li>
-                        <li><a href="{{ url_for('launch_municipality') }}">Ajman Municipality</a></li>
+                    <a href="{{ url_for('applications_page') }}#contact" class="l-btn l-btn--light l-btn--block">Talk to us</a>
+                </article>
+
+                <article class="l-plan l-plan--featured">
+                    <div class="l-plan-head">
+                        <span class="l-plan-name">Growth</span>
+                        <span class="l-plan-tag">Most popular</span>
+                    </div>
+                    <p class="l-plan-price">AED 249 <span>/ user / month</span></p>
+                    <p class="l-plan-desc">For operations teams running both applications day to day.</p>
+                    <ul class="l-checks">
+                        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5"/></svg>Both applications included</li>
+                        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5"/></svg>Unlimited workflows and forms</li>
+                        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5"/></svg>Role-based approvals</li>
+                        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5"/></svg>Priority support</li>
                     </ul>
+                    <a href="{{ url_for('applications_page') }}#contact" class="l-btn l-btn--accent l-btn--block">Request a demo</a>
+                </article>
+
+                <article class="l-plan">
+                    <div class="l-plan-head">
+                        <span class="l-plan-name">Enterprise</span>
+                    </div>
+                    <p class="l-plan-price">Custom <span>annual</span></p>
+                    <p class="l-plan-desc">For groups that need their own environment and controls.</p>
+                    <ul class="l-checks">
+                        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5"/></svg>Dedicated environment</li>
+                        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5"/></svg>Single sign-on and MFA policy</li>
+                        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5"/></svg>Audit exports and retention</li>
+                        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5"/></svg>Guided onboarding</li>
+                    </ul>
+                    <a href="{{ url_for('applications_page') }}#contact" class="l-btn l-btn--light l-btn--block">Talk to us</a>
+                </article>
+            </div>
+        </section>
+
+        <section class="l-section l-center" id="faqs">
+            <span class="l-eyebrow">FAQs</span>
+            <h2 class="l-h2">Questions, answered</h2>
+
+            <div class="l-faqs">
+                <details class="l-faq">
+                    <summary>Do I need a separate login for each application?</summary>
+                    <p>No. One Kynvera account signs you into the hub, and launching Fire System or Ajman Municipality hands your session across automatically.</p>
+                </details>
+                <details class="l-faq">
+                    <summary>Can I control who sees which application?</summary>
+                    <p>Yes. Each account carries entitlements per application, so an administrator decides exactly which teams can open which product.</p>
+                </details>
+                <details class="l-faq">
+                    <summary>Does it work on site, from a phone?</summary>
+                    <p>The hub and both applications are built mobile-first, so inspectors can capture work in the field and it appears in the office immediately.</p>
+                </details>
+                <details class="l-faq">
+                    <summary>What happens to our existing records?</summary>
+                    <p>Existing data stays in place. Applications are added to your hub one at a time, and history remains attached to the same assets and sites.</p>
+                </details>
+                <details class="l-faq">
+                    <summary>Is there an audit trail?</summary>
+                    <p>Every submission, review and approval is recorded with the user, the timestamp and the stage, so nothing changes without a trace.</p>
+                </details>
+                <details class="l-faq">
+                    <summary>How do we get started?</summary>
+                    <p>Send us a note about how your teams work today. We set up your workspace and grant application access, and most teams are running their first workflow the same day.</p>
+                </details>
+            </div>
+        </section>
+
+        <section class="l-section">
+            <div class="l-cta-card">
+                <h2>Ready to run everything from one place?</h2>
+                <p>Look through both applications, then tell us which one fits and we will walk your team through it.</p>
+                <div class="l-cta-actions">
+                    <a href="{{ url_for('applications_page') }}#contact" class="l-btn l-btn--accent">Talk to us</a>
+                    <a href="{{ url_for('applications_page') }}" class="l-btn l-btn--onDark">See the applications</a>
                 </div>
             </div>
-        </div>
-        <div class="landing-footer-bottom">
-            <span class="landing-footer-copy">&copy; 2026 Kynvera. All operations, one platform.</span>
-            <span class="landing-footer-links">
-                <a href="{{ url_for('login_page') }}">Sign in</a>
-                <a href="{{ url_for('register_page') }}">Create an account</a>
-            </span>
-        </div>
-    </footer>
+        </section>
 
+        {% include 'partials/landing_footer.html' %}
+
+    </main>
+
+    <script src="{{ url_for('static', filename='js/landing.js') }}" defer></script>
     <script src="{{ url_for('static', filename='mobile_utils.js') }}" defer></script>
 </body>
 </html>

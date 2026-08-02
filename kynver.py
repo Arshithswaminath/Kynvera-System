@@ -23,17 +23,21 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Try importing blueprints; if any import fails we log and continue so the app still starts.
-hvac_mep_bp = None
+# Portal always needs auth + admin. Product blueprints are imported inside create_app
+# only when KYNVERA_HUB_MODE is false (product deployments).
 auth_bp = None
+admin_bp = None
+hvac_mep_bp = None
+workflow_bp = None
 docs_bp = None
-
-try:
-    from module_hvac_mep.routes import hvac_mep_bp  # noqa: F401
-    logger.info("Imported module_hvac_mep.routes.hvac_mep_bp")
-except Exception as e:
-    logger.exception("Could not import module_hvac_mep.routes.hvac_mep_bp: %s", e)
-    hvac_mep_bp = None
+hr_bp = None
+store_module_bp = None
+inspection_bp = None
+mmr_bp = None
+ticketing_bp = None
+operations_bp = None
+finance_bp = None
+assistant_bp = None
 
 try:
     from app.auth.routes import auth_bp  # noqa: F401
@@ -49,91 +53,99 @@ except Exception as e:
     logger.exception("Could not import app.admin.routes.admin_bp: %s", e)
     admin_bp = None
 
-try:
-    from app.workflow.routes import workflow_bp  # noqa: F401
-    logger.info("Imported app.workflow.routes.workflow_bp")
-except Exception as e:
-    logger.exception("Could not import app.workflow.routes.workflow_bp: %s", e)
-    workflow_bp = None
 
-try:
-    from app.docs.routes import docs_bp  # noqa: F401
-    logger.info("Imported app.docs.routes.docs_bp")
-except Exception as e:
-    logger.exception("Could not import app.docs.routes.docs_bp: %s", e)
-    docs_bp = None
+def _try_import_product_blueprints():
+    """Import product-app blueprints (skipped entirely in hub/portal mode)."""
+    global hvac_mep_bp, workflow_bp, docs_bp, hr_bp, store_module_bp
+    global inspection_bp, mmr_bp, ticketing_bp, operations_bp, finance_bp, assistant_bp
 
-# HR Module
-hr_bp = None
-try:
-    from module_hr.routes import hr_bp  # noqa: F401
-    logger.info("Imported module_hr.routes.hr_bp")
-except Exception as e:
-    logger.exception("Could not import module_hr.routes.hr_bp: %s", e)
-    hr_bp = None
+    try:
+        from module_hvac_mep.routes import hvac_mep_bp as _bp
+        hvac_mep_bp = _bp
+        logger.info("Imported module_hvac_mep.routes.hvac_mep_bp")
+    except Exception as e:
+        logger.exception("Could not import module_hvac_mep.routes.hvac_mep_bp: %s", e)
+        hvac_mep_bp = None
 
-# Store Module
-store_module_bp = None
-try:
-    from module_store.routes import store_bp as store_module_bp  # noqa: F401
-    logger.info("Imported module_store.routes.store_bp")
-except Exception as e:
-    logger.exception("Could not import module_store.routes.store_bp: %s", e)
-    store_module_bp = None
+    try:
+        from app.workflow.routes import workflow_bp as _bp
+        workflow_bp = _bp
+        logger.info("Imported app.workflow.routes.workflow_bp")
+    except Exception as e:
+        logger.exception("Could not import app.workflow.routes.workflow_bp: %s", e)
+        workflow_bp = None
 
-# Inspection Form Module (HVAC, Civil, Cleaning)
-inspection_bp = None
-try:
-    from module_inspection.routes import inspection_bp  # noqa: F401
-    logger.info("Imported module_inspection.routes.inspection_bp")
-except Exception as e:
-    logger.exception("Could not import module_inspection.routes.inspection_bp: %s", e)
-    inspection_bp = None
+    try:
+        from app.docs.routes import docs_bp as _bp
+        docs_bp = _bp
+        logger.info("Imported app.docs.routes.docs_bp")
+    except Exception as e:
+        logger.exception("Could not import app.docs.routes.docs_bp: %s", e)
+        docs_bp = None
 
-# MMR (Report Generation) Module
-mmr_bp = None
-try:
-    from module_mmr.routes import mmr_bp  # noqa: F401
-    logger.info("Imported module_mmr.routes.mmr_bp")
-except Exception as e:
-    logger.exception("Could not import module_mmr.routes.mmr_bp: %s", e)
-    mmr_bp = None
+    try:
+        from module_hr.routes import hr_bp as _bp
+        hr_bp = _bp
+        logger.info("Imported module_hr.routes.hr_bp")
+    except Exception as e:
+        logger.exception("Could not import module_hr.routes.hr_bp: %s", e)
+        hr_bp = None
 
-# Ticketing / Work Order Module
-ticketing_bp = None
-try:
-    from module_ticketing.routes import ticketing_bp  # noqa: F401
-    logger.info("Imported module_ticketing.routes.ticketing_bp")
-except Exception as e:
-    logger.exception("Could not import module_ticketing.routes.ticketing_bp: %s", e)
-    ticketing_bp = None
+    try:
+        from module_store.routes import store_bp as _bp
+        store_module_bp = _bp
+        logger.info("Imported module_store.routes.store_bp")
+    except Exception as e:
+        logger.exception("Could not import module_store.routes.store_bp: %s", e)
+        store_module_bp = None
 
-# Operations Module (Over Time + Trading Invoices)
-operations_bp = None
-try:
-    from module_operations.routes import operations_bp  # noqa: F401
-    logger.info("Imported module_operations.routes.operations_bp")
-except Exception as e:
-    logger.exception("Could not import module_operations.routes.operations_bp: %s", e)
-    operations_bp = None
+    try:
+        from module_inspection.routes import inspection_bp as _bp
+        inspection_bp = _bp
+        logger.info("Imported module_inspection.routes.inspection_bp")
+    except Exception as e:
+        logger.exception("Could not import module_inspection.routes.inspection_bp: %s", e)
+        inspection_bp = None
 
-# Finance module (align with Amaan / local run)
-finance_bp = None
-try:
-    from module_finance.routes import finance_bp  # noqa: F401
-    logger.info("Imported module_finance.routes.finance_bp")
-except Exception as e:
-    logger.exception("Could not import module_finance.routes.finance_bp: %s", e)
-    finance_bp = None
+    try:
+        from module_mmr.routes import mmr_bp as _bp
+        mmr_bp = _bp
+        logger.info("Imported module_mmr.routes.mmr_bp")
+    except Exception as e:
+        logger.exception("Could not import module_mmr.routes.mmr_bp: %s", e)
+        mmr_bp = None
 
-# Live Assistant module
-assistant_bp = None
-try:
-    from module_assistant.routes import assistant_bp  # noqa: F401
-    logger.info("Imported module_assistant.routes.assistant_bp")
-except Exception as e:
-    logger.exception("Could not import module_assistant.routes.assistant_bp: %s", e)
-    assistant_bp = None
+    try:
+        from module_ticketing.routes import ticketing_bp as _bp
+        ticketing_bp = _bp
+        logger.info("Imported module_ticketing.routes.ticketing_bp")
+    except Exception as e:
+        logger.exception("Could not import module_ticketing.routes.ticketing_bp: %s", e)
+        ticketing_bp = None
+
+    try:
+        from module_operations.routes import operations_bp as _bp
+        operations_bp = _bp
+        logger.info("Imported module_operations.routes.operations_bp")
+    except Exception as e:
+        logger.exception("Could not import module_operations.routes.operations_bp: %s", e)
+        operations_bp = None
+
+    try:
+        from module_finance.routes import finance_bp as _bp
+        finance_bp = _bp
+        logger.info("Imported module_finance.routes.finance_bp")
+    except Exception as e:
+        logger.exception("Could not import module_finance.routes.finance_bp: %s", e)
+        finance_bp = None
+
+    try:
+        from module_assistant.routes import assistant_bp as _bp
+        assistant_bp = _bp
+        logger.info("Imported module_assistant.routes.assistant_bp")
+    except Exception as e:
+        logger.exception("Could not import module_assistant.routes.assistant_bp: %s", e)
+        assistant_bp = None
 
 # Ensure required directories exist at startup
 os.makedirs(GENERATED_DIR, exist_ok=True)
@@ -203,6 +215,19 @@ def create_app():
         logger.error(error_msg)
         # Raise exception instead of sys.exit() to avoid crashing WSGI worker
         raise RuntimeError(error_msg)
+
+    # Portal (kynvera-main): hub mode skips product module import/registration.
+    hub_mode = bool(app.config.get("KYNVERA_HUB_MODE"))
+    if hub_mode:
+        logger.info("KYNVERA_HUB_MODE=true — portal-only (landing, auth, admin, launch/SSO)")
+    else:
+        logger.info("KYNVERA_HUB_MODE=false — loading product application modules")
+        _try_import_product_blueprints()
+
+    @app.context_processor
+    def _inject_kynvera_hub():
+        from common.kynvera_hub import hub_public_config
+        return {"hub": hub_public_config()}
     
     # Initialize Flask extensions
     db.init_app(app)
@@ -982,14 +1007,15 @@ def create_app():
         return send_from_directory(app.static_folder, 'logo.png', mimetype='image/png')
 
     # Register blueprints only if they were imported successfully.
-    if hvac_mep_bp:
+    # Hub/portal mode: auth + admin only (product apps live on their own services).
+    if not hub_mode and hvac_mep_bp:
         # Exempt from CSRF (handles file uploads via API)
         if hasattr(app, 'csrf') and app.csrf:
             app.csrf.exempt(hvac_mep_bp)
         
         app.register_blueprint(hvac_mep_bp, url_prefix='/hvac-mep')  # Must be /hvac-mep with dash
         logger.info("✓ Registered Fire Systems blueprint at /hvac-mep")
-    else:
+    elif not hub_mode:
         # Provide a helpful placeholder endpoint so someone visiting knows the blueprint failed to import
         @app.route('/hvac-mep')
         def hvac_mep_missing():
@@ -1016,7 +1042,7 @@ def create_app():
     else:
         logger.warning("⚠️  Authentication blueprint not available - check imports")
     
-    # Register admin blueprint
+    # Register admin blueprint (portal needs user + entitlement management)
     if admin_bp:
         # Exempt admin API from CSRF (uses JWT instead)
         if hasattr(app, 'csrf') and app.csrf:
@@ -1026,121 +1052,124 @@ def create_app():
     else:
         logger.warning("⚠️  Admin blueprint not available - check imports")
     
-    # Register workflow blueprint
-    if workflow_bp:
-        if hasattr(app, 'csrf') and app.csrf:
-            app.csrf.exempt(workflow_bp)
-        app.register_blueprint(workflow_bp)  # Already has /api/workflow prefix
-        logger.info("✅ Registered workflow blueprint at /api/workflow")
-    else:
-        logger.warning("⚠️  Workflow blueprint not available - check imports")
+    if not hub_mode:
+        # Register workflow blueprint
+        if workflow_bp:
+            if hasattr(app, 'csrf') and app.csrf:
+                app.csrf.exempt(workflow_bp)
+            app.register_blueprint(workflow_bp)  # Already has /api/workflow prefix
+            logger.info("✅ Registered workflow blueprint at /api/workflow")
+        else:
+            logger.warning("⚠️  Workflow blueprint not available - check imports")
 
-    # Register DocHub API blueprint
-    if docs_bp:
-        if hasattr(app, 'csrf') and app.csrf:
-            app.csrf.exempt(docs_bp)
-        app.register_blueprint(docs_bp)
-        logger.info("✅ Registered DocHub API blueprint at /api/docs")
-    else:
-        logger.warning("⚠️  DocHub API blueprint not available - check imports")
-    
-    # Register HR module blueprint
-    if hr_bp:
-        if hasattr(app, 'csrf') and app.csrf:
-            app.csrf.exempt(hr_bp)
-        app.register_blueprint(hr_bp, url_prefix='/hr')
-        # So /hr (no trailing slash) works: redirect to /hr/
-        @app.route('/hr')
-        def redirect_hr_to_slash():
-            return redirect('/hr/', code=302)
-        logger.info("✅ Registered HR blueprint at /hr")
-    else:
-        logger.warning("⚠️  HR blueprint not available - check imports")
-    
-    # Register Store module blueprint
-    if store_module_bp:
-        if hasattr(app, 'csrf') and app.csrf:
-            app.csrf.exempt(store_module_bp)
-        app.register_blueprint(store_module_bp, url_prefix='/store')
-        logger.info("✅ Registered Store blueprint at /store")
-    else:
-        logger.warning("⚠️  Store blueprint not available - check imports")
-    
-    # Register Inspection Form blueprint
-    if inspection_bp:
-        if hasattr(app, 'csrf') and app.csrf:
-            app.csrf.exempt(inspection_bp)
-        app.register_blueprint(inspection_bp)
-        @app.route('/inspection')
-        def redirect_inspection_to_slash():
-            return redirect('/inspection/', code=302)
-        logger.info("✅ Registered Inspection blueprint at /inspection")
-    else:
-        logger.warning("⚠️  Inspection blueprint not available - check imports")
+        # Register DocHub API blueprint
+        if docs_bp:
+            if hasattr(app, 'csrf') and app.csrf:
+                app.csrf.exempt(docs_bp)
+            app.register_blueprint(docs_bp)
+            logger.info("✅ Registered DocHub API blueprint at /api/docs")
+        else:
+            logger.warning("⚠️  DocHub API blueprint not available - check imports")
+        
+        # Register HR module blueprint
+        if hr_bp:
+            if hasattr(app, 'csrf') and app.csrf:
+                app.csrf.exempt(hr_bp)
+            app.register_blueprint(hr_bp, url_prefix='/hr')
+            # So /hr (no trailing slash) works: redirect to /hr/
+            @app.route('/hr')
+            def redirect_hr_to_slash():
+                return redirect('/hr/', code=302)
+            logger.info("✅ Registered HR blueprint at /hr")
+        else:
+            logger.warning("⚠️  HR blueprint not available - check imports")
+        
+        # Register Store module blueprint
+        if store_module_bp:
+            if hasattr(app, 'csrf') and app.csrf:
+                app.csrf.exempt(store_module_bp)
+            app.register_blueprint(store_module_bp, url_prefix='/store')
+            logger.info("✅ Registered Store blueprint at /store")
+        else:
+            logger.warning("⚠️  Store blueprint not available - check imports")
+        
+        # Register Inspection Form blueprint
+        if inspection_bp:
+            if hasattr(app, 'csrf') and app.csrf:
+                app.csrf.exempt(inspection_bp)
+            app.register_blueprint(inspection_bp)
+            @app.route('/inspection')
+            def redirect_inspection_to_slash():
+                return redirect('/inspection/', code=302)
+            logger.info("✅ Registered Inspection blueprint at /inspection")
+        else:
+            logger.warning("⚠️  Inspection blueprint not available - check imports")
 
-    # Register Email Automation blueprint
-    if mmr_bp:
-        if hasattr(app, 'csrf') and app.csrf:
-            app.csrf.exempt(mmr_bp)
-        app.register_blueprint(mmr_bp)
-        logger.info("✅ Registered Email Automation blueprint at /admin/mmr")
-        # Start APScheduler for email automations
+        # Register Email Automation blueprint
+        if mmr_bp:
+            if hasattr(app, 'csrf') and app.csrf:
+                app.csrf.exempt(mmr_bp)
+            app.register_blueprint(mmr_bp)
+            logger.info("✅ Registered Email Automation blueprint at /admin/mmr")
+            # Start APScheduler for email automations
+            try:
+                from module_mmr.scheduler import init_scheduler as init_mmr_scheduler
+                init_mmr_scheduler(app)
+            except Exception as sched_err:
+                logger.warning(f"⚠️  Email Automation scheduler not started: {sched_err}")
+        else:
+            logger.warning("⚠️  Email Automation blueprint not available")
+
+        # Register Ticketing blueprint
+        if ticketing_bp:
+            if hasattr(app, 'csrf') and app.csrf:
+                app.csrf.exempt(ticketing_bp)
+            app.register_blueprint(ticketing_bp, url_prefix='/tickets')
+            logger.info("✅ Registered Ticketing blueprint at /tickets")
+        else:
+            logger.warning("⚠️  Ticketing blueprint not available - check imports")
+
+        # Register Operations blueprint (Over Time + Trading Invoices)
+        if operations_bp:
+            if hasattr(app, 'csrf') and app.csrf:
+                app.csrf.exempt(operations_bp)
+            app.register_blueprint(operations_bp)
+            logger.info("✅ Registered Operations blueprint at /operations")
+        else:
+            logger.warning("⚠️  Operations blueprint not available - check imports")
+
+        # Register Finance blueprint (parity with Amaan local run)
+        if finance_bp:
+            if hasattr(app, 'csrf') and app.csrf:
+                app.csrf.exempt(finance_bp)
+            app.register_blueprint(finance_bp)
+            logger.info("✅ Registered Finance blueprint at /finance")
+        else:
+            logger.warning("⚠️  Finance blueprint not available - check imports")
+
+        # Register Assistant blueprint
+        if assistant_bp:
+            if hasattr(app, 'csrf') and app.csrf:
+                app.csrf.exempt(assistant_bp)
+            app.register_blueprint(assistant_bp)
+            logger.info("✅ Registered Assistant blueprint")
+        else:
+            logger.warning("⚠️  Assistant blueprint not available - check imports")
+
+        # Register reports API blueprint for on-demand regeneration
         try:
-            from module_mmr.scheduler import init_scheduler as init_mmr_scheduler
-            init_mmr_scheduler(app)
-        except Exception as sched_err:
-            logger.warning(f"⚠️  Email Automation scheduler not started: {sched_err}")
+            from app.reports_api import reports_bp
+            
+            # Exempt reports API from CSRF (uses JWT if needed)
+            if hasattr(app, 'csrf') and app.csrf:
+                app.csrf.exempt(reports_bp)
+            
+            app.register_blueprint(reports_bp)
+            logger.info("✅ Registered reports API at /api/reports")
+        except Exception as e:
+            logger.warning(f"⚠️  Reports API not available: {e}")
     else:
-        logger.warning("⚠️  Email Automation blueprint not available")
-
-    # Register Ticketing blueprint
-    if ticketing_bp:
-        if hasattr(app, 'csrf') and app.csrf:
-            app.csrf.exempt(ticketing_bp)
-        app.register_blueprint(ticketing_bp, url_prefix='/tickets')
-        logger.info("✅ Registered Ticketing blueprint at /tickets")
-    else:
-        logger.warning("⚠️  Ticketing blueprint not available - check imports")
-
-    # Register Operations blueprint (Over Time + Trading Invoices)
-    if operations_bp:
-        if hasattr(app, 'csrf') and app.csrf:
-            app.csrf.exempt(operations_bp)
-        app.register_blueprint(operations_bp)
-        logger.info("✅ Registered Operations blueprint at /operations")
-    else:
-        logger.warning("⚠️  Operations blueprint not available - check imports")
-
-    # Register Finance blueprint (parity with Amaan local run)
-    if finance_bp:
-        if hasattr(app, 'csrf') and app.csrf:
-            app.csrf.exempt(finance_bp)
-        app.register_blueprint(finance_bp)
-        logger.info("✅ Registered Finance blueprint at /finance")
-    else:
-        logger.warning("⚠️  Finance blueprint not available - check imports")
-
-    # Register Assistant blueprint
-    if assistant_bp:
-        if hasattr(app, 'csrf') and app.csrf:
-            app.csrf.exempt(assistant_bp)
-        app.register_blueprint(assistant_bp)
-        logger.info("✅ Registered Assistant blueprint")
-    else:
-        logger.warning("⚠️  Assistant blueprint not available - check imports")
-
-    # Register reports API blueprint for on-demand regeneration
-    try:
-        from app.reports_api import reports_bp
-        
-        # Exempt reports API from CSRF (uses JWT if needed)
-        if hasattr(app, 'csrf') and app.csrf:
-            app.csrf.exempt(reports_bp)
-        
-        app.register_blueprint(reports_bp)
-        logger.info("✅ Registered reports API at /api/reports")
-    except Exception as e:
-        logger.warning(f"⚠️  Reports API not available: {e}")
+        logger.info("Skipped product blueprints (HR, Store, Inspection, Ops, Finance, etc.) — hub portal")
 
     # Apply deferred limits/exemptions after all blueprints are registered
     try:
@@ -1282,16 +1311,17 @@ def create_app():
     def about():
         """About page - accessible to all users"""
         return render_template('about.html')
-    
-    @app.route('/workflow/pending-reviews')
-    def pending_reviews():
-        """Pending reviews page - requires reviewer authentication"""
-        return render_template('pending_reviews.html')
-    
-    @app.route('/workflow/submitted-forms')
-    def submitted_forms():
-        """Submitted forms page - supervisors can view their submissions"""
-        return render_template('submitted_forms.html')
+
+    if not hub_mode:
+        @app.route('/workflow/pending-reviews')
+        def pending_reviews():
+            """Pending reviews page - requires reviewer authentication"""
+            return render_template('pending_reviews.html')
+        
+        @app.route('/workflow/submitted-forms')
+        def submitted_forms():
+            """Submitted forms page - supervisors can view their submissions"""
+            return render_template('submitted_forms.html')
     
     @app.route('/admin')
     def admin_root():
@@ -1303,40 +1333,41 @@ def create_app():
         """Admin dashboard - requires admin authentication"""
         return render_template('admin_dashboard.html', active_page='admin')
 
-    @app.route('/admin/email-notifications')
-    def admin_email_notifications():
-        """Workflow email recipient settings now live on the Email Automation page."""
-        return redirect('/admin/mmr/')
+    if not hub_mode:
+        @app.route('/admin/email-notifications')
+        def admin_email_notifications():
+            """Workflow email recipient settings now live on the Email Automation page."""
+            return redirect('/admin/mmr/')
 
-    @app.route('/admin/devices')
-    def admin_devices():
-        """Device management - admin only"""
-        return render_template('admin_device_management.html', active_page='devices')
+        @app.route('/admin/devices')
+        def admin_devices():
+            """Device management - admin only"""
+            return render_template('admin_device_management.html', active_page='devices')
 
-    @app.route('/admin/bd')
-    def admin_bd():
-        """Sales module - admin only"""
-        return render_template('admin_bd_module.html', active_page='bd-module')
+        @app.route('/admin/bd')
+        def admin_bd():
+            """Sales module - admin only"""
+            return render_template('admin_bd_module.html', active_page='bd-module')
 
-    @app.route('/admin/bd/projects/<int:project_id>')
-    def admin_bd_project_detail(project_id):
-        """Deep-link into Sales project bento (keeps the list page shell)."""
-        return redirect(f'/admin/bd?project={int(project_id)}')
+        @app.route('/admin/bd/projects/<int:project_id>')
+        def admin_bd_project_detail(project_id):
+            """Deep-link into Sales project bento (keeps the list page shell)."""
+            return redirect(f'/admin/bd?project={int(project_id)}')
 
-    @app.route('/admin/personal-progress')
-    def admin_personal_progress():
-        """Personal work-in-progress tracker — admin only"""
-        return render_template('admin_personal_progress.html', active_page='personal-progress')
+        @app.route('/admin/personal-progress')
+        def admin_personal_progress():
+            """Personal work-in-progress tracker — admin only"""
+            return render_template('admin_personal_progress.html', active_page='personal-progress')
 
-    @app.route('/admin/team-management')
-    def admin_team_management():
-        """Team & technician management — admin only"""
-        return render_template('admin_team_management.html', active_page='team-management')
+        @app.route('/admin/team-management')
+        def admin_team_management():
+            """Team & technician management — admin only"""
+            return render_template('admin_team_management.html', active_page='team-management')
 
-    @app.route('/dochub')
-    def dochub():
-        """DocHub module - all users with access"""
-        return render_template('dochub.html', active_page='dochub')
+        @app.route('/dochub')
+        def dochub():
+            """DocHub module - all users with access"""
+            return render_template('dochub.html', active_page='dochub')
 
     # Root route: public Kynvera landing (2 applications)
     @app.route('/')
@@ -1344,6 +1375,21 @@ def create_app():
         """Public marketing landing — Fire System + Ajman Municipality launchers."""
         from common.kynvera_hub import hub_public_config
         return render_template('landing.html', hub=hub_public_config())
+
+    @app.route('/applications')
+    def applications_page():
+        """Public product showcase — screenshots, capabilities and contact."""
+        from common.kynvera_hub import hub_public_config
+        from common.showcase import CONTACT, OUTCOMES, SHOT_HEIGHT, SHOT_WIDTH, showcase_apps
+        return render_template(
+            'applications.html',
+            hub=hub_public_config(),
+            apps=showcase_apps(),
+            outcomes=OUTCOMES,
+            contact=CONTACT,
+            shot_width=SHOT_WIDTH,
+            shot_height=SHOT_HEIGHT,
+        )
 
     # Serve generated files (downloads) - DEPRECATED in production (use cloud URLs)
     # This route is kept for backward compatibility in development only

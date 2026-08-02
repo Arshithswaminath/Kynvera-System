@@ -1,0 +1,32 @@
+{# Line-icon set for the landing-theme pages. Import, don't include:
+   {% from 'partials/landing_icons.html' import icon %} #}
+
+{%- set _ICONS = {
+  'flame': '<path d="M12 2s4.5 4.2 4.5 8.2A4.5 4.5 0 0 1 12 14a4.5 4.5 0 0 1-4.5-3.8C7.5 6.2 12 2 12 2z"/><path d="M8 14c-1.3 1.2-2 2.7-2 4.2A6 6 0 0 0 18 18c0-2.6-1.6-4.6-3-6"/>',
+  'building': '<path d="M3 10l9-6 9 6"/><path d="M5 10v9M19 10v9M9 19v-6h6v6"/><path d="M3 20h18"/>',
+  'users': '<path d="M16 19.5v-1.6a3.4 3.4 0 0 0-3.4-3.4H7.9A3.4 3.4 0 0 0 4.5 18v1.5"/><circle cx="10.2" cy="8.2" r="3.3"/><path d="M17.4 11.4a3 3 0 1 0-1.3-5.7"/><path d="M19.5 19.5v-1.3a3 3 0 0 0-2.2-2.9"/>',
+  'wallet': '<path d="M20 9.5V7.6A1.6 1.6 0 0 0 18.4 6H5.6A1.6 1.6 0 0 0 4 7.6v8.8A1.6 1.6 0 0 0 5.6 18h12.8a1.6 1.6 0 0 0 1.6-1.6V14.5"/><path d="M21 9.5h-4.6a2.5 2.5 0 0 0 0 5H21z"/>',
+  'clock': '<circle cx="12" cy="12" r="8.4"/><path d="M12 7.4V12l3.2 2.1"/>',
+  'box': '<path d="M3.6 7.9L12 3.6l8.4 4.3v8.2L12 20.4l-8.4-4.3V7.9z"/><path d="M3.6 7.9L12 12.2l8.4-4.3"/><path d="M12 20.4v-8.2"/>',
+  'clipboard': '<path d="M9 5.2H7.6A1.6 1.6 0 0 0 6 6.8v12.6A1.6 1.6 0 0 0 7.6 21h8.8a1.6 1.6 0 0 0 1.6-1.6V6.8A1.6 1.6 0 0 0 16.4 5.2H15"/><path d="M9.2 3.4h5.6v3H9.2z"/><path d="M9.6 12h4.8M9.6 15.8h3"/>',
+  'ticket': '<path d="M4 9.7V7.8A1.6 1.6 0 0 1 5.6 6.2h12.8A1.6 1.6 0 0 1 20 7.8v1.9a2.4 2.4 0 0 0 0 4.6v1.9a1.6 1.6 0 0 1-1.6 1.6H5.6A1.6 1.6 0 0 1 4 16.2v-1.9a2.4 2.4 0 0 0 0-4.6z"/><path d="M13.2 8.6v1.2M13.2 11.6v1.2M13.2 14.6v1.2"/>',
+  'docs': '<path d="M13.8 3.6H8A1.6 1.6 0 0 0 6.4 5.2v13.6A1.6 1.6 0 0 0 8 20.4h8a1.6 1.6 0 0 0 1.6-1.6V7.4l-3.8-3.8z"/><path d="M13.8 3.6v3.9h3.8"/><path d="M9.6 13h4.8M9.6 16.4h4.8"/>',
+  'shield': '<path d="M12 3.3l7 2.6v5.5c0 4.2-2.9 7.6-7 9.3-4.1-1.7-7-5.1-7-9.3V5.9l7-2.6z"/><path d="M9.2 11.9l2.2 2.2 4.2-4.3"/>',
+  'mail': '<path d="M4 7.6h16v9.4a1.6 1.6 0 0 1-1.6 1.6H5.6A1.6 1.6 0 0 1 4 17V7.6z"/><path d="M4.5 8.1l7.5 5.4 7.5-5.4"/>',
+  'phone': '<path d="M7.6 4.2H5.7A1.6 1.6 0 0 0 4.1 6c0 7.8 6.3 14.1 14.1 14.1a1.6 1.6 0 0 0 1.7-1.6v-1.9a1.2 1.2 0 0 0-.9-1.2l-2.8-.7a1.2 1.2 0 0 0-1.2.4l-.9 1.1a12.2 12.2 0 0 1-5.2-5.2l1.1-.9a1.2 1.2 0 0 0 .4-1.2L9.7 6a1.2 1.2 0 0 0-1.2-.9z"/>',
+  'chat': '<path d="M20 11.7a7.4 7.4 0 0 1-10.8 6.6L5 19.6l1.3-4.1A7.4 7.4 0 1 1 20 11.7z"/>',
+  'calendar': '<path d="M5 7.7h14v10.9a1.6 1.6 0 0 1-1.6 1.6H6.6A1.6 1.6 0 0 1 5 18.6V7.7z"/><path d="M8.6 4.6v3.1M15.4 4.6v3.1M5 11.2h14"/>',
+  'pin': '<path d="M12 20.8s6.4-5.5 6.4-10.1a6.4 6.4 0 1 0-12.8 0C5.6 15.3 12 20.8 12 20.8z"/><circle cx="12" cy="10.4" r="2.4"/>',
+  'expand': '<path d="M4 9V5.7A1.7 1.7 0 0 1 5.7 4H9"/><path d="M15 4h3.3A1.7 1.7 0 0 1 20 5.7V9"/><path d="M20 15v3.3a1.7 1.7 0 0 1-1.7 1.7H15"/><path d="M9 20H5.7A1.7 1.7 0 0 1 4 18.3V15"/>',
+  'launch': '<path d="M7 17L17 7M9 7h8v8"/>',
+  'arrow': '<path d="M5 12h13M13 6.4l5.6 5.6L13 17.6"/>',
+  'sparkle': '<path d="M12 3.4l1.9 4.7L18.6 10l-4.7 1.9L12 16.6l-1.9-4.7L5.4 10l4.7-1.9L12 3.4z"/>'
+} -%}
+
+{%- macro icon(name, size=0) -%}
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"{% if size %} width="{{ size }}" height="{{ size }}"{% endif %}>{{ _ICONS.get(name, _ICONS['sparkle'])|safe }}</svg>
+{%- endmacro -%}
+
+{%- macro check() -%}
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5"/></svg>
+{%- endmacro -%}

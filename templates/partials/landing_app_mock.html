@@ -1,0 +1,86 @@
+{# Stylised app window used when a product has no real screenshot yet. #}
+{# Expects: mock_key ('fire' | 'municipality'), optional mock_title. #}
+{% set mock_key = mock_key or 'fire' %}
+{% if mock_key == 'municipality' %}
+<div class="l-frame">
+    <div class="l-frame-bar">
+        <i></i><i></i><i></i>
+        <span class="l-frame-title">{{ mock_title or 'kynvera · ajman municipality' }}</span>
+    </div>
+    <div class="l-mock">
+        <div class="l-mock-rail">
+            <img src="{{ url_for('static', filename='images/kynvera/apps/ajman-municipality-128.png') }}" alt="" width="26" height="26" loading="lazy">
+            <i></i><i></i><i></i><i></i>
+        </div>
+        <div class="l-mock-main">
+            <div class="l-mock-head">
+                <strong>Submissions</strong>
+                <span class="l-mock-chip">Awaiting review</span>
+            </div>
+            <div class="l-mock-stats">
+                <div class="l-mock-stat"><span>Open</span><b>42</b></div>
+                <div class="l-mock-stat"><span>In review</span><b>15</b></div>
+                <div class="l-mock-stat"><span>Approved</span><b>93</b></div>
+            </div>
+            <ul class="l-mock-rows">
+                <li>
+                    <span class="l-mock-avatar"></span>
+                    <span class="l-mock-row-text"><b>Permit 4821 &mdash; Fit-out</b><span>Stage 2 of 4 &middot; Engineering</span></span>
+                    <span class="l-mock-tag l-mock-tag--live">In review</span>
+                </li>
+                <li>
+                    <span class="l-mock-avatar"></span>
+                    <span class="l-mock-row-text"><b>Permit 4809 &mdash; Signage</b><span>Stage 4 of 4 &middot; Approvals</span></span>
+                    <span class="l-mock-tag">Approved</span>
+                </li>
+                <li>
+                    <span class="l-mock-avatar"></span>
+                    <span class="l-mock-row-text"><b>Permit 4795 &mdash; Drainage</b><span>Stage 1 of 4 &middot; Intake</span></span>
+                    <span class="l-mock-tag">Submitted</span>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="l-frame">
+    <div class="l-frame-bar">
+        <i></i><i></i><i></i>
+        <span class="l-frame-title">{{ mock_title or 'kynvera · fire system' }}</span>
+    </div>
+    <div class="l-mock">
+        <div class="l-mock-rail">
+            <img src="{{ url_for('static', filename='images/kynvera/apps/fire-system-128.png') }}" alt="" width="26" height="26" loading="lazy">
+            <i></i><i></i><i></i><i></i>
+        </div>
+        <div class="l-mock-main">
+            <div class="l-mock-head">
+                <strong>Inspections</strong>
+                <span class="l-mock-chip">This week</span>
+            </div>
+            <div class="l-mock-stats">
+                <div class="l-mock-stat"><span>Assets</span><b>128</b></div>
+                <div class="l-mock-stat"><span>Due</span><b>24</b></div>
+                <div class="l-mock-stat"><span>Overdue</span><b>6</b></div>
+            </div>
+            <ul class="l-mock-rows">
+                <li>
+                    <span class="l-mock-avatar"></span>
+                    <span class="l-mock-row-text"><b>Tower A &mdash; Annual service</b><span>Assigned to M. Rashid</span></span>
+                    <span class="l-mock-tag l-mock-tag--live">In progress</span>
+                </li>
+                <li>
+                    <span class="l-mock-avatar"></span>
+                    <span class="l-mock-row-text"><b>Warehouse 3 &mdash; Alarm panel</b><span>Assigned to S. Kumar</span></span>
+                    <span class="l-mock-tag">Scheduled</span>
+                </li>
+                <li>
+                    <span class="l-mock-avatar"></span>
+                    <span class="l-mock-row-text"><b>Villa 12 &mdash; Extinguisher check</b><span>Assigned to A. Haddad</span></span>
+                    <span class="l-mock-tag">Certified</span>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endif %}

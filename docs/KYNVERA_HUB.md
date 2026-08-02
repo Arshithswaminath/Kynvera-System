@@ -14,10 +14,53 @@ Do **not** merge product feature sets into one homepage. Keep product modules in
 
 ## Public landing (`/`)
 
-- Template: `templates/landing.html` (+ `partials/landing_head.html`, `static/css/landing.css`)
+- Template: `templates/landing.html` (+ `partials/landing_head.html`, `partials/landing_nav.html`, `partials/landing_footer.html`, `partials/landing_app_mock.html`, `static/css/landing.css`, `static/js/landing.js`)
 - App grid: **Fire System** → `/launch/fire`, **Ajman Municipality** → `/launch/municipality`
-- Sign in / Get started / Create an account work as usual (`/login`, `/register`)
+- **Sign in** → `/login` as usual. The primary CTA is now **Explore applications** → `/applications`, and pricing/closing CTAs point at `/applications#contact` (the landing page sells; account creation happens after contact). `/register` is still linked from the footer.
 - Post-login `/dashboard` remains a slim hub with the same two launchers
+
+## Product showcase (`/applications`)
+
+Public sales page for the two products, in the same landing theme.
+
+- Template: `templates/applications.html` (+ `static/css/applications.css`, `static/js/applications.js`, `partials/landing_icons.html`)
+- Copy, capability bullets, module tiles, stats and screenshot manifests live in **`common/showcase.py`** — the single place to edit page content. `CONTACT` there holds the sales email, phone and meeting link (placeholders until the real ones are set).
+- Screenshots are served from `static/images/kynvera/showcase/` as WebP, built from `screenshots/` captures:
+
+```bash
+# Operations Suite — build from an existing capture in this repo
+python scripts/build_showcase_images.py --set ops \
+    --source screenshots/full_pages/desktop_1920x1080_20260729_1713
+```
+
+Fire System runs on its own branch, and `capture_full_page_screenshots.py` enumerates routes from the Flask app it imports locally. So capture **from the Fire worktree** (not from the portal), then copy the folder over and build:
+
+```bash
+# in the kynvera-fire-system-application worktree, with that app running
+python scripts/capture_full_page_screenshots.py --base-url http://127.0.0.1:5002 \
+    --desktop --viewport 1920x1080 --zoom 100 --stamp fire_showcase \
+    --login-user admin --login-password '<password>'
+
+# back in kynvera-main
+python scripts/build_showcase_images.py --set fire \
+    --source <fire-worktree>/screenshots/full_pages/fire_showcase
+```
+
+The `fire` mapping in `scripts/build_showcase_images.py` guesses the Fire route file names; adjust the left-hand side of that dict to whatever the capture actually produced, or convert files one at a time with `--one <path> --as fire-dashboard.webp`.
+
+`showcase_apps()` filters out screenshot entries whose file is missing, so a product with no captures falls back to the CSS mock in `partials/landing_app_mock.html` instead of rendering broken images. Drop the files in and they appear.
+
+- The inquiry form has no backend yet: it composes a prefilled `mailto:` in `static/js/applications.js`. Swap that for a POST endpoint when one exists.
+
+## Portal-only process (`KYNVERA_HUB_MODE=true`)
+
+On `kynvera-main`, hub mode **does not import or register** product blueprints (HR, Store, Inspection, Ops, Finance, Ticketing, HVAC, MMR, Assistant, workflow, DocHub, reports). The portal process only needs:
+
+- Landing, showcase + hub launch routes (`/`, `/applications`, `/launch/*`, `/api/hub/config`, `/dashboard`)
+- Auth (`/login`, `/register`, `/api/auth`)
+- Admin API + `/admin/dashboard` (user entitlements: `access_fire_app`, `access_municipality_app`)
+
+Full pre-slim tree is preserved on branch `kynvera-main-backup`. Product modules run on their own branches/services.
 
 ## Environment variables
 
@@ -87,4 +130,9 @@ Checklist:
 
 ## Render
 
-Create three web services, each pinned to its branch, with the env vars above. Point portal `KYNVERA_*_APP_URL` at the public Render URLs of the product services.
+Create three web services, each pinned to its branch, with the env vars above.
+
+- Portal (`kynvera-main` / `render.yaml` service `kynvera-home`): `KYNVERA_HUB_MODE=true`, set `KYNVERA_FIRE_APP_URL` and `KYNVERA_MUNICIPALITY_APP_URL` to the public product URLs. No RQ/MMR worker is required on the portal.
+- Fire + Municipality: `KYNVERA_HUB_MODE=false`, `KYNVERA_HOME_URL` → portal public URL, shared `JWT_SECRET_KEY` / usually shared `DATABASE_URL`.
+
+Point portal `KYNVERA_*_APP_URL` at the public Render URLs of the product services.

@@ -1,9 +1,10 @@
-# Persistent GENERATED_DIR: attach a Render Disk (paid plans), mount e.g. /var/data, then set
-# GENERATED_DIR=/var/data/generated so uploads survive redeploys.
-# MMR scheduler: set RUN_MMR_SCHEDULER=true on the worker service only when WEB_CONCURRENCY > 1.
+# Kynvera Home portal (branch kynvera-main) — landing + auth + launch/SSO only.
+# Product apps (Fire / Municipality) are separate Render services on their own branches.
+# Pin this Blueprint/service to git branch kynvera-main in the Render dashboard.
+# JWT_SECRET_KEY must match the product services for SSO.
 services:
   - type: web
-    name: injaaz-app
+    name: kynvera-home
     env: python
     buildCommand: bash build.sh
     startCommand: gunicorn wsgi:app --bind 0.0.0.0:$PORT --workers ${WEB_CONCURRENCY:-2} --threads 4 --timeout 120 --worker-class gthread
@@ -19,28 +20,29 @@ services:
         value: production
       - key: WEB_CONCURRENCY
         value: "2"
+      - key: KYNVERA_HUB_MODE
+        value: "true"
       - key: RUN_MMR_SCHEDULER
         value: "false"
       - key: DATABASE_URL
         fromDatabase:
           name: injaaz-db
           property: connectionString
+      - key: KYNVERA_FIRE_APP_URL
+        sync: false
+      - key: KYNVERA_MUNICIPALITY_APP_URL
+        sync: false
+      - key: KYNVERA_HOME_URL
+        sync: false
+      - key: APP_BASE_URL
+        sync: false
       - key: CLOUDINARY_CLOUD_NAME
         sync: false
       - key: CLOUDINARY_API_KEY
         sync: false
       - key: CLOUDINARY_API_SECRET
         sync: false
-      # Redis for rate limiting + RQ workers — use full Upstash URL (rediss://...)
       - key: REDIS_URL
-        sync: false
-      - key: MMR_SCHEDULE_ENABLED
-        sync: false
-      - key: MMR_SCHEDULE_HOUR
-        sync: false
-      - key: MMR_SCHEDULE_MINUTE
-        sync: false
-      - key: GENERATED_DIR
         sync: false
       - key: BREVO_API_KEY
         sync: false
@@ -49,49 +51,6 @@ services:
       - key: MAILJET_SECRET_KEY
         sync: false
       - key: MAIL_DEFAULT_SENDER
-        sync: false
-
-  # Background worker: RQ jobs + MMR APScheduler (single process — do not scale replicas > 1
-  # without moving the scheduler to a dedicated process).
-  - type: worker
-    name: injaaz-worker
-    env: python
-    buildCommand: bash build.sh
-    startCommand: python -m app.tasks.worker
-    envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.0
-      - key: FLASK_ENV
-        value: production
-      - key: RUN_MMR_SCHEDULER
-        value: "true"
-      - key: WEB_CONCURRENCY
-        value: "1"
-      - key: SECRET_KEY
-        sync: false
-      - key: JWT_SECRET_KEY
-        sync: false
-      - key: DATABASE_URL
-        fromDatabase:
-          name: injaaz-db
-          property: connectionString
-      - key: REDIS_URL
-        sync: false
-      - key: CLOUDINARY_CLOUD_NAME
-        sync: false
-      - key: CLOUDINARY_API_KEY
-        sync: false
-      - key: CLOUDINARY_API_SECRET
-        sync: false
-      - key: BREVO_API_KEY
-        sync: false
-      - key: MAILJET_API_KEY
-        sync: false
-      - key: MAILJET_SECRET_KEY
-        sync: false
-      - key: MAIL_DEFAULT_SENDER
-        sync: false
-      - key: GENERATED_DIR
         sync: false
 
 databases:

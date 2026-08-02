@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {% set title = 'Applications — Kynvera' %}
+    {% include 'partials/landing_head.html' %}
+    <meta name="description" content="Look inside the two Kynvera applications: Fire System for inspections, servicing and certification, and the Operations Suite for HR, finance, operations, stores, inspections and service tickets.">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/applications.css') }}">
+</head>
+<body class="landing">
+
+{% from 'partials/landing_icons.html' import icon, check %}
+
+{% set nav_links = [
+    {'href': '#fire-system', 'label': 'Fire System'},
+    {'href': '#operations-suite', 'label': 'Operations Suite'},
+    {'href': '#outcomes', 'label': 'What you get'},
+    {'href': '#contact', 'label': 'Contact'}
+] %}
+{% include 'partials/landing_nav.html' with context %}
+
+<main class="l-canvas">
+
+    <header class="l-section l-hero l-hero--apps">
+        <span class="l-eyebrow">Applications</span>
+        <h1>See what you are buying, <span class="l-mark">before you buy it</span></h1>
+        <p class="l-hero-sub">Two applications, both built for companies running field teams and an office that has to keep up. Look through the real screens below, then tell us which one fits and we will walk you through it.</p>
+        <div class="l-hero-cta">
+            <a href="#contact" class="l-btn l-btn--accent">Book a walkthrough</a>
+            <a href="#fire-system" class="l-btn l-btn--light">Look inside</a>
+        </div>
+    </header>
+
+    <section class="l-section l-section--tight" aria-label="Choose an application">
+        <div class="l-jumps">
+            {% for app in apps %}
+            <a class="l-jump" href="#{{ app.slug }}">
+                <span class="l-jump-icon{% if app.icon_image %} l-jump-icon--app{% endif %}" aria-hidden="true">
+                    {% if app.icon_image %}
+                    <img src="{{ url_for('static', filename=app.icon_image) }}" alt="" width="44" height="44">
+                    {% else %}
+                    {{ icon(app.icon) }}
+                    {% endif %}
+                </span>
+                <span class="l-jump-body">
+                    <span class="l-jump-kicker">{{ app.kicker }}</span>
+                    <strong>{{ app.name }}</strong>
+                    <span class="l-jump-line">{{ app.tagline }}</span>
+                </span>
+                <span class="l-jump-go" aria-hidden="true">{{ icon('arrow') }}</span>
+            </a>
+            {% endfor %}
+        </div>
+    </section>
+
+    {% for app in apps %}
+    <section class="l-section" id="{{ app.slug }}">
+        <div class="l-apphead">
+            <span class="l-eyebrow">{{ app.kicker }}</span>
+            <h2 class="l-h2">{{ app.name }}</h2>
+            <p class="l-lead l-lead--wide">{{ app.summary }}</p>
+        </div>
+
+        <div class="l-showcase l-showcase--apps">
+            <div class="l-showcase-copy">
+                <span class="l-showcase-icon{% if app.icon_image %} l-showcase-icon--app{% endif %}" aria-hidden="true">
+                    {% if app.icon_image %}
+                    <img src="{{ url_for('static', filename=app.icon_image) }}" alt="" width="42" height="42">
+                    {% else %}
+                    {{ icon(app.icon) }}
+                    {% endif %}
+                </span>
+                <h3>{{ app.tagline }}</h3>
+                <ul class="l-checks">
+                    {% for line in app.capabilities %}
+                    <li>{{ check() }}{{ line }}</li>
+                    {% endfor %}
+                </ul>
+                {% if app.stats %}
+                <div class="l-statstrip">
+                    {% for stat in app.stats %}
+                    <div class="l-statstrip-item">
+                        <b>{{ stat.value }}</b>
+                        <span>{{ stat.label }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                <div class="l-showcase-cta l-showcase-cta--pair">
+                    <a href="#contact" class="l-btn l-btn--accent">Request a demo</a>
+                    <a href="{{ url_for(app.launch_endpoint) }}" class="l-btn l-btn--dark">
+                        Open application
+                        {{ icon('launch') }}
+                    </a>
+                </div>
+            </div>
+
+            <div class="l-showcase-visual">
+                {% if app.hero_shot %}
+                <div class="l-frame">
+                    <div class="l-frame-bar">
+                        <i></i><i></i><i></i>
+                        <span class="l-frame-title">kynvera &middot; {{ app.name|lower }}</span>
+                    </div>
+                    <div class="l-shot">
+                        <img src="{{ url_for('static', filename='images/kynvera/showcase/' ~ app.hero_shot.file) }}"
+                             alt="{{ app.name }} — {{ app.hero_shot.title }}"
+                             width="{{ shot_width }}" height="{{ shot_height }}"
+                             loading="lazy" decoding="async">
+                    </div>
+                </div>
+                {% else %}
+                {# No captures for this product yet — the stylised window stands in. #}
+                <div aria-hidden="true">
+                    {% with mock_key = app.mock, mock_title = 'kynvera · ' ~ app.name|lower %}
+                        {% include 'partials/landing_app_mock.html' %}
+                    {% endwith %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if app.modules %}
+        <div class="l-subhead">
+            <h3>What is inside</h3>
+            <p>Each module carries its own forms, roles and approvals, and they all share one set of people and one history.</p>
+        </div>
+        <div class="l-modgrid">
+            {% for module in app.modules %}
+            <article class="l-mod">
+                <span class="l-mod-icon" aria-hidden="true">{{ icon(module.icon) }}</span>
+                <h4>{{ module.name }}</h4>
+                <p>{{ module.desc }}</p>
+            </article>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if app.shots %}
+        <div class="l-subhead">
+            <h3>A look inside</h3>
+            <p>Real screens from the application. Select any one to see it full size.</p>
+        </div>
+        <div class="l-gallery-break">
+            <ul class="l-gallery" data-gallery="{{ app.slug }}">
+                {% for shot in app.shots %}
+                <li class="l-gitem">
+                    <button type="button" class="l-gcard"
+                            data-shot-src="{{ url_for('static', filename='images/kynvera/showcase/' ~ shot.file) }}"
+                            data-shot-title="{{ shot.title }}"
+                            data-shot-caption="{{ shot.caption }}"
+                            aria-label="View {{ shot.title }} full size">
+                        <span class="l-gcard-shot">
+                            <img src="{{ url_for('static', filename='images/kynvera/showcase/' ~ shot.file) }}"
+                                 alt="{{ app.name }} — {{ shot.title }}"
+                                 width="{{ shot_width }}" height="{{ shot_height }}"
+                                 loading="lazy" decoding="async">
+                            <span class="l-gcard-zoom" aria-hidden="true">{{ icon('expand') }}</span>
+                        </span>
+                        <span class="l-gcard-meta">
+                            <strong>{{ shot.title }}</strong>
+                            <span>{{ shot.caption }}</span>
+                        </span>
+                    </button>
+                </li>
+                {% endfor %}
+            </ul>
+            <p class="l-gallery-hint" aria-hidden="true">Scroll for more screens</p>
+        </div>
+        {% endif %}
+    </section>
+    {% endfor %}
+
+    <section class="l-section l-center" id="outcomes">
+        <span class="l-eyebrow">What you get</span>
+        <h2 class="l-h2">The same foundation under both applications</h2>
+        <p class="l-lead">Whichever one you start with, the identity, the roles and the audit trail work the same way.</p>
+
+        <div class="l-outcomes">
+            {% for item in outcomes %}
+            <article class="l-outcome">
+                <p class="l-outcome-value">{{ item.value }} <span>{{ item.label }}</span></p>
+                <p class="l-outcome-desc">{{ item.desc }}</p>
+            </article>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="l-section" id="contact">
+        <div class="l-contact">
+            <div class="l-contact-copy">
+                <span class="l-eyebrow l-eyebrow--onDark">Contact</span>
+                <h2>Tell us what your teams are struggling with</h2>
+                <p>Send a short note and we will come back with a walkthrough of whichever application fits, using your own workflow as the example.</p>
+
+                <ul class="l-contact-list">
+                    <li>
+                        <span class="l-contact-ico" aria-hidden="true">{{ icon('mail') }}</span>
+                        <a href="mailto:{{ contact.email }}">{{ contact.email }}</a>
+                    </li>
+                    <li>
+                        <span class="l-contact-ico" aria-hidden="true">{{ icon('phone') }}</span>
+                        <a href="tel:{{ contact.phone_href }}">{{ contact.phone_display }}</a>
+                    </li>
+                    {% if contact.whatsapp %}
+                    <li>
+                        <span class="l-contact-ico" aria-hidden="true">{{ icon('chat') }}</span>
+                        <a href="https://wa.me/{{ contact.whatsapp }}" target="_blank" rel="noopener">WhatsApp us</a>
+                    </li>
+                    {% endif %}
+                    <li>
+                        <span class="l-contact-ico" aria-hidden="true">{{ icon('pin') }}</span>
+                        <span>{{ contact.location }}</span>
+                    </li>
+                </ul>
+
+                {% if contact.meeting_url %}
+                <a href="{{ contact.meeting_url }}" class="l-btn l-btn--onDark" target="_blank" rel="noopener">
+                    {{ icon('calendar') }}
+                    Book a meeting
+                </a>
+                {% endif %}
+            </div>
+
+            {# Sends through the visitor's mail client until a form endpoint exists. #}
+            <form class="l-form" id="l-contact-form" data-mailto="{{ contact.email }}" novalidate>
+                <div class="l-form-row">
+                    <label class="l-field">
+                        <span>Your name</span>
+                        <input type="text" name="name" autocomplete="name" required>
+                    </label>
+                    <label class="l-field">
+                        <span>Company</span>
+                        <input type="text" name="company" autocomplete="organization">
+                    </label>
+                </div>
+                <div class="l-form-row">
+                    <label class="l-field">
+                        <span>Email</span>
+                        <input type="email" name="email" autocomplete="email" required>
+                    </label>
+                    <label class="l-field">
+                        <span>Phone</span>
+                        <input type="tel" name="phone" autocomplete="tel">
+                    </label>
+                </div>
+                <label class="l-field">
+                    <span>Interested in</span>
+                    <select name="interest">
+                        <option value="Operations Suite">Operations Suite</option>
+                        <option value="Fire System">Fire System</option>
+                        <option value="Both applications">Both applications</option>
+                        <option value="Not sure yet">Not sure yet</option>
+                    </select>
+                </label>
+                <label class="l-field">
+                    <span>What are you trying to fix?</span>
+                    <textarea name="message" rows="4" placeholder="A sentence or two about how your teams work today is plenty."></textarea>
+                </label>
+                <button type="submit" class="l-btn l-btn--accent l-btn--block">Send inquiry</button>
+                <p class="l-form-note" id="l-form-note" role="status" aria-live="polite">This opens your email app with the message ready to send.</p>
+            </form>
+        </div>
+    </section>
+
+    {% include 'partials/landing_footer.html' %}
+
+</main>
+
+<div class="l-lightbox" id="l-lightbox" hidden>
+    <div class="l-lightbox-scrim" data-lightbox-close></div>
+    <div class="l-lightbox-panel" role="dialog" aria-modal="true" aria-labelledby="l-lightbox-title">
+        <div class="l-lightbox-bar">
+            <div class="l-lightbox-meta">
+                <strong id="l-lightbox-title"></strong>
+                <span id="l-lightbox-caption"></span>
+            </div>
+            <div class="l-lightbox-tools">
+                <span class="l-lightbox-count" id="l-lightbox-count"></span>
+                <button type="button" class="l-lightbox-btn" id="l-lightbox-prev" aria-label="Previous screen">{{ icon('arrow') }}</button>
+                <button type="button" class="l-lightbox-btn" id="l-lightbox-next" aria-label="Next screen">{{ icon('arrow') }}</button>
+                <button type="button" class="l-lightbox-btn l-lightbox-close" data-lightbox-close aria-label="Close">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+                </button>
+            </div>
+        </div>
+        <div class="l-lightbox-stage">
+            <img id="l-lightbox-img" alt="">
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/landing.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/applications.js') }}" defer></script>
+<script src="{{ url_for('static', filename='mobile_utils.js') }}" defer></script>
+</body>
+</html>

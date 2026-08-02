@@ -21,6 +21,10 @@
         <li><a href="/dashboard"{% if active_page == 'home' %} class="nav-current"{% endif %}>Home</a></li>
         <li><a href="/about"{% if active_page == 'about' %} class="nav-current"{% endif %}>About</a></li>
         <li><a href="javascript:void(0)" id="profileLink" role="button" onclick="if(typeof openProfileModal==='function'){openProfileModal();}">Profile</a></li>
+        <li id="admin-menu-item" style="display: none;">
+          <a href="/admin/dashboard"{% if active_page == 'admin' or active_page == 'personal-progress' or active_page == 'team-management' %} class="nav-current"{% endif %}>Administrative</a>
+        </li>
+        {% if not (hub is defined and hub and hub.hub_mode) %}
         <li id="inspection-forms-menu-item" style="display: none;">
           <a href="/inspection/"{% if active_page == 'inspection' %} class="nav-current"{% endif %}>Inspection Module</a>
         </li>
@@ -46,9 +50,6 @@
             <span id="navPendingBadge" style="display: none; color: #ff8e68; font-size: 0.8rem; margin-left: 4px; font-weight: 700;">0</span>
           </a>
         </li>
-        <li id="admin-menu-item" style="display: none;">
-          <a href="/admin/dashboard"{% if active_page == 'admin' or active_page == 'personal-progress' or active_page == 'team-management' %} class="nav-current"{% endif %}>Administrative</a>
-        </li>
         <li id="device-management-menu-item" style="display: none;">
           <a href="/admin/devices"{% if active_page == 'devices' %} class="nav-current"{% endif %}>Device Management</a>
         </li>
@@ -67,6 +68,7 @@
         <li id="finance-menu-item" style="display: none;">
           <a href="/finance/"{% if active_page == 'finance' %} class="nav-current"{% endif %}>Finance</a>
         </li>
+        {% endif %}
       </ul>
     </div>
     <div class="nav-right">

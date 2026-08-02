@@ -1,0 +1,918 @@
+/* ==========================================================================
+   Kynvera /applications — product showcase.
+   Extends the landing system in css/landing.css; loaded only on this page.
+   Everything stays scoped under `.landing` so app pages are untouched.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Hero + section heads
+   -------------------------------------------------------------------------- */
+
+.landing .l-hero--apps h1 {
+  max-width: 22ch;
+}
+
+.landing .l-hero--apps .l-hero-sub {
+  max-width: 580px;
+}
+
+.landing .l-lead--wide {
+  max-width: 620px;
+}
+
+.landing .l-apphead {
+  text-align: center;
+}
+
+.landing .l-subhead {
+  margin-top: clamp(44px, 5vw, 64px);
+}
+
+.landing .l-subhead h3 {
+  font-size: clamp(1.15rem, 2vw, 1.4rem);
+  font-weight: 700;
+}
+
+.landing .l-subhead p {
+  margin-top: 8px;
+  max-width: 62ch;
+  color: var(--l-muted);
+  font-size: 14px;
+}
+
+/* --------------------------------------------------------------------------
+   Application jump cards
+   -------------------------------------------------------------------------- */
+
+.landing .l-jumps {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.landing .l-jump {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 22px;
+  border: 1px solid var(--l-line);
+  border-radius: var(--l-radius-card);
+  background: var(--l-card);
+  box-shadow: var(--l-shadow-pill);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.landing .l-jump:hover {
+  transform: translateY(-2px);
+  border-color: var(--l-line-strong);
+  box-shadow: var(--l-shadow-card);
+}
+
+.landing .l-jump-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: var(--l-accent-soft);
+  color: var(--l-accent-deep);
+  overflow: hidden;
+}
+
+.landing .l-jump-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+/* Branded product marks — drop the soft peach plate so the squircle reads clean. */
+.landing .l-jump-icon--app {
+  background: transparent;
+  border-radius: 13px;
+}
+
+.landing .l-jump-icon--app img {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+}
+
+.landing .l-jump-body {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.landing .l-jump-kicker {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(18, 18, 18, 0.42);
+}
+
+.landing .l-jump-body strong {
+  font-family: var(--l-display);
+  font-size: 1.05rem;
+  letter-spacing: -0.02em;
+}
+
+.landing .l-jump-line {
+  color: var(--l-muted);
+  font-size: 13.5px;
+}
+
+.landing .l-jump-go {
+  margin-left: auto;
+  flex: none;
+  color: var(--l-muted);
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.landing .l-jump-go svg {
+  width: 18px;
+  height: 18px;
+}
+
+.landing .l-jump:hover .l-jump-go {
+  transform: translateX(3px);
+  color: var(--l-accent-deep);
+}
+
+/* --------------------------------------------------------------------------
+   Product showcase: real screenshot in the browser frame
+   -------------------------------------------------------------------------- */
+
+.landing .l-showcase--apps {
+  margin-top: 36px;
+  text-align: left;
+}
+
+.landing .l-showcase--apps .l-showcase-copy h3 {
+  max-width: 24ch;
+  font-size: clamp(1.2rem, 2vw, 1.55rem);
+}
+
+.landing .l-showcase-icon--app {
+  padding: 0;
+  background: transparent;
+  overflow: hidden;
+}
+
+.landing .l-showcase-icon--app img {
+  width: 42px;
+  height: 42px;
+  object-fit: cover;
+}
+
+/* Mirrors .l-mock: held wide enough that the UI stays legible, so the shot
+   bleeds off the right and bottom edges of the frame instead of shrinking. */
+.landing .l-shot {
+  flex: 1;
+  min-width: 1000px;
+  background: var(--l-canvas);
+  overflow: hidden;
+}
+
+.landing .l-shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.landing .l-showcase-cta--pair {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* --------------------------------------------------------------------------
+   Stat strip
+   -------------------------------------------------------------------------- */
+
+.landing .l-statstrip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 26px;
+  padding-top: 22px;
+  border-top: 1px solid var(--l-line);
+}
+
+.landing .l-statstrip-item {
+  display: grid;
+  gap: 2px;
+  align-content: start;
+}
+
+.landing .l-statstrip-item b {
+  font-family: var(--l-display);
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--l-accent-deep);
+}
+
+.landing .l-statstrip-item span {
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--l-muted);
+}
+
+/* --------------------------------------------------------------------------
+   Module grid
+   -------------------------------------------------------------------------- */
+
+.landing .l-modgrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 26px;
+}
+
+.landing .l-mod {
+  padding: 22px 20px;
+  border: 1px solid var(--l-line);
+  border-radius: var(--l-radius-sm);
+  background: var(--l-card);
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.landing .l-mod:hover {
+  border-color: var(--l-line-strong);
+  transform: translateY(-2px);
+}
+
+.landing .l-mod-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  background: var(--l-accent-soft);
+  color: var(--l-accent-deep);
+}
+
+.landing .l-mod-icon svg {
+  width: 19px;
+  height: 19px;
+}
+
+.landing .l-mod h4 {
+  margin: 16px 0 0;
+  font-family: var(--l-display);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.landing .l-mod p {
+  margin-top: 7px;
+  color: var(--l-muted);
+  font-size: 13px;
+}
+
+/* --------------------------------------------------------------------------
+   Screenshot gallery — breaks out of the section pad for larger screens
+   -------------------------------------------------------------------------- */
+
+.landing .l-gallery-break {
+  --l-gcard-w: min(48vw, 460px);
+  margin-top: 28px;
+  margin-left: calc(-1 * var(--l-pad-x));
+  margin-right: calc(-1 * var(--l-pad-x));
+  width: calc(100% + 2 * var(--l-pad-x));
+}
+
+.landing .l-gallery {
+  display: flex;
+  align-items: stretch;
+  gap: 20px;
+  padding: 6px var(--l-pad-x) 18px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-padding-left: var(--l-pad-x);
+  -webkit-overflow-scrolling: touch;
+  scrollbar-color: rgba(18, 18, 18, 0.22) transparent;
+}
+
+.landing .l-gallery::-webkit-scrollbar {
+  height: 6px;
+}
+
+.landing .l-gallery::-webkit-scrollbar-track {
+  background: rgba(18, 18, 18, 0.05);
+  border-radius: 999px;
+}
+
+.landing .l-gallery::-webkit-scrollbar-thumb {
+  background: rgba(18, 18, 18, 0.2);
+  border-radius: 999px;
+}
+
+.landing .l-gitem {
+  flex: 0 0 var(--l-gcard-w);
+  width: var(--l-gcard-w);
+  scroll-snap-align: start;
+}
+
+.landing .l-gcard {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 1px solid var(--l-line);
+  border-radius: 18px;
+  background: var(--l-card);
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.landing .l-gcard:hover,
+.landing .l-gcard:focus-visible {
+  border-color: var(--l-line-strong);
+  transform: translateY(-3px);
+}
+
+.landing .l-gcard-shot {
+  position: relative;
+  display: block;
+  flex: none;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: var(--l-canvas);
+  border-bottom: 1px solid var(--l-line);
+  overflow: hidden;
+}
+
+.landing .l-gcard-shot img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+  transform: scale(1);
+  transform-origin: top center;
+  transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+/* Hover zooms into the screen so more UI detail is readable. */
+.landing .l-gcard:hover .l-gcard-shot img,
+.landing .l-gcard:focus-visible .l-gcard-shot img {
+  transform: scale(1.14);
+}
+
+.landing .l-gcard-zoom {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: rgba(18, 18, 18, 0.62);
+  color: #ffffff;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  pointer-events: none;
+}
+
+.landing .l-gcard-zoom svg {
+  width: 16px;
+  height: 16px;
+}
+
+.landing .l-gcard:hover .l-gcard-zoom,
+.landing .l-gcard:focus-visible .l-gcard-zoom {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.landing .l-gcard-meta {
+  display: grid;
+  gap: 5px;
+  flex: 1;
+  align-content: start;
+  min-height: 88px;
+  padding: 18px 20px 20px;
+}
+
+.landing .l-gcard-meta strong {
+  font-family: var(--l-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.landing .l-gcard-meta span {
+  color: var(--l-muted);
+  font-size: 13.5px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.landing .l-gallery-hint {
+  display: none;
+  margin: 0;
+  padding: 0 var(--l-pad-x);
+  color: rgba(18, 18, 18, 0.42);
+  font-size: 12px;
+}
+
+/* --------------------------------------------------------------------------
+   Outcomes
+   -------------------------------------------------------------------------- */
+
+.landing .l-outcomes {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+  margin-top: 40px;
+  text-align: left;
+  border: 1px solid var(--l-line);
+  border-radius: var(--l-radius-card);
+  background: var(--l-card);
+  overflow: hidden;
+}
+
+.landing .l-outcome {
+  padding: 28px 24px;
+  border-right: 1px solid var(--l-line);
+}
+
+.landing .l-outcome:last-child {
+  border-right: 0;
+}
+
+.landing .l-outcome-value {
+  font-family: var(--l-display);
+  font-size: 1.3rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.landing .l-outcome-value span {
+  color: var(--l-accent-deep);
+}
+
+.landing .l-outcome-desc {
+  margin-top: 10px;
+  color: var(--l-muted);
+  font-size: 13px;
+}
+
+/* --------------------------------------------------------------------------
+   Contact block
+   -------------------------------------------------------------------------- */
+
+.landing .l-contact {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+  gap: clamp(28px, 4vw, 56px);
+  padding: clamp(30px, 4vw, 56px);
+  border-radius: var(--l-radius-card);
+  background: var(--l-ink);
+  color: #ffffff;
+  overflow: hidden;
+}
+
+.landing .l-contact::before {
+  content: '';
+  position: absolute;
+  inset: -30% 45% auto -10%;
+  height: 340px;
+  background: radial-gradient(closest-side, rgba(255, 142, 104, 0.3), transparent);
+  pointer-events: none;
+}
+
+.landing .l-contact-copy {
+  position: relative;
+}
+
+.landing .l-eyebrow--onDark {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.22);
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.landing .l-contact-copy h2 {
+  margin-top: 20px;
+  font-size: clamp(1.5rem, 2.8vw, 2.1rem);
+  font-weight: 700;
+  max-width: 20ch;
+}
+
+.landing .l-contact-copy > p {
+  margin-top: 14px;
+  max-width: 42ch;
+  color: rgba(255, 255, 255, 0.66);
+  font-size: 14px;
+}
+
+.landing .l-contact-list {
+  display: grid;
+  gap: 14px;
+  margin-top: 28px;
+}
+
+.landing .l-contact-list li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.landing .l-contact-list a:hover {
+  color: var(--l-accent);
+}
+
+.landing .l-contact-ico {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: var(--l-accent);
+}
+
+.landing .l-contact-ico svg {
+  width: 17px;
+  height: 17px;
+}
+
+.landing .l-contact-copy .l-btn--onDark {
+  margin-top: 28px;
+}
+
+/* --------------------------------------------------------------------------
+   Inquiry form (on the dark contact card)
+   -------------------------------------------------------------------------- */
+
+.landing .l-form {
+  position: relative;
+  display: grid;
+  gap: 14px;
+  align-content: start;
+  padding: clamp(20px, 2.4vw, 28px);
+  border-radius: var(--l-radius-sm);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.landing .l-form-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.landing .l-field {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.landing .l-field > span {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.62);
+}
+
+/* mobile_responsive.css forces light form fields with !important below 768px.
+   These sit on the dark contact card, so the dark treatment is re-asserted. */
+.landing .l-field input,
+.landing .l-field select,
+.landing .l-field textarea {
+  width: 100%;
+  min-height: 44px !important;
+  padding: 11px 14px !important;
+  border-radius: 12px !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  background-color: rgba(18, 18, 18, 0.5) !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+  font-family: inherit;
+  font-size: 16px !important;
+  line-height: 1.5;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.landing .l-field textarea {
+  resize: vertical;
+  min-height: 96px !important;
+}
+
+.landing .l-field select {
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, rgba(255, 255, 255, 0.5) 50%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.5) 50%, transparent 50%);
+  background-position: calc(100% - 19px) 50%, calc(100% - 13px) 50%;
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+  padding-right: 38px;
+}
+
+.landing .l-field input::placeholder,
+.landing .l-field textarea::placeholder {
+  color: rgba(255, 255, 255, 0.34);
+}
+
+.landing .l-field input:focus,
+.landing .l-field select:focus,
+.landing .l-field textarea:focus {
+  outline: none;
+  border-color: var(--l-accent) !important;
+  background-color: rgba(18, 18, 18, 0.72) !important;
+  box-shadow: none !important;
+}
+
+.landing .l-field input[aria-invalid='true'],
+.landing .l-field textarea[aria-invalid='true'] {
+  border-color: #ff8b8b !important;
+}
+
+.landing .l-form .l-btn--block {
+  margin-top: 4px;
+}
+
+.landing .l-form-note {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 12.5px;
+  text-align: center;
+}
+
+.landing .l-form-note.is-error {
+  color: #ffb4b4;
+}
+
+.landing .l-form-note.is-done {
+  color: var(--l-accent);
+}
+
+/* --------------------------------------------------------------------------
+   Lightbox
+   -------------------------------------------------------------------------- */
+
+.landing .l-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(14px, 3vw, 40px);
+}
+
+.landing .l-lightbox[hidden] {
+  display: none;
+}
+
+.landing .l-lightbox-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(12, 12, 12, 0.82);
+  backdrop-filter: blur(3px);
+  animation: l-fade 0.18s ease;
+}
+
+.landing .l-lightbox-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(1180px, 100%);
+  max-height: 100%;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: var(--l-ink);
+  overflow: hidden;
+  animation: l-rise 0.2s ease;
+}
+
+.landing .l-lightbox-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 13px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.landing .l-lightbox-meta {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.landing .l-lightbox-meta strong {
+  font-family: var(--l-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+}
+
+.landing .l-lightbox-meta span {
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, 0.58);
+}
+
+.landing .l-lightbox-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.landing .l-lightbox-count {
+  margin-right: 4px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.landing .l-lightbox-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  flex: none;
+  border-radius: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.landing .l-lightbox-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.landing .l-lightbox-btn svg {
+  width: 17px;
+  height: 17px;
+}
+
+.landing #l-lightbox-prev svg {
+  transform: rotate(180deg);
+}
+
+.landing .l-lightbox-close {
+  border-color: rgba(255, 142, 104, 0.4);
+  background: rgba(255, 142, 104, 0.16);
+}
+
+.landing .l-lightbox-stage {
+  flex: 1;
+  min-height: 0;
+  padding: 14px;
+  background: var(--l-canvas);
+  overflow: auto;
+}
+
+.landing .l-lightbox-stage img {
+  width: 100%;
+  height: auto;
+  border-radius: 10px;
+  border: 1px solid var(--l-line);
+  background: var(--l-card);
+}
+
+@keyframes l-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes l-rise {
+  from { opacity: 0; transform: translateY(10px) scale(0.99); }
+  to { opacity: 1; transform: none; }
+}
+
+.landing.is-lightbox-open {
+  overflow: hidden;
+}
+
+/* --------------------------------------------------------------------------
+   Responsive
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 1100px) {
+  .landing .l-modgrid,
+  .landing .l-outcomes {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .landing .l-outcome:nth-child(2n) {
+    border-right: 0;
+  }
+
+  .landing .l-outcome:nth-child(-n + 2) {
+    border-bottom: 1px solid var(--l-line);
+  }
+}
+
+@media (max-width: 1024px) {
+  /* A screenshot cannot reflow like the CSS mock, so keep it at a readable
+     scale and let the frame crop it rather than shrinking it to a thumbnail. */
+  .landing .l-shot {
+    min-width: 820px;
+  }
+
+  .landing .l-contact {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .landing .l-jumps {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .landing .l-modgrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .landing .l-outcomes {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .landing .l-outcome {
+    border-right: 0;
+    border-bottom: 1px solid var(--l-line);
+  }
+
+  .landing .l-outcome:last-child {
+    border-bottom: 0;
+  }
+
+  .landing .l-gallery-hint {
+    display: block;
+  }
+
+  .landing .l-gallery-break {
+    --l-gcard-w: min(78vw, 400px);
+  }
+
+  .landing .l-showcase-cta--pair .l-btn {
+    flex: 1 1 auto;
+    min-width: 150px;
+  }
+
+  .landing .l-form-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .landing .l-lightbox-meta span {
+    display: none;
+  }
+}
+
+@media (max-width: 520px) {
+  .landing .l-gallery-break {
+    --l-gcard-w: 82vw;
+  }
+
+  .landing .l-gcard-meta {
+    min-height: 84px;
+    padding: 14px 16px 16px;
+  }
+
+  .landing .l-gcard-meta strong {
+    font-size: 0.98rem;
+  }
+
+  .landing .l-shot {
+    min-width: 640px;
+  }
+
+  .landing .l-statstrip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing .l-gcard-shot img,
+  .landing .l-gcard:hover .l-gcard-shot img,
+  .landing .l-gcard:focus-visible .l-gcard-shot img {
+    transition: none;
+    transform: none;
+  }
+}

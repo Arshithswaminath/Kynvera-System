@@ -1,0 +1,47 @@
+{# Shared sticky nav for public landing-theme pages. #}
+{# Expects (all optional):                                                    #}
+{#   nav_links     list of {href, label} — in-page anchors or absolute paths   #}
+{#   nav_active    href of the link to mark active on first paint             #}
+{#   nav_cta_href  primary button target (default: /applications)             #}
+{#   nav_cta_label primary button text                                        #}
+{% set nav_links = nav_links or [
+    {'href': '#applications', 'label': 'Applications'},
+    {'href': '#platform', 'label': 'Platform'},
+    {'href': '#how-it-works', 'label': 'How it works'},
+    {'href': '#pricing', 'label': 'Pricing'},
+    {'href': '#faqs', 'label': 'FAQs'}
+] %}
+{% set nav_active = nav_active or nav_links[0].href %}
+{% set nav_cta_href = nav_cta_href or url_for('applications_page') %}
+{% set nav_cta_label = nav_cta_label or 'Explore applications' %}
+
+<nav class="l-nav" id="l-nav" aria-label="Primary">
+    <div class="l-nav-pill">
+        <a href="{{ url_for('index') }}" class="l-nav-brand" aria-label="Kynvera home">
+            <img src="{{ url_for('static', filename='images/kynvera/kynvera-mark-96.png') }}" alt="" width="26" height="26">
+        </a>
+
+        <div class="l-nav-links">
+            {% for link in nav_links %}
+            <a href="{{ link.href }}"{% if link.href == nav_active %} class="is-active"{% endif %}>{{ link.label }}</a>
+            {% endfor %}
+        </div>
+
+        <div class="l-nav-actions">
+            <a href="{{ url_for('login_page') }}" class="l-btn l-btn--light l-btn--sm">Sign in</a>
+            <a href="{{ nav_cta_href }}" class="l-btn l-btn--accent l-btn--sm">{{ nav_cta_label }}</a>
+        </div>
+
+        <button type="button" class="l-nav-toggle" id="l-nav-toggle" aria-expanded="false" aria-controls="l-nav-drawer" aria-label="Open menu">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+        </button>
+    </div>
+
+    <div class="l-nav-drawer" id="l-nav-drawer">
+        {% for link in nav_links %}
+        <a href="{{ link.href }}">{{ link.label }}</a>
+        {% endfor %}
+        <a href="{{ url_for('login_page') }}">Sign in</a>
+        <a href="{{ nav_cta_href }}">{{ nav_cta_label }}</a>
+    </div>
+</nav>
