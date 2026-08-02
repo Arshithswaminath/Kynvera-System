@@ -1182,6 +1182,12 @@ class Ticket(db.Model):
     # Status: open → pending_supervisor → in_progress → pending_parts → pending_verification → closed
     status = db.Column(db.String(30), default='open', index=True)
 
+    # On-hold / cancel workflow (must be mapped — routes + SQLite ALTER add these columns)
+    on_hold_reason = db.Column(db.Text, nullable=True)
+    previous_status = db.Column(db.String(30), nullable=True)  # status to restore on resume
+    cancelled_reason = db.Column(db.Text, nullable=True)
+    cancelled_at = db.Column(db.Text, nullable=True)  # ISO timestamp string
+
     # Closing info — Stage 1: service-provider supervisor verification (`supervisor-close`)
     close_notes = db.Column(db.Text, nullable=True)
     close_signature = db.Column(db.Text, nullable=True)   # base64 data-URL
@@ -1199,6 +1205,10 @@ class Ticket(db.Model):
     updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
     resolved_at = db.Column(db.DateTime, nullable=True)
     closed_at = db.Column(db.DateTime, nullable=True)
+    # Technician advance milestones (ISO timestamp strings; see /advance)
+    site_attended_at = db.Column(db.Text, nullable=True)
+    work_started_at = db.Column(db.Text, nullable=True)
+    work_completed_at = db.Column(db.Text, nullable=True)
 
     # Email intake (draft tickets created from inbound email; see TicketEmailIntake)
     source = db.Column(db.String(20), default='manual', index=True)  # 'manual', 'email'
@@ -1243,6 +1253,13 @@ class Ticket(db.Model):
             'fault_type': self.fault_type,
             'priority': self.priority,
             'status': self.status,
+            'on_hold_reason': self.on_hold_reason,
+            'previous_status': self.previous_status,
+            'cancelled_reason': self.cancelled_reason,
+            'cancelled_at': self.cancelled_at,
+            'site_attended_at': self.site_attended_at,
+            'work_started_at': self.work_started_at,
+            'work_completed_at': self.work_completed_at,
             'work_description': self.work_description,
             'property_name': self.property_name,
             'zone': self.zone,
