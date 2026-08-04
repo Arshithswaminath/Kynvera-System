@@ -23,6 +23,7 @@ from flask import (
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from werkzeug.utils import secure_filename
 
+from sqlalchemy import inspect, text
 from sqlalchemy.orm import joinedload
 
 from app.models import (
@@ -164,8 +165,34 @@ def _register_ticketing_jinja_filters(state):
     env.filters['tkt_status_label'] = _tkt_status_label_filter
 
 
+def _add_missing_table_columns(table_name: str, columns: list[tuple[str, str]]) -> None:
+    """Dialect-aware ALTER TABLE ADD COLUMN for existing deployments (SQLite + Postgres).
+
+    Older helpers used SQLite ``PRAGMA table_info``, which fails on Postgres and was
+    swallowed — leaving mapped columns missing and every SELECT on that table 500ing.
+    """
+    inspector = inspect(db.engine)
+    if table_name not in inspector.get_table_names():
+        return
+    existing = {col['name'] for col in inspector.get_columns(table_name)}
+    missing = [(name, sql) for name, sql in columns if name not in existing]
+    if not missing:
+        return
+    with db.engine.begin() as conn:
+        for col_name, col_sql in missing:
+            try:
+                conn.execute(text(f'ALTER TABLE {table_name} ADD COLUMN {col_name} {col_sql}'))
+                logger.info('Added column %s.%s', table_name, col_name)
+            except Exception as exc:
+                err = str(exc).lower()
+                if 'already exists' in err or 'duplicate' in err:
+                    logger.info('Column %s.%s already exists, skipping', table_name, col_name)
+                else:
+                    logger.warning('Could not add %s.%s: %s', table_name, col_name, exc)
+
+
 def _migrate_ticket_columns(app):
-    """Add new supervisor-workflow columns to tickets table if they don't exist yet (SQLite-safe migration)."""
+    """Add new supervisor-workflow columns to tickets table if they don't exist yet."""
     new_cols = [
         ('supervisor_id',                  'INTEGER'),
         ('technician_id',                  'INTEGER'),
@@ -200,22 +227,8 @@ def _migrate_ticket_columns(app):
         ('sla_hours',                      'INTEGER'),
     ]
     with app.app_context():
-        from app.models import db
         try:
-            conn = db.engine.raw_connection()
-            cursor = conn.cursor()
-            cursor.execute("PRAGMA table_info(tickets)")
-            existing = {row[1] for row in cursor.fetchall()}
-            for col_name, col_type in new_cols:
-                if col_name not in existing:
-                    try:
-                        cursor.execute(f'ALTER TABLE tickets ADD COLUMN {col_name} {col_type}')
-                        logger.info('Added column tickets.%s', col_name)
-                    except Exception as exc:
-                        logger.warning('Could not add column %s: %s', col_name, exc)
-            conn.commit()
-            conn.close()
-
+            _add_missing_table_columns('tickets', new_cols)
             # Create TicketSupervisorTeam table if not exists
             db.create_all()
         except Exception as exc:
@@ -223,9 +236,9 @@ def _migrate_ticket_columns(app):
 
 
 def _migrate_ticket_project_columns(app):
-    """Add ticketing project columns (SQLite-safe PRAGMA + ALTER)."""
+    """Add ticketing project columns on SQLite and Postgres."""
     ticket_project_cols = [
-        ('supervisor_id', 'INTEGER REFERENCES users(id)'),
+        ('supervisor_id', 'INTEGER'),
         ('bd_project_id', 'INTEGER'),
         ('project_end_date', 'DATE'),
         ('renewal_date', 'DATE'),
@@ -235,19 +248,7 @@ def _migrate_ticket_project_columns(app):
     ]
     with app.app_context():
         try:
-            conn = db.engine.raw_connection()
-            cursor = conn.cursor()
-            cursor.execute('PRAGMA table_info(ticket_projects)')
-            existing = {row[1] for row in cursor.fetchall()}
-            for col_name, col_sql in ticket_project_cols:
-                if col_name not in existing:
-                    try:
-                        cursor.execute(f'ALTER TABLE ticket_projects ADD COLUMN {col_name} {col_sql}')
-                        logger.info('Added column ticket_projects.%s', col_name)
-                    except Exception as exc:
-                        logger.warning('Could not add ticket_projects.%s: %s', col_name, exc)
-            conn.commit()
-            conn.close()
+            _add_missing_table_columns('ticket_projects', ticket_project_cols)
             db.create_all()
         except Exception as exc:
             logger.warning('Ticket project migration warning: %s', exc)
@@ -1456,6 +1457,12 @@ def triage_confirm():
     ticket_code = (data.get('ticket_id') or '').strip()
     if ticket_code:
         ticket = Ticket.query.filter_by(ticket_id=ticket_code).first()
+        if ticket is None:
+            return jsonify({'success': False, 'error': 'Ticket not found'}), 404
+        # Must not let apply_to_ticket rewrite priority/SLA on tickets the caller cannot see.
+        deny = _api_forbid_unless_ticket_visible(user, ticket)
+        if deny:
+            return deny
 
     apply = bool(data.get('apply_to_ticket')) and ticket is not None
     result = confirm_triage(
@@ -3380,6 +3387,15 @@ def _is_admin(user):
     return user and user.role == 'admin'
 
 
+def _can_manage_ticketing_projects(user: User) -> bool:
+    """Who may create/update/delete TicketProject rows (routing + invoice recipients).
+
+    Must not be bare access_ticketing — otherwise any technician can rewrite
+    finance/ops invoice emails or reassign project supervisors.
+    """
+    return _ticketing_sees_all_tickets(user)
+
+
 @ticketing_bp.route('/settings', methods=['GET'])
 @jwt_required()
 def settings_page():
@@ -3395,6 +3411,7 @@ def settings_page():
         'ticket_settings.html',
         user=user,
         ticketing_can_manage_fault_catalog=_is_admin(user),
+        ticketing_can_manage_projects=_can_manage_ticketing_projects(user),
         intake_email=intake_email,
         sidebar_stats=_get_sidebar_stats(user),
         active_page='ticketing',
@@ -3648,6 +3665,11 @@ def settings_create_project():
     user = _current_user()
     if not _has_access(user):
         return jsonify({'success': False}), 403
+    if not _can_manage_ticketing_projects(user):
+        return jsonify({
+            'success': False,
+            'error': 'Only Admin / Operations Manager / General Manager may manage projects.',
+        }), 403
     data = request.get_json(silent=True) or {}
     name = (data.get('name') or '').strip()
     if not name:
@@ -3702,6 +3724,11 @@ def settings_update_project(pid):
     user = _current_user()
     if not _has_access(user):
         return jsonify({'success': False}), 403
+    if not _can_manage_ticketing_projects(user):
+        return jsonify({
+            'success': False,
+            'error': 'Only Admin / Operations Manager / General Manager may manage projects.',
+        }), 403
     p = db.session.get(TicketProject, pid)
     if not p:
         abort(404)
@@ -3758,6 +3785,11 @@ def settings_delete_project(pid):
     user = _current_user()
     if not _has_access(user):
         return jsonify({'success': False}), 403
+    if not _can_manage_ticketing_projects(user):
+        return jsonify({
+            'success': False,
+            'error': 'Only Admin / Operations Manager / General Manager may manage projects.',
+        }), 403
     p = db.session.get(TicketProject, pid)
     if not p:
         abort(404)

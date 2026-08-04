@@ -100,7 +100,7 @@ def register():
     """Register a new user (self-service wizard — default password assigned server-side)."""
     try:
         from common.datetime_utils import parse_employment_start_date
-        from common.password_admin import get_default_registration_password
+        from common.password_admin import generate_registration_password
 
         data = request.get_json(force=True, silent=True)
         
@@ -162,7 +162,8 @@ def register():
                 return error_response(message, 400, 'WEAK_PASSWORD')
             password_changed = True
         else:
-            password = get_default_registration_password()
+            # Unique per account — never the shared ADMIN_RESET_PASSWORD secret.
+            password = generate_registration_password()
             password_changed = False
 
         full_name = f"{first_name} {last_name}".strip()
