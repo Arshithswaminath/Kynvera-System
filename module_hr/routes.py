@@ -211,10 +211,10 @@ def _hr_form_context(user):
 
 
 def _can_access_hr_submission_export(user, submission):
-    """Admin, HR, GM may export any HR submission; submitter may export their own."""
+    """Admin, HR managers, GM may export any HR submission; submitter may export their own."""
     if not user or not submission:
         return False
-    is_hr = getattr(user, 'access_hr', False) or user.designation == 'hr_manager'
+    is_hr = user_is_hr_staff(user)
     is_gm = user.designation == 'general_manager'
     if _role_is_admin(user) or is_hr or is_gm:
         return True
@@ -1418,9 +1418,8 @@ def hr_approve(submission_id):
     if not user:
         return jsonify({'error': 'User not found'}), 404
     
-    # Only HR managers and admin can approve
-    is_hr = getattr(user, 'access_hr', False) or user.designation == 'hr_manager'
-    if not _role_is_admin(user) and not is_hr:
+    # Only designated HR managers (and admin) — not bare access_hr module flag
+    if not user_is_hr_staff(user):
         return jsonify({'error': 'Access denied'}), 403
     
     submission = Submission.query.filter_by(submission_id=submission_id).first()
@@ -1486,13 +1485,16 @@ def hr_reject(submission_id):
     if not user:
         return jsonify({'error': 'User not found'}), 404
     
-    is_hr = getattr(user, 'access_hr', False) or user.designation == 'hr_manager'
-    if not _role_is_admin(user) and not is_hr:
+    if not user_is_hr_staff(user):
         return jsonify({'error': 'Access denied'}), 403
     
     submission = Submission.query.filter_by(submission_id=submission_id).first()
     if not submission:
         return jsonify({'error': 'Submission not found'}), 404
+
+    # Must be pending HR review — never undo GM-approved / other stages
+    if submission.workflow_status != 'hr_review':
+        return jsonify({'error': 'Submission is not pending HR review'}), 400
     
     data = request.get_json() or {}
     
@@ -1614,6 +1616,10 @@ def gm_reject(submission_id):
     submission = Submission.query.filter_by(submission_id=submission_id).first()
     if not submission:
         return jsonify({'error': 'Submission not found'}), 404
+
+    # Must be pending GM review — never undo already-approved requests
+    if submission.workflow_status != 'gm_review':
+        return jsonify({'error': 'Submission is not pending GM approval'}), 400
     
     data = request.get_json() or {}
     

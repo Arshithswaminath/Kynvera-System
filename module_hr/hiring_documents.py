@@ -64,12 +64,15 @@ def _user_desig_lc(user: Optional[User]) -> str:
 
 
 def user_can_manage_hiring_docs(user: Optional[User]) -> bool:
-    """HR staff who may manage the hiring document tracker."""
+    """HR staff who may manage the hiring document tracker.
+
+    `access_hr` alone is not enough — that flag is often granted so employees can
+    open the HR module / submit their own forms. Require formal HR designation
+    (same rule as ``user_is_hr_staff``).
+    """
     if not user:
         return False
     if _role_is_admin(user):
-        return True
-    if getattr(user, 'access_hr', False):
         return True
     return _user_desig_lc(user) == 'hr_manager'
 

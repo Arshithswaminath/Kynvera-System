@@ -185,12 +185,16 @@ def _hr_submitter_grace_deadline_iso(submission):
 
 
 def _hr_anytime_line_editor(user, submission) -> bool:
-    """Reporting manager of submitter, HR roster, GM, or admin — may edit anytime."""
+    """Reporting manager of submitter, HR manager, GM, or admin — may edit anytime.
+
+    Bare ``access_hr`` is not enough (same rule as ``user_is_hr_staff``): that flag
+    is often granted so employees can open the HR module / submit their own forms.
+    """
     if _user_role_lower(user) == "admin":
         return True
     if _user_desig_lower(user) == "general_manager":
         return True
-    if getattr(user, "access_hr", False) or _user_desig_lower(user) == "hr_manager":
+    if _user_desig_lower(user) == "hr_manager":
         return True
     submitter = db.session.get(User, submission.user_id) if submission.user_id else None
     return bool(submitter and submitter.reporting_manager_id == user.id)
