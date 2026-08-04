@@ -1535,12 +1535,28 @@ body.l-login-open {
   }
 
   .l-nav-cluster {
-    justify-content: stretch;
+    justify-content: center;
   }
 
   .l-nav-pill {
-    flex: 1 1 auto;
-    max-width: none;
+    flex: 0 1 auto;
+    width: auto;
+    max-width: 100%;
+    gap: 8px;
+    padding: 6px;
+  }
+
+  .l-nav-brand {
+    margin-left: 4px;
+  }
+
+  .l-nav-actions .l-btn--accent {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .l-nav-drawer {
+    width: 100%;
   }
 
   .l-user-meta {
@@ -1585,14 +1601,22 @@ body.l-login-open {
   .l-tabs {
     display: flex;
     width: 100%;
-    overflow-x: auto;
-    justify-content: flex-start;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
+    max-width: 100%;
+    margin-inline: auto;
+    justify-content: stretch;
+    overflow: visible;
   }
 
-  .l-tabs::-webkit-scrollbar {
-    display: none;
+  .l-tab {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 44px;
+    text-align: center;
+    padding-left: 12px;
+    padding-right: 12px;
   }
 
   .l-pillars,
@@ -1606,19 +1630,16 @@ body.l-login-open {
     min-width: 160px;
   }
 
-  /* Keep every control at the 44px minimum touch target. */
-  .l-btn--sm {
+  /* Keep nav CTA touchable; trim horizontal padding so the pill stays compact. */
+  .l-nav-actions .l-btn--sm {
     min-height: 44px;
-    padding: 10px 18px;
+    padding: 10px 14px;
+    font-size: 13px;
   }
 
   .l-nav-toggle {
     width: 44px;
     height: 44px;
-  }
-
-  .l-tab {
-    min-height: 44px;
   }
 
   .l-mock-rail {
@@ -1651,6 +1672,11 @@ body.l-login-open {
 
   .l-hero h1 {
     max-width: none;
+    font-size: clamp(1.7rem, 7.2vw, 2.2rem);
+  }
+
+  .l-h2 {
+    font-size: clamp(1.3rem, 5.4vw, 1.75rem);
   }
 
   /* Give the mock row titles the full width rather than truncating them. */
