@@ -44,11 +44,33 @@ def password_backfill_candidates():
 
 
 def get_default_registration_password():
-    """Default password for self-registration and admin-created accounts without an explicit password."""
+    """Shared fallback used by admin create/reset only — never for public self-registration."""
     explicit = (os.environ.get('ADMIN_RESET_PASSWORD') or '').strip()
     if explicit:
         return explicit
     return os.environ.get('ADMIN_RESET_PASSWORD_DEFAULT', 'ChangeMeNow!@#')
+
+
+def generate_registration_password() -> str:
+    """
+    Per-account password for public self-registration.
+
+    Must NOT reuse ADMIN_RESET_PASSWORD: that value used to be embedded in /register
+    HTML and returned to every registrant, leaking the org-wide reset secret.
+    """
+    import secrets
+    import string
+
+    # Meets validate_password: length >= 8, upper, lower, digit.
+    alphabet = string.ascii_letters + string.digits
+    while True:
+        pw = ''.join(secrets.choice(alphabet) for _ in range(14))
+        if (
+            any(c.isupper() for c in pw)
+            and any(c.islower() for c in pw)
+            and any(c.isdigit() for c in pw)
+        ):
+            return pw
 
 
 def capture_admin_visible_password(user, plaintext: str) -> None:

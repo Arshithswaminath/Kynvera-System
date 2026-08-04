@@ -1145,12 +1145,8 @@ def create_app():
     
     @app.route('/register')
     def register_page():
-        """Render register page"""
-        from common.password_admin import get_default_registration_password
-        return render_template(
-            'register.html',
-            default_password=get_default_registration_password(),
-        )
+        """Render register page (password shown only after successful API register)."""
+        return render_template('register.html')
     
     @app.route('/logout')
     def logout_page():
