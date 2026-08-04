@@ -25,7 +25,7 @@
     offer_letter_signed: 'Offer letter signed',
     md_signed_offer_received: 'Signed offer letter from MD received',
     visa_process_started: 'Visa process started',
-    candidate_employee: 'Candidate employee',
+    candidate_employee: 'Candidate employed',
     on_hold: 'On hold',
   };
 
@@ -86,7 +86,7 @@
     },
     visa_process_started: {
       focus: 'Visa process open — upload remaining pack',
-      next: 'Advance to Candidate employee when the file is ready to close',
+      next: 'Advance to Candidate employed when the file is ready to close',
       hint: 'Insurance, e-visa, and contract uploads are unlocked at this stage.',
     },
     on_hold: {
@@ -448,7 +448,7 @@
       listEl.innerHTML = items.map(function (c) {
         const pct = c.total ? Math.round((c.completed / c.total) * 100) : 0;
         const pipeKey = c.pipeline_status || 'interview_completed';
-        const pipeLabel = c.pipeline_label || PIPELINE_LABELS[pipeKey] || pipeKey;
+        const pipeLabel = PIPELINE_LABELS[pipeKey] || c.pipeline_label || pipeKey;
         const comment = (c.comments || '').trim();
         const commentHtml = comment
           ? '<div class="hh-row-comment" title="' + escapeHtml(comment) + '">' +
@@ -894,8 +894,10 @@
       if (!next.pipeline_status) {
         next.pipeline_status = (candidateState && candidateState.pipeline_status) || 'interview_completed';
       }
-      if (!next.pipeline_label) {
-        next.pipeline_label = PIPELINE_LABELS[next.pipeline_status] || next.pipeline_status;
+      if (next.pipeline_status && PIPELINE_LABELS[next.pipeline_status]) {
+        next.pipeline_label = PIPELINE_LABELS[next.pipeline_status];
+      } else if (!next.pipeline_label) {
+        next.pipeline_label = next.pipeline_status || '';
       }
       if (typeof next.visa_docs_unlocked !== 'boolean') {
         next.visa_docs_unlocked = visaDocsUnlockedForStatus(next.pipeline_status);
@@ -1116,7 +1118,7 @@
       if (!body) return;
 
       const pipeKey = c.pipeline_status || 'interview_completed';
-      const pipeLabel = c.pipeline_label || PIPELINE_LABELS[pipeKey] || pipeKey;
+      const pipeLabel = PIPELINE_LABELS[pipeKey] || c.pipeline_label || pipeKey;
       const meta = PIPELINE_META[pipeKey] || PIPELINE_META.interview_completed;
       const steps = PIPELINE_STEPS;
       const stepIdx = steps.indexOf(pipeKey);

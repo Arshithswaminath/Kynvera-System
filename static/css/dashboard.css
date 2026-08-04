@@ -61,8 +61,11 @@ body {
   flex-direction: column;
   min-height: 100vh;
   /* Shared with .mobile-menu-drawer / .mobile-overlay (siblings of .nav) */
-  /* Matches .nav equal 0.875rem top/bottom (+ safe-area on top) */
-  --nav-inner-h: 64px;
+  /* Matches .nav equal 0.875rem top/bottom (+ safe-area on top).
+     Inner height tracks the tallest control (hamburger 40px / logo 36px) so the
+     drawer sits flush under the painted bar — oversized values leave a gap of
+     the dimmed overlay between nav and menu. */
+  --nav-inner-h: 40px;
   --nav-pad-top: calc(env(safe-area-inset-top, 0px) + 0.875rem);
   --nav-pad-bottom: 0.875rem;
   --nav-bar-h: calc(var(--nav-inner-h) + var(--nav-pad-top) + var(--nav-pad-bottom));
@@ -176,7 +179,8 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: 1.5rem;
-  min-height: 0 !important;
+  /* Keep painted bar height in sync with --nav-bar-h (drawer / page offsets) */
+  min-height: var(--nav-inner-h) !important;
   height: auto !important;
   box-sizing: border-box;
   overflow: visible;
@@ -1879,7 +1883,7 @@ body.page-dashboard .modules-section {
 @media (max-width: 2500px) {
   .nav-container {
     padding: 0 1.5rem !important;
-    min-height: 0 !important;
+    min-height: var(--nav-inner-h) !important;
     height: auto !important;
   }
 
@@ -2210,7 +2214,7 @@ body.page-dashboard .modules-section {
 @media (max-width: 1024px) {
   .nav-container {
     padding: 0 2rem !important;
-    min-height: 0 !important;
+    min-height: var(--nav-inner-h) !important;
     height: auto !important;
   }
 
@@ -2237,7 +2241,7 @@ body.page-dashboard .modules-section {
    =========================================== */
 @media (max-width: 768px) {
   body {
-    --nav-inner-h: 56px;
+    --nav-inner-h: 40px;
   }
 
   .hero {
@@ -2437,7 +2441,7 @@ body.page-dashboard .modules-section {
   .nav-container {
     padding: 0 1rem !important;
     gap: 0.5rem !important;
-    min-height: 0 !important;
+    min-height: var(--nav-inner-h) !important;
     height: auto !important;
   }
 
@@ -2876,14 +2880,14 @@ body.page-dashboard .modules-section {
    =========================================== */
 @media (max-width: 600px) {
   body {
-    --nav-inner-h: 64px;
+    --nav-inner-h: 40px;
   }
 
   /* Phone: logo + "Hi, Name" left-aligned, actions right */
   .nav-container {
     grid-template-columns: minmax(0, 1fr) auto !important;
     gap: 0.4rem !important;
-    min-height: 0 !important;
+    min-height: var(--nav-inner-h) !important;
     height: auto !important;
     padding: 0 0.75rem !important;
   }
@@ -3106,7 +3110,7 @@ body.page-dashboard .modules-section {
   .nav-container {
     padding: 0 0.875rem !important;
     height: auto !important;
-    min-height: 0 !important;
+    min-height: var(--nav-inner-h) !important;
   }
   
   .logo {

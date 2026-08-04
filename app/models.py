@@ -1965,7 +1965,7 @@ HIRING_PIPELINE_LABELS = {
     'offer_letter_signed': 'Offer letter signed',
     'md_signed_offer_received': 'Signed offer letter from MD received',
     'visa_process_started': 'Visa process started',
-    'candidate_employee': 'Candidate employee',
+    'candidate_employee': 'Candidate employed',
     'on_hold': 'On hold',
 }
 
