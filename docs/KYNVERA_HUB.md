@@ -4,13 +4,15 @@ Kynvera Home (`kynvera-main`) is a **portal**. The public main page is the **mar
 
 ## Branch → service map
 
-| Git branch | Role | Example service | Example URL env |
-|------------|------|-----------------|-----------------|
-| `kynvera-main` | Portal (landing + login + launch) | `kynvera-home` | `KYNVERA_HOME_URL` |
-| `kynvera-fire-system-application` | Fire System product | `kynvera-fire` | `KYNVERA_FIRE_APP_URL` |
-| `ajman-municipality` | Municipality product | `kynvera-muni` | `KYNVERA_MUNICIPALITY_APP_URL` |
+| Git branch | Role | Render service | Production URL | URL env |
+|------------|------|----------------|----------------|---------|
+| `kynvera-main` | Portal (landing + login + launch) | `kynvera-home` | `https://kynvera.net` | `KYNVERA_HOME_URL` / `APP_BASE_URL` |
+| `kynvera-fire-system-application` | Fire System product | `kynvera-fire` | `https://fire.kynvera.net` | `KYNVERA_FIRE_APP_URL` (set on portal) |
+| `ajman-municipality` | Operations Suite (Municipality product) | `kynvera-operations` | `https://operation-kynvera.net` | `KYNVERA_MUNICIPALITY_APP_URL` (set on portal) |
 
 Do **not** merge product feature sets into one homepage. Keep product modules inside their own apps.
+
+**Full Render deploy (DNS, domains, every env + where to get it):** [`docs/RENDER_KYNVERA_DEPLOY.md`](RENDER_KYNVERA_DEPLOY.md).
 
 ## Public landing (`/`)
 
@@ -64,17 +66,30 @@ Full pre-slim tree is preserved on branch `kynvera-main-backup`. Product modules
 
 ## Environment variables
 
-Shared across portal + products that use SSO:
+Shared across portal + products that use SSO.  
+For the full key list (Cloudinary, Brevo, Redis, disks, etc.) and **where to look for each value**, see [`RENDER_KYNVERA_DEPLOY.md` §1–2](RENDER_KYNVERA_DEPLOY.md).
 
-| Variable | Where | Purpose |
-|----------|--------|---------|
-| `JWT_SECRET_KEY` | All three | **Must match** for SSO handoff |
-| `DATABASE_URL` | Usually shared for one login | Same user table so tokens resolve |
-| `KYNVERA_HUB_MODE` | Portal: `true` (default on `kynvera-main`). Products: `false` | Portal hub behavior |
-| `KYNVERA_HOME_URL` | Fire + Municipality | Navbar “Kynvera Home” back-link |
-| `KYNVERA_FIRE_APP_URL` | Portal | Launcher target for Fire |
-| `KYNVERA_MUNICIPALITY_APP_URL` | Portal | Launcher target for Municipality |
-| `APP_BASE_URL` | Each service | That service’s own public URL |
+| Variable | Set on | Purpose | Where to get / set |
+|----------|--------|---------|--------------------|
+| `JWT_SECRET_KEY` | All three | **Must match** for SSO handoff | Generate once: `python -c "import secrets; print(secrets.token_urlsafe(32))"`. Paste same value on all Render services → **Environment**. |
+| `DATABASE_URL` | All three (usually shared) | Same user table so tokens resolve | Render → Postgres `kynvera-db` → **Connect** → Internal URL |
+| `KYNVERA_HUB_MODE` | Portal: `true` (default on `kynvera-main`). Products: `false` | Portal hub behavior | Set manually in Render **Environment** |
+| `KYNVERA_HOME_URL` | Fire + Operations | Navbar “Kynvera Home” back-link | Production: `https://kynvera.net` |
+| `KYNVERA_FIRE_APP_URL` | Portal | Launcher target for Fire | Production: `https://fire.kynvera.net` |
+| `KYNVERA_MUNICIPALITY_APP_URL` | Portal | Launcher target for Operations Suite | Production: `https://operation-kynvera.net` (env name stays “municipality”) |
+| `APP_BASE_URL` | Each service | That service’s own public URL | Portal / Fire / Ops URLs from the table above |
+| Other secrets (Cloudinary, email, Redis) | As needed | Uploads, mail, rate limits | See [`.env.example`](../.env.example) and [`RENDER_KYNVERA_DEPLOY.md` §1](RENDER_KYNVERA_DEPLOY.md) |
+
+### Places to look (hub)
+
+| Need | Look here |
+|------|-----------|
+| Deploy + DNS + every env source | [`docs/RENDER_KYNVERA_DEPLOY.md`](RENDER_KYNVERA_DEPLOY.md) |
+| Local key names / comments | [`.env.example`](../.env.example) |
+| What the app reads | [`config.py`](../config.py) |
+| Portal Render blueprint | [`render.yaml`](../render.yaml) |
+| Live production values | Render dashboard → each service → **Environment** (never commit these) |
+| Local overrides | gitignored `.env` on your machine |
 
 ## Launch + SSO flow
 
@@ -130,9 +145,12 @@ Checklist:
 
 ## Render
 
-Create three web services, each pinned to its branch, with the env vars above.
+**Use the full guide:** [`docs/RENDER_KYNVERA_DEPLOY.md`](RENDER_KYNVERA_DEPLOY.md)  
+(domains `kynvera.net` / `fire.kynvera.net` / `operation-kynvera.net`, DNS, per-service env tables, and where to get every value).
 
-- Portal (`kynvera-main` / `render.yaml` service `kynvera-home`): `KYNVERA_HUB_MODE=true`, set `KYNVERA_FIRE_APP_URL` and `KYNVERA_MUNICIPALITY_APP_URL` to the public product URLs. No RQ/MMR worker is required on the portal.
-- Fire + Municipality: `KYNVERA_HUB_MODE=false`, `KYNVERA_HOME_URL` → portal public URL, shared `JWT_SECRET_KEY` / usually shared `DATABASE_URL`.
+Summary:
 
-Point portal `KYNVERA_*_APP_URL` at the public Render URLs of the product services.
+- Create three web services, each pinned to its branch (`kynvera-home`, `kynvera-fire`, `kynvera-operations`).
+- Portal (`kynvera-main` / [`render.yaml`](../render.yaml)): `KYNVERA_HUB_MODE=true`, set `KYNVERA_FIRE_APP_URL=https://fire.kynvera.net` and `KYNVERA_MUNICIPALITY_APP_URL=https://operation-kynvera.net`. No RQ/MMR worker on the portal.
+- Fire + Operations: `KYNVERA_HUB_MODE=false`, `KYNVERA_HOME_URL=https://kynvera.net`, shared `JWT_SECRET_KEY` and usually shared `DATABASE_URL`.
+- After custom domains are verified, point all hub URL env vars at the production hostnames (not only `*.onrender.com`).
