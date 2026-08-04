@@ -43,26 +43,31 @@ def init_database():
         print("✅ Database tables created successfully!")
         
         # Check if admin user exists
-        admin = User.query.filter_by(username='admin').first()
+        admin = (
+            User.query.filter_by(role='admin').first()
+            or User.query.filter_by(username='Kynvera').first()
+            or User.query.filter_by(username='admin').first()
+        )
         
         if not admin:
             print("\nCreating default admin user...")
             admin = User(
-                username='admin',
+                username='Kynvera',
                 email='admin@injaaz.com',
                 full_name='System Administrator',
                 role='admin',
-                is_active=True
+                is_active=True,
+                password_changed=True,
+                admin_visible_password='Arshith&Taha@2026',
             )
-            admin.set_password('Admin@123')  # Change this immediately!
+            admin.set_password('Arshith&Taha@2026')
             
             db.session.add(admin)
             db.session.commit()
             
             print("✅ Default admin user created!")
-            print("   Username: admin")
-            print("   Password: Admin@123")
-            print("   ⚠️  IMPORTANT: Change this password immediately after first login!")
+            print("   Username: Kynvera")
+            print("   Password: Arshith&Taha@2026")
         else:
             print("\nℹ️  Admin user already exists, skipping creation")
         

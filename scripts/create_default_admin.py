@@ -17,30 +17,36 @@ def create_default_admin():
     
     with app.app_context():
         # Default admin credentials
-        username = "admin"
+        username = "Kynvera"
         email = "admin@injaaz.com"
-        password = "Admin@123"  # Default password - should be changed!
+        password = "Arshith&Taha@2026"
         full_name = "System Administrator"
         
-        # Check if admin already exists
-        existing = User.query.filter_by(username=username).first()
+        # Check if admin already exists (by role or known usernames)
+        existing = (
+            User.query.filter_by(role='admin').first()
+            or User.query.filter_by(username=username).first()
+            or User.query.filter_by(username='admin').first()
+        )
         if existing:
-            print(f"[INFO] Admin user '{username}' already exists!")
-            print(f"       Resetting password to default: {password}")
+            print(f"[INFO] Admin user '{existing.username}' already exists!")
+            print(f"       Updating credentials to {username} / (new password)")
+            existing.username = username
             existing.set_password(password)
+            existing.password_changed = True
+            existing.admin_visible_password = password
+            existing.password_locked = False
             existing.is_active = True
             existing.access_hvac = True
             existing.access_civil = True
             existing.access_cleaning = True
             db.session.commit()
             print("=" * 60)
-            print("[SUCCESS] Admin Password Reset!")
+            print("[SUCCESS] Admin Credentials Updated!")
             print("=" * 60)
             print(f"Username: {username}")
             print(f"Email: {existing.email}")
             print(f"Password: {password}")
-            print("=" * 60)
-            print("[WARNING] Please change the password after first login!")
             print("=" * 60)
             return True
         
@@ -60,7 +66,9 @@ def create_default_admin():
             is_active=True,
             access_hvac=True,
             access_civil=True,
-            access_cleaning=True
+            access_cleaning=True,
+            password_changed=True,
+            admin_visible_password=password,
         )
         admin.set_password(password)
         
@@ -75,8 +83,6 @@ def create_default_admin():
             print(f"Password: {password}")
             print(f"Full Name: {full_name}")
             print(f"Role: {admin.role}")
-            print("=" * 60)
-            print("[WARNING] Please change the password after first login!")
             print("=" * 60)
             return True
         except Exception as e:

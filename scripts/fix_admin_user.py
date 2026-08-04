@@ -1,6 +1,6 @@
 """
 Fix/Reset Admin User Script
-This script checks if admin user exists and resets the password to Admin@123
+This script checks if admin user exists and resets credentials to Kynvera / Arshith&Taha@2026
 Usage: python scripts/fix_admin_user.py
 """
 import sys
@@ -11,6 +11,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from Injaaz import create_app
 from app.models import db, User
+
+ADMIN_USERNAME = 'Kynvera'
+ADMIN_PASSWORD = 'Arshith&Taha@2026'
 
 def fix_admin_user():
     """Check and fix admin user"""
@@ -26,14 +29,18 @@ def fix_admin_user():
             return False
         
         # Check if admin user exists
-        admin = User.query.filter_by(username='admin').first()
+        admin = (
+            User.query.filter_by(role='admin').first()
+            or User.query.filter_by(username=ADMIN_USERNAME).first()
+            or User.query.filter_by(username='admin').first()
+        )
         
         if not admin:
             print("\n[WARNING] Admin user does not exist!")
             print("Creating admin user...")
             
             admin = User(
-                username='admin',
+                username=ADMIN_USERNAME,
                 email='admin@injaaz.com',
                 full_name='System Administrator',
                 role='admin',
@@ -41,9 +48,10 @@ def fix_admin_user():
                 access_hvac=True,
                 access_civil=True,
                 access_cleaning=True,
-                password_changed=False
+                password_changed=True,
+                admin_visible_password=ADMIN_PASSWORD,
             )
-            admin.set_password('Admin@123')
+            admin.set_password(ADMIN_PASSWORD)
             
             try:
                 db.session.add(admin)
@@ -60,26 +68,28 @@ def fix_admin_user():
             print(f"   Role: {admin.role}")
             print(f"   Is Active: {admin.is_active}")
             
-            # Reset password to Admin@123
-            print("\n[INFO] Resetting password to 'Admin@123'...")
-            admin.set_password('Admin@123')
+            print(f"\n[INFO] Updating credentials to '{ADMIN_USERNAME}'...")
+            admin.username = ADMIN_USERNAME
+            admin.set_password(ADMIN_PASSWORD)
             admin.is_active = True
-            admin.password_changed = False
+            admin.password_changed = True
+            admin.admin_visible_password = ADMIN_PASSWORD
+            admin.password_locked = False
             admin.access_hvac = True
             admin.access_civil = True
             admin.access_cleaning = True
             
             try:
                 db.session.commit()
-                print("[OK] Password reset successfully!")
+                print("[OK] Credentials updated successfully!")
             except Exception as e:
                 db.session.rollback()
-                print(f"[ERROR] Failed to reset password: {e}")
+                print(f"[ERROR] Failed to update credentials: {e}")
                 return False
         
         # Verify the password works
         print("\n[INFO] Verifying password...")
-        if admin.check_password('Admin@123'):
+        if admin.check_password(ADMIN_PASSWORD):
             print("[OK] Password verification successful!")
         else:
             print("[ERROR] Password verification failed!")
@@ -88,11 +98,9 @@ def fix_admin_user():
         print("\n" + "=" * 60)
         print("[SUCCESS] Admin User Setup Complete!")
         print("=" * 60)
-        print(f"Username: admin")
-        print(f"Password: Admin@123")
+        print(f"Username: {ADMIN_USERNAME}")
+        print(f"Password: {ADMIN_PASSWORD}")
         print(f"Email: {admin.email}")
-        print("=" * 60)
-        print("[WARNING] IMPORTANT: Change this password after first login!")
         print("=" * 60)
         
         return True
