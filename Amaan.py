@@ -618,36 +618,10 @@ def create_app():
                     db.session.rollback()
                     logger.warning(f"Finance contract migration skipped: {mig_err}")
 
-            # Step 3: Ensure default admin user exists (fully automatic for Render)
+            # Step 3: Ensure default admin user exists / credentials aligned (Render-safe)
             try:
-                from app.models import User
-                admin = (
-                    User.query.filter_by(role='admin').first()
-                    or User.query.filter_by(username='Kynvera').first()
-                    or User.query.filter_by(username='admin').first()
-                )
-                if not admin:
-                    logger.info("Creating default admin user...")
-                    admin = User(
-                        username='Kynvera',
-                        email='admin@injaaz.com',
-                        full_name='System Administrator',
-                        role='admin',
-                        is_active=True,
-                        access_hvac=True,
-                        access_civil=True,
-                        access_cleaning=True
-                    )
-                    # Use environment variable for default password, else local default
-                    default_password = os.environ.get('DEFAULT_ADMIN_PASSWORD') or 'Arshith&Taha@2026'
-                    admin.set_password(default_password)
-                    admin.password_changed = True
-                    admin.admin_visible_password = default_password
-                    db.session.add(admin)
-                    db.session.commit()
-                    logger.info("✅ Default admin user created (username: Kynvera)")
-                else:
-                    logger.info("✅ Admin user already exists")
+                from common.admin_bootstrap import ensure_default_admin
+                ensure_default_admin()
             except Exception as admin_create_error:
                 logger.warning(f"Could not create admin user (non-critical): {admin_create_error}")
             else:
