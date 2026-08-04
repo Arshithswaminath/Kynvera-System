@@ -16,7 +16,7 @@ Usage (app must be running, e.g. python Injaaz.py):
     python scripts/capture_full_page_screenshots.py \\
         --base-url http://127.0.0.1:5000 \\
         --stamp my_run \\
-        --login-user admin --login-password 'Admin@123'
+        --login-user Kynvera --login-password 'Arshith&Taha@2026'
 """
 
 from __future__ import annotations
@@ -199,8 +199,8 @@ def main() -> int:
         action="store_true",
         help="One tall PNG per URL (Playwright full_page). Default is scroll segments.",
     )
-    parser.add_argument("--login-user", default="admin", help="Username for /login")
-    parser.add_argument("--login-password", default="Admin@123", help="Password for /login")
+    parser.add_argument("--login-user", default="Kynvera", help="Username for /login")
+    parser.add_argument("--login-password", default="Arshith&Taha@2026", help="Password for /login")
     parser.add_argument("--no-login", action="store_true", help="Do not log in (public pages only)")
     parser.add_argument("--storage-state", type=Path, default=None, help="Optional Playwright storage JSON")
     parser.add_argument("--wait-ms", type=int, default=1200, help="Wait after load before measuring/screenshot")

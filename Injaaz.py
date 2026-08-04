@@ -586,41 +586,30 @@ def create_app():
             # Step 3: Ensure default admin user exists (fully automatic for Render)
             try:
                 from app.models import User
-                admin = User.query.filter_by(username='admin').first()
+                default_admin_username = os.environ.get('DEFAULT_ADMIN_USERNAME', 'Kynvera')
+                admin = (
+                    User.query.filter_by(username=default_admin_username).first()
+                    or User.query.filter_by(username='admin').first()
+                )
                 if not admin:
                     logger.info("Creating default admin user...")
                     admin = User(
-                        username='admin',
-                        email='admin@injaaz.com',
-                        full_name='System Administrator',
+                        username=default_admin_username,
+                        email=os.environ.get('DEFAULT_ADMIN_EMAIL', 'admin@injaaz.com'),
+                        full_name=os.environ.get('DEFAULT_ADMIN_FULL_NAME', 'System Administrator'),
                         role='admin',
                         is_active=True,
                         access_hvac=True,
                         access_civil=True,
                         access_cleaning=True
                     )
-                    # Use environment variable for default password, or generate random one
-                    import secrets
-                    default_password = os.environ.get('DEFAULT_ADMIN_PASSWORD', None)
-                    if not default_password:
-                        # Generate a secure random password if not set
-                        default_password = secrets.token_urlsafe(16)
-                        logger.warning("⚠️  No DEFAULT_ADMIN_PASSWORD set - using generated password")
-                        # Log to a secure location (not just console)
-                        logger.critical(f"🔐 DEFAULT ADMIN PASSWORD GENERATED: {default_password}")
-                        logger.critical("⚠️  SECURITY: Change this password immediately after first login!")
-                    
+                    # Use environment variable for default password, or the local default
+                    default_password = os.environ.get('DEFAULT_ADMIN_PASSWORD') or 'Arshith&Taha@2026'
                     admin.set_password(default_password)
-                    admin.password_changed = False  # Force password change on first login
+                    admin.password_changed = True
                     db.session.add(admin)
                     db.session.commit()
-                    logger.info("✅ Default admin user created")
-                    if not os.environ.get('DEFAULT_ADMIN_PASSWORD'):
-                        logger.critical(f"⚠️  CRITICAL: Default admin password is: {default_password}")
-                        logger.critical("⚠️  This password will be required on first login. CHANGE IT IMMEDIATELY!")
-                    else:
-                        logger.warning("⚠️  Default admin password set from DEFAULT_ADMIN_PASSWORD env var")
-                        logger.warning("⚠️  Password change will be required on first login")
+                    logger.info("✅ Default admin user created (username=%s)", default_admin_username)
                 else:
                     logger.info("✅ Admin user already exists")
             except Exception as admin_create_error:

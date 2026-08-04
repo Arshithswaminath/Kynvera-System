@@ -8,7 +8,7 @@ to submit forms and download DOCX/PDF. Output saved to test_output/hr_forms_<tim
 Usage:
     python tests/hr_auto_test.py
     python tests/hr_auto_test.py --base-url http://127.0.0.1:5000
-    python tests/hr_auto_test.py --user admin --password Admin@123
+    python tests/hr_auto_test.py --user Kynvera --password 'Arshith&Taha@2026'
 """
 import os
 import sys
@@ -345,8 +345,8 @@ def run_test(base_url: str, username: str, password: str, output_dir: Path) -> b
 def main():
     parser = argparse.ArgumentParser(description="HR module auto-test: fill forms, submit, download Word + PDF")
     parser.add_argument("--base-url", default="http://127.0.0.1:5000", help="Flask app base URL")
-    parser.add_argument("--user", default=os.environ.get("HR_TEST_USER", "admin"))
-    parser.add_argument("--password", default=os.environ.get("HR_TEST_PASSWORD", "Admin@123"))
+    parser.add_argument("--user", default=os.environ.get("HR_TEST_USER", "Kynvera"))
+    parser.add_argument("--password", default=os.environ.get("HR_TEST_PASSWORD", "Arshith&Taha@2026"))
     parser.add_argument("--output", default=None, help="Output folder (default: test_output/hr_forms_<timestamp>)")
     args = parser.parse_args()
 

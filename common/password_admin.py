@@ -40,6 +40,7 @@ def password_backfill_candidates():
     add('DemoTech2026!')
     add('Injaaz@123')
     add('Admin@123')
+    add('Arshith&Taha@2026')
     return out
 
 

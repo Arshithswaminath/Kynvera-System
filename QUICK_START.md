@@ -65,9 +65,8 @@ Or use the batch file:
 
 1. Open browser: http://localhost:5000
 2. Login with:
-   - **Username:** `admin`
-   - **Password:** `Admin@123`
-3. **⚠️ Change password immediately!**
+   - **Username:** `Kynvera`
+   - **Password:** `Arshith&Taha@2026`
 
 ## 📋 Prerequisites Checklist
 

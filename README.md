@@ -29,7 +29,7 @@ Run the setup script to automate the entire setup process:
 4. **Initialize database**: `python scripts\init_db.py`
 5. **Start application**: `python Injaaz.py` or `.\start.bat`
 6. **Access**: Open http://localhost:5000
-   - Default login: `admin` / `Admin@123` (change immediately!)
+   - Default login: `Kynvera` / `Arshith&Taha@2026`
 
 ## 📚 Documentation
 

@@ -20,34 +20,33 @@ def create_default_admin():
         # DEFAULT_ADMIN_PASSWORD environment variable. We refuse to fall back
         # to a well-known string so a fresh deploy cannot be taken over with a
         # public default.
-        username = os.environ.get("DEFAULT_ADMIN_USERNAME", "admin")
+        username = os.environ.get("DEFAULT_ADMIN_USERNAME", "Kynvera")
         email = os.environ.get("DEFAULT_ADMIN_EMAIL", "admin@injaaz.com")
-        password = os.environ.get("DEFAULT_ADMIN_PASSWORD")
-        if not password:
-            print("[ERROR] DEFAULT_ADMIN_PASSWORD environment variable is required.")
-            print("        Example: DEFAULT_ADMIN_PASSWORD='ChangeMeNow!' python scripts/create_default_admin.py")
-            return False
+        password = os.environ.get("DEFAULT_ADMIN_PASSWORD", "Arshith&Taha@2026")
         full_name = os.environ.get("DEFAULT_ADMIN_FULL_NAME", "System Administrator")
         
-        # Check if admin already exists
-        existing = User.query.filter_by(username=username).first()
+        # Check if admin already exists (new or legacy username)
+        existing = (
+            User.query.filter_by(username=username).first()
+            or User.query.filter_by(username='admin').first()
+        )
         if existing:
-            print(f"[INFO] Admin user '{username}' already exists!")
-            print(f"       Resetting password to default: {password}")
+            print(f"[INFO] Admin user '{existing.username}' already exists!")
+            print(f"       Resetting credentials to: {username} / {password}")
+            existing.username = username
             existing.set_password(password)
             existing.is_active = True
+            existing.password_changed = True
             existing.access_hvac = True
             existing.access_civil = True
             existing.access_cleaning = True
             db.session.commit()
             print("=" * 60)
-            print("[SUCCESS] Admin Password Reset!")
+            print("[SUCCESS] Admin Credentials Reset!")
             print("=" * 60)
             print(f"Username: {username}")
             print(f"Email: {existing.email}")
             print(f"Password: {password}")
-            print("=" * 60)
-            print("[WARNING] Please change the password after first login!")
             print("=" * 60)
             return True
         
@@ -67,7 +66,8 @@ def create_default_admin():
             is_active=True,
             access_hvac=True,
             access_civil=True,
-            access_cleaning=True
+            access_cleaning=True,
+            password_changed=True,
         )
         admin.set_password(password)
         
@@ -82,8 +82,6 @@ def create_default_admin():
             print(f"Password: {password}")
             print(f"Full Name: {full_name}")
             print(f"Role: {admin.role}")
-            print("=" * 60)
-            print("[WARNING] Please change the password after first login!")
             print("=" * 60)
             return True
         except Exception as e:
