@@ -1,0 +1,185 @@
+{# Shared login card: brand panel + form + forgot-password. #}
+<div class="login-shell">
+  <aside class="login-brand" aria-label="Kynvera">
+    <div>
+      <img
+        class="brand-logo"
+        src="{{ url_for('static', filename='images/kynvera/kynvera-wordmark.png') }}"
+        alt="Kynvera"
+        width="280"
+        height="69"
+        decoding="async"
+      />
+      <div class="brand-copy">
+        <h1>Welcome <span>back</span></h1>
+        <p>One sign-in for every application your team uses.</p>
+      </div>
+    </div>
+    <div class="brand-tagline">
+      <p class="brand-tagline-kicker">You can easily</p>
+      <p class="brand-tagline-title">
+        Get access to your hub for clarity and productivity
+      </p>
+    </div>
+  </aside>
+
+  <div class="login-form-panel">
+    <div class="form-column">
+      <header class="form-header">
+        <h2>Sign in</h2>
+        <p>Welcome back — enter your credentials.</p>
+      </header>
+
+      <div id="error-message" class="alert" role="alert"></div>
+      <div id="success-message" class="alert" role="status"></div>
+
+      <form id="login-form" novalidate>
+        <div class="field">
+          <label for="username">Username</label>
+          <input
+            type="text"
+            id="username"
+            name="username"
+            required
+            autocomplete="username"
+            placeholder="Your username"
+          />
+        </div>
+
+        <div class="field">
+          <div class="field-head">
+            <label for="password">Password</label>
+            <button type="button" class="field-forgot" id="forgot-open-btn">
+              Forgot password?
+            </button>
+          </div>
+          <div class="field-input has-toggle">
+            <input
+              type="password"
+              id="password"
+              name="password"
+              required
+              autocomplete="current-password"
+              placeholder="Your password"
+            />
+            <button
+              type="button"
+              class="pw-toggle"
+              id="pw-toggle"
+              aria-label="Show password"
+            >
+              <svg
+                id="pw-toggle-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary" id="login-btn">
+          Continue
+        </button>
+        <div class="loading" id="loading">Signing in...</div>
+      </form>
+
+      <div id="forgot-panel" hidden>
+        <div class="fp-steps" aria-hidden="true">
+          <span id="fp-step-label-1" class="is-active">1. Account</span>
+          <span>·</span>
+          <span id="fp-step-label-2">2. Code</span>
+          <span>·</span>
+          <span id="fp-step-label-3">3. New password</span>
+        </div>
+
+        <div class="fp-step" id="fp-step-identify">
+          <div class="field">
+            <label for="fp-identifier">Username or email</label>
+            <input
+              type="text"
+              id="fp-identifier"
+              autocomplete="username"
+              placeholder="Username or email"
+            />
+          </div>
+          <div class="fp-actions">
+            <button type="button" class="btn btn-primary" id="fp-send-otp-btn">
+              Send verification code
+            </button>
+          </div>
+        </div>
+
+        <div class="fp-step" id="fp-step-otp" hidden>
+          <p class="fp-hint" id="fp-otp-hint">
+            Enter the 6-digit code from your email.
+          </p>
+          <div class="field">
+            <label for="fp-otp">Verification code</label>
+            <input
+              type="text"
+              id="fp-otp"
+              inputmode="numeric"
+              autocomplete="one-time-code"
+              maxlength="6"
+              placeholder="6-digit code"
+            />
+          </div>
+          <div class="fp-actions">
+            <button type="button" class="btn btn-primary" id="fp-verify-otp-btn">
+              Verify code
+            </button>
+            <button type="button" class="btn btn-ghost" id="fp-resend-btn">
+              Resend code
+            </button>
+          </div>
+        </div>
+
+        <div class="fp-step" id="fp-step-password" hidden>
+          <div class="field">
+            <label for="fp-new-password">New password</label>
+            <input
+              type="password"
+              id="fp-new-password"
+              autocomplete="new-password"
+              placeholder="Min. 8 chars, upper, lower, digit"
+            />
+          </div>
+          <div class="field">
+            <label for="fp-confirm-password">Confirm password</label>
+            <input
+              type="password"
+              id="fp-confirm-password"
+              autocomplete="new-password"
+              placeholder="Re-enter password"
+            />
+          </div>
+          <div class="fp-actions">
+            <button type="button" class="btn btn-primary" id="fp-reset-btn">
+              Update password
+            </button>
+          </div>
+        </div>
+
+        <div class="fp-back">
+          <button type="button" class="btn btn-ghost" id="forgot-back-btn">
+            Back to sign in
+          </button>
+        </div>
+        <div class="loading" id="fp-loading">Please wait...</div>
+      </div>
+
+      <p class="form-footer">
+        Don't have an account?
+        <a href="{{ url_for('register_page') }}">Sign up</a>
+      </p>
+    </div>
+  </div>
+</div>

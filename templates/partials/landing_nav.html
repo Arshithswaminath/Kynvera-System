@@ -16,32 +16,58 @@
 {% set nav_cta_label = nav_cta_label or 'Explore applications' %}
 
 <nav class="l-nav" id="l-nav" aria-label="Primary">
-    <div class="l-nav-pill">
-        <a href="{{ url_for('index') }}" class="l-nav-brand" aria-label="Kynvera home">
-            <img src="{{ url_for('static', filename='images/kynvera/kynvera-mark-96.png') }}" alt="" width="26" height="26">
-        </a>
+    <div class="l-nav-cluster">
+        <div class="l-nav-pill">
+            <a href="{{ url_for('index') }}" class="l-nav-brand" aria-label="Kynvera home">
+                <img src="{{ url_for('static', filename='images/kynvera/kynvera-mark-96.png') }}" alt="" width="26" height="26">
+            </a>
 
-        <div class="l-nav-links">
-            {% for link in nav_links %}
-            <a href="{{ link.href }}"{% if link.href == nav_active %} class="is-active"{% endif %}>{{ link.label }}</a>
-            {% endfor %}
+            <div class="l-nav-links">
+                {% for link in nav_links %}
+                <a href="{{ link.href }}"{% if link.href == nav_active %} class="is-active"{% endif %}>{{ link.label }}</a>
+                {% endfor %}
+            </div>
+
+            <div class="l-nav-actions">
+                <button type="button" class="l-btn l-btn--light l-btn--sm l-nav-signin" data-login-open>Sign in</button>
+                <a href="{{ nav_cta_href }}" class="l-btn l-btn--accent l-btn--sm">{{ nav_cta_label }}</a>
+            </div>
+
+            <button type="button" class="l-nav-toggle" id="l-nav-toggle" aria-expanded="false" aria-controls="l-nav-drawer" aria-label="Open menu">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+            </button>
         </div>
 
-        <div class="l-nav-actions">
-            <a href="{{ url_for('login_page') }}" class="l-btn l-btn--light l-btn--sm">Sign in</a>
-            <a href="{{ nav_cta_href }}" class="l-btn l-btn--accent l-btn--sm">{{ nav_cta_label }}</a>
+        <div class="l-user-pill" id="l-user-pill" hidden>
+            <button
+                type="button"
+                class="l-user-trigger"
+                id="l-user-trigger"
+                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-controls="l-user-menu"
+            >
+                <span class="l-user-avatar" id="l-user-avatar" aria-hidden="true"></span>
+                <span class="l-user-meta">
+                    <span class="l-user-name" id="l-user-name"></span>
+                    <span class="l-user-role" id="l-user-role"></span>
+                </span>
+                <svg class="l-user-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M6 9l6 6 6-6"/>
+                </svg>
+            </button>
+            <div class="l-user-menu" id="l-user-menu" role="menu" hidden>
+                <a href="{{ url_for('dashboard') }}" class="l-user-menu-item" role="menuitem">Open hub</a>
+                <button type="button" class="l-user-menu-item" id="l-user-signout" role="menuitem">Sign out</button>
+            </div>
         </div>
-
-        <button type="button" class="l-nav-toggle" id="l-nav-toggle" aria-expanded="false" aria-controls="l-nav-drawer" aria-label="Open menu">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
-        </button>
     </div>
 
     <div class="l-nav-drawer" id="l-nav-drawer">
         {% for link in nav_links %}
         <a href="{{ link.href }}">{{ link.label }}</a>
         {% endfor %}
-        <a href="{{ url_for('login_page') }}">Sign in</a>
+        <button type="button" class="l-nav-drawer-signin" data-login-open>Sign in</button>
         <a href="{{ nav_cta_href }}">{{ nav_cta_label }}</a>
     </div>
 </nav>
