@@ -24,7 +24,7 @@
 
   --l-rule-inset: 104px;
   --l-pad-x: clamp(20px, 5vw, 96px);
-  --l-nav-space: 88px;
+  --l-nav-space: 104px;
 
   --l-font: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --l-display: 'Sora', 'DM Sans', sans-serif;
@@ -644,15 +644,15 @@ body.l-login-open {
    -------------------------------------------------------------------------- */
 
 .l-hero {
-  padding-top: clamp(12px, 2vw, 24px);
-  padding-bottom: clamp(16px, 2.5vw, 28px);
+  padding-top: clamp(28px, 3.5vw, 48px);
+  padding-bottom: clamp(20px, 3vw, 36px);
   text-align: center;
 }
 
 .l-hero h1 {
   margin: 12px auto 0;
   max-width: 16ch;
-  font-size: clamp(1.9rem, 3.2vw, 2.65rem);
+  font-size: clamp(2.15rem, 3.8vw, 3.15rem);
   font-weight: 800;
   letter-spacing: -0.035em;
   line-height: 1.1;
@@ -1534,6 +1534,10 @@ body.l-login-open {
     display: none;
   }
 
+  .l-nav {
+    width: min(360px, calc(100% - 48px));
+  }
+
   .l-nav-cluster {
     justify-content: center;
   }
@@ -1542,21 +1546,27 @@ body.l-login-open {
     flex: 0 1 auto;
     width: auto;
     max-width: 100%;
-    gap: 14px;
-    padding: 8px 10px;
+    justify-content: center;
+    gap: 12px;
+    padding: 8px 10px 8px 12px;
   }
 
   .l-nav-brand {
-    margin-left: 6px;
+    margin-left: 0;
+  }
+
+  .l-nav-actions {
+    flex: none;
+    justify-content: center;
   }
 
   .l-nav-actions .l-btn--accent {
-    padding-left: 16px;
-    padding-right: 16px;
+    padding-left: 14px;
+    padding-right: 14px;
   }
 
   .l-nav-toggle {
-    margin-right: 2px;
+    margin-right: 0;
   }
 
   .l-nav-drawer {
@@ -1579,12 +1589,20 @@ body.l-login-open {
 @media (max-width: 768px) {
   .landing {
     --l-radius-canvas: 24px;
-    --l-nav-space: 80px;
+    --l-nav-space: 118px;
     --l-pad-x: 20px;
   }
 
   .l-canvas {
     margin: 0;
+  }
+
+  .l-hero {
+    padding-top: 32px;
+  }
+
+  .l-hero h1 {
+    font-size: clamp(2.35rem, 8.2vw, 2.85rem);
   }
 
   .l-canvas::after {
@@ -1634,10 +1652,9 @@ body.l-login-open {
     min-width: 160px;
   }
 
-  /* Keep nav CTA touchable without crowding logo / menu. */
   .l-nav-actions .l-btn--sm {
     min-height: 44px;
-    padding: 10px 16px;
+    padding: 10px 14px;
     font-size: 13px;
   }
 
@@ -1676,7 +1693,7 @@ body.l-login-open {
 
   .l-hero h1 {
     max-width: none;
-    font-size: clamp(1.7rem, 7.2vw, 2.2rem);
+    font-size: clamp(2.25rem, 8.8vw, 2.7rem);
   }
 
   .l-h2 {
