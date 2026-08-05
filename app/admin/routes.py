@@ -676,7 +676,8 @@ def reset_user_password(user_id):
 def toggle_user_active(user_id):
     """Activate or deactivate a user"""
     try:
-        admin_id = get_jwt_identity()
+        # JWT identity is minted as str(user.id); coerce before comparing to <int:user_id>.
+        admin_id = int(get_jwt_identity())
         user = User.query.get_or_404(user_id)
         
         # Prevent deactivating yourself
@@ -777,7 +778,8 @@ def update_user_access(user_id):
 def delete_user(user_id):
     """Delete a user account"""
     try:
-        admin_id = get_jwt_identity()
+        # JWT identity is minted as str(user.id); coerce before comparing to <int:user_id>.
+        admin_id = int(get_jwt_identity())
         
         # Prevent deleting yourself
         if user_id == admin_id:
@@ -909,7 +911,8 @@ def get_user_activity(user_id):
 def update_user(user_id):
     """Update user details"""
     try:
-        admin_id = get_jwt_identity()
+        # JWT identity is minted as str(user.id); coerce before comparing to <int:user_id>.
+        admin_id = int(get_jwt_identity())
         user = User.query.get_or_404(user_id)
         
         data = request.get_json()

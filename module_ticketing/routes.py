@@ -1799,6 +1799,17 @@ def update_status(ticket_id):
             'error': 'Only supervisors or OPS / GM / Admin may set status from this control.',
         }), 403
 
+    # Terminal / provider-closed tickets must use the dedicated reopen path so
+    # close timestamps, signatures, and pricing are cleared correctly.
+    if ticket.status in _TERMINAL_STATUSES or ticket.status == 'provider_closed':
+        return jsonify({
+            'success': False,
+            'error': (
+                f'Cannot change status of a {ticket.status} ticket from this control; '
+                'use reopen if the work order should return to active workflow.'
+            ),
+        }), 400
+
     data = request.get_json(silent=True) or {}
     new_status = data.get('status', '').strip()
 
@@ -2149,6 +2160,11 @@ def delete_manpower(ticket_id, entry_id):
     deny = _api_forbid_unless_ticket_visible(user, ticket)
     if deny:
         return deny
+    if not _cost_entry_allowed(ticket):
+        return jsonify({
+            'success': False,
+            'error': 'Cost lines can only be removed while cost entry is unlocked for this status.',
+        }), 400
     entry = db.session.get(TicketManpower, entry_id)
     if not entry or entry.ticket_id != ticket.id:
         abort(404)
@@ -2288,6 +2304,11 @@ def delete_material(ticket_id, mat_id):
     deny = _api_forbid_unless_ticket_visible(user, ticket)
     if deny:
         return deny
+    if not _cost_entry_allowed(ticket):
+        return jsonify({
+            'success': False,
+            'error': 'Cost lines can only be removed while cost entry is unlocked for this status.',
+        }), 400
     mat = db.session.get(TicketMaterial, mat_id)
     if not mat or mat.ticket_id != ticket.id:
         abort(404)
@@ -2582,6 +2603,12 @@ def submit_to_supervisor(ticket_id):
 # Supervisor assigns technician
 # ---------------------------------------------------------------------------
 
+# Statuses where assign/reassign is allowed (matches ticket_detail UI).
+_ASSIGN_TECHNICIAN_STATUSES = frozenset({
+    'open', 'pending_supervisor', 'assigned',
+})
+
+
 @ticketing_bp.route('/api/tickets/<string:ticket_id>/assign-technician', methods=['POST'])
 @jwt_required()
 def assign_technician(ticket_id):
@@ -2596,6 +2623,15 @@ def assign_technician(ticket_id):
         return deny
     if not (_is_supervisor_of_ticket(user) or _ticketing_sees_all_tickets(user)):
         return jsonify({'success': False, 'error': 'Only supervisors or OPS / GM / Admin can assign technicians'}), 403
+
+    if (ticket.status or '') not in _ASSIGN_TECHNICIAN_STATUSES:
+        return jsonify({
+            'success': False,
+            'error': (
+                f'Cannot assign a technician while ticket status is "{ticket.status}". '
+                'Reopen the work order first if it is closed or in a later stage.'
+            ),
+        }), 400
 
     data = request.get_json(silent=True) or {}
     tech_id = data.get('technician_id')

@@ -255,7 +255,11 @@ def login():
                     log_audit(user.id, 'mfa_failed', 'user', str(user.id))
                     return error_response('Invalid MFA code', 401, 'INVALID_MFA')
             except ImportError:
-                current_app.logger.error('pyotp not installed — MFA check skipped')
+                # Fail closed: never issue tokens when MFA is enrolled but unverifiable.
+                current_app.logger.error('pyotp not installed — refusing MFA login')
+                return error_response(
+                    'MFA library not installed (pyotp)', 503, 'MFA_UNAVAILABLE'
+                )
             except Exception as exc:
                 current_app.logger.error('MFA verify error: %s', exc)
                 return error_response('MFA verification failed', 401, 'INVALID_MFA')
