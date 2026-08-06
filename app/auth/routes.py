@@ -554,6 +554,14 @@ def mfa_setup():
     user = db.session.get(User, int(get_jwt_identity()))
     if not user:
         return error_response('User not found', 404, 'USER_NOT_FOUND')
+    # Re-setup must not silently disable an already-enrolled authenticator.
+    # Callers must go through /mfa/disable (password-gated) first.
+    if getattr(user, 'mfa_enabled', False):
+        return error_response(
+            'MFA is already enabled. Disable it before setting up a new authenticator.',
+            400,
+            'MFA_ALREADY_ENABLED',
+        )
     secret = pyotp.random_base32()
     user.mfa_secret = secret
     user.mfa_enabled = False
