@@ -5,7 +5,7 @@ from flask import Blueprint, request, jsonify, render_template, current_app, sen
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy.orm import joinedload
 from app.models import (
-    db, User, AuditLog, Device, BDProject, BDFollowUp, BDContact, BDActivity,
+    db, User, Session, AuditLog, Device, BDProject, BDFollowUp, BDContact, BDActivity,
     DocHubAccess, MmrChargeableConfig, NotificationConfig, AdminPersonalProject, AdminPersonalProgressStep,
     Technician, KnowledgeBaseEntry,
 )
@@ -622,6 +622,10 @@ def reset_user_password(user_id):
         temp_password = raw_reset or DEFAULT_ADMIN_RESET_PASSWORD
         user.set_password(temp_password)
         user.password_changed = False  # Force password change on next login
+
+        # Match /api/auth/change-password: a reset is an account-recovery action
+        # and must cut off any stolen refresh/access sessions.
+        Session.query.filter_by(user_id=user.id, is_revoked=False).update({'is_revoked': True})
         
         db.session.commit()
         

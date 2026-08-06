@@ -516,8 +516,9 @@ def register_hiring_document_routes(hr_bp):
             logger.exception('Hiring document upload failed: %s', e)
             return error_response('Upload failed', status_code=500, error_code='UPLOAD_FAILED')
 
-        # Replace previous file
-        _unlink_local(doc.file_path)
+        # Defer deleting the previous local file until after commit so a DB
+        # failure cannot leave the row pointing at an already-unlinked path.
+        previous_local_path = doc.file_path
 
         is_cloud = bool(result.get('is_cloud'))
         cloud_url = result.get('url') if is_cloud else None
@@ -548,6 +549,8 @@ def register_hiring_document_routes(hr_bp):
         doc.status = 'uploaded'
         candidate.updated_at = utc_now_naive()
         db.session.commit()
+        if previous_local_path and previous_local_path != doc.file_path:
+            _unlink_local(previous_local_path)
         db.session.refresh(candidate)
 
         return success_response({

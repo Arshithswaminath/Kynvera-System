@@ -3039,8 +3039,11 @@ def _invoice_recipient_emails(ticket: Ticket) -> list[str]:
     Falls back to Injaz admins + operations overwatch users when a project has
     no contacts configured, so nothing silently stops sending.
     """
+    # Match supervisor routing: ignore soft-deleted projects so a recreated
+    # same-name project cannot silently inherit stale finance/ops contacts.
     project = TicketProject.query.filter(
-        db.func.lower(TicketProject.name) == (ticket.project or '').strip().lower()
+        db.func.lower(TicketProject.name) == (ticket.project or '').strip().lower(),
+        TicketProject.is_active == True,  # noqa: E712
     ).first()
 
     emails: set[str] = set()
