@@ -5,7 +5,7 @@ from flask import Blueprint, request, jsonify, render_template, current_app, sen
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy.orm import joinedload
 from app.models import (
-    db, User, AuditLog, Device, BDProject, BDFollowUp, BDContact, BDActivity,
+    db, User, Session, AuditLog, Device, BDProject, BDFollowUp, BDContact, BDActivity,
     DocHubAccess, MmrChargeableConfig, NotificationConfig, AdminPersonalProject, AdminPersonalProgressStep,
     Technician, KnowledgeBaseEntry,
 )
@@ -684,6 +684,11 @@ def toggle_user_active(user_id):
             return jsonify({'error': 'Cannot deactivate your own account'}), 400
         
         user.is_active = not user.is_active
+        # Deactivation must cut off live JWTs immediately — many routes use
+        # @jwt_required() without an is_active check, and the blocklist only
+        # looks at Session.is_revoked.
+        if not user.is_active:
+            Session.query.filter_by(user_id=user.id, is_revoked=False).update({'is_revoked': True})
         db.session.commit()
         
         # Log the action
@@ -1012,6 +1017,7 @@ def update_user(user_id):
                 if key in data:
                     setattr(user, col, bool(data[key]))
 
+        password_changed_now = False
         if 'password' in data:
             from app.auth.routes import validate_password
             raw_pw = (data.get('password') or '').strip()
@@ -1021,6 +1027,12 @@ def update_user(user_id):
                     return jsonify({'error': msg}), 400
                 user.set_password(raw_pw)
                 user.password_changed = True
+                password_changed_now = True
+
+        # Match change-password / reset-password: an admin-set password must
+        # invalidate existing refresh/access sessions for the target user.
+        if password_changed_now:
+            Session.query.filter_by(user_id=user.id, is_revoked=False).update({'is_revoked': True})
         
         db.session.commit()
         

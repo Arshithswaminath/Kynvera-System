@@ -830,8 +830,8 @@
           </button>
           {% endif %}
 
-          {# Supervisor verify-close (header shortcut for verification/work_completed) #}
-          {% if ticket.status in ('verification', 'pending_verification', 'work_completed') and (user_is_supervisor or ticketing_sees_all) %}
+          {# Supervisor verify-close — owning supervisor or overwatch only (matches API SoD) #}
+          {% if ticket.status in ('verification', 'pending_verification', 'work_completed') and (ticketing_sees_all or ticket.supervisor_id == user.id) %}
           <button id="supCloseBtn" class="tkt-hdr-btn tkt-hdr-btn--green">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
             Verify &amp; Close
@@ -866,7 +866,7 @@
             Invoice
           </a>
           {% endif %}
-          {% if ticket.status in ('closed', 'resolved', 'cancelled') %}
+          {% if ticket.status in ('closed', 'resolved', 'cancelled') and (ticketing_sees_all or ticket.supervisor_id == user.id) %}
           <button type="button" id="reopenTicketBtn" class="tkt-hdr-btn tkt-hdr-btn--outline">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3"/></svg>
             Reopen
@@ -1113,8 +1113,8 @@
           </div>
           {% endif %}
 
-          {# ─ STAGE 5: Work Completed — supervisor starts verification ─ #}
-          {% if ticket.status == 'work_completed' and (user_is_supervisor or ticketing_sees_all) %}
+          {# ─ STAGE 5: Work Completed — owning supervisor / overwatch starts verification ─ #}
+          {% if ticket.status == 'work_completed' and (ticketing_sees_all or ticket.supervisor_id == user.id) %}
           <div class="workflow-panel panel-verification">
             <div class="workflow-panel-title">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
@@ -1143,8 +1143,8 @@
           </div>
           {% endif %}
 
-          {# ─ STAGE 6: Verification — supervisor reviews cost then closes ─ #}
-          {% if ticket.status in ('verification', 'pending_verification') and (user_is_supervisor or ticketing_sees_all) %}
+          {# ─ STAGE 6: Verification — owning supervisor / overwatch reviews cost then closes ─ #}
+          {% if ticket.status in ('verification', 'pending_verification') and (ticketing_sees_all or ticket.supervisor_id == user.id) %}
           <div class="workflow-panel panel-verification">
             <div class="workflow-panel-title">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
