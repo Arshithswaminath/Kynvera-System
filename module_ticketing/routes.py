@@ -485,6 +485,20 @@ def _is_supervisor_of_ticket(user: User) -> bool:
     )
 
 
+def _can_stage1_verify_ticket(user: User, ticket: Ticket) -> bool:
+    """Stage-1 verify/close: owning supervisor or overwatch only (not any global supervisor)."""
+    if user is None or ticket is None:
+        return False
+    if _ticketing_sees_all_tickets(user):
+        return True
+    return bool(ticket.supervisor_id and ticket.supervisor_id == user.id)
+
+
+def _can_reopen_ticket(user: User, ticket: Ticket) -> bool:
+    """Reopen is privileged — owning supervisor or overwatch only."""
+    return _can_stage1_verify_ticket(user, ticket)
+
+
 def _get_supervisor_team(supervisor_id: int) -> list:
     """Return active team members for the given supervisor."""
     entries = TicketSupervisorTeam.query.filter_by(supervisor_id=supervisor_id, is_active=True).all()
@@ -1894,6 +1908,12 @@ def reopen_ticket(ticket_id):
     if deny:
         return deny
 
+    if not _can_reopen_ticket(user, ticket):
+        return jsonify({
+            'success': False,
+            'error': 'Only the ticket supervisor, Operations Manager, General Manager, or Admin may reopen tickets.',
+        }), 403
+
     if ticket.status not in ('closed', 'resolved', 'cancelled'):
         return jsonify({
             'success': False,
@@ -2406,8 +2426,11 @@ def begin_verification(ticket_id):
     deny = _api_forbid_unless_ticket_visible(user, ticket)
     if deny:
         return deny
-    if not _is_supervisor_of_ticket(user):
-        return jsonify({'success': False, 'error': 'Only supervisors may begin verification'}), 403
+    if not _can_stage1_verify_ticket(user, ticket):
+        return jsonify({
+            'success': False,
+            'error': 'Only the assigned supervisor (or OPS / GM / Admin) may begin verification',
+        }), 403
 
     if ticket.status not in ('work_completed', 'pending_verification'):
         return jsonify({'success': False, 'error': f'Cannot begin verification from "{ticket.status}"'}), 400
@@ -2733,8 +2756,11 @@ def supervisor_close(ticket_id):
     deny = _api_forbid_unless_ticket_visible(user, ticket)
     if deny:
         return deny
-    if not _is_supervisor_of_ticket(user):
-        return jsonify({'success': False, 'error': 'Only supervisors can close tickets via this route'}), 403
+    if not _can_stage1_verify_ticket(user, ticket):
+        return jsonify({
+            'success': False,
+            'error': 'Only the assigned supervisor (or OPS / GM / Admin) can close tickets via this route',
+        }), 403
 
     if ticket.status not in ('pending_verification', 'verification', 'work_completed'):
         return jsonify({'success': False, 'error': f'Ticket must be in pending_verification to close. Current: {ticket.status}'}), 400
