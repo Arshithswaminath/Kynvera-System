@@ -61,3 +61,30 @@ def test_assert_secure_app_secrets_warns_but_allows_in_dev(caplog):
         'development',
     )
     assert any('insecure default' in r.message.lower() for r in caplog.records)
+
+
+def test_assert_secure_app_secrets_fails_closed_on_render(monkeypatch):
+    monkeypatch.setenv('RENDER', 'true')
+    with pytest.raises(RuntimeError, match='JWT_SECRET_KEY'):
+        assert_secure_app_secrets(
+            'change-me-in-production',
+            'change-me-jwt-secret',
+            'development',
+        )
+
+
+def test_validate_config_treats_render_as_hosted(monkeypatch):
+    monkeypatch.setenv('RENDER', 'true')
+    from types import SimpleNamespace
+    from common.config_validator import validate_config
+
+    app = SimpleNamespace(config={
+        'FLASK_ENV': 'development',
+        'SECRET_KEY': 'change-me-in-production',
+        'JWT_SECRET_KEY': 'change-me-jwt-secret',
+        'SQLALCHEMY_DATABASE_URI': 'sqlite:///tmp.db',
+        'DEBUG': False,
+    })
+    ok, errors = validate_config(app)
+    assert ok is False
+    assert any('JWT_SECRET_KEY' in e for e in errors)
