@@ -630,9 +630,19 @@ def register_hiring_document_routes(hr_bp):
         if not doc:
             return error_response('Document slot not found', status_code=404, error_code='NOT_FOUND')
 
-        # Received = checklist done with no copy in the system
-        _clear_document_file(doc)
+        # Received = checklist done with no file copy in the system.
+        # Never wipe an existing upload — callers must DELETE the document first.
+        if doc.has_file():
+            return error_response(
+                'Document already has a file on record. Clear the upload before marking received in person.',
+                status_code=400,
+                error_code='FILE_EXISTS',
+            )
         doc.status = 'uploaded'
+        if not doc.uploaded_at:
+            doc.uploaded_at = utc_now_naive()
+        if not doc.uploaded_by:
+            doc.uploaded_by = user.id
         candidate.updated_at = utc_now_naive()
         db.session.commit()
         db.session.refresh(candidate)
