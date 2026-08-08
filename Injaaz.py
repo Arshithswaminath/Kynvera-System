@@ -586,6 +586,8 @@ def create_app():
             # Step 3: Ensure default admin user exists (fully automatic for Render)
             try:
                 from app.models import User
+                from common.bootstrap_security import resolve_bootstrap_admin_password
+
                 default_admin_username = os.environ.get('DEFAULT_ADMIN_USERNAME', 'Kynvera')
                 admin = (
                     User.query.filter_by(username=default_admin_username).first()
@@ -603,10 +605,12 @@ def create_app():
                         access_civil=True,
                         access_cleaning=True
                     )
-                    # Use environment variable for default password, or the local default
-                    default_password = os.environ.get('DEFAULT_ADMIN_PASSWORD') or 'Arshith&Taha@2026'
+                    default_password, _generated = resolve_bootstrap_admin_password(
+                        app.config.get('FLASK_ENV', 'development')
+                    )
                     admin.set_password(default_password)
-                    admin.password_changed = True
+                    # Force password change on first login — bootstrap secrets must not be sticky.
+                    admin.password_changed = False
                     db.session.add(admin)
                     db.session.commit()
                     logger.info("✅ Default admin user created (username=%s)", default_admin_username)
@@ -694,10 +698,13 @@ def create_app():
     
     logger.info(f"✅ Cloudinary configured: {app.config.get('CLOUDINARY_CLOUD_NAME')}")
     
-    # Warn if using default secret (only in dev)
-    flask_env = app.config.get('FLASK_ENV', 'development')
-    if flask_env != 'production' and app.config['SECRET_KEY'] in ['dev-secret-change-in-production', 'change-me-in-production']:
-        logger.warning("⚠️  Using default SECRET_KEY! Set SECRET_KEY in .env for production!")
+    # Refuse insecure signing secrets in production; warn elsewhere.
+    from common.bootstrap_security import assert_secure_app_secrets
+    assert_secure_app_secrets(
+        app.config.get('SECRET_KEY'),
+        app.config.get('JWT_SECRET_KEY'),
+        app.config.get('FLASK_ENV', 'development'),
+    )
 
     # App-wide config used by blueprints and utils
     app.config['BASE_DIR'] = BASE_DIR
@@ -1162,8 +1169,12 @@ def create_app():
     @app.route('/sso/consume')
     def sso_consume():
         """Accept a JWT from the Kynvera hub and establish a local session."""
-        from flask_jwt_extended import decode_token
+        from datetime import timedelta
+        from flask_jwt_extended import decode_token, get_jti, set_access_cookies
         from common.kynvera_hub import sanitize_next_path
+        from common.datetime_utils import utc_now_naive
+        from app.models import Session, User
+        from sqlalchemy.exc import IntegrityError
 
         token = (request.args.get('token') or '').strip()
         next_path = sanitize_next_path(request.args.get('next'), '/dashboard')
@@ -1172,15 +1183,45 @@ def create_app():
             error = 'Missing access token.'
         else:
             try:
-                decode_token(token)
+                payload = decode_token(token)
+                if payload.get('type') == 'refresh':
+                    raise ValueError('refresh token is not valid for SSO consume')
+                sub = payload.get('sub') or payload.get('identity')
+                uid = int(sub)
+                user = db.session.get(User, uid)
+                if not user or not user.is_active:
+                    raise ValueError('user missing or inactive')
+                # Bind the handoff token into the local session table so blocklist
+                # checks do not need to invent a row later from a leaked URL token.
+                jti = payload.get('jti') or get_jti(token)
+                if jti and Session.query.filter_by(token_jti=jti).first() is None:
+                    exp = payload.get('exp')
+                    if exp:
+                        from datetime import datetime, timezone
+                        exp_dt = datetime.fromtimestamp(int(exp), tz=timezone.utc).replace(tzinfo=None)
+                    else:
+                        jwt_expires = app.config.get('JWT_ACCESS_TOKEN_EXPIRES') or timedelta(hours=1)
+                        exp_dt = utc_now_naive() + jwt_expires
+                    try:
+                        db.session.add(Session(user_id=uid, token_jti=jti, expires_at=exp_dt))
+                        db.session.commit()
+                    except IntegrityError:
+                        db.session.rollback()
             except Exception:
                 error = 'Invalid or expired token. Please sign in again from Kynvera Home.'
-        return render_template(
+                token = ''
+        response = app.make_response(render_template(
             'sso_consume.html',
             token='' if error else token,
             next_url=next_path,
             error=error,
-        )
+        ))
+        if not error and token:
+            try:
+                set_access_cookies(response, token)
+            except Exception:
+                pass
+        return response
     
     @app.route('/about')
     def about():

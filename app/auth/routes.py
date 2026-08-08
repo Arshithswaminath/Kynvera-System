@@ -528,12 +528,12 @@ def change_password():
         user.password_changed = True  # Mark password as changed
         db.session.commit()
         
-        # Revoke all existing sessions (force re-login)
-        Session.query.filter_by(user_id=user_id, is_revoked=False).update({'is_revoked': True})
+        # Revoke all existing sessions (force re-login). Identity is a JWT string — cast to int.
+        Session.query.filter_by(user_id=int(user_id), is_revoked=False).update({'is_revoked': True})
         db.session.commit()
         
         # Log password change
-        log_audit(user_id, 'change_password', 'user', str(user_id))
+        log_audit(int(user_id), 'change_password', 'user', str(user_id))
         
         return jsonify({'message': 'Password changed successfully'}), 200
         
