@@ -21,9 +21,13 @@ def validate_config(app):
     warnings = []
     
     flask_env = app.config.get('FLASK_ENV', 'development')
+    from common.bootstrap_security import is_production_env
+    # Treat Render (and FLASK_ENV=production) as hosted/production even when
+    # operators forget to set FLASK_ENV — default JWT/SECRET keys are forgeable.
+    hosted = is_production_env(flask_env)
     
-    # Critical validations (fail fast in production)
-    if flask_env == 'production':
+    # Critical validations (fail fast in production / hosted)
+    if hosted:
         # Secret keys
         secret_key = app.config.get('SECRET_KEY')
         if not secret_key or secret_key in ['dev-secret', 'dev-secret-change-in-production', 'change-me', 'change-me-in-production']:
@@ -59,11 +63,11 @@ def validate_config(app):
             errors.append("DEBUG mode is enabled in production - security risk")
     
     # Warning validations (inform but don't fail)
-    if not app.config.get('REDIS_URL') and flask_env == 'production':
+    if not app.config.get('REDIS_URL') and hosted:
         warnings.append("REDIS_URL not configured - rate limiting and background jobs may not work optimally")
 
     base_url = (app.config.get('APP_BASE_URL') or os.environ.get('APP_BASE_URL') or '').strip()
-    if flask_env == 'production':
+    if hosted:
         if not base_url:
             warnings.append("APP_BASE_URL not set - email links and absolute file URLs may be wrong")
         elif 'localhost' in base_url or '127.0.0.1' in base_url:

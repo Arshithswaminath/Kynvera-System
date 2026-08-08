@@ -127,15 +127,27 @@ _TERMINAL_STATUSES = frozenset({'closed', 'cancelled', 'resolved'})
 # Statuses at or beyond "Work Started" — the cost module (manpower/materials) only
 # unlocks once the technician has actually begun work on site, and locks again once
 # the service-provider supervisor has verified/submitted costs (`provider_closed`).
+# NOTE: `on_hold` is intentionally NOT listed. Holding a pre-work ticket (open /
+# assigned / pending_supervisor / site_attended) must not unlock cost entry; the
+# ticket must be resumed to a work-started+ status first. `resolved` is also
+# excluded — terminal/legacy resolved tickets are not open for cost mutation.
 _COST_ENTRY_ALLOWED_STATUSES = frozenset({
     'work_started', 'work_completed', 'verification',
     # legacy
-    'in_progress', 'pending_parts', 'pending_verification', 'on_hold', 'resolved',
+    'in_progress', 'pending_parts', 'pending_verification',
 })
 
 
 def _cost_entry_allowed(ticket: Ticket) -> bool:
-    return (ticket.status or '') in _COST_ENTRY_ALLOWED_STATUSES
+    status = (ticket.status or '')
+    if status in _COST_ENTRY_ALLOWED_STATUSES:
+        return True
+    # On-hold tickets may still log costs only when the pre-hold status was already
+    # in a cost-eligible phase (e.g. work_started → on_hold waiting for parts).
+    if status == 'on_hold':
+        prev = getattr(ticket, 'previous_status', None) or ''
+        return prev in _COST_ENTRY_ALLOWED_STATUSES
+    return False
 
 
 # Cost summary (Actual Price / Markup / Selling Price) and invoice details are only
