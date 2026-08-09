@@ -4,7 +4,7 @@
     {% set title = 'Sign Up — Kynvera' %}
     {% include 'partials/auth_head.html' %}
 </head>
-<body>
+<body class="auth-page-register">
     {% from 'partials/auth_shell.html' import auth_shell %}
     {% call auth_shell(
         headline='Get Started with Us',
@@ -16,8 +16,6 @@
             {'num': 3, 'label': 'Account ready', 'state': ''}
         ]
     ) %}
-        <div id="error-message" class="auth-error" style="display:none;"></div>
-
         <section class="auth-wizard-step active" data-step="1">
             <header class="auth-form-header">
                 <h1>Sign Up Account</h1>
@@ -44,8 +42,9 @@
                     <input class="auth-input" type="tel" id="mobile_number" name="mobile_number" placeholder="eg. +971 50 123 4567" required autocomplete="tel">
                 </div>
                 <div class="auth-btn-row">
-                    <button type="submit" class="auth-submit-btn">Continue</button>
+                    <button type="submit" class="auth-submit-btn" id="step1-continue">Continue</button>
                 </div>
+                <div id="error-message-step1" class="auth-error auth-error--register" hidden role="alert"></div>
             </form>
         </section>
 
@@ -71,7 +70,7 @@
                     <button type="button" class="auth-btn-ghost" id="back-to-1">Back</button>
                     <button type="submit" class="auth-submit-btn" id="submit-register">Create account</button>
                 </div>
-                <p class="auth-loading-text" id="loading">Creating your account…</p>
+                <div id="error-message-step2" class="auth-error auth-error--register" hidden role="alert"></div>
             </form>
         </section>
 
@@ -103,13 +102,12 @@
 
     <script>
         (function () {
-            const STEPS = 3;
             let currentStep = 1;
 
             const stepPanels = document.querySelectorAll('.auth-wizard-step');
             const stepIndicators = document.querySelectorAll('[data-step-indicator]');
-            const errorEl = document.getElementById('error-message');
-            const loadingEl = document.getElementById('loading');
+            const errorStep1 = document.getElementById('error-message-step1');
+            const errorStep2 = document.getElementById('error-message-step2');
             const submitBtn = document.getElementById('submit-register');
 
             const formData = {
@@ -122,14 +120,24 @@
                 employment_start_date: ''
             };
 
-            function showError(msg) {
-                errorEl.textContent = msg;
-                errorEl.style.display = 'block';
+            function showError(el, msg) {
+                if (!el) return;
+                el.textContent = msg;
+                el.hidden = false;
             }
 
-            function clearError() {
-                errorEl.textContent = '';
-                errorEl.style.display = 'none';
+            function clearErrors() {
+                [errorStep1, errorStep2].forEach(function (el) {
+                    if (!el) return;
+                    el.textContent = '';
+                    el.hidden = true;
+                });
+            }
+
+            function setSubmitBusy(busy) {
+                if (!submitBtn) return;
+                submitBtn.disabled = busy;
+                submitBtn.textContent = busy ? 'Creating account…' : 'Create account';
             }
 
             function goToStep(step) {
@@ -143,12 +151,13 @@
                     if (n === step) card.classList.add('active');
                     else if (n < step) card.classList.add('done');
                 });
-                clearError();
+                clearErrors();
+                setSubmitBusy(false);
             }
 
             document.getElementById('step1-form').addEventListener('submit', function (e) {
                 e.preventDefault();
-                clearError();
+                clearErrors();
 
                 const first = document.getElementById('first_name').value.trim();
                 const last = document.getElementById('last_name').value.trim();
@@ -156,16 +165,16 @@
                 const mobile = document.getElementById('mobile_number').value.trim();
 
                 if (!first || !last) {
-                    showError('Please enter your first and last name.');
+                    showError(errorStep1, 'Please enter your first and last name.');
                     return;
                 }
                 if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-                    showError('Please enter a valid email address.');
+                    showError(errorStep1, 'Please enter a valid email address.');
                     return;
                 }
                 const digits = mobile.replace(/[\s\-().+]/g, '');
                 if (!mobile || digits.length < 7 || !/^\d+$/.test(digits)) {
-                    showError('Please enter a valid mobile number.');
+                    showError(errorStep1, 'Please enter a valid mobile number.');
                     return;
                 }
 
@@ -182,22 +191,22 @@
 
             document.getElementById('step2-form').addEventListener('submit', async function (e) {
                 e.preventDefault();
-                clearError();
+                clearErrors();
 
                 const project = document.getElementById('project_name').value.trim();
                 const designation = document.getElementById('job_designation').value.trim();
                 const joinDate = document.getElementById('employment_start_date').value;
 
                 if (!project) {
-                    showError('Please enter your project name.');
+                    showError(errorStep2, 'Please enter your project name.');
                     return;
                 }
                 if (!designation) {
-                    showError('Please enter your designation.');
+                    showError(errorStep2, 'Please enter your designation.');
                     return;
                 }
                 if (!joinDate) {
-                    showError('Please select your join date.');
+                    showError(errorStep2, 'Please select your join date.');
                     return;
                 }
 
@@ -205,8 +214,7 @@
                 formData.job_designation = designation;
                 formData.employment_start_date = joinDate;
 
-                submitBtn.disabled = true;
-                loadingEl.classList.add('show');
+                setSubmitBusy(true);
 
                 try {
                     const response = await fetch('/api/auth/register', {
@@ -223,14 +231,12 @@
                         }
                         goToStep(3);
                     } else {
-                        showError(data.error || 'Registration failed. Please try again.');
-                        submitBtn.disabled = false;
+                        showError(errorStep2, data.error || 'Registration failed. Please try again.');
+                        setSubmitBusy(false);
                     }
                 } catch (err) {
-                    showError('Network error. Please check your connection and try again.');
-                    submitBtn.disabled = false;
-                } finally {
-                    loadingEl.classList.remove('show');
+                    showError(errorStep2, 'Network error. Please check your connection and try again.');
+                    setSubmitBusy(false);
                 }
             });
         })();

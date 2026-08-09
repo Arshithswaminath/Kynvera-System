@@ -329,6 +329,7 @@
 }
 
 .auth-form {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 1.15rem;
@@ -451,25 +452,45 @@
 }
 
 .auth-error {
-  margin-bottom: 1rem;
+  margin: 0;
   flex-shrink: 0;
   border-radius: 0.75rem;
   padding: 0.5rem 0.875rem;
   font-size: 0.875rem;
+  line-height: 1.4;
   color: #b91c1c;
   background: #fef2f2;
   border: 1px solid #fecaca;
+  box-sizing: border-box;
 }
 
 .auth-success {
-  margin-bottom: 1rem;
+  margin: 0;
   flex-shrink: 0;
   border-radius: 0.75rem;
   padding: 0.5rem 0.875rem;
   font-size: 0.875rem;
+  line-height: 1.4;
   color: #15803d;
   background: #f0fdf4;
   border: 1px solid #bbf7d0;
+  box-sizing: border-box;
+}
+
+/* Login / register errors float below the button — no layout shift */
+.auth-page-login .auth-error--login,
+.auth-page-register .auth-error--register {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 0.5rem);
+  z-index: 2;
+  margin: 0;
+}
+
+.auth-page-login .auth-error--login[hidden],
+.auth-page-register .auth-error--register[hidden] {
+  display: none !important;
 }
 
 .auth-link {
@@ -516,10 +537,11 @@
 
 .auth-loading-text {
   display: none;
-  margin-top: 0.65rem;
+  margin: 0;
   text-align: center;
   font-size: 0.8125rem;
   color: #78716c;
+  line-height: 1.4;
 }
 
 .auth-loading-text.show {
