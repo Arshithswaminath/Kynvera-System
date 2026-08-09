@@ -517,6 +517,16 @@ body.l-login-open {
   margin-left: 8px;
 }
 
+.l-nav-brand-mark {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+}
+
+.l-nav-brand-word {
+  display: none;
+}
+
 .l-nav-brand img {
   width: 26px;
   height: 26px;
@@ -532,10 +542,11 @@ body.l-login-open {
 
 .l-nav-links a {
   position: relative;
-  padding: 8px 12px;
+  padding: 8px 10px;
   border-radius: 999px;
   font-size: 13px;
   font-weight: 500;
+  white-space: nowrap;
   color: var(--l-ink-soft);
   transition: color 0.18s ease, background-color 0.18s ease;
 }
@@ -560,6 +571,51 @@ body.l-login-open {
   border-radius: 50%;
   background: var(--l-accent);
   transform: translateX(-50%);
+}
+
+/* Classic / Bold / Motion UI switcher — sits at the end of the nav link row */
+/* Temporarily hidden — restore with `display: inline-flex` when ready. */
+.l-ui-toggle {
+  display: none !important;
+  align-items: center;
+  gap: 2px;
+  margin-left: 6px;
+  padding: 3px;
+  border-radius: 999px;
+  background: rgba(18, 18, 18, 0.06);
+  flex: none;
+}
+
+.l-ui-toggle-btn {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--l-ink-soft);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 7px 9px;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.18s ease, color 0.18s ease;
+}
+
+.l-ui-toggle-btn:hover {
+  color: var(--l-ink);
+}
+
+.l-ui-toggle-btn.is-active,
+.l-ui-toggle-btn[aria-pressed='true'] {
+  background: var(--l-card);
+  color: var(--l-ink);
+  box-shadow: 0 1px 3px rgba(18, 18, 18, 0.08);
+}
+
+.l-ui-toggle--drawer {
+  margin: 8px 0 4px;
+  width: fit-content;
 }
 
 .l-nav-actions {

@@ -2,15 +2,41 @@
 <html lang="en">
 <head>
     {% set title = 'Kynvera — All your operations on one platform' %}
+    {% set show_ui_toggle = true %}
+    {# ?ui=classic|bold|motion pins a design for sharing/review; otherwise the
+       visitor's stored preference wins. #}
+    {% set forced_ui = request.args.get('ui') if request.args.get('ui') in ['classic', 'bold', 'motion'] else none %}
     {% include 'partials/landing_head.html' %}
     <script>
       window.__KYNVERA_HUB__ = {{ (hub or {})|tojson }};
     </script>
+    <style>
+      /* Avoid a flash of Classic when Bold or Motion is the stored choice */
+      html[data-landing-ui-boot="bold"] #landing-ui-classic,
+      html[data-landing-ui-boot="motion"] #landing-ui-classic { display: none !important; }
+      html[data-landing-ui-boot="bold"] #landing-ui-bold { display: block !important; }
+      html[data-landing-ui-boot="motion"] #landing-ui-motion { display: block !important; }
+      html[data-landing-ui-boot="bold"] body.landing { background: #ffffff; }
+      html[data-landing-ui-boot="motion"] body.landing { background: #fdf7f0; }
+    </style>
 </head>
-<body class="landing">
+<body class="landing" data-landing-ui="{{ forced_ui or 'classic' }}">
+    {% if not forced_ui %}
+    <script>
+      (function () {
+        try {
+          var ui = localStorage.getItem('kynvera-landing-ui');
+          if (ui === 'bold' || ui === 'motion') {
+            document.body.setAttribute('data-landing-ui', ui);
+          }
+        } catch (e) {}
+      })();
+    </script>
+    {% endif %}
 
     {% include 'partials/landing_nav.html' %}
 
+    <div id="landing-ui-classic" data-landing-panel="classic">
     <main class="l-canvas">
 
         <header class="l-section l-hero">
@@ -234,11 +260,18 @@
         {% include 'partials/landing_footer.html' %}
 
     </main>
+    </div>
+
+    {% include 'partials/landing_bold.html' %}
+
+    {% include 'partials/landing_motion.html' %}
 
     {% include 'partials/landing_login_modal.html' %}
 
     <script src="{{ url_for('static', filename='js/login.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/landing-auth.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/landing-motion.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/landing-ui.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/landing.js') }}" defer></script>
     <script src="{{ url_for('static', filename='mobile_utils.js') }}" defer></script>
 </body>

@@ -50,7 +50,13 @@
 
     var toggle = document.getElementById('l-nav-toggle');
     var drawer = document.getElementById('l-nav-drawer');
-    var links = Array.prototype.slice.call(nav.querySelectorAll('.l-nav-links a'));
+    var sectionObserver = null;
+
+    function navLinks() {
+      return Array.prototype.slice.call(
+        nav.querySelectorAll('.l-nav-links [data-landing-nav-link]')
+      );
+    }
 
     function closeDrawer() {
       nav.classList.remove('is-open');
@@ -63,7 +69,9 @@
         toggle.setAttribute('aria-expanded', String(open));
       });
       drawer.addEventListener('click', function (event) {
-        if (event.target.tagName === 'A') closeDrawer();
+        if (event.target.tagName === 'A' || event.target.closest('[data-landing-ui-toggle]')) {
+          if (event.target.tagName === 'A') closeDrawer();
+        }
       });
       document.addEventListener('keydown', function (event) {
         if (event.key === 'Escape') closeDrawer();
@@ -80,15 +88,23 @@
         nav.classList.toggle('is-stuck', !entries[0].isIntersecting);
       }).observe(sentinel);
 
-      var sections = links
-        .map(function (link) {
-          var id = link.getAttribute('href');
-          return id && id.charAt(0) === '#' ? document.querySelector(id) : null;
-        })
-        .filter(Boolean);
+      function bindSectionSpy() {
+        if (sectionObserver) {
+          sectionObserver.disconnect();
+          sectionObserver = null;
+        }
 
-      if (sections.length) {
-        var observer = new IntersectionObserver(
+        var links = navLinks();
+        var sections = links
+          .map(function (link) {
+            var id = link.getAttribute('href');
+            return id && id.charAt(0) === '#' ? document.querySelector(id) : null;
+          })
+          .filter(Boolean);
+
+        if (!sections.length) return;
+
+        sectionObserver = new IntersectionObserver(
           function (entries) {
             entries.forEach(function (entry) {
               if (!entry.isIntersecting) return;
@@ -103,9 +119,12 @@
           { rootMargin: '-45% 0px -50% 0px' }
         );
         sections.forEach(function (section) {
-          observer.observe(section);
+          sectionObserver.observe(section);
         });
       }
+
+      bindSectionSpy();
+      document.addEventListener('kynvera:landing-ui', bindSectionSpy);
     }
 
     return closeDrawer;

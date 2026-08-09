@@ -1,0 +1,496 @@
+{# Built-Kindly-inspired "Motion" landing — warm cream canvas, Kynvera coral, scroll-driven motion. #}
+{# Shown when data-landing-ui="motion". Section IDs are prefixed with m- to avoid clashing. #}
+<div class="lm" id="landing-ui-motion" data-landing-panel="motion" hidden>
+
+    <!-- ====================================================================
+         Hero — headline + self-drawing illustration + time-aware scroll cue
+         ==================================================================== -->
+    <header class="lm-hero" id="m-hero">
+        <div class="lm-hero-inner">
+            <div class="lm-hero-copy">
+                <h1 class="lm-display" data-reveal>
+                    All your operations, built on
+                    <span class="lm-underlined">one platform<svg class="lm-underline" viewBox="0 0 320 18" fill="none" aria-hidden="true" preserveAspectRatio="none">
+                            <path class="lm-draw" d="M4 12.5C58 5.5 118 3.5 176 6.5C222 8.9 268 12.2 316 8" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+                        </svg></span><span class="lm-dot">.</span>
+                </h1>
+
+                <p class="lm-hero-sub" data-words>One secure login opens Fire System and Ajman Municipality, with a shared identity and a single audit trail across everything your teams do.</p>
+
+                <div class="lm-hero-cta" data-reveal data-reveal-delay="200">
+                    <a href="{{ url_for('applications_page') }}" class="lm-btn lm-btn--primary">
+                        Explore applications
+                        <svg class="lm-btn-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13M12 5l7 7-7 7"/></svg>
+                    </a>
+                    <button type="button" class="lm-btn lm-btn--ghost" data-login-open>
+                        Sign in
+                        <svg class="lm-btn-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13M12 5l7 7-7 7"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="lm-hero-art" data-reveal data-reveal-delay="120" aria-hidden="true">
+                {# Flat line illustration: two teammates around an operations dashboard. #}
+                <svg class="lm-scene" viewBox="0 0 580 460" fill="none" xmlns="http://www.w3.org/2000/svg" role="presentation">
+                    <!-- soft blob behind the scene -->
+                    <path class="lm-scene-blob" d="M96 214c-16-74 44-140 124-156 84-17 168 6 216 62 46 54 52 138 6 190-46 53-140 66-216 56-78-10-114-78-130-152Z" fill="var(--lm-wash)"/>
+
+                    <!-- floating chips -->
+                    <g class="lm-float lm-float--a">
+                        <rect x="60" y="150" width="74" height="52" rx="16" fill="var(--lm-card)" stroke="var(--lm-ink)" stroke-width="2.5"/>
+                        <path class="lm-draw" d="M79 168l-9 8 9 8M115 168l9 8-9 8M104 163l-13 26" stroke="var(--lm-coral-ink)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+                    </g>
+                    <g class="lm-float lm-float--b">
+                        <rect x="496" y="252" width="66" height="52" rx="16" fill="var(--lm-card)" stroke="var(--lm-ink)" stroke-width="2.5"/>
+                        <path class="lm-draw" d="M516 278l8 9 18-21" stroke="var(--lm-coral-ink)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                    </g>
+
+                    <!-- celebration marks just above the raised hand -->
+                    <g class="lm-cheer">
+                        <path class="lm-draw" d="M478 176v-16" stroke="var(--lm-sage)" stroke-width="3" stroke-linecap="round"/>
+                        <path class="lm-draw" d="M452 186l-11-11" stroke="var(--lm-sage)" stroke-width="3" stroke-linecap="round"/>
+                        <path class="lm-draw" d="M504 186l11-11" stroke="var(--lm-sage)" stroke-width="3" stroke-linecap="round"/>
+                    </g>
+
+                    <!-- desk -->
+                    <path d="M118 352h344" stroke="var(--lm-ink)" stroke-width="3" stroke-linecap="round"/>
+                    <path d="M164 352v46M416 352v46" stroke="var(--lm-ink)" stroke-width="3" stroke-linecap="round"/>
+
+                    <!-- monitor -->
+                    <rect x="212" y="176" width="180" height="130" rx="14" fill="var(--lm-card)" stroke="var(--lm-ink)" stroke-width="3"/>
+                    <rect x="228" y="192" width="148" height="98" rx="8" fill="var(--lm-sage)"/>
+                    <path d="M292 306v30M262 344h68" stroke="var(--lm-ink)" stroke-width="3" stroke-linecap="round"/>
+
+                    <!-- screen content: chart bars + donut + rows -->
+                    <g class="lm-screen">
+                        <circle cx="266" cy="228" r="20" fill="none" stroke="var(--lm-cream)" stroke-width="6" opacity="0.35"/>
+                        <path class="lm-draw lm-screen-ring" d="M266 208a20 20 0 0 1 17 30" stroke="var(--lm-coral)" stroke-width="6" stroke-linecap="round" fill="none"/>
+                        <rect class="lm-bar" x="308" y="234" width="12" height="22" rx="5" fill="var(--lm-coral)"/>
+                        <rect class="lm-bar" x="326" y="222" width="12" height="34" rx="5" fill="var(--lm-cream)"/>
+                        <rect class="lm-bar" x="344" y="212" width="12" height="44" rx="5" fill="var(--lm-coral)"/>
+                        <rect x="244" y="266" width="52" height="7" rx="3.5" fill="var(--lm-cream)" opacity="0.75"/>
+                        <rect x="306" y="266" width="52" height="7" rx="3.5" fill="var(--lm-cream)" opacity="0.4"/>
+                    </g>
+
+                    <!-- left teammate: seated, hands at the keyboard -->
+                    <g class="lm-person lm-person--left">
+                        <path d="M118 352c0-40 16-70 46-78l30-8" stroke="var(--lm-ink)" stroke-width="3" stroke-linecap="round" fill="var(--lm-coral)" fill-opacity="0.16"/>
+                        <path d="M164 274c22-6 44 6 56 26" stroke="var(--lm-ink)" stroke-width="3" stroke-linecap="round"/>
+                        <circle cx="160" cy="238" r="26" fill="var(--lm-card)" stroke="var(--lm-ink)" stroke-width="3"/>
+                        <path d="M136 232c2-20 16-30 32-26 14 4 18 14 16 24-8-6-16-8-26-6-10 2-16 6-22 8Z" fill="var(--lm-coral)" stroke="var(--lm-ink)" stroke-width="2.6" stroke-linejoin="round"/>
+                        <path d="M152 244c2 2 5 2 7 0M170 244c2 2 5 2 7 0" stroke="var(--lm-ink)" stroke-width="2.6" stroke-linecap="round"/>
+                        <path d="M158 256c4 3 9 3 13 0" stroke="var(--lm-ink)" stroke-width="2.6" stroke-linecap="round"/>
+                        <path d="M186 302c14 12 30 22 44 26" stroke="var(--lm-ink)" stroke-width="3" stroke-linecap="round"/>
+                    </g>
+
+                    <!-- right teammate: standing, one arm raised -->
+                    <g class="lm-person lm-person--right">
+                        <path d="M462 352c0-44-12-74-38-84l-22-8" stroke="var(--lm-ink)" stroke-width="3" stroke-linecap="round" fill="var(--lm-sage)" fill-opacity="0.18"/>
+                        <circle cx="428" cy="224" r="26" fill="var(--lm-card)" stroke="var(--lm-ink)" stroke-width="3"/>
+                        <path d="M404 220c0-20 12-32 28-30 16 2 22 14 20 26-6-8-14-12-24-12s-18 8-24 16Z" fill="var(--lm-sage)" stroke="var(--lm-ink)" stroke-width="2.6" stroke-linejoin="round"/>
+                        <path d="M418 226c2 2 5 2 7 0M436 226c2 2 5 2 7 0" stroke="var(--lm-ink)" stroke-width="2.6" stroke-linecap="round"/>
+                        <path d="M424 242c4 4 10 4 14 0" stroke="var(--lm-ink)" stroke-width="2.6" stroke-linecap="round"/>
+                        <g class="lm-wave">
+                            <path d="M446 268c14-14 26-38 30-58" stroke="var(--lm-ink)" stroke-width="3" stroke-linecap="round"/>
+                            <circle cx="478" cy="204" r="11" fill="var(--lm-coral)" stroke="var(--lm-ink)" stroke-width="2.6"/>
+                        </g>
+                    </g>
+                </svg>
+            </div>
+        </div>
+
+        <a class="lm-scroll-cue" href="#m-statement" data-reveal data-reveal-delay="420">
+            <span class="lm-scroll-greet" id="m-greeting">Hello there!</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+        </a>
+    </header>
+
+    <!-- ====================================================================
+         Statement — scroll-linked word illumination (the signature effect)
+         ==================================================================== -->
+    <section class="lm-statement" id="m-statement">
+        <p class="lm-statement-text" data-words data-words-scroll>Kynvera keeps the whole operation on one thread — inspections, submissions, approvals and sign-off — so nothing is lost between the site and the office, and every record carries the person, the stage and the timestamp behind it.</p>
+    </section>
+
+    <!-- ====================================================================
+         Applications — device-frame showcase, crossfade tabs, count-up stats
+         ==================================================================== -->
+    <section class="lm-section" id="m-applications">
+        <div class="lm-section-head" data-reveal>
+            <span class="lm-eyebrow">Applications</span>
+            <h2 class="lm-display lm-h2">Everything your teams run, <span class="lm-accent">in one hub</span></h2>
+            <p class="lm-lead">From field inspections to municipal approvals — the same login, the same roles, the same history.</p>
+        </div>
+
+        <div class="lm-appswitch" data-reveal data-reveal-delay="80">
+            <div class="lm-tabs" role="tablist" aria-label="Kynvera applications">
+                <button type="button" class="lm-tab is-active" role="tab" id="m-tab-fire" aria-controls="m-panel-fire" aria-selected="true">Fire System</button>
+                <button type="button" class="lm-tab" role="tab" id="m-tab-municipality" aria-controls="m-panel-municipality" aria-selected="false" tabindex="-1">Ajman Municipality</button>
+                <span class="lm-tab-glider" aria-hidden="true"></span>
+            </div>
+        </div>
+
+        <div class="lm-showcase" data-reveal data-reveal-delay="140">
+            <div class="lm-panel is-active" id="m-panel-fire" role="tabpanel" aria-labelledby="m-tab-fire" tabindex="0">
+                <div class="lm-showcase-grid">
+                    <div class="lm-showcase-copy">
+                        <span class="lm-app-icon" aria-hidden="true">
+                            <img src="{{ url_for('static', filename='images/kynvera/apps/fire-system-128.png') }}" alt="" width="40" height="40" loading="lazy">
+                        </span>
+                        <h3 class="lm-display">Fire System</h3>
+                        <p>Inspections, servicing and certification kept on one record — from the first site visit to the signed-off report.</p>
+                        <ul class="lm-checks">
+                            <li>Inspections and servicing in a single flow</li>
+                            <li>Assets, drawings and site history in one record</li>
+                            <li>Scheduled maintenance with automatic reminders</li>
+                            <li>Reports your inspectors can file from the field</li>
+                        </ul>
+                        <div class="lm-stat-row">
+                            <div class="lm-stat"><b data-countup="128">128</b><span>Assets tracked</span></div>
+                            <div class="lm-stat"><b data-countup="24">24</b><span>Due this week</span></div>
+                            <div class="lm-stat"><b data-countup="6">6</b><span>Overdue</span></div>
+                        </div>
+                        <a href="{{ url_for('launch_fire') }}" class="lm-btn lm-btn--primary">
+                            Open Fire System
+                            <svg class="lm-btn-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13M12 5l7 7-7 7"/></svg>
+                        </a>
+                    </div>
+                    <div class="lm-device" aria-hidden="true">
+                        <div class="lm-device-chrome"><i></i><i></i><i></i><span>kynvera.net / fire-system</span></div>
+                        <div class="lm-device-screen">
+                            {% with mock_key = 'fire' %}{% include 'partials/landing_app_mock.html' %}{% endwith %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lm-panel" id="m-panel-municipality" role="tabpanel" aria-labelledby="m-tab-municipality" tabindex="0" hidden>
+                <div class="lm-showcase-grid">
+                    <div class="lm-showcase-copy">
+                        <span class="lm-app-icon" aria-hidden="true">
+                            <img src="{{ url_for('static', filename='images/kynvera/apps/ajman-municipality-128.png') }}" alt="" width="40" height="40" loading="lazy">
+                        </span>
+                        <h3 class="lm-display">Ajman Municipality</h3>
+                        <p>Submissions, documents and approvals tracked end to end, so every application has an owner and a clear next step.</p>
+                        <ul class="lm-checks">
+                            <li>Submissions tracked from intake to approval</li>
+                            <li>Documents, drawings and permits kept together</li>
+                            <li>Review stages with a named owner at every step</li>
+                            <li>A full audit trail on every application</li>
+                        </ul>
+                        <div class="lm-stat-row">
+                            <div class="lm-stat"><b data-countup="42">42</b><span>Open permits</span></div>
+                            <div class="lm-stat"><b data-countup="15">15</b><span>In review</span></div>
+                            <div class="lm-stat"><b data-countup="93">93</b><span>Approved</span></div>
+                        </div>
+                        <a href="{{ url_for('launch_municipality') }}" class="lm-btn lm-btn--primary">
+                            Open Ajman Municipality
+                            <svg class="lm-btn-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13M12 5l7 7-7 7"/></svg>
+                        </a>
+                    </div>
+                    <div class="lm-device" aria-hidden="true">
+                        <div class="lm-device-chrome"><i></i><i></i><i></i><span>kynvera.net / ajman-municipality</span></div>
+                        <div class="lm-device-screen">
+                            {% with mock_key = 'municipality' %}{% include 'partials/landing_app_mock.html' %}{% endwith %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ====================================================================
+         Platform — pinned scrollytelling (the Anatomy pattern)
+         ==================================================================== -->
+    <section class="lm-anatomy" id="m-platform" data-anatomy>
+        <div class="lm-section-head" data-reveal>
+            <span class="lm-eyebrow">Platform</span>
+            <h2 class="lm-display lm-h2">The anatomy of an <span class="lm-accent">operation that holds</span></h2>
+            <p class="lm-lead">Three things have to be true at once. Scroll through each one.</p>
+        </div>
+
+        <div class="lm-anatomy-grid">
+            <div class="lm-anatomy-figure">
+                <div class="lm-anatomy-sticky">
+                    <svg class="lm-scene lm-anatomy-svg" viewBox="0 0 420 480" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <ellipse class="lm-anatomy-halo" cx="210" cy="240" rx="168" ry="196" fill="var(--lm-wash)"/>
+
+                        <!-- body -->
+                        <path d="M210 196c-46 0-76 30-82 76-5 40-8 78-8 122h180c0-44-3-82-8-122-6-46-36-76-82-76Z" fill="var(--lm-card)" stroke="var(--lm-ink)" stroke-width="3" stroke-linejoin="round"/>
+                        <!-- head -->
+                        <circle cx="210" cy="136" r="52" fill="var(--lm-card)" stroke="var(--lm-ink)" stroke-width="3"/>
+                        <path d="M162 128c0-38 22-58 48-58s48 20 48 58c-14-14-28-20-48-20s-34 6-48 20Z" fill="var(--lm-coral)" stroke="var(--lm-ink)" stroke-width="2.8" stroke-linejoin="round"/>
+                        <path d="M192 140c3 3 8 3 11 0M217 140c3 3 8 3 11 0" stroke="var(--lm-ink)" stroke-width="2.8" stroke-linecap="round"/>
+                        <path d="M199 158c7 6 15 6 22 0" stroke="var(--lm-ink)" stroke-width="2.8" stroke-linecap="round"/>
+                        <!-- arms -->
+                        <path d="M128 272c-22 22-32 52-30 84M292 272c22 22 32 52 30 84" stroke="var(--lm-ink)" stroke-width="3" stroke-linecap="round"/>
+                        <circle cx="98" cy="364" r="14" fill="var(--lm-card)" stroke="var(--lm-ink)" stroke-width="3"/>
+                        <circle cx="322" cy="364" r="14" fill="var(--lm-card)" stroke="var(--lm-ink)" stroke-width="3"/>
+
+                        <!-- chapter 1 highlight: identity / head -->
+                        <g class="lm-organ" data-organ="1">
+                            <circle class="lm-organ-ring" cx="210" cy="136" r="64" stroke="var(--lm-coral-ink)" stroke-width="3" stroke-dasharray="7 9" fill="none"/>
+                            {# outer <g> positions, inner <g> animates — a CSS transform
+                               would otherwise override the transform attribute #}
+                            <g transform="translate(286 56)">
+                                <g class="lm-organ-badge">
+                                    <rect width="76" height="60" rx="18" fill="var(--lm-coral)" stroke="var(--lm-ink)" stroke-width="2.8"/>
+                                    <path d="M28 34a9 9 0 1 1 18 0 9 9 0 0 1-18 0Zm18 0h16m-6 0v9" stroke="var(--lm-ink)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                                </g>
+                            </g>
+                        </g>
+
+                        <!-- chapter 2 highlight: hands / field work -->
+                        <g class="lm-organ" data-organ="2">
+                            <circle class="lm-organ-ring" cx="98" cy="364" r="34" stroke="var(--lm-coral-ink)" stroke-width="3" stroke-dasharray="7 9" fill="none"/>
+                            <g transform="translate(4 392)">
+                                <g class="lm-organ-badge">
+                                    <rect width="76" height="60" rx="18" fill="var(--lm-sage)" stroke="var(--lm-ink)" stroke-width="2.8"/>
+                                    <rect x="24" y="14" width="28" height="34" rx="6" fill="var(--lm-cream)" stroke="var(--lm-ink)" stroke-width="2.6"/>
+                                    <path d="M31 30l6 6 11-13" stroke="var(--lm-ink)" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                                </g>
+                            </g>
+                        </g>
+
+                        <!-- chapter 3 highlight: chest / accountability -->
+                        <g class="lm-organ" data-organ="3">
+                            <circle class="lm-organ-ring" cx="210" cy="284" r="52" stroke="var(--lm-coral-ink)" stroke-width="3" stroke-dasharray="7 9" fill="none"/>
+                            <g transform="translate(300 296)">
+                                <g class="lm-organ-badge">
+                                    <rect width="76" height="60" rx="18" fill="var(--lm-coral)" stroke="var(--lm-ink)" stroke-width="2.8"/>
+                                    <path d="M38 14l16 7v13c0 10-7 17-16 20-9-3-16-10-16-20V21l16-7Z" fill="var(--lm-cream)" stroke="var(--lm-ink)" stroke-width="2.6" stroke-linejoin="round"/>
+                                    <path d="M31 33l5 5 10-11" stroke="var(--lm-ink)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                                </g>
+                            </g>
+                        </g>
+                    </svg>
+                </div>
+            </div>
+
+            <ol class="lm-chapters">
+                <li class="lm-chapter" data-chapter="1">
+                    <span class="lm-chapter-num">01</span>
+                    <h3 class="lm-display">One identity, everywhere</h3>
+                    <p>A single secure login opens Fire System and Ajman Municipality. Entitlements travel with the account, so an administrator decides once who can open what — and nobody keeps a spreadsheet of passwords.</p>
+                    <ul class="lm-checks">
+                        <li>One sign-in across the whole hub</li>
+                        <li>Per-application entitlements</li>
+                        <li>Optional multi-factor verification</li>
+                    </ul>
+                </li>
+                <li class="lm-chapter" data-chapter="2">
+                    <span class="lm-chapter-num">02</span>
+                    <h3 class="lm-display">Work that survives the field</h3>
+                    <p>Forms, reviews and service work stay connected between the site and the office. An inspector captures on a phone, the record lands in the same place the reviewer is already working, and nothing stalls in a mailbox.</p>
+                    <ul class="lm-checks">
+                        <li>Mobile-first capture on site</li>
+                        <li>Reviews that pick up where capture ended</li>
+                        <li>Reminders on scheduled work</li>
+                    </ul>
+                </li>
+                <li class="lm-chapter" data-chapter="3">
+                    <span class="lm-chapter-num">03</span>
+                    <h3 class="lm-display">Accountability you can point at</h3>
+                    <p>Every submission, review and approval is recorded with the person, the stage and the timestamp. Teams know who owns the next step, and leaders can trust the numbers without asking anyone to reconstruct them.</p>
+                    <ul class="lm-checks">
+                        <li>A named owner at every stage</li>
+                        <li>Full audit trail on every record</li>
+                        <li>Exports and retention controls</li>
+                    </ul>
+                </li>
+            </ol>
+        </div>
+    </section>
+
+    <!-- ====================================================================
+         How it works — three steps joined by a self-drawing dotted line
+         ==================================================================== -->
+    <section class="lm-section lm-steps-section" id="m-how-it-works">
+        <div class="lm-section-head" data-reveal>
+            <span class="lm-eyebrow">How it works</span>
+            <h2 class="lm-display lm-h2">Three steps from <span class="lm-accent">sign-in to done</span></h2>
+        </div>
+
+        <div class="lm-steps-wrap">
+            <svg class="lm-steps-line" viewBox="0 0 1000 120" fill="none" preserveAspectRatio="none" aria-hidden="true" data-reveal>
+                <path class="lm-draw" d="M60 96C150 30 250 22 340 70C430 118 540 118 630 66C720 14 830 18 940 78" stroke="var(--lm-coral)" stroke-width="3" stroke-linecap="round"/>
+                <circle cx="60" cy="96" r="6" fill="var(--lm-coral)"/>
+                <circle cx="940" cy="78" r="6" fill="var(--lm-coral)"/>
+            </svg>
+
+            <ol class="lm-steps">
+                <li class="lm-step" data-reveal data-reveal-delay="0">
+                    <span class="lm-step-num">1</span>
+                    <h3 class="lm-display">Sign in once</h3>
+                    <p>Authenticate with your Kynvera credentials and optional multi-factor verification.</p>
+                </li>
+                <li class="lm-step" data-reveal data-reveal-delay="140">
+                    <span class="lm-step-num">2</span>
+                    <h3 class="lm-display">Open an application</h3>
+                    <p>Jump into Fire System or Ajman Municipality with no extra passwords to remember.</p>
+                </li>
+                <li class="lm-step" data-reveal data-reveal-delay="280">
+                    <span class="lm-step-num">3</span>
+                    <h3 class="lm-display">Keep work moving</h3>
+                    <p>Submit, review, assign and close loops across the whole operation.</p>
+                </li>
+            </ol>
+        </div>
+    </section>
+
+    <!-- ====================================================================
+         Pricing
+         ==================================================================== -->
+    {# PLACEHOLDER: tier names, prices and limits are illustrative until commercial terms are set. #}
+    <section class="lm-section" id="m-pricing">
+        <div class="lm-section-head" data-reveal>
+            <span class="lm-eyebrow">Pricing</span>
+            <h2 class="lm-display lm-h2">Start small, <span class="lm-accent">add as you grow</span></h2>
+            <p class="lm-lead">Every plan includes single sign-on across the hub, role-based access, and a full audit trail.</p>
+        </div>
+
+        <div class="lm-plans">
+            <article class="lm-plan" data-reveal data-reveal-delay="0">
+                <h3 class="lm-display">Starter</h3>
+                <p class="lm-plan-price">Free <span>for one team</span></p>
+                <p class="lm-plan-desc">For a single team getting their first application live.</p>
+                <ul class="lm-checks">
+                    <li>One application</li>
+                    <li>Up to 10 users</li>
+                    <li>Standard workflows</li>
+                    <li>Email support</li>
+                </ul>
+                <a href="{{ url_for('applications_page') }}#contact" class="lm-btn lm-btn--ghost lm-btn--block">
+                    Talk to us
+                    <svg class="lm-btn-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13M12 5l7 7-7 7"/></svg>
+                </a>
+            </article>
+
+            <article class="lm-plan lm-plan--featured" data-reveal data-reveal-delay="120">
+                <span class="lm-plan-tag">Most popular</span>
+                <h3 class="lm-display">Growth</h3>
+                <p class="lm-plan-price">AED 249 <span>/ user / month</span></p>
+                <p class="lm-plan-desc">For operations teams running both applications day to day.</p>
+                <ul class="lm-checks">
+                    <li>Both applications included</li>
+                    <li>Unlimited workflows and forms</li>
+                    <li>Role-based approvals</li>
+                    <li>Priority support</li>
+                </ul>
+                <a href="{{ url_for('applications_page') }}#contact" class="lm-btn lm-btn--primary lm-btn--block">
+                    Request a demo
+                    <svg class="lm-btn-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13M12 5l7 7-7 7"/></svg>
+                </a>
+            </article>
+
+            <article class="lm-plan" data-reveal data-reveal-delay="240">
+                <h3 class="lm-display">Enterprise</h3>
+                <p class="lm-plan-price">Custom <span>annual</span></p>
+                <p class="lm-plan-desc">For groups that need their own environment and controls.</p>
+                <ul class="lm-checks">
+                    <li>Dedicated environment</li>
+                    <li>Single sign-on and MFA policy</li>
+                    <li>Audit exports and retention</li>
+                    <li>Guided onboarding</li>
+                </ul>
+                <a href="{{ url_for('applications_page') }}#contact" class="lm-btn lm-btn--ghost lm-btn--block">
+                    Talk to us
+                    <svg class="lm-btn-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13M12 5l7 7-7 7"/></svg>
+                </a>
+            </article>
+        </div>
+    </section>
+
+    <!-- ====================================================================
+         FAQs
+         ==================================================================== -->
+    <section class="lm-section lm-faq-section" id="m-faqs">
+        <div class="lm-section-head" data-reveal>
+            <span class="lm-eyebrow">FAQs</span>
+            <h2 class="lm-display lm-h2">Questions, <span class="lm-accent">answered</span></h2>
+        </div>
+
+        <div class="lm-faqs" data-reveal data-reveal-delay="80">
+            <details class="lm-faq">
+                <summary>Do I need a separate login for each application?<span class="lm-faq-mark" aria-hidden="true"></span></summary>
+                <div class="lm-faq-body"><p>No. One Kynvera account signs you into the hub, and launching Fire System or Ajman Municipality hands your session across automatically.</p></div>
+            </details>
+            <details class="lm-faq">
+                <summary>Can I control who sees which application?<span class="lm-faq-mark" aria-hidden="true"></span></summary>
+                <div class="lm-faq-body"><p>Yes. Each account carries entitlements per application, so an administrator decides exactly which teams can open which product.</p></div>
+            </details>
+            <details class="lm-faq">
+                <summary>Does it work on site, from a phone?<span class="lm-faq-mark" aria-hidden="true"></span></summary>
+                <div class="lm-faq-body"><p>The hub and both applications are built mobile-first, so inspectors can capture work in the field and it appears in the office immediately.</p></div>
+            </details>
+            <details class="lm-faq">
+                <summary>What happens to our existing records?<span class="lm-faq-mark" aria-hidden="true"></span></summary>
+                <div class="lm-faq-body"><p>Existing data stays in place. Applications are added to your hub one at a time, and history remains attached to the same assets and sites.</p></div>
+            </details>
+            <details class="lm-faq">
+                <summary>Is there an audit trail?<span class="lm-faq-mark" aria-hidden="true"></span></summary>
+                <div class="lm-faq-body"><p>Every submission, review and approval is recorded with the user, the timestamp and the stage, so nothing changes without a trace.</p></div>
+            </details>
+            <details class="lm-faq">
+                <summary>How do we get started?<span class="lm-faq-mark" aria-hidden="true"></span></summary>
+                <div class="lm-faq-body"><p>Send us a note about how your teams work today. We set up your workspace and grant application access, and most teams are running their first workflow the same day.</p></div>
+            </details>
+        </div>
+    </section>
+
+    <!-- ====================================================================
+         Closing CTA + footer
+         ==================================================================== -->
+    <section class="lm-close" data-reveal>
+        <svg class="lm-close-squiggle" viewBox="0 0 240 40" fill="none" aria-hidden="true">
+            <path class="lm-draw" d="M6 24c22-20 44 12 66-4s44 14 66-2 44 10 62-4" stroke="var(--lm-coral)" stroke-width="3.4" stroke-linecap="round"/>
+        </svg>
+        <h2 class="lm-display">Want to run everything<br>from one place<span class="lm-dot">?</span></h2>
+        <p>Look through both applications, then tell us which one fits and we will walk your team through it.</p>
+        <div class="lm-hero-cta">
+            <a href="{{ url_for('applications_page') }}#contact" class="lm-btn lm-btn--primary">
+                Talk to us
+                <svg class="lm-btn-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13M12 5l7 7-7 7"/></svg>
+            </a>
+            <a href="{{ url_for('applications_page') }}" class="lm-btn lm-btn--ghost">
+                See the applications
+                <svg class="lm-btn-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13M12 5l7 7-7 7"/></svg>
+            </a>
+        </div>
+    </section>
+
+    <footer class="lm-footer">
+        <div class="lm-footer-grid">
+            <div class="lm-footer-brand">
+                <p>All operations, one platform. Fire System and Ajman Municipality in a single hub.</p>
+            </div>
+            <div class="lm-footer-col">
+                <h3>Platform</h3>
+                <ul>
+                    <li><a href="#m-platform">Why Kynvera</a></li>
+                    <li><a href="#m-how-it-works">How it works</a></li>
+                    <li><a href="#m-pricing">Pricing</a></li>
+                    <li><a href="#m-faqs">FAQs</a></li>
+                </ul>
+            </div>
+            <div class="lm-footer-col">
+                <h3>Applications</h3>
+                <ul>
+                    <li><a href="{{ url_for('applications_page') }}#fire-system">Fire System</a></li>
+                    <li><a href="{{ url_for('applications_page') }}#operations-suite">Operations Suite</a></li>
+                    <li><a href="{{ url_for('applications_page') }}">All applications</a></li>
+                </ul>
+            </div>
+            <div class="lm-footer-col">
+                <h3>Company</h3>
+                <ul>
+                    <li><a href="{{ url_for('about') }}">About</a></li>
+                    <li><a href="{{ url_for('applications_page') }}#contact">Contact us</a></li>
+                    <li><a href="{{ url_for('login_page') }}">Sign in</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="lm-footer-wordmark" aria-hidden="true">kynvera</div>
+        <p class="lm-footer-copy">&copy; 2026 Kynvera. All operations, one platform.</p>
+    </footer>
+</div>

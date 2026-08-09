@@ -19,13 +19,21 @@
     <div class="l-nav-cluster">
         <div class="l-nav-pill">
             <a href="{{ url_for('index') }}" class="l-nav-brand" aria-label="Kynvera home">
-                <img src="{{ url_for('static', filename='images/kynvera/kynvera-mark-96.png') }}" alt="" width="26" height="26">
+                <img class="l-nav-brand-mark" src="{{ url_for('static', filename='images/kynvera/kynvera-mark-96.png') }}" alt="" width="26" height="26">
+                <span class="l-nav-brand-word" aria-hidden="true">kynvera</span>
             </a>
 
             <div class="l-nav-links">
                 {% for link in nav_links %}
-                <a href="{{ link.href }}"{% if link.href == nav_active %} class="is-active"{% endif %}>{{ link.label }}</a>
+                <a href="{{ link.href }}" data-landing-nav-link{% if link.href == nav_active %} class="is-active"{% endif %}>{{ link.label }}</a>
                 {% endfor %}
+                {% if show_ui_toggle %}
+                <div class="l-ui-toggle" role="group" aria-label="Landing appearance">
+                    <button type="button" class="l-ui-toggle-btn is-active" data-landing-ui-toggle="classic" aria-pressed="true">Classic</button>
+                    <button type="button" class="l-ui-toggle-btn" data-landing-ui-toggle="bold" aria-pressed="false">Bold</button>
+                    <button type="button" class="l-ui-toggle-btn" data-landing-ui-toggle="motion" aria-pressed="false">Motion</button>
+                </div>
+                {% endif %}
             </div>
 
             <div class="l-nav-actions">
@@ -65,8 +73,15 @@
 
     <div class="l-nav-drawer" id="l-nav-drawer">
         {% for link in nav_links %}
-        <a href="{{ link.href }}">{{ link.label }}</a>
+        <a href="{{ link.href }}" data-landing-nav-link>{{ link.label }}</a>
         {% endfor %}
+        {% if show_ui_toggle %}
+        <div class="l-ui-toggle l-ui-toggle--drawer" role="group" aria-label="Landing appearance">
+            <button type="button" class="l-ui-toggle-btn is-active" data-landing-ui-toggle="classic" aria-pressed="true">Classic</button>
+            <button type="button" class="l-ui-toggle-btn" data-landing-ui-toggle="bold" aria-pressed="false">Bold</button>
+            <button type="button" class="l-ui-toggle-btn" data-landing-ui-toggle="motion" aria-pressed="false">Motion</button>
+        </div>
+        {% endif %}
         <button type="button" class="l-nav-drawer-signin" data-login-open>Sign in</button>
         <a href="{{ nav_cta_href }}">{{ nav_cta_label }}</a>
     </div>
