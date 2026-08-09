@@ -2,8 +2,8 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>HVAC & MEP - Inspection Form</title>
-  <meta name="description" content="HVAC and MEP site inspection form - Works offline">
+  <title>Inspection Form</title>
+  <meta name="description" content="Site inspection form - Works offline">
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/kynvera/kynvera-mark-32.png') }}?v=3">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
   
@@ -1978,7 +1978,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/materials-picker.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/ticketing.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-signoff-activity.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/inspection-form-redesign.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/inspection-form-redesign.css') }}?v=2">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/signature-display.css') }}">
   <script src="{{ url_for('static', filename='js/signature_display.js') }}"></script>
 </head>
@@ -2012,10 +2012,11 @@
     </div>
     {% endif %}
 
-    <form id="mainForm" enctype="multipart/form-data" onsubmit="return false;" novalidate>
-      <div class="if-form-hd">
+    <form id="mainForm" class="if-form--board" enctype="multipart/form-data" onsubmit="return false;" novalidate>
+      <div class="if-form-hd if-form-hd--bento" aria-hidden="true" hidden>
         <div class="if-form-hd-left">
-          <h1 class="if-form-title">HVAC &amp; MEP Inspection</h1>
+          <p class="if-form-eyebrow">Inspection</p>
+          <h1 class="if-form-title">Inspection Form</h1>
           <p class="if-form-subtitle">INJAAZ FACILITY MANAGEMENT</p>
         </div>
         <img src="{{ url_for('static', filename='logo.png') }}" alt="INJAAZ" class="if-form-logo">
@@ -2037,38 +2038,115 @@
       </ul>
 
       <div class="tab-content" id="hvacTabContent">
-        <!-- TAB 1: Project Info -->
+        <!-- TAB 1: Project Info — open bento board -->
         <div class="tab-pane fade show active" id="tab-1" role="tabpanel">
-          <h4 class="section-heading">Project Information</h4>
-          <div class="hvac-add-item-card">
-            <div class="row g-3">
-              <div class="col-md-6 mb-3">
-                <label for="site_name" class="form-label">Site Name</label>
-                <input id="site_name" name="site_name" class="form-control" 
-                       {% if is_edit_mode and submission_data %}value="{{ submission_data.site_name or (submission_data.form_data.site_name if submission_data.form_data else '') }}"{% endif %}
-                       {% if not is_supervisor_edit %}required{% endif %}
-                       placeholder="Enter site or building name">
-              </div>
+          {% set _cat = '' %}
+          {% if is_edit_mode and submission_data and submission_data.form_data %}
+            {% set _cat = submission_data.form_data.category or '' %}
+          {% endif %}
+          {% if not _cat %}{% set _cat = 'General' %}{% endif %}
 
-              <div class="col-md-6 mb-3">
-                <label for="visit_date" class="form-label">Visit Date</label>
-                <input id="visit_date" name="visit_date" type="date" class="form-control" 
-                       {% if is_edit_mode and submission_data %}value="{{ submission_data.visit_date or (submission_data.form_data.visit_date if submission_data.form_data else '') }}"{% endif %}
-                       {% if not is_supervisor_edit %}required{% endif %} max="">
+          <div class="if-pi" aria-label="Project information">
+            <article class="if-pi-tile if-pi-tile--brand">
+              <span class="if-pi-brand-mark" aria-hidden="true">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></svg>
+              </span>
+              <p class="if-pi-brand-kicker">Injaaz Facility Management</p>
+              <h1 class="if-pi-brand-title">Inspection Form</h1>
+              <p class="if-pi-brand-copy">Capture the site context first. Work items, materials, and sign-off follow.</p>
+              <div class="if-pi-brand-meta">
+                <span>Step 1 of 4</span>
+                <span class="if-pi-dot" aria-hidden="true"></span>
+                <span>Project Info</span>
               </div>
+            </article>
+
+            <article class="if-pi-tile if-pi-tile--site">
+              <div class="if-pi-tile-top">
+                <label for="site_name" class="if-pi-label">Site name</label>
+                <span class="if-pi-hint">Required</span>
+              </div>
+              <input id="site_name" name="site_name" class="if-pi-field form-control"
+                     {% if is_edit_mode and submission_data %}value="{{ submission_data.site_name or (submission_data.form_data.site_name if submission_data.form_data else '') }}"{% endif %}
+                     {% if not is_supervisor_edit %}required{% endif %}
+                     placeholder="Building, tower, or site name"
+                     autocomplete="organization">
+            </article>
+
+            <article class="if-pi-tile if-pi-tile--date">
+              <div class="if-pi-tile-top">
+                <label for="visit_date" class="if-pi-label">Visit date</label>
+                <span class="if-pi-ico" aria-hidden="true">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                </span>
+              </div>
+              <input id="visit_date" name="visit_date" type="date" class="if-pi-field form-control"
+                     {% if is_edit_mode and submission_data %}value="{{ submission_data.visit_date or (submission_data.form_data.visit_date if submission_data.form_data else '') }}"{% endif %}
+                     {% if not is_supervisor_edit %}required{% endif %} max="">
+            </article>
+
+            <article class="if-pi-tile if-pi-tile--category">
+              <div class="if-pi-tile-top">
+                <span class="if-pi-label" id="category-label">Category</span>
+                <span class="if-pi-hint">Pick one</span>
+              </div>
+              <select id="category" name="category" class="visually-hidden" aria-labelledby="category-label" tabindex="-1">
+                <option value="General" {% if _cat == 'General' %}selected{% endif %}>General</option>
+                <option value="HVAC" {% if _cat == 'HVAC' %}selected{% endif %}>HVAC</option>
+                <option value="Civil" {% if _cat == 'Civil' %}selected{% endif %}>Civil</option>
+                <option value="Cleaning" {% if _cat == 'Cleaning' %}selected{% endif %}>Cleaning</option>
+              </select>
+              <div class="if-pi-cats" role="radiogroup" aria-labelledby="category-label">
+                <button type="button" class="if-pi-cat{% if _cat == 'General' %} is-active{% endif %}" data-category="General" role="radio" aria-checked="{{ 'true' if _cat == 'General' else 'false' }}">
+                  <span class="if-pi-cat-name">General</span>
+                  <span class="if-pi-cat-desc">Mixed / other</span>
+                </button>
+                <button type="button" class="if-pi-cat{% if _cat == 'HVAC' %} is-active{% endif %}" data-category="HVAC" role="radio" aria-checked="{{ 'true' if _cat == 'HVAC' else 'false' }}">
+                  <span class="if-pi-cat-name">HVAC</span>
+                  <span class="if-pi-cat-desc">MEP systems</span>
+                </button>
+                <button type="button" class="if-pi-cat{% if _cat == 'Civil' %} is-active{% endif %}" data-category="Civil" role="radio" aria-checked="{{ 'true' if _cat == 'Civil' else 'false' }}">
+                  <span class="if-pi-cat-name">Civil</span>
+                  <span class="if-pi-cat-desc">Structure &amp; finishes</span>
+                </button>
+                <button type="button" class="if-pi-cat{% if _cat == 'Cleaning' %} is-active{% endif %}" data-category="Cleaning" role="radio" aria-checked="{{ 'true' if _cat == 'Cleaning' else 'false' }}">
+                  <span class="if-pi-cat-name">Cleaning</span>
+                  <span class="if-pi-cat-desc">Housekeeping</span>
+                </button>
+              </div>
+            </article>
+
+            <div class="if-pi-tile if-pi-tile--cta">
+              <p class="if-pi-cta-copy">Ready? Continue to log inspection work items.</p>
+              <button type="button" class="if-pi-next" onclick="goToTab(2)">
+                Next: Work Items
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+              </button>
             </div>
-          </div>
-
-          <div class="d-flex mt-4">
-            <button type="button" class="btn btn-primary ms-auto px-4 py-2" style="border-radius: 10px; font-weight: 600;" onclick="goToTab(2)">Next: Work Items &raquo;</button>
           </div>
         </div>
 
         <!-- TAB 2: Work Items -->
         <div class="tab-pane fade" id="tab-2" role="tabpanel">
+          <div class="if-step" aria-label="Work items">
+            <article class="if-pi-tile if-step-brand">
+              <span class="if-pi-brand-mark" aria-hidden="true">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
+              </span>
+              <div class="if-step-brand-copy">
+                <p class="if-pi-brand-kicker">Injaaz Facility Management</p>
+                <h2 class="if-pi-brand-title">Work Items</h2>
+                <p class="if-pi-brand-copy">Log each asset, quantity, and photo before selecting materials.</p>
+              </div>
+              <div class="if-pi-brand-meta">
+                <span>Step 2 of 4</span>
+                <span class="if-pi-dot" aria-hidden="true"></span>
+                <span>Work Items</span>
+              </div>
+            </article>
           
 
-          <div class="row g-3">
+          <div class="row g-3 if-step-body">
           <!-- ============================================= -->
           <!-- SUPERVISOR/MANAGER VIEW: Submitted Items First -->
           <!-- ============================================= -->
@@ -2254,7 +2332,7 @@
         {% else %}
         <!-- NEW FORM: Add Item Form First -->
         <div class="col-12 mb-section">
-          <h5 class="hvac-section-title">Add Inspection Item</h5>
+          <h5 class="hvac-section-title if-step-section-title">Add Inspection Item</h5>
         </div>
         {% endif %}
 
@@ -2375,16 +2453,37 @@
 
           </div>
 
-          <div class="d-flex justify-content-between mt-4 gap-2 flex-wrap">
-            <button type="button" class="btn btn-outline-secondary px-4 py-2" style="border-radius: 10px; font-weight: 500;" onclick="goToTab(1)">&laquo; Previous</button>
-            <button type="button" class="btn btn-primary px-4 py-2" style="border-radius: 10px; font-weight: 600;" onclick="goToTab(3)">Next: Materials Required &raquo;</button>
+          <div class="if-pi-tile if-pi-tile--cta if-step-nav">
+            <button type="button" class="if-step-prev" onclick="goToTab(1)">Previous</button>
+            <button type="button" class="if-pi-next" onclick="goToTab(3)">
+              Next: Materials Required
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </button>
+          </div>
           </div>
         </div>
 
         <!-- TAB 3: Materials Required -->
         <div class="tab-pane fade" id="tab-3" role="tabpanel">
-          <div class="row">
-            <div class="col-12 mb-2">
+          <div class="if-step" aria-label="Materials required">
+            <article class="if-pi-tile if-step-brand">
+              <span class="if-pi-brand-mark" aria-hidden="true">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><path d="M3.3 7L12 12l8.7-5M12 22V12"/></svg>
+              </span>
+              <div class="if-step-brand-copy">
+                <p class="if-pi-brand-kicker">Injaaz Facility Management</p>
+                <h2 class="if-pi-brand-title">Materials Required</h2>
+                <p class="if-pi-brand-copy">Select materials used or needed for this inspection visit.</p>
+              </div>
+              <div class="if-pi-brand-meta">
+                <span>Step 3 of 4</span>
+                <span class="if-pi-dot" aria-hidden="true"></span>
+                <span>Materials</span>
+              </div>
+            </article>
+
+          <div class="row if-step-body">
+            <div class="col-12 mb-2 d-none">
               <h4 class="section-heading-no-border">Materials Required</h4>
               {% if not is_submitter_readonly %}
               <p class="text-muted small mb-3">Select all materials used or required for this inspection. Choose the department, then search and pick materials with their quantities.</p>
@@ -2449,14 +2548,35 @@
             </div>
             {% endif %}
           </div>
-          <div class="d-flex justify-content-between mt-4 gap-2 flex-wrap">
-            <button type="button" class="btn btn-outline-secondary px-4 py-2" style="border-radius: 10px; font-weight: 500;" onclick="goToTab(2)">&laquo; Previous</button>
-            <button type="button" class="btn btn-primary px-4 py-2" style="border-radius: 10px; font-weight: 600;" onclick="goToTab(4)">Next: Sign-off &amp; Submit &raquo;</button>
+          <div class="if-pi-tile if-pi-tile--cta if-step-nav">
+            <button type="button" class="if-step-prev" onclick="goToTab(2)">Previous</button>
+            <button type="button" class="if-pi-next" onclick="goToTab(4)">
+              Next: Sign-off &amp; Submit
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </button>
+          </div>
           </div>
         </div>
 
         <!-- TAB 4: Sign-off & Submit -->
         <div class="tab-pane fade" id="tab-4" role="tabpanel">
+          <div class="if-step" aria-label="Sign-off and submit">
+            <article class="if-pi-tile if-step-brand">
+              <span class="if-pi-brand-mark" aria-hidden="true">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/></svg>
+              </span>
+              <div class="if-step-brand-copy">
+                <p class="if-pi-brand-kicker">Injaaz Facility Management</p>
+                <h2 class="if-pi-brand-title">Sign-off &amp; Submit</h2>
+                <p class="if-pi-brand-copy">Add your signature and comments, then submit or approve this inspection.</p>
+              </div>
+              <div class="if-pi-brand-meta">
+                <span>Step 4 of 4</span>
+                <span class="if-pi-dot" aria-hidden="true"></span>
+                <span>Sign-off</span>
+              </div>
+            </article>
+
           {% set _is_submitter_signing = (not is_edit_mode) and user_designation not in ('supervisor', 'manager') and (not user or user.role != 'admin') %}
 
           {% if is_submitter_readonly %}
@@ -2488,8 +2608,8 @@
           {% set _proc_at = submission_data.procurement_approved_at if submission_data else none %}
           {% set _gm_at   = submission_data.general_manager_approved_at if submission_data else none %}
 
-          <h4 class="section-heading-no-border">Sign-off History</h4>
-          <p class="text-muted small mb-4">Your submission is currently in review. Below is a record of all sign-offs captured so far.</p>
+          <h4 class="section-heading-no-border d-none">Sign-off History</h4>
+          <p class="text-muted small mb-4 if-step-lede">Your submission is currently in review. Below is a record of all sign-offs captured so far.</p>
 
           <!-- Submitter sign-off card -->
           <div class="card mb-4" style="border: 1.5px solid #10b981; border-radius: 12px; overflow: hidden;">
@@ -2565,8 +2685,8 @@
           {% set _submitter_comments_e = (_fd_e.submitter_comments or _fd_e.general_comments or '') if _fd_e else '' %}
           {% set _submitter_user = submission_data.user if submission_data and submission_data.user else none %}
 
-          <h4 class="section-heading-no-border">Sign-off &amp; Submit</h4>
-          <p class="text-muted small mb-3">
+          <h4 class="section-heading-no-border d-none">Sign-off &amp; Submit</h4>
+          <p class="text-muted small mb-3 if-step-lede">
             {% if _is_submitter_signing %}
               Add your signature first, then click <strong>Submit Inspection</strong> below to send this report for supervisor review.
             {% else %}
@@ -3489,32 +3609,29 @@
         <!-- Submit Section -->
         {% set _edit_sub_id = edit_submission_id or (submission_data.submission_id if submission_data else none) %}
         {% set _latest_job = latest_job_id or (submission_data.latest_job_id if submission_data else none) %}
-        <div class="col-12 mb-5 mt-4">
-          <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <button type="button" class="btn btn-secondary" onclick="goToTab(3)">&laquo; Previous</button>
-            <div class="d-flex gap-2 align-items-center flex-wrap">
-              {% if can_edit != False %}
-              {% if user_designation in ('supervisor', 'manager') or (user and user.role == 'admin') or not is_edit_mode %}
-              <button type="button" id="verifiedBtn" class="btn btn-success px-4 py-2 shadow-sm" style="font-weight: 700; border-radius: 8px;">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px"><polyline points="20 6 9 17 4 12"/></svg><span id="verifiedBtnLabel">Verify</span>
-              </button>
-              {% endif %}
-              {% endif %}
-              {% if can_edit != False %}
-              <button type="button" id="submitAllBtn" class="btn btn-success px-5 py-2 shadow-sm" style="font-weight: 700; letter-spacing: 0.5px; border-radius: 8px;">
-                {% if is_edit_mode %}UPDATE SUBMISSION{% else %}SUBMIT INSPECTION{% endif %}
-              </button>
-              {% else %}
-              <div class="alert alert-info mb-0" style="background: #f0f9ff; border-color: #0ea5e9; padding: 0.75rem 1rem;">
-                <strong>Read-Only:</strong> This form is view-only. You cannot submit changes.
-              </div>
-              {% endif %}
+        <div class="if-pi-tile if-pi-tile--cta if-step-nav if-step-nav--submit">
+          <button type="button" class="if-step-prev" onclick="goToTab(3)">Previous</button>
+          <div class="if-step-nav-actions">
+            {% if can_edit != False %}
+            {% if user_designation in ('supervisor', 'manager') or (user and user.role == 'admin') or not is_edit_mode %}
+            <button type="button" id="verifiedBtn" class="if-step-verify">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+              <span id="verifiedBtnLabel">Verify</span>
+            </button>
+            {% endif %}
+            <button type="button" id="submitAllBtn" class="if-pi-next">
+              {% if is_edit_mode %}Update Submission{% else %}Submit Inspection{% endif %}
+            </button>
+            {% else %}
+            <div class="alert alert-info mb-0" style="background: #f0f9ff; border-color: #0ea5e9; padding: 0.75rem 1rem;">
+              <strong>Read-Only:</strong> This form is view-only. You cannot submit changes.
             </div>
+            {% endif %}
           </div>
         </div>
 
         <!-- Status & Downloads -->
-        <div class="col-12">
+        <div class="col-12 if-step-status">
           <div id="statusBox" class="mt-3"></div>
           <div id="progressContainer" class="progress-bar-container job-progress-panel" style="display:none;">
             <div class="job-progress-head">
@@ -3534,12 +3651,12 @@
               <p class="mb-0 small" id="reportDownloadHint">These are from the last submission. After sign-off and report regeneration, the latest PDF and Excel will appear here.</p>
             </div>
             <a id="footerExcelDownloadBtn"
-               href="{{ url_for('hvac_mep_bp.download_by_submission', submission_id=_edit_sub_id, file_type='excel') }}"
+               href="{{ url_for('inspection_bp.download_by_submission', submission_id=_edit_sub_id, file_type='excel') }}"
                class="btn btn-success me-2 mt-2"
                style="text-decoration: none; color: white; padding: 0.75rem 1.5rem; border-radius: 8px; display: inline-block; font-weight: 600;"
                target="_blank" rel="noopener">Download previous submitted Excel</a>
             <a id="footerPdfDownloadBtn"
-               href="{{ url_for('hvac_mep_bp.download_by_submission', submission_id=_edit_sub_id, file_type='pdf') }}"
+               href="{{ url_for('inspection_bp.download_by_submission', submission_id=_edit_sub_id, file_type='pdf') }}"
                class="btn btn-success me-2 mt-2"
                style="text-decoration: none; color: white; padding: 0.75rem 1.5rem; border-radius: 8px; display: inline-block; font-weight: 600;"
                target="_blank" rel="noopener">View previous submitted PDF</a>
@@ -3549,14 +3666,14 @@
             {% endif %}
           </div>
         </div>
-          </div>
-        </div>
+          </div>{# /if-step #}
+        </div>{# /#tab-4 #}
       </div>
     </form>
     </main>
     {% set report_download_submission_id = edit_submission_id or (submission_data.submission_id if (is_edit_mode and submission_data) else none) %}
     {% set report_download_job_id = latest_job_id or (submission_data.latest_job_id if (is_edit_mode and submission_data) else none) %}
-    {% set report_download_base = url_for('hvac_mep_bp.index')|replace('/form', '') %}
+    {% set report_download_base = url_for('inspection_bp.index')|replace('/form', '') %}
     {% include 'partials/inspection_sidebar.html' %}
     </div>{# /if-layout #}
   </div>
@@ -3614,11 +3731,11 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
   <script src="{{ url_for('static', filename='signature_pad.umd.min.js') }}"></script>
-  <script src="{{ url_for('static', filename='dropdown_init.js') }}"></script>
+  <script src="{{ url_for('static', filename='dropdown_init.js') }}?v=2"></script>
   <script src="{{ url_for('static', filename='form.js') }}"></script>
 
   <script>
-    const modulePrefix = "{{ url_for('hvac_mep_bp.index') }}".replace('/form','');
+    const modulePrefix = "{{ url_for('inspection_bp.index') }}".replace('/form','');
     {% if is_edit_mode and edit_submission_id %}
     window.editSubmissionId = {{ edit_submission_id|tojson }};
     {% endif %}
@@ -3669,6 +3786,32 @@
     // Make goToTab available globally immediately
     window.goToTab = goToTab;
     console.log('✅ goToTab function defined and available globally');
+
+    // Project Info category chips + open board chrome (all steps)
+    (function initProjectInfoBoard() {
+      const form = document.getElementById('mainForm');
+      const categorySelect = document.getElementById('category');
+
+      function setCategory(value) {
+        if (!categorySelect) return;
+        categorySelect.value = value;
+        document.querySelectorAll('.if-pi-cat').forEach((btn) => {
+          const active = btn.getAttribute('data-category') === value;
+          btn.classList.toggle('is-active', active);
+          btn.setAttribute('aria-checked', active ? 'true' : 'false');
+        });
+      }
+
+      document.querySelectorAll('.if-pi-cat').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const value = btn.getAttribute('data-category');
+          if (value) setCategory(value);
+        });
+      });
+
+      if (form) form.classList.add('if-form--board');
+      if (categorySelect && categorySelect.value) setCategory(categorySelect.value);
+    })();
 
     // Initialize form will be called later in attemptLoadData()
 
@@ -6216,6 +6359,7 @@
         const payload = {
           site_name: document.getElementById('site_name').value || '',
           visit_date: document.getElementById('visit_date').value || '',
+          category: (document.getElementById('category') && document.getElementById('category').value) || 'General',
           tech_signature: techData || '',
           items: items.map(it => ({
             asset: it.asset,
@@ -7071,7 +7215,7 @@
             
             const payload = {
               submission_id: existingDraftId && existingDraftId.startsWith('draft_') ? existingDraftId : null,
-              module_type: 'hvac_mep',
+              module_type: 'inspection',
               site_name: formData.site_name,
               visit_date: formData.visit_date,
               form_data: formData
@@ -7101,7 +7245,7 @@
               }
               
               // Clear local draft since we saved to server
-              localStorage.removeItem('hvac_mep_draft');
+              localStorage.removeItem('inspection_draft');
               
               setTimeout(() => {
                 saveDraftBtn.innerHTML = originalText;
@@ -7145,7 +7289,7 @@
             })),
             timestamp: Date.now()
           };
-          localStorage.setItem('hvac_mep_draft', JSON.stringify(draft));
+          localStorage.setItem('inspection_draft', JSON.stringify(draft));
         } catch (err) {
           console.error('Failed to save draft:', err);
         }
@@ -7153,7 +7297,7 @@
 
       function loadDraft() {
         try {
-          const draftJson = localStorage.getItem('hvac_mep_draft');
+          const draftJson = localStorage.getItem('inspection_draft');
           if (!draftJson) return false;
           
           const draft = JSON.parse(draftJson);
@@ -7181,7 +7325,7 @@
 
       function clearDraft() {
         try {
-          localStorage.removeItem('hvac_mep_draft');
+          localStorage.removeItem('inspection_draft');
         } catch (err) {
           console.error('Failed to clear draft:', err);
         }
@@ -10071,6 +10215,8 @@
           if (!visitDateField.value) {
             visitDateField.value = todayStr;
             console.log('✅ Visit date set to:', visitDateField.value);
+            try { visitDateField.dispatchEvent(new Event('change', { bubbles: true })); } catch (_) {}
+            try { if (window.InspectionSidebar) window.InspectionSidebar.refresh(); } catch (_) {}
           } else {
             console.log('⚠️ Visit date already has value:', visitDateField.value);
           }
@@ -10085,6 +10231,8 @@
               retryField.setAttribute('max', todayStr);
               retryField.value = todayStr;
               console.log('✅ Visit date set on retry:', retryField.value);
+              try { retryField.dispatchEvent(new Event('change', { bubbles: true })); } catch (_) {}
+              try { if (window.InspectionSidebar) window.InspectionSidebar.refresh(); } catch (_) {}
             }
           }, 200);
         }

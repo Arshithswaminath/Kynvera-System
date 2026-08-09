@@ -52,7 +52,7 @@ HR_FORM_TYPES = (
     "leave",
 )
 
-INSPECTION_MODULES = ("hvac_mep", "civil", "cleaning")
+INSPECTION_MODULES = ("inspection",)
 
 
 def _delete_submission_by_string_id(app, submission_id_str):
@@ -67,6 +67,9 @@ def _delete_submission_by_string_id(app, submission_id_str):
 
 def _inspection_form_data(module_type: str, visit: str, label: str) -> dict:
     site = f"Pytest {label} Site"
+    if module_type == "inspection":
+        return {"site_name": site, "visit_date": visit, "category": "General", "items": []}
+    # legacy aliases still accepted in older fixtures
     if module_type == "hvac_mep":
         return {"site_name": site, "visit_date": visit, "items": []}
     if module_type == "civil":

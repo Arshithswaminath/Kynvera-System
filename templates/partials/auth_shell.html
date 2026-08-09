@@ -12,6 +12,12 @@
 <div class="auth-shell">
   <div class="auth-shell-overlay" aria-hidden="true"></div>
 
+  <a href="{{ url_for('index') }}" class="auth-back" aria-label="Back to home">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M15 18l-6-6 6-6"/>
+    </svg>
+  </a>
+
   <div class="auth-card{% if form_variant == 'status' %} auth-card--status{% endif %}">
     <div class="auth-card-inner">
 
@@ -22,7 +28,16 @@
           <div class="auth-brand-glow" aria-hidden="true"></div>
 
           <div class="auth-brand-top">
-            {% if headline %}<h2 class="auth-brand-headline">{{ headline|safe }}</h2>{% endif %}
+            {% if steps %}
+            <div class="auth-brand-logo-wrap auth-brand-logo-wrap--top">
+              <img
+                src="{{ url_for('static', filename='images/kynvera/kynvera-wordmark.png') }}"
+                alt="Kynvera"
+                class="auth-logo auth-logo--wordmark"
+              >
+            </div>
+            {% endif %}
+            {% if headline %}<h2 class="auth-brand-headline{% if steps %} auth-brand-headline--register{% endif %}">{{ headline|safe }}</h2>{% endif %}
             {% if description %}<p class="auth-brand-description">{{ description }}</p>{% endif %}
           </div>
 
@@ -37,7 +52,11 @@
           </div>
           {% else %}
           <div class="auth-brand-logo-wrap">
-            <img src="{{ url_for('static', filename='images/auth/k-logo-white.png') }}" alt="K." class="auth-logo auth-logo--lg">
+            <img
+              src="{{ url_for('static', filename='images/kynvera/kynvera-wordmark.png') }}"
+              alt="Kynvera"
+              class="auth-logo auth-logo--wordmark"
+            >
           </div>
           {% endif %}
         </div>

@@ -1,9 +1,10 @@
 """
 Email service for sending emails (password resets, notifications)
 
-SMTP works locally and on hosts that allow outbound 587. Render *free* web services block
-outbound SMTP (see Render changelog); use HTTPS instead: Mailjet credentials
-(MAILJET_API_KEY + MAILJET_SECRET_KEY, or MAIL_* with in-v3.mailjet.com on Render).
+Send order:
+1. Brevo REST — if BREVO_API_KEY is set (HTTPS; works on Render free tier)
+2. Mailjet REST — if MAILJET_API_KEY + MAILJET_SECRET_KEY (or Mailjet SMTP host on Render)
+3. SMTP fallback — MAIL_SERVER + credentials (IPv4-only for cloud hosts)
 """
 import base64
 import smtplib
@@ -20,6 +21,7 @@ import requests
 
 logger = logging.getLogger(__name__)
 
+BREVO_SEND_URL = "https://api.brevo.com/v3/smtp/email"
 MAILJET_SEND_URL = "https://api.mailjet.com/v3.1/send"
 
 
@@ -81,9 +83,19 @@ def _running_on_render():
     return (os.environ.get("RENDER") or "").lower() in ("true", "1", "yes")
 
 
-def is_email_configured(app=None):
-    """True if the app can send mail (Mailjet HTTP or SMTP)."""
+def brevo_api_key(app=None):
+    """Brevo (Sendinblue) API key for HTTPS transactional email."""
     a = app if app is not None else current_app._get_current_object()
+    return _normalize_secret_env(
+        a.config.get("BREVO_API_KEY") or os.environ.get("BREVO_API_KEY")
+    )
+
+
+def is_email_configured(app=None):
+    """True if the app can send mail (Brevo HTTP, Mailjet HTTP, or SMTP)."""
+    a = app if app is not None else current_app._get_current_object()
+    if brevo_api_key(a):
+        return bool(a.config.get("MAIL_DEFAULT_SENDER") or a.config.get("MAIL_USERNAME"))
     mj = mailjet_credentials(a)
     if mj:
         if _should_send_mailjet_via_rest(a, mj):
@@ -142,6 +154,90 @@ class SMTP_SSL_IPv4(SMTPIPv4, smtplib.SMTP_SSL):
     pass
 
 
+def _collect_attachment_bytes(attachments):
+    """Yield (filename, content_bytes, content_type) from path or dict attachments."""
+    for item in attachments or []:
+        try:
+            if isinstance(item, str):
+                path = item
+                if not os.path.exists(path):
+                    logger.warning("Attachment not found: %s", path)
+                    continue
+                with open(path, "rb") as fh:
+                    data = fh.read()
+                filename = os.path.basename(path)
+                ctype, _enc = mimetypes.guess_type(path)
+                content_type = ctype or "application/octet-stream"
+            elif isinstance(item, dict):
+                data = item.get("content")
+                filename = item.get("filename")
+                content_type = item.get("mime_type") or "application/octet-stream"
+                if not data or not filename:
+                    continue
+            else:
+                continue
+            yield filename, data, content_type
+        except Exception:
+            logger.error("Failed to read attachment", exc_info=True)
+
+
+def _send_email_brevo_http(app, recipient, subject, body, html_body, cc, attachments, api_key):
+    """Send via Brevo transactional REST API (HTTPS)."""
+    mail_sender = app.config.get("MAIL_DEFAULT_SENDER") or app.config.get("MAIL_USERNAME")
+    if not mail_sender:
+        logger.error("Brevo: set MAIL_DEFAULT_SENDER to a verified sender in Brevo")
+        return False
+
+    to_list = recipient if isinstance(recipient, (list, tuple)) else [recipient]
+    to_out = [{"email": str(e).strip()} for e in to_list if e and str(e).strip()]
+    if not to_out:
+        logger.error("Brevo: no valid recipients")
+        return False
+
+    payload = {
+        "sender": {"name": "Injaaz", "email": str(mail_sender).strip()},
+        "to": to_out,
+        "subject": subject,
+        "textContent": (body or "").rstrip() or " ",
+    }
+    if html_body:
+        payload["htmlContent"] = html_body
+    if cc:
+        cc_list = cc if isinstance(cc, (list, tuple)) else [cc]
+        payload["cc"] = [{"email": str(e).strip()} for e in cc_list if e and str(e).strip()]
+
+    att_out = []
+    for filename, data, _content_type in _collect_attachment_bytes(attachments):
+        att_out.append(
+            {
+                "name": filename,
+                "content": base64.b64encode(data).decode("ascii"),
+            }
+        )
+    if att_out:
+        payload["attachment"] = att_out
+
+    try:
+        r = requests.post(
+            BREVO_SEND_URL,
+            json=payload,
+            headers={
+                "accept": "application/json",
+                "api-key": api_key,
+                "content-type": "application/json",
+            },
+            timeout=120,
+        )
+        if r.status_code in (200, 201, 202):
+            logger.info("Email sent via Brevo API to %s", recipient)
+            return True
+        logger.error("Brevo API HTTP %s: %s", r.status_code, r.text[:4000])
+        return False
+    except Exception as e:
+        logger.error("Brevo API request failed: %s", e, exc_info=True)
+        return False
+
+
 def _send_email_mailjet_http(
     app, recipient, subject, body, html_body, cc, attachments, api_key, secret_key
 ):
@@ -174,35 +270,14 @@ def _send_email_mailjet_http(
             if e and str(e).strip()
         ]
     att_out = []
-    for item in attachments or []:
-        try:
-            if isinstance(item, str):
-                path = item
-                if not os.path.exists(path):
-                    logger.warning("Mailjet: attachment not found: %s", path)
-                    continue
-                with open(path, "rb") as fh:
-                    data = fh.read()
-                filename = os.path.basename(path)
-                ctype, _enc = mimetypes.guess_type(path)
-                content_type = ctype or "application/octet-stream"
-            elif isinstance(item, dict):
-                data = item.get("content")
-                filename = item.get("filename")
-                content_type = item.get("mime_type") or "application/octet-stream"
-                if not data or not filename:
-                    continue
-            else:
-                continue
-            att_out.append(
-                {
-                    "ContentType": content_type,
-                    "Filename": filename,
-                    "Base64Content": base64.b64encode(data).decode("ascii"),
-                }
-            )
-        except Exception:
-            logger.error("Mailjet: failed to read attachment", exc_info=True)
+    for filename, data, content_type in _collect_attachment_bytes(attachments):
+        att_out.append(
+            {
+                "ContentType": content_type,
+                "Filename": filename,
+                "Base64Content": base64.b64encode(data).decode("ascii"),
+            }
+        )
     if att_out:
         msg["Attachments"] = att_out
     payload = {"Messages": [msg]}
@@ -225,13 +300,19 @@ def _send_email_mailjet_http(
 
 def send_email(recipient, subject, body, html_body=None, cc=None, attachments=None):
     """
-    Send email using Mailjet HTTPS API or SMTP configuration from app config.
+    Send email via Brevo HTTPS, Mailjet HTTPS, or SMTP (see module docstring).
 
     Returns:
         bool: True if sent successfully, False otherwise
     """
     try:
         app = current_app._get_current_object()
+
+        brevo_key = brevo_api_key(app)
+        if brevo_key:
+            return _send_email_brevo_http(
+                app, recipient, subject, body, html_body, cc, attachments, brevo_key
+            )
 
         mj = mailjet_credentials(app)
         if mj and _should_send_mailjet_via_rest(app, mj):
@@ -248,8 +329,8 @@ def send_email(recipient, subject, body, html_body=None, cc=None, attachments=No
 
         if not mail_server or not mail_port:
             logger.warning(
-                "Mail server/port not configured; cannot send email "
-                "(set MAILJET_API_KEY + MAILJET_SECRET_KEY + MAIL_DEFAULT_SENDER)"
+                "Mail not configured; cannot send email "
+                "(set BREVO_API_KEY + MAIL_DEFAULT_SENDER, or Mailjet/SMTP credentials)"
             )
             return False
 

@@ -150,7 +150,22 @@
   border-radius: var(--tkt-radius-lg);
   padding: 18px;
   box-shadow: var(--tkt-shadow-xs);
-  transition: transform .15s, box-shadow .15s;
+  transition: transform .15s, box-shadow .15s, border-color .15s;
+}
+a.tkt-stat-card {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+}
+a.tkt-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--tkt-shadow-sm);
+  border-color: var(--tkt-accent);
+}
+a.tkt-stat-card:focus-visible {
+  outline: 2px solid var(--tkt-accent);
+  outline-offset: 2px;
 }
 .tkt-stat-card:hover { transform: translateY(-2px); box-shadow: var(--tkt-shadow-sm); }
 .tkt-stat-head {
@@ -159,14 +174,19 @@
   gap: 14px;
 }
 .tkt-stat-icon {
-  width: 42px; height: 42px;
+  width: 44px; height: 44px;
   border-radius: 12px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
-.tkt-stat-icon svg { width: 21px; height: 21px; }
+.tkt-stat-icon svg {
+  width: 22px;
+  height: 22px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
 .tkt-stat-icon--coral { background: var(--tkt-accent-50);  color: var(--tkt-accent-strong); }
 .tkt-stat-icon--amber { background: #fef3c7;               color: #b45309; }
 .tkt-stat-icon--sky   { background: #e0f2fe;               color: #0369a1; }
@@ -1162,6 +1182,22 @@
    White sidebar + slim topbar; no global navbar on these pages.
    ═══════════════════════════════════════════════════════════ */
 
+/* When the shared main navbar is present (all ticket + FM shells) */
+body.tkt-dh-page.has-main-nav {
+  --nav-offset: var(--nav-bar-h, calc(40px + 1.75rem + env(safe-area-inset-top, 0px)));
+  --main-nav-h: var(--nav-offset);
+  --tkt-nav-box: var(--nav-offset);
+  padding-top: var(--nav-offset) !important;
+}
+body.tkt-dh-page.has-main-nav .nav {
+  z-index: 1200;
+}
+@media (max-width: 900px) {
+  body.tkt-dh-page.has-main-nav .tkt-dh-page-root .dh-sidebar {
+    top: var(--nav-offset);
+  }
+}
+
 body.tkt-dh-page {
   --sb-bg:      #ffffff;
   --sb-bg-2:    var(--tkt-surface-2);
@@ -1175,7 +1211,7 @@ body.tkt-dh-page {
   --font-body: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", Roboto, sans-serif;
   font-family: var(--font-body);
   background: var(--tkt-app-bg);
-  /* Neutralize offsets that assumed the old fixed global navbar */
+  /* Neutralize offsets that assumed the old fixed global navbar (overridden by .has-main-nav) */
   --tkt-nav-box: 0px;
   --main-nav-h: 0px;
   --nav-offset: 0px;
@@ -1405,6 +1441,36 @@ body.tkt-dh-page .tkt-dh-page-root {
 .tkt-dh-page-root .sb-brand-logo img { filter: none; }
 .tkt-dh-page-root .sb-brand-text .name { color: var(--tkt-text); }
 .tkt-dh-page-root .sb-brand-text .tagline { color: var(--tkt-text-3); }
+.tkt-dh-page-root .sb-brand--text-only {
+  gap: 0;
+}
+.tkt-dh-page-root .sb-brand--text-only .sb-brand-text .name {
+  font-size: 1rem;
+}
+.tkt-dh-page-root .sb-brand-text .tagline-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+.tkt-dh-page-root .sb-brand-text .tagline-row .tagline {
+  margin-top: 0;
+}
+.tkt-dh-page-root .sb-nav-item .sb-nav-label {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.tkt-dh-page-root .sb-nav-item .ai-powered-tag {
+  margin-left: auto;
+  align-self: center;
+}
+.tkt-dh-page-root .sb-nav-item.active .ai-powered-tag {
+  color: rgba(255, 255, 255, 0.95);
+  background: transparent;
+  border: none;
+  opacity: 1;
+}
 .tkt-dh-page-root .sb-section-label { color: var(--tkt-text-3); }
 .tkt-dh-page-root .sb-nav-divider { background: var(--tkt-border); }
 .tkt-dh-page-root .sb-avatar { background: linear-gradient(135deg, var(--tkt-accent), var(--tkt-accent-hover)); }
@@ -1412,6 +1478,17 @@ body.tkt-dh-page .tkt-dh-page-root {
 .tkt-dh-page-root .sb-nav-item {
   color: var(--tkt-text-2);
   border-radius: 10px;
+}
+.tkt-dh-page-root .sb-nav-item--accent:not(.active) {
+  color: var(--tkt-accent-strong, var(--tkt-accent));
+  font-weight: 600;
+}
+.tkt-dh-page-root .sb-nav-item--accent:not(.active) .sb-nav-icon {
+  color: var(--tkt-accent-strong, var(--tkt-accent));
+}
+.tkt-dh-page-root .sb-nav-item--accent:not(.active):hover {
+  background: var(--tkt-accent-50);
+  color: var(--tkt-accent-strong, var(--tkt-accent));
 }
 .tkt-dh-page-root .sb-nav-item:hover {
   background: var(--tkt-accent-50);

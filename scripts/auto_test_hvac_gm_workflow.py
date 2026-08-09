@@ -84,7 +84,7 @@ def sample_hvac_gm_data():
 def main():
     _ensure_project_root()
 
-    from module_hvac_mep.hvac_generators import create_pdf_report
+    from module_inspection.inspection_generators import create_pdf_report
 
     out_dir = os.path.join(PROJECT_ROOT, "test_output", "inspection_forms_test")
     os.makedirs(out_dir, exist_ok=True)

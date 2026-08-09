@@ -1,5 +1,5 @@
 """
-Professional PDF builder for HR forms — Injaaz application theme.
+Professional PDF builder for HR forms — Kynvera brand (layout preserved).
 Native ReportLab generation, no DOCX conversion.
 """
 import os
@@ -24,16 +24,18 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 from reportlab.pdfgen import canvas
 
+from common import kynvera_pdf_brand as brand
 from .signature_preprocess import rgba_make_signature_background_transparent
 
-# ── Modern minimal: black & white only ─────────────────────────────────────
+# ── Modern minimal body: black & white; coral accents for brand chrome ───────
 C_BLACK = colors.black
 C_GRAY = colors.HexColor("#666666")
 C_MUTED = colors.HexColor("#6b7280")
 C_LIGHT = colors.HexColor("#cccccc")
 C_WHITE = colors.white
+C_CORAL = brand.PRIMARY
 # Increment when footer/branding/signature-box layout changes (visible in PDF footer).
-HR_PDF_LAYOUT_VERSION = "2026.10"
+HR_PDF_LAYOUT_VERSION = "2026.11"
 
 _W, _H = A4
 _LM = 1.2 * cm
@@ -47,10 +49,7 @@ _MGMT_CHAIN_START_NEXT_PAGE = frozenset({
     "station_clearance",
 })
 
-LOGO_PATH = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-    "static", "logo.png",
-)
+LOGO_PATH = brand.resolve_logo_path(prefer_wordmark=True) or brand.WORDMARK_PATH
 
 
 def _dubai_tz():
@@ -209,15 +208,16 @@ class HRPDFCanvas(canvas.Canvas):
 
     def _draw_decorations(self, total):
         w, h = _W, _H
-        self.setStrokeColor(C_BLACK)
-        self.setLineWidth(0.3)
+        # Coral top accent (Kynvera theme)
+        self.setStrokeColor(C_CORAL)
+        self.setLineWidth(1.8)
         self.line(0, h - 0.08 * cm, w, h - 0.08 * cm)
         self.setStrokeColor(C_LIGHT)
         self.setLineWidth(0.3)
         self.line(_LM, 1.3 * cm, w - _RM, 1.3 * cm)
         self.setFont("Helvetica", 5)
         self.setFillColor(C_GRAY)
-        self.drawString(_LM, 0.85 * cm, "INJAAZ")
+        self.drawString(_LM, 0.85 * cm, brand.COMPANY_NAME_UPPER)
         self.drawRightString(w - _RM, 0.85 * cm, f"Page {self._pageNumber} of {total}")
 
 
@@ -256,22 +256,21 @@ def _get_styles():
 # ── Reusable layout components ───────────────────────────────────────────────
 
 def _header_table(form_name, styles, show_bottom_line=True):
-    """Logo right, headline: INJAAZ FACILITY MANAGEMENT (small) + form name (bold). Matches reference design."""
+    """Logo right, headline: Kynvera (small) + form name (bold). Layout unchanged."""
     logo_cell = ""
-    if os.path.exists(LOGO_PATH):
+    if LOGO_PATH and os.path.exists(LOGO_PATH):
         try:
-            # Logo: proportional scaling, proper size for PDF header
-            logo_cell = Image(LOGO_PATH, width=0.7 * inch, height=0.7 * inch, kind="proportional")
+            # Wordmark: wide aspect (~465×114), not a square mark
+            logo_cell = Image(LOGO_PATH, width=1.45 * inch, height=0.36 * inch, kind="proportional")
         except Exception:
             pass
     if not logo_cell:
         logo_cell = Paragraph(
-            "<b>INJAAZ</b>",
+            f"<b>{brand.COMPANY_NAME_UPPER}</b>",
             ParagraphStyle("HL", fontSize=10, textColor=C_BLACK, fontName="Helvetica-Bold", alignment=TA_RIGHT),
         )
-    # Injaaz Facility Management - a little bigger, bold (stays gray)
     sub = Paragraph(
-        '<font size="8" color="#666666"><b>Injaaz Facility Management</b></font>',
+        f'<font size="8" color="#666666"><b>{brand.COMPANY_NAME}</b></font>',
         ParagraphStyle("HSub", fontSize=8, textColor=C_GRAY, fontName="Helvetica-Bold", alignment=TA_LEFT, spaceAfter=3),
     )
     # Form name - headline, compact
@@ -297,7 +296,7 @@ def _header_table(form_name, styles, show_bottom_line=True):
         ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
     ]
     if show_bottom_line:
-        header_style.append(("LINEBELOW", (0, 0), (-1, -1), 0.5, C_BLACK))
+        header_style.append(("LINEBELOW", (0, 0), (-1, -1), 0.8, C_CORAL))
     t.setStyle(TableStyle(header_style))
     return t
 

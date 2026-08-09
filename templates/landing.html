@@ -1,249 +1,703 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    {% set title = 'Kynvera — All your operations on one platform' %}
+    {% set title = 'Kynvera — All operations, one platform' %}
     {% include 'partials/landing_head.html' %}
 </head>
 <body class="landing">
 
-    <div class="landing-atmosphere" aria-hidden="true">
-        <span class="landing-blob landing-blob-a"></span>
-        <span class="landing-blob landing-blob-b"></span>
-        <span class="landing-blob landing-blob-c"></span>
-    </div>
+{#
+  Public marketing landing page.
+  Audience: organisations evaluating Kynvera — NOT signed-in staff.
+  Every capability claimed below exists in this codebase. Do not add claims
+  that aren't shipped (no i18n/Arabic, no push notifications, no PKI e-signatures).
+  Layout reference: airy white-panel hero + proof strip. Visual language: docs/KYNVERA_DESIGN.md.
+  All styling lives in static/css/landing.css, scoped under `.landing`.
+#}
 
-    <nav class="landing-nav">
-        <div class="landing-nav-inner">
-            <a href="{{ url_for('index') }}" class="landing-brand" aria-label="Kynvera home">
-                <img class="landing-brand-mark" src="{{ url_for('static', filename='images/kynvera/kynvera-mark-48.png') }}" alt="">
-            </a>
-            <div class="landing-nav-actions">
-                <a href="{{ url_for('login_page') }}" class="btn-nav-signin">Sign in</a>
-                <a href="{{ url_for('register_page') }}" class="btn-coral">Get started</a>
+{#
+  ---------------------------------------------------------------------------
+  Data: modules (section 4) and interoperability tiles (section 5A).
+  Kept as lists so copy edits happen in one place.
+  ---------------------------------------------------------------------------
+#}
+{% set lp_modules = [
+  {
+    'name': 'Service Tickets', 'wide': true,
+    'desc': 'Complaint intake through to close-out — email and AI triage on the way in, assignment, hold and resume, manpower and material cost, then a signed PDF report and invoice.',
+    'icon': '<path class="duo-fill" d="M3 9a2 2 0 0 1 0 4v4a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4a2 2 0 0 1 0-4V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2z"/><path d="m9 12 2 2 4-4"/>'
+  },
+  {
+    'name': 'Inspections', 'wide': true,
+    'desc': 'One site inspection form covering HVAC, civil and cleaning. Photos captured on the device, drafts saved as you go, submitted straight into the review chain.',
+    'icon': '<circle class="duo-fill" cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>'
+  },
+  {
+    'name': 'HR', 'wide': false,
+    'desc': 'Digital HR forms — leave, contract renewal, appraisal, clearance — routed through teammate sign-off and the management chain, out as DOCX or PDF.',
+    'icon': '<path class="duo-fill" d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle class="duo-fill" cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>'
+  },
+  {
+    'name': 'Reports & automation', 'wide': false,
+    'desc': 'Upload a CAFM export, get monthly and monthwise reports in Excel and PDF with chargeable rules applied — and the daily report email sent on schedule.',
+    'icon': '<rect class="duo-fill" x="6.4" y="13" width="3.2" height="8" rx="1"/><rect class="duo-fill" x="11.9" y="9" width="3.2" height="12" rx="1"/><rect class="duo-fill" x="17.4" y="5.5" width="3.2" height="15.5" rx="1"/><path d="M3 3v16a2 2 0 0 0 2 2h16"/>'
+  },
+  {
+    'name': 'Workflow & approvals', 'wide': false,
+    'desc': 'The review chain behind every submission — supervisor, operations, business development, procurement, GM — with reject, withdraw, resubmit and full history.',
+    'icon': '<path class="duo-fill" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 15l2 2 4-4"/>'
+  },
+  {
+    'name': 'FM Assets', 'wide': false,
+    'desc': 'Asset register with QR entry, floor-plan views, health scoring and failure forecasting — plus webhooks and API keys for your own systems.',
+    'icon': '<path class="duo-fill" d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-7.9 7.9l-6.9 6.9a2.12 2.12 0 0 1-3-3l6.9-6.9a6 6 0 0 1 7.9-7.9z"/>'
+  },
+  {
+    'name': 'QHSE', 'wide': false,
+    'desc': 'Uniform and PPE compliance checks, training and meeting bookings per project, and a unified QHSA site inspection with photos.',
+    'icon': '<path class="duo-fill" d="M12 3 4 6v6c0 5 3.4 8.4 8 9.5 4.6-1.1 8-4.5 8-9.5V6z"/><path d="m9 12 2 2 4-4"/>'
+  },
+  {
+    'name': 'Procurement', 'wide': false,
+    'desc': 'A materials catalogue with quantities and pricing, organised per department and per registered property, with bulk Excel import and export.',
+    'icon': '<path class="duo-fill" d="M6 7h15l-1.3 8.3a2 2 0 0 1-2 1.7H9.3a2 2 0 0 1-2-1.7z"/><path d="M3 3h2l.9 4.5"/><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/>'
+  },
+  {
+    'name': 'Devices', 'wide': false,
+    'desc': 'IT device inventory — laptops, desktops, mobiles, servers — with OS, status, health score, assigned user and bulk Excel import.',
+    'icon': '<rect class="duo-fill" x="2" y="4" width="20" height="14" rx="2"/><path d="M8 21h8M12 18v3"/>'
+  },
+  {
+    'name': 'Business Development', 'wide': false,
+    'desc': 'A lightweight deal pipeline: stage, value, priority, owner and expected close date, with follow-ups, contacts and an activity timeline.',
+    'icon': '<rect class="duo-fill" x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18"/>'
+  }
+] %}
+
+{% set lp_interop = [
+  {'label': 'Excel & CSV import', 'icon': '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M12 18v-6m-2.5 3.5L12 18l2.5-2.5"/>'},
+  {'label': 'CAFM export ingest', 'icon': '<path d="M12 13v8"/><path d="m8 17 4-4 4 4"/><path d="M20.9 18.4A5 5 0 0 0 18 9h-1.3A8 8 0 1 0 4 16.2"/>'},
+  {'label': 'Inbound email intake', 'icon': '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.4 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.4-6.9A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.8 1.1z"/>'},
+  {'label': 'Outbound notifications', 'icon': '<path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/>'},
+  {'label': 'PDF output', 'icon': '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h4"/>'},
+  {'label': 'Word & Excel output', 'icon': '<path d="M15 2H9a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V6z"/><path d="M15 2v4h4"/><path d="M5 8v12a2 2 0 0 0 2 2h9"/>'},
+  {'label': 'QR & barcode scan', 'icon': '<path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="8" y="8" width="8" height="8" rx="1"/>'},
+  {'label': 'Outbound webhooks', 'icon': '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/>'},
+  {'label': 'Integration API keys', 'icon': '<circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 8.3-8.3 2 2-2 2 2 2-3 3-2-2-2 2"/>'},
+  {'label': 'Cloud media storage', 'icon': '<path d="M17.5 19a4.5 4.5 0 1 0-1.4-8.8A6 6 0 0 0 4.6 12 3.5 3.5 0 0 0 5.5 19z"/>'},
+  {'label': 'Two-factor sign-in', 'icon': '<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>'},
+  {'label': 'Audit trail', 'icon': '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 8v4l3 2"/>'},
+  {'label': 'Install as an app', 'icon': '<rect x="6" y="2" width="12" height="20" rx="2"/><path d="M11 18h2"/>'},
+  {'label': 'Works offline on site', 'icon': '<path d="m2 2 20 20"/><path d="M5.8 5.8A6 6 0 0 0 4.6 12 3.5 3.5 0 0 0 5.5 19h11"/><path d="M9.7 4.3A6 6 0 0 1 16.1 10.2 4.5 4.5 0 0 1 19.6 16"/>'}
+] %}
+
+<a class="lp-skip" href="#lp-main">Skip to content</a>
+
+<div class="lp-atmosphere" aria-hidden="true"></div>
+
+{# ========================================================================= #}
+{# 0 · Sticky nav                                                            #}
+{# ========================================================================= #}
+<header class="lp-nav" id="lp-nav">
+    <div class="lp-nav-inner">
+        <a href="{{ url_for('index') }}" class="lp-brand" aria-label="Kynvera home">
+            <img class="lp-brand-wordmark" src="{{ url_for('static', filename='images/kynvera/kynvera-wordmark.png') }}" alt="Kynvera">
+        </a>
+
+        <nav class="lp-nav-links" id="lp-nav-links" aria-label="Primary">
+            <a href="#platform">Platform</a>
+            <a href="#features">Features</a>
+            <a href="#modules">Modules</a>
+            <a href="#audience">Who it's for</a>
+        </nav>
+
+        <div class="lp-nav-actions">
+            <a href="{{ url_for('login_page') }}" class="lp-link-action">Sign in</a>
+            <a href="{{ url_for('register_page') }}" class="lp-btn lp-btn-outline">Get started</a>
+            {# Label lives on the button, not in a child span, so the two bars
+               remain the only <span> children and :first/:last-of-type match them. #}
+            <button type="button" class="lp-nav-toggle" id="lp-nav-toggle" aria-label="Menu" aria-expanded="false" aria-controls="lp-nav-links">
+                <span class="lp-nav-toggle-bar" aria-hidden="true"></span>
+                <span class="lp-nav-toggle-bar" aria-hidden="true"></span>
+                <span class="lp-nav-toggle-bar" aria-hidden="true"></span>
+            </button>
+        </div>
+    </div>
+</header>
+
+<main id="lp-main">
+
+{# ========================================================================= #}
+{# 1 · Hero — airy split panel                                               #}
+{# Art: static/images/kynvera/hero-illustration.png                          #}
+{# ========================================================================= #}
+<section class="lp-hero-section" aria-labelledby="lp-hero-title">
+    <div class="lp-hero-panel">
+        <div class="lp-hero-top">
+            <div class="lp-hero-copy">
+                <h1 class="lp-hero-title" id="lp-hero-title">
+                    All your operations,<br>
+                    on <span class="lp-h1-accent">one platform</span>.
+                </h1>
+                <p class="lp-hero-sub">
+                    Facilities management and day-to-day operations in one workspace.
+                    Tickets, inspections, assets, HR and more, keeping every team in sync.
+                </p>
+                <div class="lp-hero-cta">
+                    <a href="{{ url_for('register_page') }}" class="lp-btn lp-btn-primary lp-btn-lg">Get started</a>
+                    <a href="{{ url_for('login_page') }}" class="lp-btn lp-btn-ghost lp-btn-lg">Sign in</a>
+                </div>
+            </div>
+
+            <div class="lp-hero-visual">
+                <figure class="lp-hero-photo">
+                    <img
+                        class="lp-hero-photo-img"
+                        src="{{ url_for('static', filename='images/kynvera/hero-illustration.png') }}"
+                        alt="Illustration of a team building together with modular blocks"
+                        width="1024"
+                        height="1024"
+                        loading="eager"
+                        decoding="async"
+                    >
+                </figure>
             </div>
         </div>
-    </nav>
 
-    <header class="landing-hero">
-        <img class="hero-brand" src="{{ url_for('static', filename='images/kynvera/kynvera-wordmark.png') }}" alt="Kynvera">
-        <h1>All your operations<br>on <span class="hero-highlight">one platform.</span></h1>
-        <p class="hero-sub">The hub for your teams to run logistics, facilities, and day-to-day operations in one place.</p>
-        <div class="hero-cta">
-            <a href="{{ url_for('login_page') }}" class="btn-coral">Sign in</a>
-            <a href="{{ url_for('register_page') }}" class="btn-ghost">Create an account</a>
-            <span class="hero-note" aria-hidden="true">
-                <svg viewBox="0 0 40 30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M36 4C28 14 18 18 5 19"/><path d="M11 13l-6 6 8 3"/></svg>
-                one login for everything!
+        <div class="lp-hero-stats" aria-label="How Kynvera fixes operations">
+            <article class="lp-hs-card lp-hs-dark">
+                <p class="lp-hs-eyebrow">One workspace</p>
+                <p class="lp-hs-stat">By department</p>
+                <p class="lp-hs-caption">Set up accounts department by department. Each team gets the modules and access they need, in the same workspace.</p>
+                <div class="lp-hs-faces" aria-hidden="true">
+                    <span class="lp-hs-face">SV</span>
+                    <span class="lp-hs-face">OM</span>
+                    <span class="lp-hs-face">GM</span>
+                    <span class="lp-hs-face">HR</span>
+                </div>
+            </article>
+
+            <article class="lp-hs-card lp-hs-soft">
+                <p class="lp-hs-eyebrow">Know who signed</p>
+                <p class="lp-hs-stat">1</p>
+                <p class="lp-hs-caption">One audit trail. Every action is logged — so when questions come, the answer is already there.</p>
+            </article>
+
+            <article class="lp-hs-card lp-hs-accent">
+                <div class="lp-hs-accent-top" aria-hidden="true">
+                    <span class="lp-hs-glyph">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="3"/><circle cx="16" cy="8" r="3"/><circle cx="12" cy="16" r="3"/><path d="M10.2 9.8 11.4 13.2M13.8 9.8 12.6 13.2M9.2 9.5h5.6"/></svg>
+                    </span>
+                    <span class="lp-hs-arrow">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg>
+                    </span>
+                </div>
+                <p class="lp-hs-eyebrow">Stop the stall</p>
+                <p class="lp-hs-stat">Routed</p>
+                <p class="lp-hs-caption">Approvals find the next reviewer and tell them it's waiting — nothing sits in an inbox.</p>
+            </article>
+        </div>
+    </div>
+</section>
+
+{# ========================================================================= #}
+{# 2 · Platform / Solutions + product mock                                   #}
+{# ========================================================================= #}
+<section class="lp-section" id="platform" aria-labelledby="lp-platform-title">
+    <div class="lp-inner">
+        <p class="lp-eyebrow">Platform</p>
+        <h2 class="lp-h2" id="lp-platform-title">Solve what actually slows operations down</h2>
+
+        <div class="lp-benefits">
+            <div class="lp-benefit">
+                <span class="lp-benefit-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></svg>
+                </span>
+                <h3>One identity, every module</h3>
+                <p>Access is granted per person and per module — not per password, and not per spreadsheet someone forgot to update.</p>
+            </div>
+            <div class="lp-benefit">
+                <span class="lp-benefit-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4h9M11 12h9M11 20h9"/><path d="m3 5 1.5 1.5L7.5 3.5"/><path d="m3 13 1.5 1.5L7.5 11.5"/><path d="m3 21 1.5 1.5L7.5 19.5"/></svg>
+                </span>
+                <h3>Approvals that don't stall</h3>
+                <p>Work routes to the next reviewer and tells them it's waiting — by email and in the app — so nothing sits in an inbox.</p>
+            </div>
+            <div class="lp-benefit">
+                <span class="lp-benefit-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>
+                </span>
+                <h3>Accountability you can audit</h3>
+                <p>Every action carries a user, an IP address and a timestamp. When someone asks who signed off, there is an answer.</p>
+            </div>
+        </div>
+
+        {# ---- Product mock: pure CSS, no screenshot, no <table>. ---- #}
+        <p class="lp-sr">
+            An illustration of the Kynvera dashboard: a left navigation rail listing
+            Home, Tickets, Inspections, Reports, FM Assets and HR; a widget row showing
+            today's queue, open tickets and this month's totals; and a panel listing
+            submissions awaiting approval.
+        </p>
+        <div class="lp-mock-frame" aria-hidden="true">
+            <div class="lp-mock">
+
+                <aside class="lp-mock-rail">
+                    <div class="lp-mock-brand">
+                        <img src="{{ url_for('static', filename='images/kynvera/kynvera-mark-48.png') }}" alt="" width="20" height="20">
+                        <span>Kynvera</span>
+                    </div>
+                    <span class="lp-mock-new">+ New</span>
+                    <nav class="lp-mock-nav">
+                        <span class="is-active">Home</span>
+                        <span>Tickets <em>22</em></span>
+                        <span>Inspections <em>15</em></span>
+                        <span>Reports</span>
+                        <span>FM Assets</span>
+                        <span>HR <em>8</em></span>
+                    </nav>
+                    <p class="lp-mock-rail-label">Sites</p>
+                    <nav class="lp-mock-nav lp-mock-nav-sub">
+                        <span>Tower 3</span>
+                        <span>Block C</span>
+                        <span>Warehouse 2</span>
+                        <span>Marina Plaza</span>
+                    </nav>
+                </aside>
+
+                <div class="lp-mock-body">
+                    <div class="lp-mock-topbar">
+                        <span class="lp-mock-search">Search tickets, forms, assets</span>
+                        <span class="lp-mock-bell">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+                            <i></i>
+                        </span>
+                        <span class="lp-avatar">AR</span>
+                    </div>
+
+                    <div class="lp-mock-greeting">
+                        <span class="lp-mock-hello">Good morning, Ops team</span>
+                        <span class="lp-mock-ghost">Customise</span>
+                    </div>
+
+                    <div class="lp-mock-widgets">
+                        <div class="lp-mock-widget">
+                            <p class="lp-mini-title">Today's queue</p>
+                            <ul class="lp-check-list">
+                                <li class="is-done">Close TKT-1042</li>
+                                <li class="is-done">Approve leave request</li>
+                                <li>Sign off Tower 3</li>
+                                <li>Review procurement list</li>
+                            </ul>
+                        </div>
+
+                        <div class="lp-mock-widget">
+                            <p class="lp-mini-title">Open tickets</p>
+                            <div class="lp-bars">
+                                <span style="--h:38%"></span><span style="--h:62%"></span>
+                                <span style="--h:45%"></span><span style="--h:80%"></span>
+                                <span style="--h:55%"></span><span style="--h:96%"></span>
+                                <span style="--h:34%"></span>
+                            </div>
+                            <p class="lp-mini-meta">Last 7 days</p>
+                        </div>
+
+                        <div class="lp-mock-widget">
+                            <p class="lp-mini-title">This month</p>
+                            <div class="lp-mock-donut-row">
+                                <div class="lp-arc lp-arc-sm" style="--arc:78"><span class="lp-arc-value">78<small>%</small></span></div>
+                                <ul class="lp-legend">
+                                    <li><i class="is-ok"></i>Closed <strong>128/164</strong></li>
+                                    <li><i class="is-warn"></i>Overdue <strong>6</strong></li>
+                                    <li><i class="is-brand"></i>Awaiting <strong>12</strong></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="lp-mock-panel">
+                        <div class="lp-mock-panel-head">
+                            <p class="lp-mini-title">Awaiting your approval</p>
+                            <span class="lp-mock-tabs"><em class="is-active">Pending</em><em>In review</em><em>Closed</em></span>
+                        </div>
+                        <div class="lp-mock-rows">
+                            <div class="lp-mock-row">
+                                <span class="lp-mock-row-name">Site inspection — Tower 3</span>
+                                <span class="lp-progress"><span style="width:80%"></span></span>
+                                <span class="lp-pill lp-pill-progress">In review</span>
+                                <span class="lp-avatar lp-avatar-sm">MK</span>
+                            </div>
+                            <div class="lp-mock-row">
+                                <span class="lp-mock-row-name">Leave request — HR-2291</span>
+                                <span class="lp-progress"><span style="width:45%"></span></span>
+                                <span class="lp-pill lp-pill-wait">Pending</span>
+                                <span class="lp-avatar lp-avatar-sm">SA</span>
+                            </div>
+                            <div class="lp-mock-row">
+                                <span class="lp-mock-row-name">Purchase list — Block C</span>
+                                <span class="lp-progress"><span style="width:100%"></span></span>
+                                <span class="lp-pill lp-pill-ok">Approved</span>
+                                <span class="lp-avatar lp-avatar-sm">RT</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <span class="lp-chip lp-chip-mock-a" aria-hidden="true">12</span>
+            <span class="lp-chip lp-chip-mock-b" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg>
             </span>
         </div>
-    </header>
+    </div>
+</section>
 
-    <section class="landing-apps" id="landing-apps" aria-label="Platform modules">
-        <div class="landing-apps-inner">
-            <div class="landing-apps-grid">
+{# ========================================================================= #}
+{# 3 · Features — bento                                                      #}
+{# ========================================================================= #}
+<section class="lp-section" id="features" aria-labelledby="lp-features-title">
+    <div class="lp-inner">
+        <p class="lp-eyebrow">Features</p>
+        <h2 class="lp-h2" id="lp-features-title">Keep the whole operation in one place</h2>
+        <p class="lp-lead">No more chasing forms across inboxes, spreadsheets and chat threads.</p>
 
-                <a href="{{ url_for('login_page', next='/hr/') }}" class="app-tile">
-                    <span class="app-tile-icon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path class="duo-fill" d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle class="duo-fill" cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                    </span>
-                    <span class="app-tile-label">HR</span>
-                </a>
+        <div class="lp-features-bento">
 
-                <a href="{{ url_for('login_page', next='/admin/mmr/') }}" class="app-tile">
-                    <span class="app-tile-icon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect class="duo-fill" x="6.4" y="13" width="3.2" height="8" rx="1"/><rect class="duo-fill" x="11.9" y="9" width="3.2" height="12" rx="1"/><rect class="duo-fill" x="17.4" y="5.5" width="3.2" height="15.5" rx="1"/><path d="M3 3v16a2 2 0 0 0 2 2h16"/></svg>
-                    </span>
-                    <span class="app-tile-label">Reports</span>
-                </a>
-
-                <a href="{{ url_for('login_page', next='/inspection/') }}" class="app-tile">
-                    <span class="app-tile-icon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle class="duo-fill" cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-                    </span>
-                    <span class="app-tile-label">Inspection</span>
-                </a>
-
-                <a href="{{ url_for('login_page', next='/procurement/') }}" class="app-tile">
-                    <span class="app-tile-icon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path class="duo-fill" d="M6 7h15l-1.3 8.3a2 2 0 0 1-2 1.7H9.3a2 2 0 0 1-2-1.7z"/><path d="M3 3h2l.9 4.5"/><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg>
-                    </span>
-                    <span class="app-tile-label">Procurement</span>
-                </a>
-
-                <a href="{{ url_for('login_page', next='/qhsi/') }}" class="app-tile">
-                    <span class="app-tile-icon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path class="duo-fill" d="M12 3 4 6v6c0 5 3.4 8.4 8 9.5 4.6-1.1 8-4.5 8-9.5V6z"/><path d="m9 12 2 2 4-4"/></svg>
-                    </span>
-                    <span class="app-tile-label">QHSE</span>
-                </a>
-
-                <a href="{{ url_for('login_page', next='/tickets/') }}" class="app-tile">
-                    <span class="app-tile-icon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path class="duo-fill" d="M3 9a2 2 0 0 1 0 4v4a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4a2 2 0 0 1 0-4V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2z"/><path d="m9 12 2 2 4-4"/></svg>
-                    </span>
-                    <span class="app-tile-label">Service Tickets</span>
-                </a>
-
-                <a href="{{ url_for('login_page', next='/assets/') }}" class="app-tile">
-                    <span class="app-tile-icon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path class="duo-fill" d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-7.9 7.9l-6.9 6.9a2.12 2.12 0 0 1-3-3l6.9-6.9a6 6 0 0 1 7.9-7.9z"/></svg>
-                    </span>
-                    <span class="app-tile-label">FM Assets</span>
-                </a>
-
-                <a href="{{ url_for('login_page', next='/workflow/submitted-forms') }}" class="app-tile">
-                    <span class="app-tile-icon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path class="duo-fill" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 15l2 2 4-4"/></svg>
-                    </span>
-                    <span class="app-tile-label">Submitted Forms</span>
-                </a>
-
-                <a href="{{ url_for('login_page', next='/workflow/pending-reviews') }}" class="app-tile">
-                    <span class="app-tile-icon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle class="duo-fill" cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-                    </span>
-                    <span class="app-tile-label">Pending Review</span>
-                </a>
-
-                <a href="{{ url_for('login_page', next='/admin/devices') }}" class="app-tile">
-                    <span class="app-tile-icon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect class="duo-fill" x="2" y="4" width="20" height="14" rx="2"/><path d="M8 21h8M12 18v3"/></svg>
-                    </span>
-                    <span class="app-tile-label">Devices</span>
-                </a>
-
-                <a href="{{ url_for('login_page', next='/admin/bd') }}" class="app-tile">
-                    <span class="app-tile-icon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect class="duo-fill" x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18"/></svg>
-                    </span>
-                    <span class="app-tile-label">Business Dev</span>
-                </a>
-
-                <a href="{{ url_for('login_page', next='/admin/bd') }}" class="app-tile">
-                    <span class="app-tile-icon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect class="duo-fill" x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
-                    </span>
-                    <span class="app-tile-label">Email Automation</span>
-                </a>
-
-            </div>
-
-            <p class="landing-apps-caption">
-                <strong>One workspace for your whole operation.</strong><br>
-                Each module simplifies a process and empowers your team — sign in to get started.
-            </p>
-        </div>
-    </section>
-
-    <section class="landing-pillars" aria-labelledby="pillars-title">
-        <div class="landing-section-inner">
-            <p class="section-eyebrow">Why teams choose Kynvera</p>
-            <h2 id="pillars-title">Built for the way operations actually run</h2>
-            <p class="section-lead">From the field to the boardroom — every workflow shares one identity, one audit trail, and one place to act.</p>
-
-            <div class="pillars-grid">
-                <article class="pillar">
-                    <span class="pillar-index" aria-hidden="true">01</span>
-                    <h3>Unified access</h3>
-                    <p>One secure login unlocks HR, tickets, inspections, assets, procurement, and more — without bouncing between tools.</p>
-                </article>
-                <article class="pillar">
-                    <span class="pillar-index" aria-hidden="true">02</span>
-                    <h3>Field-ready workflows</h3>
-                    <p>Forms, reviews, and service tickets stay connected so nothing stalls between the site and the office.</p>
-                </article>
-                <article class="pillar">
-                    <span class="pillar-index" aria-hidden="true">03</span>
-                    <h3>Clear accountability</h3>
-                    <p>Roles, approvals, and history stay visible — so teams know who owns what, and leaders can trust the numbers.</p>
-                </article>
-            </div>
-        </div>
-    </section>
-
-    <section class="landing-flow" aria-labelledby="flow-title">
-        <div class="landing-section-inner">
-            <p class="section-eyebrow">How it works</p>
-            <h2 id="flow-title">Three steps from sign-in to done</h2>
-
-            <ol class="flow-steps">
-                <li class="flow-step">
-                    <span class="flow-step-num">1</span>
-                    <div>
-                        <h3>Sign in once</h3>
-                        <p>Authenticate with your Kynvera credentials and optional MFA.</p>
+            <article class="lp-bento-card lp-fb-a">
+                <div class="lp-fb-visual" aria-hidden="true">
+                    <div class="lp-chip-cloud">
+                        <span>HR</span><span>Tickets</span><span class="is-on">Inspections</span>
+                        <span>Procurement</span><span class="is-on">QHSE</span><span>Assets</span>
+                        <span>Reports</span><span>Devices</span>
                     </div>
-                </li>
-                <li class="flow-step">
-                    <span class="flow-step-num">2</span>
-                    <div>
-                        <h3>Open any module</h3>
-                        <p>Jump into the workspace your role needs — no extra passwords.</p>
+                    <div class="lp-access-pop">
+                        <p class="lp-mini-title">Module access</p>
+                        <span class="lp-access-row">Inspections <i class="lp-toggle is-on"></i></span>
+                        <span class="lp-access-row">QHSE <i class="lp-toggle is-on"></i></span>
+                        <span class="lp-access-row">Procurement <i class="lp-toggle"></i></span>
                     </div>
-                </li>
-                <li class="flow-step">
-                    <span class="flow-step-num">3</span>
-                    <div>
-                        <h3>Keep work moving</h3>
-                        <p>Submit, review, assign, and close loops across the whole operation.</p>
-                    </div>
-                </li>
-            </ol>
-        </div>
-    </section>
-
-    <section class="landing-cta-band" aria-labelledby="cta-title">
-        <div class="landing-cta-inner">
-            <div class="landing-cta-copy">
-                <h2 id="cta-title">Ready to run everything from one place?</h2>
-                <p>Sign in to your workspace, or create an account to get your team onboarded.</p>
-            </div>
-            <div class="landing-cta-actions">
-                <a href="{{ url_for('login_page') }}" class="btn-coral">Sign in</a>
-                <a href="{{ url_for('register_page') }}" class="btn-ghost btn-ghost-on-warm">Create an account</a>
-            </div>
-        </div>
-    </section>
-
-    <footer class="landing-footer">
-        <div class="landing-footer-top">
-            <div class="landing-footer-brand">
-                <a href="{{ url_for('index') }}" class="landing-brand" aria-label="Kynvera home">
-                    <img class="landing-brand-mark" src="{{ url_for('static', filename='images/kynvera/kynvera-mark-48.png') }}" alt="">
-                    <img class="landing-brand-wordmark" src="{{ url_for('static', filename='images/kynvera/kynvera-wordmark.png') }}" alt="Kynvera">
-                </a>
-                <p>All operations, one platform — logistics, facilities, people, and the day-to-day in a single hub.</p>
-            </div>
-            <div class="landing-footer-cols">
-                <div>
-                    <h3>Platform</h3>
-                    <ul>
-                        <li><a href="{{ url_for('login_page') }}">Sign in</a></li>
-                        <li><a href="{{ url_for('register_page') }}">Create an account</a></li>
-                        <li><a href="#landing-apps">Open modules</a></li>
-                    </ul>
                 </div>
-                <div>
-                    <h3>Modules</h3>
-                    <ul>
-                        <li><a href="{{ url_for('login_page', next='/hr/') }}">HR</a></li>
-                        <li><a href="{{ url_for('login_page', next='/tickets/') }}">Service Tickets</a></li>
-                        <li><a href="{{ url_for('login_page', next='/assets/') }}">FM Assets</a></li>
-                        <li><a href="{{ url_for('login_page', next='/admin/bd') }}">Email Automation</a></li>
-                        <li><a href="{{ url_for('login_page', next='/procurement/') }}">Procurement</a></li>
-                    </ul>
+                <h3>One login, ten modules</h3>
+                <p>Access is granted per person, per module. Change someone's role once and every workspace follows.</p>
+            </article>
+
+            <article class="lp-bento-card lp-fb-b">
+                <div class="lp-fb-visual" aria-hidden="true">
+                    <span class="lp-waiting-pill">3 waiting on you</span>
+                    <div class="lp-chain lp-chain-lg">
+                        <span class="lp-chain-row is-done"><i class="lp-chain-dot"></i>Submitted<em>Mon 09:14</em></span>
+                        <span class="lp-chain-row is-done"><i class="lp-chain-dot"></i>Supervisor<em>Mon 11:02</em></span>
+                        <span class="lp-chain-row is-waiting"><i class="lp-chain-dot"></i>Operations<em>waiting</em></span>
+                        <span class="lp-chain-row"><i class="lp-chain-dot"></i>General Manager<em>—</em></span>
+                    </div>
+                </div>
+                <h3>Approvals that don't stall</h3>
+                <p>Work routes to the next reviewer automatically and notifies them in-app and by email. Reject, withdraw and resubmit are all first-class.</p>
+            </article>
+
+            <article class="lp-bento-card lp-fb-c">
+                <div class="lp-fb-visual" aria-hidden="true">
+                    <div class="lp-audit">
+                        <span class="lp-audit-row"><em>a.rahman</em> approved inspection #4821 <i>10.0.4.22 · 11:02</i></span>
+                        <span class="lp-audit-row"><em>s.aziz</em> submitted HR-2291 <i>10.0.4.19 · 10:48</i></span>
+                        <span class="lp-audit-row"><em>m.khan</em> closed TKT-1042 <i>10.0.4.31 · 09:26</i></span>
+                    </div>
+                    <div class="lp-sign-strip">
+                        <p class="lp-mini-title">Signed on device</p>
+                        <svg class="lp-sign" viewBox="0 0 220 48" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 34c14-4 20-22 28-22s6 24 14 24 12-26 21-26 7 24 15 24 11-14 18-14 8 12 15 12 12-6 18-8 16-2 22 2"/></svg>
+                    </div>
+                </div>
+                <h3>Evidence, not recollection</h3>
+                <p>Every action is written to an audit log with the user, their IP address and a timestamp — and signatures are captured on the device that did the work.</p>
+            </article>
+
+            <article class="lp-bento-card lp-fb-d is-dashed">
+                <span class="lp-badge-live">Live</span>
+                <div class="lp-fb-visual" aria-hidden="true">
+                    <div class="lp-tiles-mini">
+                        <span class="is-on">Triage</span><span>Draft</span><span>Summarise</span>
+                    </div>
+                    <div class="lp-triage-sample">
+                        <p class="lp-mini-title">Incoming</p>
+                        <p class="lp-triage-quote">“AC not cooling in Block C, second floor”</p>
+                        <div class="lp-triage-out">
+                            <span class="lp-triage-arrow">&rarr;</span>
+                            <span class="lp-pill lp-pill-high">High</span>
+                            <span class="lp-pill lp-pill-dept">HVAC</span>
+                        </div>
+                    </div>
+                </div>
+                <h3>Triage and assist, built in</h3>
+                <p>Incoming tickets are classified before anyone opens them, and the assistant is a keystroke away in every module.</p>
+            </article>
+        </div>
+    </div>
+</section>
+
+{# ========================================================================= #}
+{# 4 · Modules — bento                                                       #}
+{# ========================================================================= #}
+<section class="lp-section" id="modules" aria-labelledby="lp-modules-title">
+    <div class="lp-inner">
+        <p class="lp-eyebrow">Modules</p>
+        <h2 class="lp-h2" id="lp-modules-title">Ten modules. One workspace.</h2>
+        <p class="lp-lead">Each one replaces a paper trail. Together they share the same identity, the same review chain and the same audit log.</p>
+
+        <div class="lp-modules-bento">
+            {% for m in lp_modules %}
+            <article class="lp-bento-card lp-module-card{{ ' is-wide' if m.wide }}">
+                <span class="lp-module-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">{{ m.icon|safe }}</svg>
+                </span>
+                <h3>{{ m.name }}</h3>
+                <p>{{ m.desc }}</p>
+            </article>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+{# ========================================================================= #}
+{# 5A · Interoperability tiles                                               #}
+{# ========================================================================= #}
+<section class="lp-section" id="interop" aria-labelledby="lp-interop-title">
+    <div class="lp-inner">
+        <p class="lp-eyebrow">Interoperability</p>
+        <h2 class="lp-h2" id="lp-interop-title">Works with what you already run</h2>
+        <p class="lp-lead">Data comes in from the tools your teams use today, and goes out in formats the rest of the business can open.</p>
+
+        <div class="lp-interop-mark" aria-hidden="true">
+            <span class="lp-dot"></span><span class="lp-dot"></span>
+            <span class="lp-dot is-brand"></span><span class="lp-dot"></span>
+        </div>
+
+        <div class="lp-interop-grid">
+            {% for t in lp_interop %}
+            <div class="lp-interop-tile">
+                <span class="lp-interop-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">{{ t.icon|safe }}</svg>
+                </span>
+                <span class="lp-interop-label">{{ t.label }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+{# ========================================================================= #}
+{# 5B · Proof bento — verifiable facts, no testimonials                      #}
+{# ========================================================================= #}
+<section class="lp-section" id="proof" aria-labelledby="lp-proof-title">
+    <div class="lp-inner">
+        <p class="lp-eyebrow">Why teams trust it</p>
+        <h2 class="lp-h2" id="lp-proof-title">Everything on this page ships today</h2>
+        <p class="lp-lead">No roadmap items dressed up as features. Here is what the platform does the day you sign in.</p>
+
+        <div class="lp-proof-bento">
+
+            <article class="lp-bento-card lp-pb-hero">
+                <span class="lp-stat">10</span>
+                <h3>Operational modules, one login</h3>
+                <p>From the site to the boardroom, every team works in the same system with the same identity.</p>
+                <div class="lp-chip-cloud" aria-hidden="true">
+                    {% for m in lp_modules %}<span>{{ m.name }}</span>{% endfor %}
+                </div>
+            </article>
+
+            <article class="lp-bento-card lp-pb-audit">
+                <h3>Every approval is logged</h3>
+                <p>User, action, IP address, timestamp.</p>
+                <div class="lp-audit lp-audit-sm" aria-hidden="true">
+                    <span class="lp-audit-row"><em>a.rahman</em> approved <i>11:02</i></span>
+                    <span class="lp-audit-row"><em>s.aziz</em> submitted <i>10:48</i></span>
+                </div>
+            </article>
+
+            <article class="lp-bento-card lp-pb-sign">
+                <h3>Signatures captured on the device</h3>
+                <p>Drawn on site, embedded straight into the generated document.</p>
+                <svg class="lp-sign" viewBox="0 0 220 48" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 34c14-4 20-22 28-22s6 24 14 24 12-26 21-26 7 24 15 24 11-14 18-14 8 12 15 12 12-6 18-8 16-2 22 2"/></svg>
+            </article>
+
+            <article class="lp-bento-card lp-pb-files">
+                <h3>Reports in PDF, Excel and Word</h3>
+                <p>Generated server-side, ready to send.</p>
+                <div class="lp-file-chips" aria-hidden="true">
+                    <span>PDF</span><span>XLSX</span><span>DOCX</span>
+                </div>
+            </article>
+
+            <article class="lp-bento-card lp-pb-offline">
+                <h3>Install it. Use it on site.</h3>
+                <p>Installs as an app on phones and tablets, with an offline fallback when the signal drops.</p>
+            </article>
+
+            <article class="lp-bento-card lp-pb-mfa">
+                <h3>Optional two-factor sign-in</h3>
+                <p>TOTP-based, per user, with failed attempts written to the audit log.</p>
+            </article>
+
+            <article class="lp-bento-card lp-pb-cta">
+                <h3>See it running</h3>
+                <p>Create an account and walk through the modules yourself.</p>
+                <a href="{{ url_for('register_page') }}" class="lp-btn lp-btn-on-coral">Get started</a>
+            </article>
+
+            <span class="lp-chip lp-chip-proof" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </span>
+        </div>
+    </div>
+</section>
+
+{# ========================================================================= #}
+{# 6 · Who it's for                                                          #}
+{# ========================================================================= #}
+<section class="lp-section" id="audience" aria-labelledby="lp-audience-title">
+    <div class="lp-inner">
+        <p class="lp-eyebrow">Who it's for</p>
+        <h2 class="lp-h2" id="lp-audience-title">Built for everyone in the chain</h2>
+        <p class="lp-lead">The same platform, scoped to what each person actually needs to do.</p>
+
+        <div class="lp-tiers">
+
+            <article class="lp-bento-card lp-tier">
+                <h3>Field &amp; site teams</h3>
+                <p class="lp-tier-sub">The people doing the work.</p>
+                <ul class="lp-tier-list">
+                    <li>Submit site inspections with photos</li>
+                    <li>Raise and update service tickets</li>
+                    <li>Capture signatures on the device</li>
+                    <li>File HR forms without paper</li>
+                    <li>Scan asset QR codes on the spot</li>
+                    <li>Keep working when the signal drops</li>
+                </ul>
+                <a href="{{ url_for('register_page') }}" class="lp-btn lp-btn-outline lp-btn-block">Get started</a>
+            </article>
+
+            <article class="lp-bento-card lp-tier is-featured">
+                <span class="lp-tier-badge">
+                    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13 2 4.5 13.5H11l-1 8.5 8.5-11.5H12z"/></svg>
+                    Most of your users
+                </span>
+                <h3>Supervisors &amp; managers</h3>
+                <p class="lp-tier-sub">The people keeping it moving.</p>
+                <ul class="lp-tier-list">
+                    <li>Review and approve submissions</li>
+                    <li>Assign work to technicians</li>
+                    <li>Log manpower and material cost</li>
+                    <li>Hold, resume and close tickets</li>
+                    <li>See what's stalled and with whom</li>
+                    <li>Close out with a signed PDF report</li>
+                </ul>
+                <a href="{{ url_for('register_page') }}" class="lp-btn lp-btn-primary lp-btn-block">Get started</a>
+            </article>
+
+            <article class="lp-bento-card lp-tier">
+                <h3>Administrators &amp; leadership</h3>
+                <p class="lp-tier-sub">The people accountable for it.</p>
+                <ul class="lp-tier-list">
+                    <li>Grant access per person, per module</li>
+                    <li>Read the full audit trail</li>
+                    <li>Generate monthly and monthwise reports</li>
+                    <li>Configure the scheduled report email</li>
+                    <li>Track the deal pipeline and follow-ups</li>
+                    <li>Manage the device inventory</li>
+                </ul>
+                <a href="{{ url_for('register_page') }}" class="lp-btn lp-btn-outline lp-btn-block">Get started</a>
+            </article>
+        </div>
+    </div>
+</section>
+
+{# ========================================================================= #}
+{# 7 · CTA band                                                              #}
+{# ========================================================================= #}
+<section class="lp-cta-section" aria-labelledby="lp-cta-title">
+    <div class="lp-inner">
+        {# No dot-grid overlay here on purpose: the white dots lightened the
+           gradient to ~3.3:1 under the white body copy. #}
+        <div class="lp-cta-band">
+            <div class="lp-cta-copy">
+                <h2 id="lp-cta-title">Ready to run everything from one place?</h2>
+                <p>Create an account to walk through the platform, or sign in if your organisation is already set up.</p>
+            </div>
+            <div class="lp-cta-actions">
+                <a href="{{ url_for('register_page') }}" class="lp-btn lp-btn-on-coral lp-btn-lg">Get started</a>
+                <a href="{{ url_for('login_page') }}" class="lp-btn lp-btn-ghost-on-coral lp-btn-lg">Sign in</a>
+            </div>
+        </div>
+    </div>
+</section>
+
+</main>
+
+{# ========================================================================= #}
+{# 8 · Footer panel + legal bar                                              #}
+{# ========================================================================= #}
+<footer class="lp-footer">
+    <div class="lp-inner">
+        <div class="lp-footer-panel">
+            <div class="lp-dotgrid" aria-hidden="true"></div>
+
+            {# Decorative scattered chips (spec parity). No focusable content. #}
+            <div class="lp-footer-chips" aria-hidden="true">
+                <span class="lp-chip">01</span>
+                <span class="lp-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V4s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7"/></svg></span>
+                <span class="lp-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></span>
+                <span class="lp-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7V18h8v-3.3A7 7 0 0 0 12 2z"/></svg></span>
+                <span class="lp-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+                <span class="lp-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg></span>
+            </div>
+
+            <div class="lp-footer-grid">
+                <div class="lp-footer-brand">
+                    <img class="lp-brand-wordmark" src="{{ url_for('static', filename='images/kynvera/kynvera-wordmark.png') }}" alt="Kynvera">
+                    <p>One platform for how your operation actually runs — the field, the office and everything that has to travel between them.</p>
+                </div>
+
+                <div class="lp-footer-cols">
+                    <div>
+                        <h3>Platform</h3>
+                        <ul>
+                            <li><a href="#platform">Overview</a></li>
+                            <li><a href="#features">Features</a></li>
+                            <li><a href="#interop">Interoperability</a></li>
+                            <li><a href="#audience">Who it's for</a></li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3>Modules</h3>
+                        <ul>
+                            <li><a href="#modules">Service Tickets</a></li>
+                            <li><a href="#modules">Inspections</a></li>
+                            <li><a href="#modules">HR</a></li>
+                            <li><a href="#modules">Reports &amp; automation</a></li>
+                            <li><a href="#modules">FM Assets</a></li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3>Get started</h3>
+                        <ul>
+                            <li><a href="{{ url_for('login_page') }}">Sign in</a></li>
+                            <li><a href="{{ url_for('register_page') }}">Create an account</a></li>
+                        </ul>
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="landing-footer-bottom">
-            <span class="landing-footer-copy">&copy; 2026 Kynvera. All operations, one platform.</span>
-            <span class="landing-footer-links">
+
+        <div class="lp-footer-bottom">
+            <span class="lp-footer-copy">&copy; {{ now().year if now is defined else '2026' }} Kynvera. All operations, one platform.</span>
+            <span class="lp-footer-links">
                 <a href="{{ url_for('login_page') }}">Sign in</a>
                 <a href="{{ url_for('register_page') }}">Create an account</a>
             </span>
         </div>
-    </footer>
+    </div>
+</footer>
 
-    <script src="{{ url_for('static', filename='mobile_utils.js') }}" defer></script>
+<script src="{{ url_for('static', filename='mobile_utils.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/landing.js') }}?v=1" defer></script>
 </body>
 </html>

@@ -62,11 +62,14 @@ from .print_utils import render_form_for_print
 from .docx_service import generate_hr_docx, get_supported_docx_forms
 from .pdf_service import generate_hr_pdf, get_supported_pdf_forms
 from .hiring_documents import register_hiring_document_routes
+from .leave_tracker import register_leave_tracker_routes
 
 hr_bp = Blueprint('hr', __name__, template_folder='templates')
 
 # Hiring Document Tracker (standalone checklist under /hr/hiring)
 register_hiring_document_routes(hr_bp)
+# Leave Tracker — Sick + Annual (Aug–Dec 2026) under /hr/leave-tracker
+register_leave_tracker_routes(hr_bp)
 
 
 @hr_bp.context_processor

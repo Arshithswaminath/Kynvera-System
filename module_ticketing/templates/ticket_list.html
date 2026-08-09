@@ -12,10 +12,13 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/ticketing.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
   <style>.tkt-container { max-width: 1400px; padding-left: 28px; padding-right: 28px; }</style>
 </head>
-<body class="tkt-dh-page">
+<body class="tkt-dh-page has-main-nav">
 <div class="tkt-dh-app-root">
+{% set active_page = active_page | default('ticketing') %}
+{% include 'partials/main_navbar.html' with context %}
 <div class="dh-page-root tkt-dh-page-root">
 {% include 'partials/tkt_sidebar.html' with context %}
 <div class="tkt-dh-main">
@@ -51,11 +54,13 @@
         ('assigned','Assigned'),
         ('site_attended','Site Attended'),
         ('work_started','Work Started'),
+        ('in_progress','In Progress'),
         ('work_completed','Work Completed'),
         ('verification','Verification'),
         ('provider_closed','Provider Verified'),
         ('on_hold','On Hold'),
         ('cancelled','Cancelled'),
+        ('resolved,closed','Resolved / Closed'),
         ('closed','Closed'),
       ] %}
       {% for val, label in status_opts %}

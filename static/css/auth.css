@@ -41,6 +41,45 @@
   display: none;
 }
 
+/* Back control — outside the card, top-left of the page */
+.auth-back {
+  position: absolute;
+  top: max(1rem, env(safe-area-inset-top, 0));
+  left: max(1rem, env(safe-area-inset-left, 0));
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  color: #1c1917;
+  background: #fff;
+  border: 1px solid rgba(28, 25, 23, 0.1);
+  box-shadow: 0 4px 14px rgba(28, 25, 23, 0.08);
+  text-decoration: none;
+  transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+.auth-back:hover {
+  background: #fff;
+  border-color: rgba(255, 142, 104, 0.45);
+  color: #c2440c;
+  transform: translateY(-1px);
+}
+
+.auth-back:focus-visible {
+  outline: 2px solid #ff8e68;
+  outline-offset: 3px;
+}
+
+@media (min-width: 640px) {
+  .auth-back {
+    top: max(1.5rem, env(safe-area-inset-top, 0));
+    left: max(1.5rem, env(safe-area-inset-left, 0));
+  }
+}
+
 /* ── Card ── */
 .auth-card {
   position: relative;
@@ -114,8 +153,13 @@
   z-index: 10;
 }
 
+.auth-brand-logo-wrap--top {
+  margin-bottom: 0.45rem;
+  padding-top: 0;
+}
+
 .auth-brand-headline {
-  margin: 0 0 1.25rem;
+  margin: 0;
   max-width: 300px;
   font-size: 1.65rem;
   font-weight: 600;
@@ -124,8 +168,18 @@
   color: #ffffff;
 }
 
+.auth-brand-headline--register {
+  max-width: none;
+  font-size: 1.05rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 1.35;
+  color: rgba(255, 255, 255, 0.85);
+  white-space: nowrap;
+}
+
 .auth-brand-description {
-  margin: 0;
+  margin: 1.25rem 0 0;
   max-width: 280px;
   font-size: 0.875rem;
   line-height: 1.6;
@@ -142,6 +196,17 @@
   display: block;
   width: auto;
   object-fit: contain;
+}
+
+/* Official Kynvera wordmark — forced white on the coral panel */
+.auth-logo--wordmark {
+  height: clamp(1.75rem, 2.5vw, 2.1rem);
+  width: auto;
+  filter: brightness(0) invert(1);
+}
+
+.auth-brand-logo-wrap--top .auth-logo--wordmark {
+  height: clamp(2rem, 2.9vw, 2.4rem);
 }
 
 .auth-logo--lg { height: 3.5rem; }
@@ -241,10 +306,6 @@
   flex: 1 1 auto;
   flex-direction: column;
   justify-content: center;
-}
-
-.auth-form-inner--register .auth-form-content {
-  justify-content: flex-start;
 }
 
 .auth-form-header {

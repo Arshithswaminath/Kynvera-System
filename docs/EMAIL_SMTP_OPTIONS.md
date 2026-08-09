@@ -4,13 +4,44 @@ The app sends email for reports, password resets, and MMR. Configure `.env` (or 
 
 **Render free web services block outbound SMTP** (ports 25, 465, 587). Gmail SMTP will **time out** there. Use **HTTPS** instead:
 
+- **Brevo (recommended):** **`BREVO_API_KEY`** + **`MAIL_DEFAULT_SENDER`**
 - **Mailjet:** **`MAILJET_API_KEY`** + **`MAILJET_SECRET_KEY`** + **`MAIL_DEFAULT_SENDER`**, *or* the same **API key + secret** as **`MAIL_USERNAME`** / **`MAIL_PASSWORD`** with **`MAIL_SERVER=in-v3.mailjet.com`** (the app switches to Mailjet's REST API automatically on Render).
+
+Send order: Brevo REST → Mailjet REST → SMTP.
 
 On a **paid** Render instance, normal SMTP usually works again for providers that use SMTP.
 
 ---
 
-## Recommended: **Mailjet**
+## Recommended: **Brevo**
+
+- Free tier available for transactional email; see [brevo.com](https://www.brevo.com).
+- **Sign up** → **Settings** → **SMTP & API** → create an **API key**.
+- **Verify** your sender (or domain) in Brevo before sending.
+
+### REST / HTTPS (Render **free** — recommended)
+
+```env
+BREVO_API_KEY=xkeysib-...
+MAIL_DEFAULT_SENDER=noreply@injaaz.ae
+```
+
+The app calls **`https://api.brevo.com/v3/smtp/email`** so outbound SMTP is not required.
+
+### SMTP (local or Render paid)
+
+```env
+MAIL_SERVER=smtp-relay.brevo.com
+MAIL_PORT=587
+MAIL_USE_TLS=true
+MAIL_USERNAME=your-brevo-login-email
+MAIL_PASSWORD=your-brevo-smtp-key
+MAIL_DEFAULT_SENDER=noreply@injaaz.ae
+```
+
+---
+
+## Alternative: **Mailjet**
 
 - **Free tier** available for outbound send; see [mailjet.com](https://www.mailjet.com) for limits.
 - **Sign up** → **Account** → **SMTP and SEND API** → copy **API Key** and **Secret Key**.

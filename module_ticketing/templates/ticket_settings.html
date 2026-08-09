@@ -495,8 +495,10 @@
     #faultCatCountNote { flex: 0 0 auto; margin-top: 10px !important; margin-bottom: 0 !important; }
   </style>
 </head>
-<body class="tkt-dh-page tkt-settings-ios">
+<body class="tkt-dh-page tkt-settings-ios has-main-nav">
 <div class="tkt-dh-app-root">
+{% set active_page = active_page | default('ticketing') %}
+{% include 'partials/main_navbar.html' with context %}
 {% set ticketing_can_manage_fault_catalog = ticketing_can_manage_fault_catalog|default(false) %}
 <div class="dh-page-root tkt-dh-page-root">
 {% include 'partials/tkt_sidebar.html' with context %}
@@ -908,14 +910,28 @@ Attached two photos.</pre>
 <script>
 const TKT_FAULT_REBUILD_URL = {{ url_for('ticketing.settings_rebuild_fault_catalog')|tojson }};
 // ── Tab switching ─────────────────────────────────────────
+function activateSettingsTab(tabName) {
+  const tab = document.querySelector(`.settings-tab[data-tab="${tabName}"]`);
+  const panel = document.getElementById('tab-' + tabName);
+  if (!tab || !panel) return false;
+  document.querySelectorAll('.settings-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.settings-panel').forEach(p => p.classList.remove('active'));
+  tab.classList.add('active');
+  panel.classList.add('active');
+  return true;
+}
 document.querySelectorAll('.settings-tab').forEach(tab => {
   tab.addEventListener('click', () => {
-    document.querySelectorAll('.settings-tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.settings-panel').forEach(p => p.classList.remove('active'));
-    tab.classList.add('active');
-    document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+    activateSettingsTab(tab.dataset.tab);
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', tab.dataset.tab);
+    history.replaceState(null, '', url);
   });
 });
+(function openTabFromQuery() {
+  const tab = new URLSearchParams(window.location.search).get('tab');
+  if (tab) activateSettingsTab(tab);
+})();
 
 // ── Copy intake email ─────────────────────────────────────
 document.getElementById('copyIntakeEmailBtn')?.addEventListener('click', () => {

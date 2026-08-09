@@ -1,7 +1,7 @@
 """
 Professional PDF Service with Branding, Logo, and Signatures
 Provides reusable components for all module PDFs
-Enhanced with cover pages and professional branding
+Enhanced with cover pages and Kynvera branding
 """
 import os
 import logging
@@ -20,35 +20,30 @@ from reportlab.pdfgen import canvas
 from reportlab.graphics.shapes import Drawing, Rect, Line
 from reportlab.graphics import renderPDF
 from common.utils import get_image_for_pdf
+from common import kynvera_pdf_brand as brand
 
 logger = logging.getLogger(__name__)
 
-# Company branding colors - Enhanced palette
-PRIMARY_COLOR = colors.HexColor('#125435')      # Dark green
-SECONDARY_COLOR = colors.HexColor('#1a7a4d')    # Medium green
-ACCENT_COLOR = colors.HexColor('#E8F5E9')       # Light green
-HEADER_BG = colors.HexColor('#125435')
-TABLE_HEADER_BG = colors.HexColor('#125435')
-TABLE_ALT_ROW = colors.HexColor('#f9fafb')
-BORDER_COLOR = colors.HexColor('#e5e7eb')
+# Company branding — Kynvera coral theme
+PRIMARY_COLOR = brand.PRIMARY
+SECONDARY_COLOR = brand.PRIMARY_DARK
+ACCENT_COLOR = brand.SOFT_WASH
+HEADER_BG = brand.SOFT_WASH
+TABLE_HEADER_BG = brand.SOFT_WASH
+TABLE_ALT_ROW = brand.SURFACE_ALT
+BORDER_COLOR = brand.HAIRLINE
+LIGHT_BG = brand.SURFACE_ALT
 
-# Additional brand colors for cover page
-GRADIENT_START = colors.HexColor('#125435')
-GRADIENT_END = colors.HexColor('#1a7a4d')
-GOLD_ACCENT = colors.HexColor('#D4AF37')
-LIGHT_BG = colors.HexColor('#fafafa')
-
-# Logo path
-LOGO_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'static', 'logo.png')
+LOGO_PATH = brand.resolve_logo_path(prefer_wordmark=True) or brand.WORDMARK_PATH
 
 
 class NumberedCanvas(canvas.Canvas):
     """Custom canvas to add header, footer, and page numbers"""
     
     def __init__(self, *args, **kwargs):
+        self.report_title = kwargs.pop('report_title', brand.DEFAULT_REPORT_TITLE)
         canvas.Canvas.__init__(self, *args, **kwargs)
         self._saved_page_states = []
-        self.report_title = kwargs.get('report_title', 'Injaaz Report')
         
     def showPage(self):
         self._saved_page_states.append(dict(self.__dict__))
@@ -65,55 +60,16 @@ class NumberedCanvas(canvas.Canvas):
         
     def draw_page_decorations(self, page_count):
         """Draw compact header and footer on each page"""
-        HDR_Y = A4[1] - 1.3*cm   # top of header band
-        LOGO_SZ = 0.9*cm
-
-        # Header background band
-        self.setFillColor(colors.white)
-        self.rect(0, HDR_Y, A4[0], 1.3*cm, fill=1, stroke=0)
-
-        # Green top rule
-        self.setStrokeColor(PRIMARY_COLOR)
-        self.setLineWidth(2)
-        self.line(0, A4[1] - 1, A4[0], A4[1] - 1)
-
-        # Logo (single — not duplicated in content)
-        if os.path.exists(LOGO_PATH):
-            try:
-                self.drawImage(LOGO_PATH,
-                               1.4*cm, HDR_Y + (1.3*cm - LOGO_SZ) / 2,
-                               width=LOGO_SZ, height=LOGO_SZ,
-                               preserveAspectRatio=True, mask='auto')
-            except Exception as e:
-                logger.warning(f"Could not load logo: {e}")
-
-        # Company name
-        self.setFont('Helvetica-Bold', 8)
-        self.setFillColor(PRIMARY_COLOR)
-        self.drawString(1.4*cm + LOGO_SZ + 0.15*cm,
-                        HDR_Y + 0.5*cm, "Injaaz Application")
-
-        # Report title (right-aligned)
-        self.setFont('Helvetica', 7.5)
-        self.setFillColor(colors.HexColor('#6b7280'))
-        self.drawRightString(A4[0] - 1.4*cm, HDR_Y + 0.5*cm, self.report_title)
-
-        # Thin separator below header
-        self.setStrokeColor(BORDER_COLOR)
-        self.setLineWidth(0.5)
-        self.line(1.4*cm, HDR_Y, A4[0] - 1.4*cm, HDR_Y)
-
-        # Footer separator
-        self.line(1.4*cm, 1.2*cm, A4[0] - 1.4*cm, 1.2*cm)
-
-        # Footer text
-        self.setFont('Helvetica', 7)
-        self.setFillColor(colors.HexColor('#9ca3af'))
-        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M')
-        self.drawString(1.4*cm, 0.85*cm, f"Generated: {timestamp}")
-        self.drawCentredString(A4[0] / 2, 0.85*cm, self.report_title)
-        page_text = f"Page {self._pageNumber} of {page_count}"
-        self.drawRightString(A4[0] - 1.4*cm, 0.85*cm, page_text)
+        brand.draw_page_chrome(
+            self,
+            self._pageNumber,
+            page_count,
+            report_title=self.report_title,
+            left_margin=1.4 * cm,
+            right_margin=1.4 * cm,
+            footer_left=f"Generated: {brand.generated_timestamp()}",
+            header_title=brand.COMPANY_NAME,
+        )
 
 
 def get_professional_styles():
@@ -148,7 +104,7 @@ def get_professional_styles():
             'SectionHeading',
             parent=styles['Heading2'],
             fontSize=10,
-            textColor=colors.white,
+            textColor=brand.TEXT_DARK,
             spaceAfter=0.14*inch,
             spaceBefore=0.08*inch,
             fontName='Helvetica-Bold',
@@ -165,7 +121,7 @@ def get_professional_styles():
             'ItemHeading',
             parent=styles['Heading3'],
             fontSize=9.5,
-            textColor=PRIMARY_COLOR,
+            textColor=brand.PRIMARY_DARK,
             spaceAfter=0.03*inch,
             spaceBefore=0.08*inch,
             fontName='Helvetica-Bold',
@@ -177,7 +133,7 @@ def get_professional_styles():
             'ProfessionalNormal',
             parent=styles['Normal'],
             fontSize=8.5,
-            textColor=colors.HexColor('#111827'),
+            textColor=brand.TEXT_DARK,
             spaceAfter=0.02*inch,
             leading=12
         ),
@@ -185,7 +141,7 @@ def get_professional_styles():
             'Small',
             parent=styles['Normal'],
             fontSize=7.5,
-            textColor=colors.HexColor('#6b7280'),
+            textColor=brand.TEXT_MUTED,
             alignment=TA_CENTER,
             leading=10,
         ),
@@ -193,7 +149,7 @@ def get_professional_styles():
             'CommentLead',
             parent=styles['Normal'],
             fontSize=9.5,
-            textColor=colors.HexColor('#111827'),
+            textColor=brand.TEXT_DARK,
             spaceAfter=0.06*inch,
             fontName='Helvetica-Bold',
             leading=13,
@@ -316,11 +272,11 @@ def create_data_table(headers, rows, col_widths=None):
     
     table = Table(table_data, colWidths=col_widths)
     table.setStyle(TableStyle([
-        # Header row
+        # Header row — soft wash + coral rule (not solid green)
         ('BACKGROUND', (0, 0), (-1, 0), TABLE_HEADER_BG),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('TEXTCOLOR', (0, 0), (-1, 0), brand.TEXT_DARK),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 11),
+        ('FONTSIZE', (0, 0), (-1, 0), 9),
         ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
         
         # Data rows
@@ -329,13 +285,11 @@ def create_data_table(headers, rows, col_widths=None):
         ('ALIGN', (0, 1), (-1, -1), 'RIGHT'),
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
         
-        # White rows so embedded images/signatures blend cleanly
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.white]),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, TABLE_ALT_ROW]),
         
         # Grid
-        ('GRID', (0, 0), (-1, -1), 0.75, BORDER_COLOR),
-        ('LINEABOVE', (0, 0), (-1, 0), 1.5, PRIMARY_COLOR),
-        ('LINEBELOW', (0, 0), (-1, 0), 1.5, PRIMARY_COLOR),
+        ('GRID', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
+        ('LINEBELOW', (0, 0), (-1, 0), 1.2, PRIMARY_COLOR),
         
         # Padding
         ('LEFTPADDING', (0, 0), (-1, -1), 3),
@@ -536,7 +490,7 @@ def add_signatures_section(story, signatures_dict):
     return story
 
 
-def create_professional_pdf(pdf_path, story, report_title="Injaaz Report"):
+def create_professional_pdf(pdf_path, story, report_title=None):
     """Build the PDF with professional styling
     
     Args:
@@ -544,16 +498,18 @@ def create_professional_pdf(pdf_path, story, report_title="Injaaz Report"):
         story: List of flowables (content)
         report_title: Title for footer
     """
+    if report_title is None:
+        report_title = brand.DEFAULT_REPORT_TITLE
     try:
         doc = SimpleDocTemplate(
             pdf_path,
             pagesize=A4,
             rightMargin=1.6*cm,
             leftMargin=1.6*cm,
-            topMargin=1.7*cm,
+            topMargin=1.9*cm,
             bottomMargin=1.8*cm,
             title=report_title,
-            author="Injaaz Application"
+            author=brand.PDF_AUTHOR
         )
         
         # Build with custom canvas for headers/footers
@@ -692,45 +648,42 @@ def create_cover_page(story, report_info):
     )
     
     # Add top spacing
-    story.append(Spacer(1, 1.5*inch))
+    story.append(Spacer(1, 1.2*inch))
     
-    # Logo
-    if os.path.exists(LOGO_PATH):
-        try:
-            logo = Image(LOGO_PATH, width=1.8*inch, height=1.8*inch)
-            logo.hAlign = 'CENTER'
-            story.append(logo)
-            story.append(Spacer(1, 0.3*inch))
-        except Exception as e:
-            logger.warning(f"Could not load logo for cover page: {e}")
+    # Wordmark
+    logo = brand.wordmark_flowable(max_width=2.4*inch, max_height=0.6*inch)
+    if logo:
+        logo.hAlign = 'CENTER'
+        story.append(logo)
+        story.append(Spacer(1, 0.25*inch))
     
     # Company name
-    story.append(Paragraph("Injaaz Application", ParagraphStyle(
+    story.append(Paragraph(brand.COMPANY_NAME, ParagraphStyle(
         'CompanyName',
         fontSize=14,
-        textColor=SECONDARY_COLOR,
+        textColor=brand.TEXT_DARK,
         alignment=TA_CENTER,
         fontName='Helvetica-Bold',
-        spaceAfter=0.1*inch
+        spaceAfter=0.08*inch
     )))
     
     # Tagline
-    story.append(Paragraph("Excellence in Facility Management", ParagraphStyle(
+    story.append(Paragraph(brand.TAGLINE, ParagraphStyle(
         'Tagline',
         fontSize=10,
-        textColor=colors.HexColor('#6b7280'),
+        textColor=brand.TEXT_MUTED,
         alignment=TA_CENTER,
         fontName='Helvetica-Oblique',
-        spaceAfter=0.6*inch
+        spaceAfter=0.5*inch
     )))
     
-    # Decorative line
+    # Decorative coral line
     story.append(HRFlowable(
         width="60%",
         thickness=2,
         color=PRIMARY_COLOR,
-        spaceBefore=0.2*inch,
-        spaceAfter=0.4*inch,
+        spaceBefore=0.15*inch,
+        spaceAfter=0.35*inch,
         hAlign='CENTER'
     ))
     

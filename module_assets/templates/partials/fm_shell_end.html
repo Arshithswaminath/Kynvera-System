@@ -12,6 +12,35 @@
     if (t) h['Authorization'] = 'Bearer ' + t;
     return h;
   }
+  /** In-app notice (never use window.alert — that is a Chrome dialog). */
+  function fmFriendlyError(msg) {
+    const m = String(msg || '').trim();
+    if (/LLM is not enabled/i.test(m)) {
+      return 'AI features are not enabled. Add ANTHROPIC_API_KEY in the server .env and restart the app.';
+    }
+    return m || 'Something went wrong';
+  }
+  function fmNotify(message, type) {
+    type = type || 'error';
+    let host = document.getElementById('fmToastHost');
+    if (!host) {
+      host = document.createElement('div');
+      host.id = 'fmToastHost';
+      host.className = 'fm-toast-host';
+      host.setAttribute('aria-live', 'polite');
+      document.body.appendChild(host);
+    }
+    const el = document.createElement('div');
+    el.className = 'fm-toast fm-toast-' + type;
+    el.setAttribute('role', type === 'error' ? 'alert' : 'status');
+    el.textContent = fmFriendlyError(message);
+    host.appendChild(el);
+    requestAnimationFrame(function () { el.classList.add('is-visible'); });
+    setTimeout(function () {
+      el.classList.remove('is-visible');
+      setTimeout(function () { el.remove(); }, 220);
+    }, 5200);
+  }
   function tktOpenMobileSidebar(){const s=document.getElementById('tktDhSidebar');if(s)s.classList.add('open');}
   function tktCloseMobileSidebar(){const s=document.getElementById('tktDhSidebar');if(s)s.classList.remove('open');}
   function tktToggleMobileSidebar(){const s=document.getElementById('tktDhSidebar');if(!s)return;s.classList.contains('open')?tktCloseMobileSidebar():tktOpenMobileSidebar();}

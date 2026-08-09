@@ -58,6 +58,17 @@
         const usernameInput = document.getElementById('username');
         const passwordToggle = document.getElementById('password-toggle');
         const passwordToggleIcon = document.getElementById('password-toggle-icon');
+        const loginForm = document.getElementById('login-form');
+        const loginBtn = document.getElementById('login-btn');
+        const loginBtnLabel = document.getElementById('login-btn-label');
+        const loading = document.getElementById('loading');
+        const errorMessage = document.getElementById('error-message');
+        const successMessage = document.getElementById('success-message');
+        const mfaField = document.getElementById('mfa-field');
+        const mfaCodeInput = document.getElementById('mfa_code');
+
+        const EYE_PATH = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"/><circle cx="12" cy="12" r="3"/>';
+        const EYE_OFF_PATH = '<path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 11 7 11 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 1 12s4 7 11 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/>';
 
         function safeNextPath() {
             const params = new URLSearchParams(window.location.search);
@@ -68,15 +79,47 @@
             return next;
         }
 
+        function clearClientSession() {
+            try {
+                ['access_token', 'refresh_token', 'user'].forEach(function (k) {
+                    try { localStorage.removeItem(k); } catch (_) {}
+                    try { sessionStorage.removeItem(k); } catch (_) {}
+                });
+            } catch (_) { /* ignore */ }
+            try {
+                fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(function () {});
+            } catch (_) { /* ignore */ }
+        }
+
+        /* Fresh credential form — used on load and when Chrome Back restores /login. */
+        function resetLoginForm() {
+            clearClientSession();
+            errorMessage.style.display = 'none';
+            successMessage.style.display = 'none';
+            loginBtn.disabled = false;
+            loginBtnLabel.textContent = 'Continue';
+            loading.classList.remove('show');
+            passwordInput.value = '';
+            passwordInput.type = 'password';
+            if (mfaField) mfaField.style.display = 'none';
+            if (mfaCodeInput) mfaCodeInput.value = '';
+            passwordToggleIcon.innerHTML = EYE_PATH;
+            passwordToggle.setAttribute('aria-label', 'Show password');
+            passwordToggle.setAttribute('aria-pressed', 'false');
+        }
+
+        resetLoginForm();
+        window.addEventListener('pageshow', function () {
+            /* Chrome Back from dashboard (bfcache or reload) → clean credential form */
+            resetLoginForm();
+        });
+
         usernameInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault();
                 passwordInput.focus();
             }
         });
-
-        const EYE_PATH = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"/><circle cx="12" cy="12" r="3"/>';
-        const EYE_OFF_PATH = '<path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 11 7 11 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 1 12s4 7 11 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/>';
 
         passwordToggle.addEventListener('click', () => {
             const showPassword = passwordInput.type === 'password';
@@ -85,13 +128,6 @@
             passwordToggle.setAttribute('aria-label', showPassword ? 'Hide password' : 'Show password');
             passwordToggle.setAttribute('aria-pressed', showPassword ? 'true' : 'false');
         });
-
-        const loginForm = document.getElementById('login-form');
-        const loginBtn = document.getElementById('login-btn');
-        const loginBtnLabel = document.getElementById('login-btn-label');
-        const loading = document.getElementById('loading');
-        const errorMessage = document.getElementById('error-message');
-        const successMessage = document.getElementById('success-message');
 
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -105,7 +141,7 @@
 
             const username = document.getElementById('username').value.trim();
             const password = document.getElementById('password').value;
-            const mfaCode = (document.getElementById('mfa_code')?.value || '').trim();
+            const mfaCode = (mfaCodeInput?.value || '').trim();
 
             try {
                 const body = { username, password };
@@ -131,8 +167,8 @@
                 const data = await response.json();
 
                 if (response.ok && data.mfa_required && !data.access_token) {
-                    document.getElementById('mfa-field').style.display = 'block';
-                    document.getElementById('mfa_code')?.focus();
+                    if (mfaField) mfaField.style.display = 'block';
+                    mfaCodeInput?.focus();
                     successMessage.textContent = 'Enter your authenticator code to continue.';
                     successMessage.style.display = 'block';
                     loginBtn.disabled = false;
@@ -149,6 +185,8 @@
                     successMessage.textContent = 'Login successful! Redirecting...';
                     successMessage.style.display = 'block';
 
+                    /* Keep /login in history so Back from the dashboard returns here
+                       for a fresh sign-in (see resetLoginForm on pageshow). */
                     const redirectTo = safeNextPath();
                     setTimeout(() => {
                         window.location.href = redirectTo;

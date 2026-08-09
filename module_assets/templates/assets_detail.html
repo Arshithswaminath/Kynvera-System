@@ -41,6 +41,7 @@
         <span class="fm-badge-estimate" title="Claude heuristic until a trained model exists">Estimate</span>
       </div>
       <p class="fm-muted" id="predictPlaceholder" {% if last_prediction %}hidden{% endif %}>Click “AI estimate” to generate a failure probability and remaining useful life from this asset’s history. Results are LLM estimates, not a trained predictive model.</p>
+      <p id="predictError" class="fm-inline-error" hidden></p>
       <div id="predictResult" {% if not last_prediction %}hidden{% endif %}>
         <div class="fm-predict-grid">
           <div><span class="fm-kpi-label">Failure probability</span><span class="fm-kpi-value" id="predFail">{% if last_prediction %}{{ last_prediction.failure_probability_pct }}%{% else %}—{% endif %}</span></div>
@@ -83,6 +84,8 @@
 const ASSET_CODE = {{ asset.asset_id|tojson }};
 document.getElementById('predictBtn').addEventListener('click', async () => {
   const btn = document.getElementById('predictBtn');
+  const errEl = document.getElementById('predictError');
+  if (errEl) { errEl.hidden = true; errEl.textContent = ''; }
   btn.disabled = true;
   btn.textContent = 'Estimating…';
   try {
@@ -103,7 +106,14 @@ document.getElementById('predictBtn').addEventListener('click', async () => {
     document.getElementById('predWhy').textContent = p.justification || '';
     document.getElementById('predMethod').textContent = 'method: ' + (p.method || 'llm_estimate');
   } catch (err) {
-    alert(err.message || String(err));
+    const msg = typeof fmFriendlyError === 'function'
+      ? fmFriendlyError(err.message || err)
+      : (err.message || String(err));
+    if (errEl) {
+      errEl.textContent = msg;
+      errEl.hidden = false;
+    }
+    if (typeof fmNotify === 'function') fmNotify(msg, 'error');
   } finally {
     btn.disabled = false;
     btn.textContent = 'AI estimate';

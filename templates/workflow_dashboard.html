@@ -56,13 +56,14 @@
 </head>
 <body>
   <div class="wf-wrap">
+    {% set module_back_url = url_for('dashboard') %}
+    {% include 'partials/module_back_link.html' %}
     <header class="wf-header">
       <h1>Workflow Dashboard</h1>
       <div class="sub">
         Welcome, <strong>{{ user_name or 'User' }}</strong> &mdash;
         {{ (user_designation or user_role or 'member')|replace('_', ' ')|title }}
       </div>
-      <a class="back" href="/dashboard">&larr; Back to main dashboard</a>
     </header>
 
     <section class="wf-grid">

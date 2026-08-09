@@ -1,9 +1,25 @@
 {# Shared <head> content for the public landing page (light theme). #}
 {# Expects: `title` (string) #}
+{% set lp_description = 'Kynvera puts inspections, service tickets, HR forms, procurement, assets and reporting behind one sign-in — with per-module access control and a full audit trail on every approval.' %}
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
 <meta name="theme-color" content="#FFF8F5">
 <title>{{ title }}</title>
+<meta name="description" content="{{ lp_description }}">
+<link rel="canonical" href="{{ url_for('index', _external=True) }}">
+
+{# Social cards #}
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Kynvera">
+<meta property="og:title" content="{{ title }}">
+<meta property="og:description" content="{{ lp_description }}">
+<meta property="og:url" content="{{ url_for('index', _external=True) }}">
+<meta property="og:image" content="{{ url_for('static', filename='images/kynvera/kynvera-mark-180.png', _external=True) }}">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="{{ title }}">
+<meta name="twitter:description" content="{{ lp_description }}">
+<meta name="twitter:image" content="{{ url_for('static', filename='images/kynvera/kynvera-mark-180.png', _external=True) }}">
+
 <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='images/kynvera/kynvera-mark-32.png') }}?v=3">
 <link rel="icon" type="image/png" sizes="48x48" href="{{ url_for('static', filename='images/kynvera/kynvera-mark-48.png') }}?v=3">
 <link rel="apple-touch-icon" href="{{ url_for('static', filename='images/kynvera/kynvera-mark-180.png') }}?v=3">
@@ -12,4 +28,4 @@
 <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Sora:wght@500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css') }}?v=8">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css') }}?v=10">

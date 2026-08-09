@@ -959,8 +959,9 @@
       font-size: .78rem; color: var(--text-muted); line-height: 1.45; margin-bottom: .85rem;
     }
     .email-send-option-actions { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
-    .email-send-option.is-send-now { border-color: #a7f3d0; background: #f0fdf4; }
-    .email-send-option.is-schedule { border-color: #bfdbfe; background: #f8fafc; }
+    .email-send-option.is-send-now { border-color: #ffcdb8; background: #fff4ef; }
+    .email-send-option.is-send-now .email-send-option-hdr { color: #c2440c; }
+    .email-send-option.is-schedule { border-color: #e4e4e7; background: #fafafa; }
     .form-textarea { min-height: 100px; resize: vertical; }
     .report-format-row .form-label { margin-bottom: .4rem; }
     .report-format-hint { font-size: .72rem; color: var(--text-muted); margin: .35rem 0 0; line-height: 1.35; }
@@ -1058,32 +1059,21 @@
       text-transform: uppercase; letter-spacing: .04em;
       border-bottom: 1px solid var(--border); flex-shrink: 0;
     }
-    .email-compose-insight-block-icon {
-      width: 1.35rem; height: 1.35rem; border-radius: 6px;
-      display: inline-flex; align-items: center; justify-content: center;
-      font-size: .72rem; flex-shrink: 0;
-    }
     .email-compose-insight-block.is-attachment .email-compose-insight-block-hdr {
-      background: #eff6ff; color: #1e40af;
-    }
-    .email-compose-insight-block.is-attachment .email-compose-insight-block-icon {
-      background: #dbeafe;
+      background: #fff4ef; color: #c2440c;
     }
     .email-compose-insight-block.is-preview .email-compose-insight-block-hdr {
-      background: #ecfdf5; color: #065f46;
-    }
-    .email-compose-insight-block.is-preview .email-compose-insight-block-icon {
-      background: #d1fae5;
+      background: #fff4ef; color: #c2440c;
     }
     .email-compose-insight-block.is-checklist .email-compose-insight-block-hdr {
-      background: #fffbeb; color: #92400e;
-    }
-    .email-compose-insight-block.is-checklist .email-compose-insight-block-icon {
-      background: #fef3c7;
+      background: #fff4ef; color: #c2440c;
     }
     .email-compose-insight-block-body {
       flex: 1 1 auto; display: flex; flex-direction: column;
       padding: .55rem .65rem; min-height: 0;
+    }
+    .email-compose-insight-block.is-checklist .email-compose-insight-block-body {
+      justify-content: flex-start;
     }
     .email-compose-insight-kv {
       display: flex; flex-direction: column; gap: 0; margin: 0; flex: 1 1 auto;
@@ -1098,30 +1088,33 @@
     .email-compose-insight-kv-row dd { margin: 0; color: var(--text); word-break: break-word; }
     .email-compose-insight-kv-row dd strong { color: var(--primary); font-weight: 700; }
     .email-compose-stat-row {
-      display: grid; grid-template-columns: repeat(3, 1fr); gap: .35rem;
-      margin-top: auto; padding-top: .45rem;
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: .4rem;
+      margin-top: auto; padding-top: .55rem;
+      border-top: 1px solid #ffe6db;
     }
     .email-compose-stat {
-      text-align: center; padding: .35rem .25rem; background: #f8fafc;
-      border: 1px solid #e2e8f0; border-radius: 6px;
+      text-align: center; padding: .45rem .3rem;
+      background: #fff4ef;
+      border: 1px solid #ffcdb8;
+      border-radius: 8px;
     }
     .email-compose-stat .n {
-      display: block; font-size: .85rem; font-weight: 700; color: var(--primary); line-height: 1.2;
+      display: block; font-size: .9rem; font-weight: 700; color: var(--primary); line-height: 1.2;
     }
     .email-compose-stat .l {
-      display: block; font-size: .62rem; color: var(--text-muted); text-transform: uppercase;
-      letter-spacing: .03em; margin-top: .1rem;
+      display: block; font-size: .62rem; color: #c2440c; text-transform: uppercase;
+      letter-spacing: .03em; margin-top: .12rem; font-weight: 600; opacity: .75;
     }
     .email-compose-insight-preview {
       flex: 1 1 auto; display: flex; flex-direction: column;
       height: 100%; min-height: 0;
       font-size: .76rem; line-height: 1.45; color: var(--text);
-      background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;
+      background: #fff4ef; border: 1px solid #ffcdb8; border-radius: 8px;
       padding: .6rem .65rem;
     }
     .email-compose-insight-preview-subj {
       font-weight: 700; margin: 0 0 .5rem; color: var(--text); line-height: 1.35;
-      font-size: .78rem; padding-bottom: .45rem; border-bottom: 1px dashed #cbd5e1;
+      font-size: .78rem; padding-bottom: .45rem; border-bottom: 1px dashed #ffcdb8;
       flex-shrink: 0;
     }
     .email-compose-insight-preview-body {
@@ -1135,7 +1128,7 @@
     .email-preview-greeting { font-weight: 600; margin-bottom: .6rem; }
     .email-preview-signoff {
       margin-top: auto; padding-top: .55rem;
-      border-top: 1px solid #e2e8f0;
+      border-top: 1px solid #ffcdb8;
     }
     .email-preview-signoff p {
       margin: 0 0 .2rem; line-height: 1.4; color: var(--text-muted);
@@ -1143,29 +1136,59 @@
     .email-preview-signoff p:last-child { margin-bottom: 0; font-weight: 600; color: var(--text); }
     .email-compose-checklist {
       list-style: none; margin: 0; padding: 0;
-      display: flex; flex-direction: column; gap: .4rem; flex: 1 1 auto;
-      justify-content: space-evenly;
+      display: flex; flex-direction: column;
+      width: 100%;
     }
     .email-compose-checklist li {
-      display: flex; align-items: flex-start; gap: .45rem;
-      font-size: .74rem; line-height: 1.35; color: var(--text);
-      padding: .4rem .5rem; border-radius: 7px; border: 1px solid transparent;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: baseline;
+      gap: .35rem .75rem;
+      font-size: .78rem; line-height: 1.4; color: var(--text);
+      padding: .55rem 0;
+      border-bottom: 1px solid #f1f5f9;
+      background: transparent;
+      border-left: none;
+      border-radius: 0;
     }
-    .email-compose-checklist li.is-ok { background: #f0fdf4; border-color: #bbf7d0; }
-    .email-compose-checklist li.is-warn { background: #fffbeb; border-color: #fde68a; }
-    .email-compose-checklist li.is-pending { background: #f9fafb; border-color: #e5e7eb; }
-    .email-compose-check-icon {
-      flex: 0 0 1.1rem; width: 1.1rem; height: 1.1rem; border-radius: 50%;
-      display: inline-flex; align-items: center; justify-content: center;
-      font-size: .6rem; font-weight: 800; margin-top: .05rem;
+    .email-compose-checklist li:last-child { border-bottom: none; }
+    .email-compose-checklist li.is-ok,
+    .email-compose-checklist li.is-warn,
+    .email-compose-checklist li.is-pending {
+      background: transparent;
+      border-color: transparent;
+      border-bottom-color: #f1f5f9;
     }
-    .email-compose-check-icon.ok { background: #22c55e; color: #fff; }
-    .email-compose-check-icon.warn { background: #f59e0b; color: #fff; }
-    .email-compose-check-icon.pending { background: #9ca3af; color: #fff; }
-    .email-compose-check-sub { display: block; font-size: .68rem; color: var(--text-muted); margin-top: .15rem; line-height: 1.25; }
+    .email-compose-checklist li:last-child.is-ok,
+    .email-compose-checklist li:last-child.is-warn,
+    .email-compose-checklist li:last-child.is-pending {
+      border-bottom: none;
+    }
+    .email-compose-check-label { min-width: 0; font-weight: 500; }
+    .email-compose-check-sub {
+      display: block; font-size: .68rem; color: var(--text-muted);
+      margin-top: .15rem; line-height: 1.25; font-weight: 400;
+    }
+    .email-compose-check-status {
+      flex-shrink: 0;
+      font-size: .72rem; font-weight: 600;
+      white-space: nowrap; line-height: 1.2;
+      padding: 0; border-radius: 0;
+      text-transform: none; letter-spacing: 0;
+      background: transparent;
+    }
+    .email-compose-checklist li.is-ok .email-compose-check-status {
+      color: var(--primary); background: transparent;
+    }
+    .email-compose-checklist li.is-warn .email-compose-check-status {
+      color: #b45309; background: transparent;
+    }
+    .email-compose-checklist li.is-pending .email-compose-check-status {
+      color: var(--text-muted); background: transparent;
+    }
     .email-compose-insight-tip {
       margin-top: .55rem; padding: .45rem .6rem; background: #fff;
-      border: 1px solid #bfdbfe; border-radius: 8px;
+      border: 1px solid #ffcdb8; border-radius: 8px;
       font-size: .72rem; line-height: 1.35; color: var(--text-muted);
     }
     .email-compose-insight-tip strong { color: var(--primary); }
@@ -1838,6 +1861,8 @@
 </div>
 
 <div class="page">
+  {% set module_back_url = module_back_url|default(url_for('dashboard')) %}
+  {% include 'partials/module_back_link.html' %}
   <!-- Alert -->
   <div id="alertBox"></div>
 
@@ -1929,13 +1954,13 @@
 
     <div class="charts-row">
       <div class="chart-card">
-        <div class="chart-label">📋 Work Orders by Client</div>
+        <div class="chart-label">Work Orders by Client</div>
         <div class="chart-wrap" style="height:260px">
           <canvas id="chartClient"></canvas>
         </div>
       </div>
       <div class="chart-card">
-        <div class="chart-label">📁 Work Orders by Contract</div>
+        <div class="chart-label">Work Orders by Contract</div>
         <div class="chart-wrap" style="height:260px">
           <canvas id="chartContract"></canvas>
         </div>
@@ -1945,19 +1970,19 @@
     <!-- Charts row 2: Service Group + Status + Priority -->
     <div class="charts-row-3">
       <div class="chart-card">
-        <div class="chart-label">🔧 By Service Group</div>
+        <div class="chart-label">By Service Group</div>
         <div class="chart-wrap" style="height:260px">
           <canvas id="chartServiceGroup"></canvas>
         </div>
       </div>
       <div class="chart-card">
-        <div class="chart-label">📊 Work Orders by Status</div>
+        <div class="chart-label">Work Orders by Status</div>
         <div class="chart-wrap" style="height:260px">
           <canvas id="chartStatus"></canvas>
         </div>
       </div>
       <div class="chart-card">
-        <div class="chart-label">⚡ Work Orders by Priority</div>
+        <div class="chart-label">Work Orders by Priority</div>
         <div class="chart-wrap" style="height:260px">
           <canvas id="chartPriority"></canvas>
         </div>
@@ -1967,19 +1992,19 @@
     <!-- Charts row 3: Chargeable pie + Chargeable table -->
     <div class="charts-row">
       <div class="chart-card">
-        <div class="chart-label">💰 Chargeable vs Non-Chargeable</div>
+        <div class="chart-label">Chargeable vs Non-Chargeable</div>
         <div class="chart-wrap" style="height:260px">
           <canvas id="chartSpace"></canvas>
         </div>
       </div>
       <div class="chart-card">
-        <div class="chart-label">📋 Chargeable Breakdown</div>
+        <div class="chart-label">Chargeable Breakdown</div>
         <div id="chargeableTable" style="overflow-x:auto;margin-top:.25rem"></div>
       </div>
     </div>
 
     <div class="card">
-      <div class="card-title">📋 Work Orders Detail</div>
+      <div class="card-title">Work Orders Detail</div>
       <div class="table-controls">
         <input class="search-box" id="searchBox" placeholder="🔍 Search work orders…"
                oninput="applyFilters()">
@@ -1995,13 +2020,13 @@
     </div>
 
     <div class="card" id="emailCard">
-      <div class="card-title">📧 Email Report</div>
+      <div class="card-title">Email Report</div>
       <div class="email-section">
         <div class="email-section-top">
         <!-- Compose -->
         <div class="email-compose-col">
           <button type="button" class="btn btn-outline btn-sm" id="btnSavedAddresses" onclick="fillSavedAddresses()" style="margin-bottom:.5rem" title="Fill or clear To and CC with saved addresses for the current report format">
-            📋 Use saved addresses
+            Use saved addresses
           </button>
           <div class="email-recipients-grid">
           <div class="form-group" style="margin-bottom:.75rem">
@@ -2052,45 +2077,45 @@
           </div>
           <div class="email-action-btns">
             <button class="btn btn-outline btn-sm" id="btnSaveToFolder" onclick="saveToFolder()" disabled title="Save current report (filtered or full) to Report folder">
-              📁 Save to Folder
+              Save to Folder
             </button>
             <button class="btn btn-outline btn-sm" id="btnSaveToDrive" onclick="saveToDrive()" disabled title="Save report to General\CAFM and CAFM\Daily Generated Report">
-              💾 Save to Drive
+              Save to Drive
             </button>
             <button class="btn btn-outline btn-sm" onclick="saveEmailConfig()">
-              💾 Save Config
+              Save Config
             </button>
             <button type="button" class="btn btn-outline btn-sm" id="btnSaveEmailDetails" onclick="saveEmailDetailsOnly()"
               title="Save To, CC, subject, body and report format (Daily/Monthly/Custom) to the server (scheduled sends use the last saved values).">
-              💾 Save email details
+              Save email details
             </button>
             <button type="button" class="btn btn-outline btn-sm" id="btnEmailDownloadExcel" onclick="handleDownloadClick()" disabled title="Download Excel (same as top KPI; filename follows Daily/Monthly after Save Config)">
-              📥 Download Excel
+              Download Excel
             </button>
             <button type="button" class="btn btn-outline btn-sm hidden" id="btnEmailDownloadMonthlyZip" onclick="downloadReportMonthly()" disabled title="ZIP with one workbook per calendar month">
-              📥 Monthly Excel (ZIP)
+              Monthly Excel (ZIP)
             </button>
           </div>
         </div>
 
         <!-- Send options: now vs schedule -->
         <div id="emailSendOptions" class="email-send-col">
-          <div class="card-title" style="margin-bottom:.65rem">📤 Send options</div>
+          <div class="card-title" style="margin-bottom:.65rem">Send options</div>
 
           <div class="email-send-option is-send-now" style="margin-bottom:.75rem">
-            <div class="email-send-option-hdr">✉️ Send email now</div>
+            <div class="email-send-option-hdr">Send email now</div>
             <p class="email-send-option-hint" style="margin-bottom:.65rem">
               Sends immediately with the report on your dashboard. Does not change the daily schedule.
             </p>
             <div class="email-send-option-actions">
-              <button class="btn btn-success" id="btnSendEmail" onclick="sendEmailNow()">
+              <button class="btn btn-primary" id="btnSendEmail" onclick="sendEmailNow()">
                 Send Email Now
               </button>
             </div>
           </div>
 
           <div class="email-send-option is-schedule" style="margin-bottom:0">
-            <div class="email-send-option-hdr">⏰ Send on schedule</div>
+            <div class="email-send-option-hdr">Send on schedule</div>
             <p class="email-send-option-hint" style="margin-bottom:.65rem">
               Sends daily at the time below using the last uploaded CAFM Excel. Approve the cycle in the roadmap before the run.
             </p>
@@ -2112,10 +2137,10 @@
           </div>
           <div style="margin-top:.75rem;display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
             <button class="btn btn-primary btn-sm" onclick="saveSchedule()">
-              ✔ Save Schedule
+              Save Schedule
             </button>
             <button type="button" id="btnStopAutoCard" class="btn btn-danger btn-sm hidden" onclick="stopAutomation()" title="Disable the schedule and stop all automated sending">
-              🛑 Stop Automation
+              Stop Automation
             </button>
             <span id="scheduleStatus" style="font-size:.83rem;color:var(--text-muted)"></span>
           </div>
@@ -2150,7 +2175,7 @@
         </div><!-- /.email-section-top -->
 
         <div class="email-compose-insight" id="emailComposeInsight" aria-live="polite">
-          <div class="email-compose-insight-hdr">📋 Report &amp; email preview</div>
+          <div class="email-compose-insight-hdr">Report &amp; email preview</div>
           <div id="emailComposeInsightBody">
             <p style="font-size:.78rem;color:var(--text-muted);margin:0">Upload a workbook to see attachment details and a live preview of your email.</p>
           </div>
@@ -2248,6 +2273,51 @@
 // State
 // ════════════════════════════════════════════════════════════════
 let allRows = [];
+/** Contracts that must appear as their own Client (mirrors server `_remap_standalone_project_clients`). */
+const MMR_STANDALONE_CONTRACT_CLIENTS = [
+  { pattern: /c1\s*tower/i, client: 'C1 Tower - TFM' },
+];
+function mmrStandaloneClientForContract(contract) {
+  const c = String(contract || '');
+  for (const rule of MMR_STANDALONE_CONTRACT_CLIENTS) {
+    if (rule.pattern.test(c)) return rule.client;
+  }
+  return null;
+}
+function mmrRemapStandaloneClients(rows) {
+  if (!Array.isArray(rows)) return [];
+  return rows.map((r) => {
+    const standalone = mmrStandaloneClientForContract(r['Contract']);
+    if (standalone) return { ...r, Client: standalone };
+    return r;
+  });
+}
+/** After remap: keep dashboard filter/chart client lists aligned with allRows. */
+function mmrSyncDashboardClientsFromRows() {
+  if (!dashboardData || !Array.isArray(allRows) || !allRows.length) return;
+  const clients = [...new Set(allRows.map((r) => (r['Client'] || '').trim()).filter(Boolean))].sort();
+  const contracts = [...new Set(allRows.map((r) => (r['Contract'] || '').trim()).filter(Boolean))].sort();
+  const byClient = {};
+  allRows.forEach((r) => {
+    const k = (r['Client'] || '').trim();
+    if (!k) return;
+    byClient[k] = (byClient[k] || 0) + 1;
+  });
+  dashboardData.filters = dashboardData.filters || {};
+  dashboardData.filters.clients = clients;
+  dashboardData.filters.contracts = contracts;
+  dashboardData.by_client = byClient;
+}
+function mmrEnsureSelectOption(sel, value) {
+  if (!sel || !value) return;
+  const exists = [...sel.options].some((o) => o.value === value);
+  if (!exists) {
+    const opt = document.createElement('option');
+    opt.value = value;
+    opt.textContent = value;
+    sel.appendChild(opt);
+  }
+}
 let filteredRows = [];
 let currentPage = 1;
 const PAGE_SIZE = 20;
@@ -2258,11 +2328,29 @@ const COLS = ['WorkOrder No','Reported Date','Priority','Work Description',
               'Client','Reported By','Service Group','Assigned Date',
               'Work Start Date','Closed By','Status','Contract','BaseUnit','Space'];
 
-const CHART_COLORS = [
-  '#ff8e68','#f97e54','#2E7D32','#388E3C','#43A047',
-  '#4CAF50','#66BB6A','#81C784','#A5D6A7','#C8E6C9',
-  '#33691E','#558B2F','#689F38','#7CB342','#8BC34A',
+/** Stepped coral (Kynvera brand) — high contrast between adjacent shades. */
+const CHART_CORAL = [
+  '#c2440c', '#e05f36', '#f97e54', '#ff8e68',
+  '#ff9a78', '#ffb090', '#ffcdb8', '#ffe6db',
 ];
+/** Secondary pie/donut segment — deep Kynvera coral (not green). */
+const CHART_CORAL_SECONDARY = '#c2440c';
+
+function mmrBarColors(count) {
+  if (count <= 0) return [];
+  return Array.from({ length: count }, (_, i) => CHART_CORAL[i % CHART_CORAL.length]);
+}
+
+/** Pie/donut: brand coral + deep coral, then remaining stepped shades. */
+function mmrPieColors(count) {
+  if (count <= 0) return [];
+  if (count === 1) return [CHART_CORAL[3]];
+  const colors = [CHART_CORAL[3], CHART_CORAL_SECONDARY];
+  for (let i = 2; i < count; i++) {
+    colors.push(CHART_CORAL[(i + 1) % CHART_CORAL.length]);
+  }
+  return colors;
+}
 
 let charts = {};
 let dashboardData = null;
@@ -2374,7 +2462,7 @@ async function uploadFile(file) {
     if (!resp.ok) throw new Error(data.error || 'Upload failed');
     mmrHasLiveUpload = true;
     mmrActiveFolderReportFilename = null;
-    allRows = data.rows;
+    allRows = mmrRemapStandaloneClients(data.rows);
     dashboardData = data.dashboard;
     document.getElementById('dashboardSection').classList.remove('hidden');
     renderDashboard(dashboardData);
@@ -2401,6 +2489,7 @@ async function uploadFile(file) {
 // Dashboard render
 // ════════════════════════════════════════════════════════════════
 function renderDashboard(d) {
+  mmrSyncDashboardClientsFromRows();
   renderKPIs(d);
   populateFilters(d.filters);
   renderAllCharts(d);
@@ -2483,21 +2572,32 @@ function updateContractOptions() {
   contractSel.value = list.includes(prevContract) ? prevContract : '';
 }
 
-/** When Contract changes: if Client=All and a contract is selected, auto-select the client that owns it. */
+/** When Contract changes: if Client=All and a contract is selected, auto-select the client that owns it.
+ *  Standalone contracts (C1 Tower-TFM) always force Client = "C1 Tower - TFM". */
 function updateClientFromContract() {
   const clientSel = document.getElementById('fClient');
   const contractSel = document.getElementById('fContract');
   if (!clientSel || !contractSel) return;
-  if ((clientSel.value || '') !== '' || !contractSel.value) return;
-  const contract = contractSel.value.trim();
-  for (const r of allRows) {
-    if ((r['Contract'] || '').trim() === contract) {
-      const clientName = (r['Client'] || '').trim();
-      if (clientName) {
-        clientSel.value = clientName;
-        break;
+  const contract = (contractSel.value || '').trim();
+  if (!contract) return;
+
+  const standalone = mmrStandaloneClientForContract(contract);
+  let clientName = standalone || '';
+  if (!clientName) {
+    if ((clientSel.value || '') !== '') return;
+    for (const r of allRows) {
+      if ((r['Contract'] || '').trim() === contract) {
+        clientName = (r['Client'] || '').trim();
+        if (clientName) break;
       }
     }
+  }
+  if (!clientName) return;
+  // Standalone: always set. Otherwise only when Client is All.
+  if (standalone || (clientSel.value || '') === '') {
+    mmrEnsureSelectOption(clientSel, clientName);
+    clientSel.value = clientName;
+    updateContractOptions();
   }
 }
 
@@ -2542,7 +2642,7 @@ function renderBarChart(id, dataObj, direction = 'vertical') {
     type: 'bar',
     data: {
       labels,
-      datasets: [{ data: values, backgroundColor: CHART_COLORS.slice(0, labels.length),
+      datasets: [{ data: values, backgroundColor: mmrBarColors(labels.length),
                    borderRadius: 5, borderSkipped: false }],
     },
     options: {
@@ -2568,7 +2668,7 @@ function renderPieChart(id, dataObj, isDoughnut = false) {
     type: isDoughnut ? 'doughnut' : 'pie',
     data: {
       labels,
-      datasets: [{ data: values, backgroundColor: CHART_COLORS.slice(0, labels.length),
+      datasets: [{ data: values, backgroundColor: mmrPieColors(labels.length),
                    hoverOffset: 8 }],
     },
     options: {
@@ -2597,13 +2697,14 @@ function renderChargeableTable(dataObj) {
 
   const bodyRows = rows.map(([k, v], i) => {
     const bg = i % 2 ? 'background:#f9fafb;' : '';
+    const accent = i === 0 ? 'var(--primary)' : (i === 1 ? CHART_CORAL_SECONDARY : CHART_CORAL[Math.min(i, CHART_CORAL.length - 1)]);
     return `<tr style="${bg}">
       <td style="${tdStyle}">${escHtml(k)}</td>
-      <td style="${tdNum}font-weight:600;color:var(--primary);">${v}</td>
+      <td style="${tdNum}font-weight:600;color:${accent};">${v}</td>
       <td style="${tdNum}">
         <div style="display:flex;align-items:center;gap:.4rem">
           <div style="flex:1;background:#e5e7eb;border-radius:4px;height:6px;overflow:hidden">
-            <div style="width:${pct(v)};background:var(--primary);height:6px;border-radius:4px"></div>
+            <div style="width:${pct(v)};background:${accent};height:6px;border-radius:4px"></div>
           </div>
           <span style="white-space:nowrap;min-width:36px">${pct(v)}</span>
         </div>
@@ -2622,7 +2723,7 @@ function renderChargeableTable(dataObj) {
       </thead>
       <tbody>
         ${bodyRows}
-        <tr style="background:#f0fdf4;">
+        <tr style="background:#fff4ef;">
           <td style="${tdStyle}font-weight:700;">Total</td>
           <td style="${tdNum}font-weight:700;color:var(--primary);">${total}</td>
           <td style="${tdNum}font-weight:700;">100%</td>
@@ -3020,10 +3121,9 @@ function mmrEmailReportSourceShort() {
 }
 
 function mmrEmailComposeCheckItem(state, label, sub) {
-  const cls = state === 'ok' ? 'ok' : (state === 'warn' ? 'warn' : 'pending');
-  const icon = state === 'ok' ? '✓' : (state === 'warn' ? '!' : '○');
   const liCls = state === 'ok' ? 'is-ok' : (state === 'warn' ? 'is-warn' : 'is-pending');
-  return `<li class="${liCls}"><span class="email-compose-check-icon ${cls}" aria-hidden="true">${icon}</span><span>${label}${sub ? `<span class="email-compose-check-sub">${sub}</span>` : ''}</span></li>`;
+  const status = state === 'ok' ? 'Ready' : (state === 'warn' ? 'Review' : 'Needed');
+  return `<li class="${liCls}"><span class="email-compose-check-label">${label}${sub ? `<span class="email-compose-check-sub">${sub}</span>` : ''}</span><span class="email-compose-check-status">${status}</span></li>`;
 }
 
 function mmrEmailInsightKvRow(label, valueHtml) {
@@ -3153,7 +3253,6 @@ function updateEmailComposeInsight() {
     `<div class="email-compose-insight-grid">
       <div class="email-compose-insight-block is-attachment">
         <div class="email-compose-insight-block-hdr">
-          <span class="email-compose-insight-block-icon" aria-hidden="true">📎</span>
           <span>Attachment</span>
         </div>
         <div class="email-compose-insight-block-body">
@@ -3173,7 +3272,6 @@ function updateEmailComposeInsight() {
       </div>
       <div class="email-compose-insight-block is-preview">
         <div class="email-compose-insight-block-hdr">
-          <span class="email-compose-insight-block-icon" aria-hidden="true">✉️</span>
           <span>Live preview</span>
         </div>
         <div class="email-compose-insight-block-body">
@@ -3185,7 +3283,6 @@ function updateEmailComposeInsight() {
       </div>
       <div class="email-compose-insight-block is-checklist">
         <div class="email-compose-insight-block-hdr">
-          <span class="email-compose-insight-block-icon" aria-hidden="true">✅</span>
           <span>Before you send</span>
         </div>
         <div class="email-compose-insight-block-body">
@@ -3464,7 +3561,7 @@ function mmrRefreshSavedAddressesButtonState() {
     mmrNormalizeEmailListField(toEl.value) === mmrNormalizeEmailListField(expected.to) &&
     mmrNormalizeEmailListField(ccEl.value) === mmrNormalizeEmailListField(expected.cc);
   btn.setAttribute('data-filled', filled ? 'true' : 'false');
-  btn.textContent = filled ? '✕ Clear saved addresses' : '📋 Use saved addresses';
+  btn.textContent = filled ? 'Clear saved addresses' : 'Use saved addresses';
 }
 
 function mmrEmailConfigPayload(extra) {
@@ -3513,18 +3610,18 @@ function refreshMmrEmailDetailsSavedState() {
   const btn = document.getElementById('btnSaveEmailDetails');
   if (btn) {
     if (mmrPersistedEmailComposeFingerprint === null) {
-      btn.textContent = '💾 Save email details';
+      btn.textContent = 'Save email details';
       btn.classList.remove('btn-mmr-email-saved');
       btn.title = 'Save To, CC, subject, body and report format to the server.';
     } else {
       const cur = mmrComposeFingerprintFromSnapshot(mmrGetComposeSnapshot());
       const dirty = cur !== mmrPersistedEmailComposeFingerprint;
       if (dirty) {
-        btn.textContent = '💾 Save email details';
+        btn.textContent = 'Save email details';
         btn.classList.remove('btn-mmr-email-saved');
         btn.title = 'Unsaved changes — save so future visits and scheduled emails use these addresses and wording.';
       } else {
-        btn.textContent = '✓ Email details saved';
+        btn.textContent = 'Email details saved';
         btn.classList.add('btn-mmr-email-saved');
         btn.title = 'Matches what is saved on the server.';
       }
@@ -4087,14 +4184,14 @@ function fillSavedAddresses() {
     toEl.value = '';
     ccEl.value = '';
     btn.setAttribute('data-filled', 'false');
-    btn.textContent = '📋 Use saved addresses';
+    btn.textContent = 'Use saved addresses';
     toast('To and CC cleared', 'info');
   } else {
     const saved = mmrSavedAddressesForCurrentFormat();
     toEl.value = saved.to;
     ccEl.value = saved.cc;
     btn.setAttribute('data-filled', 'true');
-    btn.textContent = '✕ Clear saved addresses';
+    btn.textContent = 'Clear saved addresses';
     toast('To and CC filled with saved addresses', 'info');
   }
   validateEmailField(toEl);
@@ -4223,7 +4320,7 @@ function updateScheduleStatus(cfg) {
   if (cfg.schedule_enabled) {
     const h = String(cfg.schedule_hour   ?? 10).padStart(2, '0');
     const m = String(cfg.schedule_minute ??  0).padStart(2, '0');
-    el.textContent = `✅ Active – daily at ${h}:${m}`;
+    el.textContent = `Active – daily at ${h}:${m}`;
     el.style.color = 'var(--success)';
   } else {
     el.textContent = 'Disabled';
@@ -4489,7 +4586,7 @@ async function stopAutomation() {
   const navBtn  = document.getElementById('btnStopAuto');
   const cardBtn = document.getElementById('btnStopAutoCard');
   if (navBtn)  { navBtn.disabled = true;  navBtn.textContent  = 'Stopping…'; }
-  if (cardBtn) { cardBtn.disabled = true; cardBtn.textContent = '🛑 Stopping…'; }
+  if (cardBtn) { cardBtn.disabled = true; cardBtn.textContent = 'Stopping…'; }
   try {
     const resp = await authFetch('/admin/mmr/api/email-config', {
       method: 'POST',
@@ -4510,7 +4607,7 @@ async function stopAutomation() {
     toast('Request failed', 'error');
   } finally {
     if (navBtn)  { navBtn.disabled = false;  navBtn.textContent  = '🛑 Stop'; }
-    if (cardBtn) { cardBtn.disabled = false; cardBtn.textContent = '🛑 Stop Automation'; }
+    if (cardBtn) { cardBtn.disabled = false; cardBtn.textContent = 'Stop Automation'; }
   }
 }
 
@@ -4673,7 +4770,7 @@ async function restoreDashboardFromServerIfNeeded() {
     }
     mmrHasLiveUpload = true;
     mmrActiveFolderReportFilename = null;
-    allRows = data.rows;
+    allRows = mmrRemapStandaloneClients(data.rows);
     dashboardData = data.dashboard;
     document.getElementById('dashboardSection').classList.remove('hidden');
     renderDashboard(dashboardData);
@@ -4719,7 +4816,7 @@ async function saveToFolder() {
     toast('Failed to save', 'error');
   } finally {
     btn.disabled = false;
-    btn.textContent = '📁 Save to Folder';
+    btn.textContent = 'Save to Folder';
   }
 }
 
@@ -4741,26 +4838,26 @@ async function saveToDrive() {
     });
     const data = await resp.json();
     if (resp.ok && data.success) {
-      btn.textContent = '✓ Saved';
+      btn.textContent = 'Saved';
       const msg = data.saved_locally
-        ? `✓ Saved locally (network drive unavailable): ${data.filename || 'report'}. Check Saved Report folder.`
+        ? `Saved locally (network drive unavailable): ${data.filename || 'report'}. Check Saved Report folder.`
         : data.saved_to_both
-        ? `✓ Saved to both network locations: ${data.filename || 'report'}`
-        : `✓ File saved: ${data.filename || 'report'}`;
+        ? `Saved to both network locations: ${data.filename || 'report'}`
+        : `File saved: ${data.filename || 'report'}`;
       toast(msg, 'success');
       setTimeout(() => {
-        btn.textContent = '💾 Save to Drive';
+        btn.textContent = 'Save to Drive';
         btn.disabled = false;
       }, 1500);
     } else {
       toast(data.error || 'Failed to save to drive', 'error');
       btn.disabled = false;
-      btn.textContent = '💾 Save to Drive';
+      btn.textContent = 'Save to Drive';
     }
   } catch (e) {
     toast('Failed to save to drive', 'error');
     btn.disabled = false;
-    btn.textContent = '💾 Save to Drive';
+    btn.textContent = 'Save to Drive';
   }
 }
 
@@ -4837,7 +4934,7 @@ async function openReportAndRestoreFilters(btn) {
 
     mmrHasLiveUpload = false;
     mmrActiveFolderReportFilename = filename;
-    allRows = data.rows;
+    allRows = mmrRemapStandaloneClients(data.rows);
     dashboardData = data.dashboard;
     destroyCharts();
     document.getElementById('dashboardSection').classList.remove('hidden');
@@ -5479,7 +5576,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       mmrHasLiveUpload = false;
       mmrActiveFolderReportFilename = filename;
-      allRows = data.rows;
+      allRows = mmrRemapStandaloneClients(data.rows);
       dashboardData = data.dashboard;
       document.getElementById('dashboardSection').classList.remove('hidden');
       renderDashboard(dashboardData);

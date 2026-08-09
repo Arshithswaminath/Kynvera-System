@@ -38,12 +38,9 @@
   <header class="hero hero-split qhsi-hero">
     <div class="hero-content hero-split-inner">
       <div class="hero-left">
-        <a href="/dashboard" class="back-btn">
-          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-          </svg>
-          Back to Dashboard
-        </a>
+        {% set module_back_url = url_for('dashboard') %}
+        {% set module_back_extra_class = 'back-btn' %}
+        {% include 'partials/module_back_link.html' %}
         <h1 class="hero-title">Quality, <span class="hero-title-accent">Health &amp; Safety</span></h1>
         <p class="hero-subtitle">Staff compliance, training bookings, and unified site inspections — one module for your quality team across every project.</p>
       </div>
@@ -134,12 +131,7 @@
     </div>
   </section>
 
-  <footer class="footer">
-    <div class="footer-inner">
-      <div class="footer-brand">Kynvera</div>
-      <p class="footer-copy">© {{ now().year }} Kynvera / built by <span class="footer-built-by-name">Arshith Swaminath P</span></p>
-    </div>
-  </footer>
+  {% include 'partials/module_app_footer.html' %}
 
   <script src="{{ url_for('static', filename='js/qhsi-import.js') }}?v=1"></script>
   <script>

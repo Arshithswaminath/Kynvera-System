@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+  <meta name="theme-color" content="#ff8e68">
+  <title>Sick Leave Trends · Leave Tracker</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/kynvera/kynvera-mark-32.png') }}?v=3">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-hiring.css') }}?v=82">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-leave-tracker.css') }}?v=12">
+  {% set active_page = 'hr' %}
+</head>
+<body class="hh-page lt-page">
+  {% include 'partials/hr_embed_optional_navbar.html' %}
+
+  <div class="hh-shell" id="ltAnalyticsRoot" data-analytics="sick-trends">
+    {% include 'partials/hr_hiring_sidebar.html' %}
+
+    <main class="hh-main">
+      <div class="hh-topbar">
+        <div>
+          {% set module_back_url = url_for('hr.leave_tracker_dashboard') %}
+          {% include 'partials/module_back_link.html' %}
+          <h1 class="hh-title">Sick Leave Trends</h1>
+          <p class="hh-subtitle">Analyst board — ranked by sick applications and days · Aug–Dec 2026</p>
+        </div>
+      </div>
+
+      <div class="lt-summary lt-summary-compact">
+        <div class="lt-stat">
+          <span class="lt-stat-val" id="ltAnCount">—</span>
+          <span class="lt-stat-label">Staff with sick leave</span>
+        </div>
+        <div class="lt-stat lt-stat-warn">
+          <span class="lt-stat-val" id="ltAnRising">—</span>
+          <span class="lt-stat-label" id="ltAnRisingLabel">Rising vs prior avg</span>
+        </div>
+      </div>
+
+      <div class="hh-toolbar lt-toolbar">
+        <select id="ltAnCompany" class="hh-select" aria-label="Company filter">
+          <option value="all">All companies</option>
+          <option value="INJAAZ">INJAAZ</option>
+          <option value="Tourism">Tourism</option>
+          <option value="L&P">L&amp;P</option>
+        </select>
+        <select id="ltAnMonth" class="hh-select lt-filter-compact" aria-label="Month filter">
+          <option value="">All months</option>
+          <option value="8">August</option>
+          <option value="9">September</option>
+          <option value="10">October</option>
+          <option value="11">November</option>
+          <option value="12">December</option>
+        </select>
+        <input type="date" id="ltAnDateFrom" class="hh-select lt-filter-date" aria-label="From date" min="2026-08-01" max="2026-12-31" title="From date">
+        <input type="date" id="ltAnDateTo" class="hh-select lt-filter-date" aria-label="To date" min="2026-08-01" max="2026-12-31" title="To date">
+        <a href="/hr/leave-tracker" class="hh-btn hh-btn-secondary hh-btn-sm">Back to tracker</a>
+        <a href="/hr/leave-tracker/repeat-sick" class="hh-btn hh-btn-secondary hh-btn-sm">Repeat Sick</a>
+      </div>
+
+      <p class="lt-hint">Sorted by sick applications, then total days. <strong>Rising</strong> means this month’s sick days exceed the average of earlier months in the window.</p>
+
+      <div class="lt-table-wrap">
+        <table class="lt-table" id="ltAnTable">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Emp ID</th>
+              <th>Name</th>
+              <th>Company</th>
+              <th>Apps</th>
+              <th>Days</th>
+              <th>Aug</th>
+              <th>Sep</th>
+              <th>Oct</th>
+              <th>Nov</th>
+              <th>Dec</th>
+              <th>Trend</th>
+            </tr>
+          </thead>
+          <tbody id="ltAnBody">
+            <tr><td colspan="12" class="lt-empty">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/injaaz-uae-datetime.js') }}"></script>
+  <script src="{{ url_for('static', filename='api-client.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/hr-leave-analytics.js') }}?v=2"></script>
+</body>
+</html>

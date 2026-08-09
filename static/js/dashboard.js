@@ -422,7 +422,7 @@ function updateModuleVisibility(user) {
   
   const isAdmin = isAppAdmin(user);
   
-  // Check Inspection Form access (HVAC, Civil, or Cleaning)
+  // Check Inspection Form access
   const inspectionCard = document.getElementById('module-inspection');
   if (inspectionCard) {
     const hasInspectionAccess = isAdmin || accessFlagOn(user, 'access_hvac') || accessFlagOn(user, 'access_civil') || accessFlagOn(user, 'access_cleaning');
@@ -454,6 +454,13 @@ function updateModuleVisibility(user) {
     const showBdEmail = userHasBdEmailAccess(user);
     bdEmailCard.style.display = showBdEmail ? 'block' : 'none';
     bdEmailCard.style.visibility = showBdEmail ? 'visible' : 'hidden';
+  }
+
+  // Check Administration module access (admin only)
+  const adminCard = document.getElementById('module-admin');
+  if (adminCard) {
+    adminCard.style.display = isAdmin ? 'block' : 'none';
+    adminCard.style.visibility = isAdmin ? 'visible' : 'hidden';
   }
 
   // Check Device Management access (admin only)
@@ -909,7 +916,7 @@ function displayProfileData(user) {
 
   const getModuleAccess = () => {
     const modules = [];
-    if (isAppAdmin(user) || user.access_hvac) modules.push('HVAC & MEP');
+    if (isAppAdmin(user) || user.access_hvac || user.access_civil || user.access_cleaning) modules.push('Inspection');
     if (isAppAdmin(user) || user.access_civil) modules.push('Civil Works');
     if (isAppAdmin(user) || user.access_cleaning) modules.push('Cleaning');
     if (userHasHrNavAccess(user)) modules.push('HR');
@@ -983,7 +990,7 @@ const PROFILE_ICONS = {
 function getProfileCardHTML(user, getInitials, getDesignationDisplay, getRoleDisplay, getModuleAccess, formatDate) {
   const I = PROFILE_ICONS;
   const modules = [];
-  if (isAppAdmin(user) || user.access_hvac) modules.push({ name: 'HVAC & MEP', desc: 'Mechanical, electrical & plumbing', icon: 'hvac', color: '#3b82f6', bg: '#eff6ff' });
+  if (isAppAdmin(user) || user.access_hvac || user.access_civil || user.access_cleaning) modules.push({ name: 'Inspection', desc: 'Site inspection forms', icon: 'hvac', color: '#3b82f6', bg: '#eff6ff' });
   if (isAppAdmin(user) || user.access_civil) modules.push({ name: 'Civil Works', desc: 'Construction & site management', icon: 'civil', color: '#8b5cf6', bg: '#f5f3ff' });
   if (isAppAdmin(user) || user.access_cleaning) modules.push({ name: 'Cleaning', desc: 'Facility hygiene & maintenance', icon: 'cleaning', color: '#10b981', bg: '#ecfdf5' });
   if (userHasHrNavAccess(user)) modules.push({ name: 'HR', desc: 'People & workforce management', icon: 'hr_mod', color: '#f59e0b', bg: '#fffbeb' });
@@ -3475,6 +3482,18 @@ document.addEventListener('DOMContentLoaded', function() {
   const mobileMenuDrawerList = document.getElementById('mobileMenuDrawerList');
   const mobileOverlay = document.getElementById('mobileOverlay');
 
+  // Shell pages nest drawer inside .tkt-dh-app-root; reparent to <body> so
+  // page blur cannot paint through the open menu.
+  function ensureMobileMenuOnBody() {
+    if (mobileOverlay && mobileOverlay.parentElement !== document.body) {
+      document.body.appendChild(mobileOverlay);
+    }
+    if (mobileMenuDrawer && mobileMenuDrawer.parentElement !== document.body) {
+      document.body.appendChild(mobileMenuDrawer);
+    }
+  }
+  ensureMobileMenuOnBody();
+
   function closeMobileMenu() {
     if (mobileMenuToggle) {
       mobileMenuToggle.classList.remove('active');
@@ -3503,6 +3522,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function openMobileMenu() {
+    ensureMobileMenuOnBody();
     populateDrawer();
     if (mobileMenuToggle) {
       mobileMenuToggle.classList.add('active');

@@ -6,15 +6,13 @@ import sqlite3
 from datetime import date
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from module_hvac_mep.hvac_generators import (
+from module_inspection.inspection_generators import (
     create_pdf_report as create_hvac_pdf,
     create_excel_report as create_hvac_excel,
 )
-from module_civil.civil_generators import (
     create_pdf_report as create_civil_pdf,
     create_excel_report as create_civil_excel,
 )
-from module_cleaning.cleaning_generators import (
     create_pdf_report as create_cleaning_pdf,
     create_excel_report as create_cleaning_excel,
 )

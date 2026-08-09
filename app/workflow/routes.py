@@ -464,50 +464,10 @@ def get_module_functions(module_type):
     Get module-specific functions for signature handling and job processing.
     Returns (save_signature_dataurl, get_paths, process_job) functions.
     """
-    if module_type == 'hvac_mep':
-        from module_hvac_mep.routes import save_signature_dataurl, get_paths, process_job
+    # Unified inspection (+ legacy trade types) share one implementation
+    if module_type in ('inspection', 'hvac_mep', 'hvac', 'civil', 'cleaning'):
+        from module_inspection.routes import save_signature_dataurl, get_paths, process_job
         return save_signature_dataurl, get_paths, process_job
-    elif module_type == 'civil':
-        from module_civil.routes import save_signature_dataurl, process_job
-        # Civil uses app_paths() instead of get_paths(), create a wrapper
-        def get_paths_civil():
-            from module_civil.routes import app_paths
-            return app_paths()
-        return save_signature_dataurl, get_paths_civil, process_job
-    elif module_type == 'cleaning':
-        # Cleaning doesn't have these functions yet, use common utilities
-        from common.utils import upload_base64_to_cloud
-        import os
-        from config import GENERATED_DIR, UPLOADS_DIR, JOBS_DIR
-        from concurrent.futures import ThreadPoolExecutor
-        
-        def save_signature_dataurl_cleaning(dataurl, uploads_dir, prefix="signature"):
-            """Save signature for cleaning module"""
-            if not dataurl:
-                return None, None, None
-            try:
-                url, is_cloud = upload_base64_to_cloud(dataurl, folder="signatures", prefix=prefix, uploads_dir=uploads_dir)
-                if url:
-                    if is_cloud:
-                        return None, None, url
-                    else:
-                        filename = url.split('/')[-1]
-                        file_path = os.path.join(GENERATED_DIR, "uploads", "signatures", filename)
-                        return filename, file_path, url
-                raise Exception("Upload succeeded but no URL returned")
-            except Exception as e:
-                current_app.logger.error(f"Signature upload failed: {e}")
-                raise
-        
-        def get_paths_cleaning():
-            """Get paths for cleaning module"""
-            executor = current_app.config.get('EXECUTOR') if current_app else None
-            if not executor:
-                executor = ThreadPoolExecutor(max_workers=2)
-            return GENERATED_DIR, UPLOADS_DIR, JOBS_DIR, executor
-        
-        from module_cleaning.routes import process_job
-        return save_signature_dataurl_cleaning, get_paths_cleaning, process_job
     elif module_type == 'qhsi_inspection':
         from module_qhsi.routes import save_signature_dataurl, get_paths, process_job
         return save_signature_dataurl, get_paths, process_job
@@ -900,7 +860,7 @@ def get_pending_submissions():
         return error_response('Failed to get pending submissions', status_code=500, error_code='DATABASE_ERROR')
 
 
-INSPECTION_MODULE_TYPES = ('hvac_mep', 'civil', 'cleaning', 'qhsi_inspection', 'qhsi_staff_compliance')
+INSPECTION_MODULE_TYPES = ('inspection', 'hvac_mep', 'civil', 'cleaning', 'qhsi_inspection', 'qhsi_staff_compliance')
 INSPECTION_HISTORY_DESIGNATIONS = (
     'supervisor',
     'operations_manager',
@@ -1979,10 +1939,11 @@ def get_my_submissions():
             list_scope = 'mixed' if (include_hr and include_inspection) else ('hr' if include_hr else 'inspection')
 
         inspections_map = {
-            'hvac': 'HVAC & MEP',
-            'hvac_mep': 'HVAC & MEP',
-            'civil': 'Civil Works',
-            'cleaning': 'Cleaning Services',
+            'hvac': 'Inspection',
+            'inspection': 'Inspection',
+            'hvac_mep': 'Inspection',
+            'civil': 'Inspection',
+            'cleaning': 'Inspection',
             'qhsi_inspection': 'QHSA Site Inspection',
             'qhsi_staff_compliance': 'Staff Compliance (QHSI)',
         }

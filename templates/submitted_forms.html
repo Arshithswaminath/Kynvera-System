@@ -593,10 +593,9 @@
   <div class="container-custom">
     <div class="page-header">
       <div class="page-header-top">
-        <a href="/dashboard" class="back-link">
-          <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
-          Back to Dashboard
-        </a>
+        {% set module_back_url = url_for('dashboard') %}
+        {% set module_back_extra_class = 'back-link' %}
+        {% include 'partials/module_back_link.html' %}
       </div>
       <h1>My Submitted Forms</h1>
       <p>View, edit, and resubmit your HR and inspection forms</p>
@@ -752,13 +751,10 @@
     
     function inspectionModuleSlug(moduleType) {
       const m = (moduleType || '').trim();
-      const moduleMap = {
-        'hvac': 'hvac-mep',
-        'hvac_mep': 'hvac-mep',
-        'civil': 'civil',
-        'cleaning': 'cleaning'
-      };
-      return moduleMap[m] || m;
+      if (['inspection', 'hvac', 'hvac_mep', 'civil', 'cleaning'].includes(m)) {
+        return 'inspection';
+      }
+      return m;
     }
 
     // Base path for "edit/view this submission" links (HR uses /hr/... routes, not /{slug}/form)

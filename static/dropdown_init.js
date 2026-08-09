@@ -1,14 +1,28 @@
 // static/dropdown_init.js
-// Populates item selects using server endpoint /hvac-mep/dropdowns when needed.
-// It exposes window.DROPDOWN_DATA and dispatches a `dropdowns:loaded` event once ready.
+// Populates inspection item selects from /inspection/dropdowns.
+// Exposes window.DROPDOWN_DATA and dispatches `dropdowns:loaded` once ready.
 
 (function () {
+  function authHeaders() {
+    var h = { Accept: 'application/json' };
+    try {
+      var token =
+        localStorage.getItem('access_token') || localStorage.getItem('token');
+      if (token) h.Authorization = 'Bearer ' + token;
+    } catch (_) {}
+    return h;
+  }
+
   async function fetchDropdownData() {
-    if (typeof DROPDOWN_DATA !== 'undefined' && DROPDOWN_DATA) {
-      return DROPDOWN_DATA;
+    if (typeof window.DROPDOWN_DATA === 'object' && window.DROPDOWN_DATA && Object.keys(window.DROPDOWN_DATA).length) {
+      return window.DROPDOWN_DATA;
     }
     try {
-      const res = await fetch(window.location.origin + '/hvac-mep/dropdowns', { cache: 'no-store' });
+      var res = await fetch(window.location.origin + '/inspection/dropdowns', {
+        cache: 'no-store',
+        credentials: 'same-origin',
+        headers: authHeaders(),
+      });
       if (!res.ok) throw new Error('Failed to load dropdowns: ' + res.status);
       return await res.json();
     } catch (err) {
@@ -17,49 +31,20 @@
     }
   }
 
-  function clearSelect(selectEl, placeholder = '-- Select --') {
-    selectEl.innerHTML = '';
-    const opt = document.createElement('option');
-    opt.value = '';
-    opt.textContent = placeholder;
-    selectEl.appendChild(opt);
-    selectEl.value = '';
-    selectEl.disabled = true;
-  }
-
-  function populateSelect(selectEl, items) {
-    clearSelect(selectEl);
-    if (!items || items.length === 0) return;
-    selectEl.disabled = false;
-    items.forEach(it => {
-      const opt = document.createElement('option');
-      opt.value = it;
-      opt.textContent = it;
-      selectEl.appendChild(opt);
-    });
-  }
-
   async function init() {
-    const data = await fetchDropdownData();
-    if (!data) {
-      // nothing to init
+    var data = await fetchDropdownData();
+    if (!data || typeof data !== 'object' || !Object.keys(data).length) {
       return;
     }
 
-    // Expose data globally and notify listeners
     window.DROPDOWN_DATA = data;
-    // Notify other code that dropdowns are ready
     try {
       window.dispatchEvent(new Event('dropdowns:loaded'));
     } catch (err) {
-      // older browsers: fallback to CustomEvent
-      const ev = document.createEvent('Event');
+      var ev = document.createEvent('Event');
       ev.initEvent('dropdowns:loaded', true, true);
       window.dispatchEvent(ev);
     }
-
-    // No immediate DOM population here because item rows are created dynamically
-    // and will read window.DROPDOWN_DATA when they are created.
   }
 
   if (document.readyState === 'loading') {

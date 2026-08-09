@@ -97,6 +97,8 @@
       <div class="neat-hero-dots" aria-hidden="true"></div>
       <div class="neat-hero-grid">
         <div>
+          {% set module_back_url = url_for('dashboard') %}
+          {% include 'partials/module_back_link.html' %}
           <div class="neat-hero-eyebrow">Admin Command Center</div>
           <h1 class="neat-hero-title">Operations Pulse <span class="neat-amp">&amp;</span> Workflow Control</h1>
           <p class="neat-hero-desc">Spot-check headcount below, tune workflow and notifications. Day-to-day people management lives under <strong>Users & Teams</strong>.</p>
@@ -274,7 +276,7 @@
               <span class="neat-side-metric-ico neat-side-metric-ico--d" aria-hidden="true">🔍</span>
               <span class="neat-side-metric-val" id="sideMetricInspections">—</span>
               <span class="neat-side-metric-lbl">Inspection forms</span>
-              <span class="neat-side-metric-sub">HVAC · Civil · Cleaning</span>
+              <span class="neat-side-metric-sub">Inspection</span>
             </div>
             <div class="neat-side-metric neat-side-metric--wide">
               <span class="neat-side-metric-ico neat-side-metric-ico--e" aria-hidden="true">📱</span>
@@ -2399,9 +2401,7 @@
             <td data-label="Status"><span class="badge ${statusBadge}">${user.is_active ? 'Active' : 'Inactive'}</span></td>
             <td data-label="Module Access">
               <div class="access-badges">
-                ${user.access_hvac ? '<span class="access-badge hvac">HVAC</span>' : ''}
-                ${user.access_civil ? '<span class="access-badge civil">Civil</span>' : ''}
-                ${user.access_cleaning ? '<span class="access-badge cleaning">Cleaning</span>' : ''}
+                ${(user.access_hvac || user.access_civil || user.access_cleaning) ? '<span class="access-badge hvac">Inspection</span>' : ''}
                 ${!user.access_hvac && !user.access_civil && !user.access_cleaning && user.role !== 'admin' ? '<span style="color: var(--text-light);">No access</span>' : ''}
               </div>
             </td>
@@ -2813,13 +2813,16 @@
         if (isAdminTarget) {
           modNote.hidden = false;
           modNote.textContent = 'Administrators have full access to all modules by policy.';
-          ['accessHvac', 'accessCivil', 'accessCleaning', 'accessHr', 'accessProcurement', 'accessBusinessDev', 'accessDocHub', 'accessReportGen', 'accessSubmittedForms', 'accessTicketing', 'accessQhsi'].forEach((id) => {
+          ['accessInspection', 'accessHvac', 'accessCivil', 'accessCleaning', 'accessHr', 'accessProcurement', 'accessBusinessDev', 'accessDocHub', 'accessReportGen', 'accessSubmittedForms', 'accessTicketing', 'accessQhsi'].forEach((id) => {
             const cb = document.getElementById(id);
             if (cb) { cb.checked = true; cb.disabled = true; }
           });
         } else {
           modNote.hidden = true;
           modNote.textContent = '';
+          const inspOn = !!(user.access_hvac || user.access_civil || user.access_cleaning);
+          const inspEl = document.getElementById('accessInspection');
+          if (inspEl) inspEl.checked = inspOn;
           document.getElementById('accessHvac').checked = !!user.access_hvac;
           document.getElementById('accessCivil').checked = !!user.access_civil;
           document.getElementById('accessCleaning').checked = !!user.access_cleaning;
@@ -3028,7 +3031,7 @@
         `;
         submitted.forEach(form => {
           const moduleClass = form.module_type === 'hvac_mep' ? 'hvac' : form.module_type === 'civil' ? 'civil' : 'cleaning';
-          const moduleLabel = form.module_type === 'hvac_mep' ? 'HVAC' : form.module_type === 'civil' ? 'Civil' : 'Cleaning';
+          const moduleLabel = (['inspection','hvac_mep','civil','cleaning'].includes(form.module_type) ? 'Inspection' : (form.module_type || 'Form'));
           const statusClass = form.workflow_status === 'completed' ? 'completed' : form.workflow_status === 'rejected' ? 'rejected' : 'pending';
           const created = form.created_at ? new Date(form.created_at).toLocaleDateString() : '-';
           
@@ -3091,7 +3094,7 @@
         `;
         reviewed.forEach(form => {
           const moduleClass = form.module_type === 'hvac_mep' ? 'hvac' : form.module_type === 'civil' ? 'civil' : 'cleaning';
-          const moduleLabel = form.module_type === 'hvac_mep' ? 'HVAC' : form.module_type === 'civil' ? 'Civil' : 'Cleaning';
+          const moduleLabel = (['inspection','hvac_mep','civil','cleaning'].includes(form.module_type) ? 'Inspection' : (form.module_type || 'Form'));
           const statusClass = form.workflow_status === 'completed' ? 'completed' : form.workflow_status === 'rejected' ? 'rejected' : 'pending';
           const created = form.created_at ? new Date(form.created_at).toLocaleDateString() : '-';
           
@@ -3275,9 +3278,15 @@
 
       const u = users.find(x => String(x.id) === String(userId));
       if (u && u.role !== 'admin') {
-        payload.access_hvac = document.getElementById('accessHvac').checked;
-        payload.access_civil = document.getElementById('accessCivil').checked;
-        payload.access_cleaning = document.getElementById('accessCleaning').checked;
+        const inspToggle = document.getElementById('accessInspection');
+        const inspVal = inspToggle ? inspToggle.checked : (document.getElementById('accessHvac').checked || document.getElementById('accessCivil').checked || document.getElementById('accessCleaning').checked);
+        payload.access_hvac = inspVal;
+        payload.access_civil = inspVal;
+        payload.access_cleaning = inspVal;
+        // keep hidden legacy boxes in sync
+        document.getElementById('accessHvac').checked = inspVal;
+        document.getElementById('accessCivil').checked = inspVal;
+        document.getElementById('accessCleaning').checked = inspVal;
         payload.access_hr = document.getElementById('accessHr').checked;
         payload.access_procurement_module = document.getElementById('accessProcurement').checked;
         payload.access_business_development = document.getElementById('accessBusinessDev').checked;
@@ -3956,9 +3965,7 @@
         // Populate form
         document.getElementById('editSubmissionId').value = submission.submission_id;
         document.getElementById('editSubmissionIdDisplay').value = submission.submission_id;
-        document.getElementById('editModule').value = submission.module_type === 'hvac_mep' ? 'HVAC & MEP' : 
-                                                      submission.module_type === 'civil' ? 'Civil Works' : 
-                                                      'Cleaning Services';
+        document.getElementById('editModule').value = ['inspection','hvac_mep','civil','cleaning'].includes(submission.module_type) ? 'Inspection' : (submission.module_type || 'Form');
         document.getElementById('editSiteName').value = submission.site_name || '';
         
         // Format visit date for input
@@ -4509,9 +4516,7 @@
         const pct = accessPct(u);
 
         const accessBadges = [
-          u.access_hvac     ? '<span class="access-badge hvac">HVAC</span>' : '',
-          u.access_civil    ? '<span class="access-badge civil">Civil</span>' : '',
-          u.access_cleaning ? '<span class="access-badge cleaning">Clean</span>' : ''
+          (u.access_hvac || u.access_civil || u.access_cleaning) ? '<span class="access-badge hvac">Inspection</span>' : ''
         ].filter(Boolean).join('');
 
         return `<div class="admv3-op-card">
@@ -4561,7 +4566,7 @@
       const grandTotal = Object.values(counts).reduce((a, b) => a + b, 0) || 1;
 
       const modules = [
-        { key: 'hvac_mep', label: 'HVAC & MEP',       fill: 'admv3-res-fill--green' },
+        { key: 'inspection', label: 'Inspection',       fill: 'admv3-res-fill--green' },
         { key: 'civil',    label: 'Civil Works',        fill: 'admv3-res-fill--red'   },
         { key: 'cleaning', label: 'Cleaning Ops',       fill: 'admv3-res-fill--blue'  },
       ];

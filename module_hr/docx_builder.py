@@ -20,27 +20,27 @@ from docx.enum.table import WD_ALIGN_VERTICAL, WD_TABLE_ALIGNMENT
 from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
 
-# ── Brand palette ────────────────────────────────────────────────────────────
-C_PRI   = "2D6A4F"   # deep green  (header / section bars)
-C_SEC   = "52B788"   # mid green   (accents)
-C_LIGHT = "D8F3DC"   # mint        (label cells)
-C_LROW  = "F0FAF3"   # pale mint   (alternate value rows)
+from common import kynvera_pdf_brand as brand
+
+# ── Brand palette (aligned with Kynvera coral) ───────────────────────────────
+C_PRI   = "ff8e68"   # coral primary
+C_SEC   = "e05f36"   # coral dark
+C_LIGHT = "fff4ef"   # soft wash
+C_LROW  = "fafafb"   # alternate rows
 C_WHITE = "FFFFFF"
-C_DARK  = "1B2E28"   # near-black
-C_MUTED = "5A6E64"   # grey-green
-C_LINE  = "B7DFC5"   # border
+C_DARK  = "191b23"
+C_MUTED = "5c616e"
+C_LINE  = "e9eaee"
 
 # ── PDF-matching B&W palette ─────────────────────────────────────────────────
 C_BW_BLACK = "000000"
 C_BW_GRAY  = "666666"
 C_BW_LIGHT = "CCCCCC"
+C_BW_CORAL = "ff8e68"
 
 FONT    = "Calibri"
 
-_LOGO = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-    "static", "logo.png"
-)
+_LOGO = brand.resolve_logo_path(prefer_wordmark=True) or brand.WORDMARK_PATH
 
 
 def _section_avg(fd, sn, suffixes):
@@ -226,7 +226,7 @@ def _add_header(doc, title, doc_no=None):
     if os.path.isfile(_LOGO):
         try:
             run = lp.add_run()
-            run.add_picture(_LOGO, width=Cm(3.2), height=Cm(1.8))
+            run.add_picture(_LOGO, width=Cm(3.6), height=Cm(0.9))
         except Exception:
             _fallback_logo(lp)
     else:
@@ -242,10 +242,10 @@ def _add_header(doc, title, doc_no=None):
     p.paragraph_format.space_after = Pt(0)
     p.paragraph_format.left_indent = Cm(0.4)
 
-    r1 = p.add_run("INJAAZ TECHNICAL SERVICES LLC\n")
+    r1 = p.add_run(f"{brand.COMPANY_NAME}\n")
     r1.font.name = FONT
     r1.font.size = Pt(7.5)
-    r1.font.color.rgb = _rgb(C_SEC)
+    r1.font.color.rgb = _rgb(C_LIGHT)
 
     r2 = p.add_run(title.upper())
     r2.font.name = FONT
@@ -263,7 +263,7 @@ def _add_header(doc, title, doc_no=None):
 
 
 def _fallback_logo(p):
-    r = p.add_run("INJAAZ")
+    r = p.add_run(brand.COMPANY_NAME_UPPER)
     r.font.name = FONT
     r.font.size = Pt(13)
     r.font.bold = True
@@ -553,7 +553,7 @@ def _footer(doc, doc_no=None, form_date=None):
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p.paragraph_format.space_before = Pt(0)
     p.paragraph_format.space_after = Pt(0)
-    parts = ["INJAAZ TECHNICAL SERVICES LLC"]
+    parts = [brand.COMPANY_NAME]
     if doc_no:
         parts.append(f"Doc: {doc_no}")
     if form_date:
@@ -609,20 +609,19 @@ def _sig_to_transparent_png(data_url):
 
 
 def _add_header_pdf_style(doc, form_name):
-    """Left: Injaaz Facility Management (grey) + form title (bold); right: logo only, no text below."""
+    """Left: Kynvera (grey) + form title (bold); right: wordmark only."""
     t = doc.add_table(rows=1, cols=2)
     _no_table_borders(t)
-    t.columns[0].width = Cm(14.0)
-    t.columns[1].width = Cm(3.0)
+    t.columns[0].width = Cm(12.5)
+    t.columns[1].width = Cm(4.5)
     row = t.rows[0]
-    # Left: Injaaz Facility Management (small grey) + form name (large bold black)
     lc = row.cells[0]
     lc.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
     p = lc.paragraphs[0]
     p.alignment = WD_ALIGN_PARAGRAPH.LEFT
     p.paragraph_format.space_before = Pt(0)
     p.paragraph_format.space_after = Pt(2)
-    r1 = p.add_run("Injaaz Facility Management\n")
+    r1 = p.add_run(f"{brand.COMPANY_NAME}\n")
     r1.font.name = FONT
     r1.font.size = Pt(8)
     r1.font.color.rgb = _rgb(C_BW_GRAY)
@@ -631,17 +630,17 @@ def _add_header_pdf_style(doc, form_name):
     r2.font.size = Pt(16)
     r2.font.bold = True
     r2.font.color.rgb = _rgb(C_BW_BLACK)
-    # Right: logo only (no INJAAZ text, compact)
+    # Right: wordmark only
     rc = row.cells[1]
     rc.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
     rp = rc.paragraphs[0]
     rp.alignment = WD_ALIGN_PARAGRAPH.RIGHT
     rp.paragraph_format.space_before = Pt(0)
     rp.paragraph_format.space_after = Pt(0)
-    if os.path.isfile(_LOGO):
+    if _LOGO and os.path.isfile(_LOGO):
         try:
             run = rp.add_run()
-            run.add_picture(_LOGO, width=Cm(1.8), height=Cm(1.8))
+            run.add_picture(_LOGO, width=Cm(3.6), height=Cm(0.9))
         except Exception:
             _fallback_logo_bw(rp)
     else:
@@ -650,7 +649,7 @@ def _add_header_pdf_style(doc, form_name):
 
 
 def _fallback_logo_bw(p):
-    r = p.add_run("INJAAZ")
+    r = p.add_run(brand.COMPANY_NAME_UPPER)
     r.font.name = FONT
     r.font.size = Pt(10)
     r.font.bold = True

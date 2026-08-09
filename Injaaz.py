@@ -4,7 +4,7 @@ import logging
 import mimetypes
 import subprocess
 from datetime import datetime, timezone
-from flask import Flask, send_from_directory, abort, render_template, jsonify, request, redirect
+from flask import Flask, send_from_directory, abort, render_template, jsonify, request, redirect, make_response
 from concurrent.futures import ThreadPoolExecutor
 from werkzeug.exceptions import HTTPException
 from flask_jwt_extended import JWTManager
@@ -46,33 +46,9 @@ if _sentry_dsn:
         logger.warning(f"Sentry not initialized: {_sentry_err}")
 
 # Try importing blueprints; if any import fails we log and continue so the app still starts.
-hvac_mep_bp = None
-civil_bp = None
-cleaning_bp = None
 auth_bp = None
 bd_bp = None
 docs_bp = None
-
-try:
-    from module_hvac_mep.routes import hvac_mep_bp  # noqa: F401
-    logger.info("Imported module_hvac_mep.routes.hvac_mep_bp")
-except Exception as e:
-    logger.exception("Could not import module_hvac_mep.routes.hvac_mep_bp: %s", e)
-    hvac_mep_bp = None
-
-try:
-    from module_civil.routes import civil_bp  # noqa: F401
-    logger.info("Imported module_civil.routes.civil_bp")
-except Exception as e:
-    logger.exception("Could not import module_civil.routes.civil_bp: %s", e)
-    civil_bp = None
-
-try:
-    from module_cleaning.routes import cleaning_bp  # noqa: F401
-    logger.info("Imported module_cleaning.routes.cleaning_bp")
-except Exception as e:
-    logger.exception("Could not import module_cleaning.routes.cleaning_bp: %s", e)
-    cleaning_bp = None
 
 try:
     from app.auth.routes import auth_bp  # noqa: F401
@@ -876,52 +852,31 @@ def create_app():
             mimetype='image/png',
         )
 
-    # Register blueprints only if they were imported successfully.
-    if hvac_mep_bp:
-        # Exempt from CSRF (handles file uploads via API)
-        if hasattr(app, 'csrf') and app.csrf:
-            app.csrf.exempt(hvac_mep_bp)
-        
-        app.register_blueprint(hvac_mep_bp, url_prefix='/hvac-mep')  # Must be /hvac-mep with dash
-        logger.info("✓ Registered HVAC/MEP blueprint at /hvac-mep")
-    else:
-        # Provide a helpful placeholder endpoint so someone visiting knows the blueprint failed to import
-        @app.route('/hvac-mep')
-        def hvac_mep_missing():
-            return (
-                "HVAC & MEP module is not available on this deployment. "
-                "Check server logs for import errors."
-            ), 500
+    # Legacy trade URLs → unified inspection form (bookmarks / old emails)
+    def _redirect_legacy_inspection():
+        qs = request.query_string.decode('utf-8') if request.query_string else ''
+        target = '/inspection/form'
+        if qs:
+            target = f'{target}?{qs}'
+        return redirect(target, code=302)
 
-    if civil_bp:
-        # Exempt from CSRF (handles file uploads via API)
-        if hasattr(app, 'csrf') and app.csrf:
-            app.csrf.exempt(civil_bp)
-        
-        app.register_blueprint(civil_bp, url_prefix='/civil')
-        logger.info("Registered blueprint: /civil")
-    else:
-        @app.route('/civil')
-        def civil_missing():
-            return (
-                "Civil module is not available on this deployment. "
-                "Check server logs for import errors."
-            ), 500
+    @app.route('/hvac-mep/', defaults={'rest': ''})
+    @app.route('/hvac-mep/<path:rest>')
+    @app.route('/hvac-mep')
+    def legacy_hvac_redirect(rest=''):
+        return _redirect_legacy_inspection()
 
-    if cleaning_bp:
-        # Exempt from CSRF (handles file uploads via API)
-        if hasattr(app, 'csrf') and app.csrf:
-            app.csrf.exempt(cleaning_bp)
-        
-        app.register_blueprint(cleaning_bp, url_prefix='/cleaning')
-        logger.info("Registered blueprint: /cleaning")
-    else:
-        @app.route('/cleaning')
-        def cleaning_missing():
-            return (
-                "Cleaning module is not available on this deployment. "
-                "Check server logs for import errors."
-            ), 500
+    @app.route('/civil/', defaults={'rest': ''})
+    @app.route('/civil/<path:rest>')
+    @app.route('/civil')
+    def legacy_civil_redirect(rest=''):
+        return _redirect_legacy_inspection()
+
+    @app.route('/cleaning/', defaults={'rest': ''})
+    @app.route('/cleaning/<path:rest>')
+    @app.route('/cleaning')
+    def legacy_cleaning_redirect(rest=''):
+        return _redirect_legacy_inspection()
 
     # Register authentication blueprint
     if auth_bp:
@@ -1130,7 +1085,11 @@ def create_app():
     @app.route('/login')
     def login_page():
         """Render login page"""
-        return render_template('login.html')
+        response = make_response(render_template('login.html'))
+        # Avoid bfcache restoring a post-login form when the user hits Back.
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        return response
     
     @app.route('/register')
     def register_page():
@@ -1209,10 +1168,11 @@ def create_app():
         if not sub:
             return redirect('/workflow/pending-reviews')
         module_paths = {
-            'hvac_mep': '/hvac-mep/form',
-            'hvac': '/hvac-mep/form',
-            'civil': '/civil/form',
-            'cleaning': '/cleaning/form',
+            'inspection': '/inspection/form',
+            'hvac_mep': '/inspection/form',
+            'hvac': '/inspection/form',
+            'civil': '/inspection/form',
+            'cleaning': '/inspection/form',
         }
         base = module_paths.get((sub.module_type or '').lower())
         if not base:

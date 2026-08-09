@@ -118,15 +118,21 @@ body.admin-dh-page {
   background: var(--bg-body, #f7f7f9) !important;
 }
 
-/* Main dashboard: paint the hero wash on the page so hero/modules never meet as a hard seam */
-body.page-dashboard {
+/* Main dashboard + HR hub: paint wash on the page so hero/modules never meet as a hard seam */
+body.page-dashboard,
+body.hr-dashboard {
   background:
     radial-gradient(ellipse 70% 55% at 0% 14%, rgba(255, 142, 104, 0.1) 0%, transparent 70%),
     radial-gradient(ellipse 40% 35% at 100% 6%, rgba(255, 142, 104, 0.05) 0%, transparent 60%),
     linear-gradient(180deg, #fff8f5 0%, #fafbfa 22%, #f7f7f9 48%, #f7f7f9 100%) !important;
 }
 
-body.page-dashboard .hero {
+body.page-dashboard .hero,
+body.hr-dashboard .hero.hr-hero {
+  background: transparent;
+}
+
+body.hr-dashboard .modules-section {
   background: transparent;
 }
 
@@ -340,11 +346,22 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 0.4rem;
   transition: color 0.2s ease, background 0.2s ease;
   padding: 0.5rem 0.85rem;
   border-radius: var(--radius-sm);
   white-space: nowrap;
   flex-shrink: 0;
+}
+
+.nav-menu a .ai-powered-tag {
+  align-self: center;
+  background: transparent;
+  border: none;
+  padding: 0;
+  min-height: 0;
+  height: auto;
+  border-radius: 0;
 }
 
 .nav-menu a:hover {
@@ -578,6 +595,27 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
   display: none; /* No grid - gradient only */
 }
 
+/* HR module hub: one continuous wash (same language as main dashboard / inspection) */
+.hr-dashboard-content {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  background:
+    radial-gradient(ellipse 70% 55% at 0% 14%, rgba(255, 142, 104, 0.1) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 35% at 100% 6%, rgba(255, 142, 104, 0.05) 0%, transparent 60%),
+    linear-gradient(180deg, #fff8f5 0%, #fafbfa 22%, #f7f7f9 48%, #f7f7f9 100%);
+}
+.hr-dashboard-content .hero,
+.hr-dashboard-content .modules-section {
+  background: transparent !important;
+  position: relative;
+  z-index: 1;
+}
+.hr-dashboard-content .hero::before,
+.hr-dashboard-content .hero::after {
+  display: none;
+}
+
 /* Module hero pages (HR, Inspection, Procurement, Review History) - green grid + main dashboard colors */
 /* Background extends to merge seamlessly with content below - no hard line */
 .hero.hr-hero,
@@ -592,9 +630,9 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
   padding-bottom: 6rem;
 }
 
-/* HR hero: gradient at top full width, no glow orb */
+/* HR hero: inherit continuous page wash (no separate band) */
 .hero.hr-hero {
-  background: linear-gradient(180deg, #eef4f0 0%, #f2f7f4 45%, #f7f7f9 100%);
+  background: transparent;
 }
 .hero.hr-hero::after {
   display: none;
@@ -1392,6 +1430,17 @@ body.page-dashboard .modules-section {
 }
 
 /* ---- Text ---- */
+.module-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.45rem;
+}
+.module-card-meta .module-number {
+  margin-bottom: 0;
+}
+
 .module-number {
   font-size: 0.6rem;
   color: var(--text-muted);
@@ -1463,6 +1512,11 @@ body.page-dashboard .modules-section {
   box-shadow: none;
 }
 
+body.page-dashboard .footer,
+body.hr-dashboard .footer {
+  background: transparent;
+}
+
 .footer::before {
   display: none;
 }
@@ -1483,6 +1537,24 @@ body.page-dashboard .modules-section {
   font-weight: 600;
   color: var(--text-dark);
   margin-bottom: 0;
+  display: inline-flex;
+  align-items: center;
+  line-height: 0;
+}
+
+.footer-brand-mark {
+  display: block;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  object-fit: contain;
+}
+
+.footer-brand-wordmark {
+  display: block;
+  height: 22px;
+  width: auto;
+  object-fit: contain;
 }
 
 .footer-tagline {
@@ -1899,8 +1971,10 @@ body.page-dashboard .modules-section {
   /* Show hamburger as soon as resolution shrinks — fire sizing (not circular icon rail) */
   .mobile-menu-toggle {
     display: flex !important;
+    flex-direction: column !important;
     align-items: center !important;
     justify-content: center !important;
+    gap: 5px !important;
     width: 40px !important;
     height: 40px !important;
     min-width: 40px !important;
@@ -2051,6 +2125,8 @@ body.page-dashboard .modules-section {
   .mobile-menu-drawer-list a {
     display: flex !important;
     align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 0.75rem !important;
     padding: 0.75rem 0.875rem !important;
     font-size: 0.925rem !important;
     font-weight: 500 !important;
@@ -2062,6 +2138,27 @@ body.page-dashboard .modules-section {
     width: 100% !important;
     box-sizing: border-box !important;
     transition: background 0.15s ease, color 0.15s ease !important;
+  }
+
+  /* AI tags: right column, vertically centered — clean alignment across rows */
+  .mobile-menu-drawer-list a > span:not(.ai-powered-tag) {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    line-height: 1.3 !important;
+  }
+  .mobile-menu-drawer-list .ai-powered-tag {
+    margin-left: auto !important;
+    align-self: center !important;
+    flex-shrink: 0 !important;
+    font-size: 0.65rem !important;
+    letter-spacing: 0.07em !important;
+    padding: 0 !important;
+    min-height: 0 !important;
+    height: auto !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    color: var(--color-primary-600, #f97e54) !important;
   }
 
   .mobile-menu-drawer-list li a:hover,
@@ -2116,51 +2213,44 @@ body.page-dashboard .modules-section {
     white-space: nowrap !important;
   }
 
-  /* Hamburger — equal 2px bars, even spacing (matches nav SVG stroke 2) */
+  /* Hamburger — three equal bars */
+  .mobile-menu-toggle {
+    display: inline-flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 5px !important;
+  }
+
   .mobile-menu-toggle .hamburger-bar {
     display: block !important;
+    flex-shrink: 0 !important;
     width: 20px !important;
     height: 2px !important;
+    margin: 0 !important;
     border-radius: 1px !important;
     background: currentColor !important;
-    position: relative !important;
-    transition: all 0.3s ease !important;
-    transform: translateZ(0) !important;
+    position: static !important;
+    transition: transform 0.3s ease, opacity 0.3s ease !important;
+    transform: none !important;
   }
 
   .mobile-menu-toggle .hamburger-bar::before,
   .mobile-menu-toggle .hamburger-bar::after {
-    content: '' !important;
-    position: absolute !important;
-    left: 0 !important;
-    width: 20px !important;
-    height: 2px !important;
-    border-radius: 1px !important;
-    background: currentColor !important;
-    transition: all 0.3s ease !important;
+    content: none !important;
+    display: none !important;
   }
 
-  .mobile-menu-toggle .hamburger-bar::before {
-    top: -7px !important;
+  .mobile-menu-toggle.active .hamburger-bar:nth-child(1) {
+    transform: translateY(7px) rotate(45deg) !important;
   }
 
-  .mobile-menu-toggle .hamburger-bar::after {
-    bottom: -7px !important;
+  .mobile-menu-toggle.active .hamburger-bar:nth-child(2) {
+    opacity: 0 !important;
   }
 
-  .mobile-menu-toggle.active .hamburger-bar {
-    background: transparent !important;
-  }
-
-  .mobile-menu-toggle.active .hamburger-bar::before {
-    top: 50% !important;
-    transform: translateY(-50%) rotate(45deg) !important;
-  }
-
-  .mobile-menu-toggle.active .hamburger-bar::after {
-    top: 50% !important;
-    bottom: auto !important;
-    transform: translateY(-50%) rotate(-45deg) !important;
+  .mobile-menu-toggle.active .hamburger-bar:nth-child(3) {
+    transform: translateY(-7px) rotate(-45deg) !important;
   }
 
   /* Backdrop overlay when menu is open (below drawer 1200, above page / steppers) */
@@ -2183,9 +2273,15 @@ body.page-dashboard .modules-section {
     pointer-events: auto;
   }
 
-  /* Blur all page content (stepper, forms, sidebars) — overlay alone misses elevated layers */
-  body.mobile-menu-open > *:not(.nav):not(.mobile-menu-drawer):not(.mobile-overlay):not(#profileModal),
-  body:has(.mobile-menu-drawer.active) > *:not(.nav):not(.mobile-menu-drawer):not(.mobile-overlay):not(#profileModal) {
+  /*
+   * Blur page chrome behind the drawer — never blur a parent that contains the
+   * drawer/nav (filter on a parent cannot be undone on children).
+   * Shell pages wrap nav+content in .tkt-dh-app-root; blur only its non-nav kids.
+   */
+  body.mobile-menu-open > *:not(.nav):not(.mobile-menu-drawer):not(.mobile-overlay):not(#profileModal):not(.tkt-dh-app-root):not(.injaaz-assistant),
+  body:has(.mobile-menu-drawer.active) > *:not(.nav):not(.mobile-menu-drawer):not(.mobile-overlay):not(#profileModal):not(.tkt-dh-app-root):not(.injaaz-assistant),
+  body.mobile-menu-open .tkt-dh-app-root > *:not(.nav):not(.mobile-menu-drawer):not(.mobile-overlay):not(#profileModal):not(.injaaz-assistant),
+  body:has(.mobile-menu-drawer.active) .tkt-dh-app-root > *:not(.nav):not(.mobile-menu-drawer):not(.mobile-overlay):not(#profileModal):not(.injaaz-assistant) {
     filter: blur(8px) saturate(0.92);
     pointer-events: none;
     user-select: none;
@@ -2577,6 +2673,8 @@ body.page-dashboard .modules-section {
   .nav-menu a {
     display: flex !important;
     align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 0.75rem !important;
     padding: 0.9rem 1.25rem !important;
     border-radius: 0 !important;
     font-size: 0.95rem !important;
@@ -2589,6 +2687,22 @@ body.page-dashboard .modules-section {
     width: 100% !important;
     box-sizing: border-box !important;
     transition: background 0.15s ease, color 0.15s ease !important;
+  }
+
+  .nav-menu a > span:not(.ai-powered-tag) {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+  }
+  .nav-menu a .ai-powered-tag {
+    margin-left: auto !important;
+    align-self: center !important;
+    border-radius: 0 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    color: var(--color-primary-600, #f97e54) !important;
   }
 
   /* Keep current-route green when responsive rules force default link colours */
@@ -2613,8 +2727,10 @@ body.page-dashboard .modules-section {
   /* Hamburger */
   .mobile-menu-toggle {
     display: flex !important;
+    flex-direction: column !important;
     align-items: center !important;
     justify-content: center !important;
+    gap: 5px !important;
     border: none !important;
     background: transparent !important;
     cursor: pointer !important;
@@ -2634,48 +2750,33 @@ body.page-dashboard .modules-section {
   
   .mobile-menu-toggle .hamburger-bar {
     display: block !important;
+    flex-shrink: 0 !important;
     width: 20px !important;
     height: 2px !important;
+    margin: 0 !important;
     border-radius: 1px !important;
     background: currentColor !important;
-    position: relative !important;
-    transition: all 0.3s ease !important;
-    transform: translateZ(0) !important;
+    position: static !important;
+    transition: transform 0.3s ease, opacity 0.3s ease !important;
+    transform: none !important;
   }
-  
+
   .mobile-menu-toggle .hamburger-bar::before,
   .mobile-menu-toggle .hamburger-bar::after {
-    content: '' !important;
-    position: absolute !important;
-    left: 0 !important;
-    width: 20px !important;
-    height: 2px !important;
-    border-radius: 1px !important;
-    background: currentColor !important;
-    transition: all 0.3s ease !important;
+    content: none !important;
+    display: none !important;
   }
-  
-  .mobile-menu-toggle .hamburger-bar::before {
-    top: -7px !important;
+
+  .mobile-menu-toggle.active .hamburger-bar:nth-child(1) {
+    transform: translateY(7px) rotate(45deg) !important;
   }
-  
-  .mobile-menu-toggle .hamburger-bar::after {
-    bottom: -7px !important;
+
+  .mobile-menu-toggle.active .hamburger-bar:nth-child(2) {
+    opacity: 0 !important;
   }
-  
-  .mobile-menu-toggle.active .hamburger-bar {
-    background: transparent !important;
-  }
-  
-  .mobile-menu-toggle.active .hamburger-bar::before {
-    top: 50% !important;
-    transform: translateY(-50%) rotate(45deg) !important;
-  }
-  
-  .mobile-menu-toggle.active .hamburger-bar::after {
-    top: 50% !important;
-    bottom: auto !important;
-    transform: translateY(-50%) rotate(-45deg) !important;
+
+  .mobile-menu-toggle.active .hamburger-bar:nth-child(3) {
+    transform: translateY(-7px) rotate(-45deg) !important;
   }
   
   /* Mobile overlay — same stack as collapsed-nav overlay (below drawer 1200) */
@@ -2696,8 +2797,10 @@ body.page-dashboard .modules-section {
     opacity: 1;
   }
 
-  body.mobile-menu-open > *:not(.nav):not(.mobile-menu-drawer):not(.mobile-overlay):not(#profileModal),
-  body:has(.mobile-menu-drawer.active) > *:not(.nav):not(.mobile-menu-drawer):not(.mobile-overlay):not(#profileModal) {
+  body.mobile-menu-open > *:not(.nav):not(.mobile-menu-drawer):not(.mobile-overlay):not(#profileModal):not(.tkt-dh-app-root):not(.injaaz-assistant),
+  body:has(.mobile-menu-drawer.active) > *:not(.nav):not(.mobile-menu-drawer):not(.mobile-overlay):not(#profileModal):not(.tkt-dh-app-root):not(.injaaz-assistant),
+  body.mobile-menu-open .tkt-dh-app-root > *:not(.nav):not(.mobile-menu-drawer):not(.mobile-overlay):not(#profileModal):not(.injaaz-assistant),
+  body:has(.mobile-menu-drawer.active) .tkt-dh-app-root > *:not(.nav):not(.mobile-menu-drawer):not(.mobile-overlay):not(#profileModal):not(.injaaz-assistant) {
     filter: blur(8px) saturate(0.92);
     pointer-events: none;
     user-select: none;

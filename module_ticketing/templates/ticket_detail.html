@@ -784,8 +784,10 @@
     }
   </style>
 </head>
-<body class="tkt-dh-page tkt-detail-page">
+<body class="tkt-dh-page tkt-detail-page has-main-nav">
 <div class="tkt-dh-app-root">
+{% set active_page = active_page | default('ticketing') %}
+{% include 'partials/main_navbar.html' with context %}
 <div class="dh-page-root tkt-dh-page-root">
 {% include 'partials/tkt_sidebar.html' with context %}
 <div class="tkt-dh-main">

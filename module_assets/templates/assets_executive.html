@@ -59,8 +59,9 @@
       <p class="fm-notes">{{ forecast.narrative }}</p>
       <p class="fm-muted">Spares: {{ (forecast.spare_parts_top or [])|join(', ') or '—' }} · <code>method: {{ forecast.method }}</code></p>
       {% else %}
-      <p class="fm-muted">No forecast yet. Click “Run portfolio forecast”.</p>
+      <p class="fm-muted" id="forecastEmptyHint">No forecast yet. Click “Run portfolio forecast”.</p>
       {% endif %}
+      <p id="forecastError" class="fm-inline-error" hidden></p>
     </div>
   </section>
 
@@ -96,6 +97,8 @@
 
 document.getElementById('forecastBtn')?.addEventListener('click', async () => {
   const btn = document.getElementById('forecastBtn');
+  const errEl = document.getElementById('forecastError');
+  if (errEl) { errEl.hidden = true; errEl.textContent = ''; }
   btn.disabled = true; btn.textContent = 'Forecasting…';
   try {
     const res = await fetch('/assets/api/forecast', {
@@ -107,7 +110,14 @@ document.getElementById('forecastBtn')?.addEventListener('click', async () => {
     if (!data.success) throw new Error(data.error || 'Failed');
     location.reload();
   } catch (e) {
-    alert(e.message || String(e));
+    const msg = typeof fmFriendlyError === 'function'
+      ? fmFriendlyError(e.message || e)
+      : (e.message || String(e));
+    if (errEl) {
+      errEl.textContent = msg;
+      errEl.hidden = false;
+    }
+    if (typeof fmNotify === 'function') fmNotify(msg, 'error');
     btn.disabled = false; btn.textContent = 'Run portfolio forecast';
   }
 });

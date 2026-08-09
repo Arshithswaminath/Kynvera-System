@@ -90,7 +90,7 @@ def main() -> None:
     # --- Inspection: HVAC with multiple items (photos) ---
     hvac_insp = _load_script_module("auto_test_hvac_inspection", "auto_test_hvac_inspection.py")
     try:
-        from module_hvac_mep.hvac_generators import create_pdf_report as hvac_pdf
+        from module_inspection.inspection_generators import create_pdf_report as hvac_pdf
 
         hvac_items_data = hvac_insp.sample_hvac_data()
         p = hvac_pdf(hvac_items_data, insp_dir)
@@ -112,9 +112,9 @@ def main() -> None:
     clean_gm = _load_script_module("auto_test_cleaning_gm_workflow", "auto_test_cleaning_gm_workflow.py")
 
     _pairs = [
-        ("hvac_workflow_signed.pdf", hvac_gm.sample_hvac_gm_data, "module_hvac_mep.hvac_generators", "create_pdf_report"),
-        ("civil_workflow_signed.pdf", civil_gm.sample_civil_gm_data, "module_civil.civil_generators", "create_pdf_report"),
-        ("cleaning_workflow_signed.pdf", clean_gm.sample_cleaning_gm_data, "module_cleaning.cleaning_generators", "create_pdf_report"),
+        ("hvac_workflow_signed.pdf", hvac_gm.sample_hvac_gm_data, "module_inspection.inspection_generators", "create_pdf_report"),
+        ("civil_workflow_signed.pdf", civil_gm.sample_civil_gm_data, "module_inspection.inspection_generators", "create_pdf_report"),
+        ("cleaning_workflow_signed.pdf", clean_gm.sample_cleaning_gm_data, "module_inspection.inspection_generators", "create_pdf_report"),
     ]
     for out_name, sample_fn, mod_path, fn_name in _pairs:
         try:

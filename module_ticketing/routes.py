@@ -982,7 +982,12 @@ def ticket_list():
 
     q = _visible_tickets_base_query(user)
     if status_filter:
-        q = q.filter(Ticket.status == status_filter)
+        # Support comma-separated statuses (e.g. dashboard "Resolved" → resolved,closed)
+        statuses = [s.strip() for s in status_filter.split(',') if s.strip()]
+        if len(statuses) > 1:
+            q = q.filter(Ticket.status.in_(statuses))
+        elif statuses:
+            q = q.filter(Ticket.status == statuses[0])
     if priority_filter:
         q = q.filter(Ticket.priority == priority_filter)
     if project_filter:

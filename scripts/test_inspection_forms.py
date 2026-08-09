@@ -123,9 +123,9 @@ CLEANING_DATA = {
 
 
 def run():
-    from module_hvac_mep.hvac_generators import create_excel_report as hvac_excel, create_pdf_report as hvac_pdf
-    from module_civil.civil_generators import create_excel_report as civil_excel, create_pdf_report as civil_pdf
-    from module_cleaning.cleaning_generators import create_excel_report as cleaning_excel, create_pdf_report as cleaning_pdf
+    from module_inspection.inspection_generators import create_excel_report as hvac_excel, create_pdf_report as hvac_pdf
+    from module_inspection.inspection_generators import create_excel_report as civil_excel, create_pdf_report as civil_pdf
+    from module_inspection.inspection_generators import create_excel_report as cleaning_excel, create_pdf_report as cleaning_pdf
 
     results = []
     tests = [

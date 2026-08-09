@@ -23,7 +23,7 @@
         <li><a href="/about"{% if active_page == 'about' %} class="nav-current"{% endif %}>About</a></li>
         <li><a href="javascript:void(0)" id="profileLink" role="button" onclick="if(typeof openProfileModal==='function'){openProfileModal();}">Profile</a></li>
         <li id="inspection-forms-menu-item" style="display: none;">
-          <a href="/inspection/"{% if active_page == 'inspection' %} class="nav-current"{% endif %}>Inspection Form</a>
+          <a href="/inspection/"{% if active_page == 'inspection' %} class="nav-current"{% endif %}>Inspection</a>
         </li>
         <li id="hr-forms-menu-item" style="display: none;">
           <a href="/hr/"{% if active_page == 'hr' %} class="nav-current"{% endif %}>HR Module</a>
@@ -76,6 +76,8 @@
     <div class="nav-right">
       <button type="button" class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle menu" aria-expanded="false">
         <span class="hamburger-bar" aria-hidden="true"></span>
+        <span class="hamburger-bar" aria-hidden="true"></span>
+        <span class="hamburger-bar" aria-hidden="true"></span>
       </button>
       <button type="button" class="nav-assistant-btn" id="navAssistantBtn" aria-label="Ask Kynvera assistant" title="Ask Kynvera — help with forms, leave, documents" aria-expanded="false" aria-controls="assistantPanel">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="20" height="20" aria-hidden="true">
@@ -124,3 +126,4 @@
 <div class="mobile-overlay" id="mobileOverlay"></div>
 {% include 'partials/profile_modal.html' %}
 {% include 'partials/assistant_widget.html' %}
+<script src="{{ url_for('static', filename='js/module-back.js') }}" defer></script>

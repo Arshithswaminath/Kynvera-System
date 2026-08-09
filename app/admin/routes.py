@@ -1335,20 +1335,17 @@ def update_submission(submission_id):
         
         db.session.commit()
         
-        # Trigger document regeneration based on module type
+        # Trigger document regeneration for unified inspection (+ legacy types)
         job_id = None
-        if submission.module_type == 'hvac_mep':
-            from common.db_utils import create_job_db, get_submission_db
-            from module_hvac_mep.routes import get_paths, process_job
-            
-            # Create new job
+        if submission.module_type in ('inspection', 'hvac_mep', 'civil', 'cleaning'):
+            from common.db_utils import create_job_db
+            from module_inspection.routes import get_paths, process_job
+
             new_job = create_job_db(submission)
             job_id = new_job.job_id
-            
-            # Get executor and paths
+
             GENERATED_DIR, UPLOADS_DIR, JOBS_DIR, EXECUTOR = get_paths()
-            
-            # Submit to background executor using the same process_job function
+
             if EXECUTOR:
                 EXECUTOR.submit(
                     process_job,
@@ -1360,50 +1357,7 @@ def update_submission(submission_id):
                 current_app.logger.info(f"✅ Regeneration job {job_id} queued for submission {submission_id}")
             else:
                 current_app.logger.error("ThreadPoolExecutor not available for document regeneration")
-        
-        elif submission.module_type == 'civil':
-            from common.db_utils import create_job_db
-            from module_civil.routes import app_paths, process_job
-            
-            new_job = create_job_db(submission)
-            job_id = new_job.job_id
-            
-            GENERATED_DIR, UPLOADS_DIR, JOBS_DIR, EXECUTOR = app_paths()
-            
-            if EXECUTOR:
-                EXECUTOR.submit(
-                    process_job,
-                    submission.submission_id,
-                    job_id,
-                    current_app.config,
-                    current_app._get_current_object()
-                )
-                current_app.logger.info(f"✅ Regeneration job {job_id} queued for submission {submission_id}")
-            else:
-                current_app.logger.error("ThreadPoolExecutor not available for document regeneration")
-        
-        elif submission.module_type == 'cleaning':
-            from common.db_utils import create_job_db
-            from module_cleaning.routes import process_job
-            
-            new_job = create_job_db(submission)
-            job_id = new_job.job_id
-            
-            # Get executor from app config
-            EXECUTOR = current_app.config.get('EXECUTOR')
-            
-            if EXECUTOR:
-                EXECUTOR.submit(
-                    process_job,
-                    submission.submission_id,
-                    job_id,
-                    current_app.config,
-                    current_app._get_current_object()
-                )
-                current_app.logger.info(f"✅ Regeneration job {job_id} queued for submission {submission_id}")
-            else:
-                current_app.logger.error("ThreadPoolExecutor not available for document regeneration")
-        
+
         log_audit(admin_id, 'update_submission', 'submission', submission_id, {
             'site_name': submission.site_name,
             'module_type': submission.module_type,

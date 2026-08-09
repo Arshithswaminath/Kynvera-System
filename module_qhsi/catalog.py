@@ -41,10 +41,10 @@ def _load_json(path):
 
 
 def load_hvac_catalog():
-    """HVAC hierarchy: trade → system → equipment (from module_hvac_mep)."""
+    """HVAC hierarchy for QHSI catalog (dropdown data lives under module_inspection)."""
     hvac_path = os.path.join(
         os.path.dirname(BLUEPRINT_DIR),
-        'module_hvac_mep',
+        'module_inspection',
         'dropdown_data.json',
     )
     return _load_json(hvac_path)

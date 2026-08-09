@@ -72,7 +72,7 @@ def format_visit_date_label(visit_date: date | datetime | str | None) -> str | N
     return d.strftime("%d %b %Y")
 
 
-INSPECTION_MODULE_TYPES = ("hvac_mep", "civil", "cleaning")
+INSPECTION_MODULE_TYPES = ("inspection", "hvac_mep", "civil", "cleaning")
 
 # Document number series — each category gets its own running sequence.
 SERIES_PREFIXES = ("HR", "INSP", "QHSI", "PRC", "TKT", "DOC")

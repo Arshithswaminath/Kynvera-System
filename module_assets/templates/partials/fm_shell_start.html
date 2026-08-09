@@ -1,4 +1,4 @@
-{# Shared FM Assets page chrome — open shell (sidebar + topbar).
+{# Shared FM Assets page chrome — main nav + sidebar + slim topbar.
    Before include, set:
      fm_page_title, fm_topbar_title
      optional: fm_narrow (bool), fm_head_extra (markup string)
@@ -19,12 +19,23 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/fm-assets.css') }}">
   {% if fm_head_extra is defined %}{{ fm_head_extra|safe }}{% endif %}
 </head>
-<body class="tkt-dh-page fm-assets-shell">
+<body class="tkt-dh-page fm-assets-shell has-main-nav">
 <div class="tkt-dh-app-root">
+{% set active_page = active_page | default('fm-assets') %}
+{% include 'partials/main_navbar.html' with context %}
 <div class="dh-page-root tkt-dh-page-root">
 {% include 'partials/fm_sidebar.html' with context %}
 <div class="tkt-dh-main">
-{% set tkt_topbar_title = fm_topbar_title | default('FM Assets') %}
-{% include 'partials/tkt_topbar.html' with context %}
+{# Slim module topbar — page title + mobile drawer toggle only.
+   Notifications, assistant, profile, and logout live in the main nav. #}
+<header class="tkt-topbar">
+  <div class="tkt-topbar-left">
+    <button type="button" id="tktDhSidebarToggle" aria-label="Toggle menu"
+            onclick="if(typeof tktToggleMobileSidebar==='function'){tktToggleMobileSidebar();}">&#9776;</button>
+    <h1 class="tkt-topbar-title">{{ fm_topbar_title | default('FM Assets') }}</h1>
+  </div>
+</header>
 <div class="tkt-content">
 <main class="fm-wrap{% if fm_narrow %} fm-wrap-narrow{% endif %}">
+{% set module_back_url = module_back_url|default(url_for('dashboard')) %}
+{% include 'partials/module_back_link.html' %}

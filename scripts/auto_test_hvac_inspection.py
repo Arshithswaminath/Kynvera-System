@@ -106,7 +106,7 @@ def main():
     print(f"  Items: {len(data['items'])}")
 
     # Import generators (must be done after chdir)
-    from module_hvac_mep.hvac_generators import create_excel_report, create_pdf_report
+    from module_inspection.inspection_generators import create_excel_report, create_pdf_report
 
     print("\nGenerating Excel...")
     excel_path = create_excel_report(data, out_dir)

@@ -195,13 +195,35 @@ def generate_monthly_zip(df: pd.DataFrame, report_format: str = 'daily') -> tupl
 # ──────────────────────────────────────────────────────────────────────────────
 
 def parse_excel(file_path: str) -> pd.DataFrame:
-    """Read the 'Reactive Workorder Details' sheet and normalise values."""
+    """Read CAFM export or a previously generated MMR report and normalise values.
+
+    Prefer raw CAFM sheet ``Reactive Workorder Details``. If the file is already an
+    Injaaz-generated report (``All Work Orders`` with a logo/title header block),
+    use ``parse_saved_report_excel`` so download/regenerate does not KeyError on
+    missing ``Client``.
+    """
     try:
         df = pd.read_excel(file_path, sheet_name='Reactive Workorder Details')
+        return _normalise_parsed_df(df)
     except Exception:
-        # Fall back to active sheet if named sheet not found
-        df = pd.read_excel(file_path)
+        pass
 
+    # Previously generated MMR reports (title rows + header at row 5)
+    try:
+        import openpyxl
+        wb = openpyxl.load_workbook(file_path, read_only=True)
+        sheet_names = wb.sheetnames
+        wb.close()
+    except Exception:
+        sheet_names = []
+
+    if 'All Work Orders' in sheet_names:
+        saved = parse_saved_report_excel(file_path)
+        if saved is not None and not saved.empty and 'Client' in saved.columns:
+            return saved
+
+    # Last resort: first sheet, first-row headers
+    df = pd.read_excel(file_path)
     return _normalise_parsed_df(df)
 
 
@@ -226,6 +248,40 @@ def _clean_cafm_text(val) -> str:
     return ' '.join(t.split())
 
 
+# Contracts that must appear as their own Client everywhere (filters, charts, Excel sheets),
+# even when CAFM stores them under another client (e.g. C1 under Askaan Properties LLC).
+_STANDALONE_CONTRACT_CLIENTS = (
+    ('c1 tower', 'C1 Tower - TFM'),
+)
+
+
+def _remap_standalone_project_clients(df: pd.DataFrame) -> pd.DataFrame:
+    """Reassign Client for contracts that are standalone projects (not parent-client buckets).
+
+    CAFM lists C1 Tower-TFM under Askaan Properties LLC; for MMR reporting we treat it as
+    its own client so it is excluded from Askaan filters, KPIs, charts, and Excel sheets.
+    Idempotent — safe to call more than once.
+    """
+    if df is None or len(df) == 0:
+        return df
+    if 'Contract' not in df.columns or 'Client' not in df.columns:
+        return df
+    contract_lower = df['Contract'].fillna('').astype(str).str.strip().str.lower()
+    mask_any = False
+    masks = []
+    for pattern, client_name in _STANDALONE_CONTRACT_CLIENTS:
+        mask = contract_lower.str.contains(pattern, regex=False, na=False)
+        masks.append((mask, client_name))
+        mask_any = mask_any or bool(mask.any())
+    if not mask_any:
+        return df
+    out = df.copy()
+    for mask, client_name in masks:
+        if mask.any():
+            out.loc[mask, 'Client'] = client_name
+    return out
+
+
 def _normalise_parsed_df(df: pd.DataFrame) -> pd.DataFrame:
     """Common normalisation for parsed Excel data."""
     df.columns = [str(c).strip() for c in df.columns]
@@ -242,6 +298,9 @@ def _normalise_parsed_df(df: pd.DataFrame) -> pd.DataFrame:
     for col in ['Work Description', 'Specific Area', 'BaseUnit']:
         if col in df.columns:
             df[col] = df[col].apply(_clean_cafm_text)
+
+    # C1 Tower-TFM (and similar) → own Client, not Askaan / parent CAFM client
+    df = _remap_standalone_project_clients(df)
 
     # Normalise work order number – keep rows with valid WO formats:
     # - Pure numeric: 10017690
@@ -288,7 +347,7 @@ def rows_to_df(rows: list) -> pd.DataFrame:
     for col in date_cols:
         if col in df.columns:
             df[col] = pd.to_datetime(df[col], errors='coerce')
-    return df
+    return _remap_standalone_project_clients(df)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -297,6 +356,7 @@ def rows_to_df(rows: list) -> pd.DataFrame:
 
 def compute_dashboard(df: pd.DataFrame) -> dict:
     """Return all aggregated stats needed by the front-end dashboard."""
+    df = _remap_standalone_project_clients(df)
 
     def count_by(col: str) -> dict:
         if col not in df.columns:
@@ -1858,9 +1918,11 @@ def _ajman_municipality_tower(client: str, contract: str, zone: str = '') -> str
     return None
 
 
-# Tower display names and matching patterns (Client or Contract)
-# Askaan + Saqr combines multiple CAFM contracts; Ajman Municipality is split per contract;
-# Orient/Garden get - TFM suffix.
+# Tower / project display names and matching patterns (Client or Contract).
+# Order here is the sheet/email display order. Askaan + Saqr combines multiple
+# CAFM contracts; Ajman Municipality is split per contract; Orient/Garden get - TFM suffix.
+# Unmatched clients fall back to the Client name so every project appears on
+# Chargeable by Project and in the email body.
 _TOWER_CONFIG = [
     ('Askaan + Saqr Projects', ['askaan', 'saqr']),
     ('Orient Tower - TFM', ['orient']),
@@ -1873,30 +1935,58 @@ _TOWER_CONFIG = [
         'Ajman Municipality - Facilities & Buildings',
         ['facilities and buildings maintenance'],
     ),
-    ('C1 Tower', ['c1 tower', 'c1']),
+    ('C1 Tower - TFM', ['c1 tower']),
+    ('AAAID', ['aaaid']),
+    ('Injaaz LLC', ['injaaz']),
 ]
+
+
 def _tower_for_row(client: str, contract: str, zone: str = '') -> str | None:
-    """Return tower display name if row belongs to a known tower, else None."""
+    """Return project display name for a work-order row.
+
+    Known towers/contracts use ``_TOWER_CONFIG`` / Ajman split rules. C1 Tower is
+    matched before Askaan (same client owns that contract) so it stays a
+    standalone project. Any other non-empty Client is returned as-is so new
+    CAFM clients still get a table.
+    """
     ajman = _ajman_municipality_tower(client, contract, zone)
     if ajman:
         return ajman
     c = _field_lower(client)
     t = _field_lower(contract)
     combined = f'{c} {t}'
+    # C1 Tower-TFM lives under Askaan client — keep it standalone, never Askaan+Saqr
+    if 'c1 tower' in combined:
+        return 'C1 Tower - TFM'
     for display_name, patterns in _TOWER_CONFIG:
-        if display_name.startswith('Ajman Municipality'):
+        if display_name.startswith('Ajman Municipality') or display_name.startswith('C1 Tower'):
             continue
         if any(p in combined for p in patterns):
             return display_name
-    return None
+    # Fallback: include every remaining client as its own project block
+    if client is None:
+        return None
+    try:
+        if pd.isna(client):
+            return None
+    except (TypeError, ValueError):
+        pass
+    name = str(client).strip()
+    return name or None
+
+
+def _empty_tower_agg() -> pd.DataFrame:
+    return pd.DataFrame(columns=['Service Group', 'resolved', 'pending'])
 
 
 def _tower_chargeable_sections(df: pd.DataFrame) -> list[tuple[str, pd.DataFrame]]:
-    """Per-tower chargeable-only breakdown by Service Group (Resolved / Pending).
+    """Per-project chargeable breakdown by Service Group (Resolved / Pending).
 
-    Returns [(display_name, agg_df), ...] in _TOWER_CONFIG order. ``agg`` has columns
-    ``Service Group``, ``resolved``, ``pending``. Empty when required columns are
-    missing or there are no matching rows.
+    Returns [(display_name, agg_df), ...] for every project present in the export
+    (known towers first in ``_TOWER_CONFIG`` order, then any other clients
+    alphabetically). ``agg`` has columns ``Service Group``, ``resolved``,
+    ``pending``. Projects with no chargeable rows still appear with empty agg
+    (totals 0) so AAAID / Injaaz / etc. are not omitted from the sheet or email.
     """
     required = {'Space', 'Status', 'Service Group', 'Client', 'Contract'}
     if not required.issubset(set(df.columns)):
@@ -1907,15 +1997,21 @@ def _tower_chargeable_sections(df: pd.DataFrame) -> list[tuple[str, pd.DataFrame
     work['_tower'] = work.apply(
         lambda r: _tower_for_row(r.get('Client'), r.get('Contract'), r.get('Zone')), axis=1
     )
-    work = work[work['_space'] == 'Chargeable']
     work = work[work['_tower'].notna()]
     if len(work) == 0:
         return []
 
+    present = {str(t) for t in work['_tower'].unique() if t}
+    known_order = [name for name, _ in _TOWER_CONFIG if name in present]
+    extras = sorted(present - set(known_order))
+    ordered = known_order + extras
+
+    chg = work[work['_space'] == 'Chargeable']
     out: list[tuple[str, pd.DataFrame]] = []
-    for display_name, _ in _TOWER_CONFIG:
-        tower_df = work[work['_tower'] == display_name]
+    for display_name in ordered:
+        tower_df = chg[chg['_tower'] == display_name]
         if len(tower_df) == 0:
+            out.append((display_name, _empty_tower_agg()))
             continue
         agg = (
             tower_df.groupby('Service Group', dropna=False)
@@ -1932,15 +2028,14 @@ def _tower_chargeable_sections(df: pd.DataFrame) -> list[tuple[str, pd.DataFrame
         )
         agg['Service Group'] = agg['Service Group'].fillna('').astype(str).str.strip()
         agg = agg.sort_values('Service Group')
-        if len(agg) == 0:
-            continue
         out.append((display_name, agg))
     return out
 
 
 def format_per_tower_chargeable_html_for_email(df: pd.DataFrame) -> str:
-    """Build HTML tables for email body: one table per tower (Askaan+Saqr, Orient, Garden,
-    Ajman Investment / Facilities, C1).
+    """Build HTML tables for email body: one table per project (all clients/towers
+    in the export — Askaan+Saqr, Orient, Garden, Ajman Investment / Facilities,
+    C1, AAAID, Injaaz, and any other Client).
     Each table: Service Name | Chargeable Resolved | Chargeable Pending | Total row | Grand total.
     Uses resolved chargeable logic (Garden City AC = Non-Chargeable). Inline CSS for email compatibility.
     """
@@ -1966,6 +2061,15 @@ def format_per_tower_chargeable_html_for_email(df: pd.DataFrame) -> str:
                 f'<td style="{_cell}">{sg}</td>'
                 f'<td style="{_cell}">{res or ""}</td>'
                 f'<td style="{_cell}">{pen or ""}</td>'
+                f'</tr>'
+            )
+
+        if not rows_html:
+            rows_html.append(
+                f'<tr style="background:#ffffff">'
+                f'<td style="{_cell};font-style:italic;color:#666">No chargeable work orders</td>'
+                f'<td style="{_cell}">0</td>'
+                f'<td style="{_cell}">0</td>'
                 f'</tr>'
             )
 
@@ -2054,8 +2158,9 @@ def generate_report_excel(df: pd.DataFrame) -> bytes:
     wb = openpyxl.Workbook()
     wb.remove(wb.active)
 
+    # C1 (etc.) as standalone Client before any sheet / aggregation
+    work = _remap_standalone_project_clients(df.copy())
     # Populate Space with resolved Chargeable/Non-Chargeable (from BaseUnit when empty)
-    work = df.copy()
     if 'Space' in work.columns and 'BaseUnit' in work.columns:
         work['Space'] = _get_resolved_chargeable_series(work)
 
@@ -2754,9 +2859,9 @@ def _write_chargeable_analysis(wb: openpyxl.Workbook, df: pd.DataFrame):
 
 
 def _write_tower_chargeable_summary_sheet(wb: openpyxl.Workbook, df: pd.DataFrame):
-    """Stacked tables per tower project (Askaan+Saqr, Orient, Garden City, Ajman Municipality, C1):
-    chargeable WOs only,
-    by Service Group with Resolved / Pending counts — matches ``format_per_tower_chargeable_html_for_email``.
+    """Stacked tables per project (all clients/towers in the export):
+    chargeable WOs by Service Group with Resolved / Pending counts —
+    matches ``format_per_tower_chargeable_html_for_email``.
     """
     ws = wb.create_sheet('Chargeable by Project')
     ncols = 3
@@ -2772,9 +2877,10 @@ def _write_tower_chargeable_summary_sheet(wb: openpyxl.Workbook, df: pd.DataFram
             row=current_row,
             column=1,
             value=(
-                'No tower-project chargeable rows in this export. Tables appear when Client/Contract '
-                'text matches Askaan+Saqr, Orient, Garden City, Ajman Municipality (Investment '
-                'or Facilities & Buildings), or C1 Tower (chargeable work orders only).'
+                'No project rows in this export. Tables appear for each Client/Contract '
+                'group in the data (Askaan+Saqr, Orient, Garden City, Ajman Municipality, '
+                'C1 Tower - TFM, AAAID, Injaaz, and any other clients), with chargeable '
+                'Resolved / Pending counts by Service Group.'
             ),
         )
         msg.alignment = Alignment(horizontal='left', vertical='top', wrap_text=True)
@@ -2855,6 +2961,23 @@ def _write_tower_chargeable_summary_sheet(wb: openpyxl.Workbook, df: pd.DataFram
                 horizontal='center', vertical='center'
             )
             di += 1
+            current_row += 1
+
+        if di == 0:
+            # Keep zero-chargeable projects visible (e.g. C1 / AAAID this period)
+            ws.cell(row=current_row, column=1, value='No chargeable work orders')
+            ws.cell(row=current_row, column=2, value=0)
+            ws.cell(row=current_row, column=3, value=0)
+            _style_data_row(ws, current_row, ncols, alt=False)
+            ws.cell(row=current_row, column=1).font = Font(
+                italic=True, size=9, color='666666', name='Calibri'
+            )
+            ws.cell(row=current_row, column=2).alignment = Alignment(
+                horizontal='center', vertical='center'
+            )
+            ws.cell(row=current_row, column=3).alignment = Alignment(
+                horizontal='center', vertical='center'
+            )
             current_row += 1
 
         ws.cell(row=current_row, column=1, value='Total')

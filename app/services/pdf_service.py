@@ -12,7 +12,37 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors, utils
 from reportlab.lib.units import mm
 
+from common import kynvera_pdf_brand as brand
+from reportlab.pdfgen.canvas import Canvas
+
 logger = logging.getLogger(__name__)
+
+
+class _VisitCanvas(Canvas):
+    def __init__(self, *args, **kwargs):
+        self._report_title = kwargs.pop('report_title', 'Site Visit Report')
+        super().__init__(*args, **kwargs)
+        self._saved = []
+
+    def showPage(self):
+        self._saved.append(dict(self.__dict__))
+        self._startPage()
+
+    def save(self):
+        n = len(self._saved)
+        for s in self._saved:
+            self.__dict__.update(s)
+            brand.draw_page_chrome(
+                self,
+                self._pageNumber,
+                n,
+                report_title=self._report_title,
+                left_margin=20 * mm,
+                right_margin=20 * mm,
+                footer_left=brand.FOOTER_CONFIDENTIAL,
+            )
+            Canvas.showPage(self)
+        Canvas.save(self)
 
 
 def _fetch_image_stream(url, timeout=8):
@@ -64,53 +94,76 @@ def generate_visit_pdf(visit_info, items, generated_dir, report_id=None):
     pdf_path = os.path.join(generated_dir, filename)
 
     try:
-        doc = SimpleDocTemplate(pdf_path, pagesize=A4,
-                                rightMargin=20 * mm, leftMargin=20 * mm,
-                                topMargin=20 * mm, bottomMargin=20 * mm)
+        title_text = visit_info.get('building_name') or "Site Visit Report"
+        doc = SimpleDocTemplate(
+            pdf_path,
+            pagesize=A4,
+            rightMargin=20 * mm,
+            leftMargin=20 * mm,
+            topMargin=24 * mm,
+            bottomMargin=22 * mm,
+            title=title_text,
+            author=brand.PDF_AUTHOR,
+        )
 
         styles = getSampleStyleSheet()
-        title_style = styles['Heading1']
-        normal = styles['BodyText']
-        small = ParagraphStyle('small', parent=normal, fontSize=9)
+        title_style = ParagraphStyle(
+            'VisitTitle',
+            parent=styles['Heading1'],
+            fontSize=14,
+            textColor=brand.TEXT_DARK,
+            fontName='Helvetica-Bold',
+        )
+        normal = ParagraphStyle(
+            'VisitBody',
+            parent=styles['BodyText'],
+            fontSize=9,
+            textColor=brand.TEXT_DARK,
+        )
+        small = ParagraphStyle(
+            'small',
+            parent=normal,
+            fontSize=9,
+            textColor=brand.TEXT_MID,
+        )
 
         story = []
-
-        # Header
-        title_text = visit_info.get('building_name') or "Site Visit Report"
-        story.append(Paragraph(title_text, title_style))
-        story.append(Spacer(1, 6))
+        content_w = A4[0] - 40 * mm
+        story.append(brand.story_header_block(title_text, brand.COMPANY_NAME, content_w))
+        story.append(Spacer(1, 8))
 
         meta_lines = []
-        meta_lines.append(("Date:", utc_now_naive().strftime("%Y-%m-%d %H:%M UTC")))
+        meta_lines.append(("Date", utc_now_naive().strftime("%Y-%m-%d %H:%M UTC")))
         if visit_info.get('email'):
-            meta_lines.append(("Technician:", visit_info.get('email')))
+            meta_lines.append(("Technician", visit_info.get('email')))
         if visit_info.get('building_address'):
-            meta_lines.append(("Address:", visit_info.get('building_address')))
+            meta_lines.append(("Address", visit_info.get('building_address')))
 
-        # Table for metadata
         meta_table_data = [[Paragraph(f"<b>{k}</b>", small), Paragraph(str(v), small)] for k, v in meta_lines]
         if meta_table_data:
             t = Table(meta_table_data, colWidths=[40 * mm, None])
-            t.setStyle(TableStyle([
-                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-            ]))
+            t.setStyle(TableStyle(brand.meta_table_style()))
             story.append(t)
             story.append(Spacer(1, 8))
 
-        # Items
         if not items:
             story.append(Paragraph("No items recorded.", normal))
         else:
             for idx, it in enumerate(items, start=1):
-                heading = Paragraph(f"<b>{idx}. {it.get('title', it.get('description', 'Item'))}</b>", styles['Heading4'])
+                heading = Paragraph(
+                    f"<b>{idx}. {it.get('title', it.get('description', 'Item'))}</b>",
+                    ParagraphStyle(
+                        'VisitItem',
+                        parent=styles['Heading4'],
+                        textColor=brand.TEXT_DARK,
+                    ),
+                )
                 story.append(heading)
                 desc = it.get('description', '')
                 if desc:
                     story.append(Paragraph(desc, normal))
                 story.append(Spacer(1, 4))
 
-                # Inline images (if any)
                 image_urls = it.get('image_urls') or []
                 for img_url in image_urls:
                     stream = _fetch_image_stream(img_url)
@@ -123,11 +176,13 @@ def generate_visit_pdf(visit_info, items, generated_dir, report_id=None):
 
                 story.append(Spacer(1, 8))
 
-        # Footer note
         story.append(Spacer(1, 12))
-        story.append(Paragraph("Generated by Injaaz", small))
+        story.append(Paragraph(f"Generated by {brand.COMPANY_NAME}", small))
 
-        doc.build(story)
+        doc.build(
+            story,
+            canvasmaker=lambda *a, **kw: _VisitCanvas(*a, report_title=title_text, **kw),
+        )
         logger.info("Generated PDF: %s", pdf_path)
         return pdf_path, filename
     except Exception:

@@ -1,24 +1,18 @@
-{# Back navigation for inspection module forms (HVAC, Civil, Cleaning) #}
+{# Back navigation for inspection module forms (HVAC, Civil, Cleaning).
+   Uses shared module back link (history.back when possible).
+#}
 {% if is_edit_mode %}
   {% if is_submitter_readonly|default(false) %}
-    {% set if_back_url = '/workflow/submitted-forms?scope=inspection' %}
-    {% set if_back_label = 'My Submissions' %}
+    {% set module_back_url = '/workflow/submitted-forms?scope=inspection' %}
   {% elif is_supervisor_edit|default(false) or can_edit|default(false) %}
-    {% set if_back_url = '/workflow/pending-reviews' %}
-    {% set if_back_label = 'Pending Reviews' %}
+    {% set module_back_url = '/workflow/pending-reviews' %}
   {% else %}
-    {% set if_back_url = '/inspection' %}
-    {% set if_back_label = 'Inspection' %}
+    {% set module_back_url = '/inspection' %}
   {% endif %}
 {% else %}
-  {% set if_back_url = '/inspection' %}
-  {% set if_back_label = 'Inspection' %}
+  {% set module_back_url = '/inspection' %}
 {% endif %}
+{% set module_back_label = 'Back to previous' %}
 <div class="inspection-form-bar">
-  <a href="{{ if_back_url }}" class="if-back-btn" aria-label="Back to {{ if_back_label }}">
-    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-    </svg>
-    Back to {{ if_back_label }}
-  </a>
+  {% include 'partials/module_back_link.html' %}
 </div>

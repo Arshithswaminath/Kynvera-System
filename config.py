@@ -94,6 +94,9 @@ MAIL_PASSWORD = os.getenv("MAIL_PASSWORD")
 MAIL_USE_TLS = os.getenv("MAIL_USE_TLS", "true").lower() == "true"
 MAIL_DEFAULT_SENDER = os.getenv("MAIL_DEFAULT_SENDER", "noreply@injaaz.com")
 
+# Brevo (Sendinblue) — HTTPS transactional API (preferred on Render free tier)
+BREVO_API_KEY = os.getenv("BREVO_API_KEY")
+
 # Mailjet — REST API (HTTPS) or SMTP. On Render free tier use MAILJET_API_KEY + MAILJET_SECRET_KEY.
 MAILJET_API_KEY = os.getenv("MAILJET_API_KEY")
 MAILJET_SECRET_KEY = os.getenv("MAILJET_SECRET_KEY")

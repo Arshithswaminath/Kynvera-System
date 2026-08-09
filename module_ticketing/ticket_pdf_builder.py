@@ -1,6 +1,6 @@
 """
 PDF report builder for ticketing / work order module.
-Uses ReportLab - same approach as HR PDF builder.
+Uses ReportLab with Kynvera branding.
 """
 import io
 import os
@@ -20,13 +20,15 @@ from reportlab.platypus import (
 from reportlab.pdfgen.canvas import Canvas
 from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_RIGHT
 
+from common import kynvera_pdf_brand as brand
+
 logger = logging.getLogger(__name__)
 
-# Brand colours
-BRAND_DARK = colors.HexColor('#1e3a5f')
-BRAND_BLUE = colors.HexColor('#2563eb')
-BRAND_LIGHT = colors.HexColor('#eff6ff')
-BRAND_BORDER = colors.HexColor('#bfdbfe')
+# Brand colours — Kynvera coral + neutrals
+BRAND_DARK = brand.TEXT_DARK
+BRAND_BLUE = brand.PRIMARY
+BRAND_LIGHT = brand.SOFT_WASH
+BRAND_BORDER = brand.HAIRLINE
 PRIORITY_COLORS = {
     'critical': colors.HexColor('#dc2626'),
     'high': colors.HexColor('#ea580c'),
@@ -34,7 +36,7 @@ PRIORITY_COLORS = {
     'low': colors.HexColor('#16a34a'),
 }
 STATUS_COLORS = {
-    'open': colors.HexColor('#2563eb'),
+    'open': brand.PRIMARY_DARK,
     'pending_supervisor': colors.HexColor('#7c3aed'),
     'in_progress': colors.HexColor('#7c3aed'),
     'pending_parts': colors.HexColor('#ca8a04'),
@@ -48,7 +50,7 @@ MARGIN = 18 * mm
 
 
 class _TicketPDFCanvas(Canvas):
-    """Canvas with header logo and page numbering."""
+    """Canvas with Kynvera header chrome and page numbering."""
 
     def __init__(self, *args, **kwargs):
         self._logo_path = kwargs.pop('logo_path', None)
@@ -70,34 +72,16 @@ class _TicketPDFCanvas(Canvas):
 
     def _draw_page(self, num_pages):
         self.saveState()
-        # Header bar
-        self.setFillColor(BRAND_DARK)
-        self.rect(0, PAGE_H - 22 * mm, PAGE_W, 22 * mm, fill=1, stroke=0)
-
-        # Logo
-        logo_drawn = False
-        if self._logo_path and os.path.exists(self._logo_path):
-            try:
-                self.drawImage(self._logo_path, MARGIN, PAGE_H - 18 * mm,
-                               width=30 * mm, height=12 * mm,
-                               preserveAspectRatio=True, mask='auto')
-                logo_drawn = True
-            except Exception:
-                pass
-
-        # Header text
-        self.setFillColor(colors.white)
-        self.setFont('Helvetica-Bold', 11)
-        self.drawString(MARGIN + (35 * mm if logo_drawn else 0), PAGE_H - 9 * mm, 'WORK ORDER REPORT')
-        self.setFont('Helvetica', 8)
-        self.drawRightString(PAGE_W - MARGIN, PAGE_H - 9 * mm, self._ticket_id)
-
-        # Footer
-        self.setFillColor(colors.HexColor('#6b7280'))
-        self.setFont('Helvetica', 7.5)
-        self.drawString(MARGIN, 10 * mm, 'Injaaz Facilities Management — Confidential')
-        self.drawRightString(PAGE_W - MARGIN, 10 * mm,
-                             f'Page {self._pageNumber} of {num_pages}')
+        brand.draw_page_chrome(
+            self,
+            self._pageNumber,
+            num_pages,
+            report_title=self._ticket_id or 'Work Order',
+            left_margin=MARGIN,
+            right_margin=MARGIN,
+            footer_left=brand.FOOTER_CONFIDENTIAL,
+            header_title='Work Order Report',
+        )
         self.restoreState()
 
 
@@ -107,11 +91,12 @@ def _styles():
                               textColor=BRAND_DARK, spaceAfter=4,
                               spaceBefore=10, fontSize=11)
     normal = ParagraphStyle('TicketNormal', parent=base['Normal'],
-                             fontSize=9, leading=13)
+                             fontSize=9, leading=13, textColor=brand.TEXT_DARK)
     small = ParagraphStyle('TicketSmall', parent=base['Normal'],
-                            fontSize=8, leading=11, textColor=colors.HexColor('#6b7280'))
+                            fontSize=8, leading=11, textColor=brand.TEXT_MUTED)
     bold = ParagraphStyle('TicketBold', parent=base['Normal'],
-                          fontSize=9, leading=13, fontName='Helvetica-Bold')
+                          fontSize=9, leading=13, fontName='Helvetica-Bold',
+                          textColor=brand.TEXT_DARK)
     center = ParagraphStyle('TicketCenter', parent=base['Normal'],
                              fontSize=9, alignment=TA_CENTER)
     return heading, normal, small, bold, center
@@ -119,7 +104,7 @@ def _styles():
 
 def _section_header(title: str, h_style) -> list:
     return [
-        HRFlowable(width='100%', thickness=1, color=BRAND_DARK, spaceAfter=2),
+        HRFlowable(width='100%', thickness=1.2, color=brand.PRIMARY, spaceAfter=2),
         Paragraph(title, h_style),
     ]
 
@@ -131,8 +116,9 @@ def _kv_table(pairs: list, normal, bold, col_widths=None) -> Table:
     t = Table(data, colWidths=col_widths)
     t.setStyle(TableStyle([
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        ('ROWBACKGROUNDS', (0, 0), (-1, -1), [colors.white, colors.HexColor('#f8fafc')]),
-        ('GRID', (0, 0), (-1, -1), 0.4, colors.HexColor('#e2e8f0')),
+        ('BACKGROUND', (0, 0), (0, -1), brand.SOFT_WASH),
+        ('ROWBACKGROUNDS', (1, 0), (1, -1), [colors.white, brand.SURFACE_ALT]),
+        ('GRID', (0, 0), (-1, -1), 0.4, brand.HAIRLINE),
         ('LEFTPADDING', (0, 0), (-1, -1), 6),
         ('RIGHTPADDING', (0, 0), (-1, -1), 6),
         ('TOPPADDING', (0, 0), (-1, -1), 4),
@@ -145,16 +131,7 @@ def build_ticket_pdf(ticket, notes, images, materials, manpower_entries, output_
     """Main PDF builder entry point."""
     heading, normal, small, bold, center = _styles()
 
-    # Find logo
-    logo_path = None
-    candidates = [
-        'static/icons/INJAAZ Logo - Edited.png',
-        'static/icons/icon-144x144.png',
-    ]
-    for c in candidates:
-        if os.path.exists(c):
-            logo_path = c
-            break
+    logo_path = brand.resolve_logo_path(prefer_wordmark=True)
 
     doc = SimpleDocTemplate(
         output_stream,
@@ -162,6 +139,7 @@ def build_ticket_pdf(ticket, notes, images, materials, manpower_entries, output_
         leftMargin=MARGIN, rightMargin=MARGIN,
         topMargin=28 * mm, bottomMargin=20 * mm,
         title=f'Work Order {ticket.ticket_id}',
+        author=brand.PDF_AUTHOR,
     )
 
     story = []
@@ -172,7 +150,7 @@ def build_ticket_pdf(ticket, notes, images, materials, manpower_entries, output_
     sta_color = STATUS_COLORS.get(ticket.status, BRAND_BLUE)
 
     title_data = [[
-        Paragraph(f'<font color="#1e3a5f"><b>{ticket.ticket_id}</b></font>', ParagraphStyle(
+        Paragraph(f'<font color="#191b23"><b>{ticket.ticket_id}</b></font>', ParagraphStyle(
             'TID', parent=normal, fontSize=14)),
         Paragraph(f'<font color="{pri_color.hexval()}">'
                   f'<b>{ticket.priority.upper()}</b></font>', ParagraphStyle(
@@ -185,7 +163,7 @@ def build_ticket_pdf(ticket, notes, images, materials, manpower_entries, output_
     title_tbl.setStyle(TableStyle([
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ('BACKGROUND', (0, 0), (-1, -1), BRAND_LIGHT),
-        ('BOX', (0, 0), (-1, -1), 1, BRAND_BORDER),
+        ('BOX', (0, 0), (-1, -1), 0.8, brand.PRIMARY),
         ('LEFTPADDING', (0, 0), (-1, -1), 8),
         ('RIGHTPADDING', (0, 0), (-1, -1), 8),
         ('TOPPADDING', (0, 0), (-1, -1), 8),
@@ -278,18 +256,17 @@ def build_ticket_pdf(ticket, notes, images, materials, manpower_entries, output_
 
     # ── Cost Summary with Pricing Breakdown ───────────────────────────────────
     story += _section_header('Cost Summary', heading)
-    mp_total  = sum(e.total_cost  or 0 for e in manpower_entries)
+    mp_total = sum(e.total_cost or 0 for e in manpower_entries)
     mat_total = sum(m.total_price or 0 for m in materials)
     base_cost = mp_total + mat_total
 
     actual_price = round(base_cost, 2)
 
-    markup_pct  = getattr(ticket, 'markup_pct', None)
-    actual_stored = getattr(ticket, 'actual_price', None) or actual_price
+    markup_pct = getattr(ticket, 'markup_pct', None)
     selling_price = getattr(ticket, 'selling_price', None)
 
     cost_data = [
-        ['Manpower Total',  f'AED {mp_total:.2f}'],
+        ['Manpower Total', f'AED {mp_total:.2f}'],
         ['Materials Total', f'AED {mat_total:.2f}'],
         ['Actual Price (MP + Materials)', f'AED {actual_price:.2f}'],
     ]
@@ -298,39 +275,38 @@ def build_ticket_pdf(ticket, notes, images, materials, manpower_entries, output_
 
     cost_tbl = Table(cost_data, colWidths=[avail_w * 0.50, avail_w * 0.50])
     cost_style = [
-        ('GRID', (0, 0), (-1, -1), 0.4, colors.HexColor('#e2e8f0')),
-        ('LEFTPADDING',  (0, 0), (-1, -1), 8),
+        ('GRID', (0, 0), (-1, -1), 0.4, brand.HAIRLINE),
+        ('LEFTPADDING', (0, 0), (-1, -1), 8),
         ('RIGHTPADDING', (0, 0), (-1, -1), 8),
-        ('TOPPADDING',   (0, 0), (-1, -1), 5),
-        ('BOTTOMPADDING',(0, 0), (-1, -1), 5),
-        ('ROWBACKGROUNDS', (0, 0), (-1, -1), [colors.white, colors.HexColor('#f8fafc')]),
+        ('TOPPADDING', (0, 0), (-1, -1), 5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+        ('ROWBACKGROUNDS', (0, 0), (-1, -1), [colors.white, brand.SURFACE_ALT]),
     ]
-    # Highlight actual price row
     actual_row_idx = len(cost_data) - 1
     cost_style += [
         ('BACKGROUND', (0, actual_row_idx), (-1, actual_row_idx), BRAND_LIGHT),
-        ('FONTNAME',   (0, actual_row_idx), (-1, actual_row_idx), 'Helvetica-Bold'),
-        ('TEXTCOLOR',  (0, actual_row_idx), (-1, actual_row_idx), BRAND_DARK),
+        ('FONTNAME', (0, actual_row_idx), (-1, actual_row_idx), 'Helvetica-Bold'),
+        ('TEXTCOLOR', (0, actual_row_idx), (-1, actual_row_idx), BRAND_DARK),
+        ('LINEABOVE', (0, actual_row_idx), (-1, actual_row_idx), 1.0, brand.PRIMARY),
     ]
     cost_tbl.setStyle(TableStyle(cost_style))
     story.append(cost_tbl)
 
-    # ── Markup & Selling Price block (internal — supervisor-set) ─────────────
     if markup_pct is not None:
         story.append(Spacer(1, 6))
         markup_banner_style = [
-            ('BACKGROUND',   (0, 0), (-1, -1), colors.HexColor('#fef3c7')),
-            ('BOX',          (0, 0), (-1, -1), 1.5, colors.HexColor('#f59e0b')),
-            ('LEFTPADDING',  (0, 0), (-1, -1), 8),
+            ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#fef3c7')),
+            ('BOX', (0, 0), (-1, -1), 1.5, colors.HexColor('#f59e0b')),
+            ('LEFTPADDING', (0, 0), (-1, -1), 8),
             ('RIGHTPADDING', (0, 0), (-1, -1), 8),
-            ('TOPPADDING',   (0, 0), (-1, -1), 5),
-            ('BOTTOMPADDING',(0, 0), (-1, -1), 5),
+            ('TOPPADDING', (0, 0), (-1, -1), 5),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
         ]
         markup_amt = round(actual_price * markup_pct / 100.0, 2)
         sell_price = selling_price or round(actual_price + markup_amt, 2)
 
         markup_data = [
-            [Paragraph('<b>⚠ INTERNAL PRICING — NOT FOR CLIENT DISTRIBUTION</b>',
+            [Paragraph('<b>INTERNAL PRICING — NOT FOR CLIENT DISTRIBUTION</b>',
                        ParagraphStyle('warn', parent=small, textColor=colors.HexColor('#92400e'),
                                       fontSize=7.5, fontName='Helvetica-Bold')), ''],
             ['Actual Price (base for markup)', f'AED {actual_price:.2f}'],
@@ -339,10 +315,10 @@ def build_ticket_pdf(ticket, notes, images, materials, manpower_entries, output_
         ]
         markup_tbl = Table(markup_data, colWidths=[avail_w * 0.60, avail_w * 0.40])
         markup_tbl.setStyle(TableStyle(markup_banner_style + [
-            ('SPAN',       (0, 0), (-1, 0)),
-            ('FONTNAME',   (0, 3), (-1, 3), 'Helvetica-Bold'),
-            ('TEXTCOLOR',  (0, 3), (-1, 3), colors.HexColor('#1e3a5f')),
-            ('FONTSIZE',   (0, 3), (-1, 3), 10),
+            ('SPAN', (0, 0), (-1, 0)),
+            ('FONTNAME', (0, 3), (-1, 3), 'Helvetica-Bold'),
+            ('TEXTCOLOR', (0, 3), (-1, 3), brand.TEXT_DARK),
+            ('FONTSIZE', (0, 3), (-1, 3), 10),
             ('BACKGROUND', (0, 3), (-1, 3), colors.HexColor('#fde68a')),
         ]))
         story.append(markup_tbl)
@@ -350,13 +326,12 @@ def build_ticket_pdf(ticket, notes, images, materials, manpower_entries, output_
         story.append(Spacer(1, 4))
         story.append(Paragraph(
             '<i>Markup not yet set. Supervisor will apply before closing.</i>',
-            ParagraphStyle('nomk', parent=small, textColor=colors.HexColor('#94a3b8'))))
+            ParagraphStyle('nomk', parent=small, textColor=brand.TEXT_MUTED)))
 
     story.append(Spacer(1, 4))
 
-    # Supervisor / technician assignment info
-    sup_name  = ticket.supervisor.full_name  if getattr(ticket, 'supervisor', None)  else '—'
-    tech_name = ticket.technician.full_name  if getattr(ticket, 'technician', None)  else '—'
+    sup_name = ticket.supervisor.full_name if getattr(ticket, 'supervisor', None) else '—'
+    tech_name = ticket.technician.full_name if getattr(ticket, 'technician', None) else '—'
     if sup_name != '—' or tech_name != '—':
         story.append(_kv_table([
             ('Supervisor', sup_name),
@@ -364,21 +339,19 @@ def build_ticket_pdf(ticket, notes, images, materials, manpower_entries, output_
         ], normal, bold))
     story.append(Spacer(1, 6))
 
-    # ── Activity Notes ────────────────────────────────────────────────────────
     if notes:
         story += _section_header('Activity Log', heading)
         for note in notes:
             dt_str = to_gst(note.created_at).strftime('%d %b %Y %H:%M') if note.created_at else ''
             author = note.author.full_name if note.author else 'Unknown'
             story.append(Paragraph(
-                f'<b>{author}</b> <font color="#9ca3af">{dt_str}</font>',
+                f'<b>{author}</b> <font color="#9498a3">{dt_str}</font>',
                 ParagraphStyle('NoteH', parent=small, spaceBefore=4)))
             story.append(Paragraph(note.content, ParagraphStyle(
                 'NoteB', parent=normal,
                 leftIndent=10, borderPad=4)))
         story.append(Spacer(1, 6))
 
-    # ── Images ────────────────────────────────────────────────────────────────
     if images:
         story += _section_header('Attached Images', heading)
         img_row = []
@@ -398,7 +371,6 @@ def build_ticket_pdf(ticket, notes, images, materials, manpower_entries, output_
             story.append(_image_row_table(img_row, avail_w))
         story.append(Spacer(1, 6))
 
-    # ── Closing Signature ─────────────────────────────────────────────────────
     if ticket.status == 'closed' and ticket.close_signature:
         story += _section_header('Closure Sign-off', heading)
         if ticket.close_notes:
@@ -451,27 +423,13 @@ def _fmt_hours(h: float) -> str:
 
 
 def _data_table_style():
-    return TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), BRAND_DARK),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 8.5),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8fafc')]),
-        ('GRID', (0, 0), (-1, -1), 0.4, colors.HexColor('#e2e8f0')),
-        ('FONTSIZE', (0, 1), (-1, -1), 8.5),
-        ('LEFTPADDING', (0, 0), (-1, -1), 6),
-        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
-        ('TOPPADDING', (0, 0), (-1, -1), 4),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-    ])
+    return TableStyle(brand.data_header_table_style())
 
 
 def _image_row_table(img_row: list, avail_w: float) -> Table:
     col_w = avail_w / 3
     data = [[item[0] for item in img_row]]
     cap_row = [[item[1] for item in img_row]]
-    # Pad to 3 cols
     while len(data[0]) < 3:
         data[0].append('')
         cap_row[0].append('')

@@ -67,8 +67,8 @@ body.inspection-form .container:has(.if-layout) .if-layout-main form:has(> ul.na
   width: 100% !important;
   max-width: 100% !important;
   justify-content: center !important;
-  padding: 0 0 1rem !important;
-  margin: 0 !important;
+  padding: 0 0 0.35rem !important;
+  margin: 0 0 1.5rem !important;
   flex-wrap: nowrap !important;
   overflow-x: auto !important;
   overflow-y: visible !important;
@@ -172,7 +172,8 @@ body.inspection-form .container:has(.if-layout) .if-layout-main > .alert:not(.d-
     --if-side-card-h: clamp(16rem, 34vh, 20rem);
   }
   .if-layout-aside .if-side-card--summary {
-    --if-side-card-h: clamp(10rem, 20vh, 14rem);
+    --if-side-card-h: none;
+    max-height: none !important;
   }
   .if-layout-aside .if-side-card--signatures {
     --if-side-card-h: clamp(12rem, 26vh, 17rem);
@@ -296,14 +297,16 @@ body.inspection-form .container:has(.if-layout) .if-layout-main > .alert:not(.d-
 .if-layout-aside .if-side-card--workflow {
   --if-side-card-h: clamp(17.5rem, 36vh, 21.5rem);
 }
-.if-layout-aside .if-side-card--summary {
-  --if-side-card-h: clamp(11rem, 22vh, 15rem);
-}
 .if-layout-aside .if-side-card--signatures {
   --if-side-card-h: clamp(13rem, 28vh, 18rem);
 }
+.if-layout-aside .if-side-card--summary {
+  --if-side-card-h: none;
+  max-height: none !important;
+  height: auto;
+  overflow: visible;
+}
 .if-layout-aside .if-side-card--workflow,
-.if-layout-aside .if-side-card--summary,
 .if-layout-aside .if-side-card--signatures {
   max-height: var(--if-side-card-h);
 }
@@ -316,7 +319,10 @@ body.inspection-form .container:has(.if-layout) .if-layout-main > .alert:not(.d-
   -webkit-overflow-scrolling: touch;
 }
 .if-layout-aside .if-side-card--summary .if-side-card__scroll {
-  padding: 14px 18px 16px !important;
+  padding: 0 !important;
+  overflow: visible !important;
+  flex: 0 0 auto;
+  min-height: 0;
 }
 .if-layout-aside .if-side-card--signatures .if-side-card__scroll {
   padding: 0 !important;
@@ -377,37 +383,61 @@ body.inspection-form .container:has(.if-layout) .if-layout-main > .alert:not(.d-
   50%      { box-shadow: 0 0 0 6px rgba(255, 142, 104, .20); }
 }
 
-/* ─── Inspection summary list ─────────────────────────────────── */
+/* ─── Inspection summary list (aligned with Signature status rows) ─── */
+.if-layout-aside .if-side-card--summary .if-rec-empty {
+  padding: 14px 18px 16px;
+  margin: 0;
+}
 .if-summary-list {
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 0;
+  width: 100%;
 }
-.if-summary-row {
+.if-layout-aside .if-summary-row {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 8px 10px;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
+  align-items: stretch;
+  gap: 6px;
+  margin: 0;
+  padding: 14px 18px !important;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #f1f5f9;
+  border-radius: 0;
+  box-shadow: none;
+  box-sizing: border-box;
 }
-.if-summary-row dt {
+.if-layout-aside .if-summary-row:last-child {
+  border-bottom: none;
+  padding-bottom: 16px !important;
+}
+.if-layout-aside .if-summary-row:first-child {
+  padding-top: 14px !important;
+}
+.if-layout-aside .if-summary-row .if-summary-label,
+.if-layout-aside .if-summary-row dt {
+  display: block;
   font-size: .68rem;
   font-weight: 700;
   letter-spacing: .06em;
   text-transform: uppercase;
   color: #64748b;
   margin: 0;
+  padding: 0;
+  line-height: 1.3;
 }
-.if-summary-row dd {
-  font-size: .85rem;
-  color: #0f172a;
+.if-layout-aside .if-summary-row .if-summary-value,
+.if-layout-aside .if-summary-row dd {
+  display: block;
+  font-size: .88rem;
+  font-weight: 600;
+  color: #1e293b;
   margin: 0;
-  line-height: 1.35;
+  padding: 0;
+  line-height: 1.45;
   word-break: break-word;
   white-space: pre-wrap;
 }
@@ -429,7 +459,7 @@ body.inspection-form .container:has(.if-layout) .if-layout-main > .alert:not(.d-
 .if-rec-item {
   background: #fff;
   border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 8px 6px 6px;
   display: flex;
   flex-direction: column;
@@ -643,4 +673,640 @@ body.inspection-form .hr-signoff-wf-badge .if-wf-badge-person {
   font-weight: 600;
   color: #0369a1;
   line-height: 1.35;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Project Info — open bento board (stepper + aside unchanged)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Clean white header for steps 2–4 (replaces orange gradient) */
+body.inspection-form .if-form-hd--bento {
+  background: #fff !important;
+  border-bottom: 1px solid #ebe4df !important;
+  padding: 1.25rem 1.75rem 1.15rem !important;
+}
+body.inspection-form .if-form-hd--bento::before {
+  display: none;
+}
+body.inspection-form .if-form-hd--bento .if-form-eyebrow {
+  margin: 0 0 0.3rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--if-pri, #ff8e68);
+}
+body.inspection-form .if-form-hd--bento .if-form-title {
+  color: #1c1917 !important;
+  text-shadow: none;
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+}
+body.inspection-form .if-form-hd--bento .if-form-subtitle {
+  color: #a8a29e !important;
+  margin-top: 0.2rem;
+  letter-spacing: 0.08em;
+}
+
+/* Dissolve the nested white mega-card for the whole form board */
+body.inspection-form #mainForm.if-form--board > .if-form-hd--bento,
+body.inspection-form #mainForm.if-form--project-open > .if-form-hd--bento {
+  display: none !important;
+}
+body.inspection-form #mainForm.if-form--board > .tab-content,
+body.inspection-form #mainForm.if-form--project-open > .tab-content {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  padding: 0.35rem 0 0 !important;
+}
+
+/* Shared bento tokens (Project Info + later steps) */
+body.inspection-form #tab-1 .if-pi,
+body.inspection-form .if-step {
+  --pi-ink: #1c1917;
+  --pi-muted: #78716c;
+  --pi-line: #ebe4df;
+  --pi-kyn: var(--if-pri, #ff8e68);
+  --pi-kyn-soft: #fff4ef;
+  --pi-radius: 12px;
+}
+
+body.inspection-form #tab-1 .if-pi {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 0.9rem;
+  align-items: stretch;
+}
+
+body.inspection-form #tab-1 .if-pi-tile,
+body.inspection-form .if-step .if-pi-tile {
+  min-width: 0;
+  background: #fff;
+  border: 1px solid var(--pi-line);
+  border-radius: var(--pi-radius);
+  padding: 1.25rem 1.35rem;
+  box-shadow: 0 10px 28px rgba(28, 25, 23, 0.04);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+body.inspection-form #tab-1 .if-pi-tile:focus-within,
+body.inspection-form .if-step .if-pi-tile:focus-within {
+  border-color: rgba(255, 142, 104, 0.55);
+  box-shadow: 0 12px 30px rgba(255, 142, 104, 0.12);
+}
+
+/* Brand / title tile — full solid Kynvera (no line accent) */
+body.inspection-form #tab-1 .if-pi-tile--brand,
+body.inspection-form .if-step .if-step-brand {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 0.55rem;
+  padding: 1.5rem 1.55rem 1.45rem;
+  background: var(--pi-kyn);
+  border-color: var(--pi-kyn);
+  border-left: none;
+  position: relative;
+  overflow: hidden;
+  color: #fff;
+}
+body.inspection-form #tab-1 .if-pi-tile--brand {
+  grid-column: span 5;
+  grid-row: span 2;
+}
+body.inspection-form #tab-1 .if-pi-tile--brand::after,
+body.inspection-form .if-step .if-step-brand::after {
+  display: none;
+}
+body.inspection-form #tab-1 .if-pi-brand-mark,
+body.inspection-form .if-step .if-pi-brand-mark {
+  width: 2.55rem;
+  height: 2.55rem;
+  border-radius: var(--pi-radius);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--pi-kyn);
+  background: #fff;
+  box-shadow: none;
+  margin-bottom: 0.35rem;
+  flex-shrink: 0;
+}
+body.inspection-form #tab-1 .if-pi-brand-kicker,
+body.inspection-form .if-step .if-pi-brand-kicker {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.92);
+}
+body.inspection-form #tab-1 .if-pi-brand-title,
+body.inspection-form .if-step .if-pi-brand-title {
+  margin: 0;
+  font-size: clamp(1.55rem, 2.4vw, 2rem);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.1;
+  color: #fff !important;
+}
+body.inspection-form #tab-1 .if-pi-brand-copy,
+body.inspection-form .if-step .if-pi-brand-copy {
+  margin: 0;
+  max-width: 28rem;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.9);
+}
+body.inspection-form #tab-1 .if-pi-brand-meta,
+body.inspection-form .if-step .if-pi-brand-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.55rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.82);
+}
+body.inspection-form #tab-1 .if-pi-dot,
+body.inspection-form .if-step .if-pi-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.65);
+}
+
+/* Site + date */
+body.inspection-form #tab-1 .if-pi-tile--site {
+  grid-column: span 7;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 8.5rem;
+}
+body.inspection-form #tab-1 .if-pi-tile--date {
+  grid-column: span 7;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 7.25rem;
+}
+
+body.inspection-form #tab-1 .if-pi-tile-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.7rem;
+}
+body.inspection-form #tab-1 .if-pi-label {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #57534e;
+}
+body.inspection-form #tab-1 .if-pi-hint {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #a8a29e;
+}
+body.inspection-form #tab-1 .if-pi-ico {
+  width: 1.85rem;
+  height: 1.85rem;
+  border-radius: calc(var(--pi-radius) * 0.5);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--pi-kyn);
+  background: var(--pi-kyn-soft);
+}
+
+body.inspection-form #tab-1 .if-pi-field.form-control,
+body.inspection-form #tab-1 .if-pi-field.form-select {
+  border: none !important;
+  border-bottom: none !important;
+  border-radius: var(--pi-radius) !important;
+  background: #faf7f5 !important;
+  box-shadow: none !important;
+  padding: 0.85rem 1rem !important;
+  font-size: 1.05rem !important;
+  font-weight: 600;
+  color: var(--pi-ink) !important;
+  min-height: 3.1rem;
+}
+body.inspection-form #tab-1 .if-pi-field.form-control:focus {
+  background: #fff !important;
+  outline: 2px solid rgba(255, 142, 104, 0.35);
+  outline-offset: 0;
+}
+body.inspection-form #tab-1 .if-pi-field.form-control::placeholder {
+  color: #b0a8a2;
+  font-weight: 500;
+}
+
+/* Category chips */
+body.inspection-form #tab-1 .if-pi-tile--category {
+  grid-column: span 12;
+  padding: 1.2rem 1.25rem 1.3rem;
+}
+body.inspection-form #tab-1 .if-pi-cats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+body.inspection-form #tab-1 .if-pi-cat {
+  appearance: none;
+  border: 1px solid #ebe4df;
+  background: #faf7f5;
+  border-radius: var(--pi-radius);
+  padding: 0.95rem 0.9rem;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+body.inspection-form #tab-1 .if-pi-cat:hover {
+  border-color: rgba(255, 142, 104, 0.45);
+  background: #fff;
+  transform: translateY(-1px);
+}
+body.inspection-form #tab-1 .if-pi-cat.is-active {
+  background: #fff;
+  border-color: var(--pi-kyn);
+  box-shadow: 0 0 0 3px rgba(255, 142, 104, 0.16);
+}
+body.inspection-form #tab-1 .if-pi-cat-name {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 750;
+  color: var(--pi-ink);
+  letter-spacing: -0.01em;
+}
+body.inspection-form #tab-1 .if-pi-cat-desc {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--pi-muted);
+}
+body.inspection-form #tab-1 .if-pi-cat.is-active .if-pi-cat-name {
+  color: #c2410c;
+}
+
+/* CTA bar — flat white + solid Kynvera button */
+body.inspection-form #tab-1 .if-pi-tile--cta,
+body.inspection-form .if-step .if-pi-tile--cta {
+  grid-column: span 12;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.15rem 1rem 1.35rem;
+  background: #fff;
+  border-color: var(--pi-line);
+}
+body.inspection-form #tab-1 .if-pi-cta-copy {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--pi-muted);
+  font-weight: 500;
+}
+body.inspection-form #tab-1 .if-pi-next,
+body.inspection-form .if-step .if-pi-next {
+  appearance: none;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  border-radius: var(--pi-radius);
+  padding: 0.8rem 1.25rem;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #fff;
+  background: var(--pi-kyn, #ff8e68);
+  box-shadow: none;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+body.inspection-form #tab-1 .if-pi-next:hover,
+body.inspection-form .if-step .if-pi-next:hover {
+  background: #f07a52;
+  transform: translateY(-1px);
+}
+body.inspection-form #tab-1 .if-pi-next:active,
+body.inspection-form .if-step .if-pi-next:active {
+  transform: translateY(0);
+  background: #e56f48;
+}
+
+@media (max-width: 991.98px) {
+  body.inspection-form #tab-1 .if-pi-tile--brand,
+  body.inspection-form #tab-1 .if-pi-tile--site,
+  body.inspection-form #tab-1 .if-pi-tile--date {
+    grid-column: span 12;
+    grid-row: auto;
+    min-height: 0;
+  }
+  body.inspection-form #tab-1 .if-pi-tile--brand {
+    min-height: 11rem;
+  }
+  body.inspection-form #tab-1 .if-pi-cats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 575.98px) {
+  body.inspection-form #tab-1 .if-pi {
+    gap: 0.7rem;
+  }
+  body.inspection-form #tab-1 .if-pi-tile,
+  body.inspection-form .if-step .if-pi-tile {
+    padding: 1.05rem 1.1rem;
+  }
+  body.inspection-form #tab-1 .if-pi-cats {
+    grid-template-columns: 1fr;
+  }
+  body.inspection-form #tab-1 .if-pi-tile--cta,
+  body.inspection-form .if-step .if-pi-tile--cta {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+  }
+  body.inspection-form #tab-1 .if-pi-next,
+  body.inspection-form .if-step .if-pi-next {
+    justify-content: center;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Steps 2–4 — continue Project Info bento language
+   ═══════════════════════════════════════════════════════════════ */
+body.inspection-form .if-step {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+/* Horizontal solid-Kynvera step banner */
+body.inspection-form .if-step .if-step-brand {
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 1rem 1.25rem;
+  padding: 1.15rem 1.35rem;
+}
+body.inspection-form .if-step .if-step-brand .if-pi-brand-mark {
+  margin-bottom: 0;
+}
+body.inspection-form .if-step .if-step-brand-copy {
+  flex: 1 1 14rem;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+body.inspection-form .if-step .if-step-brand .if-pi-brand-title {
+  font-size: clamp(1.25rem, 2vw, 1.55rem);
+}
+body.inspection-form .if-step .if-step-brand .if-pi-brand-copy {
+  max-width: 36rem;
+  font-size: 0.86rem;
+}
+body.inspection-form .if-step .if-step-brand .if-pi-brand-meta {
+  margin-top: 0;
+  margin-left: auto;
+}
+
+body.inspection-form .if-step-body {
+  margin: 0 !important;
+}
+body.inspection-form .if-step-lede {
+  margin: 0 0 0.35rem !important;
+  padding: 0 0.15rem;
+  color: var(--pi-muted, #78716c) !important;
+}
+
+/* Section titles inside steps — label style, no nested heading box */
+body.inspection-form .if-step .hvac-section-title,
+body.inspection-form .if-step .hvac-section-title-submitted,
+body.inspection-form .if-step .if-step-section-title {
+  color: var(--pi-kyn, #ff8e68) !important;
+  font-size: 0.72rem !important;
+  font-weight: 750 !important;
+  letter-spacing: 0.1em !important;
+  text-transform: uppercase !important;
+  border-bottom: none !important;
+  padding-bottom: 0 !important;
+  margin: 0 0 0.35rem !important;
+}
+body.inspection-form .if-step .mb-section {
+  margin-bottom: 0.65rem !important;
+}
+
+/* Add-item form tile */
+body.inspection-form .if-step .hvac-add-item-card {
+  background: #fff !important;
+  border: 1px solid var(--pi-line, #ebe4df) !important;
+  border-radius: var(--pi-radius, 12px) !important;
+  box-shadow: 0 10px 28px rgba(28, 25, 23, 0.04) !important;
+  padding: 1.25rem 1.35rem !important;
+  margin-bottom: 0.9rem !important;
+}
+body.inspection-form .if-step .hvac-add-item-card .form-label {
+  font-size: 0.7rem !important;
+  font-weight: 750 !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+  color: #57534e !important;
+}
+body.inspection-form .if-step .hvac-add-item-card .form-control,
+body.inspection-form .if-step .hvac-add-item-card .form-select,
+body.inspection-form .if-step .hvac-add-item-card textarea.form-control {
+  border: none !important;
+  border-bottom: none !important;
+  border-radius: var(--pi-radius, 12px) !important;
+  background: #faf7f5 !important;
+  padding: 0.7rem 0.9rem !important;
+  min-height: 2.75rem;
+}
+body.inspection-form .if-step .hvac-add-item-card .form-control:focus,
+body.inspection-form .if-step .hvac-add-item-card .form-select:focus,
+body.inspection-form .if-step .hvac-add-item-card textarea.form-control:focus {
+  outline: 2px solid rgba(255, 142, 104, 0.35);
+  background: #fff !important;
+}
+body.inspection-form .if-step .drop-zone {
+  border: 1.5px dashed #ddd5cf !important;
+  border-radius: var(--pi-radius, 12px) !important;
+  background: #faf7f5 !important;
+}
+body.inspection-form .if-step .hvac-btn-add,
+body.inspection-form .if-step #addItemBtn.btn-success {
+  background: var(--pi-kyn, #ff8e68) !important;
+  border-color: var(--pi-kyn, #ff8e68) !important;
+  border-radius: var(--pi-radius, 12px) !important;
+  color: #fff !important;
+  box-shadow: none !important;
+}
+body.inspection-form .if-step .hvac-btn-clear,
+body.inspection-form .if-step .hvac-btn-danger {
+  border-radius: var(--pi-radius, 12px) !important;
+}
+
+/* Items list / cards */
+body.inspection-form .if-step .items-list .item-card,
+body.inspection-form .if-step .hvac-item-card,
+body.inspection-form .if-step .editable-item-card {
+  border-radius: var(--pi-radius, 12px) !important;
+  border-color: var(--pi-line, #ebe4df) !important;
+  background: #fff !important;
+  box-shadow: 0 8px 22px rgba(28, 25, 23, 0.04) !important;
+}
+
+/* Materials picker — flat white tile, solid Kynvera */
+body.inspection-form .if-step .mp-section.mp-standalone,
+body.inspection-form .if-step .mp-section {
+  margin-top: 0 !important;
+  background: #fff;
+  border: 1px solid var(--pi-line, #ebe4df);
+  border-radius: var(--pi-radius, 12px);
+  box-shadow: 0 10px 28px rgba(28, 25, 23, 0.04);
+  overflow: hidden;
+  padding: 1rem 1.1rem 1.15rem;
+}
+body.inspection-form .if-step .mp-section.mp-standalone .mp-body {
+  border: none !important;
+  border-radius: var(--pi-radius, 12px) !important;
+  background: transparent !important;
+}
+body.inspection-form .if-step .mp-toolbar {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 0 0.75rem !important;
+}
+body.inspection-form .if-step .mp-section-header {
+  background: var(--pi-kyn, #ff8e68) !important;
+  border-radius: var(--pi-radius, 12px) !important;
+}
+body.inspection-form .if-step .mp-section-header:hover {
+  background: #f07a52 !important;
+}
+body.inspection-form .if-step .mp-dept-tab {
+  border-radius: var(--pi-radius, 12px) !important;
+}
+body.inspection-form .if-step .mp-dept-tab.active {
+  background: var(--pi-kyn, #ff8e68) !important;
+  border-color: var(--pi-kyn, #ff8e68) !important;
+  color: #fff !important;
+}
+body.inspection-form .if-step .mp-search {
+  border-radius: var(--pi-radius, 12px) !important;
+}
+body.inspection-form .if-step .hvac-mat-card {
+  border-radius: var(--pi-radius, 12px) !important;
+  border-color: var(--pi-line, #ebe4df) !important;
+}
+
+/* Sign-off tiles */
+body.inspection-form .if-step .signoff-chain-box,
+body.inspection-form .if-step .signoff-submitter-card,
+body.inspection-form .if-step .signoff-card {
+  border-radius: var(--pi-radius, 12px) !important;
+  border-color: var(--pi-line, #ebe4df) !important;
+  background: #fff !important;
+  box-shadow: 0 8px 22px rgba(28, 25, 23, 0.04);
+}
+body.inspection-form .if-step .signoff-chain-box.is-active {
+  border-color: var(--pi-kyn, #ff8e68) !important;
+  box-shadow: 0 0 0 2px rgba(255, 142, 104, 0.16);
+}
+body.inspection-form .if-step .signoff-chain-box.is-active .scb-badge {
+  background: transparent !important;
+  color: var(--pi-kyn, #ff8e68) !important;
+  border: 1px solid var(--pi-kyn, #ff8e68) !important;
+  border-radius: var(--pi-radius, 12px) !important;
+}
+body.inspection-form .if-step .signoff-shell-title {
+  font-size: 0.72rem !important;
+  font-weight: 750 !important;
+  letter-spacing: 0.1em !important;
+  text-transform: uppercase !important;
+  color: #57534e !important;
+}
+
+/* Step nav */
+body.inspection-form .if-step .if-step-nav {
+  margin-top: 0.15rem;
+}
+body.inspection-form .if-step-prev {
+  appearance: none;
+  border: 1px solid var(--pi-line, #ebe4df);
+  background: #fff;
+  color: #57534e;
+  border-radius: var(--pi-radius, 12px);
+  padding: 0.75rem 1.15rem;
+  font-size: 0.9rem;
+  font-weight: 650;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+body.inspection-form .if-step-prev:hover {
+  border-color: rgba(255, 142, 104, 0.45);
+  color: #c2410c;
+}
+body.inspection-form .if-step-nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+body.inspection-form .if-step-verify {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid var(--pi-kyn, #ff8e68);
+  background: #fff;
+  color: var(--pi-kyn, #ff8e68);
+  border-radius: var(--pi-radius, 12px);
+  padding: 0.75rem 1.1rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+body.inspection-form .if-step-verify:hover {
+  background: #fff4ef;
+}
+body.inspection-form .if-step .btn-success:not(.hvac-btn-add):not(#addItemBtn) {
+  background: var(--pi-kyn, #ff8e68) !important;
+  border-color: var(--pi-kyn, #ff8e68) !important;
+  border-radius: var(--pi-radius, 12px) !important;
+  box-shadow: none !important;
+}
+body.inspection-form .if-step .btn-primary {
+  background: var(--pi-kyn, #ff8e68) !important;
+  border-color: var(--pi-kyn, #ff8e68) !important;
+  border-radius: var(--pi-radius, 12px) !important;
+  box-shadow: none !important;
+}
+
+@media (max-width: 767.98px) {
+  body.inspection-form .if-step .if-step-brand .if-pi-brand-meta {
+    margin-left: 0;
+    width: 100%;
+  }
+  body.inspection-form .if-step-nav-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+  body.inspection-form .if-step-nav-actions .if-pi-next,
+  body.inspection-form .if-step-nav-actions .if-step-verify {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
 }

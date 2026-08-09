@@ -24,17 +24,19 @@ from reportlab.platypus import (
 
 from reportlab.pdfgen.canvas import Canvas
 
+from common import kynvera_pdf_brand as brand
+
 logger = logging.getLogger(__name__)
 
-# ── Palette ──────────────────────────────────────────────────────────────────
-INK        = colors.HexColor('#0f172a')        # near-black text
-BRAND      = colors.HexColor('#1e3a5f')        # dark navy (primary)
-ACCENT     = colors.HexColor('#2563eb')        # blue accent
-RULE       = colors.HexColor('#cbd5e1')        # light divider
-TABLE_HEAD = colors.HexColor('#1e3a5f')        # navy header row
-ROW_ALT    = colors.HexColor('#f1f5f9')        # alternate row tint
-TOTAL_BG   = colors.HexColor('#1e3a5f')        # grand total row bg
-MUTED      = colors.HexColor('#64748b')        # secondary text
+# ── Palette — Kynvera coral ──────────────────────────────────────────────────
+INK        = brand.TEXT_DARK
+BRAND      = brand.TEXT_DARK
+ACCENT     = brand.PRIMARY
+RULE       = brand.HAIRLINE
+TABLE_HEAD = brand.SOFT_WASH
+ROW_ALT    = brand.SURFACE_ALT
+TOTAL_BG   = brand.PRIMARY_DARK
+MUTED      = brand.TEXT_MID
 
 PAGE_W, PAGE_H = A4
 L_MARGIN  = 18 * mm
@@ -68,19 +70,22 @@ class _InvoiceCanvas(Canvas):
     def _draw_page(self, total_pages):
         self.saveState()
 
-        # Top navy stripe
-        self.setFillColor(BRAND)
-        self.rect(0, PAGE_H - 10 * mm, PAGE_W, 10 * mm, fill=1, stroke=0)
+        # Coral top accent
+        self.setStrokeColor(ACCENT)
+        self.setLineWidth(2.2)
+        self.line(0, PAGE_H - 1, PAGE_W, PAGE_H - 1)
 
-        # Bottom navy stripe
-        self.setFillColor(BRAND)
+        # Light footer band
+        self.setFillColor(brand.SOFT_WASH)
         self.rect(0, 0, PAGE_W, 8 * mm, fill=1, stroke=0)
+        self.setStrokeColor(ACCENT)
+        self.setLineWidth(1.2)
+        self.line(0, 8 * mm, PAGE_W, 8 * mm)
 
-        # Footer text
-        self.setFillColor(colors.white)
+        self.setFillColor(MUTED)
         self.setFont('Helvetica', 7)
         self.drawString(L_MARGIN, 2.8 * mm,
-                        'INJAAZ FACILITIES MANAGEMENT  —  SERVICE INVOICE  —  CONFIDENTIAL')
+                        f'{brand.COMPANY_NAME_UPPER}  —  SERVICE INVOICE  —  CONFIDENTIAL')
         self.drawRightString(PAGE_W - R_MARGIN, 2.8 * mm,
                              f'Page {self._pageNumber} of {total_pages}  |  {self._invoice_no}')
 
@@ -145,23 +150,24 @@ def _items_table(rows, col_widths):
     t = Table(rows, colWidths=col_widths, repeatRows=1)
     n = len(rows)
     style = [
-        # Header row
+        # Header row — soft wash + coral underline
         ('BACKGROUND',   (0, 0), (-1, 0),  TABLE_HEAD),
-        ('TEXTCOLOR',    (0, 0), (-1, 0),  colors.white),
+        ('TEXTCOLOR',    (0, 0), (-1, 0),  INK),
         ('FONTNAME',     (0, 0), (-1, 0),  'Helvetica-Bold'),
         ('FONTSIZE',     (0, 0), (-1, 0),  8.5),
         ('ALIGN',        (0, 0), (-1, 0),  'CENTER'),
         ('TOPPADDING',   (0, 0), (-1, 0),  7),
         ('BOTTOMPADDING',(0, 0), (-1, 0),  7),
+        ('LINEBELOW',    (0, 0), (-1, 0),  1.2, ACCENT),
         # Data rows
         ('FONTSIZE',     (0, 1), (-1, -1), 8.5),
+        ('TEXTCOLOR',    (0, 1), (-1, -1), INK),
         ('TOPPADDING',   (0, 1), (-1, -1), 5),
         ('BOTTOMPADDING',(0, 1), (-1, -1), 5),
         ('LEFTPADDING',  (0, 0), (-1, -1), 7),
         ('RIGHTPADDING', (0, 0), (-1, -1), 7),
         ('VALIGN',       (0, 0), (-1, -1), 'MIDDLE'),
         ('GRID',         (0, 0), (-1, -1), 0.4, RULE),
-        # Alternating rows
         ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, ROW_ALT]),
     ]
     t.setStyle(TableStyle(style))
@@ -213,58 +219,50 @@ def build_invoice_pdf(ticket, materials, manpower_entries, output_stream):
     """
     invoice_no = f'INV-{ticket.ticket_id}'
 
-    logo_path = None
-    for c in ['static/icons/INJAAZ Logo - Edited.png', 'static/icons/icon-144x144.png']:
-        if os.path.exists(c):
-            logo_path = c
-            break
+    logo_path = brand.resolve_logo_path(prefer_wordmark=True)
 
     doc = SimpleDocTemplate(
         output_stream,
         pagesize=A4,
         leftMargin=L_MARGIN, rightMargin=R_MARGIN,
-        topMargin=T_MARGIN + 10 * mm, bottomMargin=B_MARGIN + 10 * mm,
+        topMargin=T_MARGIN + 6 * mm, bottomMargin=B_MARGIN + 10 * mm,
         title=invoice_no,
+        author=brand.PDF_AUTHOR,
     )
 
     story = []
 
-    # ── 1. HERO HEADER ROW: "SERVICE INVOICE" left, logo + company right ──────
+    # ── 1. HERO HEADER ROW: "SERVICE INVOICE" left, wordmark + company right ──
     logo_cell = ''
     if logo_path:
         try:
-            logo_cell = RLImage(logo_path, width=28 * mm, height=14 * mm,
+            logo_cell = RLImage(logo_path, width=36 * mm, height=10 * mm,
                                 preserveAspectRatio=True)
         except Exception:
             pass
 
-    company_block = [
-        _p('INJAAZ', 15, bold=True, color=BRAND, align=TA_RIGHT),
-        _p('FACILITIES MANAGEMENT', 7.5, color=MUTED, align=TA_RIGHT),
-        _p('Abu Dhabi, UAE', 8, color=INK, align=TA_RIGHT),
-    ]
-
-    hero_left  = _p('SERVICE INVOICE', 28, bold=True, color=ACCENT)
-    hero_right = Table([[logo_cell], [_p('INJAAZ', 13, bold=True, color=BRAND, align=TA_RIGHT)],
-                        [_p('FACILITIES MANAGEMENT', 7, color=MUTED, align=TA_RIGHT)],
-                        [_p('Abu Dhabi, UAE', 8, color=INK, align=TA_RIGHT)]],
-                       colWidths=[AVAIL_W * 0.4])
+    hero_left = _p('SERVICE INVOICE', 26, bold=True, color=ACCENT)
+    hero_right = Table([
+        [logo_cell],
+        [_p(brand.COMPANY_NAME, 12, bold=True, color=BRAND, align=TA_RIGHT)],
+        [_p(brand.TAGLINE, 7, color=MUTED, align=TA_RIGHT)],
+    ], colWidths=[AVAIL_W * 0.4])
     hero_right.setStyle(TableStyle([
-        ('ALIGN',  (0,0),(-1,-1),'RIGHT'),
-        ('TOPPADDING',   (0,0),(-1,-1), 1),
-        ('BOTTOMPADDING',(0,0),(-1,-1), 1),
-        ('LEFTPADDING',  (0,0),(-1,-1), 0),
-        ('RIGHTPADDING', (0,0),(-1,-1), 0),
+        ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),
+        ('TOPPADDING', (0, 0), (-1, -1), 1),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 1),
+        ('LEFTPADDING', (0, 0), (-1, -1), 0),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 0),
     ]))
 
     hero_tbl = Table([[hero_left, hero_right]],
                      colWidths=[AVAIL_W * 0.58, AVAIL_W * 0.42])
     hero_tbl.setStyle(TableStyle([
-        ('VALIGN',       (0,0),(-1,-1),'BOTTOM'),
-        ('LEFTPADDING',  (0,0),(-1,-1), 0),
-        ('RIGHTPADDING', (0,0),(-1,-1), 0),
-        ('TOPPADDING',   (0,0),(-1,-1), 0),
-        ('BOTTOMPADDING',(0,0),(-1,-1), 0),
+        ('VALIGN', (0, 0), (-1, -1), 'BOTTOM'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 0),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+        ('TOPPADDING', (0, 0), (-1, -1), 0),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
     ]))
     story.append(hero_tbl)
     story.append(_rule(color=ACCENT, thickness=2))
@@ -441,7 +439,7 @@ def build_invoice_pdf(ticket, materials, manpower_entries, output_stream):
     terms_text = (
         'This invoice is issued upon successful completion and closure of the above '
         'work order. The amount shown reflects the total service charge. '
-        'For queries or disputes, contact Injaaz Facilities Management.'
+        f'For queries or disputes, contact {brand.COMPANY_NAME}.'
     )
     cw_terms = AVAIL_W * 0.56
     cw_sig   = AVAIL_W * 0.44

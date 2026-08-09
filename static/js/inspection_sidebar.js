@@ -572,6 +572,8 @@
                '<div>' + badge + '</div>' +
              '</div>';
     }).join('');
+    if (window.__ifSigRowsFp === html) return;
+    window.__ifSigRowsFp = html;
     mount.innerHTML = html;
   }
 
@@ -743,19 +745,29 @@
     if (matsLine) rows.push({ label: 'Materials', value: matsLine });
 
     if (!rows.length) {
-      list.hidden = true;
-      list.innerHTML = '';
+      if (!list.hidden || list.innerHTML) {
+        list.hidden = true;
+        list.innerHTML = '';
+      }
       empty.hidden = false;
+      window.__ifSummaryFp = '';
       return;
     }
-    empty.hidden = true;
-    list.hidden = false;
-    list.innerHTML = rows.map(function (r) {
+
+    var html = rows.map(function (r) {
       return '<div class="if-summary-row">' +
-               '<dt>' + escapeHtml(r.label) + '</dt>' +
-               '<dd>' + escapeHtml(r.value) + '</dd>' +
+               '<span class="if-summary-label">' + escapeHtml(r.label) + '</span>' +
+               '<div class="if-summary-value">' + escapeHtml(r.value) + '</div>' +
              '</div>';
     }).join('');
+
+    /* Avoid rewriting identical markup — prevents the load/flicker jump */
+    if (window.__ifSummaryFp === html) return;
+    window.__ifSummaryFp = html;
+
+    empty.hidden = true;
+    list.hidden = false;
+    list.innerHTML = html;
   }
 
   function bindSummaryListeners() {

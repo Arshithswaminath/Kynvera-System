@@ -3,7 +3,7 @@ Database Models for Injaaz App
 SQLAlchemy ORM models for PostgreSQL/SQLite
 """
 import json
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 from sqlalchemy import JSON
@@ -102,6 +102,9 @@ class User(db.Model):
         if self.role == 'admin':
             return True  # Admins have access to all modules
         module_map = {
+            'inspection': (
+                self.access_hvac or self.access_civil or self.access_cleaning
+            ),
             'hvac_mep': self.access_hvac,
             'civil': self.access_civil,
             'cleaning': self.access_cleaning,
@@ -2236,3 +2239,399 @@ class HiringDocument(db.Model):
 
     def __repr__(self):
         return f'<HiringDocument {self.id} {self.doc_type} cand={self.candidate_id}>'
+
+
+# ── Leave Tracker (Sick + Annual, Aug–Dec 2026) ─────────────────────────────
+
+LEAVE_TRACKER_YEAR = 2026
+LEAVE_TRACKER_MONTHS = (8, 9, 10, 11, 12)  # Aug–Dec
+LEAVE_TRACKER_MONTH_LABELS = {
+    8: 'Aug',
+    9: 'Sep',
+    10: 'Oct',
+    11: 'Nov',
+    12: 'Dec',
+}
+LEAVE_SICK_ENTITLEMENT = 15
+LEAVE_TYPES = ('sick', 'annual')
+LEAVE_COMPANIES = ('INJAAZ', 'Tourism', 'L&P')
+
+# Sick-used thresholds for UI / Excel highlighting
+LEAVE_SICK_ALERT_WARNING = 10   # approaching
+LEAVE_SICK_ALERT_CRITICAL = 13  # nearly exhausted
+# exhausted = LEAVE_SICK_ENTITLEMENT (15+)
+
+
+def leave_sick_alert_level(used: float) -> str:
+    """Return '' | 'warning' | 'critical' | 'exhausted' from YTD sick days used."""
+    if used is None:
+        return ''
+    try:
+        u = float(used)
+    except (TypeError, ValueError):
+        return ''
+    if u >= LEAVE_SICK_ENTITLEMENT:
+        return 'exhausted'
+    if u >= LEAVE_SICK_ALERT_CRITICAL:
+        return 'critical'
+    if u >= LEAVE_SICK_ALERT_WARNING:
+        return 'warning'
+    return ''
+
+
+class LeaveEmployee(db.Model):
+    """Staff roster row for the HR leave tracker (may include EMP IDs not in users)."""
+    __tablename__ = 'leave_employees'
+
+    id = db.Column(db.Integer, primary_key=True)
+    emp_id = db.Column(db.String(40), nullable=False, unique=True, index=True)
+    full_name = db.Column(db.String(200), nullable=False, index=True)
+    designation = db.Column(db.String(160))
+    company = db.Column(db.String(40), nullable=False, default='INJAAZ', index=True)
+    annual_entitlement = db.Column(db.Integer, nullable=True)
+    active = db.Column(db.Boolean, default=True, nullable=False)
+    created_at = db.Column(db.DateTime, default=_utcnow)
+    updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
+
+    usage = db.relationship(
+        'LeaveMonthlyUsage',
+        back_populates='employee',
+        cascade='all, delete-orphan',
+        lazy='select',
+    )
+    plans = db.relationship(
+        'LeavePlan',
+        back_populates='employee',
+        cascade='all, delete-orphan',
+        lazy='select',
+    )
+    logs = db.relationship(
+        'LeaveLog',
+        back_populates='employee',
+        cascade='all, delete-orphan',
+        lazy='select',
+    )
+
+    def month_days(self, leave_type: str, year: int, month: int):
+        """Return days for a month, or None if not yet entered."""
+        for u in self.usage or []:
+            if u.leave_type == leave_type and u.year == year and u.month == month:
+                return u.days
+        return None
+
+    def used_total(self, leave_type: str, year: int = LEAVE_TRACKER_YEAR, months=None) -> float:
+        months = months or LEAVE_TRACKER_MONTHS
+        total = 0.0
+        for m in months:
+            d = self.month_days(leave_type, year, m)
+            if d is not None:
+                try:
+                    total += float(d)
+                except (TypeError, ValueError):
+                    pass
+        return total
+
+    def usage_map(self, leave_type: str, year: int = LEAVE_TRACKER_YEAR):
+        """Dict month -> days (None if empty) for tracker months."""
+        return {m: self.month_days(leave_type, year, m) for m in LEAVE_TRACKER_MONTHS}
+
+    def to_dict(self, year: int = LEAVE_TRACKER_YEAR):
+        sick_map = self.usage_map('sick', year)
+        annual_map = self.usage_map('annual', year)
+        sick_used = self.used_total('sick', year)
+        annual_used = self.used_total('annual', year)
+        entitlement = self.annual_entitlement
+        annual_remaining = None
+        if entitlement is not None:
+            annual_remaining = float(entitlement) - annual_used
+        alert = leave_sick_alert_level(sick_used)
+        return {
+            'id': self.id,
+            'emp_id': self.emp_id,
+            'full_name': self.full_name,
+            'designation': self.designation or '',
+            'company': self.company or '',
+            'annual_entitlement': entitlement,
+            'active': bool(self.active),
+            'sick': {
+                'months': sick_map,
+                'used': sick_used,
+                'remaining': LEAVE_SICK_ENTITLEMENT - sick_used,
+                'entitlement': LEAVE_SICK_ENTITLEMENT,
+                'alert': alert,
+            },
+            'annual': {
+                'months': annual_map,
+                'used': annual_used,
+                'remaining': annual_remaining,
+                'entitlement': entitlement,
+            },
+            'created_at': naive_utc_isoformat_z(self.created_at) if self.created_at else None,
+            'updated_at': naive_utc_isoformat_z(self.updated_at) if self.updated_at else None,
+        }
+
+    def __repr__(self):
+        return f'<LeaveEmployee {self.id} {self.emp_id} {self.full_name}>'
+
+
+class LeaveMonthlyUsage(db.Model):
+    """Days taken in a given year-month for sick or annual leave (rolled-up cache from leave_logs)."""
+    __tablename__ = 'leave_monthly_usage'
+
+    id = db.Column(db.Integer, primary_key=True)
+    employee_id = db.Column(
+        db.Integer,
+        db.ForeignKey('leave_employees.id', ondelete='CASCADE'),
+        nullable=False,
+        index=True,
+    )
+    leave_type = db.Column(db.String(20), nullable=False, index=True)  # sick | annual
+    year = db.Column(db.Integer, nullable=False, index=True)
+    month = db.Column(db.Integer, nullable=False)  # 1–12
+    days = db.Column(db.Float, nullable=True)  # None = not yet entered
+    updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
+
+    employee = db.relationship('LeaveEmployee', back_populates='usage')
+
+    __table_args__ = (
+        db.UniqueConstraint(
+            'employee_id', 'leave_type', 'year', 'month',
+            name='uq_leave_monthly_emp_type_ym',
+        ),
+    )
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'employee_id': self.employee_id,
+            'leave_type': self.leave_type,
+            'year': self.year,
+            'month': self.month,
+            'days': self.days,
+            'updated_at': naive_utc_isoformat_z(self.updated_at) if self.updated_at else None,
+        }
+
+    def __repr__(self):
+        return (
+            f'<LeaveMonthlyUsage emp={self.employee_id} '
+            f'{self.leave_type} {self.year}-{self.month} days={self.days}>'
+        )
+
+
+class LeaveLog(db.Model):
+    """Individual leave event — source of truth; rolls up into leave_monthly_usage."""
+    __tablename__ = 'leave_logs'
+
+    id = db.Column(db.Integer, primary_key=True)
+    employee_id = db.Column(
+        db.Integer,
+        db.ForeignKey('leave_employees.id', ondelete='CASCADE'),
+        nullable=False,
+        index=True,
+    )
+    leave_type = db.Column(db.String(20), nullable=False, index=True)  # sick | annual
+    leave_date = db.Column(db.Date, nullable=False, index=True)  # start date
+    end_date = db.Column(db.Date, nullable=True)  # inclusive end; None = same as leave_date
+    days = db.Column(db.Float, nullable=False)
+    notes = db.Column(db.Text)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=_utcnow)
+    updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
+
+    employee = db.relationship('LeaveEmployee', back_populates='logs')
+    creator = db.relationship('User', foreign_keys=[created_by])
+
+    def effective_end(self):
+        return self.end_date or self.leave_date
+
+    def to_dict(self):
+        emp = self.employee
+        month = self.leave_date.month if self.leave_date else None
+        end = self.effective_end()
+        return {
+            'id': self.id,
+            'employee_id': self.employee_id,
+            'emp_id': emp.emp_id if emp else None,
+            'full_name': emp.full_name if emp else None,
+            'company': emp.company if emp else None,
+            'designation': (emp.designation or '') if emp else '',
+            'leave_type': self.leave_type,
+            'leave_date': self.leave_date.isoformat() if self.leave_date else None,
+            'end_date': end.isoformat() if end else None,
+            'year': self.leave_date.year if self.leave_date else None,
+            'month': month,
+            'month_label': LEAVE_TRACKER_MONTH_LABELS.get(month, '') if month else '',
+            'days': self.days,
+            'notes': self.notes or '',
+            'created_by': self.created_by,
+            'created_at': naive_utc_isoformat_z(self.created_at) if self.created_at else None,
+            'updated_at': naive_utc_isoformat_z(self.updated_at) if self.updated_at else None,
+        }
+
+    def __repr__(self):
+        return (
+            f'<LeaveLog {self.id} emp={self.employee_id} '
+            f'{self.leave_type} {self.leave_date} days={self.days}>'
+        )
+
+
+def _log_days_in_month(log: 'LeaveLog', year: int, month: int) -> float:
+    """How many calendar days of this log fall in year-month."""
+    from datetime import timedelta
+
+    start = log.leave_date
+    end = log.end_date or log.leave_date
+    if not start or not end or end < start:
+        return 0.0
+    # Prefer proportional split of stored days if single-day vs multi
+    # Count calendar days in range that land in this month, then scale if days != calendar span
+    cal_total = (end - start).days + 1
+    if cal_total <= 0:
+        return 0.0
+    count = 0
+    cur = start
+    while cur <= end:
+        if cur.year == year and cur.month == month:
+            count += 1
+        cur += timedelta(days=1)
+    if count <= 0:
+        return 0.0
+    stored = float(log.days or 0)
+    if abs(stored - cal_total) < 0.01:
+        return float(count)
+    # Partial days / custom days: distribute proportionally
+    return stored * (count / cal_total)
+
+
+def recompute_monthly_usage(employee_id: int, leave_type: str, year: int, month: int) -> float:
+    """
+    Sum leave_logs (including multi-day ranges) into leave_monthly_usage for one month.
+    Deletes the usage row when the sum is 0. Returns the new total.
+    """
+    logs = LeaveLog.query.filter_by(
+        employee_id=employee_id,
+        leave_type=leave_type,
+    ).all()
+    total = 0.0
+    for lg in logs:
+        total += _log_days_in_month(lg, year, month)
+    total = round(total, 2)
+
+    row = LeaveMonthlyUsage.query.filter_by(
+        employee_id=employee_id,
+        leave_type=leave_type,
+        year=year,
+        month=month,
+    ).first()
+
+    if total <= 0:
+        if row:
+            db.session.delete(row)
+        return 0.0
+
+    if not row:
+        row = LeaveMonthlyUsage(
+            employee_id=employee_id,
+            leave_type=leave_type,
+            year=year,
+            month=month,
+        )
+        db.session.add(row)
+    row.days = total
+    row.updated_at = _utcnow()
+    return total
+
+
+def months_touched_by_range(start, end):
+    """Yield (year, month) pairs overlapped by inclusive date range."""
+    from datetime import timedelta
+    if not start or not end or end < start:
+        return []
+    seen = []
+    cur = start
+    while cur <= end:
+        key = (cur.year, cur.month)
+        if not seen or seen[-1] != key:
+            seen.append(key)
+        cur += timedelta(days=1)
+    return seen
+
+
+def migrate_monthly_usage_to_logs() -> dict:
+    """
+    One-time: if leave_logs is empty but leave_monthly_usage has rows,
+    create synthetic logs dated 1st of each month so history is preserved.
+    """
+    if LeaveLog.query.count() > 0:
+        return {'migrated': 0, 'skipped': True, 'reason': 'logs_already_exist'}
+
+    rows = LeaveMonthlyUsage.query.filter(
+        LeaveMonthlyUsage.days.isnot(None),
+        LeaveMonthlyUsage.days > 0,
+    ).all()
+    created = 0
+    for u in rows:
+        try:
+            leave_date = date(u.year, u.month, 1)
+        except ValueError:
+            continue
+        db.session.add(LeaveLog(
+            employee_id=u.employee_id,
+            leave_type=u.leave_type,
+            leave_date=leave_date,
+            days=float(u.days),
+            notes='Migrated from monthly total',
+        ))
+        created += 1
+    if created:
+        db.session.commit()
+    return {'migrated': created, 'skipped': False}
+
+
+class LeavePlan(db.Model):
+    """Planned annual leave date range for an employee."""
+    __tablename__ = 'leave_plans'
+
+    id = db.Column(db.Integer, primary_key=True)
+    employee_id = db.Column(
+        db.Integer,
+        db.ForeignKey('leave_employees.id', ondelete='CASCADE'),
+        nullable=False,
+        index=True,
+    )
+    start_date = db.Column(db.Date, nullable=False)
+    end_date = db.Column(db.Date, nullable=False)
+    days = db.Column(db.Integer, nullable=False)  # inclusive calendar days
+    notes = db.Column(db.Text)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=_utcnow)
+    updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
+
+    employee = db.relationship('LeaveEmployee', back_populates='plans')
+    creator = db.relationship('User', foreign_keys=[created_by])
+
+    @staticmethod
+    def calendar_days(start, end) -> int:
+        if not start or not end or end < start:
+            return 0
+        return (end - start).days + 1
+
+    def to_dict(self):
+        emp = self.employee
+        return {
+            'id': self.id,
+            'employee_id': self.employee_id,
+            'emp_id': emp.emp_id if emp else None,
+            'full_name': emp.full_name if emp else None,
+            'company': emp.company if emp else None,
+            'start_date': self.start_date.isoformat() if self.start_date else None,
+            'end_date': self.end_date.isoformat() if self.end_date else None,
+            'days': self.days,
+            'notes': self.notes or '',
+            'created_by': self.created_by,
+            'created_at': naive_utc_isoformat_z(self.created_at) if self.created_at else None,
+            'updated_at': naive_utc_isoformat_z(self.updated_at) if self.updated_at else None,
+        }
+
+    def __repr__(self):
+        return f'<LeavePlan {self.id} emp={self.employee_id} {self.start_date}–{self.end_date}>'
