@@ -73,6 +73,7 @@ OPERATIONS_SUITE = {
     "icon": "building",
     "icon_image": "images/kynvera/apps/ajman-municipality-128.png",
     "launch_endpoint": "launch_municipality",
+    "launch_url": "https://operations.kyvera.store",
     "mock": "municipality",
     "capabilities": [
         "Eight modules on one login, one role model and one audit trail",

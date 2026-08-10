@@ -87,7 +87,7 @@
                 {% endif %}
                 <div class="l-showcase-cta l-showcase-cta--pair">
                     <a href="#contact" class="l-btn l-btn--accent">Request a demo</a>
-                    <a href="{{ url_for(app.launch_endpoint) }}" class="l-btn l-btn--dark">
+                    <a href="{% if app.launch_url %}{{ app.launch_url }}{% else %}{{ url_for(app.launch_endpoint) }}{% endif %}" class="l-btn l-btn--dark"{% if app.launch_url %} target="_blank" rel="noopener noreferrer"{% endif %}>
                         Open application
                         {{ icon('launch') }}
                     </a>
