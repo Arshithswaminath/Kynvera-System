@@ -483,6 +483,24 @@ VALID_DESIGNATIONS = [
     'general_manager'
 ]
 
+# Terminal / non-rejectable workflow statuses for the shared inspection reject API.
+# HR uses dedicated reject endpoints; completed/approved records must stay locked.
+WORKFLOW_REJECT_TERMINAL_STATUSES = frozenset({
+    'completed',
+    'closed_by_admin',
+    'approved',
+    'withdrawn',
+    'rejected',
+})
+
+# Designation → statuses where that reviewer may reject (mirrors reject UI sections).
+WORKFLOW_REJECT_ALLOWED_STATUSES = {
+    'operations_manager': frozenset({'submitted', 'operations_manager_review'}),
+    'business_development': frozenset({'bd_procurement_review'}),
+    'procurement': frozenset({'bd_procurement_review'}),
+    'general_manager': frozenset({'general_manager_review'}),
+}
+
 # Workflow status progression
 WORKFLOW_STAGES = {
     'submitted': 'operations_manager_review',
@@ -3436,7 +3454,7 @@ def approve_general_manager(submission_id):
 @workflow_bp.route('/submissions/<submission_id>/reject', methods=['POST'])
 @jwt_required()
 def reject_submission(submission_id):
-    """Reject submission at any stage and send back to supervisor"""
+    """Reject an in-flight inspection submission at the caller's review stage."""
     try:
         user_id = get_jwt_identity()
         user = db.session.get(User, user_id)
@@ -3456,6 +3474,33 @@ def reject_submission(submission_id):
         submission = Submission.query.filter_by(submission_id=submission_id).first()
         if not submission:
             return error_response('Submission not found', status_code=404, error_code='NOT_FOUND')
+
+        # HR has dedicated reject endpoints (hr-reject / mgmt-signoff reject).
+        if _is_hr_module_submission(submission):
+            return error_response(
+                'Use the HR reject endpoints for HR submissions',
+                status_code=400,
+                error_code='INVALID_MODULE',
+            )
+
+        status = (submission.workflow_status or '').strip().lower()
+        if status in WORKFLOW_REJECT_TERMINAL_STATUSES:
+            return error_response(
+                f'Submission cannot be rejected from status "{submission.workflow_status}"',
+                status_code=400,
+                error_code='INVALID_STATUS',
+            )
+
+        # Non-admins may only reject while the form is at their review stage
+        # (matches reject UI sections in workflow_signatures / workflow_manager).
+        if user.role != 'admin':
+            allowed = WORKFLOW_REJECT_ALLOWED_STATUSES.get(user.designation, frozenset())
+            if status not in allowed:
+                return error_response(
+                    'You cannot reject this submission at its current workflow stage',
+                    status_code=403,
+                    error_code='INVALID_STAGE',
+                )
         
         # Record rejection details
         previous_stage = submission.workflow_status
