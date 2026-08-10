@@ -439,7 +439,7 @@ def create_app():
                 columns = [col['name'] for col in inspector.get_columns('submissions')]
                 missing_columns = []
                 
-                # Check for workflow columns
+                # Check for workflow columns (legacy 2-stage + 5-stage approval)
                 workflow_fields = [
                     ('workflow_status', "VARCHAR(30) DEFAULT 'submitted'"),
                     ('supervisor_id', 'INTEGER'),
@@ -448,7 +448,27 @@ def create_app():
                     ('supervisor_reviewed_at', 'TIMESTAMP DEFAULT NULL'),
                     ('manager_notified_at', 'TIMESTAMP DEFAULT NULL'),
                     ('manager_reviewed_at', 'TIMESTAMP DEFAULT NULL'),
-                    ('doc_number', 'VARCHAR(20) DEFAULT NULL')
+                    ('doc_number', 'VARCHAR(20) DEFAULT NULL'),
+                    ('operations_manager_id', 'INTEGER'),
+                    ('business_dev_id', 'INTEGER'),
+                    ('procurement_id', 'INTEGER'),
+                    ('general_manager_id', 'INTEGER'),
+                    ('operations_manager_notified_at', 'TIMESTAMP'),
+                    ('operations_manager_approved_at', 'TIMESTAMP'),
+                    ('business_dev_notified_at', 'TIMESTAMP'),
+                    ('business_dev_approved_at', 'TIMESTAMP'),
+                    ('procurement_notified_at', 'TIMESTAMP'),
+                    ('procurement_approved_at', 'TIMESTAMP'),
+                    ('general_manager_notified_at', 'TIMESTAMP'),
+                    ('general_manager_approved_at', 'TIMESTAMP'),
+                    ('operations_manager_comments', 'TEXT'),
+                    ('business_dev_comments', 'TEXT'),
+                    ('procurement_comments', 'TEXT'),
+                    ('general_manager_comments', 'TEXT'),
+                    ('rejection_stage', 'VARCHAR(40)'),
+                    ('rejection_reason', 'TEXT'),
+                    ('rejected_at', 'TIMESTAMP'),
+                    ('rejected_by_id', 'INTEGER'),
                 ]
                 
                 for col_name, col_def in workflow_fields:
@@ -522,6 +542,20 @@ def create_app():
                                 logger.info(f"Column {col_name} already exists")
                             else:
                                 logger.warning(f"Could not add {col_name}: {col_error}")
+
+            if 'hiring_documents' in inspector.get_table_names():
+                hd_cols = [col['name'] for col in inspector.get_columns('hiring_documents')]
+                if 'notes' not in hd_cols:
+                    try:
+                        with db.engine.begin() as conn:
+                            conn.execute(text('ALTER TABLE hiring_documents ADD COLUMN notes TEXT'))
+                        logger.info('✅ Added notes to hiring_documents')
+                    except Exception as col_error:
+                        err = str(col_error).lower()
+                        if 'already exists' in err or 'duplicate' in err:
+                            logger.info('Column hiring_documents.notes already exists')
+                        else:
+                            logger.warning(f'Could not add hiring_documents.notes: {col_error}')
 
             if 'hiring_candidates' in inspector.get_table_names():
                 hc_cols = [col['name'] for col in inspector.get_columns('hiring_candidates')]
@@ -646,6 +680,34 @@ def create_app():
                     logger.info("Seeded 5 sample DocHub documents")
             except Exception as seed_err:
                 logger.warning(f"Could not seed DocHub samples (non-critical): {seed_err}")
+
+            # Step 5: Ensure ticket/asset additive columns before any ORM seed writes.
+            # Blueprint record_once migrators also run later; this covers Postgres before seeds.
+            try:
+                from module_ticketing.routes import (
+                    _migrate_ticket_columns,
+                    _migrate_ticket_project_columns,
+                )
+                _migrate_ticket_columns(app)
+                _migrate_ticket_project_columns(app)
+            except Exception as tkt_mig_err:
+                logger.warning('Early ticket column migrate: %s', tkt_mig_err)
+            try:
+                from module_assets.routes import _ensure_asset_columns
+                _ensure_asset_columns(app)
+            except Exception as asset_mig_err:
+                logger.warning('Early asset column ensure: %s', asset_mig_err)
+
+            # Step 6: Seed ticketing / FM / demo teams when empty (local + Render parity)
+            try:
+                from common.runtime_seed import bootstrap_demo_data
+                seed_summary = bootstrap_demo_data()
+                logger.info("Reference/demo data bootstrap: %s", seed_summary)
+            except Exception as bootstrap_err:
+                logger.warning(
+                    "Could not bootstrap reference/demo data (non-critical): %s",
+                    bootstrap_err,
+                )
 
             logger.info("✅ Database initialization and migration complete")
             

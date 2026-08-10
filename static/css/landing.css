@@ -561,9 +561,12 @@
    -------------------------------------------------------------------------- */
 
 .lp-hero-section {
-  padding: clamp(1rem, 2.5vw, 1.75rem) var(--lp-gutter) 0;
+  position: relative;
+  z-index: 1;
+  padding: clamp(3.25rem, 6vw, 5rem) var(--lp-gutter) 0;
   max-width: min(1240px, 100%);
   margin: 0 auto;
+  overflow: visible;
 }
 
 .lp-hero-panel {
@@ -573,19 +576,23 @@
   background: #fff;
   border: none;
   box-shadow: none;
-  overflow: hidden;
+  /* Keep zoomed hero art uncropped on sides/top — may overlap foreground UI */
+  overflow: visible;
+  isolation: isolate;
 }
 
 .lp-hero-top {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: clamp(1.5rem, 4vw, 3.5rem);
   align-items: center;
+  overflow: visible;
 }
 
 .lp-hero-copy {
   position: relative;
-  z-index: 1;
+  z-index: 3;
   max-width: 36rem;
   padding-block: clamp(0.75rem, 2vw, 1.75rem);
   text-align: left;
@@ -621,42 +628,48 @@
   flex-wrap: wrap;
 }
 
-/* Right visual */
+/* Right visual — background art: zoomed, sides/top uncropped, under copy/stats */
 .lp-hero-visual {
   position: relative;
+  z-index: 0;
   animation: lp-rise 0.8s 0.08s var(--lp-ease) both;
-  align-self: stretch;
+  align-self: center;
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: visible;
+  min-width: 0;
+  pointer-events: none;
 }
 
 .lp-hero-photo {
   position: relative;
   margin: 0;
   width: 100%;
-  max-width: none;
-  aspect-ratio: auto;
-  max-height: none;
+  max-width: 100%;
   height: auto;
   border-radius: 0;
-  overflow: visible;
+  overflow: visible; /* allow zoomed art to bleed — no side/top crop */
   background: transparent;
   display: block;
   padding: 0;
+  contain: none;
 }
 
 .lp-hero-photo-img {
   position: relative;
-  width: 100%;
-  height: auto;
-  max-height: min(640px, 70vh);
-  object-fit: contain;
-  object-position: center;
   display: block;
-  z-index: 1;
-  transform: scale(1.14);
-  transform-origin: center center;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  object-fit: contain !important;
+  object-position: center top;
+  /* Enlarge subjects; paint outside the box so sides/top stay visible */
+  /* Keep zoomed art clear of the sticky nav */
+  transform: scale(1.45) translateY(-7%);
+  transform-origin: 42% 16%;
+  clip-path: none;
+  -webkit-clip-path: none;
 }
 
 .lp-hero-photo-img.is-missing {
@@ -700,10 +713,12 @@
 
 /* Proof strip shares the panel's horizontal edges with the split above */
 .lp-hero-stats {
+  position: relative;
+  z-index: 3;
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr);
   gap: 1.1rem;
-  margin-top: clamp(2rem, 4vw, 3rem);
+  margin-top: clamp(1.25rem, 3vw, 2.25rem);
   animation: lp-rise 0.75s 0.16s var(--lp-ease) both;
 }
 
@@ -2436,6 +2451,18 @@
     max-width: 520px;
     margin-inline: auto;
     width: 100%;
+  }
+
+  .lp-hero-photo {
+    width: 100%;
+    margin-inline-start: 0;
+  }
+
+  .lp-hero-photo-img {
+    /* Milder zoom on stacked layout; still uncropped (overflow visible) */
+    transform: scale(1.26) translateY(-6%);
+    transform-origin: center 26%;
+    max-height: none;
   }
 
   .lp-hero-stats {

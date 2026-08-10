@@ -12,9 +12,6 @@ import sys
 import uuid
 from datetime import date, datetime, timedelta, timezone
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from Injaaz import create_app
 from app.models import (
     db, User, Asset, AssetPrediction, FloorPlan, Ticket,
 )
@@ -572,6 +569,11 @@ def main():
     parser = argparse.ArgumentParser(description='Seed FM Assets sample data')
     parser.add_argument('--clear', action='store_true', help='Remove prior seed data first')
     args = parser.parse_args()
+
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if root not in sys.path:
+        sys.path.insert(0, root)
+    from Injaaz import create_app
 
     app = create_app()
     with app.app_context():

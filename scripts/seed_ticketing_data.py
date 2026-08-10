@@ -1,16 +1,18 @@
-"""Seed dummy data for ticketing: Projects, Location hierarchy, Title Templates."""
-import sys, os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+"""Seed dummy data for ticketing: Projects, Location hierarchy, Title Templates.
 
-from Injaaz import create_app
+Usage (from project root):
+  python scripts/seed_ticketing_data.py
+
+Callable from app startup via seed_ticketing_data() inside an app context.
+"""
 from app.models import (
     db, TicketProject, TicketProperty, TicketZone,
     TicketSubZone, TicketBaseUnit, TicketTitleTemplate,
 )
 
-app = create_app()
 
-with app.app_context():
+def seed_ticketing_data():
+    """Idempotent get-or-create for projects, locations, and title templates."""
     # ── Clear existing (optional reset) ──────────────────────────────────
     if TicketProject.query.count() == 0 and TicketTitleTemplate.query.count() == 0:
         print("Database is empty — seeding fresh data…")
@@ -280,3 +282,17 @@ with app.app_context():
     print(f"  Sub-zones:         {TicketSubZone.query.count()}")
     print(f"  Base units:        {TicketBaseUnit.query.count()}")
     print(f"  Title templates:   {TicketTitleTemplate.query.count()}")
+
+
+def main():
+    import os
+    import sys
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from Injaaz import create_app
+    app = create_app()
+    with app.app_context():
+        seed_ticketing_data()
+
+
+if __name__ == '__main__':
+    main()

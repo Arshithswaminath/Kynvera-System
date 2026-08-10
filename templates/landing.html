@@ -129,7 +129,11 @@
 
 {# ========================================================================= #}
 {# 1 · Hero — airy split panel                                               #}
-{# Art: static/images/kynvera/hero-illustration.png                          #}
+{# Active art:  static/images/kynvera/hero-photo.png  (uncropped + side pads) #}
+{# Alias:       hero-photo-uncropped.png / hero-photo-v2-source.png          #}
+{# Previous:    hero-photo-v1…v5.png, hero-illustration.png                  #}
+{# Note: v4/v5 touch the right edge in-file — avoid as active.               #}
+{# To restore an older art, swap the filename + alt below.                   #}
 {# ========================================================================= #}
 <section class="lp-hero-section" aria-labelledby="lp-hero-title">
     <div class="lp-hero-panel">
@@ -153,12 +157,13 @@
                 <figure class="lp-hero-photo">
                     <img
                         class="lp-hero-photo-img"
-                        src="{{ url_for('static', filename='images/kynvera/hero-illustration.png') }}"
-                        alt="Illustration of a team building together with modular blocks"
+                        src="{{ url_for('static', filename='images/kynvera/hero-photo.png') }}?v=17"
+                        alt="Professionals using Kynvera on laptops"
                         width="1024"
                         height="1024"
                         loading="eager"
                         decoding="async"
+                        fetchpriority="high"
                     >
                 </figure>
             </div>

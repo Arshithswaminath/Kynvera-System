@@ -23,6 +23,7 @@ from flask import (
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from werkzeug.utils import secure_filename
 
+from sqlalchemy import inspect, text
 from sqlalchemy.orm import joinedload
 
 from app.models import (
@@ -165,7 +166,7 @@ def _register_ticketing_jinja_filters(state):
 
 
 def _migrate_ticket_columns(app):
-    """Add new supervisor-workflow columns to tickets table if they don't exist yet (SQLite-safe migration)."""
+    """Add missing tickets columns on SQLite and PostgreSQL (create_all does not ALTER)."""
     new_cols = [
         ('supervisor_id',                  'INTEGER'),
         ('technician_id',                  'INTEGER'),
@@ -200,32 +201,35 @@ def _migrate_ticket_columns(app):
         ('sla_hours',                      'INTEGER'),
     ]
     with app.app_context():
-        from app.models import db
         try:
-            conn = db.engine.raw_connection()
-            cursor = conn.cursor()
-            cursor.execute("PRAGMA table_info(tickets)")
-            existing = {row[1] for row in cursor.fetchall()}
-            for col_name, col_type in new_cols:
-                if col_name not in existing:
+            db.create_all()
+            inspector = inspect(db.engine)
+            if 'tickets' not in inspector.get_table_names():
+                return
+            existing = {col['name'] for col in inspector.get_columns('tickets')}
+            missing = [(name, typ) for name, typ in new_cols if name not in existing]
+            if not missing:
+                return
+            logger.info('Adding missing tickets columns: %s', [name for name, _ in missing])
+            with db.engine.begin() as conn:
+                for col_name, col_type in missing:
                     try:
-                        cursor.execute(f'ALTER TABLE tickets ADD COLUMN {col_name} {col_type}')
+                        conn.execute(text(f'ALTER TABLE tickets ADD COLUMN {col_name} {col_type}'))
                         logger.info('Added column tickets.%s', col_name)
                     except Exception as exc:
-                        logger.warning('Could not add column %s: %s', col_name, exc)
-            conn.commit()
-            conn.close()
-
-            # Create TicketSupervisorTeam table if not exists
-            db.create_all()
+                        err = str(exc).lower()
+                        if 'already exists' in err or 'duplicate' in err:
+                            logger.info('Column tickets.%s already exists, skipping', col_name)
+                        else:
+                            logger.warning('Could not add column tickets.%s: %s', col_name, exc)
         except Exception as exc:
             logger.warning('Ticket migration warning: %s', exc)
 
 
 def _migrate_ticket_project_columns(app):
-    """Add ticketing project columns (SQLite-safe PRAGMA + ALTER)."""
+    """Add missing ticket_projects columns on SQLite and PostgreSQL."""
     ticket_project_cols = [
-        ('supervisor_id', 'INTEGER REFERENCES users(id)'),
+        ('supervisor_id', 'INTEGER'),
         ('bd_project_id', 'INTEGER'),
         ('project_end_date', 'DATE'),
         ('renewal_date', 'DATE'),
@@ -235,20 +239,28 @@ def _migrate_ticket_project_columns(app):
     ]
     with app.app_context():
         try:
-            conn = db.engine.raw_connection()
-            cursor = conn.cursor()
-            cursor.execute('PRAGMA table_info(ticket_projects)')
-            existing = {row[1] for row in cursor.fetchall()}
-            for col_name, col_sql in ticket_project_cols:
-                if col_name not in existing:
+            db.create_all()
+            inspector = inspect(db.engine)
+            if 'ticket_projects' not in inspector.get_table_names():
+                return
+            existing = {col['name'] for col in inspector.get_columns('ticket_projects')}
+            missing = [(name, typ) for name, typ in ticket_project_cols if name not in existing]
+            if not missing:
+                return
+            logger.info('Adding missing ticket_projects columns: %s', [name for name, _ in missing])
+            with db.engine.begin() as conn:
+                for col_name, col_sql in missing:
                     try:
-                        cursor.execute(f'ALTER TABLE ticket_projects ADD COLUMN {col_name} {col_sql}')
+                        conn.execute(text(
+                            f'ALTER TABLE ticket_projects ADD COLUMN {col_name} {col_sql}'
+                        ))
                         logger.info('Added column ticket_projects.%s', col_name)
                     except Exception as exc:
-                        logger.warning('Could not add ticket_projects.%s: %s', col_name, exc)
-            conn.commit()
-            conn.close()
-            db.create_all()
+                        err = str(exc).lower()
+                        if 'already exists' in err or 'duplicate' in err:
+                            logger.info('Column ticket_projects.%s already exists, skipping', col_name)
+                        else:
+                            logger.warning('Could not add ticket_projects.%s: %s', col_name, exc)
         except Exception as exc:
             logger.warning('Ticket project migration warning: %s', exc)
 

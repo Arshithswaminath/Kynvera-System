@@ -1185,6 +1185,15 @@ class Ticket(db.Model):
     # Status: open → pending_supervisor → in_progress → pending_parts → pending_verification → closed
     status = db.Column(db.String(30), default='open', index=True)
 
+    # Hold / cancel / timing (v2 workflow — used by ticketing routes + templates)
+    on_hold_reason = db.Column(db.Text, nullable=True)
+    cancelled_reason = db.Column(db.Text, nullable=True)
+    cancelled_at = db.Column(db.Text, nullable=True)
+    previous_status = db.Column(db.Text, nullable=True)
+    site_attended_at = db.Column(db.Text, nullable=True)
+    work_started_at = db.Column(db.Text, nullable=True)
+    work_completed_at = db.Column(db.Text, nullable=True)
+
     # Closing info — Stage 1: service-provider supervisor verification (`supervisor-close`)
     close_notes = db.Column(db.Text, nullable=True)
     close_signature = db.Column(db.Text, nullable=True)   # base64 data-URL

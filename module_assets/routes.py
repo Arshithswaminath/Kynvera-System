@@ -9,7 +9,7 @@ from flask import (
     Blueprint, render_template, request, jsonify, redirect, g,
 )
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from sqlalchemy import func
+from sqlalchemy import func, inspect, text
 
 from app.models import (
     db, User, Asset, Ticket, AssetPrediction, FloorPlan,
@@ -138,22 +138,25 @@ def _ensure_asset_columns(app):
     extras = [('latitude', 'REAL'), ('longitude', 'REAL')]
     with app.app_context():
         try:
-            conn = db.engine.raw_connection()
-            cursor = conn.cursor()
-            if db.engine.dialect.name == 'sqlite':
-                cursor.execute('PRAGMA table_info(fm_assets)')
-                existing = {row[1] for row in cursor.fetchall()}
-            else:
-                cursor.execute(
-                    "SELECT column_name FROM information_schema.columns WHERE table_name='fm_assets'"
-                )
-                existing = {row[0] for row in cursor.fetchall()}
-            for name, typ in extras:
-                if name not in existing:
-                    cursor.execute(f'ALTER TABLE fm_assets ADD COLUMN {name} {typ}')
-            conn.commit()
-            conn.close()
             db.create_all()
+            inspector = inspect(db.engine)
+            if 'fm_assets' not in inspector.get_table_names():
+                return
+            existing = {col['name'] for col in inspector.get_columns('fm_assets')}
+            missing = [(name, typ) for name, typ in extras if name not in existing]
+            if not missing:
+                return
+            with db.engine.begin() as conn:
+                for name, typ in missing:
+                    try:
+                        conn.execute(text(f'ALTER TABLE fm_assets ADD COLUMN {name} {typ}'))
+                        logger.info('Added column fm_assets.%s', name)
+                    except Exception as exc:
+                        err = str(exc).lower()
+                        if 'already exists' in err or 'duplicate' in err:
+                            logger.info('Column fm_assets.%s already exists', name)
+                        else:
+                            logger.warning('Could not add fm_assets.%s: %s', name, exc)
         except Exception as exc:
             logger.warning('Asset column ensure: %s', exc)
 
