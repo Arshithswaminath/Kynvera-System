@@ -10,6 +10,7 @@ import io
 import base64
 import calendar
 import logging
+import math
 import tempfile
 import requests
 from email.utils import parseaddr
@@ -463,6 +464,27 @@ def _ticket_images_dir() -> str:
     d = os.path.join(base, 'ticket_images')
     os.makedirs(d, exist_ok=True)
     return d
+
+
+def _parse_non_negative_float(value, field_name: str, *, required: bool = True, default=None):
+    """Parse a finite float >= 0 for manpower/material cost fields.
+
+    Returns ``(parsed_value, error_message)``. When ``required`` is False and
+    ``value`` is missing/empty, returns ``(default, None)``.
+    """
+    if value is None or (isinstance(value, str) and not value.strip()):
+        if required:
+            return None, f'{field_name} is required'
+        return default, None
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return None, f'Invalid {field_name} value'
+    if not math.isfinite(parsed):
+        return None, f'{field_name} must be a finite number'
+    if parsed < 0:
+        return None, f'{field_name} cannot be negative'
+    return parsed, None
 
 
 def _recalc_total_cost(ticket: Ticket):
@@ -2113,14 +2135,16 @@ def add_manpower(ticket_id):
     if not worker_name:
         return jsonify({'success': False, 'error': 'Worker name required'}), 400
 
-    hours_val = data.get('hours')
-    try:
-        hours = float(hours_val)
-    except (TypeError, ValueError):
-        return jsonify({'success': False, 'error': 'Invalid hours value'}), 400
+    hours, hours_err = _parse_non_negative_float(data.get('hours'), 'hours')
+    if hours_err:
+        return jsonify({'success': False, 'error': hours_err}), 400
 
-    rate = float(data['rate_per_hour']) if data.get('rate_per_hour') else None
-    total = round(hours * rate, 2) if rate else None
+    rate, rate_err = _parse_non_negative_float(
+        data.get('rate_per_hour'), 'rate_per_hour', required=False, default=None,
+    )
+    if rate_err:
+        return jsonify({'success': False, 'error': rate_err}), 400
+    total = round(hours * rate, 2) if rate is not None else None
 
     work_date_str = data.get('work_date')
     work_date = None
@@ -2202,11 +2226,12 @@ def add_material(ticket_id):
     if not name:
         return jsonify({'success': False, 'error': 'Material name required'}), 400
 
-    try:
-        qty = float(data.get('quantity', 1))
-        unit_price = float(data.get('unit_price', 0))
-    except (TypeError, ValueError):
-        return jsonify({'success': False, 'error': 'Invalid quantity or unit price'}), 400
+    qty, qty_err = _parse_non_negative_float(data.get('quantity', 1), 'quantity')
+    if qty_err:
+        return jsonify({'success': False, 'error': qty_err}), 400
+    unit_price, price_err = _parse_non_negative_float(data.get('unit_price', 0), 'unit_price')
+    if price_err:
+        return jsonify({'success': False, 'error': price_err}), 400
 
     mat = TicketMaterial(
         ticket_id=ticket.id,
@@ -2258,11 +2283,20 @@ def add_materials_bulk(ticket_id):
         name = (item.get('name') or '').strip()
         if not name:
             continue
-        try:
-            qty = float(item.get('quantity', 1))
-            unit_price = float(item.get('unit_price', 0))
-        except (TypeError, ValueError):
-            qty, unit_price = 1.0, 0.0
+        qty, qty_err = _parse_non_negative_float(item.get('quantity', 1), 'quantity')
+        if qty_err:
+            return jsonify({
+                'success': False,
+                'error': f'Invalid material "{name}": {qty_err}',
+            }), 400
+        unit_price, price_err = _parse_non_negative_float(
+            item.get('unit_price', 0), 'unit_price',
+        )
+        if price_err:
+            return jsonify({
+                'success': False,
+                'error': f'Invalid material "{name}": {price_err}',
+            }), 400
 
         mat = TicketMaterial(
             ticket_id=ticket.id,
