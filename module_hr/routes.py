@@ -37,6 +37,7 @@ from module_hr.hr_management_chain import (
     WF_MGMT_HR,
     apply_interview_chain_after_interviewer,
     apply_management_signature,
+    filter_form_data_hr_fields,
     first_management_workflow_status,
     get_interview_routing_ui_context,
     get_mgmt_chain_ui_context,
@@ -1443,7 +1444,8 @@ def hr_approve(submission_id):
     form_data['hr_comments'] = data.get('comments', '')
     form_data['hr_signature'] = data.get('signature', '')
     # Merge form-specific HR fields (e.g. leave_application: hr_checked, hr_balance_cf, etc.)
-    for k, v in (data.get('form_data_hr') or {}).items():
+    # Do not accept arbitrary keys — clients could wipe hr_mgmt_chain / forge reviewer identity.
+    for k, v in filter_form_data_hr_fields(data.get('form_data_hr')).items():
         form_data[k] = v
     
     submission.form_data = form_data

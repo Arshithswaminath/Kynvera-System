@@ -39,6 +39,32 @@ MGMT_CHAIN_KEY = "hr_mgmt_chain"
 TECHNICIAN_DESIGNATION = "technician"
 SUPERVISOR_DESIGNATION = "supervisor"
 
+# form_data_hr on HR / mgmt sign is for leave-balance style fields only.
+# Never allow overwriting the chain, signatures, or reviewer identity via that bag.
+_FORM_DATA_HR_DENIED_KEYS = frozenset({
+    MGMT_CHAIN_KEY,
+    "hr_signature",
+    "hr_reviewed_by_id",
+    "hr_reviewed_by_name",
+    "hr_reviewed_at",
+    "hr_comments",
+})
+
+
+def filter_form_data_hr_fields(payload: dict[str, Any] | None) -> dict[str, Any]:
+    """Keep only safe hr_* field updates from client form_data_hr payloads."""
+    if not isinstance(payload, dict):
+        return {}
+    out: dict[str, Any] = {}
+    for key, value in payload.items():
+        ks = str(key)
+        if not ks.startswith("hr_"):
+            continue
+        if ks in _FORM_DATA_HR_DENIED_KEYS:
+            continue
+        out[ks] = value
+    return out
+
 # Workflow step gates (each unique role label maps to a wf status the queue UI filters on).
 WF_MGMT_SUP = "hr_mgmt_supervisor"
 WF_MGMT_OM = "hr_mgmt_operations_manager"
@@ -780,9 +806,8 @@ def apply_management_signature(
         fd["hr_reviewed_by_id"] = user.id
         fd["hr_reviewed_by_name"] = step["signed_by_name"]
         fd["hr_reviewed_at"] = step["signed_at"]
-        if isinstance(form_data_hr, dict):
-            for k, v in form_data_hr.items():
-                fd[k] = v
+        for k, v in filter_form_data_hr_fields(form_data_hr).items():
+            fd[k] = v
         submission.operations_manager_id = user.id
         submission.operations_manager_approved_at = utc_now_naive()
         submission.operations_manager_comments = step["comments"]
@@ -820,6 +845,8 @@ def reject_management_submission(submission: Submission, user: User, reason: str
     step = steps[idx] if idx < len(steps) else None
     if not step or step.get("signature"):
         return False, "Invalid step."
+    if step.get("wf") != wf:
+        return False, "Workflow step mismatch."
     if not user_allowed_to_sign_step(user, step):
         return False, "You are not authorised to reject at this stage."
 
