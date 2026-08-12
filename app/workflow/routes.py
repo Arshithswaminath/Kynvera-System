@@ -204,16 +204,25 @@ def _user_may_edit_hr_record_fields(user) -> bool:
     return _user_desig_lower(user) == "hr_manager"
 
 
-def _enforce_hr_record_fields_in_form_data(user, submission, form_data):
-    """
-    Non–HR users must not change hr_* keys (HR review / For HR only blocks).
-    Strip any hr_* from payload, then restore those keys from stored submission.
-    """
-    if not _is_hr_module_submission(submission) or not isinstance(form_data, dict):
-        return form_data
-    if _user_may_edit_hr_record_fields(user):
-        return form_data
-    form_data = {k: v for k, v in form_data.items() if not str(k).startswith("hr_")}
+# Blocks that must not be mutated via PUT /submissions/:id/update — only dedicated
+# submit / routed-sign / mgmt-signoff / approve endpoints may write these.
+_HR_IMMUTABLE_TRAIL_KEYS = frozenset({
+    "_routed_signoffs",
+    "hr_mgmt_chain",
+    "replacement_signers",
+    "_reporting_to_signoff",
+})
+
+# Flat signature mirrors: allow setting a new non-empty value, but never clear an
+# existing captured signature through the generic update endpoint.
+_HR_PRESERVE_NONEMPTY_SIG_KEYS = (
+    "gm_signature",
+    "reporting_manager_signature",
+    "hr_signature",
+)
+
+
+def _submission_stored_form_data_dict(submission) -> dict:
     old = submission.form_data or {}
     if isinstance(old, str):
         try:
@@ -222,12 +231,48 @@ def _enforce_hr_record_fields_in_form_data(user, submission, form_data):
             old = _json.loads(old)
         except Exception:
             old = {}
-    if not isinstance(old, dict):
-        old = {}
-    for k, v in old.items():
-        if str(k).startswith("hr_"):
-            form_data[k] = v
+    return old if isinstance(old, dict) else {}
+
+
+def _restore_hr_approval_trail_fields(submission, form_data):
+    """
+    Keep teammate / management approval trail intact across generic form updates.
+
+    Without this, a grace-period submitter or anytime line editor can clear
+    `_routed_signoffs` / `hr_mgmt_chain` (or wipe flat GM/RM signatures) via
+    form_data / form_data_updates while workflow_status stays unchanged.
+    """
+    if not isinstance(form_data, dict):
+        return form_data
+    old = _submission_stored_form_data_dict(submission)
+    for key in _HR_IMMUTABLE_TRAIL_KEYS:
+        if key in old:
+            form_data[key] = copy.deepcopy(old[key])
+        else:
+            form_data.pop(key, None)
+    for key in _HR_PRESERVE_NONEMPTY_SIG_KEYS:
+        if _hr_signature_blob_non_empty(old.get(key)) and not _hr_signature_blob_non_empty(
+            form_data.get(key)
+        ):
+            form_data[key] = copy.deepcopy(old[key]) if isinstance(old.get(key), dict) else old[key]
     return form_data
+
+
+def _enforce_hr_record_fields_in_form_data(user, submission, form_data):
+    """
+    Non–HR users must not change hr_* keys (HR review / For HR only blocks).
+    Strip any hr_* from payload, then restore those keys from stored submission.
+    Always restore approval-trail blocks so update cannot wipe teammate/mgmt signs.
+    """
+    if not _is_hr_module_submission(submission) or not isinstance(form_data, dict):
+        return form_data
+    if not _user_may_edit_hr_record_fields(user):
+        form_data = {k: v for k, v in form_data.items() if not str(k).startswith("hr_")}
+        old = _submission_stored_form_data_dict(submission)
+        for k, v in old.items():
+            if str(k).startswith("hr_"):
+                form_data[k] = v
+    return _restore_hr_approval_trail_fields(submission, form_data)
 
 
 def _hr_leave_edit_api_flags(user, submission) -> dict:
@@ -3798,13 +3843,18 @@ def update_submission(submission_id):
             form_data_updates = data.get('form_data_updates', {})
             if isinstance(form_data_updates, dict) and _is_hr_module_submission(submission):
                 _pop_hr_revision_audit_from_updates(form_data_updates)
-            form_data = submission.form_data if submission.form_data else {}
-            if isinstance(form_data, str):
+            # Deepcopy so merge cannot clobber submission.form_data before trail restore.
+            _raw_fd = submission.form_data if submission.form_data else {}
+            if isinstance(_raw_fd, str):
                 try:
                     import json
-                    form_data = json.loads(form_data)
-                except:
+                    form_data = json.loads(_raw_fd)
+                except Exception:
                     form_data = {}
+            elif isinstance(_raw_fd, dict):
+                form_data = copy.deepcopy(_raw_fd)
+            else:
+                form_data = {}
             
             # CRITICAL: Preserve Operations Manager data before merging updates
             existing_om_comments = form_data.get('operations_manager_comments')
