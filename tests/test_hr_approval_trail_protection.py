@@ -267,7 +267,7 @@ def test_apply_management_signature_form_data_hr_cannot_wipe_chain(app):
                     "key": "hr_head_office",
                     "wf": "hr_mgmt_hr_head_office",
                     "signer_mode": "pool",
-                    "pool_designation": "hr_manager",
+                    "designation_gate": "hr_head_office",
                     "pdf_label": "HR",
                     "signature": None,
                 }
