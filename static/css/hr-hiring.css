@@ -430,7 +430,8 @@ body.hh-page .nav .logo {
   position: relative;
 }
 
-.hh-search svg {
+.hh-search svg,
+.hh-search .hh-search-icon {
   position: absolute;
   left: 0.9rem;
   top: 50%;
@@ -439,6 +440,7 @@ body.hh-page .nav .logo {
   height: 18px;
   color: var(--hh-muted);
   pointer-events: none;
+  transition: opacity 0.2s ease;
 }
 
 .hh-search input {
@@ -453,7 +455,108 @@ body.hh-page .nav .logo {
   color: var(--hh-text);
   box-sizing: border-box;
   outline: none;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition: border-color 0.15s, box-shadow 0.15s, opacity 0.2s ease;
+}
+
+/* Search → import progress (same footprint as the search pill) */
+.hh-search-import {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0 0.9rem 0 0.75rem;
+  border: 1px solid rgba(255, 142, 104, 0.45);
+  border-radius: 12px;
+  background: linear-gradient(180deg, #fff8f4 0%, #fff 100%);
+  box-sizing: border-box;
+  z-index: 2;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.hh-search-import[hidden] {
+  display: none !important;
+}
+
+.hh-search.is-importing .hh-search-icon,
+.hh-search.is-importing input {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.hh-search.is-importing .hh-search-import {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.hh-search.is-importing input {
+  border-color: transparent;
+}
+
+.hh-search-import-track {
+  flex: 1;
+  min-width: 0;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 142, 104, 0.18);
+  overflow: hidden;
+}
+
+.hh-search-import-bar {
+  height: 100%;
+  width: 0%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #ff8e68 0%, #ff6b3d 55%, #ff8e68 100%);
+  background-size: 200% 100%;
+  transition: width 0.35s ease;
+  animation: hh-import-sheen 1.2s linear infinite;
+}
+
+.hh-search.is-importing.is-import-done .hh-search-import-bar {
+  animation: none;
+  background: #125435;
+}
+
+.hh-search.is-importing.is-import-error .hh-search-import {
+  border-color: rgba(185, 28, 28, 0.35);
+  background: linear-gradient(180deg, #fff5f5 0%, #fff 100%);
+}
+
+.hh-search.is-importing.is-import-error .hh-search-import-bar {
+  animation: none;
+  background: #b91c1c;
+}
+
+.hh-search-import-label {
+  flex: 0 0 auto;
+  max-width: 42%;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #c45a34;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hh-search.is-importing.is-import-done .hh-search-import-label {
+  color: #125435;
+}
+
+.hh-search.is-importing.is-import-error .hh-search-import-label {
+  color: #b91c1c;
+}
+
+@keyframes hh-import-sheen {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hh-search-import-bar {
+    animation: none;
+  }
 }
 
 .hh-search input:focus {

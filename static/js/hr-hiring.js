@@ -1185,6 +1185,83 @@
       setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
     }
 
+    function clearSearchImportTimers() {
+      const wrap = document.getElementById('hhSearchWrap');
+      if (!wrap) return;
+      if (wrap._importProgressTimer) {
+        clearInterval(wrap._importProgressTimer);
+        wrap._importProgressTimer = null;
+      }
+      if (wrap._importRestoreTimer) {
+        clearTimeout(wrap._importRestoreTimer);
+        wrap._importRestoreTimer = null;
+      }
+    }
+
+    function setSearchImportProgress(pct) {
+      const bar = document.getElementById('hhSearchImportBar');
+      const track = document.getElementById('hhSearchImportTrack');
+      const clamped = Math.max(0, Math.min(100, Math.round(pct)));
+      if (bar) bar.style.width = clamped + '%';
+      if (track) track.setAttribute('aria-valuenow', String(clamped));
+    }
+
+    /** Swap search pill ↔ import loading bar. mode: 'start' | 'done' | 'error' | 'reset' */
+    function setSearchImportState(mode, label) {
+      const wrap = document.getElementById('hhSearchWrap');
+      const overlay = document.getElementById('hhSearchImport');
+      const labelEl = document.getElementById('hhSearchImportLabel');
+      const input = document.getElementById('hhSearch');
+      if (!wrap || !overlay) return;
+
+      if (mode === 'start') {
+        clearSearchImportTimers();
+        wrap.classList.add('is-importing');
+        wrap.classList.remove('is-import-done', 'is-import-error');
+        overlay.hidden = false;
+        overlay.setAttribute('aria-busy', 'true');
+        if (labelEl) labelEl.textContent = label || 'Importing…';
+        if (input) input.setAttribute('disabled', 'disabled');
+        setSearchImportProgress(8);
+        let pct = 8;
+        wrap._importProgressTimer = setInterval(function () {
+          // Creep toward ~88% while waiting; finish jumps to 100% on done/error.
+          if (pct >= 88) return;
+          pct += Math.max(0.6, (88 - pct) * 0.045);
+          setSearchImportProgress(pct);
+        }, 180);
+        return;
+      }
+
+      if (mode === 'done' || mode === 'error') {
+        clearSearchImportTimers();
+        wrap.classList.add('is-importing');
+        wrap.classList.toggle('is-import-done', mode === 'done');
+        wrap.classList.toggle('is-import-error', mode === 'error');
+        overlay.hidden = false;
+        overlay.setAttribute('aria-busy', 'false');
+        if (labelEl) {
+          labelEl.textContent = label || (mode === 'done' ? 'Import complete' : 'Import failed');
+        }
+        setSearchImportProgress(100);
+        wrap._importRestoreTimer = setTimeout(function () {
+          setSearchImportState('reset');
+        }, mode === 'error' ? 2200 : 1400);
+        return;
+      }
+
+      // reset → normal search bar
+      clearSearchImportTimers();
+      wrap.classList.remove('is-importing', 'is-import-done', 'is-import-error');
+      overlay.hidden = true;
+      overlay.setAttribute('aria-busy', 'false');
+      setSearchImportProgress(0);
+      if (labelEl) labelEl.textContent = 'Importing…';
+      if (input) {
+        input.removeAttribute('disabled');
+      }
+    }
+
     function hideImportResult() {
       const el = document.getElementById('hhImportResult');
       if (!el) return;
@@ -1284,7 +1361,8 @@
         const file = excelFile.files && excelFile.files[0];
         if (!file) return;
         importBtn.disabled = true;
-        toast('Importing…');
+        hideImportResult();
+        setSearchImportState('start', 'Importing…');
         try {
           const fd = new FormData();
           fd.append('file', file);
@@ -1306,11 +1384,16 @@
             processed: data.processed || 0,
           };
           const msg = data.message || 'Import complete';
+          const shortLabel = result.errors.length
+            ? 'Imported with issues'
+            : (msg.length > 36 ? 'Import complete' : msg);
+          setSearchImportState('done', shortLabel);
           toast(msg);
           showImportResult(result, msg);
           state.page = 1;
           await load();
         } catch (err) {
+          setSearchImportState('error', 'Import failed');
           toast(err.message, true);
         } finally {
           importBtn.disabled = false;
