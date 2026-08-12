@@ -360,8 +360,10 @@ def build_hiring_template_bytes(candidates: Optional[list] = None) -> bytes:
         '',
         'Matching rules (upsert)',
         '• If Candidate ID is set and exists → update that candidate.',
+        '• If Candidate ID is set but not found (e.g. export from another environment) → fall through below.',
         '• Else if Email matches an existing candidate → update that candidate.',
         '• Else → create a new candidate (Full Name and Role are required).',
+        '• Vacancy ID is optional: if the vacancy is missing on this server, the candidate still imports.',
         '',
         'Document statuses',
         f'• {DOC_STATUS_CROSS} — missing / not submitted (clears any uploaded file for that slot).',
@@ -508,6 +510,7 @@ def apply_hiring_import(rows: list[dict], user, seed_documents_fn, clear_documen
     updated = 0
     skipped = 0
     errors: list[dict] = []
+    warnings: list[dict] = []
 
     # Prefetch email → candidate for matching
     email_index: dict[str, HiringCandidate] = {}
@@ -540,11 +543,11 @@ def apply_hiring_import(rows: list[dict], user, seed_documents_fn, clear_documen
                 cid = fields.get('candidate_id')
                 email = (fields.get('email') or '').strip()
 
+                # Prefer ID when it exists on this DB; otherwise fall through
+                # (common when re-importing an export from another environment).
                 if cid:
                     candidate = db.session.get(HiringCandidate, cid)
-                    if not candidate:
-                        raise ValueError(f'Candidate ID {cid} not found')
-                elif email:
+                if not candidate and email:
                     candidate = email_index.get(email.lower())
 
                 if not candidate:
@@ -615,20 +618,28 @@ def apply_hiring_import(rows: list[dict], user, seed_documents_fn, clear_documen
                 else:
                     updated += 1
 
-                # Optional Vacancy ID → assign to manpower vacancy
+                # Optional Vacancy ID → assign to manpower vacancy (soft-fail so a
+                # stale vacancy from another env does not block candidate import).
                 vac_raw = (fields.get('vacancy_id') or '').strip()
                 if vac_raw:
                     try:
                         vac_id = int(float(vac_raw)) if '.' in vac_raw else int(vac_raw)
                     except (TypeError, ValueError):
                         vac_id = None
+                        warnings.append({
+                            'row': excel_row,
+                            'error': f'Invalid Vacancy ID "{vac_raw}" — candidate imported without vacancy link',
+                        })
                     if vac_id:
                         from module_hr.staffing_link import assign_candidate_to_vacancy
                         _, _, assign_err = assign_candidate_to_vacancy(
                             candidate.id, vac_id, allow_reassign=True,
                         )
                         if assign_err:
-                            raise ValueError(assign_err)
+                            warnings.append({
+                                'row': excel_row,
+                                'error': f'{assign_err} — candidate imported without vacancy link',
+                            })
         except Exception as e:
             logger.warning('Hiring Excel row %s skipped: %s', excel_row, e)
             errors.append({'row': excel_row, 'error': str(e)})
@@ -646,5 +657,6 @@ def apply_hiring_import(rows: list[dict], user, seed_documents_fn, clear_documen
         'updated': updated,
         'skipped': skipped,
         'errors': errors,
+        'warnings': warnings,
         'processed': created + updated,
     }

@@ -952,6 +952,9 @@ def register_hiring_document_routes(hr_bp):
             msg_parts.append(f"{result['updated']} updated")
         if result['skipped']:
             msg_parts.append(f"{result['skipped']} skipped")
+        warnings = result.get('warnings') or []
+        if warnings:
+            msg_parts.append(f"{len(warnings)} warning(s)")
         message = 'Import complete' + (': ' + ', '.join(msg_parts) if msg_parts else '')
 
         return success_response(result, message=message)

@@ -1202,6 +1202,7 @@
       el._dismissTimer = null;
       el.classList.remove('is-fading');
       const errs = (result && result.errors) || [];
+      const warns = (result && result.warnings) || [];
       let html =
         '<div class="hh-import-result-inner">' +
           '<strong>' + escapeHtml(message || 'Import complete') + '</strong>';
@@ -1215,14 +1216,24 @@
         }
         html += '</ul>';
       }
+      if (warns.length) {
+        html += '<ul class="hh-import-errors">';
+        warns.slice(0, 8).forEach(function (e) {
+          html += '<li>Row ' + escapeHtml(String(e.row)) + ': ' + escapeHtml(e.error || '') + '</li>';
+        });
+        if (warns.length > 8) {
+          html += '<li>…and ' + (warns.length - 8) + ' more</li>';
+        }
+        html += '</ul>';
+      }
       html +=
         '<button type="button" class="hh-btn hh-btn-ghost hh-btn-sm" data-hh-import-dismiss>Dismiss</button>' +
         '</div>';
       el.innerHTML = html;
       el.hidden = false;
-      el.classList.toggle('has-errors', errs.length > 0);
+      el.classList.toggle('has-errors', errs.length > 0 || warns.length > 0);
       // Success banners auto-fade after 10s; error lists stay until dismissed.
-      if (!errs.length) {
+      if (!errs.length && !warns.length) {
         el._dismissTimer = setTimeout(function () {
           el.classList.add('is-fading');
           setTimeout(hideImportResult, 400);
@@ -1291,6 +1302,7 @@
             updated: data.updated || 0,
             skipped: data.skipped || 0,
             errors: data.errors || [],
+            warnings: data.warnings || [],
             processed: data.processed || 0,
           };
           const msg = data.message || 'Import complete';
