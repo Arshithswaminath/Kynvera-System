@@ -64,11 +64,11 @@
         <tbody>
           {% for t in tickets %}
           <tr onclick="location.href='/tickets/{{ t.ticket_id }}'">
-            <td>{{ t.ticket_id }}</td>
-            <td>{{ t.title }}</td>
-            <td>{{ t.priority }}</td>
-            <td>{{ t.status }}</td>
-            <td>{{ t.created_at.strftime('%d %b %Y') if t.created_at else '—' }}</td>
+            <td data-label="Ticket">{{ t.ticket_id }}</td>
+            <td data-label="Title">{{ t.title }}</td>
+            <td data-label="Priority">{{ t.priority }}</td>
+            <td data-label="Status">{{ t.status }}</td>
+            <td data-label="Created">{{ t.created_at.strftime('%d %b %Y') if t.created_at else '—' }}</td>
           </tr>
           {% endfor %}
         </tbody>

@@ -2,7 +2,12 @@
 {% set fm_topbar_title = 'Map' %}
 {% set fm_head_extra %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
-<style>#fmMap { height: 70vh; min-height: 420px; border-radius: 12px; border: 1px solid var(--fm-border); }</style>
+<style>
+#fmMap { height: 70vh; min-height: 420px; border-radius: 12px; border: 1px solid var(--fm-border); }
+@media (max-width: 768px) {
+  #fmMap { height: min(55vh, calc(100dvh - 12rem)); min-height: 240px; }
+}
+</style>
 {% endset %}
 {% include 'partials/fm_shell_start.html' %}
 

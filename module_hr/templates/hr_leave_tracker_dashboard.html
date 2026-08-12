@@ -10,8 +10,8 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-hiring.css') }}?v=82">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-leave-tracker.css') }}?v=17">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-hiring.css') }}?v=85">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-leave-tracker.css') }}?v=20">
   {% set active_page = 'hr' %}
 </head>
 <body class="hh-page lt-page">
@@ -181,11 +181,18 @@
 
       <div class="lt-panel" id="ltPanelLogs" role="tabpanel" hidden>
         <div class="lt-planner-toolbar">
+          <div class="hh-search lt-logs-search">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+            </svg>
+            <input type="search" id="ltLogsSearch" placeholder="Search Emp ID, name, or notes…" autocomplete="off" aria-label="Search leave logs">
+          </div>
           <select id="ltLogTypeFilter" class="hh-select lt-filter-compact" aria-label="Leave type filter">
             <option value="all">All types</option>
             <option value="sick">Sick</option>
             <option value="annual">Annual</option>
           </select>
+          <button type="button" class="hh-btn hh-btn-ghost hh-btn-sm" id="ltLogsClearFilters" hidden>Clear filters</button>
           <button type="button" class="hh-btn hh-btn-primary hh-btn-sm" id="ltLogLeaveBtn2">Log leave</button>
         </div>
         <div class="lt-table-wrap">
@@ -194,11 +201,23 @@
               <tr>
                 <th>From</th>
                 <th>To</th>
-                <th>Emp ID</th>
-                <th>Name</th>
-                <th>Type</th>
+                <th class="lt-th-filterable" data-col="log_emp_id">
+                  <span class="lt-th-label">Emp ID</span>
+                  <button type="button" class="lt-col-filter-btn" data-col-filter="log_emp_id" aria-label="Filter Emp ID" title="Filter Emp ID">▾</button>
+                </th>
+                <th class="lt-th-filterable" data-col="log_full_name">
+                  <span class="lt-th-label">Name</span>
+                  <button type="button" class="lt-col-filter-btn" data-col-filter="log_full_name" aria-label="Filter Name" title="Filter Name">▾</button>
+                </th>
+                <th class="lt-th-filterable" data-col="log_leave_type">
+                  <span class="lt-th-label">Type</span>
+                  <button type="button" class="lt-col-filter-btn" data-col-filter="log_leave_type" aria-label="Filter Type" title="Filter Type">▾</button>
+                </th>
                 <th>Days</th>
-                <th>Notes</th>
+                <th class="lt-th-filterable" data-col="log_notes">
+                  <span class="lt-th-label">Notes</span>
+                  <button type="button" class="lt-col-filter-btn" data-col-filter="log_notes" aria-label="Filter Notes" title="Filter Notes">▾</button>
+                </th>
                 <th>Created</th>
                 <th>Edited</th>
                 <th></th>
@@ -382,6 +401,6 @@
   <script src="{{ url_for('static', filename='js/injaaz-uae-datetime.js') }}"></script>
   <script src="{{ url_for('static', filename='api-client.js') }}"></script>
   <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/hr-leave-tracker.js') }}?v=14"></script>
+  <script src="{{ url_for('static', filename='js/hr-leave-tracker.js') }}?v=16"></script>
 </body>
 </html>

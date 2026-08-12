@@ -162,11 +162,13 @@ def _normalize_leave_type(raw) -> Optional[str]:
 
 
 def _find_header_row(ws, max_scan: int = 15) -> tuple[int, list[str]]:
-    """Return (1-based row index, headers) for the first row containing Emp ID + Leave Type."""
+    """Return (1-based row index, headers) for the first row containing Emp ID + leave type."""
     for i, row in enumerate(ws.iter_rows(min_row=1, max_row=max_scan, values_only=True), start=1):
         headers = [str(c or '').strip() for c in row]
         upper = {h.upper() for h in headers if h}
-        if 'EMP ID' in upper and any(h in upper for h in ('LEAVE TYPE', 'TYPE')):
+        if 'EMP ID' in upper and any(
+            h in upper for h in ('LEAVE TYPE', 'TYPE', 'TYPE OF LEAVE')
+        ):
             return i, headers
     # Fallback: first row
     first = next(ws.iter_rows(min_row=1, max_row=1, values_only=True), ())
@@ -178,22 +180,34 @@ def _map_log_columns(headers: list[str]) -> dict[str, int]:
     col: dict[str, int] = {}
     for i, h in enumerate(headers):
         key = (h or '').strip().upper().replace('\n', ' ')
+        key = ' '.join(key.split())
         if key in ('EMP ID', 'EMPID', 'EMPLOYEE ID'):
             col['emp_id'] = i
-        elif key in ('LEAVE TYPE', 'TYPE'):
+        elif key in ('LEAVE TYPE', 'TYPE', 'TYPE OF LEAVE'):
             col['leave_type'] = i
-        elif key in ('START DATE', 'FROM', 'DATE'):
+        elif key in (
+            'START DATE', 'FROM', 'DATE', 'LEAVE START DATE', 'LEAVE START',
+        ):
             col.setdefault('start', i)
-        elif key in ('END DATE', 'TO'):
+        elif key in ('END DATE', 'TO', 'LEAVE END DATE', 'LEAVE END'):
             col['end'] = i
-        elif key in ('NO. OF DAYS', 'NO OF DAYS', 'DAYS', 'NUMBER OF DAYS'):
+        elif key in (
+            'NO. OF DAYS', 'NO OF DAYS', 'DAYS', 'NUMBER OF DAYS', 'NO.OF DAYS',
+        ):
             col['days'] = i
-        elif key in ('REASON / NOTES', 'REASON/NOTES', 'REASON', 'NOTES'):
-            col['notes'] = i
+        elif key in (
+            'REASON / NOTES', 'REASON/NOTES', 'REASON', 'NOTES',
+            'ACTUAL LEAVE RESUMPTION',
+        ):
+            col.setdefault('notes', i)
         elif key == 'APPROVED':
             col['approved'] = i
-        elif key in ('EMPLOYEE NAME', 'NAME'):
+        elif key in ('EMPLOYEE NAME', 'NAME', 'EMP NAME'):
             col['name'] = i
+        elif key == 'COMPANY':
+            col['company'] = i
+        elif key == 'DESIGNATION':
+            col['designation'] = i
     return col
 
 
@@ -206,6 +220,13 @@ def _leave_log_sheet(wb) -> Optional[Any]:
     for name in LOG_SHEET_NAMES:
         if name.lower() in lower:
             return wb[lower[name.lower()]]
+    # First sheet that looks like a leave log (covers Sheet1 HR exports)
+    for name in wb.sheetnames:
+        ws = wb[name]
+        _hr, headers = _find_header_row(ws)
+        col = _map_log_columns(headers)
+        if 'emp_id' in col and 'start' in col and 'leave_type' in col:
+            return ws
     return None
 
 

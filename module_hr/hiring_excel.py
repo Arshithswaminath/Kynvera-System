@@ -46,6 +46,7 @@ PROFILE_HEADERS = (
     'Replacement Name',
     'Replacement Employee ID',
     'Pipeline Status',
+    'Vacancy ID',
 )
 
 STATUS_HEADERS = tuple(DOC_COLUMN_HEADERS[dt] for dt in HIRING_DOC_TYPES)
@@ -77,6 +78,7 @@ FIELD_ALIASES = {
         'replacing employee id',
     ),
     'pipeline_status': ('pipeline status', 'pipeline', 'stage', 'hiring stage'),
+    'vacancy_id': ('vacancy id', 'manpower vacancy id', 'vacancy', 'project vacancy id'),
     'comments': ('comments', 'comment', 'notes', 'remarks'),
 }
 
@@ -247,7 +249,7 @@ def build_hiring_template_bytes(candidates: Optional[list] = None) -> bytes:
     widths = {
         'A': 12, 'B': 22, 'C': 18, 'D': 14, 'E': 14, 'F': 24,
         'G': 18, 'H': 18, 'I': 28, 'J': 12, 'K': 12, 'L': 12,
-        'M': 12, 'N': 18, 'O': 12, 'P': 12, 'Q': 12, 'R': 12, 'S': 28,
+        'M': 12, 'N': 12, 'O': 18, 'P': 12, 'Q': 12, 'R': 12, 'S': 12, 'T': 28,
     }
     for col, width in widths.items():
         ws.column_dimensions[col].width = width
@@ -265,6 +267,7 @@ def build_hiring_template_bytes(candidates: Optional[list] = None) -> bytes:
                 cand.replacement_name or '',
                 cand.replacement_employee_id or '',
                 _pipeline_label(cand.normalized_pipeline_status()),
+                getattr(cand, 'assigned_vacancy', None).id if getattr(cand, 'assigned_vacancy', None) else '',
             ]
             for dt in HIRING_DOC_TYPES:
                 doc = by_type.get(dt)
@@ -275,8 +278,8 @@ def build_hiring_template_bytes(candidates: Optional[list] = None) -> bytes:
             values.append(cand.comments or '')
             for col_idx, val in enumerate(values, start=1):
                 cell = ws.cell(row_idx, col_idx, val)
-                # Center tick/cross in document columns (J–R = 10–18)
-                if 10 <= col_idx <= 18:
+                # Center tick/cross in document columns (K–S = 11–19 after Vacancy ID)
+                if 11 <= col_idx <= 19:
                     cell.alignment = Alignment(horizontal='center', vertical='center')
         data_end_row = 1 + len(candidates)
     else:
@@ -291,6 +294,7 @@ def build_hiring_template_bytes(candidates: Optional[list] = None) -> bytes:
             'Ali Hassan',
             'EMP-01234',
             HIRING_PIPELINE_LABELS['gathering_documents'],
+            '',  # Vacancy ID
             DOC_STATUS_TICK,
             DOC_STATUS_CROSS,
             DOC_STATUS_TICK,
@@ -305,7 +309,7 @@ def build_hiring_template_bytes(candidates: Optional[list] = None) -> bytes:
         for col_idx, val in enumerate(example, start=1):
             cell = ws.cell(2, col_idx, val)
             cell.fill = example_fill
-            if 10 <= col_idx <= 18:
+            if 11 <= col_idx <= 19:
                 cell.alignment = Alignment(horizontal='center', vertical='center')
         data_end_row = 2
 
@@ -341,7 +345,7 @@ def build_hiring_template_bytes(candidates: Optional[list] = None) -> bytes:
     status_dv.error = f'Use {DOC_STATUS_CROSS} (missing) or {DOC_STATUS_TICK} (submitted)'
     status_dv.errorTitle = 'Invalid status'
     # Doc columns J–R (9 docs)
-    status_dv.add(f'J2:R{max_dv_row}')
+    status_dv.add(f'K2:S{max_dv_row}')
     ws.add_data_validation(status_dv)
 
     # Instructions
@@ -610,6 +614,21 @@ def apply_hiring_import(rows: list[dict], user, seed_documents_fn, clear_documen
                     created += 1
                 else:
                     updated += 1
+
+                # Optional Vacancy ID → assign to manpower vacancy
+                vac_raw = (fields.get('vacancy_id') or '').strip()
+                if vac_raw:
+                    try:
+                        vac_id = int(float(vac_raw)) if '.' in vac_raw else int(vac_raw)
+                    except (TypeError, ValueError):
+                        vac_id = None
+                    if vac_id:
+                        from module_hr.staffing_link import assign_candidate_to_vacancy
+                        _, _, assign_err = assign_candidate_to_vacancy(
+                            candidate.id, vac_id, allow_reassign=True,
+                        )
+                        if assign_err:
+                            raise ValueError(assign_err)
         except Exception as e:
             logger.warning('Hiring Excel row %s skipped: %s', excel_row, e)
             errors.append({'row': excel_row, 'error': str(e)})

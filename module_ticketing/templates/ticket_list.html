@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
   <title>All Tickets — Kynvera</title>
   {% include 'partials/caveat_font.html' ignore missing %}
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -112,26 +112,26 @@
           <tbody>
             {% for t in tickets %}
             <tr>
-              <td style="white-space:nowrap;font-weight:700;">
+              <td data-label="Ticket ID" style="white-space:nowrap;font-weight:700;">
                 <a href="{{ url_for('ticketing.ticket_detail', ticket_id=t.ticket_id) }}">{{ t.ticket_id }}</a>
               </td>
-              <td style="max-width:200px;">
+              <td data-label="Title" style="max-width:200px;">
                 <a href="{{ url_for('ticketing.ticket_detail', ticket_id=t.ticket_id) }}"
                    style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
                   {{ t.title }}
                 </a>
               </td>
-              <td style="font-size:.82rem;">{{ t.project }}</td>
-              <td style="font-size:.82rem;">{{ t.service_group }}</td>
-              <td><span class="tkt-badge badge-priority-{{ t.priority }}">{{ t.priority|capitalize }}</span></td>
-              <td>
+              <td data-label="Project" style="font-size:.82rem;">{{ t.project }}</td>
+              <td data-label="Service Group" style="font-size:.82rem;">{{ t.service_group }}</td>
+              <td data-label="Priority"><span class="tkt-badge badge-priority-{{ t.priority }}">{{ t.priority|capitalize }}</span></td>
+              <td data-label="Status">
                 {% set _sl = {'open':'Open','assigned':'Assigned','site_attended':'Site Attended','work_started':'Work Started','work_completed':'Work Completed','verification':'Verification','provider_closed':'Provider Verified','on_hold':'On Hold','cancelled':'Cancelled','closed':'Closed','in_progress':'In Progress','pending_parts':'Pending Parts','resolved':'Resolved','pending_supervisor':'Supervisor Queue','pending_verification':'Pending Verification'} %}
                 <span class="tkt-badge badge-status-{{ t.status }}">{{ _sl.get(t.status, t.status.replace('_',' ')|title) }}</span>
               </td>
-              <td style="font-size:.82rem;">{{ t.reporter.full_name if t.reporter else '—' }}</td>
-              <td style="font-size:.82rem;">{{ t.assigned_to.full_name if t.assigned_to else '<span style="color:var(--tkt-text-3);">Unassigned</span>'|safe }}</td>
-              <td style="white-space:nowrap;font-size:.78rem;color:var(--tkt-text-3);">{{ t.created_at|tkt_datetime('%d %b %Y') if t.created_at else '—' }}</td>
-              <td>
+              <td data-label="Reporter" style="font-size:.82rem;">{{ t.reporter.full_name if t.reporter else '—' }}</td>
+              <td data-label="Assigned To" style="font-size:.82rem;">{{ t.assigned_to.full_name if t.assigned_to else '<span style="color:var(--tkt-text-3);">Unassigned</span>'|safe }}</td>
+              <td data-label="Created" style="white-space:nowrap;font-size:.78rem;color:var(--tkt-text-3);">{{ t.created_at|tkt_datetime('%d %b %Y') if t.created_at else '—' }}</td>
+              <td data-label="">
                 <a href="{{ url_for('ticketing.ticket_detail', ticket_id=t.ticket_id) }}"
                    class="tkt-btn tkt-btn-outline tkt-btn-sm">View</a>
               </td>
@@ -143,7 +143,7 @@
       {% else %}
       <div class="tkt-empty">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="56" height="56"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 15.803 7.5 7.5 0 0 0 15.803 15.803Z"/></svg>
-        <p>No tickets found. <a href="{{ url_for('ticketing.new_ticket_form') }}">Create one.</a></p>
+        <p>No tickets found. <a href="{{ url_for('ticketing.new_ticket_form') }}" class="tkt-link">Create one.</a></p>
       </div>
       {% endif %}
     </div>

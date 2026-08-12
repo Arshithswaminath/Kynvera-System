@@ -2,13 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
   <title>New Work Order — Kynvera</title>
   {% include 'partials/caveat_font.html' ignore missing %}
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/ticketing.css') }}">
@@ -81,6 +82,21 @@
     @media (max-width: 760px) {
       .new-tkt-layout { grid-template-columns: 1fr; gap: 20px; }
       .summary-card { position: relative; top: 0 !important; }
+      .new-tkt-page-wrap {
+        max-width: 100%;
+        margin: 0;
+        padding: 0 0.75rem;
+        box-sizing: border-box;
+      }
+      .new-tkt-location-step-grid {
+        grid-template-columns: 1fr;
+      }
+      .new-tkt-form-split > .tkt-card input,
+      .new-tkt-form-split > .tkt-card select,
+      .new-tkt-form-split > .tkt-card textarea {
+        font-size: 16px;
+        min-height: 44px;
+      }
     }
 
     .loc-step-label {

@@ -656,3 +656,34 @@ body.hr-embed-mode.hr-form-unified .page{padding-top:0!important}
   min-height: var(--hr-btn-h, 44px) !important;
   border-radius: var(--hr-btn-r, 8px) !important;
 }
+
+/* Hybrid mobile: form layout stack */
+@media (max-width: 900px) {
+  .leave-form-layout,
+  .duty-form-layout {
+    grid-template-columns: 1fr !important;
+  }
+  .leave-form-layout-aside,
+  .duty-form-layout-aside {
+    position: static !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .leave-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .hr-form-unified .hr-recorded-sigs-grid,
+  .hr-form-unified .grid-2,
+  .hr-form-unified .grid-3,
+  .hr-form-unified .grid-4 {
+    grid-template-columns: 1fr !important;
+  }
+  .hr-leave-fields {
+    grid-template-columns: 1fr !important;
+  }
+  .leave-form-layout .row > [class*="col-"] {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+}

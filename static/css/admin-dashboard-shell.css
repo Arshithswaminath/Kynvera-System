@@ -5117,20 +5117,95 @@
       
       .users-table {
         font-size: 0.8rem !important;
-        min-width: 700px !important;
+        min-width: 0 !important;
+        width: 100% !important;
       }
-      
+
+      /* Users list → cards on phone (hybrid) */
+      .users-section .table-scroll-wrapper {
+        overflow: visible !important;
+        border: none !important;
+        box-shadow: none !important;
+      }
+      .users-table thead {
+        display: none !important;
+      }
+      .users-table,
+      .users-table tbody {
+        display: block !important;
+        width: 100% !important;
+      }
+      .users-table tbody tr {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 0.35rem !important;
+        padding: 0.9rem 1rem !important;
+        margin-bottom: 0.75rem !important;
+        border: 1px solid var(--border, #e2ede8) !important;
+        border-radius: 12px !important;
+        background: #fff !important;
+        box-shadow: 0 1px 4px rgba(18, 84, 53, 0.06) !important;
+      }
+      .users-table tbody td {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: flex-start !important;
+        gap: 0.75rem !important;
+        padding: 0.3rem 0 !important;
+        border: none !important;
+        white-space: normal !important;
+        width: 100% !important;
+      }
+      .users-table tbody td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        font-size: 0.72rem;
+        color: var(--text-secondary, #587569);
+        flex: 0 0 36%;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+      }
+      .users-table tbody td[data-label="Actions"] {
+        flex-direction: column !important;
+        align-items: stretch !important;
+      }
+      .users-table tbody td[data-label="Actions"]::before {
+        margin-bottom: 0.35rem;
+      }
+      .users-table .action-buttons {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: 0.4rem !important;
+        width: 100% !important;
+      }
+      .users-table .action-buttons .btn {
+        flex: 1 1 auto !important;
+        min-height: 40px !important;
+      }
+
       .documents-table {
         font-size: 0.8rem !important;
-        min-width: 750px !important;
+        min-width: 0 !important;
       }
       #section-documents .documents-table {
-        min-width: 1080px !important;
-        width: 100% !important;
-        table-layout: fixed !important;
+        min-width: 720px !important;
+        width: max-content !important;
+        table-layout: auto !important;
       }
       #section-documents .table-scroll-wrapper {
         overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+      }
+      #section-documents .documents-table th:first-child,
+      #section-documents .documents-table td:first-child {
+        position: sticky !important;
+        left: 0 !important;
+        z-index: 2 !important;
+        background: #fff !important;
+        box-shadow: 4px 0 8px -4px rgba(0, 0, 0, 0.1) !important;
+      }
+      #section-documents .documents-table thead th:first-child {
+        background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%) !important;
       }
       
       .documents-header {

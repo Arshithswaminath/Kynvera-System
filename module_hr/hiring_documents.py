@@ -35,6 +35,7 @@ from app.models import (
     HIRING_VISA_GATED_DOC_TYPES,
     HiringCandidate,
     HiringDocument,
+    ManpowerVacancy,
     Submission,
     User,
     db,
@@ -43,6 +44,10 @@ from common.datetime_utils import utc_now_naive
 from common.error_responses import error_response, success_response
 from common.utils import ensure_dir, save_uploaded_file_cloud
 from config import GENERATED_DIR, MAX_UPLOAD_FILESIZE
+from module_hr.staffing_link import (
+    ensure_staffing_link_schema,
+    sync_vacancy_from_candidate,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -85,6 +90,7 @@ def _require_hiring_user():
         return None, error_response('User not found', status_code=404, error_code='NOT_FOUND')
     if not user_can_manage_hiring_docs(user):
         return None, error_response('Access denied', status_code=403, error_code='ACCESS_DENIED')
+    ensure_staffing_link_schema()
     return user, None
 
 
@@ -107,6 +113,15 @@ def _seed_documents(candidate: HiringCandidate) -> None:
             doc_type=doc_type,
             status='missing',
         ))
+
+
+def _candidate_payload(candidate: Optional[HiringCandidate]) -> Optional[dict]:
+    """Fresh candidate dict after a doc mutation so progress/packs stay current."""
+    if candidate is None:
+        return None
+    db.session.refresh(candidate)
+    db.session.expire(candidate, ['documents'])
+    return candidate.to_dict()
 
 
 def _ext_of(filename: str) -> str:
@@ -170,6 +185,84 @@ def _candidate_matches_status(candidate: HiringCandidate, status_filter: str) ->
     return status == status_filter
 
 
+def _parse_positive_int(raw) -> Optional[int]:
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        return None
+    return value if value > 0 else None
+
+
+def _vacancy_filter_facets(trade_id: Optional[int] = None, project_id: Optional[int] = None):
+    """Distinct trades/projects from vacancies linked to hiring candidates.
+
+    Facets cascade from the linked trade–project pairs shown on list chips:
+    selecting a trade narrows projects to those paired with it, and vice versa.
+    """
+    from sqlalchemy.orm import joinedload
+
+    base = (
+        ManpowerVacancy.query
+        .options(
+            joinedload(ManpowerVacancy.trade),
+            joinedload(ManpowerVacancy.project),
+        )
+        .filter(ManpowerVacancy.hiring_candidate_id.isnot(None))
+    )
+    rows = base.all()
+
+    trades = {}
+    projects = {}
+    for vac in rows:
+        tid = vac.trade_id
+        tname = vac.trade.name if vac.trade else None
+        pid = vac.project_id
+        pname = vac.project.name if vac.project else None
+        # Trades list: optionally scoped to the selected project pair
+        if tid and tname and (not project_id or pid == project_id):
+            trades[tid] = tname
+        # Projects list: optionally scoped to the selected trade pair
+        if pid and pname and (not trade_id or tid == trade_id):
+            projects[pid] = pname
+
+    trade_list = [
+        {'id': tid, 'name': trades[tid]}
+        for tid in sorted(trades.keys(), key=lambda i: trades[i].lower())
+    ]
+    project_list = [
+        {'id': pid, 'name': projects[pid]}
+        for pid in sorted(projects.keys(), key=lambda i: projects[i].lower())
+    ]
+    return trade_list, project_list
+
+
+def _facets_from_candidates(cands, trade_id: Optional[int] = None, project_id: Optional[int] = None):
+    """Build trade/project facets from candidates' assigned vacancy chips."""
+    trades = {}
+    projects = {}
+    for c in cands or []:
+        vac = getattr(c, 'assigned_vacancy', None)
+        if not vac:
+            continue
+        tid = vac.trade_id
+        tname = vac.trade.name if vac.trade else None
+        pid = vac.project_id
+        pname = vac.project.name if vac.project else None
+        if tid and tname and (not project_id or pid == project_id):
+            trades[tid] = tname
+        if pid and pname and (not trade_id or tid == trade_id):
+            projects[pid] = pname
+    trade_list = [
+        {'id': tid, 'name': trades[tid]}
+        for tid in sorted(trades.keys(), key=lambda i: trades[i].lower())
+    ]
+    project_list = [
+        {'id': pid, 'name': projects[pid]}
+        for pid in sorted(projects.keys(), key=lambda i: projects[i].lower())
+    ]
+    return trade_list, project_list
+
+
 def register_hiring_document_routes(hr_bp):
     """Attach hiring document tracker routes to the HR blueprint."""
 
@@ -183,6 +276,7 @@ def register_hiring_document_routes(hr_bp):
             return jsonify({'error': 'User not found'}), 404
         if not user_can_manage_hiring_docs(user):
             return jsonify({'error': 'Access denied'}), 403
+        ensure_staffing_link_schema()
         return render_template(
             'hr_hiring_dashboard.html',
             user=user,
@@ -219,6 +313,14 @@ def register_hiring_document_routes(hr_bp):
         q = (request.args.get('q') or '').strip()
         status_filter = (request.args.get('status') or 'all').strip().lower()
         pipeline_filter = (request.args.get('pipeline') or 'all').strip().lower()
+        assignment_filter = (request.args.get('assignment') or 'all').strip().lower()
+        if assignment_filter not in ('all', 'assigned', 'unassigned'):
+            assignment_filter = 'all'
+        trade_id = _parse_positive_int(request.args.get('trade_id'))
+        project_id = _parse_positive_int(request.args.get('project_id'))
+        if assignment_filter == 'unassigned':
+            trade_id = None
+            project_id = None
         page = max(1, int(request.args.get('page') or 1))
         per_page = min(50, max(1, int(request.args.get('per_page') or 10)))
 
@@ -236,6 +338,20 @@ def register_hiring_document_routes(hr_bp):
         if pipeline_filter and pipeline_filter != 'all':
             if pipeline_filter in HIRING_PIPELINE_STATUSES:
                 query = query.filter(HiringCandidate.pipeline_status == pipeline_filter)
+
+        if assignment_filter == 'unassigned':
+            query = query.filter(~HiringCandidate.assigned_vacancy.has())
+        elif assignment_filter == 'assigned' or trade_id or project_id:
+            query = query.filter(HiringCandidate.assigned_vacancy.has())
+            if trade_id:
+                query = query.filter(
+                    HiringCandidate.assigned_vacancy.has(ManpowerVacancy.trade_id == trade_id)
+                )
+            if project_id:
+                query = query.filter(
+                    HiringCandidate.assigned_vacancy.has(ManpowerVacancy.project_id == project_id)
+                )
+
         # Stable secondary key (id) prevents the same row appearing on two pages
         # when several candidates share the same updated_at.
         candidates = query.order_by(
@@ -247,6 +363,28 @@ def register_hiring_document_routes(hr_bp):
         start = (page - 1) * per_page
         page_items = filtered[start:start + per_page]
 
+        # Prefer facets from linked vacancies; fall back to this result set's chips.
+        vacancy_trades, vacancy_projects = _vacancy_filter_facets(
+            trade_id=trade_id,
+            project_id=project_id,
+        )
+        if not vacancy_trades and not vacancy_projects:
+            vacancy_trades, vacancy_projects = _facets_from_candidates(
+                candidates,
+                trade_id=trade_id,
+                project_id=project_id,
+            )
+        elif not vacancy_trades or not vacancy_projects:
+            extra_trades, extra_projects = _facets_from_candidates(
+                candidates,
+                trade_id=trade_id,
+                project_id=project_id,
+            )
+            if not vacancy_trades:
+                vacancy_trades = extra_trades
+            if not vacancy_projects:
+                vacancy_projects = extra_projects
+
         return success_response({
             'candidates': [c.to_dict(include_documents=False) for c in page_items],
             'count': total,
@@ -257,6 +395,8 @@ def register_hiring_document_routes(hr_bp):
             'pipeline_labels': HIRING_PIPELINE_LABELS,
             'pipeline_steps': list(HIRING_PIPELINE_STEPS),
             'pipeline_statuses': list(HIRING_PIPELINE_STATUSES),
+            'vacancy_trades': vacancy_trades,
+            'vacancy_projects': vacancy_projects,
         })
 
     @hr_bp.route('/api/hiring/candidates', methods=['POST'])
@@ -402,6 +542,12 @@ def register_hiring_document_routes(hr_bp):
                 )
             candidate.pipeline_status = pipeline
         candidate.updated_at = utc_now_naive()
+        # Keep linked manpower vacancy in sync (name/contact/status)
+        if any(k in data for k in (
+            'full_name', 'phone', 'pipeline_status',
+        )):
+            ensure_staffing_link_schema()
+            sync_vacancy_from_candidate(candidate)
         db.session.commit()
         return success_response({'candidate': candidate.to_dict()}, message='Candidate updated')
 
@@ -454,9 +600,8 @@ def register_hiring_document_routes(hr_bp):
 
         candidate.updated_at = utc_now_naive()
         db.session.commit()
-        db.session.refresh(candidate)
         return success_response({
-            'candidate': candidate.to_dict(),
+            'candidate': _candidate_payload(candidate),
             'updated': updated,
         }, message='All documents marked as submitted')
 
@@ -548,11 +693,10 @@ def register_hiring_document_routes(hr_bp):
         doc.status = 'uploaded'
         candidate.updated_at = utc_now_naive()
         db.session.commit()
-        db.session.refresh(candidate)
 
         return success_response({
             'document': doc.to_dict(),
-            'candidate': candidate.to_dict(),
+            'candidate': _candidate_payload(candidate),
         }, message='Document uploaded')
 
     @hr_bp.route('/api/hiring/candidates/<int:candidate_id>/documents/<doc_type>/notes', methods=['PATCH'])
@@ -594,10 +738,9 @@ def register_hiring_document_routes(hr_bp):
         doc.notes = notes or None
         candidate.updated_at = utc_now_naive()
         db.session.commit()
-        db.session.refresh(candidate)
         return success_response({
             'document': doc.to_dict(),
-            'candidate': candidate.to_dict(),
+            'candidate': _candidate_payload(candidate),
         }, message='Offer letter comment saved')
 
     @hr_bp.route('/api/hiring/candidates/<int:candidate_id>/documents/<doc_type>/mark-received', methods=['POST'])
@@ -635,10 +778,9 @@ def register_hiring_document_routes(hr_bp):
         doc.status = 'uploaded'
         candidate.updated_at = utc_now_naive()
         db.session.commit()
-        db.session.refresh(candidate)
         return success_response({
             'document': doc.to_dict(),
-            'candidate': candidate.to_dict(),
+            'candidate': _candidate_payload(candidate),
         }, message='Marked as received (no file in system)')
 
     @hr_bp.route('/api/hiring/candidates/<int:candidate_id>/documents/<doc_type>/attest', methods=['POST'])
@@ -663,10 +805,9 @@ def register_hiring_document_routes(hr_bp):
         doc.status = 'attested'
         candidate.updated_at = utc_now_naive()
         db.session.commit()
-        db.session.refresh(candidate)
         return success_response({
             'document': doc.to_dict(),
-            'candidate': candidate.to_dict(),
+            'candidate': _candidate_payload(candidate),
         }, message='PCC marked as attested')
 
     @hr_bp.route('/api/hiring/documents/<int:doc_id>/file', methods=['GET'])
@@ -714,8 +855,9 @@ def register_hiring_document_routes(hr_bp):
             candidate.updated_at = utc_now_naive()
         db.session.commit()
         payload = {'document': doc.to_dict()}
-        if candidate:
-            payload['candidate'] = candidate.to_dict()
+        fresh = _candidate_payload(candidate)
+        if fresh:
+            payload['candidate'] = fresh
         return success_response(payload, message='Document cleared')
 
     # ── API: Excel template / export / import ───────────────────────────────

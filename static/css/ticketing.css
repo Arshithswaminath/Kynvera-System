@@ -1099,6 +1099,18 @@ a.tkt-stat-card:focus-visible {
   align-items: center; justify-content: center;
 }
 
+/* ── Themed text links (Kynvera coral) ── */
+.tkt-link {
+  color: var(--tkt-accent-strong);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color .15s ease;
+}
+.tkt-link:hover {
+  color: var(--tkt-accent-deep);
+}
+
 /* ── Empty state ── */
 .tkt-empty {
   text-align: center;
@@ -1107,6 +1119,14 @@ a.tkt-stat-card:focus-visible {
 }
 .tkt-empty svg { opacity: .3; margin-bottom: 12px; }
 .tkt-empty p { font-size: .9rem; }
+.tkt-empty a {
+  color: var(--tkt-accent-strong);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color .15s ease;
+}
+.tkt-empty a:hover { color: var(--tkt-accent-deep); }
 
 /* ── Responsive: detail sidebar stacking ── */
 @media (max-width: 900px) {
@@ -1558,6 +1578,64 @@ body.tkt-dh-page .tkt-dh-page-root {
     min-width: min(86vw, 268px);
   }
   .tkt-dh-page-root .dh-sidebar.open { transform: translateX(0); }
+}
+
+/* Ticket list → cards on phone (hybrid) */
+@media (max-width: 768px) {
+  .tkt-table-wrap {
+    overflow: visible;
+  }
+  .tkt-table {
+    min-width: 0 !important;
+    width: 100%;
+  }
+  .tkt-table thead { display: none; }
+  .tkt-table,
+  .tkt-table tbody { display: block; width: 100%; }
+  .tkt-table tbody tr {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 0.9rem 1rem;
+    margin-bottom: 0.75rem;
+    border: 1px solid var(--tkt-border, #e5e7eb);
+    border-radius: 12px;
+    background: var(--tkt-surface, #fff);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  }
+  .tkt-table tbody tr:hover { background: var(--tkt-surface, #fff); }
+  .tkt-table tbody td {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.25rem 0;
+    border: none;
+    width: 100%;
+    white-space: normal !important;
+    max-width: none !important;
+  }
+  .tkt-table tbody td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    font-size: 0.72rem;
+    color: var(--tkt-text-3, #8b95a5);
+    flex: 0 0 36%;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  .tkt-table tbody td[data-label=""] {
+    justify-content: stretch;
+  }
+  .tkt-table tbody td[data-label=""]::before { display: none; }
+  .tkt-table tbody td[data-label=""] .tkt-btn {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
+  }
+  .tkt-table tbody td a {
+    white-space: normal;
+  }
 }
 
 /* Fade-up animation for page sections */

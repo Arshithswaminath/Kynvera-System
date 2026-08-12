@@ -1962,6 +1962,7 @@ HIRING_PIPELINE_STEPS = (
     'offer_letter_prepared',
     'offer_letter_signed',
     'md_signed_offer_received',
+    'gathering_documents_for_visa',
     'visa_process_started',
     'candidate_employee',
 )
@@ -1976,6 +1977,7 @@ HIRING_PIPELINE_LABELS = {
     'offer_letter_prepared': 'Offer letter prepared',
     'offer_letter_signed': 'Offer letter signed',
     'md_signed_offer_received': 'Signed offer letter from MD received',
+    'gathering_documents_for_visa': 'Gathering documents for visa process',
     'visa_process_started': 'Visa process started',
     'candidate_employee': 'Candidate employed',
     'on_hold': 'On hold',
@@ -2013,6 +2015,12 @@ class HiringCandidate(db.Model):
         back_populates='candidate',
         cascade='all, delete-orphan',
         lazy='joined',
+    )
+    assigned_vacancy = db.relationship(
+        'ManpowerVacancy',
+        back_populates='hiring_candidate',
+        uselist=False,
+        lazy='select',
     )
 
     @staticmethod
@@ -2161,7 +2169,36 @@ class HiringCandidate(db.Model):
             'created_by': self.created_by,
             'created_at': naive_utc_isoformat_z(self.created_at) if self.created_at else None,
             'updated_at': naive_utc_isoformat_z(self.updated_at) if self.updated_at else None,
+            'vacancy_id': None,
+            'vacancy': None,
         }
+        vac = self.assigned_vacancy
+        if vac is not None:
+            trade = vac.trade
+            project = vac.project
+            req = vac.normalized_requirement_type()
+            d['vacancy_id'] = vac.id
+            d['vacancy'] = {
+                'id': vac.id,
+                'trade_id': vac.trade_id,
+                'trade_name': trade.name if trade else None,
+                'project_id': vac.project_id,
+                'project_name': project.name if project else None,
+                'requirement_type': req,
+                'requirement_type_label': MANPOWER_REQUIREMENT_TYPE_LABELS.get(req, req),
+                'replacement_name': vac.replacement_name or '',
+                'replacement_employee_id': vac.replacement_employee_id or '',
+                'status': vac.normalized_status(),
+                'status_label': MANPOWER_STATUS_LABELS.get(
+                    vac.normalized_status(), vac.normalized_status()
+                ),
+                'label': ' - '.join(
+                    x for x in [
+                        trade.name if trade else None,
+                        project.name if project else None,
+                    ] if x
+                ),
+            }
         if include_documents:
             by_type = self._docs_by_type()
             docs = []
@@ -2272,7 +2309,7 @@ LEAVE_SICK_ALERT_CRITICAL = 13  # nearly exhausted
 
 
 def leave_sick_alert_level(used: float) -> str:
-    """Return '' | 'warning' | 'critical' | 'exhausted' from YTD sick days used."""
+    """Return '' | 'warning' | 'critical' | 'exhausted' from sick days used."""
     if used is None:
         return ''
     try:
@@ -2329,7 +2366,7 @@ class LeaveEmployee(db.Model):
         return None
 
     def used_total(self, leave_type: str, year: int = LEAVE_TRACKER_YEAR, months=None) -> float:
-        months = months or LEAVE_TRACKER_MONTHS
+        months = months if months is not None else LEAVE_TRACKER_MONTHS
         total = 0.0
         for m in months:
             d = self.month_days(leave_type, year, m)
@@ -2644,3 +2681,229 @@ class LeavePlan(db.Model):
 
     def __repr__(self):
         return f'<LeavePlan {self.id} emp={self.employee_id} {self.start_date}–{self.end_date}>'
+
+
+# ── Manpower / vacancy tracker (HR) ─────────────────────────────────────────
+
+MANPOWER_STATUSES = (
+    'open',
+    'interviewing',
+    'selected',
+    'filled',
+    'joined',
+    'on_hold',
+)
+
+MANPOWER_STATUS_LABELS = {
+    'open': 'Open',
+    'interviewing': 'Interviewing',
+    'selected': 'Selected',
+    'filled': 'Filled',
+    'joined': 'Joined',
+    'on_hold': 'On Hold',
+}
+
+MANPOWER_STATUS_DEFAULT = 'open'
+
+# “In Progress” on the dashboard = interviewing + selected + on_hold
+MANPOWER_IN_PROGRESS_STATUSES = frozenset({'interviewing', 'selected', 'on_hold'})
+
+MANPOWER_REQUIREMENT_TYPES = ('new', 'replacement')
+
+MANPOWER_REQUIREMENT_TYPE_LABELS = {
+    'new': 'New',
+    'replacement': 'Replacement',
+}
+
+MANPOWER_REQUIREMENT_TYPE_DEFAULT = 'new'
+
+
+class ManpowerTrade(db.Model):
+    """Trade / designation list for the manpower vacancy board."""
+    __tablename__ = 'manpower_trades'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(120), nullable=False, unique=True, index=True)
+    sort_order = db.Column(db.Integer, default=0, nullable=False)
+    active = db.Column(db.Boolean, default=True, nullable=False)
+    created_at = db.Column(db.DateTime, default=_utcnow)
+    updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
+
+    vacancies = db.relationship(
+        'ManpowerVacancy',
+        back_populates='trade',
+        lazy='dynamic',
+    )
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'sort_order': self.sort_order or 0,
+            'active': bool(self.active),
+        }
+
+    def __repr__(self):
+        return f'<ManpowerTrade {self.id} {self.name}>'
+
+
+class ManpowerProject(db.Model):
+    """Project list for the manpower vacancy board (standalone; TicketProject link later)."""
+    __tablename__ = 'manpower_projects'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(160), nullable=False, unique=True, index=True)
+    sort_order = db.Column(db.Integer, default=0, nullable=False)
+    active = db.Column(db.Boolean, default=True, nullable=False)
+    created_at = db.Column(db.DateTime, default=_utcnow)
+    updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
+
+    vacancies = db.relationship(
+        'ManpowerVacancy',
+        back_populates='project',
+        lazy='dynamic',
+    )
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'sort_order': self.sort_order or 0,
+            'active': bool(self.active),
+        }
+
+    def __repr__(self):
+        return f'<ManpowerProject {self.id} {self.name}>'
+
+
+class ManpowerVacancy(db.Model):
+    """One required headcount slot (Excel All Trades row)."""
+    __tablename__ = 'manpower_vacancies'
+
+    id = db.Column(db.Integer, primary_key=True)
+    trade_id = db.Column(
+        db.Integer,
+        db.ForeignKey('manpower_trades.id', ondelete='RESTRICT'),
+        nullable=False,
+        index=True,
+    )
+    project_id = db.Column(
+        db.Integer,
+        db.ForeignKey('manpower_projects.id', ondelete='RESTRICT'),
+        nullable=False,
+        index=True,
+    )
+    requirement_type = db.Column(
+        db.String(20),
+        default=MANPOWER_REQUIREMENT_TYPE_DEFAULT,
+        nullable=False,
+        index=True,
+    )
+    replacement_name = db.Column(db.String(200))
+    replacement_employee_id = db.Column(db.String(80))
+    candidate_name = db.Column(db.String(200))
+    contact_number = db.Column(db.String(60))
+    status = db.Column(
+        db.String(20),
+        default=MANPOWER_STATUS_DEFAULT,
+        nullable=False,
+        index=True,
+    )
+    date_joined = db.Column(db.Date, nullable=True)
+    remarks = db.Column(db.Text)
+    sort_order = db.Column(db.Integer, default=0, nullable=False)
+    hiring_candidate_id = db.Column(
+        db.Integer,
+        db.ForeignKey('hiring_candidates.id', ondelete='SET NULL'),
+        nullable=True,
+        unique=True,
+        index=True,
+    )
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=_utcnow, index=True)
+    updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow, index=True)
+
+    trade = db.relationship('ManpowerTrade', back_populates='vacancies')
+    project = db.relationship('ManpowerProject', back_populates='vacancies')
+    hiring_candidate = db.relationship(
+        'HiringCandidate',
+        back_populates='assigned_vacancy',
+        foreign_keys=[hiring_candidate_id],
+    )
+    creator = db.relationship('User', foreign_keys=[created_by])
+
+    def normalized_status(self) -> str:
+        s = (self.status or MANPOWER_STATUS_DEFAULT).strip().lower()
+        if s not in MANPOWER_STATUSES:
+            return MANPOWER_STATUS_DEFAULT
+        return s
+
+    def normalized_requirement_type(self) -> str:
+        t = (self.requirement_type or MANPOWER_REQUIREMENT_TYPE_DEFAULT).strip().lower()
+        if t not in MANPOWER_REQUIREMENT_TYPES:
+            return MANPOWER_REQUIREMENT_TYPE_DEFAULT
+        return t
+
+    def to_dict(self, *, person_of=None, person_total=None):
+        trade = self.trade
+        project = self.project
+        status = self.normalized_status()
+        req = self.normalized_requirement_type()
+        d = {
+            'id': self.id,
+            'trade_id': self.trade_id,
+            'trade_name': trade.name if trade else None,
+            'project_id': self.project_id,
+            'project_name': project.name if project else None,
+            'requirement_type': req,
+            'requirement_type_label': MANPOWER_REQUIREMENT_TYPE_LABELS.get(req, req),
+            'replacement_name': self.replacement_name or '',
+            'replacement_employee_id': self.replacement_employee_id or '',
+            'candidate_name': self.candidate_name or '',
+            'contact_number': self.contact_number or '',
+            'status': status,
+            'status_label': MANPOWER_STATUS_LABELS.get(status, status),
+            'date_joined': self.date_joined.isoformat() if self.date_joined else None,
+            'remarks': self.remarks or '',
+            'sort_order': self.sort_order or 0,
+            'hiring_candidate_id': self.hiring_candidate_id,
+            'linked': bool(self.hiring_candidate_id),
+            'hiring_url': (
+                f'/hr/hiring/candidates/{self.hiring_candidate_id}'
+                if self.hiring_candidate_id else None
+            ),
+            'created_by': self.created_by,
+            'created_at': naive_utc_isoformat_z(self.created_at) if self.created_at else None,
+            'updated_at': naive_utc_isoformat_z(self.updated_at) if self.updated_at else None,
+        }
+        cand = self.hiring_candidate
+        if cand is not None:
+            completed, total, progress_status = cand.progress()
+            pipeline = cand.normalized_pipeline_status()
+            d['hiring_candidate'] = {
+                'id': cand.id,
+                'full_name': cand.full_name,
+                'role': cand.role or '',
+                'phone': cand.phone or '',
+                'pipeline_status': pipeline,
+                'pipeline_label': HIRING_PIPELINE_LABELS.get(pipeline, pipeline),
+                'progress_label': f'{completed}/{total}',
+                'progress_status': progress_status,
+                'url': f'/hr/hiring/candidates/{cand.id}',
+            }
+            # Prefer live hiring profile for display when linked
+            d['candidate_name'] = cand.full_name or d['candidate_name']
+            if cand.phone:
+                d['contact_number'] = cand.phone
+        else:
+            d['hiring_candidate'] = None
+        if person_of is not None:
+            d['person_of'] = person_of
+        if person_total is not None:
+            d['person_total'] = person_total
+            if person_of is not None:
+                d['person_label'] = f'{person_of} of {person_total}'
+        return d
+
+    def __repr__(self):
+        return f'<ManpowerVacancy {self.id} trade={self.trade_id} project={self.project_id}>'

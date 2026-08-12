@@ -24,6 +24,7 @@
     offer_letter_prepared: 'Offer letter prepared',
     offer_letter_signed: 'Offer letter signed',
     md_signed_offer_received: 'Signed offer letter from MD received',
+    gathering_documents_for_visa: 'Gathering documents for visa process',
     visa_process_started: 'Visa process started',
     candidate_employee: 'Candidate employed',
     on_hold: 'On hold',
@@ -37,6 +38,7 @@
     'offer_letter_prepared',
     'offer_letter_signed',
     'md_signed_offer_received',
+    'gathering_documents_for_visa',
     'visa_process_started',
     'candidate_employee',
   ];
@@ -48,6 +50,7 @@
     offer_letter_prepared: 'Offer ready',
     offer_letter_signed: 'Offer signed',
     md_signed_offer_received: 'MD signed',
+    gathering_documents_for_visa: 'Visa docs',
     visa_process_started: 'Visa',
     candidate_employee: 'Employee',
     on_hold: 'On hold',
@@ -81,8 +84,13 @@
     },
     md_signed_offer_received: {
       focus: 'MD-signed offer is on file',
-      next: 'Start visa process to unlock insurance, e-visa, and contract',
-      hint: 'Visa pack stays locked until you mark Visa process started.',
+      next: 'Gather documents needed for the visa process',
+      hint: 'Collect visa paperwork next. Insurance, e-visa, and contract stay locked until Visa process started.',
+    },
+    gathering_documents_for_visa: {
+      focus: 'Collecting documents for the visa process',
+      next: 'Advance to Visa process started when papers are ready',
+      hint: 'Visa pack (insurance, e-visa, contract) stays locked until you mark Visa process started.',
     },
     visa_process_started: {
       focus: 'Visa process open — upload remaining pack',
@@ -116,6 +124,9 @@
   }
 
   const VISA_GATED = { insurance: true, e_visa: true, contract: true };
+  const IDENTITY_DOC_TYPES = ['passport', 'emirates_id', 'photograph', 'pcc', 'education_certificate'];
+  const OFFER_DOC_TYPES = ['offer_letter'];
+  const VISA_DOC_TYPES = ['insurance', 'e_visa', 'contract'];
 
   function docCompleteCount(docs, types) {
     const byType = {};
@@ -126,6 +137,200 @@
       if (d && d.is_complete) done += 1;
     });
     return { done: done, total: types.length };
+  }
+
+  function packProgress(docs, types) {
+    const byType = {};
+    (docs || []).forEach(function (d) { byType[d.doc_type] = d; });
+    let done = 0;
+    const missing = [];
+    types.forEach(function (t) {
+      const d = byType[t];
+      if (d && d.is_complete) {
+        done += 1;
+      } else {
+        missing.push({
+          type: t,
+          label: (d && d.label) || t.replace(/_/g, ' '),
+        });
+      }
+    });
+    const total = types.length;
+    return {
+      done: done,
+      total: total,
+      missing: missing,
+      pct: total ? Math.round((done / total) * 100) : 0,
+      ready: total > 0 && done >= total,
+    };
+  }
+
+  function collectCandidateDocs(c) {
+    // Last write wins so the authoritative `documents` list overrides any stale phase slice.
+    const byType = {};
+    [].concat(c.phase1_documents || [], c.phase2_documents || [], c.documents || []).forEach(function (d) {
+      if (!d || !d.doc_type) return;
+      byType[d.doc_type] = d;
+    });
+    return Object.keys(byType).map(function (k) { return byType[k]; });
+  }
+
+  function shortDocLabel(label) {
+    const s = String(label || '').replace(/\s*\(.*?\)\s*/g, '').trim();
+    if (s.length <= 18) return s;
+    return s.slice(0, 16) + '…';
+  }
+
+  function coachDocLabel(label) {
+    return String(label || '').replace(/\s*\(.*?\)\s*/g, '').trim();
+  }
+
+  function buildPackChip(label, pack, locked) {
+    let cls = 'hh-pipe-chip';
+    let state = '';
+    if (locked) {
+      cls += ' is-locked';
+      state = 'Unlocks at Visa';
+    } else if (pack.ready) {
+      cls += ' is-ready';
+      state = 'Complete';
+    } else if (pack.done > 0) {
+      cls += ' is-progress';
+      state = pack.missing.length === 1
+        ? ('Need ' + shortDocLabel(pack.missing[0].label))
+        : (pack.missing.length + ' still needed');
+    } else {
+      cls += ' is-progress';
+      state = 'Not started';
+    }
+    const count = locked ? '—' : (pack.done + '/' + pack.total);
+    const width = locked ? 0 : pack.pct;
+    return (
+      '<div class="' + cls + '">' +
+        '<div class="hh-pipe-chip-top">' +
+          '<span class="hh-pipe-chip-label">' + escapeHtml(label) + '</span>' +
+          '<span class="hh-pipe-chip-count">' + escapeHtml(count) + '</span>' +
+        '</div>' +
+        '<div class="hh-pipe-chip-track" aria-hidden="true">' +
+          '<div class="hh-pipe-chip-fill" style="width:' + width + '%"></div>' +
+        '</div>' +
+        '<div class="hh-pipe-chip-state">' + escapeHtml(state) + '</div>' +
+      '</div>'
+    );
+  }
+
+  function buildStageCoach(c, pipeKey, daysInStage, nextKey, visaUnlocked) {
+    const merged = collectCandidateDocs(c);
+    const identity = packProgress(merged, IDENTITY_DOC_TYPES);
+    const offer = packProgress(merged, OFFER_DOC_TYPES);
+    const visa = packProgress(merged, VISA_DOC_TYPES);
+    const meta = PIPELINE_META[pipeKey] || PIPELINE_META.interview_completed;
+    const nextLabel = nextKey ? (PIPELINE_SHORT[nextKey] || PIPELINE_LABELS[nextKey]) : null;
+
+    let title = meta.next || meta.focus;
+    let hint = meta.hint || '';
+    let tone = 'neutral';
+    let actions = [];
+
+    if (pipeKey === 'on_hold') {
+      title = 'Process is paused — pick a stage to resume';
+      hint = 'On hold freezes progress. Jump to the stage where work should continue.';
+      tone = 'hold';
+    } else if (pipeKey === 'candidate_employee') {
+      title = 'File closed — candidate is employed';
+      hint = identity.ready && offer.ready && visa.ready
+        ? 'All document packs are complete.'
+        : 'File is closed. Reopen a stage only if something needs correction.';
+      tone = 'ready';
+    } else if (pipeKey === 'gathering_documents' || pipeKey === 'interview_completed') {
+      if (identity.ready) {
+        title = 'Identity pack complete — ready for offer prep';
+        tone = 'ready';
+        hint = nextLabel ? ('Advance to ' + nextLabel + ' when HR starts the offer.') : hint;
+      } else {
+        title = identity.done === 0
+          ? 'Start the identity checklist'
+          : (identity.missing.length + ' identity doc' + (identity.missing.length === 1 ? '' : 's') + ' still open');
+        tone = 'progress';
+        actions = identity.missing.slice(0, 3);
+        hint = 'Tap a missing item below to jump to it in the checklist.';
+      }
+    } else if (
+      pipeKey === 'preparing_offer_letter' ||
+      pipeKey === 'offer_letter_prepared' ||
+      pipeKey === 'offer_letter_signed' ||
+      pipeKey === 'md_signed_offer_received'
+    ) {
+      if (!offer.ready) {
+        title = 'Upload the department-signed offer letter';
+        tone = 'progress';
+        actions = offer.missing.slice(0, 1);
+        hint = 'Offer letter can be uploaded at any stage — it is never locked.';
+      } else if (pipeKey === 'md_signed_offer_received') {
+        title = 'MD signed — gather visa paperwork next';
+        tone = 'ready';
+        hint = nextLabel ? ('Advance to ' + nextLabel + ' when visa papers are being collected.') : hint;
+      } else {
+        title = meta.next;
+        tone = 'ready';
+      }
+    } else if (pipeKey === 'gathering_documents_for_visa') {
+      title = 'Collect visa paperwork, then open the visa pack';
+      tone = 'progress';
+      hint = 'Insurance, e-visa, and contract unlock when you mark Visa process started.';
+    } else if (pipeKey === 'visa_process_started') {
+      if (visa.ready && offer.ready) {
+        title = 'Visa pack complete — clear to mark employed';
+        tone = 'ready';
+        hint = nextLabel ? ('Advance to ' + nextLabel + ' to close the hiring file.') : hint;
+      } else {
+        const open = visa.missing.length;
+        title = open === 0
+          ? 'Finish remaining offer paperwork'
+          : (open + ' visa pack item' + (open === 1 ? '' : 's') + ' still needed');
+        tone = 'progress';
+        actions = visa.missing.slice(0, 3);
+        if (!offer.ready) actions = offer.missing.concat(actions).slice(0, 3);
+        hint = 'Upload from section 2 below — or tap a gap to jump there.';
+      }
+    }
+
+    if (daysInStage != null && daysInStage >= 7 && pipeKey !== 'candidate_employee' && pipeKey !== 'on_hold') {
+      hint = (hint ? hint + ' · ' : '') + 'Parked here ' + daysInStage + 'd — worth a nudge?';
+      if (tone === 'neutral') tone = 'progress';
+    }
+
+    const actionHtml = actions.length
+      ? ('<div class="hh-pipe-coach-actions">' +
+          actions.map(function (a) {
+            return (
+              '<button type="button" class="hh-pipe-coach-chip" data-jump-doc="' +
+              escapeHtml(a.type) + '">' +
+              escapeHtml(coachDocLabel(a.label)) +
+              '</button>'
+            );
+          }).join('') +
+        '</div>')
+      : '';
+
+    const chipsHtml =
+      '<div class="hh-pipe-chips" aria-label="Document pack progress">' +
+        buildPackChip('Identity', identity, false) +
+        buildPackChip('Offer', offer, false) +
+        buildPackChip('Visa pack', visa, !visaUnlocked) +
+      '</div>';
+
+    return (
+      '<div class="hh-pipe-insight is-' + tone + '">' +
+        '<div class="hh-pipe-insight-main">' +
+          '<div class="hh-pipe-insight-label">Next move</div>' +
+          '<p class="hh-pipe-insight-text">' + escapeHtml(title) + '</p>' +
+          (hint ? '<p class="hh-pipe-insight-hint">' + escapeHtml(hint) + '</p>' : '') +
+          actionHtml +
+        '</div>' +
+        chipsHtml +
+      '</div>'
+    );
   }
 
   function token() {
@@ -246,6 +451,108 @@
     return data;
   }
 
+  function vacancyAssignmentChip(c) {
+    const vac = c && c.vacancy;
+    if (vac) {
+      const label = (vac.label || '').trim() ||
+        [vac.trade_name, vac.project_name].filter(Boolean).join(' - ');
+      if (label) {
+        return (
+          '<span class="hh-vacancy-chip is-assigned" title="Assigned vacancy">' +
+            escapeHtml(label) +
+          '</span>'
+        );
+      }
+    }
+    return '<span class="hh-vacancy-chip is-unassigned">Unassigned</span>';
+  }
+
+  async function loadVacancyPicker(selectEl, opts) {
+    const options = opts || {};
+    if (!selectEl) return [];
+    const roleHint = (options.roleHint || '').trim();
+    const selectedId = options.selectedId ? String(options.selectedId) : '';
+    const includeCurrent = options.includeCurrent || null;
+    selectEl.innerHTML = '<option value="">Loading vacancies…</option>';
+    try {
+      const qs = new URLSearchParams();
+      if (roleHint) qs.set('trade', roleHint);
+      const data = await api('/hr/api/staffing/open-vacancies?' + qs.toString());
+      let items = data.vacancies || [];
+      if (includeCurrent && includeCurrent.id) {
+        const exists = items.some(function (v) { return String(v.id) === String(includeCurrent.id); });
+        if (!exists) {
+          items = [includeCurrent].concat(items);
+        }
+      }
+      let html = '<option value="">Not assigned — pick an open vacancy…</option>';
+      items.forEach(function (v) {
+        const label = v.label || (
+          [v.trade_name, v.project_name].filter(Boolean).join(' · ') || ('Vacancy #' + v.id)
+        );
+        html += '<option value="' + escapeHtml(String(v.id)) + '"' +
+          (selectedId && String(v.id) === selectedId ? ' selected' : '') + '>' +
+          escapeHtml(label) + '</option>';
+      });
+      selectEl.innerHTML = html;
+      return items;
+    } catch (e) {
+      selectEl.innerHTML = '<option value="">Could not load vacancies</option>';
+      return [];
+    }
+  }
+
+  function bindVacancyPickerFill(selectEl, formEl) {
+    if (!selectEl || !formEl || selectEl._hhVacBound) return;
+    selectEl._hhVacBound = true;
+    selectEl.addEventListener('change', function () {
+      const opt = selectEl.options[selectEl.selectedIndex];
+      if (!opt || !opt.value) return;
+      // Prefill replacement from option dataset if we stored it; otherwise leave.
+      const items = selectEl._hhItems || [];
+      const vac = items.find(function (v) { return String(v.id) === String(opt.value); });
+      if (!vac) return;
+      const replName = formEl.querySelector('[name="replacement_name"]');
+      const replId = formEl.querySelector('[name="replacement_employee_id"]');
+      const roleEl = formEl.querySelector('[name="role"]');
+      if (replName && !(replName.value || '').trim() && vac.replacement_name) {
+        replName.value = vac.replacement_name;
+      }
+      if (replId && !(replId.value || '').trim() && vac.replacement_employee_id) {
+        replId.value = vac.replacement_employee_id;
+      }
+      if (roleEl && !(roleEl.value || '').trim() && vac.trade_name) {
+        roleEl.value = vac.trade_name;
+      }
+      const hint = document.getElementById('hhVacancyHint');
+      if (hint) {
+        const bits = [vac.trade_name, vac.project_name].filter(Boolean);
+        if (vac.requirement_type === 'replacement' && vac.replacement_name) {
+          bits.push('replacing ' + vac.replacement_name);
+        }
+        hint.textContent = bits.length
+          ? ('Will assign: ' + bits.join(' · '))
+          : 'Fills trade, project, and replacement from Manpower Tracker.';
+      }
+    });
+  }
+
+  async function assignCandidateVacancy(candidateId, vacancyId) {
+    if (!candidateId || !vacancyId) return null;
+    return api('/hr/api/staffing/assign', {
+      method: 'POST',
+      json: { candidate_id: candidateId, vacancy_id: parseInt(vacancyId, 10) },
+    });
+  }
+
+  async function unassignCandidateVacancy(candidateId) {
+    if (!candidateId) return null;
+    return api('/hr/api/staffing/unassign', {
+      method: 'POST',
+      json: { candidate_id: candidateId },
+    });
+  }
+
   function avatarClass(name) {
     let n = 0;
     const s = String(name || '');
@@ -295,6 +602,26 @@
     });
   }
 
+  /** Compact Dubai timestamp for pipeline stat tiles. */
+  function formatStatTimestampDubai(iso) {
+    if (!iso) return { value: '—', title: '' };
+    var d = null;
+    if (window.InjaazDateTimeUAE && typeof window.InjaazDateTimeUAE.parseInstant === 'function') {
+      d = window.InjaazDateTimeUAE.parseInstant(iso);
+    } else {
+      var str = String(iso).trim().replace(' ', 'T');
+      if (!/[zZ]$/.test(str) && !/[+-]\d{2}:?\d{2}$/.test(str)) str += 'Z';
+      d = new Date(str);
+      if (Number.isNaN(d.getTime())) d = null;
+    }
+    if (!d) return { value: '—', title: '' };
+    var opts = { timeZone: 'Asia/Dubai', hour12: false };
+    var day = d.toLocaleString('en-GB', Object.assign({ day: 'numeric', month: 'short' }, opts));
+    var time = d.toLocaleString('en-GB', Object.assign({ hour: '2-digit', minute: '2-digit' }, opts));
+    var full = formatUpdatedAtDubai(iso);
+    return { value: day + ' · ' + time, title: full ? (full + ' (Dubai)') : '' };
+  }
+
   /* ── List filter persistence (survives detail → Back to list) ── */
   const LIST_FILTERS_KEY = 'hhHiringListFilters';
 
@@ -315,6 +642,9 @@
         q: filters.q || '',
         status: filters.status || 'all',
         pipeline: filters.pipeline || 'all',
+        assignment: filters.assignment || 'all',
+        trade_id: filters.trade_id || 'all',
+        project_id: filters.project_id || 'all',
         page: filters.page || 1,
       }));
     } catch (e) { /* ignore quota / private mode */ }
@@ -325,6 +655,9 @@
     if (filters.q) qs.set('q', filters.q);
     if (filters.status && filters.status !== 'all') qs.set('status', filters.status);
     if (filters.pipeline && filters.pipeline !== 'all') qs.set('pipeline', filters.pipeline);
+    if (filters.assignment && filters.assignment !== 'all') qs.set('assignment', filters.assignment);
+    if (filters.trade_id && filters.trade_id !== 'all') qs.set('trade_id', String(filters.trade_id));
+    if (filters.project_id && filters.project_id !== 'all') qs.set('project_id', String(filters.project_id));
     if (filters.page && Number(filters.page) > 1) qs.set('page', String(filters.page));
     return qs;
   }
@@ -341,6 +674,9 @@
     if (params.has('q')) out.q = params.get('q') || '';
     if (params.has('status')) out.status = params.get('status') || 'all';
     if (params.has('pipeline')) out.pipeline = params.get('pipeline') || 'all';
+    if (params.has('assignment')) out.assignment = params.get('assignment') || 'all';
+    if (params.has('trade_id')) out.trade_id = params.get('trade_id') || 'all';
+    if (params.has('project_id')) out.project_id = params.get('project_id') || 'all';
     if (params.has('page')) {
       const p = parseInt(params.get('page'), 10);
       if (p > 0) out.page = p;
@@ -359,13 +695,24 @@
       q: '',
       status: 'all',
       pipeline: 'all',
+      assignment: 'all',
+      trade_id: 'all',
+      project_id: 'all',
       page: 1,
     }, fromStore, fromUrl);
+
+    if (initial.assignment === 'unassigned') {
+      initial.trade_id = 'all';
+      initial.project_id = 'all';
+    }
 
     const state = {
       q: initial.q || '',
       status: initial.status || 'all',
       pipeline: initial.pipeline || 'all',
+      assignment: initial.assignment || 'all',
+      trade_id: initial.trade_id ? String(initial.trade_id) : 'all',
+      project_id: initial.project_id ? String(initial.project_id) : 'all',
       page: initial.page || 1,
       perPage: 10,
       pages: 1,
@@ -376,6 +723,9 @@
     const searchEl = document.getElementById('hhSearch');
     const filterBtns = document.querySelectorAll('.hh-filter-btn');
     const pipelineFilter = document.getElementById('hhPipelineFilter');
+    const assignmentFilter = document.getElementById('hhAssignmentFilter');
+    const tradeFilter = document.getElementById('hhTradeFilter');
+    const projectFilter = document.getElementById('hhProjectFilter');
     const pagEl = document.getElementById('hhPagination');
     const modal = document.getElementById('hhAddModal');
     const form = document.getElementById('hhAddForm');
@@ -394,6 +744,72 @@
       }
     }
 
+    function syncVacancyFacetControls() {
+      const unassigned = state.assignment === 'unassigned';
+      if (tradeFilter) {
+        tradeFilter.disabled = unassigned;
+        if (unassigned) state.trade_id = 'all';
+      }
+      if (projectFilter) {
+        projectFilter.disabled = unassigned;
+        if (unassigned) state.project_id = 'all';
+      }
+    }
+
+    function fillFacetSelect(selectEl, items, selectedId, allLabel) {
+      if (!selectEl) return selectedId || 'all';
+      const selected = selectedId && selectedId !== 'all' ? String(selectedId) : 'all';
+      let html = '<option value="all">' + escapeHtml(allLabel) + '</option>';
+      (items || []).forEach(function (item) {
+        if (!item || item.id == null || item.id === '') return;
+        const name = (item.name || '').toString().trim();
+        if (!name) return;
+        html += '<option value="' + escapeHtml(String(item.id)) + '">' +
+          escapeHtml(name) +
+          '</option>';
+      });
+      selectEl.innerHTML = html;
+      const opt = selectEl.querySelector('option[value="' + selected + '"]');
+      selectEl.value = opt ? selected : 'all';
+      return opt ? selected : 'all';
+    }
+
+    function facetsFromCandidateItems(items) {
+      const trades = {};
+      const projects = {};
+      (items || []).forEach(function (c) {
+        const v = c && c.vacancy;
+        if (!v) return;
+        if (v.trade_id != null && v.trade_name) {
+          trades[String(v.trade_id)] = String(v.trade_name);
+        }
+        if (v.project_id != null && v.project_name) {
+          projects[String(v.project_id)] = String(v.project_name);
+        }
+      });
+      function toList(map) {
+        return Object.keys(map).map(function (id) {
+          return { id: id, name: map[id] };
+        }).sort(function (a, b) {
+          return a.name.localeCompare(b.name);
+        });
+      }
+      return { trades: toList(trades), projects: toList(projects) };
+    }
+
+    function mergeFacetLists(a, b) {
+      const map = {};
+      [].concat(a || [], b || []).forEach(function (item) {
+        if (!item || item.id == null || item.id === '') return;
+        const name = (item.name || '').toString().trim();
+        if (!name) return;
+        map[String(item.id)] = { id: item.id, name: name };
+      });
+      return Object.keys(map).map(function (k) { return map[k]; }).sort(function (x, y) {
+        return String(x.name).localeCompare(String(y.name));
+      });
+    }
+
     function syncFilterControls() {
       if (searchEl) searchEl.value = state.q || '';
       filterBtns.forEach(function (btn) {
@@ -404,6 +820,24 @@
         const opt = pipelineFilter.querySelector('option[value="' + state.pipeline + '"]');
         pipelineFilter.value = opt ? state.pipeline : 'all';
         if (!opt) state.pipeline = 'all';
+      }
+      if (assignmentFilter) {
+        const opt = assignmentFilter.querySelector('option[value="' + state.assignment + '"]');
+        assignmentFilter.value = opt ? state.assignment : 'all';
+        if (!opt) state.assignment = 'all';
+      }
+      syncVacancyFacetControls();
+      if (tradeFilter && tradeFilter.querySelector('option[value="' + state.trade_id + '"]')) {
+        tradeFilter.value = state.trade_id;
+      } else if (tradeFilter) {
+        tradeFilter.value = 'all';
+        state.trade_id = 'all';
+      }
+      if (projectFilter && projectFilter.querySelector('option[value="' + state.project_id + '"]')) {
+        projectFilter.value = state.project_id;
+      } else if (projectFilter) {
+        projectFilter.value = 'all';
+        state.project_id = 'all';
       }
     }
 
@@ -417,13 +851,24 @@
           q: state.q,
           status: state.status,
           pipeline: state.pipeline,
+          assignment: state.assignment || 'all',
           page: String(state.page),
           per_page: String(state.perPage),
         });
+        if (state.assignment !== 'unassigned') {
+          if (state.trade_id && state.trade_id !== 'all') qs.set('trade_id', String(state.trade_id));
+          if (state.project_id && state.project_id !== 'all') qs.set('project_id', String(state.project_id));
+        }
         const data = await api('/hr/api/hiring/candidates?' + qs.toString());
         const items = data.candidates || [];
         state.count = data.count || 0;
         state.pages = data.pages || 1;
+        const fromItems = facetsFromCandidateItems(items);
+        const trades = mergeFacetLists(data.vacancy_trades, fromItems.trades);
+        const projects = mergeFacetLists(data.vacancy_projects, fromItems.projects);
+        state.trade_id = fillFacetSelect(tradeFilter, trades, state.trade_id, 'All trades');
+        state.project_id = fillFacetSelect(projectFilter, projects, state.project_id, 'All projects');
+        syncVacancyFacetControls();
         renderList(items);
         renderPagination();
       } catch (e) {
@@ -434,14 +879,28 @@
 
     function renderList(items) {
       if (!items.length) {
+        const filtered = !!(
+          (state.q && state.q.trim()) ||
+          (state.status && state.status !== 'all') ||
+          (state.pipeline && state.pipeline !== 'all') ||
+          (state.assignment && state.assignment !== 'all') ||
+          (state.trade_id && state.trade_id !== 'all') ||
+          (state.project_id && state.project_id !== 'all')
+        );
         listEl.innerHTML =
           '<div class="hh-empty">' +
-            '<p class="hh-empty-title">No candidates yet</p>' +
-            '<p class="hh-empty-sub">Add a candidate with their details to start tracking onboarding documents.</p>' +
-            '<button type="button" class="hh-btn hh-btn-primary" data-hh-add>' +
-              '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>' +
-              'Add Candidate' +
-            '</button>' +
+            '<p class="hh-empty-title">' + (filtered ? 'No matching candidates' : 'No candidates yet') + '</p>' +
+            '<p class="hh-empty-sub">' +
+              (filtered
+                ? 'Try clearing the vacancy, trade, project, or stage filters.'
+                : 'Add a candidate with their details to start tracking onboarding documents.') +
+            '</p>' +
+            (filtered
+              ? ''
+              : ('<button type="button" class="hh-btn hh-btn-primary" data-hh-add>' +
+                  '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>' +
+                  'Add Candidate' +
+                '</button>')) +
           '</div>';
         return;
       }
@@ -470,6 +929,7 @@
               '<div class="hh-row-name">' + escapeHtml(c.full_name) +
                 '<span class="hh-row-role-inline">' + escapeHtml(roleLine) + '</span>' +
               '</div>' +
+              vacancyAssignmentChip(c) +
             '</div>' +
             '<div class="hh-row-progress">' +
               '<span class="hh-progress-count">' + escapeHtml(c.progress_label) + '</span>' +
@@ -543,6 +1003,37 @@
       });
     }
 
+    if (assignmentFilter) {
+      assignmentFilter.addEventListener('change', function () {
+        state.assignment = assignmentFilter.value || 'all';
+        if (state.assignment === 'unassigned') {
+          state.trade_id = 'all';
+          state.project_id = 'all';
+        }
+        syncVacancyFacetControls();
+        state.page = 1;
+        load();
+      });
+    }
+
+    if (tradeFilter) {
+      tradeFilter.addEventListener('change', function () {
+        if (state.assignment === 'unassigned') return;
+        state.trade_id = tradeFilter.value || 'all';
+        state.page = 1;
+        load();
+      });
+    }
+
+    if (projectFilter) {
+      projectFilter.addEventListener('change', function () {
+        if (state.assignment === 'unassigned') return;
+        state.project_id = projectFilter.value || 'all';
+        state.page = 1;
+        load();
+      });
+    }
+
     pagEl.addEventListener('click', function (e) {
       const btn = e.target.closest('[data-page]');
       if (!btn || btn.disabled) return;
@@ -603,6 +1094,12 @@
       if (submit) submit.textContent = 'Create checklist';
       modal.classList.add('open');
       loadAssessments();
+      const vacPick = document.getElementById('hhVacancyPick');
+      const roleEl = form && form.querySelector('[name="role"]');
+      loadVacancyPicker(vacPick, { roleHint: roleEl ? roleEl.value : '' }).then(function (items) {
+        if (vacPick) vacPick._hhItems = items;
+      });
+      bindVacancyPickerFill(vacPick, form);
       const first = modal.querySelector('input[name="full_name"]');
       if (first) first.focus();
     }
@@ -852,6 +1349,17 @@
         if (submitBtn) submitBtn.disabled = true;
         try {
           const data = await api('/hr/api/hiring/candidates', { method: 'POST', json: payload });
+          const vacancyId = (fd.get('vacancy_id') || '').toString().trim();
+          if (data.candidate && data.candidate.id && vacancyId) {
+            try {
+              await assignCandidateVacancy(data.candidate.id, vacancyId);
+            } catch (assignErr) {
+              toast('Candidate created, but vacancy assign failed: ' + assignErr.message, true);
+              closeModal();
+              window.location.href = '/hr/hiring/candidates/' + data.candidate.id;
+              return;
+            }
+          }
           toast('Candidate added');
           closeModal();
           if (data.candidate && data.candidate.id) {
@@ -867,6 +1375,12 @@
         }
       });
     }
+
+    // Back from candidate detail often restores this page from bfcache
+    // (history.back), so DOMContentLoaded does not re-run — refetch then.
+    window.addEventListener('pageshow', function (ev) {
+      if (ev.persisted) load();
+    });
 
     load();
   }
@@ -921,6 +1435,16 @@
           phase1El.innerHTML = '<div class="hh-empty">' + escapeHtml(e.message) + '</div>';
         }
       }
+    }
+
+    /** After any document mutation: refresh checklist + Next Move + packs + stats together. */
+    async function syncAfterDocChange(data) {
+      const c = data && data.candidate;
+      if (c && (Array.isArray(c.documents) || Array.isArray(c.phase1_documents))) {
+        render(applyCandidate(c));
+        return;
+      }
+      await load();
     }
 
     function renderDocRow(d) {
@@ -1098,6 +1622,17 @@
       if (!body || body._hhBound) return;
       body._hhBound = true;
       body.addEventListener('click', function (e) {
+        const jump = e.target.closest('[data-jump-doc]');
+        if (jump) {
+          const docType = jump.getAttribute('data-jump-doc');
+          const row = document.querySelector('.hh-doc-row[data-doc-type="' + docType + '"]');
+          if (row) {
+            row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            row.classList.add('is-flash');
+            setTimeout(function () { row.classList.remove('is-flash'); }, 1400);
+          }
+          return;
+        }
         const btn = e.target.closest('[data-pipeline]');
         if (!btn || btn.disabled) return;
         const value = btn.getAttribute('data-pipeline');
@@ -1130,15 +1665,70 @@
       const nextLabel = nextKey ? (PIPELINE_LABELS[nextKey] || nextKey) : null;
       const visaUnlocked = !!c.visa_docs_unlocked;
 
-      const overallDone = c.completed || 0;
-      const overallTotal = c.total || 9;
-
       const daysInStage = (function () {
         const raw = c.updated_at || c.created_at;
         if (!raw) return null;
         const t = Date.parse(raw);
         if (Number.isNaN(t)) return null;
         return Math.max(0, Math.floor((Date.now() - t) / 86400000));
+      })();
+
+      const lastTouch = formatStatTimestampDubai(c.updated_at || c.created_at);
+
+      const onFileStat = (function () {
+        const raw = c.created_at;
+        if (!raw) return { value: '—', title: '', warn: false };
+        const t = Date.parse(raw);
+        if (Number.isNaN(t)) return { value: '—', title: '', warn: false };
+        const days = Math.max(0, Math.floor((Date.now() - t) / 86400000));
+        const opened = formatStatTimestampDubai(raw);
+        return {
+          value: days === 0 ? 'Today' : (days === 1 ? '1 day' : (days + ' days')),
+          title: opened.title ? ('Opened ' + opened.title) : ('Opened ' + opened.value),
+          warn: days >= 14,
+        };
+      })();
+
+      const hireTypeStat = (function () {
+        const vac = c.vacancy;
+        const replName = (c.replacement_name || (vac && vac.replacement_name) || '').trim();
+        const isReplacement = (vac && vac.requirement_type === 'replacement') || !!replName;
+        if (isReplacement) {
+          return {
+            value: 'Replacement',
+            title: replName ? ('Replacing ' + replName) : 'Replacement hire',
+            highlight: true,
+          };
+        }
+        return {
+          value: 'New hire',
+          title: 'Not linked as a replacement',
+          highlight: false,
+        };
+      })();
+
+      const contactStat = (function () {
+        const phone = (c.phone || '').trim();
+        const email = (c.email || '').trim();
+        if (phone) {
+          return {
+            value: phone,
+            title: email ? (phone + ' · ' + email) : phone,
+            empty: false,
+          };
+        }
+        if (email) {
+          return {
+            value: email,
+            title: email,
+            empty: false,
+          };
+        }
+        return {
+          value: '—',
+          title: 'No phone or email on file',
+          empty: true,
+        };
       })();
 
       const selectOptions =
@@ -1238,24 +1828,28 @@
 
         '<ol class="hh-pipeline-stepper' + (isOnHold ? ' is-on-hold' : '') + '">' + stepsHtml + '</ol>' +
 
-        '<div class="hh-pipe-stats hh-pipe-stats-row">' +
-          '<div class="hh-pipe-stat">' +
-            '<span class="hh-pipe-stat-val">' + overallDone + '/' + overallTotal + '</span>' +
-            '<span class="hh-pipe-stat-lbl">Docs done</span>' +
-          '</div>' +
-          '<div class="hh-pipe-stat' + (isOnHold ? ' is-hold' : '') + '">' +
-            '<span class="hh-pipe-stat-val">' +
-              (isOnHold ? 'Hold' : ((currentIdx + 1) + '/' + steps.length)) +
-            '</span>' +
-            '<span class="hh-pipe-stat-lbl">' + (isOnHold ? 'Process' : 'Stage') + '</span>' +
-          '</div>' +
-          '<div class="hh-pipe-stat">' +
-            '<span class="hh-pipe-stat-val">' + (daysInStage == null ? '—' : (daysInStage === 0 ? 'Today' : daysInStage + 'd')) + '</span>' +
-            '<span class="hh-pipe-stat-lbl">' + (isOnHold ? 'On hold' : 'In stage') + '</span>' +
-          '</div>' +
-          '<div class="hh-pipe-stat ' + (visaUnlocked ? 'is-open' : 'is-locked') + '">' +
-            '<span class="hh-pipe-stat-val">' + (visaUnlocked ? 'Open' : 'Locked') + '</span>' +
-            '<span class="hh-pipe-stat-lbl">Visa pack</span>' +
+        '<div class="hh-pipeline-intel">' +
+          buildStageCoach(c, pipeKey, daysInStage, nextKey, visaUnlocked) +
+          '<div class="hh-pipe-stats">' +
+            '<div class="hh-pipe-stat is-timestamp" title="' + escapeHtml(lastTouch.title) + '">' +
+              '<span class="hh-pipe-stat-val">' + escapeHtml(lastTouch.value) + '</span>' +
+              '<span class="hh-pipe-stat-lbl">Last updated</span>' +
+            '</div>' +
+            '<div class="hh-pipe-stat"' +
+              (onFileStat.title ? ' title="' + escapeHtml(onFileStat.title) + '"' : '') + '>' +
+              '<span class="hh-pipe-stat-val">' + escapeHtml(onFileStat.value) + '</span>' +
+              '<span class="hh-pipe-stat-lbl">On file</span>' +
+            '</div>' +
+            '<div class="hh-pipe-stat"' +
+              (hireTypeStat.title ? ' title="' + escapeHtml(hireTypeStat.title) + '"' : '') + '>' +
+              '<span class="hh-pipe-stat-val">' + escapeHtml(hireTypeStat.value) + '</span>' +
+              '<span class="hh-pipe-stat-lbl">Hire type</span>' +
+            '</div>' +
+            '<div class="hh-pipe-stat"' +
+              (contactStat.title ? ' title="' + escapeHtml(contactStat.title) + '"' : '') + '>' +
+              '<span class="hh-pipe-stat-val">' + escapeHtml(contactStat.value) + '</span>' +
+              '<span class="hh-pipe-stat-lbl">Contact</span>' +
+            '</div>' +
           '</div>' +
         '</div>';
 
@@ -1267,6 +1861,90 @@
       if (select) {
         select.value = pipeKey;
         select.disabled = false;
+      }
+    }
+
+    function renderVacancyBlock(c) {
+      const vac = c.vacancy;
+      if (vac && vac.id) {
+        const bits = [vac.trade_name, vac.project_name].filter(Boolean).join(' · ') || ('Vacancy #' + vac.id);
+        const repl = vac.requirement_type === 'replacement' && vac.replacement_name
+          ? (' · Replacing ' + vac.replacement_name)
+          : '';
+        return (
+          '<div class="hh-vacancy-card is-assigned is-clickable" id="hhVacancyCard" ' +
+            'role="link" tabindex="0" data-tracker-href="/hr/manpower-tracker" ' +
+            'title="Open Manpower Tracker" aria-label="Open Manpower Tracker for this vacancy">' +
+            '<div class="hh-vacancy-card-head">' +
+              '<span class="hh-vacancy-kicker">Project vacancy</span>' +
+              '<div class="hh-vacancy-card-actions">' +
+                '<button type="button" class="hh-replacement-edit" id="hhVacancyUnassign">Unassign</button>' +
+              '</div>' +
+            '</div>' +
+            '<div class="hh-vacancy-card-label">' + escapeHtml(bits) + escapeHtml(repl) + '</div>' +
+            '<div class="hh-vacancy-card-meta">#' + escapeHtml(String(vac.id)) +
+              (vac.status_label ? ' · ' + escapeHtml(vac.status_label) : '') +
+            '</div>' +
+          '</div>'
+        );
+      }
+      return (
+        '<div class="hh-vacancy-card is-unassigned" id="hhVacancyCard">' +
+          '<div class="hh-vacancy-card-head">' +
+            '<span class="hh-vacancy-kicker">Project vacancy</span>' +
+            '<button type="button" class="hh-replacement-edit" id="hhVacancyAssignOpen">Assign</button>' +
+          '</div>' +
+          '<div class="hh-vacancy-card-label">Not assigned</div>' +
+          '<div class="hh-vacancy-card-meta">Link an open Manpower vacancy for this hire</div>' +
+        '</div>'
+      );
+    }
+
+    function bindVacancyCard() {
+      const card = document.getElementById('hhVacancyCard');
+      if (card && card.classList.contains('is-clickable')) {
+        const goTracker = function () {
+          const href = card.getAttribute('data-tracker-href') || '/hr/manpower-tracker';
+          window.location.href = href;
+        };
+        card.addEventListener('click', function (e) {
+          if (e.target.closest('button, a, input, select, textarea')) return;
+          goTracker();
+        });
+        card.addEventListener('keydown', function (e) {
+          if (e.key !== 'Enter' && e.key !== ' ') return;
+          if (e.target.closest('button, a, input, select, textarea')) return;
+          e.preventDefault();
+          goTracker();
+        });
+      }
+      const unassignBtn = document.getElementById('hhVacancyUnassign');
+      if (unassignBtn) {
+        unassignBtn.addEventListener('click', async function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          const ok = await confirmDialog({
+            title: 'Unassign vacancy',
+            message: 'Remove this candidate from the project vacancy? The vacancy stays open in Manpower Tracker.',
+            confirmLabel: 'Unassign',
+          });
+          if (!ok) return;
+          try {
+            const data = await unassignCandidateVacancy(candidateId);
+            toast('Vacancy unassigned');
+            if (data && data.candidate) {
+              render(applyCandidate(data.candidate));
+            } else {
+              await load();
+            }
+          } catch (err) {
+            toast(err.message, true);
+          }
+        });
+      }
+      const assignOpen = document.getElementById('hhVacancyAssignOpen');
+      if (assignOpen) {
+        assignOpen.addEventListener('click', openEditModal);
       }
     }
 
@@ -1575,6 +2253,24 @@
       set('replacement_name', c.replacement_name);
       set('replacement_employee_id', c.replacement_employee_id);
       set('comments', c.comments);
+      const vacPick = document.getElementById('hhVacancyPick');
+      const includeCurrent = c.vacancy ? {
+        id: c.vacancy.id,
+        label: c.vacancy.label || [c.vacancy.trade_name, c.vacancy.project_name].filter(Boolean).join(' · '),
+        trade_name: c.vacancy.trade_name,
+        project_name: c.vacancy.project_name,
+        replacement_name: c.vacancy.replacement_name,
+        replacement_employee_id: c.vacancy.replacement_employee_id,
+        requirement_type: c.vacancy.requirement_type,
+      } : null;
+      loadVacancyPicker(vacPick, {
+        roleHint: c.role || '',
+        selectedId: c.vacancy_id || (c.vacancy && c.vacancy.id) || '',
+        includeCurrent: includeCurrent,
+      }).then(function (items) {
+        if (vacPick) vacPick._hhItems = items;
+      });
+      bindVacancyPickerFill(vacPick, editForm);
     }
 
     async function loadEditAssessments() {
@@ -1689,10 +2385,20 @@
             method: 'PATCH',
             json: payload,
           });
+          const vacancyId = (fd.get('vacancy_id') || '').toString().trim();
+          const prevVacancyId = candidateState && (candidateState.vacancy_id || (candidateState.vacancy && candidateState.vacancy.id));
+          let linked = data.candidate;
+          if (vacancyId && String(vacancyId) !== String(prevVacancyId || '')) {
+            const assignData = await assignCandidateVacancy(candidateId, vacancyId);
+            linked = (assignData && assignData.candidate) || linked;
+          } else if (!vacancyId && prevVacancyId) {
+            const unData = await unassignCandidateVacancy(candidateId);
+            linked = (unData && unData.candidate) || linked;
+          }
           toast('Details updated');
           closeEditModal();
-          if (data.candidate) {
-            render(applyCandidate(data.candidate));
+          if (linked) {
+            render(applyCandidate(linked));
           } else {
             await load();
           }
@@ -1740,6 +2446,7 @@
           '</div>' +
         '</div>' +
         renderReplacementBlock(c) +
+        renderVacancyBlock(c) +
         '<div class="hh-profile-aside">' +
           '<button type="button" class="hh-btn hh-btn-sm hh-btn-on-brand-ghost" id="hhMarkAllSubmitted">Mark all submitted</button>' +
           '<button type="button" class="hh-btn hh-btn-sm hh-btn-on-brand-danger" id="hhDeleteCandidate">Delete</button>' +
@@ -1754,6 +2461,7 @@
         deleteBtn.addEventListener('click', onDeleteCandidate);
       }
       bindReplacementEditors();
+      bindVacancyCard();
       bindProfileEditors();
 
       renderPipeline(c);
@@ -1878,8 +2586,7 @@
             { method: 'POST', json: {} }
           );
           toast('Marked as file uploaded (handed over in person)');
-          if (data.candidate) render(applyCandidate(data.candidate));
-          else await load();
+          await syncAfterDocChange(data);
         } catch (err) {
           toast(err.message, true);
         } finally {
@@ -1920,9 +2627,9 @@
       if (attestBtn) {
         attestBtn.disabled = true;
         try {
-          await api('/hr/api/hiring/candidates/' + candidateId + '/documents/pcc/attest', { method: 'POST', json: {} });
+          const data = await api('/hr/api/hiring/candidates/' + candidateId + '/documents/pcc/attest', { method: 'POST', json: {} });
           toast('PCC marked attested');
-          await load();
+          await syncAfterDocChange(data);
         } catch (err) {
           toast(err.message, true);
         } finally {
@@ -1946,9 +2653,9 @@
         if (!ok) return;
         clearBtn.disabled = true;
         try {
-          await api('/hr/api/hiring/documents/' + id, { method: 'DELETE' });
+          const data = await api('/hr/api/hiring/documents/' + id, { method: 'DELETE' });
           toast(clearMode === 'received' ? 'Upload mark cleared' : 'Document cleared');
-          await load();
+          await syncAfterDocChange(data);
         } catch (err) {
           toast(err.message, true);
         } finally {
@@ -1971,8 +2678,7 @@
             { method: 'POST', json: {} }
           );
           toast('Marked as file uploaded (handed over in person)');
-          if (data.candidate) render(applyCandidate(data.candidate));
-          else await load();
+          await syncAfterDocChange(data);
         } else {
           const docId = input.getAttribute('data-doc-id');
           if (!docId) {
@@ -1990,9 +2696,9 @@
             input.checked = true;
             return;
           }
-          await api('/hr/api/hiring/documents/' + docId, { method: 'DELETE' });
+          const data = await api('/hr/api/hiring/documents/' + docId, { method: 'DELETE' });
           toast('Upload mark cleared');
-          await load();
+          await syncAfterDocChange(data);
         }
       } catch (err) {
         input.checked = !checked;
@@ -2060,8 +2766,7 @@
           throw new Error((data && data.error) || 'Upload failed');
         }
         toast('Document uploaded');
-        if (data.candidate) render(applyCandidate(data.candidate));
-        else await load();
+        await syncAfterDocChange(data);
       } catch (err) {
         toast(err.message, true);
       }
@@ -2082,8 +2787,7 @@
           { method: 'POST', json: {} }
         );
         toast('All documents marked as submitted');
-        if (data.candidate) render(applyCandidate(data.candidate));
-        else await load();
+        await syncAfterDocChange(data);
       } catch (err) {
         toast(err.message, true);
         if (markAllBtn) markAllBtn.disabled = false;
@@ -2111,7 +2815,12 @@
     }
 
     const backLink = document.querySelector('a.hh-back');
-    if (backLink) backLink.setAttribute('href', hiringListHref());
+    if (backLink) {
+      backLink.setAttribute('href', hiringListHref());
+      // Prefer a real navigation to the list so rows refetch; history.back()
+      // can restore a stale cached dashboard.
+      backLink.setAttribute('data-no-history-back', '1');
+    }
 
     const initialMarkAll = document.getElementById('hhMarkAllSubmitted');
     if (initialMarkAll) initialMarkAll.addEventListener('click', onMarkAllSubmitted);

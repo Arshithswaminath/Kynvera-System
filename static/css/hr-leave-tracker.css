@@ -140,16 +140,26 @@ a.lt-stat-btn:visited {
   border-radius: 6px;
 }
 
-.lt-toolbar {
+/* Leave pages keep a horizontal toolbar; hiring uses column + nested rows. */
+.lt-toolbar.hh-toolbar,
+.hh-toolbar.lt-toolbar {
+  flex-direction: row;
   flex-wrap: wrap;
+  align-items: center;
+}
+
+.lt-toolbar .hh-excel-actions {
+  margin-left: 0;
 }
 
 /* Native select chevron sits high when height + padding conflict; use a centered custom arrow */
 .lt-toolbar .hh-select {
   -webkit-appearance: none;
   appearance: none;
+  flex: 0 0 auto;
   height: var(--hh-control-h, 44px);
   min-height: var(--hh-control-h, 44px);
+  max-height: var(--hh-control-h, 44px);
   padding: 0 2.35rem 0 0.85rem;
   line-height: var(--hh-control-h, 44px);
   background-color: var(--hh-surface, #fff);
@@ -160,17 +170,21 @@ a.lt-stat-btn:visited {
 }
 
 .lt-toolbar .hh-select.lt-filter-compact {
-  flex: 0 1 10.5rem;
+  /* width only — never flex-basis (column parents treat basis as height) */
+  flex: 0 0 auto;
+  width: 10.5rem;
   min-width: 9.5rem;
 }
 
 .lt-toolbar input.lt-filter-date {
   -webkit-appearance: none;
   appearance: none;
-  flex: 0 1 10.5rem;
+  flex: 0 0 auto;
+  width: 10.5rem;
   min-width: 9.75rem;
   height: var(--hh-control-h, 44px);
   min-height: var(--hh-control-h, 44px);
+  max-height: var(--hh-control-h, 44px);
   padding: 0 0.85rem;
   line-height: normal;
   background-image: none;
@@ -746,13 +760,54 @@ a.lt-stat-btn:visited {
 }
 
 .lt-planner-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem;
   margin-bottom: 0.75rem;
+}
+
+.lt-planner-toolbar .lt-logs-search {
+  flex: 1 1 14rem;
+  min-width: 12rem;
+  max-width: 28rem;
 }
 
 .lt-timeline {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+}
+
+.lt-tl-scale {
+  position: relative;
+  height: 1.35rem;
+  margin: 0 0.15rem 0.15rem;
+}
+
+.lt-tl-scale-cell {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  box-sizing: border-box;
+  border-left: 1px solid #e2e8f0;
+  padding: 0 0.15rem;
+}
+
+.lt-tl-scale-cell:first-child {
+  border-left: none;
+}
+
+.lt-tl-scale-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--hh-muted, #64748b);
+  line-height: 1;
 }
 
 .lt-tl-item {
@@ -770,11 +825,20 @@ a.lt-stat-btn:visited {
 .lt-tl-meta { font-size: 0.8rem; color: var(--hh-muted); }
 .lt-tl-bar {
   grid-column: 1 / -1;
-  height: 8px;
+  height: 10px;
   background: #f1f5f9;
   border-radius: 4px;
   position: relative;
   overflow: hidden;
+}
+.lt-tl-mark {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: #cbd5e1;
+  z-index: 1;
+  pointer-events: none;
 }
 .lt-tl-fill {
   position: absolute;
@@ -783,6 +847,7 @@ a.lt-stat-btn:visited {
   background: var(--hh-brand, #ff8e68);
   border-radius: 4px;
   opacity: 0.85;
+  z-index: 2;
 }
 
 .lt-confirm-backdrop {
@@ -1026,4 +1091,41 @@ a.lt-stat-btn:visited {
   .lt-field-row {
     grid-template-columns: 1fr;
   }
+
+  .lt-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .lt-table-wrap {
+    max-width: 100%;
+    border-radius: 10px;
+  }
+
+  /* Matrix: keep scroll; sticky name column */
+  .lt-table {
+    min-width: 720px;
+  }
+
+  .lt-table th.name-cell,
+  .lt-table td.name-cell,
+  .lt-table th:first-child,
+  .lt-table td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background: #fff;
+    box-shadow: 4px 0 8px -4px rgba(0, 0, 0, 0.1);
+  }
+
+  .lt-table thead th.name-cell,
+  .lt-table thead th:first-child {
+    z-index: 3;
+    background: #fafafa;
+  }
+}
+
+.lt-person-chip {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
 }

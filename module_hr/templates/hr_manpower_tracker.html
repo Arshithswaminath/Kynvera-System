@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+  <meta name="theme-color" content="#ff8e68">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Manpower Tracker · Kynvera</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/kynvera/kynvera-mark-32.png') }}?v=3">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-hiring.css') }}?v=85">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-manpower.css') }}?v=51">
+  {% set active_page = 'hr' %}
+</head>
+<body class="hh-page mp-page">
+  {% include 'partials/hr_embed_optional_navbar.html' %}
+
+  <div class="hh-shell" id="mpRoot">
+    {% include 'partials/hr_hiring_sidebar.html' %}
+
+    <main class="hh-main">
+      <div class="hh-topbar">
+        <div>
+          {% set module_back_url = module_back_url|default(url_for('hr.hr_dashboard')) %}
+          {% include 'partials/module_back_link.html' %}
+          <h1 class="hh-title">Manpower Tracker</h1>
+          <p class="hh-subtitle">Project vacancies by trade — live board</p>
+        </div>
+      </div>
+
+      <div id="mpImportResult" class="hh-import-result" hidden></div>
+
+      <div class="mp-view" id="mpBoardView">
+      <div class="mp-bento" id="mpBento">
+        <section class="mp-bento-tile mp-stat" aria-label="Required">
+          <span class="mp-stat-label">Required</span>
+          <span class="mp-stat-val" id="mpStatTotal">—</span>
+        </section>
+        <section class="mp-bento-tile mp-stat mp-stat-joined" aria-label="Joined">
+          <span class="mp-stat-label">Joined</span>
+          <span class="mp-stat-val" id="mpStatJoined">—</span>
+        </section>
+        <section class="mp-bento-tile mp-stat mp-stat-progress" aria-label="In progress">
+          <span class="mp-stat-label">In progress</span>
+          <span class="mp-stat-val" id="mpStatProgress">—</span>
+        </section>
+        <section class="mp-bento-tile mp-stat mp-stat-open" aria-label="Open">
+          <span class="mp-stat-label">Open</span>
+          <span class="mp-stat-val" id="mpStatOpen">—</span>
+        </section>
+
+        <section class="mp-bento-tile mp-bento-matrix" aria-label="Requirement by Trade × Project">
+          <button type="button" class="mp-bento-title" id="mpMatrixToggle" aria-expanded="false" aria-controls="mpMatrixPanel">
+            <span class="mp-bento-title-copy">
+              <span class="mp-bento-kicker">Matrix</span>
+              <span class="mp-bento-heading">Trade × Project</span>
+            </span>
+            <span class="mp-bento-title-hint" id="mpMatrixToggleHint">Expand</span>
+          </button>
+        </section>
+
+        <section class="mp-bento-tile mp-bento-search" aria-label="Search">
+          <div class="mp-bento-label">Find vacancies</div>
+          <div class="mp-search-row">
+            <div class="hh-search mp-filter-search">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+              </svg>
+              <input type="search" id="mpSearch" placeholder="Search candidate, replacement, contact…" autocomplete="off" aria-label="Search vacancies">
+            </div>
+            <div class="mp-filter-meta">
+              <span class="mp-filter-count" id="mpFilterCount">—</span>
+              <button type="button" class="mp-filter-clear" id="mpClearFilters" hidden>Clear</button>
+              <button type="button" class="mp-filters-toggle" id="mpFiltersToggle" aria-expanded="false" aria-controls="mpFiltersPanel">
+                Filters
+                <span class="mp-filters-toggle-badge" id="mpFiltersBadge" hidden></span>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section class="mp-bento-tile mp-bento-actions" aria-label="Board actions">
+          <div class="mp-bento-label">Board tools</div>
+          <div class="mp-actions-row">
+            <button type="button" class="hh-btn hh-btn-primary hh-btn-sm" id="mpAddBtn">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+              </svg>
+              Add vacancy
+            </button>
+            <button type="button" class="hh-btn hh-btn-secondary hh-btn-sm" id="mpManageListsBtn" title="Manage trades and projects from Excel lists">
+              Settings
+            </button>
+            <button type="button" class="hh-btn hh-btn-secondary hh-btn-sm" id="mpTemplateBtn" title="Download blank Excel template">Template</button>
+            <button type="button" class="hh-btn hh-btn-secondary hh-btn-sm" id="mpExportBtn" title="Export to Excel">Export</button>
+            <button type="button" class="hh-btn hh-btn-secondary hh-btn-sm" id="mpImportBtn" title="Import Excel (All Trades)">Import</button>
+            <input type="file" id="mpImportFile" accept=".xlsx,.xls" hidden>
+          </div>
+        </section>
+
+        <section class="mp-bento-tile mp-bento-filters" id="mpFiltersPanel" hidden aria-label="Filters">
+          <div class="mp-filters-inner">
+            <div class="mp-filters-status">
+              <div class="mp-bento-label">Status</div>
+              <div class="mp-status-chips" id="mpStatusChips" role="group" aria-label="Status filter">
+                <button type="button" class="mp-chip is-active" data-status="all">All</button>
+                <button type="button" class="mp-chip mp-chip-open" data-status="open">Open</button>
+                <button type="button" class="mp-chip mp-chip-interviewing" data-status="interviewing">Interviewing</button>
+                <button type="button" class="mp-chip mp-chip-selected" data-status="selected">Selected</button>
+                <button type="button" class="mp-chip mp-chip-filled" data-status="filled">Filled</button>
+                <button type="button" class="mp-chip mp-chip-joined" data-status="joined">Joined</button>
+                <button type="button" class="mp-chip mp-chip-hold" data-status="on_hold">On Hold</button>
+              </div>
+            </div>
+            <label class="mp-filter-field">
+              <span>Trade</span>
+              <select id="mpFilterTrade" class="mp-filter-select" aria-label="Trade filter">
+                <option value="all">All trades</option>
+              </select>
+            </label>
+            <label class="mp-filter-field">
+              <span>Project</span>
+              <select id="mpFilterProject" class="mp-filter-select" aria-label="Project filter">
+                <option value="all">All projects</option>
+              </select>
+            </label>
+            <label class="mp-filter-field">
+              <span>Req type</span>
+              <select id="mpFilterReqType" class="mp-filter-select" aria-label="Requirement type filter">
+                <option value="all">All types</option>
+                <option value="new">New</option>
+                <option value="replacement">Replacement</option>
+              </select>
+            </label>
+            <label class="mp-filter-field">
+              <span>Hiring link</span>
+              <select id="mpFilterLinked" class="mp-filter-select" aria-label="Hiring link filter">
+                <option value="all">All</option>
+                <option value="linked">Linked to Hiring</option>
+                <option value="unlinked">Unlinked</option>
+              </select>
+            </label>
+          </div>
+        </section>
+
+        <section class="mp-bento-tile mp-bento-matrix-panel" id="mpMatrixPanel" hidden aria-label="Trade × Project matrix">
+          <div class="mp-matrix-panel-head">
+            <div>
+              <div class="mp-bento-kicker">Requirement matrix</div>
+              <div class="mp-bento-heading">Trade × Project</div>
+              <p class="mp-matrix-hint">Edit a number to add or remove vacancy rows in the main table.</p>
+            </div>
+            <button type="button" class="mp-matrix-collapse" id="mpMatrixCollapse">Collapse</button>
+          </div>
+          <div class="mp-matrix-scroll" id="mpMatrixScroll">
+            <table class="mp-matrix" id="mpMatrix">
+              <thead id="mpMatrixHead"></thead>
+              <tbody id="mpMatrixBody">
+                <tr><td class="mp-empty">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="mp-bento-tile mp-bento-board" aria-label="Vacancy board" id="mpBoardSection">
+          <div class="mp-board-wrap table-responsive">
+            <table class="mp-board" id="mpBoard">
+              <thead>
+                <tr id="mpBoardHead"></tr>
+              </thead>
+              <tbody id="mpBoardBody">
+                <tr><td colspan="12" class="mp-empty">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+      </div>
+
+      <section class="mp-view mp-settings-view" id="mpSettingsView" hidden aria-label="Manpower settings">
+        <div class="mp-settings-hero">
+          <div>
+            <div class="mp-bento-kicker">Manpower Tracker</div>
+            <h2 class="mp-settings-title" id="mpListsTitle">Settings</h2>
+            <p class="mp-settings-lead">
+              Manage trades and projects from the Excel Lists sheet. Remove hides an item from dropdowns; existing vacancy rows stay linked.
+            </p>
+          </div>
+          <button type="button" class="hh-btn hh-btn-secondary" id="mpSettingsBackBtn">Back to board</button>
+        </div>
+
+        <div class="mp-settings-grid">
+          <section class="mp-settings-card" aria-labelledby="mpTradesHeading">
+            <div class="mp-settings-card-head">
+              <h3 id="mpTradesHeading">Trades</h3>
+              <span class="mp-settings-card-hint">Used in board rows and the matrix</span>
+            </div>
+            <ul class="mp-list mp-settings-list" id="mpTradeList"></ul>
+            <form class="mp-list-add" id="mpTradeAddForm">
+              <input type="text" id="mpTradeAddName" placeholder="New trade" required autocomplete="off">
+              <button type="submit" class="hh-btn hh-btn-primary hh-btn-sm">Add</button>
+            </form>
+          </section>
+
+          <section class="mp-settings-card" aria-labelledby="mpProjectsHeading">
+            <div class="mp-settings-card-head">
+              <h3 id="mpProjectsHeading">Projects</h3>
+              <span class="mp-settings-card-hint">Sites and project columns</span>
+            </div>
+            <ul class="mp-list mp-settings-list" id="mpProjectList"></ul>
+            <form class="mp-list-add" id="mpProjectAddForm">
+              <input type="text" id="mpProjectAddName" placeholder="New project" required autocomplete="off">
+              <button type="submit" class="hh-btn hh-btn-primary hh-btn-sm">Add</button>
+            </form>
+          </section>
+
+          <section class="mp-settings-card mp-settings-card-wide" aria-labelledby="mpExcelHeading">
+            <div class="mp-settings-card-head">
+              <h3 id="mpExcelHeading">Excel</h3>
+              <span class="mp-settings-card-hint">Template, export, and import</span>
+            </div>
+            <p class="mp-settings-excel-hint">
+              Download a blank template, export the current board, or import an All Trades workbook.
+            </p>
+            <div class="mp-settings-excel-actions">
+              <button type="button" class="hh-btn hh-btn-secondary" id="mpSettingsTemplateBtn">Template</button>
+              <button type="button" class="hh-btn hh-btn-secondary" id="mpSettingsExportBtn">Export</button>
+              <button type="button" class="hh-btn hh-btn-primary" id="mpSettingsImportBtn">Import</button>
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="mp-col-menu" id="mpColMenu" hidden role="dialog" aria-label="Column filter">
+    <label class="mp-col-menu-label" id="mpColMenuLabel">Filter</label>
+    <div class="mp-col-menu-list" id="mpColMenuList"></div>
+    <div class="mp-col-menu-actions">
+      <button type="button" class="hh-btn hh-btn-secondary hh-btn-sm" id="mpColMenuClear">Clear</button>
+      <button type="button" class="hh-btn hh-btn-primary hh-btn-sm" id="mpColMenuApply">Apply</button>
+    </div>
+  </div>
+
+  <!-- Add vacancy modal -->
+  <div class="hh-modal" id="mpAddModal" hidden aria-hidden="true">
+    <div class="hh-modal-backdrop" data-close-modal></div>
+    <div class="hh-modal-panel" role="dialog" aria-labelledby="mpAddTitle">
+      <div class="hh-modal-head">
+        <h2 id="mpAddTitle">Add vacancy</h2>
+        <button type="button" class="hh-modal-close" data-close-modal aria-label="Close">&times;</button>
+      </div>
+      <form id="mpAddForm" class="mp-form">
+        <label>
+          <span>Trade</span>
+          <select id="mpAddTrade" required></select>
+        </label>
+        <label>
+          <span>Project</span>
+          <select id="mpAddProject" required></select>
+        </label>
+        <label>
+          <span>Requirement type</span>
+          <select id="mpAddReqType">
+            <option value="new">New</option>
+            <option value="replacement">Replacement</option>
+          </select>
+        </label>
+        <label>
+          <span>Status</span>
+          <select id="mpAddStatus">
+            <option value="open">Open</option>
+            <option value="interviewing">Interviewing</option>
+            <option value="selected">Selected</option>
+            <option value="filled">Filled</option>
+            <option value="joined">Joined</option>
+            <option value="on_hold">On Hold</option>
+          </select>
+        </label>
+        <label class="mp-add-repl">
+          <span>Replacement name</span>
+          <input type="text" id="mpAddReplName" autocomplete="off">
+        </label>
+        <label class="mp-add-repl">
+          <span>Replacement ID</span>
+          <input type="text" id="mpAddReplId" autocomplete="off">
+        </label>
+        <label>
+          <span>Candidate name</span>
+          <input type="text" id="mpAddCandidate" autocomplete="off">
+        </label>
+        <label>
+          <span>Contact</span>
+          <input type="text" id="mpAddContact" autocomplete="off">
+        </label>
+        <label class="mp-form-full">
+          <span>Comment</span>
+          <input type="text" id="mpAddRemarks" autocomplete="off" placeholder="Optional note">
+        </label>
+        <div class="mp-form-actions">
+          <button type="button" class="hh-btn hh-btn-ghost hh-btn-sm" id="mpAddOpenSettings" title="Manage trades and projects">
+            Settings
+          </button>
+          <span class="mp-form-actions-spacer"></span>
+          <button type="button" class="hh-btn hh-btn-secondary" data-close-modal>Cancel</button>
+          <button type="submit" class="hh-btn hh-btn-primary">Create</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Import options -->
+  <div class="hh-modal" id="mpImportModal" hidden aria-hidden="true">
+    <div class="hh-modal-backdrop" data-close-modal></div>
+    <div class="hh-modal-panel" role="dialog" aria-labelledby="mpImportTitle">
+      <div class="hh-modal-head">
+        <h2 id="mpImportTitle">Import Excel</h2>
+        <button type="button" class="hh-modal-close" data-close-modal aria-label="Close">&times;</button>
+      </div>
+      <p class="mp-import-hint">Import from the Manpower Tracker workbook (All Trades sheet) or our export template.</p>
+      <label class="mp-check">
+        <input type="checkbox" id="mpImportReplace">
+        <span>Replace all existing vacancies (recommended for first load)</span>
+      </label>
+      <div class="mp-form-actions">
+        <button type="button" class="hh-btn hh-btn-secondary" data-close-modal>Cancel</button>
+        <button type="button" class="hh-btn hh-btn-primary" id="mpImportConfirm">Choose file…</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Link Hiring candidate -->
+  <div class="hh-modal" id="mpLinkModal" hidden aria-hidden="true">
+    <div class="hh-modal-backdrop" data-close-modal></div>
+    <div class="hh-modal-panel mp-link-panel" role="dialog" aria-labelledby="mpLinkTitle" aria-describedby="mpLinkLead">
+      <div class="hh-modal-head">
+        <h2 id="mpLinkTitle">Link Hiring candidate</h2>
+        <button type="button" class="hh-modal-close" data-close-modal aria-label="Close">&times;</button>
+      </div>
+      <div class="mp-link-body">
+        <p class="mp-link-lead" id="mpLinkLead">
+          All Hiring Docs people appear here, including those already on another project/role (greyed). Linking them asks you to confirm a project switch — HR / staffing permission is required.
+        </p>
+        <div class="mp-link-vacancy" id="mpLinkVacancyMeta" hidden></div>
+        <label class="mp-link-search">
+          <span class="hh-visually-hidden">Search candidates</span>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+          </svg>
+          <input type="search" id="mpLinkSearch" placeholder="Search by name, role, phone…" autocomplete="off">
+        </label>
+        <div class="mp-link-list" id="mpLinkList" role="listbox" aria-label="Hiring candidates"></div>
+        <p class="mp-link-empty" id="mpLinkEmpty" hidden>No matching Hiring candidates.</p>
+      </div>
+      <div class="mp-form-actions mp-link-actions">
+        <button type="button" class="hh-btn hh-btn-secondary" data-close-modal>Cancel</button>
+        <button type="button" class="hh-btn hh-btn-primary" id="mpLinkConfirm" disabled>Link candidate</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/injaaz-uae-datetime.js') }}"></script>
+  <script src="{{ url_for('static', filename='api-client.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/hr-manpower.js') }}?v=34"></script>
+</body>
+</html>

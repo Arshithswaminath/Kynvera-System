@@ -116,25 +116,59 @@ def _date_in_tracker_window(d: date) -> bool:
 
 
 def _ensure_migrated() -> None:
-    """Ensure end_date column exists; convert legacy monthly usage into logs once."""
+    """Ensure leave_logs columns exist; convert legacy monthly usage into logs once."""
+    purged: list[tuple] = []
     try:
         from sqlalchemy import inspect, text
         inspector = inspect(db.engine)
         if 'leave_logs' in inspector.get_table_names():
             cols = {c['name'] for c in inspector.get_columns('leave_logs')}
-            if 'end_date' not in cols:
-                with db.engine.begin() as conn:
+            with db.engine.begin() as conn:
+                if 'end_date' not in cols:
                     conn.execute(text('ALTER TABLE leave_logs ADD COLUMN end_date DATE'))
-                logger.info('Added end_date to leave_logs')
+                    logger.info('Added end_date to leave_logs')
+                # Archive module revoked: drop archived rows + orphan prior-month usage
+                if 'source' in cols:
+                    purged = list(
+                        conn.execute(
+                            text(
+                                'SELECT employee_id, leave_type, leave_date, end_date '
+                                "FROM leave_logs WHERE source = 'archive'"
+                            )
+                        ).fetchall()
+                    )
+                    if purged:
+                        conn.execute(text("DELETE FROM leave_logs WHERE source = 'archive'"))
+                        conn.execute(
+                            text(
+                                'DELETE FROM leave_monthly_usage '
+                                'WHERE year = :year AND month NOT IN (8, 9, 10, 11, 12)'
+                            ),
+                            {'year': LEAVE_TRACKER_YEAR},
+                        )
+                        logger.info('Removed %s revoked archive leave logs', len(purged))
     except Exception:
-        logger.exception('Could not ensure leave_logs.end_date')
+        logger.exception('Could not ensure leave_logs columns')
         db.session.rollback()
     try:
         migrate_monthly_usage_to_logs()
     except Exception:
         logger.exception('Leave monthly→logs migration failed')
         db.session.rollback()
-
+    if purged:
+        try:
+            touched: set[tuple[int, str, int, int]] = set()
+            for emp_id, leave_type, leave_date, end_date in purged:
+                end = end_date or leave_date
+                for y, m in months_touched_by_range(leave_date, end):
+                    if y == LEAVE_TRACKER_YEAR and m in LEAVE_TRACKER_MONTHS:
+                        touched.add((emp_id, leave_type, y, m))
+            for emp_id, leave_type, y, m in touched:
+                recompute_monthly_usage(emp_id, leave_type, y, m)
+            db.session.commit()
+        except Exception:
+            logger.exception('Leave usage recompute after archive purge failed')
+            db.session.rollback()
 
 def _recompute_range(employee_id: int, leave_type: str, start, end) -> None:
     for y, m in months_touched_by_range(start, end):
@@ -193,7 +227,7 @@ def _days_val(raw) -> float:
 
 
 def _fetch_tracker_logs(employee_ids: list[int]) -> list[LeaveLog]:
-    """Leave logs that start inside the Aug–Dec tracker window for the given staff."""
+    """Leave logs that start inside the Aug–Dec tracker window."""
     if not employee_ids:
         return []
     return (
@@ -338,8 +372,7 @@ def _summary_for(employees: list[LeaveEmployee]) -> dict:
         annual_days += annual_used
         if _employee_low_remaining(e, year, logs_by_emp):
             low_remaining += 1
-
-        rem_sum += LEAVE_SICK_ENTITLEMENT - sick_used
+        rem_sum += max(0.0, LEAVE_SICK_ENTITLEMENT - sick_used)
         level = leave_sick_alert_level(sick_used)
         if level == 'warning':
             approaching += 1
@@ -817,6 +850,7 @@ def register_leave_tracker_routes(hr_bp):
             query = query.filter(or_(
                 LeaveEmployee.full_name.ilike(like),
                 LeaveEmployee.emp_id.ilike(like),
+                LeaveLog.notes.ilike(like),
             ))
         if leave_type in LEAVE_TYPES:
             query = query.filter(LeaveLog.leave_type == leave_type)

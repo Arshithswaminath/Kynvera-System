@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+  <meta name="theme-color" content="#ff8e68">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Staffing Assignments · Kynvera</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/kynvera/kynvera-mark-32.png') }}?v=3">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-hiring.css') }}?v=86">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-staffing.css') }}?v=2">
+  {% set active_page = 'hr' %}
+</head>
+<body class="hh-page st-page">
+  {% include 'partials/hr_embed_optional_navbar.html' %}
+
+  <div class="hh-shell" id="stRoot">
+    {% include 'partials/hr_hiring_sidebar.html' %}
+
+    <main class="hh-main">
+      <div class="hh-topbar">
+        <div>
+          {% set module_back_url = module_back_url|default(url_for('hr.hr_dashboard')) %}
+          {% include 'partials/module_back_link.html' %}
+          <h1 class="hh-title">Staffing Assignments</h1>
+          <p class="hh-subtitle">Pick one open vacancy and one candidate, then match them</p>
+        </div>
+      </div>
+
+      <div class="hh-toolbar st-toolbar">
+        <div class="hh-search">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+          </svg>
+          <input type="search" id="stSearch" placeholder="Search vacancies or candidates…" autocomplete="off" aria-label="Search">
+        </div>
+        <button type="button" class="hh-btn hh-btn-primary" id="stMatchBtn" disabled>Match selected</button>
+        <a class="hh-btn hh-btn-secondary" href="/hr/manpower-tracker">Manpower</a>
+        <a class="hh-btn hh-btn-secondary" href="/hr/hiring">Hiring Docs</a>
+      </div>
+
+      <div class="st-match-bar" id="stMatchBar" hidden>
+        <span class="st-match-label">Ready to match</span>
+        <div class="st-match-pair" id="stMatchPair"></div>
+      </div>
+
+      <div id="stToast" class="hh-toast" hidden></div>
+
+      <div class="st-grid">
+        <section class="st-panel" aria-labelledby="stVacTitle">
+          <div class="st-panel-head">
+            <h2 id="stVacTitle">Open vacancies</h2>
+            <span class="st-count" id="stVacCount">—</span>
+          </div>
+          <div class="st-list" id="stVacList" role="listbox" aria-label="Open vacancies"></div>
+        </section>
+
+        <section class="st-panel" aria-labelledby="stCandTitle">
+          <div class="st-panel-head">
+            <h2 id="stCandTitle">Unassigned candidates</h2>
+            <span class="st-count" id="stCandCount">—</span>
+          </div>
+          <div class="st-list" id="stCandList" role="listbox" aria-label="Unassigned candidates"></div>
+        </section>
+      </div>
+
+      <section class="st-panel st-linked" aria-labelledby="stLinkedTitle">
+        <div class="st-panel-head">
+          <h2 id="stLinkedTitle">Linked</h2>
+          <span class="st-count" id="stLinkedCount">—</span>
+        </div>
+        <div class="st-linked-list" id="stLinkedList"></div>
+      </section>
+    </main>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/hr-staffing.js') }}?v=2"></script>
+</body>
+</html>

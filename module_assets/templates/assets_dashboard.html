@@ -53,12 +53,12 @@
         <tbody>
           {% for a in assets %}
           <tr onclick="location.href='/assets/{{ a.asset_id }}'">
-            <td>{{ a.asset_id }}</td>
-            <td>{{ a.name }}</td>
-            <td>{{ a.asset_type or '—' }}</td>
-            <td>{{ a.building or '—' }}</td>
-            <td>{% if a.health_score is not none %}{{ a.health_score }}{% else %}—{% endif %}</td>
-            <td><span class="fm-status fm-status-{{ a.status or 'active' }}">{{ a.status or 'active' }}</span></td>
+            <td data-label="ID">{{ a.asset_id }}</td>
+            <td data-label="Name">{{ a.name }}</td>
+            <td data-label="Type">{{ a.asset_type or '—' }}</td>
+            <td data-label="Building">{{ a.building or '—' }}</td>
+            <td data-label="Health">{% if a.health_score is not none %}{{ a.health_score }}{% else %}—{% endif %}</td>
+            <td data-label="Status"><span class="fm-status fm-status-{{ a.status or 'active' }}">{{ a.status or 'active' }}</span></td>
           </tr>
           {% endfor %}
         </tbody>

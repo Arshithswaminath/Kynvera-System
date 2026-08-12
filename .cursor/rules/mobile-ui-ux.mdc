@@ -26,6 +26,16 @@ Or for module templates: `href="/static/mobile_responsive.css"`
 - `apple-mobile-web-app-capable`: yes
 - `viewport-fit=cover` for notch support
 
+## Hybrid layout rule (primary)
+- **Lists / dashboards / detail pages** → stacked cards or single-column at `≤768px` (sidebars collapse at `≤900px`).
+- **True matrices/boards** (manpower board, leave matrix, wide report grids) → keep the grid inside `.table-scroll` / module scroll wrappers with sticky first column(s); never force page-level horizontal overflow.
+- Do **not** force `min-width` on every `table`. Opt into scroll via `.table-scroll` / `.table-responsive`, or convert list tables to cards (`.mobile-card-list` or module card patterns with `data-label` on cells).
+
+## Breakpoints
+- **768** — phone layouts (cards, single column)
+- **900** — sidebar → off-canvas drawer (DocHub / ticketing / QHSE / FM / BD / device)
+- Prefer these two; avoid inventing new breakpoints unless a shell already uses them (e.g. 860 HR hiring).
+
 ## Touch Targets
 - Minimum 44x44px for buttons, links, form controls (Apple HIG)
 - Use `min-height: 44px` for form inputs on mobile to prevent iOS zoom
@@ -33,20 +43,25 @@ Or for module templates: `href="/static/mobile_responsive.css"`
 
 ## Layout Patterns
 - **Dashboard**: Compact grid module cards (icon | title | action, description below)
-- **Forms**: Single column on mobile; stack `.row` columns
-- **Tables**: Use `.table-responsive` with horizontal scroll or card-style rows
+- **Forms**: Single column on mobile; stack `.row` / `.grid-2` / `.grid-3` columns
+- **Tables (lists)**: Card-style rows with `data-label` on `<td>`
+- **Tables (matrices)**: `.table-scroll` + sticky first column
+- **Sidebars**: Off-canvas drawer + toggle + overlay — never `display: none` with no replacement nav
 - **Modals**: Full-width on small screens, `max-height: 95vh`
 
 ## Module-Specific
-- **HR**: `.hr-card`, `.hr-header` - reduced padding, smaller icons
-- **Procurement**: `.proc-header`, `.module-showcase` - single column grid
+- **HR**: `.hr-card`, `.hr-header` - reduced padding; hiring rows stack as cards; manpower board scrolls with sticky trade/project
+- **Ticketing / FM / QHSE / Admin**: DocHub-style `.dh-sidebar-toggle` drawer at ≤900px
+- **Procurement**: single-column property/catalog grids
 - **Inspection forms**: Signature pads 160px height, photo grid 2 columns
-- **Sidebar nav** (forms): Fixed bottom bar on mobile via `.sidebar-nav`
+- **Sidebar nav** (legacy forms): Fixed bottom bar on mobile via `.sidebar-nav`
 
 ## Safe Areas
-Use `env(safe-area-inset-*)` for notched devices. Already in `mobile_responsive.css`.
+Use `env(safe-area-inset-*)` for notched devices / Capacitor. Already in `mobile_responsive.css` for nav, drawers, and fixed toggles.
 
 ## Do NOT
 - Use `width: 100% !important` on all buttons if side-by-side layout is needed
 - Omit `mobile_responsive.css` from new pages
 - Use viewport without `viewport-fit=cover` for PWA
+- Hide module sidebars on mobile without a hamburger/drawer
+- Force every table to a large `min-width` globally

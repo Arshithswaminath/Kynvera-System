@@ -140,21 +140,63 @@
       font-size: 16px;
     }
     .tm-table-wrap {
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-      border-radius: 12px;
+      overflow: visible;
+      border: none;
+      background: transparent;
     }
-    .tm-table { min-width: 52rem; }
+    .tm-table { min-width: 0; width: 100%; }
+    .tm-table thead { display: none; }
+    .tm-table,
+    .tm-table tbody { display: block; width: 100%; }
+    .tm-table tbody tr {
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+      padding: 0.9rem 1rem;
+      margin-bottom: 0.75rem;
+      border: 1.5px solid var(--tm-line);
+      border-radius: 14px;
+      background: var(--tm-card);
+      box-shadow: 0 1px 4px rgba(18, 84, 53, 0.06);
+    }
+    .tm-table tbody tr:hover { background: var(--tm-card); }
+    .tm-table td {
+      display: block;
+      padding: 0.2rem 0;
+      border: none;
+      width: 100%;
+      font-size: 0.88rem;
+    }
+    .tm-table td::before {
+      content: attr(data-label);
+      display: block;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--tm-muted);
+      margin-bottom: 0.2rem;
+    }
+    .tm-table td:first-child::before { display: none; }
+    .tm-table-actions {
+      width: 100%;
+      flex-wrap: wrap;
+    }
+    .tm-table-actions .tm-btn {
+      flex: 1 1 auto;
+      min-height: 44px;
+      justify-content: center;
+    }
     .tm-table td,
     .tm-table th {
-      padding: 0.72rem 0.65rem;
-      font-size: 0.82rem;
+      padding: 0.2rem 0;
+      font-size: 0.88rem;
     }
     .tm-table tbody tr.tm-table-row--clickable {
       -webkit-tap-highlight-color: rgba(18, 84, 53, 0.06);
     }
     .tm-table-actions .tm-btn {
-      min-height: 40px;
+      min-height: 44px;
       min-width: 40px;
     }
     .tm-btn {
@@ -1262,7 +1304,7 @@
           </div>`;
       return `
       <tr ${rowClick}>
-        <td>
+        <td data-label="Technician">
           <div class="tm-tech-identity">
             <div class="tm-avatar blue" style="width:36px;height:36px;border-radius:10px;font-size:.82rem;flex-shrink:0;">${initials(t.full_name)}</div>
             <div class="tm-tech-name-block">
@@ -1274,17 +1316,17 @@
             </div>
           </div>
         </td>
-        <td style="vertical-align:middle;line-height:1.35;">
+        <td data-label="Supervisor" style="vertical-align:middle;line-height:1.35;">
           ${t.supervisor_name ? `<strong style="display:block;font-size:.87rem;color:var(--tm-ink);">${t.supervisor_name}</strong>${t.supervisor_username ? `<span style="font-size:.72rem;color:var(--tm-muted);">@${t.supervisor_username}</span>` : ''}` : '<span style="color:#94a3b8;">—</span>'}
         </td>
-        <td><span class="td-eid">${t.employee_id}</span></td>
-        <td>${t.designation || '—'}</td>
-        <td>${t.department || '—'}</td>
-        <td>${t.phone ? `<a href="tel:${t.phone}" style="color:var(--tm-green);text-decoration:none;" onclick="event.stopPropagation()">${t.phone}</a>` : '—'}</td>
-        <td>${fmtSalary(t.salary)}</td>
-        <td style="white-space:nowrap;">${fmtDate(t.joining_date)}</td>
-        <td><span class="tm-status-badge ${t.status}">${t.status.replace('_', ' ')}</span></td>
-        <td>${actions}</td>
+        <td data-label="Employee ID"><span class="td-eid">${t.employee_id}</span></td>
+        <td data-label="Designation">${t.designation || '—'}</td>
+        <td data-label="Department">${t.department || '—'}</td>
+        <td data-label="Phone">${t.phone ? `<a href="tel:${t.phone}" style="color:var(--tm-green);text-decoration:none;" onclick="event.stopPropagation()">${t.phone}</a>` : '—'}</td>
+        <td data-label="Salary">${fmtSalary(t.salary)}</td>
+        <td data-label="Joined" style="white-space:nowrap;">${fmtDate(t.joining_date)}</td>
+        <td data-label="Status"><span class="tm-status-badge ${t.status}">${t.status.replace('_', ' ')}</span></td>
+        <td data-label="Actions">${actions}</td>
       </tr>`;
     }).join('');
   }

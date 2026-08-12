@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-hiring.css') }}?v=82">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-hiring.css') }}?v=101">
   {% set active_page = 'hr' %}
 </head>
 <body class="hh-page">
@@ -30,51 +30,67 @@
       </div>
 
       <div class="hh-toolbar">
-        <div class="hh-search">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
-          </svg>
-          <input type="search" id="hhSearch" placeholder="Search candidates…" autocomplete="off" aria-label="Search candidates">
-        </div>
-        <div class="hh-filters" role="group" aria-label="Document status filter">
-          <button type="button" class="hh-filter-btn active" data-status="all">All</button>
-          <button type="button" class="hh-filter-btn" data-status="pending">Pending</button>
-          <button type="button" class="hh-filter-btn" data-status="complete">Complete</button>
-        </div>
-        <select id="hhPipelineFilter" class="hh-select hh-pipeline-filter" aria-label="Pipeline stage filter">
-          <option value="all">All stages</option>
-          <optgroup label="Stages">
-            <option value="interview_completed">Interview completed</option>
-            <option value="gathering_documents">Gathering documents</option>
-            <option value="preparing_offer_letter">Preparing offer letter</option>
-            <option value="offer_letter_prepared">Offer letter prepared</option>
-            <option value="offer_letter_signed">Offer letter signed</option>
-            <option value="md_signed_offer_received">MD signed offer received</option>
-            <option value="visa_process_started">Visa process started</option>
-            <option value="candidate_employee">Candidate employed</option>
-          </optgroup>
-          <optgroup label="Process">
-            <option value="on_hold">On hold</option>
-          </optgroup>
-        </select>
-        <div class="hh-excel-actions">
-          <button type="button" class="hh-btn hh-btn-secondary hh-btn-sm" id="hhExcelTemplate" title="Download blank Excel template">
-            Template
+        <div class="hh-toolbar-primary">
+          <div class="hh-search">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+            </svg>
+            <input type="search" id="hhSearch" placeholder="Search candidates…" autocomplete="off" aria-label="Search candidates">
+          </div>
+          <div class="hh-filters" role="group" aria-label="Document status filter">
+            <button type="button" class="hh-filter-btn active" data-status="all">All</button>
+            <button type="button" class="hh-filter-btn" data-status="pending">Pending</button>
+            <button type="button" class="hh-filter-btn" data-status="complete">Complete</button>
+          </div>
+          <div class="hh-excel-actions">
+            <button type="button" class="hh-btn hh-btn-secondary hh-btn-sm" id="hhExcelTemplate" title="Download blank Excel template">
+              Template
+            </button>
+            <button type="button" class="hh-btn hh-btn-secondary hh-btn-sm" id="hhExcelExport" title="Export candidates to Excel">
+              Export
+            </button>
+            <button type="button" class="hh-btn hh-btn-secondary hh-btn-sm" id="hhExcelImport" title="Import Excel to create or update candidates">
+              Import Excel
+            </button>
+            <input type="file" id="hhExcelFile" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" hidden>
+          </div>
+          <button type="button" class="hh-btn hh-btn-primary hh-add-btn hh-add-btn-toolbar" id="hhAddBtnToolbar" aria-label="Add candidate">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+            </svg>
+            Add Candidate
           </button>
-          <button type="button" class="hh-btn hh-btn-secondary hh-btn-sm" id="hhExcelExport" title="Export candidates to Excel">
-            Export
-          </button>
-          <button type="button" class="hh-btn hh-btn-secondary hh-btn-sm" id="hhExcelImport" title="Import Excel to create or update candidates">
-            Import Excel
-          </button>
-          <input type="file" id="hhExcelFile" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" hidden>
         </div>
-        <button type="button" class="hh-btn hh-btn-primary hh-add-btn hh-add-btn-toolbar" id="hhAddBtnToolbar" aria-label="Add candidate">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
-          </svg>
-          Add Candidate
-        </button>
+        <div class="hh-toolbar-filters" role="group" aria-label="Stage and vacancy filters">
+          <select id="hhPipelineFilter" class="hh-select hh-toolbar-select" aria-label="Pipeline stage filter">
+            <option value="all">All stages</option>
+            <optgroup label="Stages">
+              <option value="interview_completed">Interview completed</option>
+              <option value="gathering_documents">Gathering documents</option>
+              <option value="preparing_offer_letter">Preparing offer letter</option>
+              <option value="offer_letter_prepared">Offer letter prepared</option>
+              <option value="offer_letter_signed">Offer letter signed</option>
+              <option value="md_signed_offer_received">MD signed offer received</option>
+              <option value="gathering_documents_for_visa">Gathering documents for visa process</option>
+              <option value="visa_process_started">Visa process started</option>
+              <option value="candidate_employee">Candidate employed</option>
+            </optgroup>
+            <optgroup label="Process">
+              <option value="on_hold">On hold</option>
+            </optgroup>
+          </select>
+          <select id="hhAssignmentFilter" class="hh-select hh-toolbar-select" aria-label="Vacancy assignment filter">
+            <option value="all">All vacancies</option>
+            <option value="assigned">Assigned</option>
+            <option value="unassigned">Unassigned</option>
+          </select>
+          <select id="hhTradeFilter" class="hh-select hh-toolbar-select" aria-label="Trade filter">
+            <option value="all">All trades</option>
+          </select>
+          <select id="hhProjectFilter" class="hh-select hh-toolbar-select" aria-label="Project filter">
+            <option value="all">All projects</option>
+          </select>
+        </div>
       </div>
 
       <div id="hhImportResult" class="hh-import-result" hidden></div>
@@ -91,6 +107,6 @@
   <script src="{{ url_for('static', filename='js/injaaz-uae-datetime.js') }}"></script>
   <script src="{{ url_for('static', filename='api-client.js') }}"></script>
   <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/hr-hiring.js') }}?v=62"></script>
+  <script src="{{ url_for('static', filename='js/hr-hiring.js') }}?v=80"></script>
 </body>
 </html>

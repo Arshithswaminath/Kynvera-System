@@ -56,13 +56,13 @@ async function loadAssets() {
   }
   tbody.innerHTML = data.assets.map(a => `
     <tr onclick="location.href='/assets/${encodeURIComponent(a.asset_id)}'">
-      <td>${a.asset_id}</td>
-      <td>${a.name || ''}</td>
-      <td>${a.asset_type || '—'}</td>
-      <td>${a.building || '—'}</td>
-      <td>${a.health_score != null ? a.health_score : '—'}</td>
-      <td>${a.warranty_expiry || '—'}</td>
-      <td><span class="fm-status fm-status-${a.status || 'active'}">${a.status || 'active'}</span></td>
+      <td data-label="ID">${a.asset_id}</td>
+      <td data-label="Name">${a.name || ''}</td>
+      <td data-label="Type">${a.asset_type || '—'}</td>
+      <td data-label="Building">${a.building || '—'}</td>
+      <td data-label="Health">${a.health_score != null ? a.health_score : '—'}</td>
+      <td data-label="Warranty">${a.warranty_expiry || '—'}</td>
+      <td data-label="Status"><span class="fm-status fm-status-${a.status || 'active'}">${a.status || 'active'}</span></td>
     </tr>`).join('');
 }
 document.getElementById('reloadBtn').addEventListener('click', loadAssets);

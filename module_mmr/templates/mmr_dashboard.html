@@ -880,8 +880,11 @@
     .table-controls { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .5rem; margin-bottom: .5rem; }
     .search-box { padding: .4rem .65rem; border: 1px solid var(--border); border-radius: 6px; font-size: .8125rem; width: 240px; }
     .search-box:focus { outline: none; border-color: var(--primary); }
-    .table-scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); }
-    table.data-table { width: 100%; border-collapse: collapse; min-width: 800px; font-size: .8125rem; }
+    .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--border); border-radius: var(--radius); max-width: 100%; }
+    table.data-table { width: max-content; min-width: 100%; border-collapse: collapse; font-size: .8125rem; }
+    @media (max-width: 768px) {
+      table.data-table { min-width: max(100%, 720px); }
+    }
     table.data-table thead th {
       background: #f9fafb;
       padding: .6rem .75rem;

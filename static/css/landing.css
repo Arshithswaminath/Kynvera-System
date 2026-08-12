@@ -664,10 +664,9 @@
   height: auto;
   object-fit: contain !important;
   object-position: center top;
-  /* Enlarge subjects; paint outside the box so sides/top stay visible */
-  /* Keep zoomed art clear of the sticky nav */
-  transform: scale(1.45) translateY(-7%);
-  transform-origin: 42% 16%;
+  /* Slightly larger; lifted clear of the proof cards */
+  transform: scale(1.36) translateY(-18%);
+  transform-origin: 42% 18%;
   clip-path: none;
   -webkit-clip-path: none;
 }
@@ -1520,8 +1519,8 @@
   gap: 0.4rem;
 }
 
-/* Deliberately a grid, not a <table>: mobile_responsive.css forces
-   min-width:600px !important on every table below 768px. */
+/* Deliberately a grid, not a <table>: hybrid mobile uses cards/scroll
+   wrappers for real tables; mock UI stays a responsive grid. */
 .lp-mock-row {
   display: grid;
   grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) auto auto;
@@ -2460,7 +2459,7 @@
 
   .lp-hero-photo-img {
     /* Milder zoom on stacked layout; still uncropped (overflow visible) */
-    transform: scale(1.26) translateY(-6%);
+    transform: scale(1.2) translateY(-14%);
     transform-origin: center 26%;
     max-height: none;
   }
@@ -2607,6 +2606,10 @@
   }
 
   .lp-mock-widgets {
+    grid-template-columns: 1fr;
+  }
+
+  .lp-tiers {
     grid-template-columns: 1fr;
   }
 
