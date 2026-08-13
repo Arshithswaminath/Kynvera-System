@@ -302,6 +302,16 @@ function applyProfileBasedNavVisibility(user) {
   if (reportEl) {
     reportEl.style.display = userHasReportGenerationNavAccess(user) ? 'list-item' : 'none';
   }
+  const filesEl = document.getElementById('files-menu-item');
+  if (filesEl) {
+    const showFiles = !!(user && (
+      isAppAdmin(user) ||
+      accessFlagOn(user, 'access_files') ||
+      accessFlagOn(user, 'access_hr') ||
+      userHasHrNavAccess(user)
+    ));
+    filesEl.style.display = showFiles ? 'list-item' : 'none';
+  }
 }
 
 // Function to check and show admin menu
@@ -495,6 +505,18 @@ function updateModuleVisibility(user) {
   }
   if (procurementMenuItem) {
     procurementMenuItem.style.display = hasProcurementAccess ? 'list-item' : 'none';
+  }
+
+  // Files module (access_files, HR, or admin)
+  const filesCard = document.getElementById('module-files');
+  const filesMenuItem = document.getElementById('files-menu-item');
+  const hasFilesAccess = isAdmin || accessFlagOn(user, 'access_files') || accessFlagOn(user, 'access_hr') || userHasHrNavAccess(user);
+  if (filesCard) {
+    filesCard.style.display = hasFilesAccess ? 'block' : 'none';
+    filesCard.style.visibility = hasFilesAccess ? 'visible' : 'hidden';
+  }
+  if (filesMenuItem) {
+    filesMenuItem.style.display = hasFilesAccess ? 'list-item' : 'none';
   }
 
   // Service tickets (same rule as main_navbar ticketing-menu-item)
@@ -921,6 +943,7 @@ function displayProfileData(user) {
     if (isAppAdmin(user) || user.access_cleaning) modules.push('Cleaning');
     if (userHasHrNavAccess(user)) modules.push('HR');
     if (isAppAdmin(user) || user.access_procurement_module) modules.push('Procurement');
+    if (isAppAdmin(user) || user.access_files || user.access_hr || userHasHrNavAccess(user)) modules.push('Files');
     if (isAppAdmin(user) || user.designation === 'business_development' || user.access_business_development) modules.push('Business Development');
     if (userHasReportGenerationNavAccess(user)) modules.push('Report Generation');
     return modules.length > 0 ? modules.join(', ') : 'None';

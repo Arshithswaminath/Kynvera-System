@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  {% include 'partials/base_head.html' %}
+  <title>Files — Kynvera</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/files-page.css') }}?v=20">
+  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
+</head>
+<body class="has-main-nav files-page dochub-page-v2">
+  {% set active_page = 'files' %}
+  {% include 'partials/main_navbar.html' with context %}
+
+  <div class="dh-overlay" id="filesOverlay" onclick="filesCloseSidebar()" aria-hidden="true"></div>
+  <button type="button" class="dh-sidebar-toggle" id="filesSidebarToggle" onclick="filesToggleSidebar()" aria-label="Open Files menu" title="Menu">☰</button>
+
+  <div class="dh-page-root files-root">
+    <aside class="dh-sidebar" id="filesSidebar">
+      <div class="sb-brand sb-brand--text-only">
+        <div class="sb-brand-text">
+          <span class="name">Files</span>
+          <span class="tagline">Exports &amp; Drive sync</span>
+        </div>
+      </div>
+
+      <div class="dh-sb-action-row">
+        <button type="button" class="dh-sb-action-btn dh-sb-action-primary" id="filesUploadBtn">
+          <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"/></svg>
+          Upload
+        </button>
+        <button type="button" class="dh-sb-action-btn dh-sb-action-ghost" id="filesNewFolderBtn">
+          <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+          New folder
+        </button>
+      </div>
+
+      <nav class="sb-nav">
+        <div class="dh-sb-section">
+          <div class="sb-section-label">Folders</div>
+          <div id="filesFolderTree" class="files-folder-tree" role="tree"></div>
+        </div>
+      </nav>
+
+      <div class="files-drive-card" id="filesDriveCard" data-state="loading">
+        <div class="files-drive-head">
+          <div class="files-drive-brand">
+            <span class="files-drive-mark" aria-hidden="true">
+              <img class="files-drive-logo" src="{{ url_for('static', filename='images/google-drive-icon.svg') }}?v=1" alt="" width="18" height="17">
+            </span>
+            <div class="files-drive-brand-text">
+              <div class="files-drive-title">Google Drive</div>
+              <div class="files-drive-kicker" id="filesDriveKicker">Checking connection…</div>
+            </div>
+          </div>
+          <span class="files-drive-pill" id="filesDrivePill" hidden></span>
+        </div>
+        <div class="files-drive-body" id="filesDriveStatus">
+          <p class="files-drive-msg">Checking…</p>
+        </div>
+        <div class="files-drive-actions">
+          <button type="button" class="files-btn files-btn-primary files-drive-connect" id="filesDriveConnectBtn" hidden>Connect Drive</button>
+          <button type="button" class="files-btn files-btn-ghost files-drive-disconnect" id="filesDriveDisconnectBtn" hidden>Disconnect</button>
+        </div>
+      </div>
+    </aside>
+
+    <main class="dh-main files-main">
+      <header class="files-toolbar">
+        <div class="files-toolbar-left">
+          <h1 class="files-heading" id="filesHeading">All files</h1>
+          <p class="files-sub" id="filesSub">Save exports from modules, then sync to Google Drive when ready.</p>
+        </div>
+        <div class="files-toolbar-right">
+          <button type="button" class="files-btn files-btn-ghost" id="filesSyncNowBtn">Sync now</button>
+          <button type="button" class="files-btn files-btn-primary" id="filesSyncFolderBtn" disabled>Sync folder</button>
+        </div>
+      </header>
+
+      <div class="files-table-wrap table-scroll">
+        <table class="files-table" id="filesTable">
+          <thead>
+            <tr>
+              <th class="files-col-check"><input type="checkbox" id="filesSelectAll" aria-label="Select all"></th>
+              <th>Name</th>
+              <th>Source</th>
+              <th>Size</th>
+              <th>Sync</th>
+              <th>Updated</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="filesTableBody">
+            <tr><td colspan="7" class="files-empty">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+
+  <input type="file" id="filesUploadInput" hidden multiple>
+
+  <div class="files-modal-backdrop" id="filesModalBackdrop" hidden>
+    <div class="files-modal" role="dialog" aria-modal="true" aria-labelledby="filesModalTitle">
+      <h2 id="filesModalTitle">New folder</h2>
+      <label class="files-label" for="filesModalInput">Name</label>
+      <input type="text" id="filesModalInput" class="files-input" autocomplete="off">
+      <div class="files-modal-actions">
+        <button type="button" class="files-btn files-btn-ghost" id="filesModalCancel">Cancel</button>
+        <button type="button" class="files-btn files-btn-primary" id="filesModalConfirm">Create</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="files-modal-backdrop" id="filesConfirmBackdrop" hidden>
+    <div class="files-modal files-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="filesConfirmTitle">
+      <div class="files-confirm-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
+        </svg>
+      </div>
+      <h2 id="filesConfirmTitle">Are you sure?</h2>
+      <p class="files-confirm-msg" id="filesConfirmMsg"></p>
+      <div class="files-modal-actions">
+        <button type="button" class="files-btn files-btn-ghost" id="filesConfirmCancel">Cancel</button>
+        <button type="button" class="files-btn files-btn-danger" id="filesConfirmOk">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="files-modal-backdrop" id="filesMissingBackdrop" hidden>
+    <div class="files-modal files-missing-modal" role="dialog" aria-modal="true" aria-labelledby="filesMissingTitle">
+      <h2 id="filesMissingTitle">Deleted in Google Drive</h2>
+      <p class="files-confirm-msg" id="filesMissingMsg">
+        These items were removed in Drive. Delete them from Files, or keep them here and restore to Drive?
+      </p>
+      <ul class="files-missing-list" id="filesMissingList"></ul>
+      <p class="files-missing-note" id="filesMissingNote" hidden>
+        System folders stay in Files and will be restored to Drive if you choose delete.
+      </p>
+      <div class="files-modal-actions files-missing-actions">
+        <button type="button" class="files-btn files-btn-ghost" id="filesMissingLater">Decide later</button>
+        <button type="button" class="files-btn files-btn-danger" id="filesMissingDelete">Delete from Files</button>
+        <button type="button" class="files-btn files-btn-primary" id="filesMissingKeep">Keep &amp; restore</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="files-toast" id="filesToast" hidden>
+    <span class="files-toast-msg" id="filesToastMsg"></span>
+    <span class="files-toast-bar" aria-hidden="true"></span>
+  </div>
+
+  <script src="{{ url_for('static', filename='api-client.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/files-page.js') }}?v=13"></script>
+</body>
+</html>

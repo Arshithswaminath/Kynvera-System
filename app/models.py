@@ -47,6 +47,7 @@ class User(db.Model):
     access_submitted_forms = db.Column(db.Boolean, default=False)  # "My submitted forms" workflow hub
     access_ticketing = db.Column(db.Boolean, default=False)  # Ticketing / Work Order module
     access_qhsi = db.Column(db.Boolean, default=False)  # QHSI — quality, hospitality, safety & inspections
+    access_files = db.Column(db.Boolean, default=False)  # Files module (Finder + Drive sync)
     # Pre-designated department representative allowed to appear in the ticket "Reported By" list.
     is_ticket_reporter = db.Column(db.Boolean, default=False)
     # MFA (TOTP)
@@ -115,6 +116,7 @@ class User(db.Model):
             'submitted_forms': bool(getattr(self, 'access_submitted_forms', False)),
             'ticketing': bool(getattr(self, 'access_ticketing', False)),
             'qhsi': bool(getattr(self, 'access_qhsi', False)),
+            'files': bool(getattr(self, 'access_files', False)),
         }
         return module_map.get(module, False)
 
@@ -152,6 +154,7 @@ class User(db.Model):
             'access_submitted_forms': getattr(self, 'access_submitted_forms', False) if self.role != 'admin' else True,
             'access_ticketing': getattr(self, 'access_ticketing', False) if self.role != 'admin' else True,
             'access_qhsi': getattr(self, 'access_qhsi', False) if self.role != 'admin' else True,
+            'access_files': getattr(self, 'access_files', False) if self.role != 'admin' else True,
             'is_ticket_reporter': getattr(self, 'is_ticket_reporter', False),
             'password_changed': self.password_changed if hasattr(self, 'password_changed') else True,
             'designation': self.designation if hasattr(self, 'designation') else None,
@@ -1991,6 +1994,8 @@ class HiringCandidate(db.Model):
     __tablename__ = 'hiring_candidates'
 
     id = db.Column(db.Integer, primary_key=True)
+    # Optional HR / Excel reference (numeric or alphanumeric). Used to match imports.
+    hr_ref = db.Column(db.String(80), unique=True, nullable=True, index=True)
     full_name = db.Column(db.String(200), nullable=False, index=True)
     role = db.Column(db.String(120))  # position / job title
     department = db.Column(db.String(120))
@@ -2142,6 +2147,7 @@ class HiringCandidate(db.Model):
         visa_unlocked = self.visa_docs_unlocked()
         d = {
             'id': self.id,
+            'hr_ref': (self.hr_ref or '').strip() or str(self.id),
             'full_name': self.full_name,
             'role': self.role or '',
             'department': self.department or '',
@@ -2907,3 +2913,117 @@ class ManpowerVacancy(db.Model):
 
     def __repr__(self):
         return f'<ManpowerVacancy {self.id} trade={self.trade_id} project={self.project_id}>'
+
+
+class FilesFolder(db.Model):
+    """Folder node in the Files module tree (mirrors Google Drive folders when synced)."""
+    __tablename__ = 'files_folders'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(255), nullable=False)
+    parent_id = db.Column(db.Integer, db.ForeignKey('files_folders.id'), nullable=True, index=True)
+    path_key = db.Column(db.String(120), nullable=True, unique=True, index=True)
+    drive_folder_id = db.Column(db.String(128), nullable=True)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=_utcnow)
+    updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
+
+    parent = db.relationship('FilesFolder', remote_side=[id], backref=db.backref('children', lazy='dynamic'))
+    creator = db.relationship('User', foreign_keys=[created_by])
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'parent_id': self.parent_id,
+            'path_key': self.path_key,
+            'drive_folder_id': self.drive_folder_id,
+            'created_by': self.created_by,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+    def __repr__(self):
+        return f'<FilesFolder {self.id} {self.name}>'
+
+
+class FilesItem(db.Model):
+    """File stored in the Files module (local path + optional Google Drive id)."""
+    __tablename__ = 'files_items'
+
+    id = db.Column(db.Integer, primary_key=True)
+    folder_id = db.Column(db.Integer, db.ForeignKey('files_folders.id'), nullable=False, index=True)
+    name = db.Column(db.String(255), nullable=False)
+    filename = db.Column(db.String(255), nullable=False)
+    mime_type = db.Column(db.String(120), nullable=True)
+    size_bytes = db.Column(db.Integer, default=0)
+    stored_path = db.Column(db.String(500), nullable=False)
+    source_module = db.Column(db.String(40), nullable=True, index=True)  # manpower | leave | upload
+    source_kind = db.Column(db.String(40), nullable=True)  # template | export | upload
+    sync_status = db.Column(db.String(20), default='local', index=True)  # local | synced | error
+    sync_error = db.Column(db.String(500), nullable=True)
+    drive_file_id = db.Column(db.String(128), nullable=True)
+    last_synced_at = db.Column(db.DateTime, nullable=True)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=_utcnow)
+    updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
+
+    folder = db.relationship('FilesFolder', backref=db.backref('items', lazy='dynamic'))
+    creator = db.relationship('User', foreign_keys=[created_by])
+
+    def to_dict(self):
+        size_b = int(self.size_bytes or 0)
+        if size_b >= 1024 * 1024:
+            size_label = f'{size_b / (1024 * 1024):.1f} MB'
+        elif size_b:
+            size_label = f'{max(1, int(round(size_b / 1024)))} KB'
+        else:
+            size_label = '—'
+        return {
+            'id': self.id,
+            'folder_id': self.folder_id,
+            'name': self.name,
+            'filename': self.filename,
+            'mime_type': self.mime_type or '',
+            'size_bytes': size_b,
+            'size_label': size_label,
+            'source_module': self.source_module or '',
+            'source_kind': self.source_kind or '',
+            'sync_status': self.sync_status or 'local',
+            'sync_error': self.sync_error or '',
+            'drive_file_id': self.drive_file_id,
+            'last_synced_at': self.last_synced_at.isoformat() if self.last_synced_at else None,
+            'created_by': self.created_by,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+    def __repr__(self):
+        return f'<FilesItem {self.id} {self.filename}>'
+
+
+class FilesDriveConnection(db.Model):
+    """Org-level Google Drive OAuth connection for the Files module (single row)."""
+    __tablename__ = 'files_drive_connections'
+
+    id = db.Column(db.Integer, primary_key=True)
+    connected_email = db.Column(db.String(255), nullable=True)
+    refresh_token_enc = db.Column(db.Text, nullable=True)
+    root_drive_folder_id = db.Column(db.String(128), nullable=True)
+    connected_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    connected_at = db.Column(db.DateTime, nullable=True)
+    updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
+
+    connector = db.relationship('User', foreign_keys=[connected_by])
+
+    def to_dict(self):
+        return {
+            'connected': bool(self.refresh_token_enc),
+            'connected_email': self.connected_email or '',
+            'root_drive_folder_id': self.root_drive_folder_id,
+            'connected_at': self.connected_at.isoformat() if self.connected_at else None,
+            'connected_by': self.connected_by,
+        }
+
+    def __repr__(self):
+        return f'<FilesDriveConnection email={self.connected_email}>'

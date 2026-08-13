@@ -521,7 +521,7 @@
       if (isAdminTarget) {
         modNote.hidden = false;
         modNote.textContent = 'Administrators have full access to all modules by policy.';
-        ['accessHvac', 'accessCivil', 'accessCleaning', 'accessHr', 'accessProcurement', 'accessBusinessDev', 'accessDocHub', 'accessReportGen', 'accessSubmittedForms', 'accessTicketing'].forEach(function (id) {
+        ['accessHvac', 'accessCivil', 'accessCleaning', 'accessHr', 'accessProcurement', 'accessBusinessDev', 'accessDocHub', 'accessReportGen', 'accessSubmittedForms', 'accessTicketing', 'accessQhsi', 'accessFiles'].forEach(function (id) {
           const cb = document.getElementById(id);
           if (cb) {
             cb.checked = true;
@@ -546,6 +546,10 @@
         if (sf) sf.checked = !!user.access_submitted_forms;
         const tkt = document.getElementById('accessTicketing');
         if (tkt) tkt.checked = !!user.access_ticketing;
+        const qhsi = document.getElementById('accessQhsi');
+        if (qhsi) qhsi.checked = !!user.access_qhsi;
+        const files = document.getElementById('accessFiles');
+        if (files) files.checked = !!user.access_files;
         modWrap.querySelectorAll('input[type="checkbox"]').forEach(function (cb) {
           cb.disabled = false;
         });
@@ -833,6 +837,10 @@
           payload.access_submitted_forms = document.getElementById('accessSubmittedForms').checked;
           const tgx = document.getElementById('accessTicketing');
           payload.access_ticketing = !!(tgx && tgx.checked);
+          const qhsiCb = document.getElementById('accessQhsi');
+          payload.access_qhsi = !!(qhsiCb && qhsiCb.checked);
+          const filesCb = document.getElementById('accessFiles');
+          payload.access_files = !!(filesCb && filesCb.checked);
           const reporterCb = document.getElementById('isTicketReporter');
           payload.is_ticket_reporter = !!(reporterCb && reporterCb.checked);
         }

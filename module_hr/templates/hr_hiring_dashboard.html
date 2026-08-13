@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-hiring.css') }}?v=102">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-hiring.css') }}?v=110">
   {% set active_page = 'hr' %}
 </head>
 <body class="hh-page">
@@ -36,6 +36,7 @@
               <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
             </svg>
             <input type="search" id="hhSearch" placeholder="Search candidates…" autocomplete="off" aria-label="Search candidates">
+            <span class="hh-search-hint" id="hhSearchHint" aria-live="polite"></span>
             <div class="hh-search-import" id="hhSearchImport" hidden aria-live="polite" aria-busy="false">
               <div class="hh-search-import-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="hhSearchImportTrack">
                 <div class="hh-search-import-bar" id="hhSearchImportBar"></div>
@@ -99,8 +100,6 @@
         </div>
       </div>
 
-      <div id="hhImportResult" class="hh-import-result" hidden></div>
-
       <div class="hh-list" id="hhCandidateList">
         <div class="hh-loading"><div class="hh-spinner"></div>Loading candidates…</div>
       </div>
@@ -110,9 +109,66 @@
 
   {% include 'partials/hr_hiring_candidate_form_modal.html' %}
 
+  <div class="hh-modal-backdrop" id="hhImportConfirmModal" role="dialog" aria-modal="true" aria-labelledby="hhImportConfirmTitle" hidden>
+    <div class="hh-modal hh-modal-wide">
+      <h2 id="hhImportConfirmTitle">Apply Excel import?</h2>
+      <p class="hh-modal-sub" id="hhImportConfirmSub">
+        Review what will change before applying this workbook to the candidate list.
+      </p>
+      <ul class="hh-import-confirm-list" id="hhImportConfirmList"></ul>
+
+      <div class="hh-import-conflict-block" id="hhImportConflictBlock" hidden>
+        <p class="hh-import-conflict-title" id="hhImportConflictTitle">Same Candidate ID, different name</p>
+        <p class="hh-import-conflict-copy" id="hhImportConflictCopy">
+          The system list and this Excel file share the same Candidate ID(s) for different people.
+          Choose how to resolve those shared IDs.
+        </p>
+        <ul class="hh-import-confirm-list hh-import-conflict-list" id="hhImportConflictList"></ul>
+        <fieldset class="hh-import-orphan-choices">
+          <legend class="hh-visually-hidden">Same ID with different name</legend>
+          <label class="hh-import-choice">
+            <input type="radio" name="hhIdConflictAction" value="keep_both" checked>
+            <span><strong>Yes — keep both</strong> — keep everyone already in the system; Excel people get new Candidate IDs so you have a comprehensive list</span>
+          </label>
+          <label class="hh-import-choice">
+            <input type="radio" name="hhIdConflictAction" value="replace">
+            <span><strong>No — replace</strong> — remove the existing person’s information on those IDs and put the Excel candidate’s information on those rows instead</span>
+          </label>
+        </fieldset>
+      </div>
+
+      <div class="hh-import-orphan-block" id="hhImportOrphanBlock" hidden>
+        <p class="hh-import-orphan-title" id="hhImportOrphanTitle">Candidates in the app but not in this Excel</p>
+        <ul class="hh-import-confirm-list hh-import-orphan-list" id="hhImportOrphanList"></ul>
+        <fieldset class="hh-import-orphan-choices">
+          <legend class="hh-visually-hidden">What to do with candidates missing from Excel</legend>
+          <label class="hh-import-choice">
+            <input type="radio" name="hhOrphanAction" value="keep" checked>
+            <span><strong>Keep them</strong> — leave them in the system; delete manually afterwards if needed</span>
+          </label>
+          <label class="hh-import-choice">
+            <input type="radio" name="hhOrphanAction" value="delete">
+            <span><strong>Delete them now</strong> — remove these candidates from the system</span>
+          </label>
+        </fieldset>
+      </div>
+
+      <p class="hh-import-hint" id="hhImportConfirmHint">
+        Matching uses Candidate ID / HR reference first, then email, then name + role.
+        When Excel reuses an existing ID for a different name, choose Yes (new IDs for Excel people) or No (overwrite those rows).
+      </p>
+      <div class="hh-modal-actions">
+        <button type="button" class="hh-btn hh-btn-ghost" id="hhImportConfirmCancel">Cancel</button>
+        <button type="button" class="hh-btn hh-btn-primary" id="hhImportConfirmYes">Yes, apply import</button>
+      </div>
+    </div>
+  </div>
+
   <script src="{{ url_for('static', filename='js/injaaz-uae-datetime.js') }}"></script>
   <script src="{{ url_for('static', filename='api-client.js') }}"></script>
   <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/hr-hiring.js') }}?v=81"></script>
+  <script>window.FILES_SAVE_MODULE = 'hiring'; window.FILES_SAVE_MODULE_LABEL = 'Hiring Documents';</script>
+  <script src="{{ url_for('static', filename='js/files-save.js') }}?v=3"></script>
+  <script src="{{ url_for('static', filename='js/hr-hiring.js') }}?v=87"></script>
 </body>
 </html>

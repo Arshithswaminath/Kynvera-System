@@ -562,6 +562,7 @@ def create_user_admin():
             user.access_submitted_forms = bool(data.get('access_submitted_forms', False))
             user.access_ticketing = bool(data.get('access_ticketing', False))
             user.access_qhsi = bool(data.get('access_qhsi', False))
+            user.access_files = bool(data.get('access_files', False))
             user.is_ticket_reporter = bool(data.get('is_ticket_reporter', False))
 
         db.session.add(user)
@@ -1007,6 +1008,7 @@ def update_user(user_id):
                 ('access_submitted_forms', 'access_submitted_forms'),
                 ('access_ticketing', 'access_ticketing'),
                 ('access_qhsi', 'access_qhsi'),
+                ('access_files', 'access_files'),
                 ('is_ticket_reporter', 'is_ticket_reporter'),
             ):
                 if key in data:

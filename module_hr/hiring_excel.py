@@ -258,7 +258,7 @@ def build_hiring_template_bytes(candidates: Optional[list] = None) -> bytes:
         for row_idx, cand in enumerate(candidates, start=2):
             by_type = {d.doc_type: d for d in (cand.documents or [])}
             values = [
-                cand.id,
+                (getattr(cand, 'hr_ref', None) or '').strip() or cand.id,
                 cand.full_name or '',
                 cand.role or '',
                 cand.department or '',
@@ -359,10 +359,11 @@ def build_hiring_template_bytes(candidates: Optional[list] = None) -> bytes:
         '3. Upload the file via Import Excel on the Hiring dashboard.',
         '',
         'Matching rules (upsert)',
-        '• If Candidate ID is set and exists → update that candidate.',
-        '• If Candidate ID is set but not found (e.g. export from another environment) → fall through below.',
-        '• Else if Email matches an existing candidate → update that candidate.',
-        '• Else → create a new candidate (Full Name and Role are required).',
+        '• Candidate ID may be a number (system id) or any HR reference (letters/numbers).',
+        '• Match order: DB id → HR reference → Email → Full Name + Role → create new.',
+        '• If someone was deleted in the UI but still listed in Excel, import recreates them.',
+        '• Numeric Candidate IDs that are free are restored when possible.',
+        '• Import shows a confirm dialog: update existing rows and/or add new ones.',
         '• Vacancy ID is optional: if the vacancy is missing on this server, the candidate still imports.',
         '',
         'Document statuses',
@@ -467,10 +468,13 @@ def parse_hiring_workbook(file_storage) -> list[dict[str, Any]]:
                         fields['pipeline_status'] = pipe
                 elif key == 'candidate_id':
                     if raw:
+                        # Accept numeric DB id and/or alphanumeric HR reference.
+                        fields['candidate_ref'] = raw.strip()
                         try:
                             fields['candidate_id'] = int(float(raw))
                         except (TypeError, ValueError):
-                            row_errors.append(f'Invalid Candidate ID "{raw}"')
+                            # e.g. "SIM-25" — reference only, not a DB id
+                            pass
                 elif raw:
                     fields[key] = raw
             else:
@@ -482,11 +486,11 @@ def parse_hiring_workbook(file_storage) -> list[dict[str, Any]]:
 
         # Skip blank example-ish empty name rows
         name = (fields.get('full_name') or '').strip()
-        if not name and not fields.get('candidate_id') and not fields.get('email'):
+        if not name and not fields.get('candidate_id') and not fields.get('candidate_ref') and not fields.get('email'):
             continue
 
         comments = (fields.get('comments') or '')
-        if 'example row' in comments.lower() and not fields.get('candidate_id'):
+        if 'example row' in comments.lower() and not fields.get('candidate_id') and not fields.get('candidate_ref'):
             continue
 
         rows.append({
@@ -501,23 +505,268 @@ def parse_hiring_workbook(file_storage) -> list[dict[str, Any]]:
     return rows
 
 
-def apply_hiring_import(rows: list[dict], user, seed_documents_fn, clear_document_file_fn) -> dict:
+def _norm_person_key(name: str, role: str) -> str:
+    n = ' '.join((name or '').strip().lower().split())
+    r = ' '.join((role or '').strip().lower().split())
+    if not n or not r:
+        return ''
+    return n + '|' + r
+
+
+def _build_match_indexes():
+    """id / hr_ref / email / name|role → candidate."""
+    email_index: dict[str, HiringCandidate] = {}
+    name_role_index: dict[str, HiringCandidate] = {}
+    ref_index: dict[str, HiringCandidate] = {}
+    for c in HiringCandidate.query.all():
+        em = (c.email or '').strip().lower()
+        if em and em not in email_index:
+            email_index[em] = c
+        key = _norm_person_key(c.full_name or '', c.role or '')
+        if key and key not in name_role_index:
+            name_role_index[key] = c
+        ref = (getattr(c, 'hr_ref', None) or '').strip().lower()
+        if ref and ref not in ref_index:
+            ref_index[ref] = c
+        # Also allow matching exported numeric id stored as text ref
+        sid = str(c.id)
+        if sid not in ref_index:
+            ref_index[sid] = c
+    return email_index, name_role_index, ref_index
+
+
+def resolve_hiring_row_action(
+    fields: dict[str, Any],
+    email_index: dict[str, HiringCandidate],
+    name_role_index: dict[str, HiringCandidate],
+    ref_index: Optional[dict[str, HiringCandidate]] = None,
+) -> tuple[str, Optional[HiringCandidate], Optional[str], Optional[str]]:
+    """
+    Decide create vs update for one Excel row.
+
+    Returns (action, candidate, note, match_via)
+    match_via: 'id' | 'ref' | 'email' | 'name_role' | None
+
+    Match order:
+      1) Candidate ID as DB primary key (if numeric and still present)
+      2) Candidate ID / HR reference string (hr_ref)
+      3) Email
+      4) Full name + role
+    """
+    cid = fields.get('candidate_id')
+    ref = (fields.get('candidate_ref') or '').strip()
+    email = (fields.get('email') or '').strip()
+    name = (fields.get('full_name') or '').strip()
+    role = (fields.get('role') or '').strip()
+    ref_index = ref_index or {}
+
+    candidate = None
+    note = None
+    match_via = None
+
+    if cid is not None:
+        candidate = db.session.get(HiringCandidate, cid)
+        if candidate:
+            match_via = 'id'
+
+    if not candidate and ref:
+        candidate = ref_index.get(ref.lower())
+        if candidate:
+            match_via = 'ref'
+
+    if not candidate and email:
+        candidate = email_index.get(email.lower())
+        if candidate:
+            match_via = 'email'
+
+    if not candidate and name and role:
+        candidate = name_role_index.get(_norm_person_key(name, role))
+        if candidate:
+            match_via = 'name_role'
+
+    if candidate:
+        return 'update', candidate, note, match_via
+
+    if cid is not None or ref:
+        note = (
+            f'Candidate ID "{ref or cid}" not in system — will create as new'
+        )
+
+    if not name:
+        return 'error', None, 'Full Name is required to create a candidate', None
+    if not role:
+        return 'error', None, 'Role is required to create a candidate', None
+    return 'create', None, note, None
+
+
+def _is_id_name_conflict(candidate: HiringCandidate, fields: dict[str, Any], match_via: Optional[str]) -> bool:
+    """True when Excel reuses an existing ID/ref but with a different person name."""
+    if match_via not in ('id', 'ref') or not candidate:
+        return False
+    old_name = (candidate.full_name or '').strip().lower()
+    new_name = (fields.get('full_name') or '').strip().lower()
+    return bool(old_name and new_name and old_name != new_name)
+
+
+def preview_hiring_import(rows: list[dict]) -> dict:
+    """Classify rows without writing — used for the confirm dialog."""
+    email_index, name_role_index, ref_index = _build_match_indexes()
+    will_create = 0
+    will_update = 0
+    will_skip = 0
+    will_rename = 0
+    errors: list[dict] = []
+    create_names: list[str] = []
+    update_names: list[str] = []
+    rename_pairs: list[dict] = []
+    pending_create_keys: set[str] = set()
+    pending_emails: set[str] = set()
+    pending_refs: set[str] = set()
+    matched_ids: set[int] = set()
+
+    for row in rows:
+        excel_row = row.get('excel_row')
+        fields = dict(row.get('fields') or {})
+        row_errors = list(row.get('errors') or [])
+        if row_errors:
+            will_skip += 1
+            errors.append({'row': excel_row, 'error': '; '.join(row_errors)})
+            continue
+        comments_val = (fields.get('comments') or '').strip()
+        if comments_val and len(comments_val) > 4000:
+            will_skip += 1
+            errors.append({'row': excel_row, 'error': 'Comments must be 4000 characters or fewer'})
+            continue
+
+        action, candidate, note, match_via = resolve_hiring_row_action(
+            fields, email_index, name_role_index, ref_index,
+        )
+        name = (fields.get('full_name') or '').strip() or (candidate.full_name if candidate else 'Candidate')
+        email = (fields.get('email') or '').strip().lower()
+        key = _norm_person_key(fields.get('full_name') or '', fields.get('role') or '')
+        ref = (fields.get('candidate_ref') or '').strip().lower()
+        shared_id = fields.get('candidate_id')
+        if shared_id is None and ref:
+            shared_id = ref
+
+        if action == 'create' and (
+            (key and key in pending_create_keys)
+            or (email and email in pending_emails)
+            or (ref and ref in pending_refs)
+        ):
+            action = 'update'
+            candidate = None
+            match_via = None
+
+        if action == 'error':
+            will_skip += 1
+            errors.append({'row': excel_row, 'error': note or 'Invalid row'})
+            continue
+
+        if action == 'update' and candidate and _is_id_name_conflict(candidate, fields, match_via):
+            will_rename += 1
+            if len(rename_pairs) < 10:
+                rename_pairs.append({
+                    'id': candidate.id,
+                    'shared_id': str(shared_id if shared_id is not None else candidate.id),
+                    'from': (candidate.full_name or '').strip(),
+                    'to': (fields.get('full_name') or '').strip(),
+                    'role': (fields.get('role') or candidate.role or '').strip(),
+                })
+            # Count as conflict rows; also still "matched" for orphan calc under replace mode
+            matched_ids.add(int(candidate.id))
+            continue
+
+        if action == 'update':
+            will_update += 1
+            if candidate and getattr(candidate, 'id', None) is not None:
+                matched_ids.add(int(candidate.id))
+            if len(update_names) < 5:
+                update_names.append(name)
+        else:
+            will_create += 1
+            if len(create_names) < 5:
+                create_names.append(name)
+            if key:
+                pending_create_keys.add(key)
+            if email:
+                pending_emails.add(email)
+            if ref:
+                pending_refs.add(ref)
+
+    orphan_candidates = []
+    for c in HiringCandidate.query.order_by(HiringCandidate.full_name.asc()).all():
+        if c.id in matched_ids:
+            continue
+        orphan_candidates.append({
+            'id': c.id,
+            'hr_ref': (getattr(c, 'hr_ref', None) or '').strip() or str(c.id),
+            'full_name': c.full_name or '',
+            'role': c.role or '',
+        })
+
+    return {
+        'will_create': will_create,
+        'will_update': will_update,
+        'will_rename': will_rename,
+        'will_skip': will_skip,
+        'errors': errors[:20],
+        'create_names': create_names,
+        'update_names': update_names,
+        'rename_pairs': rename_pairs,
+        'total_rows': len(rows),
+        'orphan_count': len(orphan_candidates),
+        'orphan_candidates': orphan_candidates[:40],
+        'has_id_conflicts': will_rename > 0,
+        'needs_confirm': (
+            will_update > 0 or will_create > 0 or will_rename > 0 or len(orphan_candidates) > 0
+        ),
+    }
+
+
+def apply_hiring_import(
+    rows: list[dict],
+    user,
+    seed_documents_fn,
+    clear_document_file_fn,
+    *,
+    update_existing: bool = True,
+    orphan_action: str = 'keep',
+    id_conflict_action: str = 'keep_both',
+) -> dict:
     """
     Upsert candidates and apply document statuses.
-    seed_documents_fn / clear_document_file_fn come from hiring_documents to avoid circular imports.
+
+    Matching: Candidate ID (if present in DB) → hr_ref → email → full name + role.
+    Missing/stale IDs create (or match by email/name) so an Excel export that
+    still lists a deleted candidate is re-added on import.
+
+    If update_existing is False, matched rows are left unchanged (new rows still created).
+
+    orphan_action:
+      - keep: leave app candidates that were not in the Excel alone (merge)
+      - delete: remove app candidates that no Excel row matched
+
+    id_conflict_action (same Candidate ID / HR ref, different full name):
+      - keep_both: keep the existing person; create Excel person with a new auto ID
+      - replace: overwrite the existing row with Excel data
     """
     created = 0
     updated = 0
     skipped = 0
+    unchanged = 0
+    deleted = 0
     errors: list[dict] = []
     warnings: list[dict] = []
+    matched_ids: set[int] = set()
 
-    # Prefetch email → candidate for matching
-    email_index: dict[str, HiringCandidate] = {}
-    for c in HiringCandidate.query.filter(HiringCandidate.email.isnot(None)).all():
-        em = (c.email or '').strip().lower()
-        if em and em not in email_index:
-            email_index[em] = c
+    email_index, name_role_index, ref_index = _build_match_indexes()
+    orphan_mode = (orphan_action or 'keep').strip().lower()
+    if orphan_mode not in ('keep', 'delete'):
+        orphan_mode = 'keep'
+    conflict_mode = (id_conflict_action or 'keep_both').strip().lower()
+    if conflict_mode not in ('keep_both', 'replace'):
+        conflict_mode = 'keep_both'
 
     for row in rows:
         excel_row = row.get('excel_row')
@@ -538,43 +787,48 @@ def apply_hiring_import(rows: list[dict], user, seed_documents_fn, clear_documen
 
         try:
             with db.session.begin_nested():
-                candidate = None
+                action, candidate, note, match_via = resolve_hiring_row_action(
+                    fields, email_index, name_role_index, ref_index,
+                )
+                if note and action in ('create', 'update'):
+                    warnings.append({'row': excel_row, 'error': note})
+
+                if action == 'error':
+                    raise ValueError(note or 'Invalid row')
+
                 is_create = False
+                force_new_id = False
+                ref_raw = (fields.get('candidate_ref') or '').strip()
                 cid = fields.get('candidate_id')
-                email = (fields.get('email') or '').strip()
 
-                # Prefer ID when it exists on this DB; otherwise fall through
-                # (common when re-importing an export from another environment).
-                if cid:
-                    candidate = db.session.get(HiringCandidate, cid)
-                if not candidate and email:
-                    candidate = email_index.get(email.lower())
+                if (
+                    action == 'update'
+                    and candidate
+                    and _is_id_name_conflict(candidate, fields, match_via)
+                ):
+                    # Always count the existing ID as matched so orphan-delete
+                    # does not remove the person we are keeping (keep_both).
+                    matched_ids.add(int(candidate.id))
+                    if conflict_mode == 'keep_both':
+                        warnings.append({
+                            'row': excel_row,
+                            'error': (
+                                f'Same Candidate ID as '
+                                f'"{(candidate.full_name or "").strip()}" — '
+                                f'creating Excel person with a new ID'
+                            ),
+                        })
+                        action = 'create'
+                        candidate = None
+                        force_new_id = True
+                    # else: replace — fall through and overwrite existing row
 
-                if not candidate:
-                    name = (fields.get('full_name') or '').strip()
-                    role = (fields.get('role') or '').strip()
-                    if not name:
-                        raise ValueError('Full Name is required to create a candidate')
-                    if not role:
-                        raise ValueError('Role is required to create a candidate')
-                    candidate = HiringCandidate(
-                        full_name=name,
-                        role=role,
-                        department=(fields.get('department') or '').strip() or None,
-                        phone=(fields.get('phone') or '').strip() or None,
-                        email=email or None,
-                        replacement_name=(fields.get('replacement_name') or '').strip() or None,
-                        replacement_employee_id=(fields.get('replacement_employee_id') or '').strip() or None,
-                        comments=comments_val or None,
-                        pipeline_status=fields.get('pipeline_status') or HIRING_PIPELINE_DEFAULT,
-                        created_by=user.id if user else None,
-                    )
-                    db.session.add(candidate)
-                    db.session.flush()
-                    is_create = True
-                    if email:
-                        email_index[email.lower()] = candidate
-                else:
+                if action == 'update':
+                    if candidate and getattr(candidate, 'id', None) is not None:
+                        matched_ids.add(int(candidate.id))
+                    if not update_existing:
+                        unchanged += 1
+                        continue
                     if fields.get('full_name'):
                         candidate.full_name = fields['full_name'].strip()
                     role_val = (fields.get('role') or '').strip()
@@ -589,6 +843,51 @@ def apply_hiring_import(rows: list[dict], user, seed_documents_fn, clear_documen
                             setattr(candidate, key, val or None)
                     if fields.get('pipeline_status'):
                         candidate.pipeline_status = fields['pipeline_status']
+                    # Keep / set HR reference from Excel when provided
+                    if ref_raw and not (getattr(candidate, 'hr_ref', None) or '').strip():
+                        candidate.hr_ref = ref_raw
+                else:
+                    name = (fields.get('full_name') or '').strip()
+                    role = (fields.get('role') or '').strip()
+                    email = (fields.get('email') or '').strip()
+                    # On ID/name conflict keep_both: never reuse colliding PK or hr_ref
+                    if force_new_id:
+                        hr_ref = None
+                        restore_cid = None
+                    else:
+                        hr_ref = ref_raw or (str(cid) if cid is not None else None)
+                        # Avoid unique conflicts if another row already claimed this ref
+                        if hr_ref and hr_ref.lower() in ref_index:
+                            hr_ref = None
+                        restore_cid = cid
+                    candidate = HiringCandidate(
+                        full_name=name,
+                        role=role,
+                        department=(fields.get('department') or '').strip() or None,
+                        phone=(fields.get('phone') or '').strip() or None,
+                        email=email or None,
+                        replacement_name=(fields.get('replacement_name') or '').strip() or None,
+                        replacement_employee_id=(fields.get('replacement_employee_id') or '').strip() or None,
+                        comments=comments_val or None,
+                        pipeline_status=fields.get('pipeline_status') or HIRING_PIPELINE_DEFAULT,
+                        created_by=user.id if user else None,
+                        hr_ref=hr_ref,
+                    )
+                    # Restore numeric Candidate ID when that PK is free (e.g. deleted then re-imported)
+                    if restore_cid is not None and db.session.get(HiringCandidate, restore_cid) is None:
+                        candidate.id = restore_cid
+                    db.session.add(candidate)
+                    db.session.flush()
+                    is_create = True
+                    matched_ids.add(int(candidate.id))
+                    if email:
+                        email_index[email.lower()] = candidate
+                    key = _norm_person_key(name, role)
+                    if key:
+                        name_role_index[key] = candidate
+                    if hr_ref:
+                        ref_index[hr_ref.lower()] = candidate
+                    ref_index[str(candidate.id)] = candidate
 
                 # Seed once after create/update. Relationship-backed seed keeps
                 # candidate.documents current so we never re-insert the same slot.
@@ -645,6 +944,32 @@ def apply_hiring_import(rows: list[dict], user, seed_documents_fn, clear_documen
             errors.append({'row': excel_row, 'error': str(e)})
             skipped += 1
 
+    if orphan_mode == 'delete':
+        # When matched_ids is empty and Excel had no valid rows, refuse mass-delete
+        if not matched_ids and (created + updated + unchanged) == 0:
+            warnings.append({
+                'row': None,
+                'error': 'No Excel rows matched — skipped deleting app-only candidates for safety',
+            })
+        else:
+            q = HiringCandidate.query
+            if matched_ids:
+                q = q.filter(~HiringCandidate.id.in_(list(matched_ids)))
+            orphans = q.all()
+            for orphan in orphans:
+                try:
+                    vac = getattr(orphan, 'assigned_vacancy', None)
+                    if vac is not None:
+                        vac.hiring_candidate_id = None
+                    db.session.delete(orphan)
+                    deleted += 1
+                except Exception as e:
+                    logger.warning('Could not delete orphan candidate %s: %s', orphan.id, e)
+                    warnings.append({
+                        'row': None,
+                        'error': f'Could not remove {orphan.full_name or orphan.id}: {e}',
+                    })
+
     try:
         db.session.commit()
     except Exception as e:
@@ -655,6 +980,8 @@ def apply_hiring_import(rows: list[dict], user, seed_documents_fn, clear_documen
     return {
         'created': created,
         'updated': updated,
+        'unchanged': unchanged,
+        'deleted': deleted,
         'skipped': skipped,
         'errors': errors,
         'warnings': warnings,

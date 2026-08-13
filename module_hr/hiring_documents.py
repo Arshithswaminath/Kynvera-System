@@ -908,7 +908,31 @@ def register_hiring_document_routes(hr_bp):
         if not file or not file.filename:
             return error_response('No file selected', status_code=400, error_code='VALIDATION_ERROR')
 
-        from module_hr.hiring_excel import apply_hiring_import, parse_hiring_workbook
+        preview_only = str(request.form.get('preview') or request.args.get('preview') or '').strip().lower() in (
+            '1', 'true', 'yes',
+        )
+        update_existing_raw = str(
+            request.form.get('update_existing') or request.args.get('update_existing') or '1'
+        ).strip().lower()
+        update_existing = update_existing_raw not in ('0', 'false', 'no')
+        orphan_action = str(
+            request.form.get('orphan_action') or request.args.get('orphan_action') or 'keep'
+        ).strip().lower()
+        if orphan_action not in ('keep', 'delete'):
+            orphan_action = 'keep'
+        id_conflict_action = str(
+            request.form.get('id_conflict_action')
+            or request.args.get('id_conflict_action')
+            or 'keep_both'
+        ).strip().lower()
+        if id_conflict_action not in ('keep_both', 'replace'):
+            id_conflict_action = 'keep_both'
+
+        from module_hr.hiring_excel import (
+            apply_hiring_import,
+            parse_hiring_workbook,
+            preview_hiring_import,
+        )
 
         try:
             rows = parse_hiring_workbook(file)
@@ -928,12 +952,19 @@ def register_hiring_document_routes(hr_bp):
                 error_code='VALIDATION_ERROR',
             )
 
+        if preview_only:
+            preview = preview_hiring_import(rows)
+            return success_response(preview, message='Import preview ready')
+
         try:
             result = apply_hiring_import(
                 rows,
                 user,
                 seed_documents_fn=_seed_documents,
                 clear_document_file_fn=_clear_document_file,
+                update_existing=update_existing,
+                orphan_action=orphan_action,
+                id_conflict_action=id_conflict_action,
             )
         except ValueError as e:
             return error_response(str(e), status_code=400, error_code='VALIDATION_ERROR')
@@ -950,6 +981,10 @@ def register_hiring_document_routes(hr_bp):
             msg_parts.append(f"{result['created']} created")
         if result['updated']:
             msg_parts.append(f"{result['updated']} updated")
+        if result.get('unchanged'):
+            msg_parts.append(f"{result['unchanged']} left unchanged")
+        if result.get('deleted'):
+            msg_parts.append(f"{result['deleted']} removed (not in Excel)")
         if result['skipped']:
             msg_parts.append(f"{result['skipped']} skipped")
         warnings = result.get('warnings') or []

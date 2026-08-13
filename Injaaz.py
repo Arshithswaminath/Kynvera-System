@@ -103,6 +103,15 @@ except Exception as e:
     logger.exception("Could not import module_procurement.routes.procurement_bp: %s", e)
     procurement_module_bp = None
 
+# Files Module (Finder + optional Google Drive sync)
+files_module_bp = None
+try:
+    from module_files.routes import files_bp as files_module_bp  # noqa: F401
+    logger.info("Imported module_files.routes.files_bp")
+except Exception as e:
+    logger.exception("Could not import module_files.routes.files_bp: %s", e)
+    files_module_bp = None
+
 # Inspection Form Module (HVAC, Civil, Cleaning)
 inspection_bp = None
 try:
@@ -386,6 +395,7 @@ def create_app():
                     ('access_submitted_forms', 'BOOLEAN DEFAULT FALSE'),
                     ('access_ticketing', 'BOOLEAN DEFAULT FALSE'),
                     ('access_qhsi', 'BOOLEAN DEFAULT FALSE'),
+                    ('access_files', 'BOOLEAN DEFAULT FALSE'),
                     ('is_ticket_reporter', 'BOOLEAN DEFAULT FALSE'),
                     ('last_login', 'TIMESTAMP'),
                     ('employment_start_date', 'DATE'),
@@ -578,6 +588,7 @@ def create_app():
                     ('replacement_name', 'VARCHAR(200)'),
                     ('replacement_employee_id', 'VARCHAR(80)'),
                     ('comments', 'TEXT'),
+                    ('hr_ref', 'VARCHAR(80)'),
                 ):
                     if col_name not in hc_cols:
                         try:
@@ -592,7 +603,15 @@ def create_app():
                                 logger.info(f"Column {col_name} already exists")
                             else:
                                 logger.warning(f"Could not add {col_name}: {col_error}")
-
+                # Unique index for hr_ref (best-effort; ignore if exists / nulls)
+                try:
+                    with db.engine.begin() as conn:
+                        conn.execute(text(
+                            "CREATE UNIQUE INDEX IF NOT EXISTS ix_hiring_candidates_hr_ref "
+                            "ON hiring_candidates (hr_ref)"
+                        ))
+                except Exception as idx_err:
+                    logger.debug('hr_ref index note: %s', idx_err)
             # Step 3: Ensure default admin user exists (fully automatic for Render)
             try:
                 from app.models import User
@@ -1009,6 +1028,18 @@ def create_app():
         logger.info("✅ Registered Procurement blueprint at /procurement")
     else:
         logger.warning("⚠️  Procurement blueprint not available - check imports")
+
+    # Register Files module blueprint (Finder + Drive sync)
+    if files_module_bp:
+        if hasattr(app, 'csrf') and app.csrf:
+            app.csrf.exempt(files_module_bp)
+        app.register_blueprint(files_module_bp, url_prefix='/files')
+        @app.route('/files')
+        def redirect_files_to_slash():
+            return redirect('/files/', code=302)
+        logger.info("✅ Registered Files blueprint at /files")
+    else:
+        logger.warning("⚠️  Files blueprint not available - check imports")
     
     # Register Inspection Form blueprint
     if inspection_bp:

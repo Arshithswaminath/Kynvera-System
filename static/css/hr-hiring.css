@@ -369,8 +369,7 @@ body.hh-page .nav .logo {
   margin-bottom: 1.25rem;
 }
 
-.hh-toolbar-primary,
-.hh-toolbar-filters {
+.hh-toolbar-primary {
   display: flex;
   align-items: center;
   gap: 0.65rem;
@@ -380,12 +379,51 @@ body.hh-page .nav .logo {
 
 .hh-toolbar-filters {
   width: 100%;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 0.75rem;
+  min-width: 0;
 }
 
 .hh-toolbar-filters .hh-toolbar-select {
-  flex: 1 1 160px;
-  min-width: 140px;
+  -webkit-appearance: none;
+  appearance: none;
+  flex: none;
+  width: 100%;
+  min-width: 0;
   max-width: none;
+  height: var(--hh-control-h);
+  min-height: var(--hh-control-h);
+  padding: 0 2.35rem 0 0.9rem;
+  border: 1px solid var(--hh-border);
+  border-radius: var(--hh-control-r);
+  background-color: var(--hh-surface);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.85rem center;
+  background-size: 14px 14px;
+  color: var(--hh-text);
+  font-family: inherit;
+  font-size: 0.9rem;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.hh-toolbar-filters .hh-toolbar-select:focus {
+  border-color: var(--hh-brand);
+  box-shadow: 0 0 0 3px rgba(255, 142, 104, 0.12);
+  outline: none;
+}
+
+.hh-toolbar-filters .hh-toolbar-select:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
 }
 
 .hh-toolbar .hh-search input,
@@ -446,7 +484,7 @@ body.hh-page .nav .logo {
 .hh-search input {
   width: 100%;
   min-height: 44px;
-  padding: 0.6rem 1rem 0.6rem 2.6rem;
+  padding: 0.6rem 5.75rem 0.6rem 2.6rem;
   border: 1px solid var(--hh-border);
   border-radius: 12px;
   background: var(--hh-surface);
@@ -456,6 +494,31 @@ body.hh-page .nav .logo {
   box-sizing: border-box;
   outline: none;
   transition: border-color 0.15s, box-shadow 0.15s, opacity 0.2s ease;
+}
+
+.hh-search-hint {
+  position: absolute;
+  right: 0.9rem;
+  top: 50%;
+  transform: translateY(-50%);
+  max-width: 42%;
+  font-size: 0.78rem;
+  font-weight: 550;
+  color: var(--hh-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  z-index: 1;
+  transition: opacity 0.2s ease;
+}
+
+.hh-search-hint:empty {
+  display: none;
+}
+
+.hh-search.is-importing .hh-search-hint {
+  opacity: 0;
 }
 
 /* Search → import progress (same footprint as the search pill) */
@@ -535,6 +598,30 @@ body.hh-page .nav .logo {
   font-size: 0.8rem;
   font-weight: 600;
   color: #c45a34;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* After import: success/error text fills the search field (no separate banner) */
+.hh-search.is-importing.is-import-done .hh-search-import-track,
+.hh-search.is-importing.is-import-error .hh-search-import-track {
+  display: none;
+}
+
+.hh-search.is-importing.is-import-done .hh-search-import,
+.hh-search.is-importing.is-import-error .hh-search-import {
+  justify-content: center;
+  padding: 0 1rem;
+}
+
+.hh-search.is-importing.is-import-done .hh-search-import-label,
+.hh-search.is-importing.is-import-error .hh-search-import-label {
+  flex: 1 1 auto;
+  max-width: none;
+  text-align: center;
+  font-size: 0.9rem;
+  font-weight: 650;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -940,9 +1027,20 @@ body.hh-page .nav .logo {
 
 .hh-pipeline-filter,
 .hh-toolbar-select {
-  min-width: 140px;
+  min-width: 0;
   max-width: none;
-  flex: 1 1 160px;
+}
+
+@media (max-width: 900px) {
+  .hh-toolbar-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .hh-toolbar-filters {
+    grid-template-columns: 1fr;
+  }
 }
 
 .hh-toolbar-select:disabled {
@@ -2908,6 +3006,102 @@ body.hh-page .nav .logo {
   margin: 0 0 1.25rem;
   color: var(--hh-muted);
   font-size: 0.85rem;
+}
+
+.hh-import-confirm-list {
+  margin: 0 0 0.85rem;
+  padding: 0.85rem 1rem;
+  list-style: none;
+  background: var(--hh-bg);
+  border: 1px solid var(--hh-border);
+  border-radius: 12px;
+}
+
+.hh-import-confirm-list li {
+  margin: 0.35rem 0;
+  font-size: 0.92rem;
+  color: var(--hh-text);
+  line-height: 1.4;
+}
+
+.hh-import-confirm-list li strong {
+  font-weight: 700;
+  color: var(--hh-text);
+}
+
+.hh-import-orphan-block {
+  margin: 0 0 0.85rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(185, 28, 28, 0.22);
+  border-radius: 12px;
+  background: #fff8f7;
+}
+
+.hh-import-conflict-block {
+  margin: 0 0 0.85rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(180, 83, 9, 0.28);
+  border-radius: 12px;
+  background: #fffbeb;
+}
+
+.hh-import-conflict-title {
+  margin: 0 0 0.4rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #9a3412;
+}
+
+.hh-import-conflict-copy {
+  margin: 0 0 0.55rem;
+  font-size: 0.84rem;
+  line-height: 1.45;
+  color: var(--hh-muted);
+}
+
+.hh-import-conflict-list {
+  margin-bottom: 0.75rem;
+  max-height: 160px;
+  overflow: auto;
+  background: #fff;
+}
+
+.hh-import-orphan-title {
+  margin: 0 0 0.55rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #9a3412;
+}
+
+.hh-import-orphan-list {
+  margin-bottom: 0.75rem;
+  max-height: 140px;
+  overflow: auto;
+  background: #fff;
+}
+
+.hh-import-orphan-choices {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.hh-import-choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: var(--hh-text);
+  cursor: pointer;
+}
+
+.hh-import-choice input {
+  margin-top: 0.2rem;
+  flex: 0 0 auto;
 }
 
 .hh-field {

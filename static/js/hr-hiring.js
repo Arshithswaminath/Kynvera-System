@@ -869,12 +869,22 @@
         state.trade_id = fillFacetSelect(tradeFilter, trades, state.trade_id, 'All trades');
         state.project_id = fillFacetSelect(projectFilter, projects, state.project_id, 'All projects');
         syncVacancyFacetControls();
+        updateSearchCountHint();
         renderList(items);
         renderPagination();
       } catch (e) {
         listEl.innerHTML = '<div class="hh-empty">' + escapeHtml(e.message) + '</div>';
         pagEl.innerHTML = '';
+        updateSearchCountHint(0);
       }
+    }
+
+    function updateSearchCountHint(overrideCount) {
+      const hint = document.getElementById('hhSearchHint');
+      if (!hint) return;
+      const n = overrideCount != null ? overrideCount : (state.count || 0);
+      hint.textContent = n + ' candidate' + (n === 1 ? '' : 's');
+      hint.title = hint.textContent;
     }
 
     function renderList(items) {
@@ -1206,7 +1216,7 @@
       if (track) track.setAttribute('aria-valuenow', String(clamped));
     }
 
-    /** Swap search pill ↔ import loading bar. mode: 'start' | 'done' | 'error' | 'reset' */
+    /** Swap search pill ↔ import loading / success message. mode: 'start' | 'done' | 'error' | 'reset' */
     function setSearchImportState(mode, label) {
       const wrap = document.getElementById('hhSearchWrap');
       const overlay = document.getElementById('hhSearchImport');
@@ -1225,7 +1235,6 @@
         setSearchImportProgress(8);
         let pct = 8;
         wrap._importProgressTimer = setInterval(function () {
-          // Creep toward ~88% while waiting; finish jumps to 100% on done/error.
           if (pct >= 88) return;
           pct += Math.max(0.6, (88 - pct) * 0.045);
           setSearchImportProgress(pct);
@@ -1242,11 +1251,13 @@
         overlay.setAttribute('aria-busy', 'false');
         if (labelEl) {
           labelEl.textContent = label || (mode === 'done' ? 'Import complete' : 'Import failed');
+          labelEl.title = labelEl.textContent;
         }
         setSearchImportProgress(100);
+        // Keep success/error text visible in the search field, then restore search.
         wrap._importRestoreTimer = setTimeout(function () {
           setSearchImportState('reset');
-        }, mode === 'error' ? 2200 : 1400);
+        }, mode === 'error' ? 3200 : 2800);
         return;
       }
 
@@ -1256,73 +1267,50 @@
       overlay.hidden = true;
       overlay.setAttribute('aria-busy', 'false');
       setSearchImportProgress(0);
-      if (labelEl) labelEl.textContent = 'Importing…';
+      if (labelEl) {
+        labelEl.textContent = 'Importing…';
+        labelEl.removeAttribute('title');
+      }
       if (input) {
         input.removeAttribute('disabled');
       }
     }
 
-    function hideImportResult() {
-      const el = document.getElementById('hhImportResult');
-      if (!el) return;
-      clearTimeout(el._dismissTimer);
-      el._dismissTimer = null;
-      el.classList.remove('is-fading');
-      el.hidden = true;
-      el.innerHTML = '';
+    function formatImportSearchMessage(result, message) {
+      const msg = (message || '').trim();
+      if (msg) return msg;
+      const created = (result && result.created) || 0;
+      const updated = (result && result.updated) || 0;
+      const deleted = (result && result.deleted) || 0;
+      const skipped = (result && result.skipped) || 0;
+      const parts = [];
+      if (created) parts.push(created + ' created');
+      if (updated) parts.push(updated + ' updated');
+      if (deleted) parts.push(deleted + ' removed');
+      if (skipped) parts.push(skipped + ' skipped');
+      if (!parts.length) return 'Import complete';
+      return 'Import complete: ' + parts.join(', ');
     }
 
-    function showImportResult(result, message) {
-      const el = document.getElementById('hhImportResult');
-      if (!el) return;
-      clearTimeout(el._dismissTimer);
-      el._dismissTimer = null;
-      el.classList.remove('is-fading');
+    function summarizeImportIssues(result) {
       const errs = (result && result.errors) || [];
       const warns = (result && result.warnings) || [];
-      let html =
-        '<div class="hh-import-result-inner">' +
-          '<strong>' + escapeHtml(message || 'Import complete') + '</strong>';
-      if (errs.length) {
-        html += '<ul class="hh-import-errors">';
-        errs.slice(0, 8).forEach(function (e) {
-          html += '<li>Row ' + escapeHtml(String(e.row)) + ': ' + escapeHtml(e.error || '') + '</li>';
-        });
-        if (errs.length > 8) {
-          html += '<li>…and ' + (errs.length - 8) + ' more</li>';
-        }
-        html += '</ul>';
-      }
-      if (warns.length) {
-        html += '<ul class="hh-import-errors">';
-        warns.slice(0, 8).forEach(function (e) {
-          html += '<li>Row ' + escapeHtml(String(e.row)) + ': ' + escapeHtml(e.error || '') + '</li>';
-        });
-        if (warns.length > 8) {
-          html += '<li>…and ' + (warns.length - 8) + ' more</li>';
-        }
-        html += '</ul>';
-      }
-      html +=
-        '<button type="button" class="hh-btn hh-btn-ghost hh-btn-sm" data-hh-import-dismiss>Dismiss</button>' +
-        '</div>';
-      el.innerHTML = html;
-      el.hidden = false;
-      el.classList.toggle('has-errors', errs.length > 0 || warns.length > 0);
-      // Success banners auto-fade after 10s; error lists stay until dismissed.
-      if (!errs.length && !warns.length) {
-        el._dismissTimer = setTimeout(function () {
-          el.classList.add('is-fading');
-          setTimeout(hideImportResult, 400);
-        }, 10000);
-      }
+      const lines = [];
+      errs.slice(0, 5).forEach(function (e) {
+        lines.push('Row ' + e.row + ': ' + (e.error || ''));
+      });
+      warns.slice(0, 3).forEach(function (e) {
+        lines.push('Row ' + e.row + ': ' + (e.error || ''));
+      });
+      const extra = (errs.length + warns.length) - lines.length;
+      if (extra > 0) lines.push('…and ' + extra + ' more');
+      return lines.join('\n');
     }
 
     const templateBtn = document.getElementById('hhExcelTemplate');
     const exportBtn = document.getElementById('hhExcelExport');
     const importBtn = document.getElementById('hhExcelImport');
     const excelFile = document.getElementById('hhExcelFile');
-    const importResultEl = document.getElementById('hhImportResult');
 
     if (templateBtn) {
       templateBtn.addEventListener('click', async function () {
@@ -1353,19 +1341,195 @@
     }
 
     if (importBtn && excelFile) {
+      let pendingImportFile = null;
+
+      const confirmModal = document.getElementById('hhImportConfirmModal');
+      const confirmList = document.getElementById('hhImportConfirmList');
+      const confirmSub = document.getElementById('hhImportConfirmSub');
+      const confirmYes = document.getElementById('hhImportConfirmYes');
+      const confirmCancel = document.getElementById('hhImportConfirmCancel');
+
+      function closeImportConfirm() {
+        pendingImportFile = null;
+        if (confirmModal) {
+          confirmModal.classList.remove('open');
+          confirmModal.hidden = true;
+        }
+        importBtn.disabled = false;
+        excelFile.value = '';
+        setSearchImportState('reset');
+      }
+
+      function openImportConfirm(preview) {
+        if (!confirmModal || !confirmList) return;
+        const createN = preview.will_create || 0;
+        const updateN = preview.will_update || 0;
+        const renameN = preview.will_rename || 0;
+        const skipN = preview.will_skip || 0;
+        const orphanN = preview.orphan_count || 0;
+        const orphans = preview.orphan_candidates || [];
+        const renames = preview.rename_pairs || [];
+        const lines = [];
+        lines.push('<li><strong>' + createN + '</strong> new candidate' + (createN === 1 ? '' : 's') + ' will be added</li>');
+        lines.push('<li><strong>' + updateN + '</strong> existing candidate' + (updateN === 1 ? '' : 's') + ' matched and will be updated</li>');
+        if (renameN) {
+          lines.push(
+            '<li><strong>' + renameN + '</strong> row' + (renameN === 1 ? '' : 's') +
+            ' share a Candidate ID with someone already in the system, but the name is different</li>'
+          );
+        }
+        if (orphanN) {
+          lines.push('<li><strong>' + orphanN + '</strong> candidate' + (orphanN === 1 ? '' : 's') + ' are in the app but <em>not</em> in this Excel</li>');
+        }
+        if (skipN) {
+          lines.push('<li><strong>' + skipN + '</strong> row' + (skipN === 1 ? '' : 's') + ' will be skipped (invalid data)</li>');
+        }
+        if (preview.create_names && preview.create_names.length) {
+          lines.push('<li>New: ' + escapeHtml(preview.create_names.join(', ')) +
+            (createN > preview.create_names.length ? '…' : '') + '</li>');
+        }
+        confirmList.innerHTML = lines.join('');
+
+        const conflictBlock = document.getElementById('hhImportConflictBlock');
+        const conflictList = document.getElementById('hhImportConflictList');
+        const conflictTitle = document.getElementById('hhImportConflictTitle');
+        const conflictCopy = document.getElementById('hhImportConflictCopy');
+        if (conflictBlock && conflictList) {
+          if (renameN > 0) {
+            conflictBlock.hidden = false;
+            if (conflictTitle) {
+              conflictTitle.textContent = renameN + ' shared Candidate ID' +
+                (renameN === 1 ? '' : 's') + ' with a different name';
+            }
+            if (conflictCopy) {
+              conflictCopy.textContent =
+                'The system list and this Excel import share the same Candidate ID for different people. ' +
+                'Choose Yes to keep everyone and give Excel people new IDs, or No to replace the existing rows.';
+            }
+            conflictList.innerHTML = renames.map(function (p) {
+              const sid = p.shared_id != null ? String(p.shared_id) : String(p.id);
+              return '<li>ID <strong>' + escapeHtml(sid) + '</strong>: ' +
+                escapeHtml(p.from || 'Current') +
+                ' (in system) ↔ ' +
+                '<strong>' + escapeHtml(p.to || 'Excel') + '</strong> (in Excel)' +
+                (p.role ? ' — ' + escapeHtml(p.role) : '') +
+                '</li>';
+            }).join('') + (renameN > renames.length
+              ? '<li>…and ' + (renameN - renames.length) + ' more</li>'
+              : '');
+            const keepBoth = confirmModal.querySelector('input[name="hhIdConflictAction"][value="keep_both"]');
+            if (keepBoth) keepBoth.checked = true;
+          } else {
+            conflictBlock.hidden = true;
+            conflictList.innerHTML = '';
+          }
+        }
+
+        const orphanBlock = document.getElementById('hhImportOrphanBlock');
+        const orphanList = document.getElementById('hhImportOrphanList');
+        const orphanTitle = document.getElementById('hhImportOrphanTitle');
+        if (orphanBlock && orphanList) {
+          if (orphanN > 0) {
+            orphanBlock.hidden = false;
+            if (orphanTitle) {
+              orphanTitle.textContent = orphanN + ' candidate' + (orphanN === 1 ? '' : 's') +
+                ' in the app but not in this Excel';
+            }
+            orphanList.innerHTML = orphans.map(function (o) {
+              const label = (o.full_name || 'Candidate') +
+                (o.role ? ' — ' + o.role : '') +
+                ' (#' + o.hr_ref + ')';
+              return '<li>' + escapeHtml(label) + '</li>';
+            }).join('') + (orphanN > orphans.length
+              ? '<li>…and ' + (orphanN - orphans.length) + ' more</li>'
+              : '');
+            const keepRadio = confirmModal.querySelector('input[name="hhOrphanAction"][value="keep"]');
+            if (keepRadio) keepRadio.checked = true;
+          } else {
+            orphanBlock.hidden = true;
+            orphanList.innerHTML = '';
+          }
+        }
+
+        if (confirmSub) {
+          if (renameN) {
+            confirmSub.textContent =
+              'Excel reuses Candidate IDs that already exist in the system for different names. Choose Yes or No for those shared IDs, then apply.';
+          } else if (orphanN) {
+            confirmSub.textContent = 'Some people are in the app but missing from this Excel. Choose keep or delete them, then apply.';
+          } else if (updateN) {
+            confirmSub.textContent = 'Excel has updates for candidates already in the system. Apply these updates and add any new rows?';
+          } else {
+            confirmSub.textContent = 'Excel has new candidates to add. Apply this import?';
+          }
+        }
+        if (confirmYes) {
+          confirmYes.textContent = 'Yes, apply import';
+        }
+        confirmModal.hidden = false;
+        confirmModal.classList.add('open');
+      }
+
+      function selectedOrphanAction() {
+        const checked = confirmModal && confirmModal.querySelector('input[name="hhOrphanAction"]:checked');
+        return (checked && checked.value) || 'keep';
+      }
+
+      function selectedIdConflictAction() {
+        const checked = confirmModal && confirmModal.querySelector('input[name="hhIdConflictAction"]:checked');
+        return (checked && checked.value) || 'keep_both';
+      }
+
+      async function runHiringImport(file, updateExisting, orphanAction, idConflictAction) {
+        setSearchImportState('start', 'Importing…');
+        const fd = new FormData();
+        fd.append('file', file);
+        fd.append('update_existing', updateExisting ? '1' : '0');
+        fd.append('orphan_action', orphanAction || 'keep');
+        fd.append('id_conflict_action', idConflictAction || 'keep_both');
+        const res = await fetch('/hr/api/hiring/import', {
+          method: 'POST',
+          headers: authHeaders(),
+          body: fd,
+        });
+        const data = await res.json().catch(function () { return null; });
+        if (!res.ok || (data && data.success === false)) {
+          throw new Error((data && (data.error || data.message)) || 'Import failed');
+        }
+        const result = {
+          created: data.created || 0,
+          updated: data.updated || 0,
+          deleted: data.deleted || 0,
+          skipped: data.skipped || 0,
+          errors: data.errors || [],
+          warnings: data.warnings || [],
+          processed: data.processed || 0,
+        };
+        const msg = formatImportSearchMessage(result, data.message);
+        const hasIssues = result.errors.length > 0;
+        setSearchImportState(hasIssues ? 'error' : 'done', msg);
+        if (hasIssues) {
+          const detail = summarizeImportIssues(result);
+          toast(detail ? msg + '\n' + detail : msg, true);
+        }
+        state.page = 1;
+        await load();
+      }
+
       importBtn.addEventListener('click', function () {
         excelFile.value = '';
         excelFile.click();
       });
+
       excelFile.addEventListener('change', async function () {
         const file = excelFile.files && excelFile.files[0];
         if (!file) return;
         importBtn.disabled = true;
-        hideImportResult();
-        setSearchImportState('start', 'Importing…');
+        setSearchImportState('start', 'Checking Excel…');
         try {
           const fd = new FormData();
           fd.append('file', file);
+          fd.append('preview', '1');
           const res = await fetch('/hr/api/hiring/import', {
             method: 'POST',
             headers: authHeaders(),
@@ -1373,41 +1537,73 @@
           });
           const data = await res.json().catch(function () { return null; });
           if (!res.ok || (data && data.success === false)) {
-            throw new Error((data && (data.error || data.message)) || 'Import failed');
+            throw new Error((data && (data.error || data.message)) || 'Could not read Excel');
           }
-          const result = {
-            created: data.created || 0,
-            updated: data.updated || 0,
-            skipped: data.skipped || 0,
+          const preview = {
+            will_create: data.will_create || 0,
+            will_update: data.will_update || 0,
+            will_rename: data.will_rename || 0,
+            will_skip: data.will_skip || 0,
+            orphan_count: data.orphan_count || 0,
+            orphan_candidates: data.orphan_candidates || [],
+            create_names: data.create_names || [],
+            update_names: data.update_names || [],
+            rename_pairs: data.rename_pairs || [],
             errors: data.errors || [],
-            warnings: data.warnings || [],
-            processed: data.processed || 0,
           };
-          const msg = data.message || 'Import complete';
-          const shortLabel = result.errors.length
-            ? 'Imported with issues'
-            : (msg.length > 36 ? 'Import complete' : msg);
-          setSearchImportState('done', shortLabel);
-          toast(msg);
-          showImportResult(result, msg);
-          state.page = 1;
-          await load();
+          if (!preview.will_create && !preview.will_update && !preview.orphan_count && !preview.will_rename) {
+            setSearchImportState('error', preview.will_skip ? 'Nothing to import' : 'Empty workbook');
+            if (preview.errors && preview.errors.length) {
+              toast(summarizeImportIssues({ errors: preview.errors, warnings: [] }), true);
+            } else {
+              toast('No candidates to import from this file', true);
+            }
+            importBtn.disabled = false;
+            excelFile.value = '';
+            return;
+          }
+          pendingImportFile = file;
+          setSearchImportState('reset');
+          openImportConfirm(preview);
         } catch (err) {
-          setSearchImportState('error', 'Import failed');
+          setSearchImportState('error', err.message || 'Import failed');
           toast(err.message, true);
-        } finally {
           importBtn.disabled = false;
           excelFile.value = '';
         }
       });
-    }
 
-    if (importResultEl) {
-      importResultEl.addEventListener('click', function (e) {
-        if (e.target.closest('[data-hh-import-dismiss]')) {
-          hideImportResult();
-        }
-      });
+      if (confirmCancel) {
+        confirmCancel.addEventListener('click', closeImportConfirm);
+      }
+      if (confirmModal) {
+        confirmModal.addEventListener('click', function (e) {
+          if (e.target === confirmModal) closeImportConfirm();
+        });
+      }
+      if (confirmYes) {
+        confirmYes.addEventListener('click', async function () {
+          const file = pendingImportFile;
+          if (!file) return;
+          const orphanAction = selectedOrphanAction();
+          const idConflictAction = selectedIdConflictAction();
+          pendingImportFile = null;
+          if (confirmModal) {
+            confirmModal.classList.remove('open');
+            confirmModal.hidden = true;
+          }
+          importBtn.disabled = true;
+          try {
+            await runHiringImport(file, true, orphanAction, idConflictAction);
+          } catch (err) {
+            setSearchImportState('error', err.message || 'Import failed');
+            toast(err.message, true);
+          } finally {
+            importBtn.disabled = false;
+            excelFile.value = '';
+          }
+        });
+      }
     }
 
     if (modal) {
