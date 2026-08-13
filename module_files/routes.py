@@ -51,6 +51,46 @@ def user_can_use_files(user: User | None) -> bool:
     return False
 
 
+def _normalize_export_module(module: str) -> str:
+    key = (module or '').strip().lower().replace(' ', '_').replace('-', '_')
+    aliases = {
+        'tickets': 'ticketing',
+        'ticket': 'ticketing',
+        'service_tickets': 'ticketing',
+        'service_ticket': 'ticketing',
+    }
+    return aliases.get(key, key)
+
+
+def user_can_export_module(user: User | None, module: str) -> bool:
+    """Source-module ACL for Save-to-Files. Files access alone is not enough."""
+    if not user:
+        return False
+    if user.role == 'admin':
+        return True
+    mod = _normalize_export_module(module)
+    if mod in ('manpower', 'leave', 'hiring'):
+        return bool(getattr(user, 'access_hr', False))
+    if mod == 'procurement':
+        return bool(getattr(user, 'access_procurement_module', False))
+    if mod == 'qhsi':
+        return bool(getattr(user, 'access_qhsi', False))
+    if mod == 'mmr':
+        return bool(getattr(user, 'access_report_generation', False))
+    if mod in ('devices', 'technicians'):
+        return False  # admin-only (team/device management)
+    if mod == 'dochub':
+        from app.models import DocHubAccess
+
+        row = DocHubAccess.query.filter_by(user_id=user.id).first()
+        if row is None:
+            return True  # default-allow unless explicitly restricted
+        return bool(row.can_access)
+    if mod == 'ticketing':
+        return bool(getattr(user, 'access_ticketing', False))
+    return False
+
+
 def _require_files_user():
     user = _current_user()
     if not user:
@@ -58,6 +98,17 @@ def _require_files_user():
     if not user_can_use_files(user):
         return None, error_response('Access denied to Files module', status_code=403)
     return user, None
+
+
+def _require_module_export_access(user: User, module: str):
+    if not get_module_catalog(module):
+        return error_response('Unknown module', status_code=404)
+    if not user_can_export_module(user, module):
+        return error_response(
+            'Access denied to export this module into Files',
+            status_code=403,
+        )
+    return None
 
 
 def _state_serializer() -> URLSafeSerializer:
@@ -86,16 +137,23 @@ def api_catalog():
         return err
     module = (request.args.get('module') or '').strip().lower()
     if module:
+        denied = _require_module_export_access(user, module)
+        if denied:
+            return denied
         cat = get_module_catalog(module)
-        if not cat:
-            return error_response('Unknown module', status_code=404)
         try:
             cat = expand_module_catalog(module, cat, user=user)
         except Exception:
             logger.exception('expand_module_catalog failed for module=%s', module)
             cat = {**cat, 'options': list(cat.get('options') or [])}
         return success_response({'module': module, **cat})
-    return success_response(list_catalog())
+    # Only advertise modules the caller is allowed to export.
+    allowed = {
+        key: value
+        for key, value in list_catalog().items()
+        if user_can_export_module(user, key)
+    }
+    return success_response(allowed)
 
 
 @files_bp.route('/api/tree', methods=['GET'])
@@ -127,6 +185,9 @@ def api_save_from_module():
         return err
     data = request.get_json(silent=True) or {}
     module = (data.get('module') or '').strip().lower()
+    denied = _require_module_export_access(user, module)
+    if denied:
+        return denied
     kinds = data.get('kinds')
     if not isinstance(kinds, list):
         kinds = []
