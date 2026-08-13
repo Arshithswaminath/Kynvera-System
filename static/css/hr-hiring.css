@@ -112,7 +112,12 @@ body.hh-page .nav .logo {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
-  flex: 1;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 0.35rem;
 }
 
 .hh-nav-item {
@@ -185,6 +190,110 @@ body.hh-page .nav .logo {
   height: 18px;
 }
 
+.hh-sidebar .files-menu-footer--sidebar {
+  flex: 0 0 auto;
+  margin: 0.35rem 0 0.55rem;
+  padding: 0.7rem 0.75rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 142, 104, 0.28);
+  background: #fff;
+  box-shadow: none;
+}
+
+.hh-sidebar .files-menu-footer-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  margin: 0 0 0.65rem;
+}
+
+.hh-sidebar .files-menu-footer-icon {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #ff8e68;
+  color: #fff;
+}
+
+.hh-sidebar .files-menu-footer-icon svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
+.hh-sidebar .files-menu-footer-title {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #1f2937;
+  line-height: 1.2;
+}
+
+.hh-sidebar .files-menu-footer-hint {
+  margin: 0.2rem 0 0;
+  font-size: 0.72rem;
+  font-weight: 500;
+  line-height: 1.35;
+  color: #7c5a4e;
+}
+
+.hh-sidebar .files-menu-footer-mod {
+  font-weight: 700;
+  color: #e05f36;
+}
+
+.hh-sidebar .files-menu-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.hh-sidebar .files-save-menu-link {
+  flex: 1 1 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0.4rem 0.7rem;
+  border: none;
+  border-radius: 9px;
+  background: #ff8e68;
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(255, 142, 104, 0.28);
+}
+
+.hh-sidebar .files-save-menu-link:hover {
+  background: #f97e54;
+}
+
+.hh-sidebar .files-menu-footer-open {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0.35rem 0.65rem;
+  border-radius: 9px;
+  border: 1px solid rgba(224, 95, 54, 0.28);
+  background: #fff;
+  color: #e05f36;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.hh-sidebar .files-menu-footer-open:hover {
+  background: #fff8f5;
+  text-decoration: none;
+}
+
 .hh-user-card {
   display: flex;
   align-items: center;
@@ -192,7 +301,8 @@ body.hh-page .nav .logo {
   padding: 0.75rem;
   border-radius: 12px;
   background: var(--hh-bg);
-  margin-top: auto;
+  margin-top: 0;
+  flex-shrink: 0;
 }
 
 .hh-user-avatar {

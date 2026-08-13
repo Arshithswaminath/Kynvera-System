@@ -81,6 +81,11 @@ MODULE_OPTIONS = {
                 'label': 'Staff compliance import template (Excel)',
                 'description': 'Blank template for staff compliance import.',
             },
+            {
+                'kind': 'export',
+                'label': 'Staff compliance export (Excel)',
+                'description': 'Current staff compliance records as an Excel workbook.',
+            },
         ],
     },
     'mmr': {
@@ -105,6 +110,11 @@ MODULE_OPTIONS = {
                 'label': 'Device import sample (Excel)',
                 'description': 'Sample workbook for bulk device import.',
             },
+            {
+                'kind': 'export',
+                'label': 'Devices export (Excel)',
+                'description': 'Current device inventory as an Excel workbook.',
+            },
         ],
     },
     'technicians': {
@@ -117,7 +127,30 @@ MODULE_OPTIONS = {
                 'label': 'Technicians import template (Excel)',
                 'description': 'Blank template for technician bulk import.',
             },
+            {
+                'kind': 'export',
+                'label': 'Technicians export (Excel)',
+                'description': 'Current technician roster as an Excel workbook.',
+            },
         ],
+    },
+    'dochub': {
+        'label': 'DocHub',
+        'folder_path_key': 'dochub',
+        'folder_label': 'DocHub',
+        'options': [
+            {
+                'kind': 'export',
+                'label': 'Document library export (Excel)',
+                'description': 'Current DocHub document index (title, status, category, author).',
+            },
+        ],
+    },
+    'ticketing': {
+        'label': 'Service Tickets',
+        'folder_path_key': 'ticketing',
+        'folder_label': 'Service Tickets',
+        'options': [],
     },
 }
 
@@ -134,11 +167,108 @@ DEFAULT_FOLDER_TREE = [
     {'path_key': 'admin', 'name': 'Admin', 'parent_key': None},
     {'path_key': 'admin/devices', 'name': 'Devices', 'parent_key': 'admin'},
     {'path_key': 'admin/technicians', 'name': 'Technicians', 'parent_key': 'admin'},
+    {'path_key': 'dochub', 'name': 'DocHub', 'parent_key': None},
+    {'path_key': 'ticketing', 'name': 'Service Tickets', 'parent_key': None},
 ]
 
 
 def get_module_catalog(module: str) -> dict | None:
-    return MODULE_OPTIONS.get((module or '').strip().lower())
+    key = (module or '').strip().lower().replace(' ', '_').replace('-', '_')
+    aliases = {
+        'tickets': 'ticketing',
+        'ticket': 'ticketing',
+        'service_tickets': 'ticketing',
+        'service_ticket': 'ticketing',
+    }
+    return MODULE_OPTIONS.get(aliases.get(key, key))
+
+
+def list_dochub_document_options() -> list:
+    """Live DocHub documents as Save-to-Files choices (kind doc:<id>)."""
+    from sqlalchemy import or_
+
+    from app.models import DocHubDocument
+
+    docs = (
+        DocHubDocument.query.filter(
+            or_(DocHubDocument.inline_asset.is_(False), DocHubDocument.inline_asset.is_(None))
+        )
+        .order_by(DocHubDocument.updated_at.desc())
+        .all()
+    )
+    options = []
+    for d in docs:
+        dtype = 'Uploaded file' if (d.doc_type or '') == 'upload' else 'Editable page'
+        bits = [x for x in [(d.category or '').strip(), (d.status or '').strip(), dtype] if x]
+        options.append({
+            'kind': f'doc:{d.id}',
+            'label': (d.title or f'Document {d.id}').strip(),
+            'description': ' · '.join(bits),
+        })
+    return options
+
+
+CLOSED_TICKET_CAP = 150
+
+
+def list_closed_ticket_options(user=None) -> list:
+    """Closed work orders as Save-to-Files choices (kind ticket:<id>:report|invoice)."""
+    try:
+        from app.models import Ticket
+        from module_ticketing.routes import _can_user_view_ticket
+    except Exception:
+        return []
+
+    tickets = (
+        Ticket.query.filter(Ticket.status == 'closed')
+        .order_by(Ticket.closed_at.desc().nullslast(), Ticket.id.desc())
+        .limit(CLOSED_TICKET_CAP * 4)
+        .all()
+    )
+    options = []
+    kept = 0
+    for t in tickets:
+        if user is not None and not _can_user_view_ticket(user, t):
+            continue
+        code = (t.ticket_id or f'Ticket {t.id}').strip()
+        title = (t.title or '').strip()
+        closed_bit = ''
+        if t.closed_at:
+            try:
+                closed_bit = t.closed_at.strftime('%d %b %Y')
+            except Exception:
+                closed_bit = ''
+        desc = ' · '.join(x for x in [title, closed_bit] if x) or 'Closed work order'
+        options.append({
+            'kind': f'ticket:{t.id}:report',
+            'label': f'{code} — Service report',
+            'description': desc,
+        })
+        options.append({
+            'kind': f'ticket:{t.id}:invoice',
+            'label': f'{code} — Invoice',
+            'description': desc,
+        })
+        kept += 1
+        if kept >= CLOSED_TICKET_CAP:
+            break
+    return options
+
+
+def expand_module_catalog(module: str, catalog: dict, user=None) -> dict:
+    """Attach live item lists for modules that support picking records."""
+    mod = (module or '').strip().lower().replace(' ', '_').replace('-', '_')
+    if mod in ('tickets', 'ticket', 'service_tickets', 'service_ticket'):
+        mod = 'ticketing'
+    options = list(catalog.get('options') or [])
+    try:
+        if mod == 'dochub':
+            options.extend(list_dochub_document_options())
+        elif mod == 'ticketing':
+            options.extend(list_closed_ticket_options(user))
+    except Exception:
+        pass
+    return {**catalog, 'options': options}
 
 
 def list_catalog() -> dict:

@@ -28,6 +28,7 @@ from module_files.catalog import DEFAULT_FOLDER_TREE, get_module_catalog
 logger = logging.getLogger(__name__)
 
 XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+PDF_MIME = 'application/pdf'
 
 
 def _files_root() -> str:
@@ -480,14 +481,59 @@ def _build_qhsi_bytes(kind: str) -> Tuple[bytes, str, str]:
     from module_qhsi.excel_import import build_import_template_bytes
 
     stamp = datetime.utcnow().strftime('%Y%m%d_%H%M')
-    if kind != 'template':
+    if kind == 'template':
+        data = build_import_template_bytes()
+        if isinstance(data, BytesIO):
+            data = data.getvalue()
+        filename = f'qhsi_staff_compliance_template_{stamp}.xlsx'
+        display = f'QHSE staff template ({stamp})'
+        return data, filename, display
+    if kind != 'export':
         raise ValueError('Invalid kind for qhsi')
-    data = build_import_template_bytes()
-    if isinstance(data, BytesIO):
-        data = data.getvalue()
-    filename = f'qhsi_staff_compliance_template_{stamp}.xlsx'
-    display = f'QHSE staff template ({stamp})'
-    return data, filename, display
+
+    import pandas as pd
+    from app.models import Submission
+
+    subs = (
+        Submission.query.filter(Submission.module_type == 'qhsi_staff_compliance')
+        .order_by(Submission.created_at.desc())
+        .all()
+    )
+    columns = [
+        'Employee Name', 'Employee ID', 'Project', 'Record Date',
+        'Department', 'Supervisor', 'Item', 'Condition', 'Comments',
+    ]
+    rows = []
+    for sub in subs:
+        fd = sub.form_data or {}
+        kit = fd.get('kit_items') or []
+        base = {
+            'Employee Name': fd.get('employee_name') or '',
+            'Employee ID': fd.get('employee_id') or '',
+            'Project': fd.get('project_name') or sub.site_name or '',
+            'Record Date': fd.get('record_date') or '',
+            'Department': fd.get('department') or '',
+            'Supervisor': fd.get('supervisor_name') or '',
+        }
+        if not kit:
+            rows.append({**base, 'Item': '', 'Condition': '', 'Comments': fd.get('notes') or ''})
+            continue
+        for item in kit:
+            if not isinstance(item, dict):
+                continue
+            rows.append({
+                **base,
+                'Item': item.get('type') or item.get('item') or item.get('name') or '',
+                'Condition': item.get('condition') or '',
+                'Comments': item.get('comments') or '',
+            })
+    df = pd.DataFrame(rows, columns=columns)
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Staff Compliance')
+    filename = f'qhsi_staff_compliance_export_{stamp}.xlsx'
+    display = f'QHSE staff export ({stamp})'
+    return output.getvalue(), filename, display
 
 
 def _build_mmr_bytes(kind: str) -> Tuple[bytes, str, str]:
@@ -513,26 +559,150 @@ def _build_mmr_bytes(kind: str) -> Tuple[bytes, str, str]:
 def _build_devices_bytes(kind: str) -> Tuple[bytes, str, str]:
     import pandas as pd
 
-    if kind != 'template':
-        raise ValueError('Invalid kind for devices')
     stamp = datetime.utcnow().strftime('%Y%m%d_%H%M')
-    rows = [
-        {'Device Name': 'LAPTOP-HQ-001', 'Device Type': 'Laptop', 'OS': 'Windows 11 Pro', 'Status': 'online', 'Health': 96, 'Assigned User Email': 'admin@injaaz.ae', 'Serial / Asset Tag': 'AST-10001'},
-        {'Device Name': 'DESKTOP-FIN-014', 'Device Type': 'Desktop', 'OS': 'Windows 10', 'Status': 'idle', 'Health': 88, 'Assigned User Email': '', 'Serial / Asset Tag': 'AST-10002'},
-    ]
-    df = pd.DataFrame(rows)
+    if kind == 'template':
+        rows = [
+            {'Device Name': 'LAPTOP-HQ-001', 'Device Type': 'Laptop', 'OS': 'Windows 11 Pro', 'Status': 'online', 'Health': 96, 'Assigned User Email': 'admin@injaaz.ae', 'Serial / Asset Tag': 'AST-10001'},
+            {'Device Name': 'DESKTOP-FIN-014', 'Device Type': 'Desktop', 'OS': 'Windows 10', 'Status': 'idle', 'Health': 88, 'Assigned User Email': '', 'Serial / Asset Tag': 'AST-10002'},
+        ]
+        df = pd.DataFrame(rows)
+        filename = f'device_import_sample_{stamp}.xlsx'
+        display = f'Device sample ({stamp})'
+    elif kind == 'export':
+        from app.models import Device
+
+        devices = Device.query.order_by(Device.name.asc()).all()
+        rows = []
+        for d in devices:
+            email = ''
+            if d.assigned_user and d.assigned_user.email:
+                email = d.assigned_user.email
+            rows.append({
+                'Device ID': d.device_id or '',
+                'Device Name': d.name or '',
+                'Device Type': d.device_type or '',
+                'OS': d.os or '',
+                'Status': d.status or '',
+                'Health': d.health if d.health is not None else '',
+                'Assigned User Email': email,
+                'Serial / Asset Tag': d.serial_or_asset_tag or '',
+            })
+        df = pd.DataFrame(rows, columns=[
+            'Device ID', 'Device Name', 'Device Type', 'OS', 'Status',
+            'Health', 'Assigned User Email', 'Serial / Asset Tag',
+        ])
+        filename = f'devices_export_{stamp}.xlsx'
+        display = f'Devices export ({stamp})'
+    else:
+        raise ValueError('Invalid kind for devices')
     output = BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df.to_excel(writer, index=False, sheet_name='Devices')
-    filename = f'device_import_sample_{stamp}.xlsx'
-    display = f'Device sample ({stamp})'
     return output.getvalue(), filename, display
+
+
+def _build_dochub_bytes(kind: str) -> Tuple[bytes, str, str]:
+    import pandas as pd
+    from sqlalchemy import or_
+
+    from app.models import DocHubDocument
+
+    if kind != 'export':
+        raise ValueError('Invalid kind for dochub')
+    stamp = datetime.utcnow().strftime('%Y%m%d_%H%M')
+    docs = (
+        DocHubDocument.query.filter(
+            or_(DocHubDocument.inline_asset.is_(False), DocHubDocument.inline_asset.is_(None))
+        )
+        .order_by(DocHubDocument.updated_at.desc())
+        .all()
+    )
+    columns = [
+        'Title', 'Category', 'Status', 'Type', 'File type', 'Author',
+        'Starred', 'Updated', 'Created', 'Size (bytes)',
+    ]
+    rows = []
+    for d in docs:
+        author = ''
+        if d.author:
+            author = d.author.full_name or d.author.username or ''
+        rows.append({
+            'Title': d.title or '',
+            'Category': d.category or '',
+            'Status': d.status or '',
+            'Type': d.doc_type or '',
+            'File type': d.file_type or '',
+            'Author': author,
+            'Starred': 'Yes' if d.is_starred else 'No',
+            'Updated': d.updated_at.strftime('%Y-%m-%d %H:%M') if d.updated_at else '',
+            'Created': d.created_at.strftime('%Y-%m-%d %H:%M') if d.created_at else '',
+            'Size (bytes)': int(d.size_bytes or 0),
+        })
+    df = pd.DataFrame(rows, columns=columns)
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Documents')
+    filename = f'dochub_library_{stamp}.xlsx'
+    display = f'DocHub library ({stamp})'
+    return output.getvalue(), filename, display
+
+
+def _is_remote_url(path: str) -> bool:
+    return bool(path) and (path.startswith('http://') or path.startswith('https://'))
+
+
+def _read_dochub_document(doc_id: int) -> Tuple[bytes, str, str, str]:
+    """Return (bytes, filename, display_name, mime) for one DocHub document."""
+    import mimetypes
+    import urllib.request
+
+    from app.models import DocHubDocument
+
+    doc = DocHubDocument.query.get(doc_id)
+    if not doc or bool(getattr(doc, 'inline_asset', False)):
+        raise ValueError('Document not found')
+
+    title = (doc.title or f'Document {doc.id}').strip()
+    if (doc.doc_type or 'content') == 'content':
+        html = doc.content or ''
+        safe = secure_filename(title) or f'document_{doc.id}'
+        filename = f'{safe}.html'
+        data = (
+            f'<!DOCTYPE html><html><head><meta charset="utf-8"><title>{title}</title></head>'
+            f'<body>{html}</body></html>'
+        ).encode('utf-8')
+        return data, filename, title, 'text/html; charset=utf-8'
+
+    filename = (doc.filename or '').strip() or f'document_{doc.id}'
+    path = (doc.stored_path or '').strip()
+    data = b''
+    if _is_remote_url(path):
+        req = urllib.request.Request(path, headers={'User-Agent': 'Injaaz-Files/1.0'})
+        with urllib.request.urlopen(req, timeout=120) as resp:
+            data = resp.read()
+    else:
+        candidates = [path]
+        gen = current_app.config.get('GENERATED_DIR') or ''
+        if path and gen and not os.path.isabs(path):
+            candidates.append(os.path.join(gen, path))
+        for candidate in candidates:
+            if candidate and os.path.isfile(candidate):
+                with open(candidate, 'rb') as fh:
+                    data = fh.read()
+                break
+        if not data:
+            raise ValueError(f'File for “{title}” is missing on disk')
+
+    mime = mimetypes.guess_type(filename)[0] or 'application/octet-stream'
+    return data, filename, title, mime
 
 
 def _build_technicians_bytes(kind: str) -> Tuple[bytes, str, str]:
     import openpyxl
     from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 
+    if kind == 'export':
+        return _build_technicians_export_bytes()
     if kind != 'template':
         raise ValueError('Invalid kind for technicians')
     stamp = datetime.utcnow().strftime('%Y%m%d_%H%M')
@@ -562,6 +732,92 @@ def _build_technicians_bytes(kind: str) -> Tuple[bytes, str, str]:
     return buf.getvalue(), filename, display
 
 
+def _build_technicians_export_bytes() -> Tuple[bytes, str, str]:
+    import pandas as pd
+
+    from app.models import Technician
+
+    stamp = datetime.utcnow().strftime('%Y%m%d_%H%M')
+    techs = Technician.query.order_by(Technician.full_name.asc()).all()
+    rows = []
+    for t in techs:
+        rows.append({
+            'Employee ID': t.employee_id or '',
+            'Full Name': t.full_name or '',
+            'Designation': t.designation or '',
+            'Department': t.department or '',
+            'Specialization': t.specialization or '',
+            'Phone': t.phone or '',
+            'Email': t.email or '',
+            'Salary': t.salary if t.salary is not None else '',
+            'Joining Date': t.joining_date.isoformat() if t.joining_date else '',
+            'Status': t.status or '',
+            'Supervisor User ID': t.supervisor_user_id if t.supervisor_user_id is not None else '',
+            'Notes': t.notes or '',
+        })
+    df = pd.DataFrame(rows, columns=[
+        'Employee ID', 'Full Name', 'Designation', 'Department',
+        'Specialization', 'Phone', 'Email', 'Salary', 'Joining Date',
+        'Status', 'Supervisor User ID', 'Notes',
+    ])
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Technicians')
+    filename = f'technicians_export_{stamp}.xlsx'
+    display = f'Technicians export ({stamp})'
+    return output.getvalue(), filename, display
+
+
+def _parse_ticket_kind(kind: str) -> Tuple[int, str]:
+    parts = (kind or '').split(':')
+    if len(parts) != 3 or parts[0] != 'ticket' or parts[2] not in ('report', 'invoice'):
+        raise ValueError('Invalid ticket save kind')
+    try:
+        return int(parts[1]), parts[2]
+    except (TypeError, ValueError):
+        raise ValueError('Invalid ticket id') from None
+
+
+def _build_closed_ticket_pdf(kind: str, created_by: Optional[int]) -> Tuple[bytes, str, str]:
+    """Regenerate a closed work order service report or invoice PDF."""
+    from app.models import Ticket, TicketNote, User
+    from module_ticketing.routes import _can_user_view_ticket
+
+    ticket_pk, artifact = _parse_ticket_kind(kind)
+    ticket = db.session.get(Ticket, ticket_pk)
+    if not ticket:
+        raise ValueError('Ticket not found')
+    if (ticket.status or '') != 'closed':
+        raise ValueError('Only closed work orders can be saved')
+    user = db.session.get(User, created_by) if created_by else None
+    if user is not None and not _can_user_view_ticket(user, ticket):
+        raise ValueError('You cannot save this work order')
+
+    materials = ticket.materials.all()
+    manpower_entries = ticket.manpower.all()
+    buf = BytesIO()
+    code = ticket.ticket_id or f'ticket-{ticket.id}'
+
+    if artifact == 'report':
+        from module_ticketing.ticket_pdf_builder import build_ticket_pdf
+        notes = ticket.notes.order_by(TicketNote.created_at.asc()).all()
+        images = ticket.images.all()
+        build_ticket_pdf(ticket, notes, images, materials, manpower_entries, buf)
+        filename = f'{code}_report.pdf'
+        display = f'{code} — Service report'
+    else:
+        if ticket.selling_price is None:
+            from module_ticketing.routes import _recalc_total_cost
+            _recalc_total_cost(ticket)
+            db.session.commit()
+        from module_ticketing.ticket_invoice_builder import build_invoice_pdf
+        build_invoice_pdf(ticket, materials, manpower_entries, buf)
+        filename = f'{code}_invoice.pdf'
+        display = f'{code} — Invoice'
+
+    return buf.getvalue(), filename, display
+
+
 def save_from_module(module: str, kind: str, created_by: Optional[int]) -> Tuple[FilesItem, str]:
     """Build Excel via existing helpers and store in Files. Returns (item, folder_label)."""
     mod = (module or '').strip().lower()
@@ -569,6 +825,43 @@ def save_from_module(module: str, kind: str, created_by: Optional[int]) -> Tuple
     catalog = get_module_catalog(mod)
     if not catalog:
         raise ValueError(f'Unsupported module: {module}')
+
+    # DocHub: copy a specific library document into Files
+    if mod == 'dochub' and kind.startswith('doc:'):
+        try:
+            doc_id = int(kind.split(':', 1)[1])
+        except (TypeError, ValueError):
+            raise ValueError('Invalid DocHub document id') from None
+        data, filename, display, mime = _read_dochub_document(doc_id)
+        folder = get_folder_by_path_key(catalog['folder_path_key'], created_by=created_by)
+        item = save_bytes_to_folder(
+            folder=folder,
+            data=data,
+            display_name=display,
+            filename=filename,
+            mime_type=mime,
+            source_module=mod,
+            source_kind=kind,
+            created_by=created_by,
+        )
+        return item, catalog.get('folder_label') or folder.name
+
+    # Service Tickets: regenerate closed-ticket PDFs into Files
+    if mod == 'ticketing' and kind.startswith('ticket:'):
+        data, filename, display = _build_closed_ticket_pdf(kind, created_by)
+        folder = get_folder_by_path_key(catalog['folder_path_key'], created_by=created_by)
+        item = save_bytes_to_folder(
+            folder=folder,
+            data=data,
+            display_name=display,
+            filename=filename,
+            mime_type=PDF_MIME,
+            source_module=mod,
+            source_kind=kind,
+            created_by=created_by,
+        )
+        return item, catalog.get('folder_label') or folder.name
+
     kinds = {o['kind'] for o in catalog['options']}
     if kind not in kinds:
         raise ValueError(f'Unsupported kind for {mod}: {kind}')
@@ -582,6 +875,7 @@ def save_from_module(module: str, kind: str, created_by: Optional[int]) -> Tuple
         'mmr': _build_mmr_bytes,
         'devices': _build_devices_bytes,
         'technicians': _build_technicians_bytes,
+        'dochub': _build_dochub_bytes,
     }
     builder = builders.get(mod)
     if not builder:
@@ -601,3 +895,31 @@ def save_from_module(module: str, kind: str, created_by: Optional[int]) -> Tuple
     )
     folder_label = catalog.get('folder_label') or folder.name
     return item, folder_label
+
+
+def save_from_module_many(module: str, kinds: list, created_by: Optional[int]) -> dict:
+    """Save each kind independently. One failure does not block the rest."""
+    seen = set()
+    items = []
+    failed = []
+    folder_label = ''
+    catalog = get_module_catalog((module or '').strip().lower())
+    if catalog:
+        folder_label = catalog.get('folder_label') or ''
+    for raw in kinds or []:
+        kind = str(raw or '').strip().lower()
+        if not kind or kind in seen:
+            continue
+        seen.add(kind)
+        try:
+            item, folder_label = save_from_module(module, kind, created_by=created_by)
+            items.append(item)
+        except Exception as exc:
+            logger.exception('save-from-module kind=%s failed', kind)
+            failed.append({'kind': kind, 'error': str(exc)})
+    return {
+        'items': items,
+        'saved': len(items),
+        'failed': failed,
+        'folder_label': folder_label,
+    }

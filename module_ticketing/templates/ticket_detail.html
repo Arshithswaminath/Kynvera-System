@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=22">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/ticketing.css') }}">
   <style>
@@ -1280,7 +1280,16 @@
                           data-status="{{ ticket.status }}">…</span>
                   {% else %}—{% endif %}
                 </td></tr>
-                <tr><td>FM Asset</td><td>{% if ticket.fm_asset %}<a href="/assets/{{ ticket.fm_asset.asset_id }}">{{ ticket.fm_asset.asset_id }} — {{ ticket.fm_asset.name }}</a>{% else %}—{% endif %}</td></tr>
+                <tr><td>FM Asset{% if ticket.linked_assets_list()|length > 1 %}s{% endif %}</td><td>
+                  {% set linked = ticket.linked_assets_list() %}
+                  {% if linked %}
+                    <div style="display:flex;flex-direction:column;gap:4px;">
+                      {% for a in linked %}
+                        <a href="/assets/{{ a.asset_id }}">{{ a.asset_id }} — {{ a.name }}</a>
+                      {% endfor %}
+                    </div>
+                  {% else %}—{% endif %}
+                </td></tr>
                 <tr><td>Status</td><td><span class="tkt-badge badge-status-{{ ticket.status }}" id="sidebarStatus">{{ ticket.status|tkt_status_label }}</span></td></tr>
                 <tr><td>Reporter</td><td>{{ ticket.reporter.full_name if ticket.reporter else '—' }}</td></tr>
                 <tr><td>Supervisor</td><td>{{ ticket.supervisor.full_name if ticket.supervisor else '<span style="color:#94a3b8;">Not assigned</span>'|safe }}</td></tr>
@@ -2940,6 +2949,8 @@ document.getElementById('confirmOpsCloseBtn')?.addEventListener('click', async (
 })();
 </script>
 <script src="{{ url_for('static', filename='js/dashboard.js') }}" defer></script>
+<script>window.FILES_SAVE_MODULE = 'ticketing'; window.FILES_SAVE_MODULE_LABEL = 'Service Tickets'; window.FILES_SAVE_TICKET_STATUS = {{ (ticket.status if ticket is defined else '')|tojson }};</script>
+<script src="{{ url_for('static', filename='js/files-save.js') }}?v=18"></script>
 <script>
   function tktOpenMobileSidebar(){const s=document.getElementById('tktDhSidebar');if(s)s.classList.add('open');}
   function tktCloseMobileSidebar(){const s=document.getElementById('tktDhSidebar');if(s)s.classList.remove('open');}

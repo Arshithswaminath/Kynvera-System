@@ -21,7 +21,7 @@ from app.models import FilesItem, User, db
 from common.error_responses import error_response, success_response
 from module_files import drive_service
 from module_files import service as files_service
-from module_files.catalog import get_module_catalog, list_catalog
+from module_files.catalog import expand_module_catalog, get_module_catalog, list_catalog
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +89,11 @@ def api_catalog():
         cat = get_module_catalog(module)
         if not cat:
             return error_response('Unknown module', status_code=404)
+        try:
+            cat = expand_module_catalog(module, cat, user=user)
+        except Exception:
+            logger.exception('expand_module_catalog failed for module=%s', module)
+            cat = {**cat, 'options': list(cat.get('options') or [])}
         return success_response({'module': module, **cat})
     return success_response(list_catalog())
 
@@ -122,24 +127,41 @@ def api_save_from_module():
         return err
     data = request.get_json(silent=True) or {}
     module = (data.get('module') or '').strip().lower()
+    kinds = data.get('kinds')
+    if not isinstance(kinds, list):
+        kinds = []
     kind = (data.get('kind') or '').strip().lower()
+    if kind and kind not in [str(k).strip().lower() for k in kinds]:
+        kinds.append(kind)
+    kinds = [str(k).strip().lower() for k in kinds if str(k or '').strip()]
+    if not kinds:
+        return error_response('Select at least one file to save', status_code=400)
     try:
-        item, folder_label = files_service.save_from_module(module, kind, created_by=user.id)
+        result = files_service.save_from_module_many(module, kinds, created_by=user.id)
     except ValueError as ve:
         return error_response(str(ve), status_code=400)
     except Exception as e:
         logger.exception('save-from-module failed')
         return error_response(f'Could not save file: {e}', status_code=500)
+    if not result['saved'] and result['failed']:
+        first = result['failed'][0].get('error') or 'Could not save files'
+        return error_response(first, status_code=400)
+    folder_label = result.get('folder_label') or 'Files'
+    saved = result['saved']
+    noun = 'file' if saved == 1 else 'files'
     return success_response(
         {
-            'item': item.to_dict(),
+            'item': result['items'][0].to_dict() if result['items'] else None,
+            'items': [i.to_dict() for i in result['items']],
+            'saved': saved,
+            'failed': result['failed'],
             'folder_label': folder_label,
             'module': module,
             'module_label': (get_module_catalog(module) or {}).get('label') or module,
-            'message': f'Saved to Files → {folder_label}. Open Files to sync to Google Drive.',
+            'message': f'Saved {saved} {noun} to Files → {folder_label}. Open Files to sync to Google Drive.',
             'files_url': '/files/',
         },
-        message=f'Saved to Files → {folder_label}',
+        message=f'Saved {saved} {noun} to Files → {folder_label}',
     )
 
 

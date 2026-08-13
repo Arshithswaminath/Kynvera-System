@@ -3,8 +3,8 @@
 <head>
   {% include 'partials/base_head.html' %}
   <title>DocHub — Document Management | Injaaz</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=23">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}?v=24">
 </head>
 <body class="has-main-nav dochub-page-v2">
   {% set active_page = 'dochub' %}
@@ -174,6 +174,9 @@
         </div>
       </nav>
 
+      {% set files_save_label = 'DocHub' %}
+      {% include 'partials/files_save_menu_card.html' %}
+
       <div class="sb-footer">
         <div class="sb-user-row" onclick="if(typeof openProfileModal==='function'){openProfileModal();}" role="button" tabindex="0">
           <div class="sb-avatar" id="dhUserAv">—</div>
@@ -194,6 +197,7 @@
           </div>
           <button type="button" class="btn btn-ghost" id="dhNewDocBtn" onclick="openNewModal()">New</button>
           <button type="button" class="btn btn-ghost" id="dhUploadBtn" onclick="openUploadModal()">Upload</button>
+          <button type="button" class="btn btn-ghost" id="dhSaveToFilesBtn" title="Save document library to Kynvera Files">Save to Files</button>
           <button type="button" class="btn btn-ghost" id="dhAdminAccessBtn" style="display:none" onclick="dhOpenAccessModal()">Access</button>
         </div>
       </div>
@@ -640,5 +644,7 @@
   <script src="{{ url_for('static', filename='api-client.js') }}"></script>
   <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
   <script src="{{ url_for('static', filename='js/dochub.js') }}"></script>
+  <script>window.FILES_SAVE_MODULE = 'dochub'; window.FILES_SAVE_MODULE_LABEL = 'DocHub';</script>
+  <script src="{{ url_for('static', filename='js/files-save.js') }}?v=16"></script>
 </body>
 </html>

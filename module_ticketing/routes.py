@@ -31,7 +31,7 @@ from app.models import (
     TicketMaterial, TicketManpower, Notification,
     TicketProject, TicketProperty, TicketZone, TicketSubZone,
     TicketBaseUnit, TicketTitleTemplate, TicketSupervisorTeam,
-    BDProject, TicketEmailIntake, Asset, TicketTriageLog,
+    BDProject, TicketEmailIntake, Asset, TicketTriageLog, TicketAsset,
 )
 from module_ticketing.tz_utils import to_gst, GST_OFFSET
 
@@ -1119,6 +1119,7 @@ def new_ticket_form():
         procurement_materials=procurement_materials,
         sidebar_stats=_get_sidebar_stats(user),
         active_page='ticketing',
+        google_maps_api_key=(current_app.config.get('GOOGLE_MAPS_API_KEY') or ''),
     )
 
 
@@ -1536,19 +1537,36 @@ def create_ticket():
         status='pending_supervisor',
     )
 
-    # Optional FM asset link + AI-suggested SLA (human may have accepted on create form)
+    # Optional FM asset link(s) + AI-suggested SLA (human may have accepted on create form)
     asset_pk = data.get('asset_id')
     asset_code = (data.get('asset_code') or '').strip()
-    linked_asset = None
-    if asset_pk:
+    raw_codes = data.get('asset_codes')
+    if not isinstance(raw_codes, list):
+        raw_codes = []
+    asset_codes = []
+    for code in raw_codes:
+        c = (str(code) if code is not None else '').strip()
+        if c and c not in asset_codes:
+            asset_codes.append(c)
+    if not asset_codes and asset_code:
+        asset_codes = [asset_code]
+
+    linked_assets = []
+    if asset_pk and not asset_codes:
         try:
-            linked_asset = Asset.query.get(int(asset_pk))
+            one = Asset.query.get(int(asset_pk))
+            if one:
+                linked_assets = [one]
         except (TypeError, ValueError):
-            linked_asset = None
-    elif asset_code:
-        linked_asset = Asset.query.filter_by(asset_id=asset_code).first()
-    if linked_asset:
-        ticket.asset_id = linked_asset.id
+            linked_assets = []
+    elif asset_codes:
+        for code in asset_codes:
+            a = Asset.query.filter_by(asset_id=code).first()
+            if a and a not in linked_assets:
+                linked_assets.append(a)
+
+    if linked_assets:
+        ticket.asset_id = linked_assets[0].id
     if data.get('sla_hours') not in (None, ''):
         try:
             ticket.sla_hours = max(1, min(72, int(data['sla_hours'])))
@@ -1557,6 +1575,13 @@ def create_ticket():
 
     db.session.add(ticket)
     db.session.flush()  # get ticket.id
+
+    for i, asset in enumerate(linked_assets):
+        db.session.add(TicketAsset(
+            ticket_id=ticket.id,
+            asset_pk=asset.id,
+            is_primary=(i == 0),
+        ))
 
     # Link triage log if create form accepted an AI suggestion
     triage_log_id = data.get('triage_log_id')

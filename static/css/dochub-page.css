@@ -1,10 +1,10 @@
 /**
  * DocHub page — layout from product mock, themed with Injaaz tokens (green brand, system UI / SF).
- * Nav offset matches BizFlow / BD (`admin_bd_module.html`): fixed bar ≈ 5.5rem — do not use a larger
- * value or a white strip appears between the global nav and DocHub.
+ * Nav offset must match dashboard.css `--nav-bar-h` (not a larger fixed rem) or a gray strip
+ * appears between the fixed global nav and the DocHub shell.
  */
 body.dochub-page-v2.has-main-nav {
-  --nav-offset: 5.5rem;
+  --nav-offset: var(--nav-bar-h, calc(40px + 1.75rem + env(safe-area-inset-top, 0px)));
   padding-top: var(--nav-offset) !important;
   /* Lock to viewport so the DocHub shell can fill the area below the fixed nav */
   min-height: 100dvh;
@@ -149,27 +149,6 @@ body.dochub-page-v2 * {
   overflow: hidden;
   z-index: 100;
   position: relative;
-}
-
-.dh-sidebar::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(ellipse 180px 200px at 30px 40px, rgba(255, 142, 104, 0.35) 0%, transparent 70%);
-  pointer-events: none;
-}
-
-/* BizFlow-style large watermark circles */
-.dh-sidebar::after {
-  content: '';
-  position: absolute;
-  bottom: -60px;
-  left: -60px;
-  width: 200px;
-  height: 200px;
-  background: rgba(255, 255, 255, 0.04);
-  border-radius: 50%;
-  pointer-events: none;
 }
 
 .dh-sb-section {
@@ -778,7 +757,7 @@ body.dochub-page-v2.has-main-nav .nav.scrolled {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  max-height: calc(100vh - var(--topbar-h) - var(--nav-offset, 5.5rem) - 48px);
+  max-height: calc(100vh - var(--topbar-h) - var(--nav-offset) - 48px);
 }
 
 .doc-panel-header {
@@ -1033,7 +1012,7 @@ body.dochub-page-v2.has-main-nav .nav.scrolled {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  max-height: calc(100vh - var(--topbar-h) - var(--nav-offset, 5.5rem) - 48px);
+  max-height: calc(100vh - var(--topbar-h) - var(--nav-offset) - 48px);
 }
 
 .editor-topbar {
@@ -3631,7 +3610,7 @@ body.dochub-page-v2 .modal-overlay .modal {
   .dh-page-root .dh-sidebar {
     position: fixed;
     left: 0;
-    top: var(--nav-offset, 5.5rem);
+    top: var(--nav-offset);
     bottom: 0;
     height: auto;
     z-index: 160;

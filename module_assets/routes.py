@@ -13,7 +13,7 @@ from sqlalchemy import func, inspect, text
 
 from app.models import (
     db, User, Asset, Ticket, AssetPrediction, FloorPlan,
-    PortfolioForecast, OutboundWebhook, IntegrationApiKey,
+    PortfolioForecast, OutboundWebhook, IntegrationApiKey, TicketAsset,
 )
 from common.fm_integration import (
     fm_log_audit, dispatch_webhooks, jwt_or_api_key_required, create_api_key,
@@ -388,8 +388,15 @@ def assets_detail_page(asset_code):
     if not _has_access(user):
         return redirect('/dashboard')
     asset = Asset.query.filter_by(asset_id=asset_code).first_or_404()
+    link_ticket_ids = [
+        row.ticket_id
+        for row in TicketAsset.query.filter_by(asset_pk=asset.id).all()
+    ]
+    filters = [Ticket.asset_id == asset.id]
+    if link_ticket_ids:
+        filters.append(Ticket.id.in_(link_ticket_ids))
     tickets = (
-        Ticket.query.filter_by(asset_id=asset.id)
+        Ticket.query.filter(db.or_(*filters))
         .order_by(Ticket.created_at.desc())
         .limit(20)
         .all()

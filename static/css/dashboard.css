@@ -208,18 +208,6 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
   margin-right: 1.5rem;
 }
 
-.nav-center {
-  grid-column: 2;
-  justify-self: end;
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  min-width: 0;
-  max-width: 100%;
-  /* Allow mega-menu / dropdown panels to paint below the bar (overflow:hidden clips them on hover). */
-  overflow: visible;
-}
-
 .logo:hover {
   opacity: 0.85;
 }
@@ -281,24 +269,47 @@ body.dm-device-mgmt-page.has-main-nav .nav.scrolled {
   text-overflow: ellipsis;
 }
 
-/* Mobile menu toggle (hidden by default) */
+/* Menu toggle — always visible; module links live in the drawer */
 .mobile-menu-toggle {
-  display: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
   background: transparent;
   border: none;
   cursor: pointer;
-  padding: 0.5rem;
+  padding: 0;
   border-radius: 8px;
-  color: var(--text-mid);
+  color: #374151;
   transition: background 0.15s ease, color 0.15s ease;
 }
 
 .mobile-menu-toggle:hover {
-  background: var(--bg-light);
-  color: var(--text-dark);
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--primary);
 }
 
-/* Mobile drawer and overlay - hidden on desktop (shown when nav gets tight) */
+/* Source list stays in DOM for drawer clone; never shown in the top bar */
+.nav-center {
+  grid-column: 2;
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.nav-center .nav-menu {
+  display: none;
+}
+
+/* Drawer host — shown when .active; positioned in the always-on nav block below */
 .mobile-menu-drawer {
   display: none;
 }
@@ -1950,9 +1961,10 @@ body.hr-dashboard .footer {
 }
 
 /* ===========================================
-   Responsive - Nav collapse (show hamburger when nav would overlap welcome)
+   Nav menu — always in hamburger drawer (all resolutions).
+   Modules never expand into the top nav bar on wide screens.
    =========================================== */
-@media (max-width: 2500px) {
+@media (min-width: 0) {
   .nav-container {
     padding: 0 1.5rem !important;
     min-height: var(--nav-inner-h) !important;
@@ -2042,8 +2054,7 @@ body.hr-dashboard .footer {
     transform: translateX(105%) !important;
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease !important;
     z-index: 1200 !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
+    overflow: hidden !important;
     -webkit-overflow-scrolling: touch !important;
     border-left: 1px solid var(--border-color) !important;
     visibility: hidden !important;
@@ -2060,10 +2071,14 @@ body.hr-dashboard .footer {
   .mobile-menu-drawer-list {
     list-style: none !important;
     margin: 0 !important;
-    padding: 0.35rem 0 !important;
+    padding: 0.35rem 0 0.5rem !important;
     display: flex !important;
     flex-direction: column !important;
     flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
   }
 
   .mobile-menu-app-name {
@@ -2077,6 +2092,221 @@ body.hr-dashboard .footer {
     background: none !important;
     border: none !important;
     flex-shrink: 0 !important;
+  }
+
+  /* Save to Files — pinned under scrollable module list */
+  .mobile-menu-drawer .files-menu-footer {
+    flex: 0 0 auto !important;
+    position: relative !important;
+    z-index: 2 !important;
+    margin: 0 0.85rem calc(0.85rem + env(safe-area-inset-bottom, 0px)) !important;
+    padding: 0.7rem 0.75rem !important;
+    border-radius: 12px !important;
+    border: 1px solid rgba(255, 142, 104, 0.28) !important;
+    background: #fff !important;
+    box-shadow: none !important;
+  }
+  .mobile-menu-drawer .files-menu-footer-top {
+    display: flex !important;
+    align-items: flex-start !important;
+    gap: 0.65rem !important;
+    margin: 0 0 0.65rem !important;
+  }
+  .mobile-menu-drawer .files-menu-footer-icon {
+    flex: 0 0 auto !important;
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 9px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: #ff8e68 !important;
+    color: #fff !important;
+  }
+  .mobile-menu-drawer .files-menu-footer-icon svg {
+    width: 16px !important;
+    height: 16px !important;
+    display: block !important;
+  }
+  .mobile-menu-drawer .files-menu-footer-title {
+    margin: 0 !important;
+    padding: 0 !important;
+    font-size: 0.8125rem !important;
+    font-weight: 700 !important;
+    color: #1f2937 !important;
+    line-height: 1.2 !important;
+    letter-spacing: 0 !important;
+  }
+  .mobile-menu-drawer .files-menu-footer-hint {
+    margin: 0.2rem 0 0 !important;
+    padding: 0 !important;
+    font-size: 0.72rem !important;
+    font-weight: 500 !important;
+    line-height: 1.35 !important;
+    color: #7c5a4e !important;
+  }
+  .mobile-menu-drawer .files-menu-footer-mod {
+    font-weight: 700 !important;
+    color: #e05f36 !important;
+  }
+  .mobile-menu-drawer .files-menu-footer-actions {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+  }
+  .mobile-menu-drawer .files-save-menu-link {
+    flex: 1 1 auto !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: auto !important;
+    min-height: 36px !important;
+    padding: 0.4rem 0.7rem !important;
+    margin: 0 !important;
+    border: none !important;
+    border-radius: 9px !important;
+    background: #ff8e68 !important;
+    color: #fff !important;
+    font-size: 0.78rem !important;
+    font-weight: 700 !important;
+    text-decoration: none !important;
+    box-shadow: none !important;
+    cursor: pointer !important;
+  }
+  .mobile-menu-drawer .files-save-menu-link:hover,
+  .mobile-menu-drawer .files-save-menu-link:active {
+    background: #f97e54 !important;
+    color: #fff !important;
+    text-decoration: none !important;
+  }
+  .mobile-menu-drawer .files-menu-footer-open {
+    flex: 0 0 auto !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: auto !important;
+    min-height: 36px !important;
+    padding: 0.35rem 0.65rem !important;
+    margin: 0 !important;
+    border-radius: 9px !important;
+    border: 1px solid rgba(224, 95, 54, 0.28) !important;
+    background: #fff !important;
+    color: #e05f36 !important;
+    font-size: 0.75rem !important;
+    font-weight: 600 !important;
+    text-decoration: none !important;
+  }
+  .mobile-menu-drawer .files-menu-footer-open:hover,
+  .mobile-menu-drawer .files-menu-footer-open:active {
+    background: #fff8f5 !important;
+    color: #e05f36 !important;
+    text-decoration: none !important;
+  }
+
+  /* Shared Files CTA inside light module sidebars (Devices / Team) */
+  .dh-sidebar .files-menu-footer--sidebar,
+  .tm-sidebar .files-menu-footer--sidebar,
+  .dm-root .files-menu-footer--sidebar {
+    flex: 0 0 auto;
+    margin: 0.5rem 0.75rem 0.65rem;
+    padding: 0.7rem 0.75rem;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 142, 104, 0.28);
+    background: #fff;
+    box-shadow: none;
+  }
+  .dh-sidebar .files-menu-footer-top,
+  .tm-sidebar .files-menu-footer-top,
+  .dm-root .files-menu-footer-top {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    margin: 0 0 0.65rem;
+  }
+  .dh-sidebar .files-menu-footer-icon,
+  .tm-sidebar .files-menu-footer-icon,
+  .dm-root .files-menu-footer-icon {
+    flex: 0 0 auto;
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #ff8e68;
+    color: #fff;
+  }
+  .dh-sidebar .files-menu-footer-icon svg,
+  .tm-sidebar .files-menu-footer-icon svg,
+  .dm-root .files-menu-footer-icon svg {
+    width: 16px;
+    height: 16px;
+    display: block;
+  }
+  .dh-sidebar .files-menu-footer-title,
+  .tm-sidebar .files-menu-footer-title,
+  .dm-root .files-menu-footer-title {
+    margin: 0;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: #1f2937;
+    line-height: 1.2;
+  }
+  .dh-sidebar .files-menu-footer-hint,
+  .tm-sidebar .files-menu-footer-hint,
+  .dm-root .files-menu-footer-hint {
+    margin: 0.2rem 0 0;
+    font-size: 0.72rem;
+    font-weight: 500;
+    line-height: 1.35;
+    color: #7c5a4e;
+  }
+  .dh-sidebar .files-menu-footer-mod,
+  .tm-sidebar .files-menu-footer-mod,
+  .dm-root .files-menu-footer-mod {
+    font-weight: 700;
+    color: #e05f36;
+  }
+  .dh-sidebar .files-menu-footer-actions,
+  .tm-sidebar .files-menu-footer-actions,
+  .dm-root .files-menu-footer-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .dh-sidebar .files-save-menu-link,
+  .tm-sidebar .files-save-menu-link,
+  .dm-root .files-save-menu-link {
+    flex: 1 1 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 36px;
+    padding: 0.4rem 0.7rem;
+    border: none;
+    border-radius: 9px;
+    background: #ff8e68;
+    color: #fff;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .dh-sidebar .files-menu-footer-open,
+  .tm-sidebar .files-menu-footer-open,
+  .dm-root .files-menu-footer-open {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 36px;
+    padding: 0.35rem 0.65rem;
+    border-radius: 9px;
+    border: 1px solid rgba(224, 95, 54, 0.28);
+    background: #fff;
+    color: #e05f36;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-decoration: none;
   }
 
   .mobile-menu-drawer-list li {

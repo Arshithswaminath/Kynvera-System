@@ -389,6 +389,25 @@ a.tkt-stat-card:focus-visible {
 }
 .tkt-table tbody tr:last-child { border-bottom: none; }
 .tkt-table tbody tr:hover { background: var(--tkt-surface-2); }
+.tkt-table tbody tr.tkt-row-clickable {
+  position: relative;
+  cursor: pointer;
+}
+.tkt-table tbody tr.tkt-row-clickable:hover { background: var(--tkt-surface-2); }
+.tkt-row-stretch::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+.tkt-table td a.tkt-row-stretch:hover {
+  color: var(--tkt-text);
+  text-decoration: none;
+}
+.tkt-table tbody tr.tkt-row-clickable .tkt-btn {
+  position: relative;
+  z-index: 2;
+}
 .tkt-table td { padding: 12px 14px; vertical-align: middle; color: var(--tkt-text-2); }
 .tkt-table td a { color: var(--tkt-text); font-weight: 600; text-decoration: none; }
 .tkt-table td a:hover { color: var(--tkt-accent-strong); text-decoration: underline; }

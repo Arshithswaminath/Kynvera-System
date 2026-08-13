@@ -1237,6 +1237,13 @@ class Ticket(db.Model):
                                  backref=db.backref('technician_tickets', lazy='dynamic'))
     fm_asset = db.relationship('Asset', foreign_keys=[asset_id],
                                backref=db.backref('tickets', lazy='dynamic'))
+    asset_links = db.relationship(
+        'TicketAsset',
+        back_populates='ticket',
+        cascade='all, delete-orphan',
+        lazy='selectin',
+        order_by='TicketAsset.id',
+    )
     notes = db.relationship('TicketNote', backref='ticket',
                             lazy='dynamic', cascade='all, delete-orphan',
                             order_by='TicketNote.created_at')
@@ -1246,6 +1253,34 @@ class Ticket(db.Model):
                                 lazy='dynamic', cascade='all, delete-orphan')
     manpower = db.relationship('TicketManpower', backref='ticket',
                                lazy='dynamic', cascade='all, delete-orphan')
+
+    def linked_assets_list(self):
+        """All linked FM assets (junction first, else legacy primary)."""
+        links = list(self.asset_links or [])
+        if links:
+            out = []
+            seen = set()
+            for link in links:
+                asset = link.asset
+                if not asset or asset.id in seen:
+                    continue
+                seen.add(asset.id)
+                out.append(asset)
+            return out
+        if self.fm_asset:
+            return [self.fm_asset]
+        return []
+
+    def linked_assets_dict(self):
+        return [
+            {
+                'id': a.id,
+                'asset_id': a.asset_id,
+                'name': a.name,
+                'building': getattr(a, 'building', None),
+            }
+            for a in self.linked_assets_list()
+        ]
 
     def to_dict(self):
         return {
@@ -1281,6 +1316,7 @@ class Ticket(db.Model):
             'asset_id': self.asset_id,
             'asset_code': self.fm_asset.asset_id if self.fm_asset else None,
             'asset_name': self.fm_asset.name if self.fm_asset else None,
+            'linked_assets': self.linked_assets_dict(),
             'sla_hours': self.sla_hours,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
@@ -1293,6 +1329,26 @@ class Ticket(db.Model):
 
     def __repr__(self):
         return f'<Ticket {self.ticket_id} [{self.status}]>'
+
+
+class TicketAsset(db.Model):
+    """Many-to-many link between work orders and FM assets."""
+    __tablename__ = 'ticket_assets'
+    __table_args__ = (
+        db.UniqueConstraint('ticket_id', 'asset_pk', name='uq_ticket_asset'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    ticket_id = db.Column(db.Integer, db.ForeignKey('tickets.id', ondelete='CASCADE'), nullable=False, index=True)
+    asset_pk = db.Column(db.Integer, db.ForeignKey('fm_assets.id', ondelete='CASCADE'), nullable=False, index=True)
+    is_primary = db.Column(db.Boolean, default=False, nullable=False)
+    created_at = db.Column(db.DateTime, default=_utcnow)
+
+    ticket = db.relationship('Ticket', back_populates='asset_links')
+    asset = db.relationship('Asset', backref=db.backref('ticket_links', lazy='dynamic'))
+
+    def __repr__(self):
+        return f'<TicketAsset ticket={self.ticket_id} asset={self.asset_pk}>'
 
 
 class Asset(db.Model):

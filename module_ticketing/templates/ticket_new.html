@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=22">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/ticketing.css') }}">
   <style>
@@ -47,9 +47,32 @@
       height: 100%;
       display: flex;
       flex-direction: column;
+      overflow: visible;
     }
     .new-tkt-form-split > .tkt-card > .tkt-card-body {
-      flex: 1;
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    /* Pin Location readiness + AI triage; fill leftover column height */
+    .new-tkt-form-split > .tkt-card > .tkt-card-body > .new-tkt-loc-assist,
+    .new-tkt-form-split > .tkt-card > .tkt-card-body > .tkt-ai-triage {
+      margin-top: auto;
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      min-height: 120px;
+    }
+    /* Thin gap above the flex-grown AI / readiness panels */
+    .new-tkt-form-split > .tkt-card > .tkt-card-body > .priority-pill-group:has(+ .tkt-ai-triage),
+    .new-tkt-form-split > .tkt-card > .tkt-card-body > .tkt-field:has(+ .tkt-ai-triage),
+    .new-tkt-form-split > .tkt-card > .tkt-card-body > *:has(+ .new-tkt-loc-assist) {
+      margin-bottom: 12px;
+    }
+    .new-tkt-form-split > .tkt-card > .tkt-card-body > .tkt-ai-triage + .tkt-asset-multi-field {
+      flex: 0 0 auto;
+      margin-top: 14px;
     }
 
     /* Complaint panel: SG + Category on one row; fault full-width (narrow column-friendly) */
@@ -148,11 +171,57 @@
     }
     .tkt-ac-item:hover, .tkt-ac-item.focused { background: #fff5f0; }
     .tkt-ac-item:last-child { border-bottom: none; }
-    .tkt-select-expanded {
+    .tkt-ac-item.is-selected { background: #fff5f0; font-weight: 600; }
+
+    /* Overlay combobox — floats over the form instead of expanding in-flow */
+    .tkt-combo { position: relative; }
+    .tkt-combo-native {
+      position: absolute !important;
+      width: 1px !important;
+      height: 1px !important;
+      padding: 0 !important;
+      margin: -1px !important;
+      overflow: hidden !important;
+      clip: rect(0, 0, 0, 0) !important;
+      border: 0 !important;
+      pointer-events: none;
+    }
+    .tkt-combo-input { padding-right: 36px; }
+    .tkt-combo-chevron {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 16px;
+      height: 16px;
+      color: #94a3b8;
+      pointer-events: none;
+      transition: transform .15s ease;
+    }
+    .tkt-combo.is-open .tkt-combo-chevron { transform: translateY(-50%) rotate(180deg); color: var(--tkt-accent); }
+    .tkt-combo.is-open .tkt-combo-input {
+      border-color: var(--tkt-accent);
+      box-shadow: 0 0 0 3px var(--tkt-accent-ring);
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+    .tkt-combo.is-open { z-index: 120; }
+    .tkt-field:has(.tkt-combo.is-open) { z-index: 120; }
+    .tkt-combo.is-disabled .tkt-combo-input {
+      background: #f8fafc;
+      color: #94a3b8;
+      cursor: not-allowed;
+    }
+    .tkt-combo-empty {
+      padding: 12px 14px;
+      font-size: .82rem;
+      color: #94a3b8;
+    }
+    .new-tkt-location-step-grid .tkt-field,
+    .new-tkt-complaint-topgrid .tkt-field,
+    .tkt-field.new-tkt-complaint-fault {
       position: relative;
-      z-index: 60;
-      box-shadow: 0 8px 24px rgba(23,25,35,.12);
-      border-radius: 10px;
+      z-index: 1;
     }
     .tkt-ac-icon { flex-shrink: 0; opacity: .5; }
     .tkt-ac-source { font-size: .7rem; color: #94a3b8; margin-left: auto; white-space: nowrap; }
@@ -177,25 +246,639 @@
       line-height: 1.35;
     }
 
-    /* ── Auto-desc indicator ── */
+    /* ── Auto-desc indicator (hidden = no layout gap) ── */
     .tkt-auto-desc-bar {
-      display: flex; align-items: center; gap: 8px; font-size: .78rem;
-      color: #c2440c; margin-bottom: 6px; padding: 6px 10px;
+      display: none;
+      align-items: center; gap: 8px; font-size: .78rem;
+      color: #c2440c; margin-bottom: 10px; padding: 6px 10px;
       background: #fff5f0; border-radius: 6px;
       border: 1px solid #ffd5c2;
-      opacity: 0; pointer-events: none; transition: opacity .2s;
     }
-    .tkt-auto-desc-bar.show { opacity: 1; pointer-events: all; }
+    .tkt-auto-desc-bar.show { display: flex; }
+    /* Work description idle skeleton — holds dimensions until content exists */
+    .tkt-desc-wrap {
+      position: relative;
+      min-height: 168px;
+    }
+    .tkt-desc-skeleton {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      padding: 14px 16px;
+      border-radius: 10px;
+      border: 1px solid #e2e8f0;
+      background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      cursor: text;
+      box-sizing: border-box;
+    }
+    .tkt-desc-wrap.has-content .tkt-desc-skeleton,
+    .tkt-desc-wrap.is-focused .tkt-desc-skeleton { display: none; }
+    .tkt-desc-skel-body {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex: 1 1 auto;
+      padding-top: 4px;
+    }
+    .tkt-desc-wrap .tkt-textarea {
+      min-height: 168px;
+      position: relative;
+      z-index: 0;
+      resize: vertical;
+    }
+    .tkt-desc-wrap:not(.has-content):not(.is-focused) .tkt-textarea {
+      color: transparent;
+      caret-color: #1e293b;
+      border-color: transparent;
+      background: transparent;
+      box-shadow: none;
+    }
+    .tkt-regen-btn {
+      margin-left: auto;
+      flex: 0 0 auto;
+      background: #fff;
+      border: 1px solid #e07a4c;
+      color: #c2440c;
+      font-size: .78rem;
+      font-weight: 600;
+      cursor: pointer;
+      border-radius: 6px;
+      padding: 4px 10px;
+      min-height: 28px;
+      line-height: 1.2;
+    }
+    .tkt-regen-btn:hover { background: #fff8f5; }
+    .tkt-regen-btn:disabled {
+      opacity: .7;
+      cursor: wait;
+    }
+    .tkt-textarea.is-regen {
+      opacity: .72;
+      pointer-events: none;
+    }
+
+    /* Inline AI triage — fills leftover space in the complaint card */
+    .tkt-ai-triage {
+      margin-top: 16px;
+      padding: 14px;
+      border: 1px solid #d5e0da;
+      border-radius: 10px;
+      background: #f7faf8;
+      position: relative;
+      z-index: 0;
+    }
+    .tkt-ai-triage.is-applied {
+      border-color: #ffcdb8;
+      background: #fff7f2;
+    }
+    .tkt-ai-triage-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      flex: 0 0 auto;
+    }
+    .tkt-ai-triage-row strong { font-size: .9rem; }
+    .tkt-ai-triage #aiTriageHint {
+      margin: 8px 0 0;
+      font-size: .8rem;
+      color: #64748b;
+      flex: 0 0 auto;
+    }
+    /* Idle AI wireframe — mirrors Priority / SLA / Tech / Parts + reasoning + actions */
+    .tkt-ai-skeleton {
+      flex: 1 1 auto;
+      margin-top: 12px;
+      padding: 14px;
+      border-radius: 10px;
+      border: 1px solid #e2e8f0;
+      background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-height: 0;
+    }
+    .tkt-ai-triage.has-result .tkt-ai-skeleton,
+    .tkt-ai-triage.is-applied .tkt-ai-skeleton { display: none; }
+    .tkt-ai-wire-metrics {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      flex: 0 0 auto;
+    }
+    .tkt-ai-wire-metric {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 10px 10px 12px;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+      background: rgba(255,255,255,.72);
+      min-width: 0;
+    }
+    .tkt-ai-wire-metric .lbl {
+      display: block;
+      height: 8px;
+      width: 42%;
+      border-radius: 4px;
+      background: #cbd5e1;
+    }
+    .tkt-ai-wire-metric .val {
+      display: block;
+      height: 14px;
+      width: 68%;
+      border-radius: 5px;
+      background: #94a3b8;
+    }
+    .tkt-ai-wire-metric:nth-child(2) .val { width: 44%; }
+    .tkt-ai-wire-metric:nth-child(3) .val { width: 78%; }
+    .tkt-ai-wire-metric:nth-child(4) .val { width: 56%; }
+    .tkt-ai-wire-reason {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex: 1 1 auto;
+      min-height: 48px;
+      padding: 2px 2px 0;
+    }
+    .tkt-ai-wire-reason .tkt-ai-skel-bar { opacity: .85; }
+    .tkt-ai-wire-banner {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px dashed #fdba74;
+      background: rgba(255,247,242,.7);
+      flex: 0 0 auto;
+    }
+    .tkt-ai-wire-banner .badge {
+      flex: 0 0 auto;
+      width: 28px;
+      height: 16px;
+      border-radius: 999px;
+      background: #fdba74;
+    }
+    .tkt-ai-wire-banner .lines {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding-top: 1px;
+    }
+    .tkt-ai-wire-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      flex: 0 0 auto;
+    }
+    .tkt-ai-wire-btn {
+      height: 30px;
+      border-radius: 7px;
+      background: #cbd5e1;
+      opacity: .7;
+    }
+    .tkt-ai-wire-btn.primary { width: 132px; background: #fdba74; opacity: .85; }
+    .tkt-ai-wire-btn.ghost { width: 110px; background: transparent; border: 1.5px solid #cbd5e1; opacity: .9; }
+    .tkt-ai-skel-bar {
+      display: block;
+      height: 10px;
+      border-radius: 6px;
+      background: #cbd5e1;
+      width: 92%;
+    }
+    .tkt-ai-skel-bar.short { width: 34%; height: 12px; }
+    .tkt-ai-skel-bar.mid { width: 58%; height: 9px; }
+    .tkt-ai-skel-bar.half { width: 48%; }
+    .tkt-ai-skel-bar.full { width: 100%; }
+    .tkt-ai-skel-caption {
+      margin: 0;
+      font-size: .72rem;
+      color: #94a3b8;
+      line-height: 1.4;
+      flex: 0 0 auto;
+    }
+    /* Keep legacy head helpers for description skeleton */
+    .tkt-ai-skel-head {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex: 0 0 auto;
+    }
+    .tkt-ai-skel-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: #cbd5e1;
+      flex: 0 0 auto;
+    }
+    .tkt-ai-skel-titles {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .tkt-ai-skel-body {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex: 1 1 auto;
+      justify-content: flex-start;
+      padding-top: 2px;
+    }
+    .tkt-ai-triage #aiTriageResult {
+      margin-top: 10px;
+      font-size: .86rem;
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      gap: 10px;
+    }
+    .tkt-ai-triage #aiTriageResult[hidden] { display: none !important; }
+    .tkt-ai-triage #aiTriageSummary { flex: 1 1 auto; }
+    .tkt-ai-result-metrics {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .tkt-ai-result-metric {
+      padding: 10px 10px 11px;
+      border-radius: 8px;
+      border: 1px solid #dbe4ee;
+      background: #fff;
+      min-width: 0;
+    }
+    .tkt-ai-result-metric .k {
+      display: block;
+      font-size: .68rem;
+      font-weight: 700;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      color: #94a3b8;
+      margin-bottom: 4px;
+    }
+    .tkt-ai-result-metric .v {
+      display: block;
+      font-size: .88rem;
+      font-weight: 650;
+      color: #0f172a;
+      line-height: 1.3;
+      word-break: break-word;
+    }
+    .tkt-ai-result-reason {
+      margin: 0;
+      font-size: .82rem;
+      color: #64748b;
+      line-height: 1.45;
+    }
+    .tkt-ai-using {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin-top: 10px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid #ffcdb8;
+      background: #fff;
+      font-size: .8rem;
+      color: #9a3412;
+      line-height: 1.4;
+      flex: 0 0 auto;
+    }
+    .tkt-ai-using-badge {
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: #ff8e68;
+      color: #fff;
+      font-size: .68rem;
+      font-weight: 700;
+      letter-spacing: .03em;
+      text-transform: uppercase;
+    }
+    .tkt-ai-using-copy { min-width: 0; flex: 1 1 auto; }
+    .tkt-ai-using-copy strong { display: block; color: #c2410c; font-size: .82rem; }
+    .tkt-ai-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+      flex: 0 0 auto;
+    }
+    .tkt-ai-actions.is-hidden { display: none !important; }
+
+    /* Location readiness — fill leftover column height with site-path preview */
+    .new-tkt-form-split > .tkt-card > .tkt-card-body > .new-tkt-loc-assist {
+      padding: 16px 18px;
+      gap: 0;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .new-tkt-form-split > .tkt-card > .tkt-card-body > .new-tkt-loc-assist .new-tkt-assist-head {
+      margin-bottom: 10px;
+      flex: 0 0 auto;
+    }
+    .new-tkt-form-split > .tkt-card > .tkt-card-body > .new-tkt-loc-assist .new-tkt-assist-head h4 {
+      font-size: .82rem;
+      letter-spacing: .06em;
+    }
+    .new-tkt-form-split > .tkt-card > .tkt-card-body > .new-tkt-loc-assist .new-tkt-assist-progress {
+      font-size: .9rem;
+    }
+    .new-tkt-form-split > .tkt-card > .tkt-card-body > .new-tkt-loc-assist .new-tkt-check-list {
+      flex: 0 0 auto;
+      justify-content: flex-start;
+      gap: 8px;
+      min-height: 0;
+    }
+    .new-tkt-form-split > .tkt-card > .tkt-card-body > .new-tkt-loc-assist .new-tkt-check-list li {
+      font-size: .88rem;
+      font-weight: 500;
+      gap: 10px;
+      line-height: 1.35;
+      align-items: center;
+    }
+    .new-tkt-form-split > .tkt-card > .tkt-card-body > .new-tkt-loc-assist .new-tkt-check-mark {
+      width: 18px;
+      height: 18px;
+      margin-top: 0;
+      border-width: 2px;
+    }
+    .new-tkt-form-split > .tkt-card > .tkt-card-body > .new-tkt-loc-assist .new-tkt-check-list li.done .new-tkt-check-mark::after {
+      left: 5px;
+      top: 1px;
+      width: 5px;
+      height: 9px;
+      border-width: 0 2px 2px 0;
+    }
+    .new-tkt-loc-map {
+      flex: 1 1 auto;
+      margin-top: 14px;
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid #e2e8f0;
+      background: rgba(255,255,255,.7);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-height: 160px;
+      position: relative;
+    }
+    .new-tkt-loc-map-label {
+      margin: 0;
+      font-size: .68rem;
+      font-weight: 700;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      color: #94a3b8;
+      flex: 0 0 auto;
+    }
+    .new-tkt-loc-map-canvas-wrap {
+      position: relative;
+      flex: 1 1 auto;
+      min-height: 140px;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid #e2e8f0;
+      background: #e8eef4;
+    }
+    .new-tkt-loc-map-canvas {
+      width: 100%;
+      height: 100%;
+      min-height: 140px;
+    }
+    .new-tkt-loc-map-empty {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 16px;
+      text-align: center;
+      background:
+        linear-gradient(180deg, rgba(248,250,252,.92) 0%, rgba(241,245,249,.96) 100%);
+      pointer-events: none;
+    }
+    .new-tkt-loc-map-empty[hidden] { display: none !important; }
+    .new-tkt-loc-map-empty-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: #cbd5e1;
+      position: relative;
+    }
+    .new-tkt-loc-map-empty-icon::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 42%;
+      width: 10px;
+      height: 10px;
+      margin: -5px 0 0 -5px;
+      border-radius: 50% 50% 50% 0;
+      transform: rotate(-45deg);
+      background: #64748b;
+    }
+    .new-tkt-loc-map-empty p {
+      margin: 0;
+      font-size: .78rem;
+      color: #64748b;
+      line-height: 1.4;
+      max-width: 220px;
+    }
+    .new-tkt-loc-map-caption {
+      margin: 0;
+      font-size: .72rem;
+      color: #94a3b8;
+      line-height: 1.4;
+      flex: 0 0 auto;
+    }
+    .new-tkt-form-split > .tkt-card > .tkt-card-body > .new-tkt-loc-assist .new-tkt-assist-note {
+      margin-top: 12px;
+      font-size: .78rem;
+      line-height: 1.5;
+      flex: 0 0 auto;
+    }
+
+    /* Multi-select FM assets */
+    .tkt-multi-wrap { position: relative; }
+    .tkt-multi-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+    .tkt-multi-chips[hidden] { display: none !important; }
+    .tkt-multi-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      max-width: 100%;
+      padding: 4px 8px 4px 10px;
+      border-radius: 999px;
+      border: 1px solid #ffcdb8;
+      background: #fff7f2;
+      font-size: .75rem;
+      font-weight: 600;
+      color: #9a3412;
+      line-height: 1.3;
+    }
+    .tkt-multi-chip span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 220px;
+    }
+    .tkt-multi-chip-x {
+      flex: 0 0 auto;
+      border: none;
+      background: transparent;
+      color: #c2410c;
+      cursor: pointer;
+      font-size: 1rem;
+      line-height: 1;
+      padding: 0 2px;
+      border-radius: 4px;
+    }
+    .tkt-multi-chip-x:hover { background: #ffe4d6; }
+    .tkt-multi-trigger {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      text-align: left;
+      cursor: pointer;
+      width: 100%;
+      font: inherit;
+      color: inherit;
+      padding-right: 36px;
+      position: relative;
+    }
+    .tkt-multi-trigger #assetMultiLabel {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: #64748b;
+    }
+    .tkt-multi-wrap.has-selection .tkt-multi-trigger #assetMultiLabel { color: #1e293b; }
+    .tkt-multi-chevron {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 16px;
+      height: 16px;
+      color: #94a3b8;
+      pointer-events: none;
+      transition: transform .15s ease;
+    }
+    .tkt-multi-wrap.is-open .tkt-multi-chevron { transform: translateY(-50%) rotate(180deg); color: var(--tkt-accent); }
+    .tkt-multi-wrap.is-open .tkt-multi-trigger {
+      border-color: var(--tkt-accent);
+      box-shadow: 0 0 0 3px var(--tkt-accent-ring);
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+    .tkt-multi-wrap.is-open { z-index: 120; }
+    .tkt-field.tkt-asset-multi-field:has(.tkt-multi-wrap.is-open) { z-index: 120; position: relative; }
+    /* Keep open asset/combo lists above the next form cards */
+    .new-tkt-form-split > .tkt-card:has(.tkt-multi-wrap.is-open),
+    .new-tkt-form-split > .tkt-card:has(.tkt-combo.is-open) {
+      position: relative;
+      z-index: 90;
+    }
+    .tkt-multi-item {
+      align-items: flex-start;
+      user-select: none;
+    }
+    .tkt-multi-item .tkt-multi-check {
+      flex: 0 0 auto;
+      width: 16px;
+      height: 16px;
+      margin-top: 2px;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 4px;
+      background: #fff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .tkt-multi-item.is-selected .tkt-multi-check {
+      border-color: var(--tkt-accent);
+      background: var(--tkt-accent);
+      color: #fff;
+    }
+    .tkt-multi-item.is-selected .tkt-multi-check::after {
+      content: '';
+      width: 8px;
+      height: 5px;
+      border-left: 2px solid #fff;
+      border-bottom: 2px solid #fff;
+      transform: rotate(-45deg) translateY(-1px);
+    }
+    .tkt-multi-item-text { flex: 1; min-width: 0; line-height: 1.35; }
+    .tkt-multi-empty { padding: 12px 14px; font-size: .82rem; color: #94a3b8; }
+    .tkt-multi-dropdown {
+      display: none;
+      flex-direction: column;
+      max-height: 320px;
+      padding: 0;
+      overflow: hidden;
+    }
+    .tkt-ac-dropdown.tkt-multi-dropdown.open { display: flex; }
+    .tkt-multi-dropdown-list {
+      overflow-y: auto;
+      max-height: 250px;
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+    .tkt-multi-dropdown-foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding: 8px 10px;
+      border-top: 1px solid #e2e8f0;
+      background: #f8fafc;
+      flex: 0 0 auto;
+    }
+    .tkt-multi-dropdown-foot .tkt-btn { min-height: 30px; }
+    .tkt-multi-dropdown-hint {
+      font-size: .7rem;
+      color: #94a3b8;
+      flex: 1 1 auto;
+      min-width: 0;
+    }
 
     /* ── Summary card (right panel) — sticks below the 64px topbar ── */
     .summary-card { position: sticky; top: 80px; }
     .summary-item {
-      display: flex; flex-direction: column; gap: 2px;
-      padding: 10px 0; border-bottom: 1px solid #f1f5f9;
+      display: flex; flex-direction: column; gap: 4px;
+      padding: 12px 0; border-bottom: 1px solid #f1f5f9;
+      min-width: 0;
     }
     .summary-item:last-child { border-bottom: none; }
     .summary-label { font-size: .72rem; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: .04em; }
-    .summary-val { font-size: .9rem; color: #1e293b; font-weight: 500; }
+    .summary-val {
+      font-size: .9rem; color: #1e293b; font-weight: 500;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
     .summary-val.empty { color: #cbd5e1; font-style: italic; font-weight: 400; font-size: .82rem; }
 
     /* ── Step indicator ── */
@@ -665,6 +1348,8 @@
     }
 
     .new-tkt-ready-card .tkt-card-body { padding: 14px 16px; }
+    .new-tkt-ready-card { overflow: visible; }
+    .new-tkt-ready-card > .tkt-card-body { overflow: visible; }
     .new-tkt-ready-bar {
       height: 6px;
       border-radius: 999px;
@@ -691,18 +1376,250 @@
       display: flex;
       gap: 8px;
       align-items: flex-start;
-      font-size: .75rem;
+      font-size: .78rem;
       color: #64748b;
       line-height: 1.4;
     }
     .new-tkt-next-list li::before {
       content: '';
-      flex-shrink: 0;
+      flex: 0 0 auto;
       width: 6px;
       height: 6px;
-      margin-top: 5px;
+      margin-top: 6px;
       border-radius: 50%;
+      background: var(--tkt-accent, #ff8e68);
+    }
+    .new-tkt-ready-assets {
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px dashed #e2e8f0;
+      position: relative;
+    }
+    .new-tkt-ready-assets-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .new-tkt-ready-assets-expand {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 26px;
+      height: 26px;
+      padding: 0;
+      border: 1px solid #e2e8f0;
+      border-radius: 7px;
+      background: #fff;
+      color: #64748b;
+      cursor: pointer;
+      transition: border-color .15s, color .15s, background .15s, transform .15s;
+    }
+    .new-tkt-ready-assets-expand svg {
+      width: 14px;
+      height: 14px;
+      transition: transform .15s ease;
+    }
+    .new-tkt-ready-assets-expand:hover {
+      border-color: #ffcdb8;
+      color: #c2410c;
+      background: #fff7f2;
+    }
+    .new-tkt-ready-assets.is-open .new-tkt-ready-assets-expand {
+      border-color: #ffcdb8;
+      color: #c2410c;
+      background: #fff7f2;
+    }
+    .new-tkt-ready-assets.is-open .new-tkt-ready-assets-expand svg {
+      transform: rotate(180deg);
+    }
+    .new-tkt-ready-assets-expand[hidden] { display: none !important; }
+    .new-tkt-ready-assets-empty {
+      margin: 0;
+      font-size: .78rem;
+      color: #94a3b8;
+      line-height: 1.45;
+    }
+    .new-tkt-ready-assets-rail-wrap {
+      margin: 0 -2px;
+      padding: 0 2px;
+    }
+    .new-tkt-ready-assets-rail-wrap[hidden] { display: none !important; }
+    .new-tkt-ready-asset-list {
+      list-style: none;
+      margin: 0;
+      padding: 2px 2px 4px;
+      display: flex;
+      flex-direction: row;
+      flex-wrap: nowrap;
+      gap: 6px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: thin;
+      scrollbar-color: #fdba74 transparent;
+    }
+    .new-tkt-ready-asset-list::-webkit-scrollbar { height: 4px; }
+    .new-tkt-ready-asset-list::-webkit-scrollbar-thumb {
       background: #fdba74;
+      border-radius: 999px;
+    }
+    /* Compact pill in the rail */
+    .new-tkt-ready-asset-pill {
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 6px 3px 8px;
+      border-radius: 999px;
+      border: 1px solid #ffcdb8;
+      background: #fff7f2;
+      font-size: .72rem;
+      font-weight: 700;
+      color: #c2410c;
+      line-height: 1.2;
+      white-space: nowrap;
+      max-width: 120px;
+    }
+    .new-tkt-ready-asset-pill .id {
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .new-tkt-ready-asset-pill .rm {
+      flex: 0 0 auto;
+      border: none;
+      background: transparent;
+      color: #c2410c;
+      cursor: pointer;
+      font-size: .95rem;
+      line-height: 1;
+      padding: 0 2px;
+      border-radius: 4px;
+    }
+    .new-tkt-ready-asset-pill .rm:hover { background: #ffe4d6; }
+    /* Full-detail popup — opens toward the main column (left of the ready card) */
+    .new-tkt-ready-assets-bubble {
+      position: absolute;
+      right: calc(100% + 12px);
+      left: auto;
+      top: 0;
+      width: min(280px, 72vw);
+      z-index: 80;
+      background: #fff;
+      border: 1px solid #ffcdb8;
+      border-radius: 12px;
+      box-shadow: 0 14px 32px rgba(23, 25, 35, .16);
+      padding: 10px 12px 12px;
+      max-height: min(320px, 50vh);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .new-tkt-ready-assets-bubble::before {
+      content: '';
+      position: absolute;
+      right: -6px;
+      left: auto;
+      top: 18px;
+      width: 10px;
+      height: 10px;
+      background: #fff;
+      border-right: 1px solid #ffcdb8;
+      border-top: 1px solid #ffcdb8;
+      border-left: none;
+      border-bottom: none;
+      transform: rotate(45deg);
+    }
+    .new-tkt-ready-assets-bubble[hidden] { display: none !important; }
+    .new-tkt-ready-assets-bubble-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .new-tkt-ready-assets-bubble-head strong {
+      font-size: .8rem;
+      color: #9a3412;
+    }
+    .new-tkt-ready-assets-bubble-close {
+      border: none;
+      background: transparent;
+      color: #94a3b8;
+      font-size: 1.1rem;
+      line-height: 1;
+      cursor: pointer;
+      padding: 2px 4px;
+      border-radius: 4px;
+    }
+    .new-tkt-ready-assets-bubble-close:hover { color: #c2410c; background: #fff7f2; }
+    .new-tkt-ready-assets-bubble-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      overflow-y: auto;
+      min-height: 0;
+    }
+    .new-tkt-ready-asset-detail {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid #ffcdb8;
+      background: #fff7f2;
+    }
+    .new-tkt-ready-asset-detail .code {
+      flex: 0 0 auto;
+      font-size: .68rem;
+      font-weight: 700;
+      letter-spacing: .02em;
+      color: #c2410c;
+      background: #fff;
+      border: 1px solid #ffcdb8;
+      border-radius: 5px;
+      padding: 2px 6px;
+      line-height: 1.3;
+    }
+    .new-tkt-ready-asset-detail .meta {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+    .new-tkt-ready-asset-detail .meta strong {
+      display: block;
+      font-size: .8rem;
+      font-weight: 600;
+      color: #9a3412;
+      line-height: 1.3;
+      word-break: break-word;
+    }
+    .new-tkt-ready-asset-detail .meta span {
+      display: block;
+      font-size: .72rem;
+      color: #b45309;
+      margin-top: 2px;
+    }
+    .new-tkt-ready-asset-detail .rm {
+      flex: 0 0 auto;
+      border: none;
+      background: transparent;
+      color: #c2410c;
+      cursor: pointer;
+      font-size: 1rem;
+      line-height: 1;
+      padding: 0 2px;
+      border-radius: 4px;
+    }
+    .new-tkt-ready-asset-detail .rm:hover { background: #ffe4d6; }
+    @media (max-width: 1100px) {
+      .new-tkt-ready-assets-bubble {
+        left: 0;
+        right: 0;
+        width: auto;
+        top: calc(100% + 8px);
+      }
+      .new-tkt-ready-assets-bubble::before { display: none; }
     }
     .new-tkt-recap-chips {
       display: flex;
@@ -900,6 +1817,17 @@
                   <li data-step="sub_zone"><span class="new-tkt-check-mark" aria-hidden="true"></span><span>Sub-zone selected</span></li>
                   <li data-step="base_unit"><span class="new-tkt-check-mark" aria-hidden="true"></span><span>Base unit selected</span></li>
                 </ul>
+                <div class="new-tkt-loc-map" id="locationMapPanel">
+                  <p class="new-tkt-loc-map-label">Location map</p>
+                  <div class="new-tkt-loc-map-canvas-wrap">
+                    <div id="locationMap" class="new-tkt-loc-map-canvas" role="img" aria-label="Selected location map"></div>
+                    <div class="new-tkt-loc-map-empty" id="locationMapEmpty">
+                      <span class="new-tkt-loc-map-empty-icon" aria-hidden="true"></span>
+                      <p id="locationMapEmptyText">Select a property to preview the site on the map.</p>
+                    </div>
+                  </div>
+                  <p class="new-tkt-loc-map-caption" id="locationMapCaption">Map updates from linked assets or the selected site path.</p>
+                </div>
                 <p class="new-tkt-assist-note">
                   Precise site paths help supervisors assign the right crew and avoid duplicate visits to the wrong unit.
                 </p>
@@ -966,33 +1894,70 @@
                 </label>
               </div>
 
-              <div class="tkt-field" style="margin-top:16px;">
-                <label>Linked FM asset (optional)</label>
-                <select class="tkt-select" id="assetSelect">
-                  <option value="">— None —</option>
-                </select>
-              </div>
-
-              <div class="tkt-ai-triage" id="aiTriageBox" style="margin-top:16px;padding:14px;border:1px solid #d5e0da;border-radius:10px;background:#f7faf8;">
-                <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
-                  <strong style="font-size:.9rem;">AI triage suggestion</strong>
+              <div class="tkt-ai-triage" id="aiTriageBox">
+                <div class="tkt-ai-triage-row">
+                  <strong id="aiTriageTitle">AI triage suggestion</strong>
                   <button type="button" class="tkt-btn tkt-btn-outline tkt-btn-sm" id="aiTriageBtn">Suggest priority / SLA / tech</button>
                 </div>
-                <p id="aiTriageHint" style="margin:8px 0 0;font-size:.8rem;color:#64748b;">Claude suggests priority, SLA hours, technician, and parts. You review before creating — nothing is auto-applied.</p>
-                <div id="aiTriageResult" hidden style="margin-top:10px;font-size:.86rem;">
+                <p id="aiTriageHint">Claude suggests priority, SLA hours, technician, and parts. You review before creating — nothing is auto-applied.</p>
+                <div class="tkt-ai-skeleton" id="aiTriageSkeleton" aria-hidden="true">
+                  <div class="tkt-ai-wire-metrics">
+                    <div class="tkt-ai-wire-metric"><span class="lbl"></span><span class="val"></span></div>
+                    <div class="tkt-ai-wire-metric"><span class="lbl"></span><span class="val"></span></div>
+                    <div class="tkt-ai-wire-metric"><span class="lbl"></span><span class="val"></span></div>
+                    <div class="tkt-ai-wire-metric"><span class="lbl"></span><span class="val"></span></div>
+                  </div>
+                  <div class="tkt-ai-wire-reason">
+                    <span class="tkt-ai-skel-bar full"></span>
+                    <span class="tkt-ai-skel-bar"></span>
+                    <span class="tkt-ai-skel-bar half"></span>
+                  </div>
+                  <div class="tkt-ai-wire-banner">
+                    <span class="badge" aria-hidden="true"></span>
+                    <div class="lines">
+                      <span class="tkt-ai-skel-bar short"></span>
+                      <span class="tkt-ai-skel-bar mid"></span>
+                    </div>
+                  </div>
+                  <div class="tkt-ai-wire-actions">
+                    <span class="tkt-ai-wire-btn primary" aria-hidden="true"></span>
+                    <span class="tkt-ai-wire-btn ghost" aria-hidden="true"></span>
+                  </div>
+                  <p class="tkt-ai-skel-caption">Wireframe of the suggestion — Priority, SLA, technician, parts, and reasoning appear here after Suggest.</p>
+                </div>
+                <div id="aiTriageResult" hidden>
                   <div id="aiTriageSummary"></div>
-                  <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
+                  <div class="tkt-ai-using" id="aiTriageUsing" hidden>
+                    <span class="tkt-ai-using-badge">AI</span>
+                    <div class="tkt-ai-using-copy">
+                      <strong>Using AI suggestion</strong>
+                      Priority, SLA, technician, and parts on this work order come from Claude. Review them before you create.
+                    </div>
+                  </div>
+                  <div class="tkt-ai-actions" id="aiTriageActions">
                     <button type="button" class="tkt-btn tkt-btn-primary tkt-btn-sm" id="aiTriageAccept">Accept suggestion</button>
                     <button type="button" class="tkt-btn tkt-btn-outline tkt-btn-sm" id="aiTriageDismiss">Keep my values</button>
                   </div>
                 </div>
               </div>
+
+              <div class="tkt-field tkt-asset-multi-field" style="margin-top:16px;">
+                <label>Linked FM assets (optional)</label>
+                <div class="tkt-multi-wrap tkt-ac-wrap" id="assetMultiWrap">
+                  <button type="button" class="tkt-input tkt-multi-trigger" id="assetMultiBtn" aria-haspopup="listbox" aria-expanded="false" aria-controls="assetMultiDropdown">
+                    <span id="assetMultiLabel">Select one or more assets…</span>
+                    <svg class="tkt-multi-chevron" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M6 8l4 4 4-4"/></svg>
+                  </button>
+                  <div class="tkt-ac-dropdown tkt-multi-dropdown" id="assetMultiDropdown" role="listbox" aria-multiselectable="true"></div>
+                </div>
+                <input type="hidden" id="assetCodesJson" value="[]">
+                <span style="font-size:.72rem;color:#94a3b8;margin-top:2px;">Tick several assets at once — the list stays open until you click Done or outside.</span>
+              </div>
+
               <input type="hidden" id="slaHours" value="">
               <input type="hidden" id="triageLogId" value="">
               <input type="hidden" id="suggestedTechId" value="">
               <input type="hidden" id="requiredPartsJson" value="[]">
-
-              <div class="new-tkt-complaint-recap" id="complaintClassRecap" aria-live="polite"></div>
             </div>
           </div>
           </div><!-- /.new-tkt-form-split -->
@@ -1022,16 +1987,33 @@
               <!-- Auto-description bar -->
               <div class="tkt-auto-desc-bar" id="autoDescBar">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z"/></svg>
-                <span>Description auto-generated from work order info.</span>
-                <button type="button" id="regenerateDescBtn" style="margin-left:auto;background:none;border:none;color:#c2440c;font-size:.78rem;font-weight:600;cursor:pointer;text-decoration:underline;">Regenerate</button>
+                <span id="autoDescBarLabel">Description auto-generated from work order info.</span>
+                <button type="button" class="tkt-regen-btn" id="regenerateDescBtn">Regenerate</button>
               </div>
 
               <!-- Work Description -->
               <div class="tkt-field">
                 <label>Work Description <span class="req">*</span></label>
-                <textarea class="tkt-textarea" id="workDescription" name="work_description"
-                          placeholder="Select service group, category and fault type above to auto-generate…"
-                          rows="6" required></textarea>
+                <div class="tkt-desc-wrap" id="workDescWrap">
+                  <div class="tkt-desc-skeleton" id="workDescSkeleton" aria-hidden="true">
+                    <div class="tkt-ai-skel-head">
+                      <div class="tkt-ai-skel-icon"></div>
+                      <div class="tkt-ai-skel-titles">
+                        <span class="tkt-ai-skel-bar short"></span>
+                        <span class="tkt-ai-skel-bar mid"></span>
+                      </div>
+                    </div>
+                    <div class="tkt-desc-skel-body">
+                      <span class="tkt-ai-skel-bar"></span>
+                      <span class="tkt-ai-skel-bar"></span>
+                      <span class="tkt-ai-skel-bar half"></span>
+                    </div>
+                    <p class="tkt-ai-skel-caption">Description preview — auto-fills after you pick service group, category, and fault.</p>
+                  </div>
+                  <textarea class="tkt-textarea" id="workDescription" name="work_description"
+                            placeholder="Select service group, category and fault type above to auto-generate…"
+                            rows="6" required></textarea>
+                </div>
               </div>
             </div>
           </div>
@@ -1177,26 +2159,7 @@
           </div>
         </div>
 
-        <!-- Photos / attachments — own card (sidebar) -->
-        <div class="tkt-card tkt-summary-photos-card">
-          <div class="tkt-card-header tkt-summary-photos-card__head">
-            <h3>Photos &amp; attachments</h3>
-            <span class="sum-photo-optional">Optional</span>
-          </div>
-          <div class="tkt-card-body tkt-summary-photos-card__body">
-            <span class="summary-val empty" id="sum-images">None selected</span>
-            <p class="summary-photo-hint">Uploaded automatically right after the work order is created.</p>
-            <div class="new-tkt-pending-img-grid new-tkt-pending-img-grid--sidebar" id="newTicketImagePreview" hidden></div>
-            <div class="tkt-upload-zone summary-new-tkt-upload" id="newTicketUploadZone">
-              <input type="file" id="newTicketImageInput" accept="image/png,image/jpeg,image/gif,image/webp,image/heic,image/heif,.heic,.heif" multiple>
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"/></svg>
-              <p>Click or drag &amp; drop images</p>
-              <p class="summary-upload-formats">PNG, JPG, GIF, WebP, HEIC — up to 20 files</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Create readiness — fills empty sidebar space with actionable guidance -->
+        <!-- Create readiness -->
         <div class="tkt-card new-tkt-ready-card" style="margin-top:14px;" id="createReadyCard">
           <div class="tkt-card-header">
             <h3>Ready to create</h3>
@@ -1215,15 +2178,46 @@
             <p class="new-tkt-assist-note" id="createReadyHint">
               Fill the required fields — then create. Photos and FM asset link are optional.
             </p>
-            <div style="margin-top:14px;padding-top:12px;border-top:1px dashed #e2e8f0;">
-              <div class="new-tkt-assist-head" style="margin-bottom:0;">
-                <h4>After you create</h4>
+            <div class="new-tkt-ready-assets" id="sidebarAssetsBlock">
+              <div class="new-tkt-assist-head" style="margin-bottom:8px;">
+                <h4>Assets linked</h4>
+                <div class="new-tkt-ready-assets-actions">
+                  <span class="new-tkt-assist-progress" id="sidebarAssetsCount">0</span>
+                  <button type="button" class="new-tkt-ready-assets-expand" id="sidebarAssetsExpand" hidden aria-expanded="false" aria-controls="sidebarAssetsBubble" title="View asset details">
+                    <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M7 5l5 5-5 5"/></svg>
+                  </button>
+                </div>
               </div>
-              <ul class="new-tkt-next-list">
-                <li>Work order opens in the supervisor queue</li>
-                <li>Supervisor assigns a technician</li>
-                <li>Priority guides how fast it should be actioned</li>
-              </ul>
+              <p class="new-tkt-ready-assets-empty" id="sidebarAssetsEmpty">No assets linked yet — optional from the form.</p>
+              <div class="new-tkt-ready-assets-rail-wrap" id="sidebarAssetsRailWrap" hidden>
+                <ul class="new-tkt-ready-asset-list" id="sidebarAssetsList"></ul>
+              </div>
+              <div class="new-tkt-ready-assets-bubble" id="sidebarAssetsBubble" hidden role="dialog" aria-label="Linked assets">
+                <div class="new-tkt-ready-assets-bubble-head">
+                  <strong>Asset details</strong>
+                  <button type="button" class="new-tkt-ready-assets-bubble-close" id="sidebarAssetsBubbleClose" aria-label="Close">×</button>
+                </div>
+                <ul class="new-tkt-ready-assets-bubble-list" id="sidebarAssetsBubbleList"></ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Photos / attachments — own card (sidebar) -->
+        <div class="tkt-card tkt-summary-photos-card" style="margin-top:14px;">
+          <div class="tkt-card-header tkt-summary-photos-card__head">
+            <h3>Photos &amp; attachments</h3>
+            <span class="sum-photo-optional">Optional</span>
+          </div>
+          <div class="tkt-card-body tkt-summary-photos-card__body">
+            <span class="summary-val empty" id="sum-images">None selected</span>
+            <p class="summary-photo-hint">Uploaded automatically right after the work order is created.</p>
+            <div class="new-tkt-pending-img-grid new-tkt-pending-img-grid--sidebar" id="newTicketImagePreview" hidden></div>
+            <div class="tkt-upload-zone summary-new-tkt-upload" id="newTicketUploadZone">
+              <input type="file" id="newTicketImageInput" accept="image/png,image/jpeg,image/gif,image/webp,image/heic,image/heif,.heic,.heif" multiple>
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"/></svg>
+              <p>Click or drag &amp; drop images</p>
+              <p class="summary-upload-formats">PNG, JPG, GIF, WebP, HEIC — up to 20 files</p>
             </div>
           </div>
         </div>
@@ -1253,6 +2247,7 @@
 
 <script src="{{ url_for('static', filename='js/ticketing.js') }}"></script>
 <script>
+window.GOOGLE_MAPS_API_KEY = {{ (google_maps_api_key or '')|tojson }};
 let _options = {};
 let _locationTree = [];
 let _ticketProjectsByName = {};
@@ -1260,6 +2255,8 @@ let _allProperties = [];  // flat list
 let _descAutoFilled = false;
 let _titleSuggestions = [];
 let _acFocusIdx = -1;
+let _assetOptions = [];
+let _selectedAssetCodes = [];
 
 let _standaloneProps = [];
 let _projSearchHits = [];
@@ -1829,6 +2826,7 @@ function applyComplaintPick(hit) {
     descEl.value = hit.suggested_work_description;
     _descAutoFilled = true;
     document.getElementById('autoDescBar')?.classList.add('show');
+    syncWorkDescSkeleton();
   }
   _suppressNextDescFetch = Boolean(hit.suggested_work_description);
 
@@ -1929,36 +2927,198 @@ function renderComplSearchDropdown() {
   d.classList.add('open');
 }
 
-function initSelectExpandOnFocus(selectIds) {
-  selectIds.forEach((id) => {
-    const sel = document.getElementById(id);
-    if (!sel) return;
-
-    const collapse = () => {
-      sel.size = 1;
-      sel.classList.remove('tkt-select-expanded');
-    };
-    const expand = () => {
-      if (sel.disabled) return;
-      const count = [...sel.options].filter((o) => o.value).length;
-      if (count < 1) return;
-      sel.size = Math.min(count + 1, 10);
-      sel.classList.add('tkt-select-expanded');
-    };
-
-    sel.addEventListener('focus', expand);
-    sel.addEventListener('mousedown', (e) => {
-      if (sel.disabled) return;
-      const count = [...sel.options].filter((o) => o.value).length;
-      if (count < 1) return;
-      if (sel.size <= 1) {
-        e.preventDefault();
-        expand();
-      }
-    });
-    sel.addEventListener('blur', () => setTimeout(collapse, 120));
-    sel.addEventListener('change', collapse);
+function closeAllTktCombos(exceptWrap) {
+  document.querySelectorAll('.tkt-combo.is-open').forEach((wrap) => {
+    if (wrap !== exceptWrap) wrap._tktComboClose?.();
   });
+}
+
+function enhanceSelectOverlay(sel) {
+  if (!sel || sel.dataset.tktCombo === '1') return;
+  sel.dataset.tktCombo = '1';
+
+  const wrap = document.createElement('div');
+  wrap.className = 'tkt-combo tkt-ac-wrap';
+  sel.parentNode.insertBefore(wrap, sel);
+  wrap.appendChild(sel);
+  sel.classList.add('tkt-combo-native');
+  sel.tabIndex = -1;
+
+  const inp = document.createElement('input');
+  inp.className = 'tkt-input tkt-combo-input';
+  inp.type = 'text';
+  inp.autocomplete = 'off';
+  inp.spellcheck = false;
+  inp.setAttribute('role', 'combobox');
+  inp.setAttribute('aria-expanded', 'false');
+  inp.setAttribute('aria-controls', sel.id + 'ComboList');
+  inp.setAttribute('aria-autocomplete', 'list');
+  wrap.appendChild(inp);
+
+  const chevron = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  chevron.setAttribute('class', 'tkt-combo-chevron');
+  chevron.setAttribute('viewBox', '0 0 20 20');
+  chevron.setAttribute('fill', 'none');
+  chevron.setAttribute('aria-hidden', 'true');
+  const chevronPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  chevronPath.setAttribute('stroke', 'currentColor');
+  chevronPath.setAttribute('stroke-width', '1.8');
+  chevronPath.setAttribute('stroke-linecap', 'round');
+  chevronPath.setAttribute('stroke-linejoin', 'round');
+  chevronPath.setAttribute('d', 'M6 8l4 4 4-4');
+  chevron.appendChild(chevronPath);
+  wrap.appendChild(chevron);
+
+  const dd = document.createElement('div');
+  dd.className = 'tkt-ac-dropdown tkt-combo-dropdown';
+  dd.id = sel.id + 'ComboList';
+  dd.setAttribute('role', 'listbox');
+  wrap.appendChild(dd);
+
+  let focusIdx = -1;
+
+  function placeholder() {
+    const empty = [...sel.options].find((o) => !o.value);
+    return (empty && empty.textContent.trim()) || 'Select…';
+  }
+
+  function selectedLabel() {
+    const opt = sel.options[sel.selectedIndex];
+    if (opt && opt.value) return opt.textContent.trim();
+    return '';
+  }
+
+  function optionRows() {
+    return [...sel.options].filter((o) => o.value);
+  }
+
+  function syncFromSelect() {
+    wrap.classList.toggle('is-disabled', !!sel.disabled);
+    inp.disabled = !!sel.disabled;
+    inp.placeholder = placeholder();
+    if (!dd.classList.contains('open')) inp.value = selectedLabel();
+  }
+
+  function setFocused(idx) {
+    const items = [...dd.querySelectorAll('.tkt-ac-item')];
+    items.forEach((el, i) => el.classList.toggle('focused', i === idx));
+    focusIdx = idx;
+    if (items[idx]) items[idx].scrollIntoView({ block: 'nearest' });
+  }
+
+  function render(filter) {
+    const q = (filter || '').trim().toLowerCase();
+    const cur = sel.value;
+    let opts = optionRows();
+    if (q) opts = opts.filter((o) => o.textContent.toLowerCase().includes(q));
+
+    dd.replaceChildren();
+    if (!opts.length) {
+      const empty = document.createElement('div');
+      empty.className = 'tkt-combo-empty';
+      empty.textContent = optionRows().length ? 'No matches' : 'No options yet';
+      dd.appendChild(empty);
+      focusIdx = -1;
+    } else {
+      opts.forEach((o) => {
+        const row = document.createElement('div');
+        row.className = 'tkt-ac-item' + (o.value === cur ? ' is-selected' : '');
+        row.setAttribute('role', 'option');
+        row.dataset.val = o.value;
+        const label = document.createElement('span');
+        label.style.cssText = 'flex:1;line-height:1.35';
+        label.textContent = o.textContent.trim();
+        row.appendChild(label);
+        row.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          pick(o.value);
+        });
+        dd.appendChild(row);
+      });
+      const selIdx = opts.findIndex((o) => o.value === cur);
+      setFocused(selIdx >= 0 ? selIdx : 0);
+    }
+    dd.classList.add('open');
+    wrap.classList.add('is-open');
+    inp.setAttribute('aria-expanded', 'true');
+  }
+
+  function openPanel() {
+    if (sel.disabled) return;
+    closeAllTktCombos(wrap);
+    render('');
+  }
+
+  function close() {
+    dd.classList.remove('open');
+    wrap.classList.remove('is-open');
+    inp.setAttribute('aria-expanded', 'false');
+    inp.value = selectedLabel();
+    focusIdx = -1;
+  }
+
+  function pick(val) {
+    if (sel.value !== val) {
+      sel.value = val;
+      sel.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    close();
+    syncFromSelect();
+  }
+
+  wrap._tktComboClose = close;
+  wrap._tktComboSync = syncFromSelect;
+
+  sel.addEventListener('focus', () => {
+    if (!sel.disabled) inp.focus();
+  });
+  inp.addEventListener('focus', () => {
+    openPanel();
+    requestAnimationFrame(() => inp.select());
+  });
+  inp.addEventListener('click', openPanel);
+  inp.addEventListener('input', () => render(inp.value));
+  inp.addEventListener('keydown', (e) => {
+    if (sel.disabled) return;
+    const items = [...dd.querySelectorAll('.tkt-ac-item')];
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      close();
+      inp.blur();
+      return;
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (!dd.classList.contains('open')) openPanel();
+      else setFocused(Math.min(items.length - 1, focusIdx + 1));
+      return;
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (!dd.classList.contains('open')) openPanel();
+      else setFocused(Math.max(0, focusIdx - 1));
+      return;
+    }
+    if (e.key === 'Enter' && dd.classList.contains('open')) {
+      e.preventDefault();
+      const hit = items[focusIdx];
+      if (hit) pick(hit.dataset.val);
+    }
+  });
+
+  sel.addEventListener('change', syncFromSelect);
+  const mo = new MutationObserver(() => {
+    syncFromSelect();
+    if (dd.classList.contains('open') && !sel.disabled) render(inp.value);
+    else if (sel.disabled) close();
+  });
+  mo.observe(sel, { childList: true, attributes: true, attributeFilter: ['disabled'] });
+
+  syncFromSelect();
+}
+
+function initSelectOverlayCombos(selectIds) {
+  selectIds.forEach((id) => enhanceSelectOverlay(document.getElementById(id)));
 }
 
 function bindSearchBrowseInput(inp, renderFn, closeFn) {
@@ -1995,7 +3155,7 @@ function initLocationComplaintSearchUI() {
     closeComplSearchDd,
   );
 
-  initSelectExpandOnFocus([
+  initSelectOverlayCombos([
     'propertySelect',
     'zoneSelect',
     'subZoneSelect',
@@ -2014,6 +3174,9 @@ function initLocationComplaintSearchUI() {
     outside('projectSearch', closeProjSearchDd);
     outside('propertySearch', closePropSearchDd);
     outside('complaintSearch', closeComplSearchDd);
+    document.querySelectorAll('.tkt-combo.is-open').forEach((wrap) => {
+      if (!wrap.contains(e.target)) wrap._tktComboClose?.();
+    });
   });
 }
 
@@ -2103,8 +3266,6 @@ function initLocationComplaintSearchUI() {
 // ── Classification change → auto-desc + title suggestions ──
 let _descDebounce = null;
 async function onClassificationChange() {
-  updateComplaintClassRecap();
-
   clearTimeout(_descDebounce);
   _descDebounce = setTimeout(async () => {
     const sg = document.getElementById('serviceGroup').value;
@@ -2131,6 +3292,7 @@ async function onClassificationChange() {
         descEl.value = row.suggested_work_description;
         _descAutoFilled = true;
         autoBar?.classList.add('show');
+        syncWorkDescSkeleton();
       }
       loadTitleSuggestions();
       return;
@@ -2144,6 +3306,7 @@ async function onClassificationChange() {
           descEl.value = res.data.description;
           _descAutoFilled = true;
           autoBar?.classList.add('show');
+          syncWorkDescSkeleton();
         }
       }
     }
@@ -2152,28 +3315,87 @@ async function onClassificationChange() {
   }, 400);
 }
 
+function syncWorkDescSkeleton() {
+  const wrap = document.getElementById('workDescWrap');
+  const descEl = document.getElementById('workDescription');
+  if (!wrap || !descEl) return;
+  wrap.classList.toggle('has-content', !!(descEl.value || '').trim());
+}
+
 // User manually edited description → mark as manual
 document.getElementById('workDescription').addEventListener('input', () => {
   _descAutoFilled = false;
-  document.getElementById('autoDescBar').classList.remove('show');
+  syncWorkDescSkeleton();
 });
+document.getElementById('workDescription').addEventListener('focus', () => {
+  document.getElementById('workDescWrap')?.classList.add('is-focused');
+});
+document.getElementById('workDescription').addEventListener('blur', () => {
+  document.getElementById('workDescWrap')?.classList.remove('is-focused');
+  syncWorkDescSkeleton();
+});
+document.getElementById('workDescSkeleton')?.addEventListener('click', () => {
+  document.getElementById('workDescription')?.focus();
+});
+syncWorkDescSkeleton();
 
+let _descRegenBusy = false;
 document.getElementById('regenerateDescBtn')?.addEventListener('click', async () => {
+  if (_descRegenBusy) return;
+  const btn = document.getElementById('regenerateDescBtn');
+  const descEl = document.getElementById('workDescription');
+  const autoBar = document.getElementById('autoDescBar');
+  const barLabel = document.getElementById('autoDescBarLabel');
   const sg = document.getElementById('serviceGroup').value;
   const cat = document.getElementById('category').value;
   const ft = document.getElementById('faultType').value;
-  if (ticketNewUsesFaultCatalog()) {
-    const row = findCatalogFaultRow(sg, cat, ft);
-    if (row?.suggested_work_description) {
-      document.getElementById('workDescription').value = row.suggested_work_description;
-      _descAutoFilled = true;
-      return;
-    }
+  if (!sg || !cat || !ft) {
+    autoBar?.classList.add('show');
+    if (barLabel) barLabel.textContent = 'Select service group, category, and fault type first.';
+    return;
   }
-  const res = await tktFetch(`/tickets/api/description-template?service_group=${encodeURIComponent(sg)}&category=${encodeURIComponent(cat)}&fault_type=${encodeURIComponent(ft)}`);
-  if (res.ok && res.data.description) {
-    document.getElementById('workDescription').value = res.data.description;
-    _descAutoFilled = true;
+
+  _descRegenBusy = true;
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Regenerating…';
+  }
+  descEl.classList.add('is-regen');
+  descEl.setAttribute('readonly', 'readonly');
+  autoBar?.classList.add('show');
+  if (barLabel) barLabel.textContent = 'Updating description from work order info…';
+
+  const started = Date.now();
+  let nextText = '';
+  try {
+    if (ticketNewUsesFaultCatalog()) {
+      const row = findCatalogFaultRow(sg, cat, ft);
+      if (row?.suggested_work_description) nextText = row.suggested_work_description;
+    }
+    if (!nextText) {
+      const res = await tktFetch(`/tickets/api/description-template?service_group=${encodeURIComponent(sg)}&category=${encodeURIComponent(cat)}&fault_type=${encodeURIComponent(ft)}`);
+      if (res.ok && res.data.description) nextText = res.data.description;
+    }
+    const wait = 320 - (Date.now() - started);
+    if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+    if (nextText) {
+      descEl.value = nextText;
+      _descAutoFilled = true;
+      if (barLabel) barLabel.textContent = 'Description auto-generated from work order info.';
+      syncWorkDescSkeleton();
+    } else if (barLabel) {
+      barLabel.textContent = 'Could not generate a description. Try again.';
+    }
+  } catch (err) {
+    if (barLabel) barLabel.textContent = 'Could not generate a description. Try again.';
+  } finally {
+    _descRegenBusy = false;
+    descEl.classList.remove('is-regen');
+    descEl.removeAttribute('readonly');
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Regenerate';
+    }
   }
 });
 
@@ -2251,6 +3473,7 @@ function renderTitleDropdown(suggestions) {
         document.getElementById('workDescription').value = desc;
         _descAutoFilled = true;
         document.getElementById('autoDescBar').classList.add('show');
+        syncWorkDescSkeleton();
       }
       closeDropdown();
       updateSummary();
@@ -2470,7 +3693,233 @@ function updateLocationAssist() {
   });
   const prog = document.getElementById('locationAssistProgress');
   if (prog) prog.textContent = `${done} / 4`;
+  updateLocationMap();
 }
+
+const _LOC_MAP_DEFAULT = { lat: 25.2048, lng: 55.2708 };
+let _locMap = null;
+let _locMapMarker = null;
+let _locMapLoading = null;
+let _locMapGeocodeCache = Object.create(null);
+let _locMapReqSeq = 0;
+
+function _locMapHasCoords(a) {
+  return a && Number.isFinite(Number(a.latitude)) && Number.isFinite(Number(a.longitude));
+}
+
+function _locMapSelectLabel(id) {
+  const el = document.getElementById(id);
+  if (!el || !(el.value || '').trim()) return '';
+  return (el.options[el.selectedIndex]?.text || el.value || '').trim();
+}
+
+function _locMapSetEmpty(show, emptyText, caption) {
+  const empty = document.getElementById('locationMapEmpty');
+  const emptyTextEl = document.getElementById('locationMapEmptyText');
+  const captionEl = document.getElementById('locationMapCaption');
+  if (empty) empty.hidden = !show;
+  if (emptyTextEl && emptyText) emptyTextEl.textContent = emptyText;
+  if (captionEl && caption != null) captionEl.textContent = caption;
+}
+
+function _locMapEnsureInstance() {
+  const el = document.getElementById('locationMap');
+  if (!el || !window.google?.maps) return null;
+  if (_locMap) {
+    google.maps.event.trigger(_locMap, 'resize');
+    return _locMap;
+  }
+  _locMap = new google.maps.Map(el, {
+    center: _LOC_MAP_DEFAULT,
+    zoom: 11,
+    mapTypeControl: false,
+    streetViewControl: false,
+    fullscreenControl: false,
+    zoomControl: true,
+  });
+  _locMapMarker = new google.maps.Marker({ map: null });
+  return _locMap;
+}
+
+function _locMapShowPin(lat, lng, caption, zoom) {
+  const map = _locMapEnsureInstance();
+  if (!map) return;
+  const pos = { lat: Number(lat), lng: Number(lng) };
+  map.setCenter(pos);
+  map.setZoom(zoom == null ? 15 : zoom);
+  if (_locMapMarker) {
+    _locMapMarker.setPosition(pos);
+    _locMapMarker.setMap(map);
+  }
+  _locMapSetEmpty(false, null, caption);
+  setTimeout(() => {
+    if (_locMap) google.maps.event.trigger(_locMap, 'resize');
+  }, 50);
+}
+
+function _locMapShowIdle(emptyText, caption) {
+  if (_locMapMarker) _locMapMarker.setMap(null);
+  if (_locMap) {
+    _locMap.setCenter(_LOC_MAP_DEFAULT);
+    _locMap.setZoom(11);
+  }
+  _locMapSetEmpty(true, emptyText, caption);
+}
+
+function _locMapResolveTarget() {
+  const selected = (_assetOptions || []).filter((a) => _selectedAssetCodes.includes(a.asset_id) && _locMapHasCoords(a));
+  if (selected.length) {
+    const a = selected[0];
+    return {
+      lat: Number(a.latitude),
+      lng: Number(a.longitude),
+      caption: `${a.asset_id}${a.building ? ' · ' + a.building : ''}`,
+      zoom: 16,
+      source: 'asset',
+    };
+  }
+
+  const prop = _locMapSelectLabel('propertySelect');
+  if (prop) {
+    const match = (_assetOptions || []).find((a) => {
+      if (!_locMapHasCoords(a)) return false;
+      const b = (a.building || '').trim().toLowerCase();
+      return b && b === prop.toLowerCase();
+    });
+    if (match) {
+      return {
+        lat: Number(match.latitude),
+        lng: Number(match.longitude),
+        caption: `${match.asset_id} · ${match.building || prop}`,
+        zoom: 15,
+        source: 'building',
+      };
+    }
+  }
+
+  const parts = [
+    prop,
+    _locMapSelectLabel('zoneSelect'),
+    _locMapSelectLabel('subZoneSelect'),
+    _locMapSelectLabel('baseUnitSelect'),
+  ].filter(Boolean);
+  if (parts.length) {
+    return {
+      query: [...parts, 'Ajman', 'UAE'].join(', '),
+      pathLabel: parts.join(' / '),
+      source: 'geocode',
+    };
+  }
+  return null;
+}
+
+function loadGoogleMapsApi() {
+  const key = (window.GOOGLE_MAPS_API_KEY || '').trim();
+  if (!key) return Promise.reject(new Error('missing-key'));
+  if (window.google?.maps) return Promise.resolve();
+  if (_locMapLoading) return _locMapLoading;
+  _locMapLoading = new Promise((resolve, reject) => {
+    const cbName = '__tktGoogleMapsReady';
+    window[cbName] = () => {
+      try { delete window[cbName]; } catch (_) {}
+      resolve();
+    };
+    const s = document.createElement('script');
+    s.async = true;
+    s.defer = true;
+    s.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&callback=${cbName}`;
+    s.onerror = () => {
+      _locMapLoading = null;
+      reject(new Error('maps-load-failed'));
+    };
+    document.head.appendChild(s);
+  });
+  return _locMapLoading;
+}
+
+function _locMapGeocode(query) {
+  const cacheKey = query.toLowerCase();
+  if (_locMapGeocodeCache[cacheKey]) return Promise.resolve(_locMapGeocodeCache[cacheKey]);
+  return new Promise((resolve) => {
+    const geocoder = new google.maps.Geocoder();
+    geocoder.geocode({ address: query, region: 'ae' }, (results, status) => {
+      if (status === 'OK' && results?.[0]?.geometry?.location) {
+        const loc = results[0].geometry.location;
+        const hit = { lat: loc.lat(), lng: loc.lng() };
+        _locMapGeocodeCache[cacheKey] = hit;
+        resolve(hit);
+      } else {
+        resolve(null);
+      }
+    });
+  });
+}
+
+async function updateLocationMap() {
+  const seq = ++_locMapReqSeq;
+  const key = (window.GOOGLE_MAPS_API_KEY || '').trim();
+  const target = _locMapResolveTarget();
+
+  if (!key) {
+    _locMapShowIdle(
+      'Google Maps API key is not configured.',
+      'Add GOOGLE_MAPS_API_KEY to enable the location map.'
+    );
+    return;
+  }
+
+  try {
+    await loadGoogleMapsApi();
+  } catch (_) {
+    if (seq !== _locMapReqSeq) return;
+    _locMapShowIdle(
+      'Could not load Google Maps.',
+      'Check the API key and that Maps JavaScript API is enabled.'
+    );
+    return;
+  }
+  if (seq !== _locMapReqSeq) return;
+
+  _locMapEnsureInstance();
+
+  if (!target) {
+    _locMapShowIdle(
+      'Select a property to preview the site on the map.',
+      'Map updates from linked assets or the selected site path.'
+    );
+    return;
+  }
+
+  if (target.source === 'asset' || target.source === 'building') {
+    _locMapShowPin(target.lat, target.lng, target.caption, target.zoom);
+    return;
+  }
+
+  _locMapSetEmpty(true, 'Looking up location…', `Geocoding: ${target.pathLabel}`);
+  const hit = await _locMapGeocode(target.query);
+  if (seq !== _locMapReqSeq) return;
+  if (!hit) {
+    _locMapShowIdle(
+      'No map match for this site path yet.',
+      `Could not geocode: ${target.pathLabel}`
+    );
+    return;
+  }
+  _locMapShowPin(hit.lat, hit.lng, `Geocoded: ${target.pathLabel}`, 14);
+}
+
+function initLocationMapResize() {
+  const wrap = document.querySelector('.new-tkt-loc-map-canvas-wrap');
+  if (!wrap || typeof ResizeObserver === 'undefined') return;
+  const ro = new ResizeObserver(() => {
+    if (_locMap && window.google?.maps) {
+      google.maps.event.trigger(_locMap, 'resize');
+    }
+  });
+  ro.observe(wrap);
+}
+initLocationMapResize();
+updateLocationMap();
 
 function updateCreateReady() {
   const checks = {
@@ -2503,79 +3952,6 @@ function updateCreateReady() {
       hint.textContent = 'Fill the required fields — then create. Photos and FM asset link are optional.';
     }
   }
-}
-
-function updateComplaintClassRecap() {
-  const host = document.getElementById('complaintClassRecap');
-  if (!host) return;
-
-  const sgEl = document.getElementById('serviceGroup');
-  const catEl = document.getElementById('category');
-  const ftEl = document.getElementById('faultType');
-  const sg = (sgEl?.value || '').trim();
-  const cat = (catEl?.value || '').trim();
-  const ftVal = (ftEl?.value || '').trim();
-  let ftDisp = '';
-  if (ftEl && ftEl.selectedIndex >= 0) {
-    const opt = ftEl.options[ftEl.selectedIndex];
-    ftDisp = (opt?.text || '').trim() || ftVal;
-  }
-
-  const pri = document.querySelector('input[name="priority"]:checked')?.value || 'medium';
-  const priHint = _TICKET_NEW_PRI_HINTS[pri] || _TICKET_NEW_PRI_HINTS.medium;
-
-  if (!sg && !cat && !ftVal) {
-    host.innerHTML = `
-      <div class="new-tkt-smart-empty">
-        <p><strong>Classify faster:</strong> jump to the right fault code so title and technician checklist fill from the catalog.</p>
-        <div class="new-tkt-smart-steps">
-          <button type="button" class="new-tkt-smart-step" data-focus="#complaintSearch"><span class="num">1</span> Find complaint type</button>
-          <button type="button" class="new-tkt-smart-step" data-focus="#serviceGroup"><span class="num">2</span> Or pick service group</button>
-          <button type="button" class="new-tkt-smart-step" data-focus="#aiTriageBtn"><span class="num">3</span> AI priority / SLA</button>
-        </div>
-        ${ticketNewSlaStripHtml(pri)}
-        <p class="new-tkt-assist-note" style="margin:0;"><strong>${escHtmlTicketNew(pri)}</strong> — ${escHtmlTicketNew(priHint)}</p>
-      </div>`;
-    return;
-  }
-
-  const chips = [];
-  if (sg) chips.push(`<span class="new-tkt-recap-chip sg" title="${escHtmlTicketNew(sg)}">SG: ${escHtmlTicketNew(sg)}</span>`);
-  if (cat) chips.push(`<span class="new-tkt-recap-chip cat" title="${escHtmlTicketNew(cat)}">${escHtmlTicketNew(cat)}</span>`);
-  if (ftVal) {
-    const fl = ftDisp || ftVal;
-    chips.push(`<span class="new-tkt-recap-chip fault" title="${escHtmlTicketNew(ftVal)}">${escHtmlTicketNew(fl)}</span>`);
-  }
-
-  let previewBlock = '';
-
-  const useCatalog = ticketNewUsesFaultCatalog();
-  const row = useCatalog ? findCatalogFaultRow(sg, cat, ftVal) : null;
-
-  if (useCatalog && row && ftVal) {
-    const st = ticketNewTruncateText(row.suggested_title, 220);
-    const dsc = ticketNewTruncateText(row.suggested_work_description, 360);
-    previewBlock =
-      `<div class="new-tkt-recap-preview">` +
-      (st
-        ? `<span class="new-tkt-recap-preview-label">Suggested title wording</span><p style="margin:0 0 10px;color:#1e293b;font-weight:500;">${escHtmlTicketNew(st)}</p>`
-        : '') +
-      (dsc
-        ? `<span class="new-tkt-recap-preview-label">Checklist preview (work description)</span><p style="margin:0;font-family:system-ui;line-height:1.5;">${escHtmlTicketNew(dsc)}</p>`
-        : '') +
-      `</div>`;
-  } else if (sg || cat || ftVal) {
-    previewBlock =
-      `<p class="new-tkt-recap-preview-muted" style="border-top:none;padding-top:4px;margin-top:0;">` +
-      `Fine-tune title and work description in the next section.` +
-      `</p>`;
-  }
-
-  host.innerHTML =
-    `<div class="new-tkt-recap-chips">${chips.join('')}</div>` +
-    `<p class="new-tkt-recap-pri-hint"><span class="pri-cap">${escHtmlTicketNew(pri)}</span> priority — ${escHtmlTicketNew(priHint)}</p>` +
-    ticketNewSlaStripHtml(pri) +
-    previewBlock;
 }
 
 function updateSummary() {
@@ -2651,7 +4027,6 @@ function updateSummary() {
     }
   }
 
-  updateComplaintClassRecap();
   updateLocationAssist();
   updateCreateReady();
   updateReporterAssist();
@@ -2730,11 +4105,6 @@ document.getElementById('title')?.addEventListener('input', () => {
     else { el.textContent = 'Not entered'; el.classList.add('empty'); }
   }
 });
-document.getElementById('complaintClassRecap')?.addEventListener('click', (e) => {
-  const btn = e.target.closest('.new-tkt-smart-step[data-focus]');
-  if (!btn) return;
-  focusTicketNewField(btn.getAttribute('data-focus'));
-});
 document.getElementById('reporterAssist')?.addEventListener('click', async (e) => {
   const btn = e.target.closest('[data-copy]');
   if (!btn) return;
@@ -2788,7 +4158,8 @@ document.getElementById('tktNewForm').addEventListener('submit', async (e) => {
     sub_zone: document.getElementById('subZoneSelect').value.trim(),
     base_unit: document.getElementById('baseUnitSelect').value.trim(),
     reporter_id: document.getElementById('reporterId')?.value || '',
-    asset_code: document.getElementById('assetSelect')?.value || '',
+    asset_codes: getSelectedAssetCodes(),
+    asset_code: (getSelectedAssetCodes()[0] || ''),
     sla_hours: document.getElementById('slaHours')?.value || '',
     triage_log_id: document.getElementById('triageLogId')?.value || '',
     is_chargeable: !!document.getElementById('isChargeable')?.checked,
@@ -2849,23 +4220,363 @@ document.getElementById('tktNewForm').addEventListener('submit', async (e) => {
   }
 });
 
-// ── FM assets + AI triage ──────────────────────────────────
+// ── FM assets (multi) + AI triage ──────────────────────────
+function getSelectedAssetCodes() {
+  return _selectedAssetCodes.slice();
+}
+
+function assetLabel(a) {
+  return `${a.asset_id} — ${a.name}${a.building ? ' (' + a.building + ')' : ''}`;
+}
+
+function syncAssetCodesHidden() {
+  const hidden = document.getElementById('assetCodesJson');
+  if (hidden) hidden.value = JSON.stringify(_selectedAssetCodes);
+}
+
+function buildSidebarAssetRemoveBtn(a) {
+  const rm = document.createElement('button');
+  rm.type = 'button';
+  rm.className = 'rm';
+  rm.setAttribute('aria-label', `Remove ${a.asset_id}`);
+  rm.textContent = '×';
+  rm.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleAssetCode(a.asset_id, false);
+  });
+  return rm;
+}
+
+/** Compact ID pill for the horizontal rail */
+function buildSidebarAssetPill(a) {
+  const li = document.createElement('li');
+  li.className = 'new-tkt-ready-asset-pill';
+  li.title = assetLabel(a);
+  li.setAttribute('role', 'button');
+  li.tabIndex = 0;
+  const id = document.createElement('span');
+  id.className = 'id';
+  id.textContent = a.asset_id;
+  li.appendChild(id);
+  li.appendChild(buildSidebarAssetRemoveBtn(a));
+  const openDetails = (e) => {
+    if (e.target.closest('.rm')) return;
+    e.preventDefault();
+    openSidebarAssetsBubble();
+  };
+  li.addEventListener('click', openDetails);
+  li.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') openDetails(e);
+  });
+  return li;
+}
+
+/** Full detail row for the right-side popup */
+function buildSidebarAssetDetail(a) {
+  const li = document.createElement('li');
+  li.className = 'new-tkt-ready-asset-detail';
+  const code = document.createElement('span');
+  code.className = 'code';
+  code.textContent = a.asset_id;
+  const meta = document.createElement('div');
+  meta.className = 'meta';
+  const name = document.createElement('strong');
+  name.textContent = a.name || a.asset_id;
+  meta.appendChild(name);
+  if (a.building) {
+    const b = document.createElement('span');
+    b.textContent = a.building;
+    meta.appendChild(b);
+  }
+  li.appendChild(code);
+  li.appendChild(meta);
+  li.appendChild(buildSidebarAssetRemoveBtn(a));
+  return li;
+}
+
+function closeSidebarAssetsBubble() {
+  const block = document.getElementById('sidebarAssetsBlock');
+  const bubble = document.getElementById('sidebarAssetsBubble');
+  const btn = document.getElementById('sidebarAssetsExpand');
+  block?.classList.remove('is-open');
+  if (bubble) bubble.hidden = true;
+  if (btn) btn.setAttribute('aria-expanded', 'false');
+}
+
+function openSidebarAssetsBubble() {
+  const block = document.getElementById('sidebarAssetsBlock');
+  const bubble = document.getElementById('sidebarAssetsBubble');
+  const btn = document.getElementById('sidebarAssetsExpand');
+  if (!bubble || !document.getElementById('sidebarAssetsBubbleList')?.children.length) return;
+  block?.classList.add('is-open');
+  bubble.hidden = false;
+  if (btn) btn.setAttribute('aria-expanded', 'true');
+}
+
+function renderAssetChips() {
+  const wrap = document.getElementById('assetMultiWrap');
+  const label = document.getElementById('assetMultiLabel');
+  const list = document.getElementById('sidebarAssetsList');
+  const rail = document.getElementById('sidebarAssetsRailWrap');
+  const empty = document.getElementById('sidebarAssetsEmpty');
+  const countEl = document.getElementById('sidebarAssetsCount');
+  const expand = document.getElementById('sidebarAssetsExpand');
+  const bubbleList = document.getElementById('sidebarAssetsBubbleList');
+  const selected = _assetOptions.filter((a) => _selectedAssetCodes.includes(a.asset_id));
+
+  if (label) {
+    label.textContent = !selected.length
+      ? 'Select one or more assets…'
+      : selected.length === 1
+        ? assetLabel(selected[0])
+        : `${selected.length} assets selected`;
+  }
+  wrap?.classList.toggle('has-selection', selected.length > 0);
+
+  if (countEl) countEl.textContent = String(selected.length);
+  if (expand) expand.hidden = selected.length === 0;
+
+  if (list && empty && rail) {
+    list.replaceChildren();
+    bubbleList?.replaceChildren();
+    if (!selected.length) {
+      rail.hidden = true;
+      empty.hidden = false;
+      closeSidebarAssetsBubble();
+    } else {
+      empty.hidden = true;
+      rail.hidden = false;
+      selected.forEach((a) => {
+        list.appendChild(buildSidebarAssetPill(a));
+        bubbleList?.appendChild(buildSidebarAssetDetail(a));
+      });
+    }
+  }
+
+  syncAssetCodesHidden();
+  updateLocationMap();
+}
+
+function initSidebarAssetsBubble() {
+  const expand = document.getElementById('sidebarAssetsExpand');
+  const closeBtn = document.getElementById('sidebarAssetsBubbleClose');
+  const block = document.getElementById('sidebarAssetsBlock');
+  expand?.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (block?.classList.contains('is-open')) closeSidebarAssetsBubble();
+    else openSidebarAssetsBubble();
+  });
+  closeBtn?.addEventListener('click', (e) => {
+    e.preventDefault();
+    closeSidebarAssetsBubble();
+  });
+  document.addEventListener('mousedown', (e) => {
+    if (!block?.classList.contains('is-open')) return;
+    if (!block.contains(e.target)) closeSidebarAssetsBubble();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeSidebarAssetsBubble();
+  });
+}
+
+function syncAssetMultiRowStates() {
+  const dd = document.getElementById('assetMultiDropdown');
+  if (!dd) return;
+  dd.querySelectorAll('.tkt-multi-item[data-code]').forEach((row) => {
+    const selected = _selectedAssetCodes.includes(row.dataset.code);
+    row.classList.toggle('is-selected', selected);
+    row.setAttribute('aria-selected', selected ? 'true' : 'false');
+  });
+  const hint = dd.querySelector('.tkt-multi-dropdown-hint');
+  if (hint) {
+    const n = _selectedAssetCodes.length;
+    hint.textContent = n
+      ? `${n} selected — keep ticking, then Done`
+      : 'Tick multiple assets, then Done';
+  }
+}
+
+function toggleAssetCode(code, force) {
+  const on = force === undefined ? !_selectedAssetCodes.includes(code) : !!force;
+  _selectedAssetCodes = _selectedAssetCodes.filter((c) => c !== code);
+  if (on) _selectedAssetCodes.push(code);
+  renderAssetChips();
+  syncAssetMultiRowStates();
+}
+
+function renderAssetMultiDropdown(keepOpen) {
+  const dd = document.getElementById('assetMultiDropdown');
+  const wrap = document.getElementById('assetMultiWrap');
+  if (!dd) return;
+  dd.replaceChildren();
+
+  const list = document.createElement('div');
+  list.className = 'tkt-multi-dropdown-list';
+
+  if (!_assetOptions.length) {
+    const empty = document.createElement('div');
+    empty.className = 'tkt-multi-empty';
+    empty.textContent = 'No FM assets available';
+    list.appendChild(empty);
+  } else {
+    _assetOptions.forEach((a) => {
+      const row = document.createElement('div');
+      const selected = _selectedAssetCodes.includes(a.asset_id);
+      row.className = 'tkt-ac-item tkt-multi-item' + (selected ? ' is-selected' : '');
+      row.setAttribute('role', 'option');
+      row.setAttribute('aria-selected', selected ? 'true' : 'false');
+      row.dataset.code = a.asset_id;
+      const check = document.createElement('span');
+      check.className = 'tkt-multi-check';
+      check.setAttribute('aria-hidden', 'true');
+      const text = document.createElement('span');
+      text.className = 'tkt-multi-item-text';
+      text.textContent = assetLabel(a);
+      row.appendChild(check);
+      row.appendChild(text);
+      row.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleAssetCode(a.asset_id);
+      });
+      list.appendChild(row);
+    });
+  }
+  dd.appendChild(list);
+
+  const foot = document.createElement('div');
+  foot.className = 'tkt-multi-dropdown-foot';
+  foot.addEventListener('mousedown', (e) => e.stopPropagation());
+  const hint = document.createElement('span');
+  hint.className = 'tkt-multi-dropdown-hint';
+  const n = _selectedAssetCodes.length;
+  hint.textContent = n
+    ? `${n} selected — keep ticking, then Done`
+    : 'Tick multiple assets, then Done';
+  const actions = document.createElement('div');
+  actions.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;';
+  const selectAll = document.createElement('button');
+  selectAll.type = 'button';
+  selectAll.className = 'tkt-btn tkt-btn-outline tkt-btn-sm';
+  selectAll.textContent = 'Select all';
+  selectAll.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    _selectedAssetCodes = _assetOptions.map((a) => a.asset_id);
+    renderAssetChips();
+    syncAssetMultiRowStates();
+  });
+  const clearBtn = document.createElement('button');
+  clearBtn.type = 'button';
+  clearBtn.className = 'tkt-btn tkt-btn-outline tkt-btn-sm';
+  clearBtn.textContent = 'Clear';
+  clearBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    _selectedAssetCodes = [];
+    renderAssetChips();
+    syncAssetMultiRowStates();
+  });
+  const done = document.createElement('button');
+  done.type = 'button';
+  done.className = 'tkt-btn tkt-btn-primary tkt-btn-sm';
+  done.textContent = 'Done';
+  done.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    closeAssetMulti();
+  });
+  actions.appendChild(selectAll);
+  actions.appendChild(clearBtn);
+  actions.appendChild(done);
+  foot.appendChild(hint);
+  foot.appendChild(actions);
+  dd.appendChild(foot);
+
+  if (keepOpen) {
+    dd.classList.add('open');
+    wrap?.classList.add('is-open');
+    document.getElementById('assetMultiBtn')?.setAttribute('aria-expanded', 'true');
+  }
+}
+
+function openAssetMulti() {
+  closeAllTktCombos();
+  renderAssetMultiDropdown(true);
+}
+
+function closeAssetMulti() {
+  const dd = document.getElementById('assetMultiDropdown');
+  const wrap = document.getElementById('assetMultiWrap');
+  dd?.classList.remove('open');
+  wrap?.classList.remove('is-open');
+  document.getElementById('assetMultiBtn')?.setAttribute('aria-expanded', 'false');
+}
+
+function initAssetMultiSelect() {
+  const btn = document.getElementById('assetMultiBtn');
+  if (!btn) return;
+  btn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const wrap = document.getElementById('assetMultiWrap');
+    if (wrap?.classList.contains('is-open')) closeAssetMulti();
+    else openAssetMulti();
+  });
+  document.addEventListener('mousedown', (e) => {
+    const wrap = document.getElementById('assetMultiWrap');
+    if (!wrap || !wrap.classList.contains('is-open')) return;
+    if (wrap.contains(e.target)) return;
+    closeAssetMulti();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeAssetMulti();
+  });
+}
+
 (async function loadAssetOptions() {
-  const sel = document.getElementById('assetSelect');
-  if (!sel) return;
   try {
     const res = await tktFetch('/assets/api/assets');
     if (!res.ok || !res.data.success) return;
-    (res.data.assets || []).forEach(a => {
-      const opt = document.createElement('option');
-      opt.value = a.asset_id;
-      opt.textContent = `${a.asset_id} — ${a.name}${a.building ? ' (' + a.building + ')' : ''}`;
-      sel.appendChild(opt);
-    });
+    _assetOptions = res.data.assets || [];
+    renderAssetChips();
   } catch (_) { /* optional */ }
+  initAssetMultiSelect();
+  initSidebarAssetsBubble();
 })();
 
 let _lastTriageSuggestion = null;
+let _aiTriageApplied = false;
+
+function syncAiTriageResultVisibility() {
+  const box = document.getElementById('aiTriageBox');
+  const result = document.getElementById('aiTriageResult');
+  const hasResult = !!(result && !result.hidden);
+  box?.classList.toggle('has-result', hasResult);
+}
+
+function setAiTriageApplied(on) {
+  _aiTriageApplied = !!on;
+  const box = document.getElementById('aiTriageBox');
+  const using = document.getElementById('aiTriageUsing');
+  const actions = document.getElementById('aiTriageActions');
+  const hint = document.getElementById('aiTriageHint');
+  const title = document.getElementById('aiTriageTitle');
+  const btn = document.getElementById('aiTriageBtn');
+  box?.classList.toggle('is-applied', _aiTriageApplied);
+  if (using) using.hidden = !_aiTriageApplied;
+  actions?.classList.toggle('is-hidden', _aiTriageApplied);
+  if (title) title.textContent = _aiTriageApplied ? 'Using AI suggestion' : 'AI triage suggestion';
+  if (btn) btn.textContent = _aiTriageApplied ? 'Suggest again' : 'Suggest priority / SLA / tech';
+  if (hint) {
+    hint.textContent = _aiTriageApplied
+      ? 'This work order is using Claude’s priority, SLA, technician, and parts. Suggest again to replace them.'
+      : 'Claude suggests priority, SLA hours, technician, and parts. You review before creating — nothing is auto-applied.';
+  }
+  syncAiTriageResultVisibility();
+}
 
 function setPriorityPill(val) {
   document.querySelectorAll('.priority-pill').forEach(p => {
@@ -2877,8 +4588,6 @@ function setPriorityPill(val) {
 
 document.getElementById('aiTriageBtn')?.addEventListener('click', async () => {
   const btn = document.getElementById('aiTriageBtn');
-  btn.disabled = true;
-  btn.textContent = 'Analyzing…';
   const payload = {
     title: (document.getElementById('title')?.value || '').trim(),
     work_description: (document.getElementById('workDescription')?.value || '').trim(),
@@ -2890,33 +4599,51 @@ document.getElementById('aiTriageBtn')?.addEventListener('click', async () => {
     zone: (document.getElementById('zoneSelect')?.value || '').trim(),
     sub_zone: (document.getElementById('subZoneSelect')?.value || '').trim(),
     base_unit: (document.getElementById('baseUnitSelect')?.value || '').trim(),
-    asset_code: (document.getElementById('assetSelect')?.value || '').trim(),
+    asset_code: (getSelectedAssetCodes()[0] || ''),
+    asset_codes: getSelectedAssetCodes(),
   };
   if (!payload.title && !payload.work_description) {
     tktToast('Enter a title or description before requesting AI triage.', 'error');
-    btn.disabled = false;
-    btn.textContent = 'Suggest priority / SLA / tech';
     return;
   }
+
+  if (_aiTriageApplied) setAiTriageApplied(false);
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Analyzing…';
+  }
+
   const res = await tktFetch('/tickets/api/tickets/triage-preview', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
-  btn.disabled = false;
-  btn.textContent = 'Suggest priority / SLA / tech';
+
+  if (btn) {
+    btn.disabled = false;
+    btn.textContent = _aiTriageApplied ? 'Suggest again' : 'Suggest priority / SLA / tech';
+  }
+
   if (!res.ok || !res.data.success) {
     tktToast(res.data.error || 'AI triage failed', 'error');
     return;
   }
+
   _lastTriageSuggestion = res.data.suggestion;
   document.getElementById('triageLogId').value = res.data.triage_log_id || '';
   const s = res.data.suggestion || {};
   const parts = (s.required_parts || []).join(', ') || 'none';
+  const reason = (s.reasoning || '').trim();
   document.getElementById('aiTriageSummary').innerHTML =
-    `<strong>Priority:</strong> ${s.priority || '—'} · <strong>SLA:</strong> ${s.sla_hours || '—'}h · ` +
-    `<strong>Technician:</strong> ${s.technician_name || '—'} · <strong>Parts:</strong> ${parts}` +
-    `<div style="margin-top:6px;color:#64748b;">${(s.reasoning || '').replace(/</g,'&lt;')}</div>`;
+    `<div class="tkt-ai-result-metrics">` +
+      `<div class="tkt-ai-result-metric"><span class="k">Priority</span><span class="v">${escHtmlTicketNew(s.priority || '—')}</span></div>` +
+      `<div class="tkt-ai-result-metric"><span class="k">SLA</span><span class="v">${escHtmlTicketNew(s.sla_hours != null ? `${s.sla_hours}h` : '—')}</span></div>` +
+      `<div class="tkt-ai-result-metric"><span class="k">Technician</span><span class="v">${escHtmlTicketNew(s.technician_name || '—')}</span></div>` +
+      `<div class="tkt-ai-result-metric"><span class="k">Parts</span><span class="v">${escHtmlTicketNew(parts)}</span></div>` +
+    `</div>` +
+    (reason ? `<p class="tkt-ai-result-reason">${escHtmlTicketNew(reason)}</p>` : '');
   document.getElementById('aiTriageResult').hidden = false;
+  setAiTriageApplied(false);
+  syncAiTriageResultVisibility();
 });
 
 document.getElementById('aiTriageAccept')?.addEventListener('click', () => {
@@ -2926,15 +4653,20 @@ document.getElementById('aiTriageAccept')?.addEventListener('click', () => {
   document.getElementById('slaHours').value = s.sla_hours || '';
   document.getElementById('suggestedTechId').value = s.technician_id || '';
   document.getElementById('requiredPartsJson').value = JSON.stringify(s.required_parts || []);
-  tktToast('AI suggestion applied — review before creating.', 'success');
+  setAiTriageApplied(true);
+  tktToast('Using AI suggestion — review before creating.', 'success');
   updateSummary?.();
 });
 
 document.getElementById('aiTriageDismiss')?.addEventListener('click', () => {
+  setAiTriageApplied(false);
   document.getElementById('aiTriageResult').hidden = true;
+  syncAiTriageResultVisibility();
 });
 </script>
 <script src="{{ url_for('static', filename='js/dashboard.js') }}" defer></script>
+<script>window.FILES_SAVE_MODULE = 'ticketing'; window.FILES_SAVE_MODULE_LABEL = 'Service Tickets'; window.FILES_SAVE_TICKET_STATUS = 'new';</script>
+<script src="{{ url_for('static', filename='js/files-save.js') }}?v=18"></script>
 <script src="{{ url_for('static', filename='js/fm-mobile.js') }}"></script>
 <script>
   function tktOpenMobileSidebar(){const s=document.getElementById('tktDhSidebar');if(s)s.classList.add('open');}

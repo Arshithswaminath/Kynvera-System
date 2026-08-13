@@ -9,7 +9,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='images/kynvera/kynvera-mark-32.png') }}?v=3">
   <link rel="icon" type="image/png" sizes="48x48" href="{{ url_for('static', filename='images/kynvera/kynvera-mark-48.png') }}?v=3">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=22">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}">
   <style>
     :root {
@@ -911,6 +911,8 @@
           <a href="/admin/dashboard" class="sb-nav-item">Settings</a>
         </div>
       </nav>
+      {% set files_save_label = 'Device Management' %}
+      {% include 'partials/files_save_menu_card.html' %}
       <div class="sb-footer">
         <div class="sb-user-row" onclick="if(typeof openProfileModal==='function'){openProfileModal();}" role="button" tabindex="0">
           <div class="sb-avatar" id="dmUserAvatar">—</div>
@@ -1191,7 +1193,7 @@
   <script src="{{ url_for('static', filename='api-client.js') }}"></script>
   <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
   <script>window.FILES_SAVE_MODULE = 'devices'; window.FILES_SAVE_MODULE_LABEL = 'Device Management';</script>
-  <script src="{{ url_for('static', filename='js/files-save.js') }}?v=3"></script>
+  <script src="{{ url_for('static', filename='js/files-save.js') }}?v=16"></script>
   <script>
 (function() {
   let devicesData = [];
