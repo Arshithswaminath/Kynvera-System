@@ -615,23 +615,35 @@ def _parse_automated_with_project_fill(file_storage) -> list[dict[str, Any]]:
     return rows_out
 
 
+def load_manpower_import_rows(file_storage) -> list[dict[str, Any]]:
+    """
+    Choose the safe parser for an uploaded manpower workbook.
+
+    Prefer header-mapped parse (our flat export/template). The legacy A/C/F–M
+    automated layout must not run first: our export puts Project in B and
+    Candidate in F, so that layout mis-reads every row and can wipe the board
+    under replace=True.
+    """
+    try:
+        file_storage.stream.seek(0)
+    except Exception:
+        pass
+    rows = parse_all_trades_rows(file_storage)
+    if rows:
+        return rows
+    try:
+        file_storage.stream.seek(0)
+    except Exception:
+        pass
+    return _parse_automated_with_project_fill(file_storage)
+
+
 def apply_manpower_import(file_storage, *, replace: bool = False, created_by: Optional[int] = None) -> dict:
     """
     Import vacancies from workbook.
     If replace=True, delete all existing vacancies first (trades/projects kept/updated).
     """
-    # Prefer automated layout parser; fall back to generic header mapping
-    try:
-        file_storage.stream.seek(0)
-    except Exception:
-        pass
-    rows = _parse_automated_with_project_fill(file_storage)
-    if not rows:
-        try:
-            file_storage.stream.seek(0)
-        except Exception:
-            pass
-        rows = parse_all_trades_rows(file_storage)
+    rows = load_manpower_import_rows(file_storage)
 
     if not rows:
         return {
