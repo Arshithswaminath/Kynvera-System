@@ -211,6 +211,42 @@ def _map_log_columns(headers: list[str]) -> dict[str, int]:
     return col
 
 
+def _is_leave_log_example_row(row: tuple, col: dict[str, int]) -> bool:
+    """Skip the hardcoded Leave Log template sample row (and similar placeholders)."""
+    name = ''
+    if 'name' in col and col['name'] < len(row) and row[col['name']] is not None:
+        name = str(row[col['name']]).strip().lower()
+    notes = ''
+    if 'notes' in col and col['notes'] < len(row) and row[col['notes']] is not None:
+        notes = str(row[col['notes']]).strip().lower()
+    if 'example' in name and (
+        'replace' in name or 'delete' in name or 'before import' in name
+    ):
+        return True
+    # Exact template sample note (name may be missing on some unofficial sheets)
+    if notes == 'example sick leave':
+        return True
+    return False
+
+
+def _leave_log_dedupe_key(
+    employee_id: int,
+    leave_type: str,
+    leave_date: date,
+    end_date: Optional[date],
+    days: float,
+) -> tuple:
+    """Identity for Leave Log rows so Export→Import does not double-count."""
+    end = end_date or leave_date
+    return (
+        int(employee_id),
+        str(leave_type),
+        leave_date.isoformat(),
+        end.isoformat(),
+        round(float(days), 4),
+    )
+
+
 def _leave_log_sheet(wb) -> Optional[Any]:
     for name in LOG_SHEET_NAMES:
         if name in wb.sheetnames:
@@ -574,9 +610,22 @@ def import_leave_workbook(file_storage) -> dict[str, Any]:
     updated = 0
     usage_updates = 0
     logs_created = 0
+    logs_skipped = 0
     errors: list[str] = []
 
     by_emp = {e.emp_id.strip().upper(): e for e in LeaveEmployee.query.all()}
+    # Preload Leave Log identities so Export → Import (or re-upload) is idempotent.
+    seen_log_keys: set[tuple] = set()
+    for lg in LeaveLog.query.all():
+        seen_log_keys.add(
+            _leave_log_dedupe_key(
+                lg.employee_id,
+                lg.leave_type,
+                lg.leave_date,
+                lg.end_date,
+                float(lg.days or 0),
+            )
+        )
 
     def _get_or_note(emp_id_raw: str) -> Optional[LeaveEmployee]:
         if not emp_id_raw:
@@ -664,6 +713,9 @@ def import_leave_workbook(file_storage) -> dict[str, Any]:
                 emp_raw = row[col['emp_id']]
                 if emp_raw is None or str(emp_raw).strip() == '':
                     continue
+                if _is_leave_log_example_row(row, col):
+                    logs_skipped += 1
+                    continue
                 emp_id = _normalize_emp_id(emp_raw)
                 emp = _get_or_note(emp_id)
                 if not emp:
@@ -703,11 +755,19 @@ def import_leave_workbook(file_storage) -> dict[str, Any]:
                     appr = str(row[col['approved']]).strip()
                     if appr and appr.lower() not in ('yes', 'y', 'true', '1'):
                         notes = (notes + f' [Approved: {appr}]').strip() if notes else f'Approved: {appr}'
+                stored_end = end_date if end_date != leave_date else None
+                dedupe_key = _leave_log_dedupe_key(
+                    emp.id, lt, leave_date, stored_end, float(days),
+                )
+                if dedupe_key in seen_log_keys:
+                    logs_skipped += 1
+                    continue
+                seen_log_keys.add(dedupe_key)
                 db.session.add(LeaveLog(
                     employee_id=emp.id,
                     leave_type=lt,
                     leave_date=leave_date,
-                    end_date=end_date if end_date != leave_date else None,
+                    end_date=stored_end,
                     days=float(days),
                     notes=notes,
                 ))
@@ -854,6 +914,7 @@ def import_leave_workbook(file_storage) -> dict[str, Any]:
         'updated': updated,
         'usage_updates': usage_updates,
         'logs_created': logs_created,
+        'logs_skipped': logs_skipped,
         'plans_created': plans_created,
         'errors': errors[:50],
     }
