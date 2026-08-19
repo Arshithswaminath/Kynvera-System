@@ -4,6 +4,7 @@ Staffing link — assign Hiring candidates to Manpower vacancies (vacancy-first)
 from __future__ import annotations
 
 import logging
+import re
 from datetime import date
 from typing import Any, Optional
 
@@ -40,6 +41,76 @@ PIPELINE_TO_MANPOWER_STATUS = {
 }
 
 _schema_ensured = False
+
+
+def _norm_role_text(value: str) -> str:
+    return re.sub(r'[^a-z0-9]+', ' ', (value or '').lower()).strip()
+
+
+def _edit_distance(a: str, b: str) -> int:
+    if a == b:
+        return 0
+    if not a:
+        return len(b)
+    if not b:
+        return len(a)
+    prev = list(range(len(b) + 1))
+    for i, ca in enumerate(a, start=1):
+        cur = [i]
+        for j, cb in enumerate(b, start=1):
+            cost = 0 if ca == cb else 1
+            cur.append(min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + cost))
+        prev = cur
+    return prev[-1]
+
+
+def _tokens_close(a: str, b: str) -> bool:
+    if not a or not b:
+        return False
+    if a == b:
+        return True
+    min_len = min(len(a), len(b))
+    if min_len >= 5 and _edit_distance(a, b) <= 2:
+        return True
+    if min_len >= 4 and (a.startswith(b) or b.startswith(a)):
+        return True
+    return False
+
+
+def role_trade_match_score(role: str, trade: str) -> int:
+    """Score Hiring Docs role against a manpower trade. Typos like Techinician still match."""
+    r = _norm_role_text(role)
+    t = _norm_role_text(trade)
+    if not r or not t:
+        return 0
+    if r == t or r.replace(' ', '') == t.replace(' ', ''):
+        return 50
+    r_tokens = [x for x in r.split() if len(x) > 1]
+    t_tokens = [x for x in t.split() if len(x) > 1]
+    if not r_tokens or not t_tokens:
+        return 0
+    used: set[int] = set()
+    hits = 0
+    for tt in t_tokens:
+        found = None
+        for i, rt in enumerate(r_tokens):
+            if i in used:
+                continue
+            if _tokens_close(rt, tt):
+                found = i
+                break
+        if found is not None:
+            used.add(found)
+            hits += 1
+    if not hits:
+        return 0
+    if hits == len(t_tokens) and hits == len(r_tokens):
+        return 50
+    if hits == len(t_tokens) or hits == len(r_tokens):
+        return 35
+    if hits >= 2:
+        return 30
+    return 0
 
 
 def ensure_staffing_link_schema() -> None:
@@ -306,6 +377,7 @@ def link_picker_candidates(*, q: str = '') -> list[dict[str, Any]]:
     """
     Hiring candidates for the Manpower Link picker.
     Includes available, already-assigned, and employed people with link_state metadata.
+    Not hired files are omitted — they are a closed process state, not a linkable pool.
     """
     ensure_staffing_link_schema()
     linked_rows = (
@@ -343,6 +415,8 @@ def link_picker_candidates(*, q: str = '') -> list[dict[str, Any]]:
     }
     for c in rows:
         pipeline = c.normalized_pipeline_status()
+        if pipeline == 'not_hired':
+            continue
         completed, total, _ = c.progress()
         vac = assigned_by_candidate.get(c.id)
         assigned_summary = _assigned_vacancy_summary(vac) if vac else None
@@ -360,6 +434,8 @@ def link_picker_candidates(*, q: str = '') -> list[dict[str, Any]]:
             'phone': c.phone or '',
             'pipeline_status': pipeline,
             'pipeline_label': HIRING_PIPELINE_LABELS.get(pipeline, pipeline),
+            'is_not_hired': False,
+            'is_on_hold': pipeline == 'on_hold',
             'progress_label': f'{completed}/{total}',
             'initials': c.initials(),
             'url': f'/hr/hiring/candidates/{c.id}',

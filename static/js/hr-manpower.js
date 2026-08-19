@@ -12,6 +12,7 @@
     status: 'all',
     colFilterKey: null,
     linkVacancyId: null,
+    linkVacancy: null,
     linkCandidateId: null,
     linkCandidates: [],
     colOrder: null,
@@ -1182,14 +1183,92 @@
 
   function getLinkVacancy() {
     var id = state.linkVacancyId;
-    if (!id) return null;
+    if (!id) return state.linkVacancy || null;
     return (state.vacancies || []).find(function (v) {
       return Number(v.id) === Number(id);
-    }) || null;
+    }) || state.linkVacancy || null;
   }
 
   function normalizeMatchText(s) {
     return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  }
+
+  function vacancyTradeName(vac) {
+    if (!vac) return '';
+    if (vac.trade_name) return String(vac.trade_name);
+    if (vac.trade && typeof vac.trade === 'object' && vac.trade.name) {
+      return String(vac.trade.name);
+    }
+    if (typeof vac.trade === 'string') return vac.trade;
+    return '';
+  }
+
+  function candidateRoleName(candidate) {
+    if (!candidate) return '';
+    return String(candidate.role || candidate.position || '');
+  }
+
+  function editDistance(a, b) {
+    if (a === b) return 0;
+    var m = a.length;
+    var n = b.length;
+    if (!m) return n;
+    if (!n) return m;
+    var prev = [];
+    var j;
+    for (j = 0; j <= n; j++) prev[j] = j;
+    for (var i = 1; i <= m; i++) {
+      var cur = [i];
+      for (j = 1; j <= n; j++) {
+        var cost = a.charAt(i - 1) === b.charAt(j - 1) ? 0 : 1;
+        cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + cost);
+      }
+      prev = cur;
+    }
+    return prev[n];
+  }
+
+  function tokensClose(a, b) {
+    if (!a || !b) return false;
+    if (a === b) return true;
+    var minLen = Math.min(a.length, b.length);
+    if (minLen >= 5 && editDistance(a, b) <= 2) return true;
+    if (minLen >= 4 && (a.indexOf(b) === 0 || b.indexOf(a) === 0)) return true;
+    return false;
+  }
+
+  function roleTradeMatchScore(role, trade) {
+    var r = normalizeMatchText(role);
+    var t = normalizeMatchText(trade);
+    if (!r || !t) return 0;
+    if (r === t) return 50;
+    var rc = r.replace(/\s+/g, '');
+    var tc = t.replace(/\s+/g, '');
+    if (rc && tc && rc === tc) return 50;
+    var rTokens = r.split(/\s+/).filter(function (x) { return x.length > 1; });
+    var tTokens = t.split(/\s+/).filter(function (x) { return x.length > 1; });
+    if (!rTokens.length || !tTokens.length) return 0;
+    var used = {};
+    var hits = 0;
+    tTokens.forEach(function (tt) {
+      var found = -1;
+      for (var i = 0; i < rTokens.length; i++) {
+        if (used[i]) continue;
+        if (tokensClose(rTokens[i], tt)) {
+          found = i;
+          break;
+        }
+      }
+      if (found >= 0) {
+        used[found] = true;
+        hits += 1;
+      }
+    });
+    if (!hits) return 0;
+    if (hits === tTokens.length && hits === rTokens.length) return 50;
+    if (hits === tTokens.length || hits === rTokens.length) return 35;
+    if (hits >= 2) return 30;
+    return 0;
   }
 
   function candidateMatchScore(candidate, vac) {
@@ -1214,7 +1293,24 @@
     if (phoneHint && cPhone && phoneHint.length >= 5) {
       if (cPhone.indexOf(phoneHint) !== -1 || phoneHint.indexOf(cPhone) !== -1) score += 40;
     }
+    score += roleTradeMatchScore(candidateRoleName(candidate), vacancyTradeName(vac));
     return score;
+  }
+
+  function isNotHiredCandidate(c) {
+    return !!(c && (
+      c.is_not_hired === true ||
+      c.pipeline_status === 'not_hired' ||
+      String(c.pipeline_label || '').toLowerCase() === 'not hired'
+    ));
+  }
+
+  function isOnHoldCandidate(c) {
+    return !!(c && (
+      c.is_on_hold === true ||
+      c.pipeline_status === 'on_hold' ||
+      String(c.pipeline_label || '').toLowerCase() === 'on hold'
+    ));
   }
 
   function isEmployedCandidate(c) {
@@ -1295,13 +1391,14 @@
   function enrichLinkCandidatesFromBoard(apiCandidates) {
     var byId = {};
     (apiCandidates || []).forEach(function (c) {
-      if (!c || c.id == null) return;
+      if (!c || c.id == null || isNotHiredCandidate(c)) return;
       byId[String(c.id)] = Object.assign({}, c);
     });
 
     (state.vacancies || []).forEach(function (v) {
       if (!v || !v.hiring_candidate_id || !v.hiring_candidate) return;
       var hc = v.hiring_candidate;
+      if (isNotHiredCandidate(hc)) return;
       var idKey = String(hc.id || v.hiring_candidate_id);
       var assigned = {
         id: v.id,
@@ -1370,6 +1467,9 @@
     if (!modal || !listEl || !confirmBtn) return;
 
     state.linkVacancyId = vacancyId;
+    state.linkVacancy = (state.vacancies || []).find(function (v) {
+      return Number(v.id) === Number(vacancyId);
+    }) || null;
     state.linkCandidateId = null;
     state.linkCandidates = [];
     confirmBtn.disabled = true;
@@ -1458,23 +1558,26 @@
     var vac = getLinkVacancy();
     var q = (query || '').trim();
     var rows = (state.linkCandidates || []).filter(function (c) {
-      return candidateMatchesQuery(c, q);
+      return !isNotHiredCandidate(c) && candidateMatchesQuery(c, q);
     }).map(function (c) {
       var score = candidateMatchScore(c, vac);
       var stateKey = effectiveLinkState(c);
+      var available = stateKey === 'available';
+      var roleScore = roleTradeMatchScore(candidateRoleName(c), vacancyTradeName(vac));
       return Object.assign({}, c, {
         _matchScore: score,
-        _suggested: score >= 30,
+        _suggested: available && roleScore >= 30,
         _linkState: stateKey,
       });
     });
 
     rows.sort(function (a, b) {
-      if (b._matchScore !== a._matchScore) return b._matchScore - a._matchScore;
+      if (a._suggested !== b._suggested) return a._suggested ? -1 : 1;
       var rank = { available: 0, assigned: 1, employee: 2 };
       var ra = rank[a._linkState] != null ? rank[a._linkState] : 9;
       var rb = rank[b._linkState] != null ? rank[b._linkState] : 9;
       if (ra !== rb) return ra - rb;
+      if (b._matchScore !== a._matchScore) return b._matchScore - a._matchScore;
       return String(b.updated_at || '').localeCompare(String(a.updated_at || ''));
     });
 
@@ -1516,13 +1619,15 @@
           '<span class="mp-link-option-main">' +
             '<span class="mp-link-option-name">' +
               '<span class="mp-link-option-name-text">' + esc(c.full_name || 'Candidate') + '</span>' +
-              (c._suggested ? '<span class="mp-link-suggested">Suggested</span>' : '') +
             '</span>' +
             '<span class="mp-link-option-sub">' +
               esc(c.role || 'No role set') +
               (c.phone ? ' · ' + esc(c.phone) : '') +
             '</span>' +
-            '<span class="mp-link-option-flags">' + linkStateBadge(c) + '</span>' +
+            '<span class="mp-link-option-flags">' +
+              (c._suggested ? '<span class="mp-link-suggested">Suggested</span>' : '') +
+              linkStateBadge(c) +
+            '</span>' +
           '</span>' +
           '<span class="mp-link-option-meta">' +
             '<span class="mp-link-pipe">' + esc(c.pipeline_label || '—') + '</span>' +
@@ -1531,6 +1636,18 @@
         '</button>'
       );
     }).join('');
+  }
+
+  function buildOnHoldConfirm(candidate) {
+    var name = candidate.full_name || 'This candidate';
+    var vac = getLinkVacancy();
+    var toProject = toProjectLabel(vac);
+    return {
+      title: 'Candidate is on hold',
+      message: name + ' is On hold in Hiring Docs. Do you still want to add them to ' +
+        toProject + '?',
+      confirmLabel: 'Yes, add',
+    };
   }
 
   function buildRestrictedConfirm(candidate) {
@@ -1590,12 +1707,27 @@
     });
     if (!candidate) return;
 
-    if (!isRestrictedCandidate(candidate)) {
+    var onHold = isOnHoldCandidate(candidate);
+    var restricted = isRestrictedCandidate(candidate);
+    if (!onHold && !restricted) {
       performLinkAssign(candidateId, false);
       return;
     }
 
-    var dlg = buildRestrictedConfirm(candidate);
+    var dlg;
+    if (onHold && restricted) {
+      var switchDlg = buildRestrictedConfirm(candidate);
+      dlg = {
+        title: 'Candidate is on hold',
+        message: (candidate.full_name || 'This candidate') +
+          ' is On hold in Hiring Docs. ' + switchDlg.message,
+        confirmLabel: switchDlg.confirmLabel,
+      };
+    } else if (onHold) {
+      dlg = buildOnHoldConfirm(candidate);
+    } else {
+      dlg = buildRestrictedConfirm(candidate);
+    }
     confirmDialog({
       title: dlg.title,
       message: dlg.message,
@@ -1609,7 +1741,7 @@
         if ($('mpLinkConfirm')) $('mpLinkConfirm').disabled = true;
         return;
       }
-      performLinkAssign(candidateId, true);
+      performLinkAssign(candidateId, restricted);
     });
   }
 

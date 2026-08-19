@@ -21,22 +21,74 @@
 
 .mp-page .hh-topbar {
   margin-bottom: 0.75rem;
+  flex-shrink: 0;
 }
 
 .mp-page .hh-subtitle {
   margin-top: 0.2rem;
 }
 
+/* Fill remaining viewport so the board grows on larger screens */
+body.mp-page {
+  height: 100dvh;
+  overflow: hidden;
+}
+
+body.mp-page .hh-shell {
+  height: calc(100dvh - var(--nav-bar-h, 4.75rem));
+  min-height: 0;
+  overflow: hidden;
+}
+
+body.mp-page .hh-main {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-bottom: 1rem;
+}
+
+body.mp-page #mpImportResult {
+  flex-shrink: 0;
+}
+
+body.mp-page .mp-view#mpBoardView {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+body.mp-page .mp-view#mpBoardView[hidden] {
+  display: none !important;
+}
+
+body.mp-page .mp-settings-view {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
 /* ── Bento shell ─────────────────────────────────────────── */
 .mp-bento {
-  display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
   gap: 0.55rem;
   margin-bottom: 0;
   padding: 0;
   background: transparent;
   border: none;
   border-radius: 0;
+}
+
+.mp-bento-chrome {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 0.55rem;
+  flex: 0 0 auto;
 }
 
 .mp-bento-tile {
@@ -258,6 +310,10 @@
   grid-column: span 12;
   padding: 0;
   overflow: hidden;
+  flex: 1 1 auto;
+  min-height: 12rem;
+  display: flex;
+  flex-direction: column;
 }
 
 .mp-bento-label {
@@ -621,7 +677,10 @@
   border-radius: 0;
   overflow: auto;
   -webkit-overflow-scrolling: touch;
-  max-height: calc(100dvh - 18rem);
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  max-height: none;
   scrollbar-gutter: stable;
   scrollbar-width: thin;
   scrollbar-color: #94a3b8 #f1f5f9;
@@ -666,7 +725,8 @@
 }
 
 @media (max-width: 700px) {
-  .mp-bento {
+  .mp-bento,
+  .mp-bento-chrome {
     padding: 0;
     gap: 0.4rem;
     border-radius: 0;
@@ -811,8 +871,27 @@
 }
 
 @media (max-width: 900px) {
+  body.mp-page {
+    height: auto;
+    overflow: visible;
+  }
+  body.mp-page .hh-shell {
+    height: auto;
+    min-height: calc(100dvh - var(--nav-bar-h, 4.75rem));
+    overflow: visible;
+  }
+  body.mp-page .hh-main {
+    overflow: visible;
+    height: auto;
+  }
+  .mp-bento-board {
+    flex: none;
+    min-height: 0;
+  }
   .mp-board-wrap {
     max-height: none;
+    height: auto;
+    flex: none;
   }
 }
 
@@ -1723,6 +1802,7 @@
 }
 
 .mp-link-option-name-text {
+  flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;

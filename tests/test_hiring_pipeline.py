@@ -70,6 +70,69 @@ def test_pipeline_reopen_not_hired_to_interview_completed(client, admin_auth_hea
     assert candidate['is_on_hold'] is False
 
 
+def test_link_picker_omits_not_hired_and_keeps_active_role(client, admin_auth_headers):
+    electrician = client.post(
+        '/hr/api/hiring/candidates',
+        headers=admin_auth_headers,
+        json={'full_name': 'Kuppai Mydeen', 'role': 'Electrician'},
+    )
+    assert electrician.status_code == 201, electrician.get_json()
+    electrician_id = electrician.get_json()['candidate']['id']
+
+    not_hired = client.post(
+        '/hr/api/hiring/candidates',
+        headers=admin_auth_headers,
+        json={'full_name': 'Bencis Camacho Betinol', 'role': 'Office Boy'},
+    )
+    assert not_hired.status_code == 201, not_hired.get_json()
+    not_hired_id = not_hired.get_json()['candidate']['id']
+    closed = client.patch(
+        f'/hr/api/hiring/candidates/{not_hired_id}',
+        headers=admin_auth_headers,
+        json={'pipeline_status': 'not_hired'},
+    )
+    assert closed.status_code == 200, closed.get_json()
+
+    on_hold = client.post(
+        '/hr/api/hiring/candidates',
+        headers=admin_auth_headers,
+        json={'full_name': 'On Hold Plumber', 'role': 'Plumber'},
+    )
+    assert on_hold.status_code == 201, on_hold.get_json()
+    on_hold_id = on_hold.get_json()['candidate']['id']
+    paused = client.patch(
+        f'/hr/api/hiring/candidates/{on_hold_id}',
+        headers=admin_auth_headers,
+        json={'pipeline_status': 'on_hold'},
+    )
+    assert paused.status_code == 200, paused.get_json()
+
+    listing = client.get(
+        '/hr/api/staffing/unassigned-candidates',
+        headers=admin_auth_headers,
+    )
+    assert listing.status_code == 200, listing.get_json()
+    body = listing.get_json()
+    candidates = body.get('candidates') or []
+    ids = [c.get('id') for c in candidates]
+    assert electrician_id in ids
+    assert on_hold_id in ids
+    assert not_hired_id not in ids
+    assert all(c.get('pipeline_status') != 'not_hired' for c in candidates)
+    match = next(c for c in candidates if c.get('id') == electrician_id)
+    assert match.get('role') == 'Electrician'
+    assert match.get('is_not_hired') is False
+
+
+def test_role_trade_match_accepts_technician_typo():
+    from module_hr.staffing_link import role_trade_match_score
+
+    assert role_trade_match_score('AC Techinician', 'AC Technician') >= 30
+    assert role_trade_match_score('AC Technician', 'AC Technician') >= 30
+    assert role_trade_match_score('Electrician', 'AC Technician') < 30
+    assert role_trade_match_score('HVAC Technician', 'AC Technician') < 30
+
+
 def test_pipeline_rejects_unknown_status(client, admin_auth_headers):
     created = _create_candidate(client, admin_auth_headers)
     response = client.patch(
