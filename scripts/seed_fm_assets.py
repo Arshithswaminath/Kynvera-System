@@ -18,7 +18,7 @@ from app.models import (
 
 SEED_TAG = '[FM-SEED]'
 # Deterministic codes so re-runs are idempotent without --clear
-SEED_ASSET_CODES = [f'AST-{i:04d}' for i in range(1, 13)]
+SEED_ASSET_CODES = [f'AST-{i:04d}' for i in range(1, 15)]
 
 
 def _utcnow():
@@ -171,12 +171,15 @@ SAMPLE_ASSETS = [
         'installation_date': date(2021, 2, 18),
         'warranty_expiry': date(2027, 2, 18),
         'purchase_cost': 72000.0,
-        'maintenance_cost_total': 5800.0,
-        'status': 'active',
-        'health_score': 82,
+        'maintenance_cost_total': 18550.0,
+        'status': 'critical',
+        'health_score': 36,
         'latitude': 25.0795,
         'longitude': 55.1418,
-        'notes': f'{SEED_TAG} Office floor AHU.',
+        'notes': (
+            f'{SEED_TAG} Repeat-repair AHU — fan motor failed twice in 45 days; '
+            'currently under repair. Contrast with AST-0014 (no repair tickets).'
+        ),
     },
     {
         'asset_id': 'AST-0008',
@@ -282,6 +285,30 @@ SAMPLE_ASSETS = [
         'latitude': 25.0812,
         'longitude': 55.1401,
         'notes': f'{SEED_TAG} Decommissioned — replaced by VRF zone. Kept for history.',
+    },
+    {
+        'asset_id': 'AST-0014',
+        'qr_code': 'QR-AST-0014',
+        'name': 'AHU-04 West Plant Handler',
+        'asset_type': 'AHU',
+        'building': 'A&F Building',
+        'floor': 'Ground floor',
+        'room': 'Plant Room 2',
+        'manufacturer': 'Carrier',
+        'model': '39M-AHU',
+        'serial_number': 'CAR-39M-88421',
+        'installation_date': date(2024, 3, 12),
+        'warranty_expiry': date(2027, 3, 11),
+        'purchase_cost': 126500.0,
+        'maintenance_cost_total': 4820.0,
+        'status': 'active',
+        'health_score': 86,
+        'latitude': 25.2048,
+        'longitude': 55.2708,
+        'notes': (
+            f'{SEED_TAG} Fully populated demo asset for QR label print checks. '
+            'No repair tickets — contrast with AST-0007 (repeat repairs).'
+        ),
     },
 ]
 
@@ -415,6 +442,95 @@ SAMPLE_TICKETS = [
         'sla_hours': 48,
         'total_cost': 6200.0,
         'days_ago': 40,
+    },
+    # AST-0007 — repeat-repair AHU (contrast with AST-0014, which has none)
+    {
+        'title': f'{SEED_TAG} AHU-B-L5-02 drive belt replacement',
+        'work_description': 'Worn drive belts slipping; replaced matched set and tensioned.',
+        'asset_code': 'AST-0007',
+        'project': 'Marina Towers',
+        'service_group': 'HVAC',
+        'category': 'AHU',
+        'fault_type': 'Mechanical',
+        'priority': 'medium',
+        'status': 'closed',
+        'property_name': 'Tower B',
+        'zone': 'L5',
+        'sub_zone': '5.210',
+        'sla_hours': 48,
+        'total_cost': 850.0,
+        'days_ago': 180,
+    },
+    {
+        'title': f'{SEED_TAG} AHU-B-L5-02 cooling coil leak repair',
+        'work_description': 'Chilled-water coil pinhole leak; brazed, pressure-tested, insulation reinstated.',
+        'asset_code': 'AST-0007',
+        'project': 'Marina Towers',
+        'service_group': 'HVAC',
+        'category': 'AHU',
+        'fault_type': 'Leak',
+        'priority': 'high',
+        'status': 'closed',
+        'property_name': 'Tower B',
+        'zone': 'L5',
+        'sub_zone': '5.210',
+        'sla_hours': 24,
+        'total_cost': 4200.0,
+        'days_ago': 120,
+    },
+    {
+        'title': f'{SEED_TAG} AHU-B-L5-02 supply fan bearing replacement',
+        'work_description': 'Supply-fan bearings seized; replaced bearings and realigned shaft.',
+        'asset_code': 'AST-0007',
+        'project': 'Marina Towers',
+        'service_group': 'HVAC',
+        'category': 'AHU',
+        'fault_type': 'Mechanical',
+        'priority': 'high',
+        'status': 'closed',
+        'property_name': 'Tower B',
+        'zone': 'L5',
+        'sub_zone': '5.210',
+        'sla_hours': 24,
+        'total_cost': 3100.0,
+        'days_ago': 45,
+    },
+    {
+        'title': f'{SEED_TAG} AHU-B-L5-02 fan motor overhaul (repeat failure)',
+        'work_description': 'Same motor failed again after bearing job. Overhauled windings; vibration still high.',
+        'asset_code': 'AST-0007',
+        'project': 'Marina Towers',
+        'service_group': 'HVAC',
+        'category': 'AHU',
+        'fault_type': 'Mechanical',
+        'priority': 'critical',
+        'status': 'closed',
+        'property_name': 'Tower B',
+        'zone': 'L5',
+        'sub_zone': '5.210',
+        'sla_hours': 8,
+        'total_cost': 5600.0,
+        'days_ago': 14,
+    },
+    {
+        'title': f'{SEED_TAG} AHU-B-L5-02 supply fan motor replacement — in repair',
+        'work_description': (
+            'Unit currently under repair: supply fan motor replacement after two failures in 45 days. '
+            'AHU isolated; temporary portable cooling in 5.210.'
+        ),
+        'asset_code': 'AST-0007',
+        'project': 'Marina Towers',
+        'service_group': 'HVAC',
+        'category': 'AHU',
+        'fault_type': 'Mechanical',
+        'priority': 'critical',
+        'status': 'in_progress',
+        'property_name': 'Tower B',
+        'zone': 'L5',
+        'sub_zone': '5.210',
+        'sla_hours': 8,
+        'projected_cost': 7800.0,
+        'days_ago': 2,
     },
 ]
 

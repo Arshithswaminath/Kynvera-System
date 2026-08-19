@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+  <meta name="theme-color" content="#ff8e68">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Kynvera">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>{{ asset.asset_id }} — {{ asset.name }} — Kynvera</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='images/kynvera/kynvera-mark-32.png') }}?v=3">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='images/kynvera/kynvera-mark-180.png') }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Sora:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/fm-assets.css') }}?v=27">
+</head>
+<body class="fm-public-tag">
+  <header class="fm-public-top">
+    <a class="fm-public-logo" href="/" aria-label="Kynvera">
+      <img src="{{ url_for('static', filename='images/kynvera/kynvera-wordmark.png') }}" alt="Kynvera">
+    </a>
+    <span class="fm-public-top-label">Asset</span>
+  </header>
+
+  <main class="fm-public-wrap">
+    <header class="fm-public-hero">
+      <p class="fm-public-id">{{ asset.asset_id }}</p>
+      <h1>{{ asset.name }}</h1>
+      <p class="fm-public-sub">{{ asset.asset_type or 'Equipment' }}</p>
+      <div class="fm-public-chips">
+        <span class="fm-status fm-status-{{ asset.status or 'active' }}">{{ asset.status or 'active' }}</span>
+        {% if asset.health_score is not none %}
+        <span class="fm-public-chip">Health {{ asset.health_score }} / 100</span>
+        {% endif %}
+        {% if asset.building or asset.floor or asset.room %}
+        <span class="fm-public-chip">
+          {{ asset.building or '' }}{% if asset.floor %}{% if asset.building %} / {% endif %}{{ asset.floor }}{% endif %}{% if asset.room %} / {{ asset.room }}{% endif %}
+        </span>
+        {% endif %}
+      </div>
+    </header>
+
+    <section class="fm-panel">
+      <h2>Location</h2>
+      <dl class="fm-dl">
+        <dt>Building</dt><dd>{{ asset.building or '—' }}</dd>
+        <dt>Floor</dt><dd>{{ asset.floor or '—' }}</dd>
+        <dt>Room</dt><dd>{{ asset.room or '—' }}</dd>
+      </dl>
+    </section>
+
+    <section class="fm-panel">
+      <h2>Specifications</h2>
+      <dl class="fm-dl">
+        {% if asset.manufacturer %}<dt>Manufacturer</dt><dd>{{ asset.manufacturer }}</dd>{% endif %}
+        {% if asset.model %}<dt>Model</dt><dd>{{ asset.model }}</dd>{% endif %}
+        {% if asset.serial_number %}<dt>Serial</dt><dd>{{ asset.serial_number }}</dd>{% endif %}
+        {% if asset.installation_date %}<dt>Installed</dt><dd>{{ asset.installation_date }}</dd>{% endif %}
+        {% if asset.warranty_expiry %}<dt>Warranty</dt><dd>{{ asset.warranty_expiry }}</dd>{% endif %}
+        {% if not (asset.manufacturer or asset.model or asset.serial_number or asset.installation_date or asset.warranty_expiry) %}
+        <dt>Record</dt><dd>No specifications on file</dd>
+        {% endif %}
+      </dl>
+    </section>
+
+    <section class="fm-panel fm-public-qr-card">
+      <div id="fmPublicQr" class="fm-public-qr-img" role="img" aria-label="QR code for {{ asset.asset_id }}" data-url="{{ request.url_root.rstrip('/') }}/assets/tag/{{ asset.asset_id }}"></div>
+      <div>
+        <h2>QR label</h2>
+        <p class="fm-public-qr-code">{{ asset.qr_code or asset.asset_id }}</p>
+        <p class="fm-muted">This is the code on the sticker. Scan it with a phone camera to open this page again.</p>
+      </div>
+    </section>
+
+    {% if asset.notes %}
+    <section class="fm-panel">
+      <h2>Notes</h2>
+      <p class="fm-notes">{{ asset.notes }}</p>
+    </section>
+    {% endif %}
+
+    {% set photos = asset.image_list() %}
+    {% if photos %}
+    <section class="fm-panel">
+      <h2>Photos</h2>
+      <div class="fm-public-photos">
+        {% for url in photos %}
+        <img src="{{ url }}" alt="{{ asset.name }} photo">
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
+    <footer class="fm-public-foot">
+      <a class="fm-btn fm-btn-primary" href="/login">Staff login</a>
+      <p>Work orders, estimates, and the full asset record.</p>
+      <p class="fm-public-foot-brand">Kynvera · All Operations. One Platform.</p>
+    </footer>
+  </main>
+  <script src="{{ url_for('static', filename='js/qrcode.min.js') }}"></script>
+  <script>
+  (function () {
+    var el = document.getElementById('fmPublicQr');
+    if (!el || typeof QRCode === 'undefined') return;
+    var url = el.getAttribute('data-url') || (location.origin + location.pathname);
+    new QRCode(el, {
+      text: url,
+      width: 96,
+      height: 96,
+      colorDark: '#191b23',
+      colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M
+    });
+  })();
+  </script>
+</body>
+</html>

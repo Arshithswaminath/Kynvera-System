@@ -7,9 +7,12 @@
       <h1>All assets</h1>
       <p>Search and filter the equipment registry</p>
     </div>
-    {% if can_write %}
-    <a class="fm-btn fm-btn-primary" href="{{ url_for('assets_bp.assets_new_page') }}">Add asset</a>
-    {% endif %}
+    <div class="fm-header-actions">
+      <a class="fm-btn fm-btn-outline" href="{{ url_for('assets_bp.api_bulk_qr_labels_pdf') }}" id="downloadQrBtn">Download all QR labels</a>
+      {% if can_write %}
+      <a class="fm-btn fm-btn-primary" href="{{ url_for('assets_bp.assets_new_page') }}">Add asset</a>
+      {% endif %}
+    </div>
   </header>
 
   <div class="fm-filters">
@@ -69,6 +72,19 @@ document.getElementById('reloadBtn').addEventListener('click', loadAssets);
 document.getElementById('q').addEventListener('keydown', e => { if (e.key === 'Enter') loadAssets(); });
 document.getElementById('status').addEventListener('change', loadAssets);
 document.getElementById('critical').addEventListener('change', loadAssets);
+const qrBtn = document.getElementById('downloadQrBtn');
+if (qrBtn) {
+  qrBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    const params = new URLSearchParams();
+    const q = document.getElementById('q').value.trim();
+    const status = document.getElementById('status').value;
+    if (q) params.set('q', q);
+    if (status) params.set('status', status);
+    const qs = params.toString();
+    location.href = '/assets/api/qr-labels.pdf' + (qs ? '?' + qs : '');
+  });
+}
 loadAssets();
 </script>
 {% endset %}

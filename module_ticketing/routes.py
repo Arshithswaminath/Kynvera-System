@@ -125,6 +125,14 @@ _ACTIVE_STATUSES = frozenset({
 
 _TERMINAL_STATUSES = frozenset({'closed', 'cancelled', 'resolved'})
 
+# UI queue buckets — Open folds supervisor-queue into the same nav/stat card.
+_OPEN_QUEUE_STATUSES = frozenset({'open', 'pending_supervisor'})
+_IN_PROGRESS_QUEUE_STATUSES = frozenset({
+    'assigned', 'site_attended', 'work_started',
+    # legacy
+    'in_progress', 'pending_parts',
+})
+
 # Statuses at or beyond "Work Started" — the cost module (manpower/materials) only
 # unlocks once the technician has actually begun work on site, and locks again once
 # the service-provider supervisor has verified/submitted costs (`provider_closed`).
@@ -158,11 +166,48 @@ def _tkt_status_label_filter(status):
     return _STATUS_LABELS.get(str(status), str(status).replace('_', ' ').strip().title())
 
 
+_ROLE_LABELS = {
+    'supervisor': 'Supervisor',
+    'technician': 'Technician',
+    'operations_manager': 'Operations Manager',
+    'general_manager': 'General Manager',
+    'business_development': 'Business Development',
+    'procurement': 'Procurement',
+}
+
+
+def _activity_role_label(user) -> str:
+    if user is None:
+        return ''
+    des = (getattr(user, 'designation', None) or '').strip().lower()
+    if des in _ROLE_LABELS:
+        return _ROLE_LABELS[des]
+    if des:
+        return des.replace('_', ' ').title()
+    if (getattr(user, 'role', None) or '').strip().lower() == 'admin':
+        return 'Admin'
+    return ''
+
+
+def _tkt_role_filter(user):
+    return _activity_role_label(user)
+
+
+@ticketing_bp.before_app_request
+def _ensure_ticketing_jinja_filters():
+    """Register filters on the live app. `record()` only runs at first blueprint register."""
+    env = current_app.jinja_env
+    env.filters['tkt_datetime'] = _tkt_datetime_filter
+    env.filters['tkt_status_label'] = _tkt_status_label_filter
+    env.filters['tkt_role'] = _tkt_role_filter
+
+
 @ticketing_bp.record
 def _register_ticketing_jinja_filters(state):
     env = state.app.jinja_env
     env.filters['tkt_datetime'] = _tkt_datetime_filter
     env.filters['tkt_status_label'] = _tkt_status_label_filter
+    env.filters['tkt_role'] = _tkt_role_filter
 
 
 def _migrate_ticket_columns(app):
@@ -428,6 +473,8 @@ def _can_user_view_ticket(user: User, ticket: Ticket) -> bool:
     if _ticketing_sees_all_tickets(user):
         return True
     if ticket.status == 'draft':
+        if (ticket.source or '') == 'assistant' and ticket.reporter_id == user.id:
+            return True
         return _can_view_draft_tickets(user)
     if (
         ticket.reporter_id == user.id
@@ -648,12 +695,14 @@ def _get_sidebar_stats(user: User) -> dict:
         'can_view_drafts':  can_view_drafts,
         'total':            len(statuses),
         'active':           active_ct,
-        'open':             statuses.count('open'),
+        # Open queue = open + supervisor queue (new WOs land as pending_supervisor)
+        'open':             sum(1 for s in statuses if s in _OPEN_QUEUE_STATUSES),
         'assigned':         statuses.count('assigned'),
         'site_attended':    statuses.count('site_attended'),
         'work_started':     statuses.count('work_started'),
         'work_completed':   statuses.count('work_completed'),
         'verification':     statuses.count('verification'),
+        'provider_closed':  statuses.count('provider_closed'),
         'on_hold':          statuses.count('on_hold'),
         'cancelled':        statuses.count('cancelled'),
         'closed':           statuses.count('closed'),
@@ -725,6 +774,47 @@ def _add_note(ticket: Ticket, user: User, content: str, note_type: str = 'note')
     db.session.add(note)
 
 
+def _ticket_supervisor_user(ticket) -> User | None:
+    sup = getattr(ticket, 'supervisor', None)
+    if sup:
+        return sup
+    if ticket.supervisor_id:
+        return db.session.get(User, ticket.supervisor_id)
+    return None
+
+
+def _supervisor_log_name(ticket) -> str | None:
+    sup = _ticket_supervisor_user(ticket)
+    name = (sup.full_name or '').strip() if sup else ''
+    return name or None
+
+
+def _routing_activity_text(ticket) -> str:
+    project = (ticket.project or '').strip() or 'unspecified project'
+    sup = _supervisor_log_name(ticket)
+    if sup:
+        return (
+            f'Project: {project}. Routed to supervisor {sup}. '
+            f'Waiting for them to assign their team or a vendor.'
+        )
+    return (
+        f'Project: {project}. No supervisor is set for this project, so the ticket is in the shared supervisor queue. '
+        f'A supervisor must take it and assign their team or a vendor.'
+    )
+
+
+def _actor_with_supervisor(ticket, actor: User) -> str:
+    actor_name = (actor.full_name if actor else '') or 'Someone'
+    role = _activity_role_label(actor)
+    actor_bit = f'{actor_name} ({role})' if role else actor_name
+    sup_name = _supervisor_log_name(ticket)
+    if sup_name and actor and ticket.supervisor_id == actor.id:
+        return f'Supervisor {sup_name}'
+    if sup_name:
+        return f'{actor_bit} (project supervisor: {sup_name})'
+    return actor_bit
+
+
 def _notify_user(user_id: int, title: str, message: str, ntype: str = 'info', ticket_id: str = None):
     n = Notification(
         user_id=user_id,
@@ -760,10 +850,10 @@ def _notify_supervisor_queue_ticket(ticket: Ticket, body: str):
     if ticket.assigned_to_id:
         assignee = db.session.get(User, ticket.assigned_to_id)
         if assignee and assignee.is_active and _is_ticket_assignment_supervisor(assignee):
-            _notify_user(ticket.assigned_to_id, title, body, ntype='info', ticket_id=ticket.ticket_id)
+            _notify_user(ticket.assigned_to_id, title, body, ntype='ticket_queued', ticket_id=ticket.ticket_id)
             return
     for uid in _supervisor_queue_broadcast_recipient_ids():
-        _notify_user(uid, title, body, ntype='info', ticket_id=ticket.ticket_id)
+        _notify_user(uid, title, body, ntype='ticket_queued', ticket_id=ticket.ticket_id)
 
 
 def _ops_overwatch_recipient_ids() -> set[int]:
@@ -780,7 +870,7 @@ def _ops_overwatch_recipient_ids() -> set[int]:
 def _notify_ops_close_pending(ticket: Ticket, body: str):
     title = f'Ready for Final Approval: {ticket.ticket_id}'
     for uid in _ops_overwatch_recipient_ids():
-        _notify_user(uid, title, body, ntype='info', ticket_id=ticket.ticket_id)
+        _notify_user(uid, title, body, ntype='ticket_ops_approval', ticket_id=ticket.ticket_id)
 
 
 def _notify_new_draft_ticket(ticket: Ticket):
@@ -796,10 +886,10 @@ def _notify_new_draft_ticket(ticket: Ticket):
         f'{sender}. Review and complete it to route it into the ticketing workflow.'
     )
     for uid in _supervisor_queue_broadcast_recipient_ids():
-        _notify_user(uid, title, body, ntype='info', ticket_id=ticket.ticket_id)
+        _notify_user(uid, title, body, ntype='ticket_draft', ticket_id=ticket.ticket_id)
 
 
-def _send_ticket_email(subject: str, recipients: list, body_html: str, attachments: list | None = None):
+def _send_ticket_email(subject: str, recipients: list, body_html: str, attachments: list | None = None, related_id: str | None = None):
     """Best-effort email via common email_service."""
     try:
         from common.email_service import send_email
@@ -807,7 +897,15 @@ def _send_ticket_email(subject: str, recipients: list, body_html: str, attachmen
         text_fallback = re.sub(r'\s+', ' ', text_fallback).strip()
         for recipient in recipients:
             if recipient:
-                send_email(recipient, subject, text_fallback, html_body=body_html, attachments=attachments)
+                send_email(
+                    recipient,
+                    subject,
+                    text_fallback,
+                    html_body=body_html,
+                    attachments=attachments,
+                    source='ticketing',
+                    related_id=related_id,
+                )
     except Exception as exc:
         logger.warning("Ticket email send failed: %s", exc)
 
@@ -901,9 +999,9 @@ def dashboard():
         'draft': draft_ct,
         'can_view_drafts': can_view_drafts,
         'total': total_ct,
-        'open': sum(1 for t in tickets_q if t.status == 'open'),
+        'open': sum(1 for t in tickets_q if t.status in _OPEN_QUEUE_STATUSES),
         'pending_supervisor': sum(1 for t in tickets_q if t.status == 'pending_supervisor'),
-        'in_progress': sum(1 for t in tickets_q if t.status == 'in_progress'),
+        'in_progress': sum(1 for t in tickets_q if t.status in _IN_PROGRESS_QUEUE_STATUSES),
         'pending_verification': sum(1 for t in tickets_q if t.status == 'pending_verification'),
         'resolved': resolved_ct,
         'closed': closed_ct,
@@ -933,19 +1031,21 @@ def dashboard():
     resolved_ts = db.func.coalesce(Ticket.resolved_at, Ticket.closed_at)
 
     def _period_counts(start, end, end_inclusive):
+        open_q = Ticket.status.in_(list(_OPEN_QUEUE_STATUSES))
+        in_prog_q = Ticket.status.in_(list(_IN_PROGRESS_QUEUE_STATUSES))
         if start is None:
             return {
                 'total': base_q.count(),
-                'open': base_q.filter(Ticket.status == 'open').count(),
-                'in_progress': base_q.filter(Ticket.status == 'in_progress').count(),
+                'open': base_q.filter(open_q).count(),
+                'in_progress': base_q.filter(in_prog_q).count(),
                 'resolved': base_q.filter(Ticket.status.in_(['resolved', 'closed'])).count(),
             }
         created_hi = (Ticket.created_at <= end) if end_inclusive else (Ticket.created_at < end)
         resolved_hi = (resolved_ts <= end) if end_inclusive else (resolved_ts < end)
         return {
             'total': base_q.filter(Ticket.created_at >= start, created_hi).count(),
-            'open': base_q.filter(Ticket.created_at >= start, created_hi, Ticket.status == 'open').count(),
-            'in_progress': base_q.filter(Ticket.created_at >= start, created_hi, Ticket.status == 'in_progress').count(),
+            'open': base_q.filter(Ticket.created_at >= start, created_hi, open_q).count(),
+            'in_progress': base_q.filter(Ticket.created_at >= start, created_hi, in_prog_q).count(),
             'resolved': base_q.filter(
                 resolved_ts >= start, resolved_hi, Ticket.status.in_(['resolved', 'closed'])
             ).count(),
@@ -1070,13 +1170,17 @@ def draft_ticket_review(ticket_id):
     user = _current_user()
     if not _has_access(user):
         abort(403)
-    if not _can_view_draft_tickets(user):
-        abort(403)
 
     ticket = Ticket.query.filter_by(ticket_id=ticket_id).first_or_404()
     if ticket.status != 'draft':
         # Already converted/discarded — send reviewer to the normal detail page.
         return redirect(url_for('ticketing.ticket_detail', ticket_id=ticket.ticket_id))
+
+    is_own_assistant_draft = (
+        (ticket.source or '') == 'assistant' and ticket.reporter_id == user.id
+    )
+    if not _can_view_draft_tickets(user) and not is_own_assistant_draft:
+        abort(403)
 
     projects = sorted(
         {p[0] for p in TicketProject.query.filter_by(is_active=True).with_entities(TicketProject.name) if p[0]}
@@ -1612,16 +1716,12 @@ def create_ticket():
         except (TypeError, ValueError):
             pass
 
-    route_sup = db.session.get(User, proj_supervisor_id) if proj_supervisor_id else None
-    route_bit = (
-        f' Routed to project supervisor {route_sup.full_name}.'
-        if route_sup
-        else ' Queued in the shared supervisor pool (no project supervisor configured).'
-    )
+    actor_role = _activity_role_label(user)
+    actor_bit = f'{user.full_name} ({actor_role})' if actor_role else user.full_name
     _add_note(
         ticket,
         user,
-        f'Ticket created by {user.full_name}; queued for supervisor routing (no technician yet).{route_bit}',
+        f'Ticket {ticket.ticket_id} created by {actor_bit}. {_routing_activity_text(ticket)}',
         note_type='status_change',
     )
 
@@ -1696,17 +1796,12 @@ def convert_draft(ticket_id):
     proj_supervisor_id = _apply_ticket_project_routing(ticket)
     ticket.status = 'pending_supervisor'
 
-    route_sup = db.session.get(User, proj_supervisor_id) if proj_supervisor_id else None
-    route_bit = (
-        f' Routed to project supervisor {route_sup.full_name}.'
-        if route_sup
-        else ' Queued in the shared supervisor pool (no project supervisor configured).'
-    )
+    actor_role = _activity_role_label(user)
+    actor_bit = f'{user.full_name} ({actor_role})' if actor_role else user.full_name
     _add_note(
         ticket,
         user,
-        f'Draft reviewed and converted to an active ticket by {user.full_name}; '
-        f'queued for supervisor routing (no technician yet).{route_bit}',
+        f'Draft reviewed and converted to an active ticket by {actor_bit}. {_routing_activity_text(ticket)}',
         note_type='status_change',
     )
 
@@ -1786,11 +1881,36 @@ def ticket_detail(ticket_id):
         ticket_sidebar_team = _ticket_roster_fallback_workers()
 
     worker_pick_list = _ticketing_worker_pick_list(roster_for_picks)
+    supervisor_own_team = _ticketing_team_workers_for_sidebar(user.id) if user_is_supervisor else []
+    if user_is_supervisor and not supervisor_own_team and ticket.supervisor_id:
+        supervisor_own_team = _ticketing_team_workers_for_sidebar(ticket.supervisor_id)
     technician_users_for_team_add = _technician_users_available_for_team_add(user.id) if user_is_supervisor else []
 
     # Pricing preview (no overhead — actual price is the raw manpower + materials cost)
     base_cost   = mp_total + mat_total
     actual_price = round(base_cost, 2)
+
+    create_triage = (
+        TicketTriageLog.query
+        .filter_by(ticket_id=ticket.id)
+        .filter(TicketTriageLog.decision.in_(('accepted', 'overridden')))
+        .order_by(TicketTriageLog.id.desc())
+        .first()
+    )
+    triage_suggested = (create_triage.suggested or {}) if create_triage else {}
+    triage_accepted = (create_triage.accepted or {}) if create_triage else {}
+    triage_parts = triage_accepted.get('required_parts')
+    if not isinstance(triage_parts, list):
+        triage_parts = triage_suggested.get('required_parts') if isinstance(triage_suggested.get('required_parts'), list) else []
+    triage_tech_name = triage_suggested.get('technician_name') or None
+    tech_id = triage_accepted.get('technician_id') or triage_suggested.get('technician_id')
+    if tech_id and not triage_tech_name:
+        try:
+            tech_user = db.session.get(User, int(tech_id))
+            if tech_user:
+                triage_tech_name = tech_user.full_name
+        except (TypeError, ValueError):
+            pass
 
     return render_template(
         'ticket_detail.html',
@@ -1808,6 +1928,7 @@ def ticket_detail(ticket_id):
         user_is_supervisor=user_is_supervisor,
         ticket_sidebar_team=ticket_sidebar_team,
         worker_pick_list=worker_pick_list,
+        supervisor_own_team=supervisor_own_team,
         technician_users_for_team_add=technician_users_for_team_add,
         vendor_companies=_sample_vendor_companies(),
         supervisor_team=[],  # legacy template var (unused)
@@ -1817,6 +1938,11 @@ def ticket_detail(ticket_id):
         cost_summary_visible=_cost_summary_visible(ticket),
         sidebar_stats=_get_sidebar_stats(user),
         active_page='ticketing',
+        create_triage=create_triage,
+        triage_suggested=triage_suggested,
+        triage_accepted=triage_accepted,
+        triage_parts=triage_parts,
+        triage_tech_name=triage_tech_name,
     )
 
 
@@ -1907,19 +2033,122 @@ def update_status(ticket_id):
         if not ticket.resolved_at:
             ticket.resolved_at = ticket.closed_at
 
-    _add_note(
-        ticket,
-        user,
-        f'Status changed from "{old_status}" to "{ticket.status}".',
-        note_type='status_change',
-    )
-
     comment = (data.get('comment') or '').strip()
+    old_norm = legacy_map.get(old_status, old_status)
+    if old_norm != ticket.status:
+        actor_role = _activity_role_label(user)
+        actor_bit = f'{user.full_name} ({actor_role})' if actor_role else user.full_name
+        sup_name = _supervisor_log_name(ticket)
+        sup_bit = f' Supervisor: {sup_name}.' if sup_name else ''
+        _add_note(
+            ticket,
+            user,
+            f'Status updated from {_STATUS_LABELS.get(old_status, old_status)} to '
+            f'{_STATUS_LABELS.get(ticket.status, ticket.status)} by {actor_bit}.{sup_bit}',
+            note_type='status_change',
+        )
     if comment:
         _add_note(ticket, user, comment, note_type='note')
 
     db.session.commit()
     return jsonify({'success': True, 'status': ticket.status})
+
+
+_WF_REVOKE_PREV = {
+    'assigned': 'open',
+    'site_attended': 'assigned',
+    'work_started': 'site_attended',
+    'work_completed': 'work_started',
+    'verification': 'work_completed',
+}
+_WF_REVOKE_LABEL = {
+    'open': 'Open',
+    'assigned': 'Assigned',
+    'site_attended': 'Site Attended',
+    'work_started': 'Work Started',
+    'work_completed': 'Work Completed',
+    'verification': 'Verification',
+}
+
+
+@ticketing_bp.route('/api/tickets/<string:ticket_id>/revoke-stage', methods=['POST'])
+@jwt_required()
+def revoke_stage(ticket_id):
+    """Step the current workflow stage back one, with a required reason.
+
+    Revoking Assigned also clears the technician so the ticket is unassigned.
+    """
+    user = _current_user()
+    if not _has_access(user):
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+
+    ticket = Ticket.query.filter_by(ticket_id=ticket_id).first_or_404()
+    deny = _api_forbid_unless_ticket_visible(user, ticket)
+    if deny:
+        return deny
+    if not (_ticketing_sees_all_tickets(user) or _is_supervisor_of_ticket(user)):
+        return jsonify({
+            'success': False,
+            'error': 'Only supervisors or OPS / GM / Admin may revoke a workflow stage.',
+        }), 403
+
+    data = request.get_json(silent=True) or {}
+    reason = (data.get('reason') or '').strip()
+    if not reason:
+        return jsonify({'success': False, 'error': 'A reason is required to revoke this action.'}), 400
+
+    legacy_map = {
+        'in_progress': 'work_started',
+        'pending_supervisor': 'open',
+        'pending_verification': 'verification',
+        'pending_parts': 'work_started',
+    }
+    cur = legacy_map.get(ticket.status, ticket.status)
+    prev = _WF_REVOKE_PREV.get(cur)
+    if not prev:
+        return jsonify({
+            'success': False,
+            'error': 'This stage cannot be revoked.',
+        }), 400
+
+    old_status = ticket.status
+    old_label = _WF_REVOKE_LABEL.get(cur, cur)
+    prev_label = _WF_REVOKE_LABEL.get(prev, prev)
+    tech_name = ticket.technician.full_name if ticket.technician else None
+
+    ticket.status = prev
+    ticket.on_hold_reason = None
+    ticket.previous_status = None
+    ticket.cancelled_reason = None
+    ticket.cancelled_at = None
+
+    if cur == 'assigned':
+        ticket.technician_id = None
+        ticket.assigned_to_id = None
+
+    if prev in ('open', 'assigned', 'site_attended', 'work_started'):
+        ticket.resolved_at = None
+
+    unassign_bit = ''
+    if cur == 'assigned':
+        unassign_bit = (
+            f' {tech_name} was unassigned.' if tech_name
+            else ' Assigned user was unassigned.'
+        )
+
+    actor_role = _activity_role_label(user)
+    actor_bit = f'{user.full_name} ({actor_role})' if actor_role else user.full_name
+    sup_name = _supervisor_log_name(ticket)
+    sup_bit = f' Supervisor: {sup_name}.' if sup_name else ''
+    _add_note(
+        ticket,
+        user,
+        f'{old_label} revoked by {actor_bit}; ticket returned to {prev_label}.{unassign_bit} '
+        f'Reason: {reason}.{sup_bit}',
+        note_type='status_change',
+    )
+    db.session.commit()
+    return jsonify({'success': True, 'status': ticket.status, 'previous': prev})
 
 
 @ticketing_bp.route('/api/tickets/<string:ticket_id>/reopen', methods=['POST'])
@@ -1999,13 +2228,25 @@ def assign_ticket(ticket_id):
         if not _is_ticket_assignment_supervisor(assignee):
             return jsonify({'success': False, 'error': 'Assignment is limited to supervisor accounts.'}), 400
         ticket.assigned_to_id = assignee.id
-        _add_note(ticket, user, f'Assigned to {assignee.full_name}.', note_type='assignment')
+        actor = _actor_with_supervisor(ticket, user)
+        _add_note(
+            ticket,
+            user,
+            f'{actor} set the liaison supervisor to {assignee.full_name} via routing override.',
+            note_type='assignment',
+        )
         _notify_user(assignee.id, f'Ticket assigned: {ticket.ticket_id}',
                      f'You have been assigned ticket {ticket.ticket_id}: {ticket.title}',
-                     ntype='info', ticket_id=ticket.ticket_id)
+                     ntype='ticket_assigned', ticket_id=ticket.ticket_id)
     else:
         ticket.assigned_to_id = None
-        _add_note(ticket, user, 'Ticket unassigned.', note_type='assignment')
+        actor = _actor_with_supervisor(ticket, user)
+        _add_note(
+            ticket,
+            user,
+            f'{actor} cleared the liaison supervisor. Ticket returns to the shared supervisor queue.',
+            note_type='assignment',
+        )
 
     db.session.commit()
     return jsonify({'success': True, 'assigned_to_name': ticket.assigned_to.full_name if ticket.assigned_to else None})
@@ -2425,7 +2666,7 @@ def advance_ticket(ticket_id):
             ticket.supervisor_id,
             f'Work Completed: {ticket.ticket_id}',
             f'Technician {user.full_name} completed work on "{ticket.title}". Ready for verification.',
-            ntype='info', ticket_id=ticket.ticket_id,
+            ntype='ticket_completed', ticket_id=ticket.ticket_id,
         )
 
     db.session.commit()
@@ -2645,7 +2886,9 @@ def assign_technician(ticket_id):
     tech_code = (data.get('technician_code') or '').strip()
     vendor_company = (data.get('vendor_company') or '').strip()
 
-    ticket.supervisor_id = user.id if _is_supervisor_of_ticket(user) else ticket.supervisor_id
+    # Keep the project supervisor. Only a real supervisor (not OPS / GM / Admin) takes ownership.
+    if _user_in_supervisor_pool(user) and not _ticketing_sees_all_tickets(user):
+        ticket.supervisor_id = user.id
     ticket.status = 'assigned'
 
     if tech_id:
@@ -2672,34 +2915,43 @@ def assign_technician(ticket_id):
         ticket.technician_id = technician.id
         ticket.assigned_to_id = technician.id
         display_name = technician.full_name
-
-        vendor_bit = f' ({vendor_company})' if vendor_company else ''
-        _add_note(ticket, user,
-                  f'Technician {display_name}{vendor_bit} assigned by {user.full_name}. Work in progress.',
-                  note_type='assignment')
+        who = _actor_with_supervisor(ticket, user)
+        if vendor_company:
+            msg = (
+                f'{who} sent this work to vendor {vendor_company}, '
+                f'technician {display_name}. Status is now Assigned.'
+            )
+        else:
+            msg = (
+                f'{who} assigned this work to team member {display_name}. '
+                f'Status is now Assigned.'
+            )
+        if not _supervisor_log_name(ticket):
+            msg += ' No project supervisor is configured.'
+        _add_note(ticket, user, msg, note_type='assignment')
         _notify_user(technician.id, f'Work Order Assigned: {ticket.ticket_id}',
                      f'You have been assigned to work order {ticket.ticket_id}: "{ticket.title}".',
-                     ntype='info', ticket_id=ticket.ticket_id)
+                     ntype='ticket_assigned', ticket_id=ticket.ticket_id)
     elif tech_name:
         # Demo vendor technician path (no linked system user).
         ticket.technician_id = None
         ticket.assigned_to_id = None
         display_name = tech_name
-        vendor_bit = f' — {vendor_company}' if vendor_company else ''
-        _add_note(
-            ticket,
-            user,
-            f'Vendor technician {display_name}'
-            + (f' ({tech_code})' if tech_code else '')
-            + vendor_bit
-            + f' assigned by {user.full_name}. Work in progress.',
-            note_type='assignment',
+        who = _actor_with_supervisor(ticket, user)
+        code_bit = f' ({tech_code})' if tech_code else ''
+        vendor_bit = f'vendor {vendor_company}, ' if vendor_company else ''
+        msg = (
+            f'{who} sent this work to {vendor_bit}technician {display_name}{code_bit}. '
+            f'Status is now Assigned.'
         )
+        if not _supervisor_log_name(ticket):
+            msg += ' No project supervisor is configured.'
+        _add_note(ticket, user, msg, note_type='assignment')
     else:
         return jsonify({'success': False, 'error': 'technician_id or technician_name required'}), 400
 
     db.session.commit()
-    return jsonify({'success': True, 'status': 'in_progress',
+    return jsonify({'success': True, 'status': 'assigned',
                     'technician_name': display_name,
                     'supervisor_name': user.full_name})
 
@@ -2751,9 +3003,9 @@ def mark_completed(ticket_id):
     if ticket.supervisor_id:
         _notify_user(ticket.supervisor_id, f'Work Order Awaiting Verification: {ticket.ticket_id}',
                      f'Technician {user.full_name} has completed work on {ticket.ticket_id}. Please verify and close.',
-                     ntype='info', ticket_id=ticket.ticket_id)
+                     ntype='ticket_verification', ticket_id=ticket.ticket_id)
     db.session.commit()
-    return jsonify({'success': True, 'status': 'pending_verification'})
+    return jsonify({'success': True, 'status': 'work_completed'})
 
 
 # ---------------------------------------------------------------------------
@@ -3067,7 +3319,7 @@ def _send_completion_emails(ticket: Ticket, closed_by: User):
           <p style="font-size:12px; color:#888;">This is an automated notification from Kynvera.</p>
         </div>
         """
-        _send_ticket_email(subject, recipients, body)
+        _send_ticket_email(subject, recipients, body, related_id=ticket.ticket_id)
     except Exception as exc:
         logger.warning("Failed to send completion emails: %s", exc)
 
@@ -3145,7 +3397,7 @@ def _send_invoice_emails(ticket: Ticket):
             'filename': f'{ticket.ticket_id}_invoice.pdf',
             'mime_type': 'application/pdf',
         }]
-        _send_ticket_email(subject, recipients, body, attachments=attachments)
+        _send_ticket_email(subject, recipients, body, attachments=attachments, related_id=ticket.ticket_id)
     except Exception as exc:
         logger.warning("Failed to send invoice emails: %s", exc)
 

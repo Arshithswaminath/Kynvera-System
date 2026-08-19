@@ -457,7 +457,14 @@ def send_slot_assignment_email(
         f"<p style=\"color:#64748b;font-size:12px\">Reference: {submission.submission_id}</p>"
     )
     try:
-        send_email(recipient.email, subj, body, html_body=html)
+        send_email(
+            recipient.email,
+            subj,
+            body,
+            html_body=html,
+            source='hr',
+            related_id=getattr(submission, 'submission_id', None),
+        )
     except Exception:
         app.logger.exception("routed signoff email failed for user %s", recipient.id)
 

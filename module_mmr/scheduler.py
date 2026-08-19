@@ -147,7 +147,9 @@ def _run_scheduled_report(app):
                     'filename': filename,
                     'mime_type': ('application/vnd.openxmlformats-'
                                   'officedocument.spreadsheetml.sheet'),
-                }]
+                }],
+                source='mmr',
+                related_id=filename,
             )
             recipient_count = len(to_list) + (len(cc_list) if cc_list else 0)
             cid = _complete_current_cycle('scheduler', subject, recipient_count, filename)

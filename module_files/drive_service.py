@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import json
 import logging
 import os
 from typing import Optional, Tuple
@@ -17,13 +18,29 @@ from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
-from googleapiclient.http import MediaFileUpload
+from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 
 from app.models import FilesDriveConnection, FilesFolder, FilesItem, db
 from common.datetime_utils import utc_now_naive
 from module_files import service as files_service
 
 logger = logging.getLogger(__name__)
+
+_GOOGLE_HTTP_TIMEOUT = 20
+
+
+class _TimedGoogleRequest(Request):
+    """Cap Google HTTP calls so a stalled IPv6/DNS path cannot hang the login callback."""
+
+    def __call__(self, url, method='GET', body=None, headers=None, timeout=None, **kwargs):
+        return super().__call__(
+            url,
+            method=method,
+            body=body,
+            headers=headers,
+            timeout=timeout or _GOOGLE_HTTP_TIMEOUT,
+            **kwargs,
+        )
 
 SCOPES = [
     'https://www.googleapis.com/auth/drive.file',
@@ -156,10 +173,17 @@ def build_auth_url(state: str, code_verifier: str) -> str:
         autogenerate_code_verifier=False,
     )
     flow.redirect_uri = _redirect_uri()
-    auth_url, _ = flow.authorization_url(
-        access_type='offline',
-        prompt='consent',
-    )
+    kwargs = {
+        'access_type': 'offline',
+        'include_granted_scopes': 'true',
+    }
+    conn = get_connection()
+    if conn and conn.connected_email:
+        kwargs['login_hint'] = conn.connected_email
+    # Consent is required the first time to receive a refresh token.
+    if not (conn and conn.refresh_token_enc):
+        kwargs['prompt'] = 'consent'
+    auth_url, _ = flow.authorization_url(**kwargs)
     return auth_url
 
 
@@ -178,7 +202,7 @@ def exchange_code(code: str, state: str, code_verifier: str) -> Credentials:
     )
     flow.redirect_uri = _redirect_uri()
     # Pass verifier explicitly — setdefault on Flow alone is easy to miss
-    flow.fetch_token(code=code, code_verifier=code_verifier)
+    flow.fetch_token(code=code, code_verifier=code_verifier, timeout=20)
     return flow.credentials
 
 
@@ -242,16 +266,41 @@ def _credentials_from_store() -> Credentials:
         scopes=SCOPES,
     )
     if not creds.valid:
-        creds.refresh(Request())
+        creds.refresh(_TimedGoogleRequest())
     return creds
 
 
 def _drive_service():
     creds = _credentials_from_store()
-    return build('drive', 'v3', credentials=creds, cache_discovery=False)
+    try:
+        import httplib2
+        from google_auth_httplib2 import AuthorizedHttp
+        http = AuthorizedHttp(creds, http=httplib2.Http(timeout=_GOOGLE_HTTP_TIMEOUT))
+        return build('drive', 'v3', http=http, cache_discovery=False)
+    except Exception:
+        logger.warning('Drive HTTP client fallback without explicit timeout', exc_info=True)
+        return build('drive', 'v3', credentials=creds, cache_discovery=False)
+
+
+def _email_from_id_token(creds: Credentials) -> str:
+    """Read email from the OAuth id_token — no extra Google round-trip."""
+    token = getattr(creds, 'id_token', None) or ''
+    parts = str(token).split('.')
+    if len(parts) < 2:
+        return ''
+    try:
+        payload_b64 = parts[1]
+        pad = '=' * ((4 - len(payload_b64) % 4) % 4)
+        payload = json.loads(base64.urlsafe_b64decode(payload_b64 + pad))
+        return (payload.get('email') or '').strip()
+    except Exception:
+        return ''
 
 
 def _fetch_user_email(creds: Credentials) -> str:
+    email = _email_from_id_token(creds)
+    if email:
+        return email
     try:
         svc = build('oauth2', 'v2', credentials=creds, cache_discovery=False)
         info = svc.userinfo().get().execute()
@@ -597,6 +646,72 @@ def sync_item(item_id: int) -> FilesItem:
         item.sync_error = str(e)[:480]
         db.session.commit()
         raise
+
+
+def refresh_item_from_drive(item_id: int) -> FilesItem:
+    """Download the latest Drive bytes into the local FilesItem path.
+
+    Only bumps ``updated_at`` when the content actually changes so
+    require-new email slots are not falsely treated as fresh.
+    """
+    import io
+
+    if not drive_enabled():
+        raise RuntimeError('Google Drive sync is disabled')
+    if not drive_configured():
+        raise RuntimeError('Google Drive credentials are not configured')
+    if not get_connection():
+        raise RuntimeError('Google Drive is not connected')
+
+    item = db.session.get(FilesItem, item_id)
+    if not item:
+        raise ValueError('File not found')
+    if not item.drive_file_id:
+        raise ValueError('File is not on Google Drive')
+
+    service = _drive_service()
+    request = service.files().get_media(fileId=item.drive_file_id)
+    buf = io.BytesIO()
+    downloader = MediaIoBaseDownload(buf, request)
+    done = False
+    while not done:
+        _status, done = downloader.next_chunk()
+    data = buf.getvalue()
+    if not data:
+        raise RuntimeError('Empty download from Google Drive')
+
+    existing = b''
+    abs_path = None
+    try:
+        abs_path = files_service.resolve_item_abs_path(item)
+        with open(abs_path, 'rb') as fh:
+            existing = fh.read()
+    except (FileNotFoundError, OSError):
+        abs_path = None
+
+    if abs_path is None:
+        folder_dir = os.path.join(files_service._files_root(), str(item.folder_id))
+        os.makedirs(folder_dir, exist_ok=True)
+        store_name = files_service._safe_store_name(item.filename or 'file.bin')
+        abs_path = os.path.join(folder_dir, store_name)
+        gen = current_app.config.get('GENERATED_DIR') or ''
+        stored = abs_path
+        if gen and abs_path.startswith(gen):
+            stored = os.path.relpath(abs_path, gen)
+        item.stored_path = stored
+
+    changed = data != existing
+    if changed:
+        with open(abs_path, 'wb') as fh:
+            fh.write(data)
+        item.size_bytes = len(data)
+        item.updated_at = utc_now_naive()
+
+    item.last_synced_at = utc_now_naive()
+    item.sync_status = 'synced'
+    item.sync_error = None
+    db.session.commit()
+    return item
 
 
 def sync_pending() -> dict:

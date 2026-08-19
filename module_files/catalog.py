@@ -164,6 +164,7 @@ DEFAULT_FOLDER_TREE = [
     {'path_key': 'qhse/staff', 'name': 'Staff Compliance', 'parent_key': 'qhse'},
     {'path_key': 'reports', 'name': 'Reports', 'parent_key': None},
     {'path_key': 'reports/mmr', 'name': 'MMR', 'parent_key': 'reports'},
+    {'path_key': 'reports/email', 'name': 'Email Automation', 'parent_key': 'reports'},
     {'path_key': 'admin', 'name': 'Admin', 'parent_key': None},
     {'path_key': 'admin/devices', 'name': 'Devices', 'parent_key': 'admin'},
     {'path_key': 'admin/technicians', 'name': 'Technicians', 'parent_key': 'admin'},

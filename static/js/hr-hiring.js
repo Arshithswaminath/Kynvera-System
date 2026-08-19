@@ -28,9 +28,10 @@
     visa_process_started: 'Visa process started',
     candidate_employee: 'Candidate employed',
     on_hold: 'On hold',
+    not_hired: 'Not hired',
   };
 
-  // Linear stages only — on_hold is a process-wide pause, not a step.
+  // Linear stages only — on_hold / not_hired are process states, not steps.
   const PIPELINE_STEPS = [
     'interview_completed',
     'gathering_documents',
@@ -54,6 +55,7 @@
     visa_process_started: 'Visa',
     candidate_employee: 'Employee',
     on_hold: 'On hold',
+    not_hired: 'Not hired',
   };
 
   const PIPELINE_META = {
@@ -102,6 +104,11 @@
       next: 'Jump to a stage to resume the process',
       hint: 'On hold freezes progress at any point. Resume by choosing a stage.',
     },
+    not_hired: {
+      focus: 'Candidate was not hired — process closed',
+      next: 'Jump to a stage to reopen the hiring file',
+      hint: 'Not hired ends the process. Reopen by choosing a stage if work should continue.',
+    },
     candidate_employee: {
       focus: 'File closed — candidate is now an employee',
       next: 'Hiring file is closed',
@@ -109,8 +116,12 @@
     },
   };
 
+  function isOffPipeline(status) {
+    return status === 'on_hold' || status === 'not_hired';
+  }
+
   function visaDocsUnlockedForStatus(status) {
-    if (!status || status === 'on_hold') return false;
+    if (!status || isOffPipeline(status)) return false;
     const visaIdx = PIPELINE_STEPS.indexOf('visa_process_started');
     const idx = PIPELINE_STEPS.indexOf(status);
     return visaIdx >= 0 && idx >= visaIdx;
@@ -236,6 +247,10 @@
       title = 'Process is paused — pick a stage to resume';
       hint = 'On hold freezes progress. Jump to the stage where work should continue.';
       tone = 'hold';
+    } else if (pipeKey === 'not_hired') {
+      title = 'Candidate was not hired';
+      hint = 'Hiring did not proceed. Jump to a stage if this file should reopen.';
+      tone = 'nothired';
     } else if (pipeKey === 'candidate_employee') {
       title = 'File closed — candidate is employed';
       hint = identity.ready && offer.ready && visa.ready
@@ -295,7 +310,7 @@
       }
     }
 
-    if (daysInStage != null && daysInStage >= 7 && pipeKey !== 'candidate_employee' && pipeKey !== 'on_hold') {
+    if (daysInStage != null && daysInStage >= 7 && pipeKey !== 'candidate_employee' && !isOffPipeline(pipeKey)) {
       hint = (hint ? hint + ' · ' : '') + 'Parked here ' + daysInStage + 'd — worth a nudge?';
       if (tone === 'neutral') tone = 'progress';
     }
@@ -926,6 +941,7 @@
             '</div>'
           : '';
         const roleLine = [c.role, c.department].filter(Boolean).join(' · ') || '—';
+        const isNotHired = pipeKey === 'not_hired' || !!c.is_not_hired;
         const updatedLabel = formatUpdatedAtDubai(c.updated_at);
         const updatedHtml = updatedLabel
           ? '<time class="hh-row-updated" datetime="' + escapeHtml(c.updated_at || '') + '" title="Last updated (Dubai time)">' +
@@ -933,7 +949,9 @@
             '</time>'
           : '<span class="hh-row-updated hh-row-updated-empty" aria-hidden="true"></span>';
         return (
-          '<a class="hh-row" href="/hr/hiring/candidates/' + c.id + '">' +
+          '<a class="hh-row' + (isNotHired ? ' is-not-hired' : '') + '"' +
+            ' href="/hr/hiring/candidates/' + c.id + '"' +
+            (isNotHired ? ' title="Application has been closed"' : '') + '>' +
             '<div class="hh-avatar ' + avatarClass(c.full_name) + '">' + escapeHtml(c.initials || '?') + '</div>' +
             '<div class="hh-row-info">' +
               '<div class="hh-row-name">' + escapeHtml(c.full_name) +
@@ -1139,27 +1157,58 @@
         return;
       }
       const delBtn = e.target.closest('[data-hh-delete]');
-      if (!delBtn) return;
+      if (delBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        const id = parseInt(delBtn.getAttribute('data-hh-delete'), 10);
+        if (!id) return;
+        (async function () {
+          const ok = await confirmDialog({
+            title: 'Delete candidate',
+            message: 'Delete this candidate and all uploaded documents? This cannot be undone.',
+            confirmLabel: 'Delete',
+            danger: true,
+          });
+          if (!ok) return;
+          delBtn.disabled = true;
+          try {
+            await api('/hr/api/hiring/candidates/' + id, { method: 'DELETE' });
+            toast('Candidate deleted');
+            load();
+          } catch (err) {
+            toast(err.message, true);
+            delBtn.disabled = false;
+          }
+        })();
+        return;
+      }
+
+      const closedRow = e.target.closest('a.hh-row.is-not-hired');
+      if (!closedRow) return;
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
       e.preventDefault();
-      e.stopPropagation();
-      const id = parseInt(delBtn.getAttribute('data-hh-delete'), 10);
+      const href = closedRow.getAttribute('href') || '';
+      const idMatch = /\/candidates\/(\d+)/.exec(href);
+      const id = idMatch ? parseInt(idMatch[1], 10) : 0;
       if (!id) return;
       (async function () {
         const ok = await confirmDialog({
-          title: 'Delete candidate',
-          message: 'Delete this candidate and all uploaded documents? This cannot be undone.',
-          confirmLabel: 'Delete',
-          danger: true,
+          title: 'Application has been closed',
+          message: 'This hiring file was marked not hired. Reopen it to continue the process?',
+          confirmLabel: 'Reopen',
+          cancelLabel: 'Keep closed',
+          danger: false,
         });
         if (!ok) return;
-        delBtn.disabled = true;
         try {
-          await api('/hr/api/hiring/candidates/' + id, { method: 'DELETE' });
-          toast('Candidate deleted');
-          load();
+          await api('/hr/api/hiring/candidates/' + id, {
+            method: 'PATCH',
+            json: { pipeline_status: 'interview_completed' },
+          });
+          toast('Application reopened');
+          window.location.href = href;
         } catch (err) {
           toast(err.message, true);
-          delBtn.disabled = false;
         }
       })();
     });
@@ -1710,8 +1759,11 @@
       if (typeof next.is_on_hold !== 'boolean') {
         next.is_on_hold = next.pipeline_status === 'on_hold';
       }
+      if (typeof next.is_not_hired !== 'boolean') {
+        next.is_not_hired = next.pipeline_status === 'not_hired';
+      }
       if (typeof next.file_closed !== 'boolean') {
-        next.file_closed = !next.is_on_hold && next.pipeline_status === 'candidate_employee';
+        next.file_closed = !next.is_on_hold && !next.is_not_hired && next.pipeline_status === 'candidate_employee';
       }
       candidateState = next;
       return next;
@@ -1876,6 +1928,7 @@
         pipeline_status: value,
         pipeline_label: PIPELINE_LABELS[value],
         is_on_hold: value === 'on_hold',
+        is_not_hired: value === 'not_hired',
         file_closed: value === 'candidate_employee',
         visa_docs_unlocked: visaDocsUnlockedForStatus(value),
         updated_at: new Date().toISOString(),
@@ -1889,12 +1942,15 @@
         });
         const toastMsg = value === 'on_hold'
           ? 'Process put on hold'
-          : (value === 'candidate_employee' ? 'File closed' : 'Status updated');
+          : (value === 'not_hired'
+            ? 'Marked as not hired'
+            : (value === 'candidate_employee' ? 'File closed' : 'Status updated'));
         toast(toastMsg);
         render(applyCandidate(data.candidate || candidateState, {
           pipeline_status: value,
           pipeline_label: PIPELINE_LABELS[value],
           is_on_hold: value === 'on_hold',
+          is_not_hired: value === 'not_hired',
           file_closed: value === 'candidate_employee',
           visa_docs_unlocked: visaDocsUnlockedForStatus(value),
         }));
@@ -1950,9 +2006,11 @@
       const stepIdx = steps.indexOf(pipeKey);
       const currentIdx = stepIdx >= 0 ? stepIdx : -1;
       const isOnHold = pipeKey === 'on_hold' || !!c.is_on_hold;
-      const isFileClosed = !isOnHold && (pipeKey === 'candidate_employee' || !!c.file_closed);
-      // On hold pauses the whole process — resume via Jump to / stepper, no advance.
-      const nextKey = isOnHold ? null : nextPipelineStatus(pipeKey);
+      const isNotHired = pipeKey === 'not_hired' || !!c.is_not_hired;
+      const isFrozen = isOnHold || isNotHired;
+      const isFileClosed = !isFrozen && (pipeKey === 'candidate_employee' || !!c.file_closed);
+      // Process states freeze the pipeline — resume/reopen via Jump to / stepper, no advance.
+      const nextKey = isFrozen ? null : nextPipelineStatus(pipeKey);
       const nextLabel = nextKey ? (PIPELINE_LABELS[nextKey] || nextKey) : null;
       const visaUnlocked = !!c.visa_docs_unlocked;
 
@@ -2034,23 +2092,28 @@
           '<option value="on_hold"' + (isOnHold ? ' selected' : '') + '>' +
             'On hold — pause process' +
           '</option>' +
+          '<option value="not_hired"' + (isNotHired ? ' selected' : '') + '>' +
+            'Not hired — did not proceed' +
+          '</option>' +
         '</optgroup>';
 
       const stepsHtml = steps.map(function (key, i) {
         const label = PIPELINE_LABELS[key] || key;
         const short = PIPELINE_SHORT[key] || label;
-        const current = !isOnHold && key === pipeKey;
-        const done = !isOnHold && currentIdx > i;
+        const current = !isFrozen && key === pipeKey;
+        const done = !isFrozen && currentIdx > i;
+        const resumeHint = isNotHired ? ' — tap to reopen here' : (isOnHold ? ' — tap to resume here' : '');
+        const resumeAria = isNotHired ? 'Reopen at: ' : (isOnHold ? 'Resume at: ' : 'Set stage: ');
         return (
           '<li class="hh-pipe-step' + (current ? ' is-current' : '') + (done ? ' is-done' : '') +
-            (isOnHold ? ' is-frozen' : '') +
+            (isFrozen ? ' is-frozen' : '') +
             (current && isFileClosed ? ' is-closed' : '') + '">' +
             '<button type="button" class="hh-pipe-btn" data-pipeline="' + escapeHtml(key) + '"' +
               ' title="' + escapeHtml(label) +
                 (current && isFileClosed ? ' (file closed)' : '') +
-                (isOnHold ? ' — tap to resume here' : '') + '"' +
+                resumeHint + '"' +
               ' aria-current="' + (current ? 'step' : 'false') + '"' +
-              ' aria-label="' + (isOnHold ? 'Resume at: ' : 'Set stage: ') + escapeHtml(label) + '">' +
+              ' aria-label="' + resumeAria + escapeHtml(label) + '">' +
               '<span class="hh-pipe-dot" aria-hidden="true">' +
                 (done || (current && isFileClosed) ? '✓' : String(i + 1)) +
               '</span>' +
@@ -2060,31 +2123,42 @@
         );
       }).join('');
 
-      const stageKicker = isOnHold
-        ? 'Process on hold'
-        : (isFileClosed
-            ? 'File closed'
-            : ('Stage ' + (currentIdx + 1) + ' of ' + steps.length));
-      const holdBtn = isOnHold
+      const stageKicker = isNotHired
+        ? 'Not hired'
+        : (isOnHold
+            ? 'Process on hold'
+            : (isFileClosed
+                ? 'File closed'
+                : ('Stage ' + (currentIdx + 1) + ' of ' + steps.length)));
+      const processBtns = isFrozen
         ? ''
-        : '<button type="button" class="hh-btn hh-btn-ghost hh-btn-sm hh-pipeline-hold-btn" data-pipeline="on_hold" title="Pause the whole hiring process">' +
+        : ('<button type="button" class="hh-btn hh-btn-ghost hh-btn-sm hh-pipeline-hold-btn" data-pipeline="on_hold" title="Pause the whole hiring process">' +
             'Put on hold' +
-          '</button>';
+          '</button>' +
+          '<button type="button" class="hh-btn hh-btn-ghost hh-btn-sm hh-pipeline-nothired-btn" data-pipeline="not_hired" title="Mark this candidate as not hired">' +
+            'Not hired' +
+          '</button>');
+      const displayTitle = isNotHired ? 'Not hired' : (isOnHold ? 'On hold' : pipeLabel);
       const advanceHtml = nextKey
         ? '<button type="button" class="hh-btn hh-btn-primary hh-btn-sm" data-pipeline="' + escapeHtml(nextKey) + '">' +
             'Advance to ' + escapeHtml(PIPELINE_SHORT[nextKey] || nextLabel) +
           '</button>'
-        : (isOnHold
-            ? '<span class="hh-pipeline-final hh-pipeline-final-hold">Jump to a stage to resume</span>'
-            : (isFileClosed
-                ? '<span class="hh-pipeline-final hh-pipeline-final-closed">File closed</span>'
-                : '<span class="hh-pipeline-final">Final stage</span>'));
+        : (isNotHired
+            ? '<span class="hh-pipeline-final hh-pipeline-final-nothired">Jump to a stage to reopen</span>'
+            : (isOnHold
+                ? '<span class="hh-pipeline-final hh-pipeline-final-hold">Jump to a stage to resume</span>'
+                : (isFileClosed
+                    ? '<span class="hh-pipeline-final hh-pipeline-final-closed">File closed</span>'
+                    : '<span class="hh-pipeline-final">Final stage</span>')));
+
+      const frozenClass = isNotHired ? ' is-not-hired' : (isOnHold ? ' is-on-hold' : '');
+      const kickerClass = isNotHired ? ' is-nothired' : (isOnHold ? ' is-hold' : '');
 
       body.innerHTML =
-        '<div class="hh-pipeline-top' + (isOnHold ? ' is-on-hold' : '') + '">' +
+        '<div class="hh-pipeline-top' + frozenClass + '">' +
           '<div class="hh-pipeline-stage">' +
-            '<div class="hh-pipeline-kicker' + (isOnHold ? ' is-hold' : '') + '">' + escapeHtml(stageKicker) + '</div>' +
-            '<h2 class="hh-pipeline-title">' + escapeHtml(isOnHold ? 'On hold' : pipeLabel) + '</h2>' +
+            '<div class="hh-pipeline-kicker' + kickerClass + '">' + escapeHtml(stageKicker) + '</div>' +
+            '<h2 class="hh-pipeline-title">' + escapeHtml(displayTitle) + '</h2>' +
             '<p class="hh-pipeline-focus">' + escapeHtml(meta.focus) + '</p>' +
           '</div>' +
           '<div class="hh-pipeline-note">' +
@@ -2097,16 +2171,16 @@
                 selectOptions +
               '</select>' +
             '</label>' +
-            holdBtn +
+            processBtns +
             advanceHtml +
           '</div>' +
         '</div>' +
 
-        '<div class="hh-pipeline-segments' + (isOnHold ? ' is-on-hold' : '') + '" role="img" aria-label="' + escapeHtml(stageKicker) + '">' +
+        '<div class="hh-pipeline-segments' + frozenClass + '" role="img" aria-label="' + escapeHtml(stageKicker) + '">' +
           steps.map(function (key, i) {
             let cls = '';
-            if (isOnHold) {
-              cls = 'is-frozen';
+            if (isFrozen) {
+              cls = isNotHired ? 'is-frozen is-nothired' : 'is-frozen';
             } else if (i < currentIdx) {
               cls = 'is-done';
             } else if (i === currentIdx) {
@@ -2114,10 +2188,10 @@
             }
             return '<span class="hh-pipeline-seg ' + cls + '" title="' + escapeHtml(PIPELINE_LABELS[key] || key) + '"></span>';
           }).join('') +
-          '<span class="hh-pipeline-seg-caption' + (isOnHold ? ' is-hold' : '') + '">' + escapeHtml(stageKicker) + '</span>' +
+          '<span class="hh-pipeline-seg-caption' + kickerClass + '">' + escapeHtml(stageKicker) + '</span>' +
         '</div>' +
 
-        '<ol class="hh-pipeline-stepper' + (isOnHold ? ' is-on-hold' : '') + '">' + stepsHtml + '</ol>' +
+        '<ol class="hh-pipeline-stepper' + frozenClass + '">' + stepsHtml + '</ol>' +
 
         '<div class="hh-pipeline-intel">' +
           buildStageCoach(c, pipeKey, daysInStage, nextKey, visaUnlocked) +
@@ -2146,6 +2220,7 @@
 
       body.classList.remove('is-busy');
       body.classList.toggle('is-on-hold', isOnHold);
+      body.classList.toggle('is-not-hired', isNotHired);
       bindPipelineBody(body);
       bindCommentsEditors();
 

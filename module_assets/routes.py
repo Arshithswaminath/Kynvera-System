@@ -5,8 +5,11 @@ URL prefix: /assets
 import json
 import logging
 from datetime import datetime, date, timezone
+from io import BytesIO
+from base64 import b64encode
 from flask import (
     Blueprint, render_template, request, jsonify, redirect, g,
+    send_file,
 )
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy import func, inspect, text
@@ -17,6 +20,13 @@ from app.models import (
 )
 from common.fm_integration import (
     fm_log_audit, dispatch_webhooks, jwt_or_api_key_required, create_api_key,
+)
+from module_assets.qr_labels import (
+    asset_qr_png_bytes,
+    asset_text_qr_png_bytes,
+    build_bulk_labels_pdf,
+    build_single_label_pdf,
+    ensure_asset_qr_code,
 )
 
 logger = logging.getLogger(__name__)
@@ -89,6 +99,8 @@ def _asset_from_payload(data, asset=None):
     if not asset.asset_id:
         asset.asset_id = (data.get('asset_id') or '').strip() or _next_asset_id()
     asset.qr_code = (data.get('qr_code') or '').strip() or None
+    if not asset.qr_code:
+        ensure_asset_qr_code(asset)
     asset.name = (data.get('name') or '').strip()
     asset.asset_type = (data.get('asset_type') or '').strip() or None
     asset.building = (data.get('building') or '').strip() or None
@@ -325,6 +337,31 @@ def assets_scan_page():
     )
 
 
+@assets_bp.route('/tag/<string:asset_code>/qr.png')
+def assets_public_qr_png(asset_code):
+    """Public QR image so the scan page never needs a login cookie."""
+    asset = Asset.query.filter_by(asset_id=asset_code).first_or_404()
+    png = asset_qr_png_bytes(asset)
+    return send_file(
+        BytesIO(png),
+        mimetype='image/png',
+        as_attachment=False,
+        download_name=f'{asset.asset_id}-qr.png',
+        max_age=300,
+    )
+
+
+@assets_bp.route('/tag/<string:asset_code>')
+def assets_public_tag(asset_code):
+    """No-login operational summary opened by a phone-camera QR scan."""
+    asset = Asset.query.filter_by(asset_id=asset_code).first_or_404()
+    return render_template(
+        'assets_public_tag.html',
+        asset=asset,
+        url_qr_src=_png_data_uri(asset_qr_png_bytes(asset)),
+    )
+
+
 def _ticket_exec_stats():
     open_statuses = {
         'open', 'assigned', 'site_attended', 'work_started', 'work_completed',
@@ -406,6 +443,10 @@ def assets_detail_page(asset_code):
         .order_by(AssetPrediction.created_at.desc())
         .first()
     )
+    before = asset.qr_code
+    ensure_asset_qr_code(asset)
+    if asset.qr_code != before:
+        db.session.commit()
     return render_template(
         'assets_detail.html',
         user=user,
@@ -413,6 +454,7 @@ def assets_detail_page(asset_code):
         tickets=tickets,
         last_prediction=last_pred.to_dict() if last_pred else None,
         can_write=_can_write(user),
+        url_qr_src=_png_data_uri(asset_qr_png_bytes(asset)),
     )
 
 
@@ -534,6 +576,127 @@ def api_delete_asset(asset_code):
     db.session.commit()
     fm_log_audit(user.id, 'asset_delete', 'asset', code, None)
     return jsonify({'success': True})
+
+
+def _png_data_uri(png: bytes) -> str:
+    return 'data:image/png;base64,' + b64encode(png).decode('ascii')
+
+
+def _is_text_qr_request() -> bool:
+    kind = (request.args.get('type') or request.args.get('kind') or '').strip().lower()
+    return kind in ('text', 'plain', 'summary')
+
+
+def _backfill_missing_qr_codes(assets):
+    changed = False
+    for asset in assets:
+        before = asset.qr_code
+        ensure_asset_qr_code(asset)
+        if asset.qr_code != before:
+            changed = True
+    if changed:
+        db.session.commit()
+
+
+@assets_bp.route('/api/assets/<string:asset_code>/qr.png', methods=['GET'])
+@jwt_required()
+def api_asset_qr_png(asset_code):
+    user = _current_user()
+    if not _has_access(user):
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+    asset = Asset.query.filter_by(asset_id=asset_code).first_or_404()
+    before = asset.qr_code
+    ensure_asset_qr_code(asset)
+    if asset.qr_code != before:
+        db.session.commit()
+    png = asset_qr_png_bytes(asset)
+    if _is_text_qr_request():
+        png = asset_text_qr_png_bytes(asset)
+        filename = f'{asset.asset_id}-qr-text.png'
+    else:
+        filename = f'{asset.asset_id}-qr.png'
+    as_attachment = (request.args.get('download') or '').lower() in ('1', 'true', 'yes')
+    return send_file(
+        BytesIO(png),
+        mimetype='image/png',
+        as_attachment=as_attachment,
+        download_name=filename,
+    )
+
+
+@assets_bp.route('/api/assets/<string:asset_code>/qr-text.png', methods=['GET'])
+@jwt_required()
+def api_asset_qr_text_png(asset_code):
+    user = _current_user()
+    if not _has_access(user):
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+    asset = Asset.query.filter_by(asset_id=asset_code).first_or_404()
+    before = asset.qr_code
+    ensure_asset_qr_code(asset)
+    if asset.qr_code != before:
+        db.session.commit()
+    png = asset_text_qr_png_bytes(asset)
+    as_attachment = (request.args.get('download') or '').lower() in ('1', 'true', 'yes')
+    return send_file(
+        BytesIO(png),
+        mimetype='image/png',
+        as_attachment=as_attachment,
+        download_name=f'{asset.asset_id}-qr-text.png',
+    )
+
+
+@assets_bp.route('/api/assets/<string:asset_code>/qr-label.pdf', methods=['GET'])
+@jwt_required()
+def api_asset_qr_label_pdf(asset_code):
+    user = _current_user()
+    if not _has_access(user):
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+    asset = Asset.query.filter_by(asset_id=asset_code).first_or_404()
+    before = asset.qr_code
+    ensure_asset_qr_code(asset)
+    if asset.qr_code != before:
+        db.session.commit()
+    pdf = build_single_label_pdf(asset)
+    return send_file(
+        BytesIO(pdf),
+        mimetype='application/pdf',
+        as_attachment=True,
+        download_name=f'{asset.asset_id}-qr-label.pdf',
+    )
+
+
+@assets_bp.route('/api/qr-labels.pdf', methods=['GET'])
+@jwt_required()
+def api_bulk_qr_labels_pdf():
+    user = _current_user()
+    if not _has_access(user):
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+    q = Asset.query
+    status = request.args.get('status')
+    search = (request.args.get('q') or '').strip()
+    if status:
+        q = q.filter(Asset.status == status)
+    if search:
+        like = f'%{search}%'
+        q = q.filter(
+            db.or_(
+                Asset.name.ilike(like),
+                Asset.asset_id.ilike(like),
+                Asset.qr_code.ilike(like),
+                Asset.asset_type.ilike(like),
+                Asset.serial_number.ilike(like),
+                Asset.building.ilike(like),
+            )
+        )
+    assets = q.order_by(Asset.asset_id.asc()).all()
+    _backfill_missing_qr_codes(assets)
+    pdf = build_bulk_labels_pdf(assets)
+    return send_file(
+        BytesIO(pdf),
+        mimetype='application/pdf',
+        as_attachment=True,
+        download_name='asset-qr-labels.pdf',
+    )
 
 
 @assets_bp.route('/api/kpis', methods=['GET'])

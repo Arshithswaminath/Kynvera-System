@@ -1,117 +1,76 @@
 from flask import Blueprint, jsonify, render_template, request, redirect, url_for, current_app, send_file
 import os
 import mimetypes
-from urllib.parse import urlparse
-from urllib.request import urlopen
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from app.models import User, Submission, Job, File
-from common.email_service import send_email
+from app.models import (
+    User, Submission, Job, File,
+    EmailAutomation, EmailRecipientGroup, db,
+)
+from common.email_service import send_email, is_email_configured
+from module_files import service as files_service
+from app.bd import email_automation as ea
 
 bd_bp = Blueprint('bd_bp', __name__, url_prefix='/bd')
 
 
 def _is_bd_user(user):
-    if not user or not getattr(user, 'is_active', True):
-        return False
-    if user.role == 'admin':
-        return True
-    return user.is_bd_inspection_reviewer()
+    return ea.is_bd_user(user)
+
+
+def _current_user():
+    uid = get_jwt_identity()
+    try:
+        uid = int(uid)
+    except (TypeError, ValueError):
+        return None
+    return db.session.get(User, uid)
 
 
 def _parse_emails(value):
-    if not value:
-        return []
-    if isinstance(value, list):
-        return [v.strip() for v in value if v and str(v).strip()]
-    raw = str(value)
-    parts = [p.strip() for p in raw.replace(';', ',').split(',')]
-    return [p for p in parts if p]
+    return ea.parse_emails(value)
 
 
 def _parse_submission_ids(value):
-    if not value:
-        return []
-    if isinstance(value, list):
-        return [str(v).strip() for v in value if v and str(v).strip()]
-    raw = str(value)
-    parts = [p.strip() for p in raw.replace(';', ',').split(',')]
-    return [p for p in parts if p]
+    return ea.parse_submission_ids(value)
 
 
-def _download_attachment(url, fallback_name):
-    if url and url.startswith('/generated/'):
-        base_dir = current_app.config.get(
-            "GENERATED_DIR",
-            os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "generated")
-        )
-        rel_path = url.lstrip('/')
-        if rel_path.startswith('generated/'):
-            rel_path = rel_path.replace('generated/', '', 1)
-        local_path = os.path.join(base_dir, rel_path)
-        if os.path.exists(local_path):
-            with open(local_path, "rb") as fh:
-                data = fh.read()
-            mime_type = mimetypes.guess_type(local_path)[0] or "application/octet-stream"
-            return {"content": data, "filename": os.path.basename(local_path), "mime_type": mime_type}
+def _parse_file_item_ids(value):
+    return ea.parse_file_item_ids(value)
 
-    if url and url.startswith('/'):
-        base_url = current_app.config.get("APP_BASE_URL") or request.url_root.rstrip('/')
-        url = f"{base_url}{url}"
 
-    parsed = urlparse(url)
-    filename = os.path.basename(parsed.path) or fallback_name
-    with urlopen(url) as response:
-        data = response.read()
-    mime_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
-    return {"content": data, "filename": filename, "mime_type": mime_type}
+def _collect_files_item_attachments(file_item_ids):
+    return ea.collect_files_item_attachments(file_item_ids)
 
 
 def _collect_submission_attachments(submission):
-    attachments = []
-    found_documents = False
+    return ea.collect_submission_attachments(submission)
 
-    report_files = File.query.filter_by(
-        submission_id=submission.id
-    ).filter(
-        File.file_type.in_(['report_excel', 'report_pdf'])
-    ).all()
 
-    for file in report_files:
-        if file.file_path and os.path.exists(file.file_path):
-            attachments.append(file.file_path)
-            found_documents = True
-            continue
-        if file.cloud_url:
-            try:
-                fallback = f"{submission.submission_id}-{file.file_type}.pdf"
-                if file.file_type == 'report_excel':
-                    fallback = f"{submission.submission_id}.xlsx"
-                attachments.append(_download_attachment(file.cloud_url, fallback))
-                found_documents = True
-            except Exception:
-                current_app.logger.exception("Failed to download report %s", file.cloud_url)
+def _require_bd_user():
+    user = _current_user()
+    if not _is_bd_user(user):
+        return None, (jsonify({'success': False, 'error': 'Access denied'}), 403)
+    return user, None
 
-    if found_documents:
-        return attachments, True
 
-    job = Job.query.filter_by(
-        submission_id=submission.id,
-        status='completed'
-    ).order_by(Job.completed_at.desc()).first()
-    if job and job.result_data:
-        pdf_url = job.result_data.get('pdf_url') or job.result_data.get('pdf')
-        excel_url = job.result_data.get('excel_url') or job.result_data.get('excel')
-        try:
-            if pdf_url:
-                attachments.append(_download_attachment(pdf_url, f"{submission.submission_id}.pdf"))
-                found_documents = True
-            if excel_url:
-                attachments.append(_download_attachment(excel_url, f"{submission.submission_id}.xlsx"))
-                found_documents = True
-        except Exception:
-            current_app.logger.exception("Failed to download job result files")
+def _automation_or_error(auto_id, user, need_edit=False, need_run=False):
+    auto = db.session.get(EmailAutomation, auto_id)
+    if not auto:
+        return None, (jsonify({'success': False, 'error': 'Automation not found'}), 404)
+    if need_edit and not ea.can_edit_automation(user, auto):
+        return None, (jsonify({'success': False, 'error': 'Access denied'}), 403)
+    if need_run and not ea.can_run_automation(user, auto):
+        return None, (jsonify({'success': False, 'error': 'Access denied'}), 403)
+    if not ea.can_view_automation(user, auto):
+        return None, (jsonify({'success': False, 'error': 'Access denied'}), 403)
+    return auto, None
 
-    return attachments, found_documents
+
+def _serialize_auto_for(user, auto):
+    data = ea.serialize_automation(auto)
+    data['can_edit'] = ea.can_edit_automation(user, auto)
+    data['can_run'] = ea.can_run_automation(user, auto)
+    return data
 
 
 def _get_report_urls(submission):
@@ -167,8 +126,7 @@ def _get_role_emails(designation):
 @bd_bp.route('/email-module', methods=['GET'])
 @jwt_required()
 def email_module():
-    user_id = get_jwt_identity()
-    user = User.query.get(user_id)
+    user = _current_user()
     if not _is_bd_user(user):
         return redirect('/dashboard')
 
@@ -195,10 +153,9 @@ def email_module():
 @bd_bp.route('/email-module/attachments', methods=['GET'])
 @jwt_required()
 def list_email_attachments():
-    user_id = get_jwt_identity()
-    user = User.query.get(user_id)
-    if not _is_bd_user(user):
-        return jsonify({'success': False, 'error': 'Access denied'}), 403
+    user, err = _require_bd_user()
+    if err:
+        return err
 
     submission_ids = _parse_submission_ids(request.args.get('ids'))
     if not submission_ids:
@@ -225,10 +182,9 @@ def list_email_attachments():
 @bd_bp.route('/email-module/attachment/<submission_id>/<file_type>', methods=['GET'])
 @jwt_required()
 def download_attachment(submission_id, file_type):
-    user_id = get_jwt_identity()
-    user = User.query.get(user_id)
-    if not _is_bd_user(user):
-        return jsonify({'success': False, 'error': 'Access denied'}), 403
+    user, err = _require_bd_user()
+    if err:
+        return err
 
     if file_type not in ['report_pdf', 'report_excel']:
         return jsonify({'success': False, 'error': 'Invalid attachment type'}), 400
@@ -251,13 +207,73 @@ def download_attachment(submission_id, file_type):
     return send_file(file.file_path, mimetype=mime_type, as_attachment=False)
 
 
+@bd_bp.route('/email-module/cloud-files', methods=['GET'])
+@jwt_required()
+def list_email_cloud_files():
+    """List Files-module items BD users can attach to outbound email."""
+    user, err = _require_bd_user()
+    if err:
+        return err
+
+    try:
+        tree = files_service.build_tree()
+    except Exception:
+        current_app.logger.exception('Failed to load Files tree for BD email')
+        return jsonify({'success': False, 'error': 'Unable to load cloud files'}), 500
+
+    folders = tree.get('folders') or []
+    folder_by_id = {f['id']: f for f in folders if isinstance(f, dict) and f.get('id') is not None}
+
+    def folder_path(folder_id):
+        parts = []
+        seen = set()
+        cur = folder_id
+        while cur is not None and cur not in seen:
+            seen.add(cur)
+            folder = folder_by_id.get(cur)
+            if not folder:
+                break
+            parts.append(folder.get('name') or 'Folder')
+            cur = folder.get('parent_id')
+        return ' / '.join(reversed(parts)) if parts else 'Files'
+
+    items = []
+    for item in (tree.get('items') or []):
+        if not isinstance(item, dict) or item.get('id') is None:
+            continue
+        items.append({
+            'id': item.get('id'),
+            'name': item.get('name') or item.get('filename') or 'File',
+            'filename': item.get('filename') or item.get('name') or 'file',
+            'mime_type': item.get('mime_type') or '',
+            'size_label': item.get('size_label') or '—',
+            'folder_id': item.get('folder_id'),
+            'folder_path': folder_path(item.get('folder_id')),
+            'sync_status': item.get('sync_status') or 'local',
+            'source_module': item.get('source_module') or '',
+        })
+
+    folder_rows = []
+    for folder in folders:
+        if not isinstance(folder, dict) or folder.get('id') is None:
+            continue
+        folder_rows.append({
+            'id': folder.get('id'),
+            'name': folder.get('name') or 'Folder',
+            'parent_id': folder.get('parent_id'),
+            'path_key': folder.get('path_key') or '',
+            'folder_path': folder_path(folder.get('id')),
+        })
+
+    return jsonify({'success': True, 'folders': folder_rows, 'items': items}), 200
+
+
 @bd_bp.route('/email-module/send', methods=['POST'])
 @jwt_required()
 def send_email_to_gm():
-    user_id = get_jwt_identity()
-    user = User.query.get(user_id)
-    if not _is_bd_user(user):
-        return jsonify({'success': False, 'error': 'Access denied'}), 403
+    user, err = _require_bd_user()
+    if err:
+        return err
 
     payload = request.get_json(silent=True) or request.form.to_dict()
     to_value = payload.get('to') or ''
@@ -265,6 +281,7 @@ def send_email_to_gm():
     subject = (payload.get('subject') or '').strip()
     message = (payload.get('message') or '').strip()
     submission_ids = _parse_submission_ids(payload.get('submission_ids'))
+    file_item_ids = _parse_file_item_ids(payload.get('file_item_ids'))
 
     if not subject:
         return jsonify({'success': False, 'error': 'Subject is required'}), 400
@@ -273,34 +290,40 @@ def send_email_to_gm():
 
     recipients = _parse_emails(to_value)
     if not recipients:
-        recipients = _get_gm_emails()
-
-    if not recipients:
-        return jsonify({'success': False, 'error': 'No General Manager email found'}), 400
+        return jsonify({'success': False, 'error': 'At least one To recipient is required'}), 400
 
     cc_list = _parse_emails(cc_value)
 
-    mail_server = current_app.config.get('MAIL_SERVER')
-    mail_port = current_app.config.get('MAIL_PORT')
-    if not mail_server or not mail_port:
-        return jsonify({'success': False, 'error': 'Email server is not configured'}), 400
+    if not is_email_configured():
+        return jsonify({'success': False, 'error': 'Email is not configured'}), 400
 
     attachments = []
     missing_documents = []
+    submission_attachments_found = False
     if submission_ids:
         for submission_id in submission_ids:
-            submission = Submission.query.filter_by(
-                submission_id=submission_id,
-                business_dev_id=user.id
-            ).first()
+            q = Submission.query.filter_by(submission_id=submission_id)
+            if user.role != 'admin':
+                q = q.filter_by(business_dev_id=user.id)
+            submission = q.first()
             if not submission:
                 continue
             submission_attachments, found_documents = _collect_submission_attachments(submission)
             attachments.extend(submission_attachments)
-            if not found_documents:
+            if found_documents:
+                submission_attachments_found = True
+            else:
                 missing_documents.append(submission.submission_id)
 
-    if submission_ids and not attachments:
+    cloud_attachments, missing_cloud = _collect_files_item_attachments(file_item_ids)
+    if missing_cloud:
+        return jsonify({
+            'success': False,
+            'error': 'Some cloud files could not be attached: ' + ', '.join(missing_cloud[:8])
+        }), 400
+    attachments.extend(cloud_attachments)
+
+    if submission_ids and not submission_attachments_found and not cloud_attachments:
         return jsonify({'success': False, 'error': 'No PDF/Excel documents found for the selected submissions'}), 400
 
     signature = f"\n\nSent by: {user.full_name or user.username}\nInjaaz Team"
@@ -312,22 +335,260 @@ def send_email_to_gm():
         "</body></html>"
     )
 
+    related_bits = list(submission_ids)
+    if file_item_ids:
+        related_bits.append('files:' + ','.join(str(i) for i in file_item_ids))
+
     sent = send_email(
         recipients,
         subject,
         body,
         html_body=html_body,
         cc=cc_list or None,
-        attachments=attachments or None
+        attachments=attachments or None,
+        source='bd_email',
+        sent_by_user_id=user.id,
+        related_id=','.join(related_bits) if related_bits else None,
     )
 
     if sent:
-        current_app.logger.info(f"BD email sent by user {user_id} to {recipients}")
+        current_app.logger.info(f"BD email sent by user {user.id} to {recipients}")
         if missing_documents:
             return jsonify({
                 'success': True,
                 'message': 'Email sent, but some submissions have no documents',
                 'missing_documents': missing_documents
             }), 200
-        return jsonify({'success': True, 'message': 'Email sent to General Manager'}), 200
+        return jsonify({'success': True, 'message': 'Email sent successfully'}), 200
     return jsonify({'success': False, 'error': 'Failed to send email'}), 500
+
+
+@bd_bp.route('/email-module/groups', methods=['GET'])
+@jwt_required()
+def list_email_groups():
+    user, err = _require_bd_user()
+    if err:
+        return err
+    scope = request.args.get('scope')
+    groups = ea.visible_groups_query(user, scope=scope).all()
+    items = []
+    for group in groups:
+        data = ea.serialize_group(group)
+        data['can_edit'] = ea.can_edit_group(user, group)
+        items.append(data)
+    return jsonify({'success': True, 'items': items}), 200
+
+
+@bd_bp.route('/email-module/groups', methods=['POST'])
+@jwt_required()
+def create_email_group():
+    user, err = _require_bd_user()
+    if err:
+        return err
+    payload = request.get_json(silent=True) or {}
+    name = (payload.get('name') or '').strip()
+    if not name:
+        return jsonify({'success': False, 'error': 'Group name is required'}), 400
+    emails = ea.emails_to_text(payload.get('emails'))
+    if not emails:
+        return jsonify({'success': False, 'error': 'At least one email is required'}), 400
+    group = EmailRecipientGroup(
+        name=name[:120],
+        emails=emails,
+        scope=ea.parse_scope(payload.get('scope')),
+        owner_id=user.id,
+    )
+    db.session.add(group)
+    db.session.commit()
+    data = ea.serialize_group(group)
+    data['can_edit'] = True
+    return jsonify({'success': True, 'item': data}), 201
+
+
+@bd_bp.route('/email-module/groups/<int:group_id>', methods=['PATCH'])
+@jwt_required()
+def update_email_group(group_id):
+    user, err = _require_bd_user()
+    if err:
+        return err
+    group = db.session.get(EmailRecipientGroup, group_id)
+    if not group:
+        return jsonify({'success': False, 'error': 'Group not found'}), 404
+    if not ea.can_edit_group(user, group):
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+    payload = request.get_json(silent=True) or {}
+    if 'name' in payload:
+        name = (payload.get('name') or '').strip()
+        if not name:
+            return jsonify({'success': False, 'error': 'Group name is required'}), 400
+        group.name = name[:120]
+    if 'emails' in payload:
+        emails = ea.emails_to_text(payload.get('emails'))
+        if not emails:
+            return jsonify({'success': False, 'error': 'At least one email is required'}), 400
+        group.emails = emails
+    if 'scope' in payload:
+        group.scope = ea.parse_scope(payload.get('scope'), default=group.scope)
+    db.session.commit()
+    data = ea.serialize_group(group)
+    data['can_edit'] = True
+    return jsonify({'success': True, 'item': data}), 200
+
+
+@bd_bp.route('/email-module/groups/<int:group_id>', methods=['DELETE'])
+@jwt_required()
+def delete_email_group(group_id):
+    user, err = _require_bd_user()
+    if err:
+        return err
+    group = db.session.get(EmailRecipientGroup, group_id)
+    if not group:
+        return jsonify({'success': False, 'error': 'Group not found'}), 404
+    if not ea.can_edit_group(user, group):
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+    db.session.delete(group)
+    db.session.commit()
+    return jsonify({'success': True}), 200
+
+
+@bd_bp.route('/email-module/automations', methods=['GET'])
+@jwt_required()
+def list_email_automations():
+    user, err = _require_bd_user()
+    if err:
+        return err
+    scope = request.args.get('scope')
+    rows = ea.visible_automations_query(user, scope=scope).all()
+    return jsonify({
+        'success': True,
+        'items': [_serialize_auto_for(user, row) for row in rows],
+    }), 200
+
+
+@bd_bp.route('/email-module/automations', methods=['POST'])
+@jwt_required()
+def create_email_automation():
+    user, err = _require_bd_user()
+    if err:
+        return err
+    payload = request.get_json(silent=True) or {}
+    auto = EmailAutomation(owner_id=user.id, name='Untitled', scope=ea.SCOPE_PERSONAL)
+    try:
+        ea.apply_automation_fields(auto, payload, creating=True)
+        db.session.add(auto)
+        db.session.flush()
+        if 'attachments' in payload:
+            ea.replace_attachments(auto, ea.parse_attachment_payload(payload.get('attachments')))
+        db.session.commit()
+    except ea.AutomationError as exc:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': exc.message}), exc.status
+    return jsonify({'success': True, 'item': _serialize_auto_for(user, auto)}), 201
+
+
+@bd_bp.route('/email-module/automations/<int:auto_id>', methods=['GET'])
+@jwt_required()
+def get_email_automation(auto_id):
+    user, err = _require_bd_user()
+    if err:
+        return err
+    auto, err = _automation_or_error(auto_id, user)
+    if err:
+        return err
+    return jsonify({'success': True, 'item': _serialize_auto_for(user, auto)}), 200
+
+
+@bd_bp.route('/email-module/automations/<int:auto_id>', methods=['PATCH'])
+@jwt_required()
+def update_email_automation(auto_id):
+    user, err = _require_bd_user()
+    if err:
+        return err
+    auto, err = _automation_or_error(auto_id, user, need_edit=True)
+    if err:
+        return err
+    payload = request.get_json(silent=True) or {}
+    try:
+        ea.apply_automation_fields(auto, payload, creating=False)
+        if 'attachments' in payload:
+            ea.replace_attachments(auto, ea.parse_attachment_payload(payload.get('attachments')))
+        db.session.commit()
+    except ea.AutomationError as exc:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': exc.message}), exc.status
+    return jsonify({'success': True, 'item': _serialize_auto_for(user, auto)}), 200
+
+
+@bd_bp.route('/email-module/automations/<int:auto_id>', methods=['DELETE'])
+@jwt_required()
+def delete_email_automation(auto_id):
+    user, err = _require_bd_user()
+    if err:
+        return err
+    auto, err = _automation_or_error(auto_id, user, need_edit=True)
+    if err:
+        return err
+    db.session.delete(auto)
+    db.session.commit()
+    return jsonify({'success': True}), 200
+
+
+@bd_bp.route('/email-module/automations/<int:auto_id>/run', methods=['POST'])
+@jwt_required()
+def run_email_automation(auto_id):
+    user, err = _require_bd_user()
+    if err:
+        return err
+    auto, err = _automation_or_error(auto_id, user, need_run=True)
+    if err:
+        return err
+    try:
+        result = ea.run_automation(auto, user=user, trigger='manual')
+    except ea.AutomationError as exc:
+        return jsonify({'success': False, 'error': exc.message, 'skipped': exc.skipped}), exc.status
+    return jsonify(result), 200
+
+
+@bd_bp.route('/email-module/automations/<int:auto_id>/history', methods=['GET'])
+@jwt_required()
+def email_automation_history(auto_id):
+    user, err = _require_bd_user()
+    if err:
+        return err
+    auto, err = _automation_or_error(auto_id, user)
+    if err:
+        return err
+    try:
+        limit = int(request.args.get('limit') or 20)
+    except (TypeError, ValueError):
+        limit = 20
+    return jsonify({'success': True, 'items': ea.list_run_history(auto, limit=limit)}), 200
+
+
+@bd_bp.route('/email-module/automations/<int:auto_id>/attachments/upload', methods=['POST'])
+@jwt_required()
+def upload_email_automation_attachment(auto_id):
+    user, err = _require_bd_user()
+    if err:
+        return err
+    auto, err = _automation_or_error(auto_id, user, need_edit=True)
+    if err:
+        return err
+    file_storage = request.files.get('file')
+    if not file_storage or not file_storage.filename:
+        return jsonify({'success': False, 'error': 'Choose a file to upload'}), 400
+    require_new = str(request.form.get('require_new') or '').strip().lower() in ('1', 'true', 'yes', 'on')
+    try:
+        item, folder = ea.save_upload_for_automation(file_storage, created_by=user.id)
+        slot = ea.append_linked_file_slot(auto, item.id, require_new=require_new)
+    except Exception as exc:
+        current_app.logger.exception('Failed to upload automation attachment')
+        return jsonify({'success': False, 'error': str(exc) or 'Upload failed'}), 400
+    data = _serialize_auto_for(user, auto)
+    return jsonify({
+        'success': True,
+        'item': data,
+        'files_item': item.to_dict(),
+        'folder_id': folder.id,
+        'slot': ea.serialize_attachment(slot),
+    }), 201

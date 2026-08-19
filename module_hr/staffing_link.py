@@ -27,6 +27,7 @@ logger = logging.getLogger(__name__)
 # Hiring pipeline → Manpower vacancy status
 PIPELINE_TO_MANPOWER_STATUS = {
     'on_hold': 'on_hold',
+    'not_hired': 'open',
     'interview_completed': 'interviewing',
     'gathering_documents': 'interviewing',
     'preparing_offer_letter': 'selected',

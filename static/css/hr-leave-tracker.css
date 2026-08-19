@@ -153,7 +153,9 @@ a.lt-stat-btn:visited {
 }
 
 /* Native select chevron sits high when height + padding conflict; use a centered custom arrow */
-.lt-toolbar .hh-select {
+.lt-toolbar .hh-select,
+.lt-planner-toolbar select.hh-select,
+.lt-logs-toolbar select.hh-select {
   -webkit-appearance: none;
   appearance: none;
   flex: 0 0 auto;
@@ -169,14 +171,18 @@ a.lt-stat-btn:visited {
   background-size: 12px 8px;
 }
 
-.lt-toolbar .hh-select.lt-filter-compact {
+.lt-toolbar .hh-select.lt-filter-compact,
+.lt-planner-toolbar .hh-select.lt-filter-compact,
+.lt-logs-toolbar .hh-select.lt-filter-compact {
   /* width only — never flex-basis (column parents treat basis as height) */
   flex: 0 0 auto;
   width: 10.5rem;
   min-width: 9.5rem;
 }
 
-.lt-toolbar input.lt-filter-date {
+.lt-toolbar input.lt-filter-date,
+.lt-planner-toolbar input.lt-filter-date,
+.lt-logs-toolbar input.lt-filter-date {
   -webkit-appearance: none;
   appearance: none;
   flex: 0 0 auto;
@@ -218,18 +224,14 @@ a.lt-stat-btn:visited {
   background: var(--hh-brand-soft, #fff4ef);
 }
 
-.lt-check:has(input:checked) {
-  border-color: rgba(255, 142, 104, 0.45);
+.lt-check:hover .kv-checkbox:not(:checked):not(:disabled) {
+  border-color: var(--hh-brand, #ff8e68);
   background: var(--hh-brand-soft, #fff4ef);
 }
 
-.lt-check input {
-  width: 1rem;
-  height: 1rem;
-  margin: 0;
-  flex-shrink: 0;
-  accent-color: var(--hh-brand, #ff8e68);
-  cursor: pointer;
+.lt-check:has(input:checked) {
+  border-color: rgba(255, 142, 104, 0.45);
+  background: var(--hh-brand-soft, #fff4ef);
 }
 
 .lt-tabs {
@@ -767,10 +769,197 @@ a.lt-stat-btn:visited {
   margin-bottom: 0.75rem;
 }
 
-.lt-planner-toolbar .lt-logs-search {
-  flex: 1 1 14rem;
-  min-width: 12rem;
-  max-width: 28rem;
+.lt-planner-toolbar .hh-select {
+  flex: 0 0 auto;
+}
+
+.lt-logs-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.55rem 0.9rem;
+  margin-bottom: 0.75rem;
+}
+
+.lt-logs-toolbar-left,
+.lt-logs-toolbar-right {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.45rem;
+}
+
+.lt-logs-toolbar-left {
+  flex: 1 1 18rem;
+  min-width: 0;
+}
+
+.lt-logs-toolbar-right {
+  flex: 0 1 auto;
+  margin-left: auto;
+  justify-content: flex-end;
+}
+
+.lt-logs-toolbar .lt-logs-search {
+  flex: 1 1 12rem;
+  min-width: 10rem;
+  max-width: 16rem;
+}
+
+.lt-logs-toolbar .lt-logs-search input {
+  min-height: 36px;
+  height: 36px;
+  font-size: 0.85rem;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.lt-logs-toolbar select.hh-select.lt-filter-compact {
+  width: 7.75rem;
+  min-width: 7.25rem;
+  height: 36px;
+  min-height: 36px;
+  max-height: 36px;
+  line-height: 36px;
+  font-size: 0.85rem;
+  padding: 0 2rem 0 0.7rem;
+}
+
+.lt-logs-toolbar .lt-filter-compact {
+  flex: 0 0 auto;
+  width: 7.75rem;
+  min-width: 7.25rem;
+}
+
+.lt-logs-toolbar .hh-btn {
+  flex: 0 0 auto;
+  min-height: 36px;
+  height: 36px;
+  padding: 0 0.75rem;
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.lt-logs-toolbar .lt-logs-clear {
+  align-self: flex-end;
+}
+
+.lt-date-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+  margin: 0;
+  min-width: 0;
+}
+
+.lt-date-field-label {
+  font-size: 0.72rem;
+  font-weight: 500;
+  line-height: 1.15;
+  color: var(--hh-muted, #5c616e);
+}
+
+.lt-date-pair {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  padding: 0.1rem;
+  border: 1px solid var(--hh-border, #e9eaee);
+  border-radius: 10px;
+  background: var(--hh-surface, #fff);
+}
+
+.lt-logs-toolbar .lt-date-pair .lt-filter-date {
+  width: 7.15rem;
+  min-width: 6.75rem;
+  height: 34px;
+  min-height: 34px;
+  max-height: 34px;
+  padding: 0 0.45rem;
+  font-size: 0.8rem;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+.lt-logs-toolbar .lt-date-pair .lt-filter-date:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(255, 142, 104, 0.18);
+  border-radius: 7px;
+  background: #fff;
+}
+
+.lt-filter-range-sep {
+  font-size: 0.72rem;
+  font-weight: 400;
+  color: var(--hh-muted, #5c616e);
+  padding: 0;
+}
+
+/* keep legacy class harmless if reused elsewhere */
+.lt-filter-range {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.lt-filter-range-label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--hh-muted, #5c616e);
+  white-space: nowrap;
+}
+
+/* Hiring search reserves 5.75rem for a hint — leave tracker has no hint, so the
+   native/custom clear control was floating mid-field. Pin it to the right edge. */
+.lt-page .hh-search input {
+  padding-right: 2.4rem;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.lt-page .hh-search input[type="search"]::-webkit-search-decoration,
+.lt-page .hh-search input[type="search"]::-webkit-search-cancel-button,
+.lt-page .hh-search input[type="search"]::-webkit-search-results-button,
+.lt-page .hh-search input[type="search"]::-webkit-search-results-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+  display: none;
+}
+
+.lt-search-clear {
+  position: absolute;
+  right: 0.55rem;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--hh-muted, #5c616e);
+  font-size: 1.15rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.lt-search-clear[hidden] {
+  display: none !important;
+}
+
+.lt-search-clear:hover,
+.lt-search-clear:focus-visible {
+  background: var(--hh-brand-soft, #fff1eb);
+  color: var(--hh-brand, #ff8e68);
+  outline: none;
 }
 
 .lt-timeline {
@@ -1084,6 +1273,21 @@ a.lt-stat-btn:visited {
 @media (max-width: 900px) {
   .lt-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .lt-logs-toolbar-right {
+    margin-left: 0;
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .lt-logs-toolbar .lt-logs-search {
+    max-width: none;
+  }
+
+  .lt-logs-toolbar .lt-date-pair .lt-filter-date {
+    width: 6.85rem;
+    min-width: 6.5rem;
   }
 }
 

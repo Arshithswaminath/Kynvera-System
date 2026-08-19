@@ -14,7 +14,7 @@
     <label>Name *<input class="fm-input" name="name" required value="{{ asset.name if asset else '' }}"></label>
     <label>Asset ID<input class="fm-input" name="asset_id" {% if mode == 'edit' %}readonly{% endif %}
            placeholder="Auto AST-####" value="{{ asset.asset_id if asset else '' }}"></label>
-    <label>QR code<input class="fm-input" name="qr_code" value="{{ asset.qr_code if asset and asset.qr_code else '' }}"></label>
+    <label>QR code<input class="fm-input" name="qr_code" placeholder="Leave blank for QR-{asset id}" value="{{ asset.qr_code if asset and asset.qr_code else '' }}"></label>
     <label>Type<input class="fm-input" name="asset_type" placeholder="chiller, pump, AHU…" value="{{ asset.asset_type if asset and asset.asset_type else '' }}"></label>
     <label>Building<input class="fm-input" name="building" value="{{ asset.building if asset and asset.building else '' }}"></label>
     <label>Floor<input class="fm-input" name="floor" value="{{ asset.floor if asset and asset.floor else '' }}"></label>

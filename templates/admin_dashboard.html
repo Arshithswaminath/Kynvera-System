@@ -6,11 +6,11 @@
   <meta name="color-scheme" content="light">
   <style id="admin-critical-paint">
     /* Paint immediately — before design-tokens dark-mode tokens or external sheets load */
-    html { color-scheme: light; background-color: #eff4f1 !important; }
+    html { color-scheme: light; background-color: #f7f7f9 !important; }
     body.admin-dh-page,
     body.admin-v2,
     body.admin-v4 {
-      background-color: #eff4f1 !important;
+      background-color: #f7f7f9 !important;
       color: #0f172a !important;
       transition: none !important;
     }
@@ -25,13 +25,13 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=22">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/signature-display.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin-dashboard-shell.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}?v=25">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin-dashboard-shell.css') }}?v=42">
   <!-- Neat-glow styles for main content only (see .container.admin-content.admin-neat-glow) -->
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin-neat-glow.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin-neat-glow.css') }}?v=35">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/injz-profile-mgmt-theme.css') }}">
 </head>
-<body class="has-main-nav admin-dh-page admin-v2 admin-v4" style="background:#eff4f1;color:#0f172a">
+<body class="has-main-nav admin-dh-page admin-v2 admin-v4">
   {% set active_page = 'admin' %}
   <!-- Floats outside every scroll/overflow container so position:fixed always works -->
   <button type="button" class="dh-sidebar-toggle" id="adminDhSidebarToggle" onclick="adminToggleMobileSidebar()" aria-label="Open admin menu" title="Menu">☰</button>
@@ -52,7 +52,7 @@
           <a href="#section-overview" class="sb-nav-item active" onclick="admv2ScrollTo('section-overview',this);return false;">Dashboard</a>
           <a href="/admin/team-management" class="sb-nav-item">Users & Teams <span class="sb-badge" id="admSbUserCount">0</span></a>
           <a href="#section-documents" class="sb-nav-item" onclick="admv2ScrollTo('section-documents',this);return false;">Documents <span class="sb-badge" id="admSbDocCount">0</span></a>
-          <a href="#section-notification-settings" class="sb-nav-item" onclick="admv2ScrollTo('section-notification-settings',this);return false;">Notifications</a>
+          <a href="#section-email-log" class="sb-nav-item" onclick="admv2ScrollTo('section-email-log',this);return false;">Sent Emails</a>
         </div>
         <hr class="sb-nav-divider" aria-hidden="true">
         <div class="dh-sb-section">
@@ -72,6 +72,7 @@
           <div class="sb-section-label">Platform</div>
           <a href="/dochub" class="sb-nav-item">DocHub</a>
           <a href="/admin/knowledge-base" class="sb-nav-item">Knowledge Base</a>
+          <a href="/admin/database" class="sb-nav-item">Database</a>
           <a href="/dashboard" class="sb-nav-item">App Home</a>
         </div>
       </nav>
@@ -92,17 +93,15 @@
   <div class="container admin-content admin-neat-glow">
     <!-- mobile tab bar inserted before </body> -->
 
-    <!-- Neat Admin Glow: gradient hero + 4 KPI tiles (ref: neat-admin-glow) -->
+    <!-- Admin hero: coral gradient + 4 KPI tiles -->
     <div class="neat-hero neat-anim" id="section-overview">
       <div class="neat-hero-dots" aria-hidden="true"></div>
       <div class="neat-hero-grid">
         <div>
           {% set module_back_url = url_for('dashboard') %}
           {% include 'partials/module_back_link.html' %}
-          <div class="neat-hero-eyebrow">Admin Command Center</div>
           <h1 class="neat-hero-title">Operations Pulse <span class="neat-amp">&amp;</span> Workflow Control</h1>
-          <p class="neat-hero-desc">Spot-check headcount below, tune workflow and notifications. Day-to-day people management lives under <strong>Users & Teams</strong>.</p>
-          <div class="neat-hero-time" id="admLiveTime"></div>
+          <p class="neat-hero-desc">Spot-check headcount below and review document workflow. Day-to-day people management lives under <strong>Users & Teams</strong>.</p>
           <div class="neat-hero-actions">
             <a href="/admin/mmr/" class="neat-hero-btn neat-hero-btn--solid">Open MMR Hub</a>
             <a href="/admin/team-management" class="neat-hero-btn neat-hero-btn--ghost">People &amp; Teams</a>
@@ -110,25 +109,21 @@
         </div>
         <div class="neat-kpi-grid" aria-label="Key metrics">
             <div class="neat-kpi-card">
-              <div class="neat-kpi-ico neat-kpi-ico--pri" aria-hidden="true">👥</div>
               <div class="neat-kpi-lbl">Staff (active)</div>
               <div class="neat-kpi-val"><span id="kpiUsers">—</span></div>
               <div class="neat-kpi-sub">Excluding technician-role logins</div>
             </div>
           <div class="neat-kpi-card">
-            <div class="neat-kpi-ico neat-kpi-ico--info" aria-hidden="true">📄</div>
             <div class="neat-kpi-lbl">Documents</div>
             <div class="neat-kpi-val"><span id="kpiDocs">—</span></div>
             <div class="neat-kpi-sub">Loaded in this session</div>
           </div>
           <div class="neat-kpi-card">
-            <div class="neat-kpi-ico neat-kpi-ico--warn" aria-hidden="true">⏳</div>
             <div class="neat-kpi-lbl">Pipeline open</div>
             <div class="neat-kpi-val" id="kpiPipeline">—</div>
             <div class="neat-kpi-sub" id="kpiPipelineSub">Not completed / closed</div>
           </div>
           <div class="neat-kpi-card">
-            <div class="neat-kpi-ico neat-kpi-ico--ok" aria-hidden="true">📡</div>
             <div class="neat-kpi-lbl">Device health</div>
             <div class="neat-kpi-val" id="kpiDeviceHealth">—</div>
             <div class="neat-kpi-sub" id="kpiDeviceHealthSub">Online / total</div>
@@ -139,31 +134,33 @@
 
     <div class="admin-v4-quick-grid admv3-anim" style="animation-delay:0.08s;">
       <a href="/admin/mmr/" class="admin-v4-quick">
-        <span class="admin-v4-quick-ico">📊</span>
         <span>
           <span class="admin-v4-quick-title">MMR Dashboard</span>
           <span class="admin-v4-quick-sub">Reports, schedule, and generation controls</span>
         </span>
       </a>
       <a href="/admin/mmr-chargeable" class="admin-v4-quick">
-        <span class="admin-v4-quick-ico">⚙</span>
         <span>
           <span class="admin-v4-quick-title">Chargeable Rules</span>
           <span class="admin-v4-quick-sub">Configure billable units and logic</span>
         </span>
       </a>
       <a href="/admin/devices" class="admin-v4-quick">
-        <span class="admin-v4-quick-ico">📱</span>
         <span>
           <span class="admin-v4-quick-title">Device Management</span>
           <span class="admin-v4-quick-sub">Track and maintain registered devices</span>
         </span>
       </a>
       <a href="/admin/bd" class="admin-v4-quick">
-        <span class="admin-v4-quick-ico">💼</span>
         <span>
           <span class="admin-v4-quick-title">Business Development</span>
           <span class="admin-v4-quick-sub">Open BD module and communication tools</span>
+        </span>
+      </a>
+      <a href="/admin/database" class="admin-v4-quick">
+        <span>
+          <span class="admin-v4-quick-title">Database</span>
+          <span class="admin-v4-quick-sub">See which database this site uses, and download a copy</span>
         </span>
       </a>
     </div>
@@ -174,35 +171,34 @@
       <div class="admv2-bento-main">
 
         <!-- People overview → full management in Users module -->
-        <div class="admv2-card" id="section-users">
-          <div class="admv3-op-card-hd">
+        <div class="admv2-card admv-dash-people" id="section-users">
+          <div class="admv3-op-card-hd admv-dash-people-hd">
             <div class="admv3-op-card-hd-left">
-              <svg class="admv3-op-hd-ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
               <span class="admv3-op-hd-title">People overview</span>
             </div>
             <div class="admv3-op-card-hd-right">
-              <a href="/admin/team-management" class="admv3-pill-btn admv3-pill-btn--primary" title="Staff roster, technician CSV, passwords, profiles">Open Users module →</a>
+              <a href="/admin/team-management" class="admv3-pill-btn admv3-pill-btn--primary">Open Users module</a>
             </div>
           </div>
           <div class="admv2-card-body admv-dash-people-body">
             <p class="admv-dash-people-lede">
-              Detailed staff cards, technician roster, Excel imports, passwords, profiles, and <strong>Create login</strong> live in the <strong>Users</strong> module. This panel is a snapshot only.
+              Snapshot of headcount only. Staff cards, roster imports, passwords, and <strong>Create login</strong> live in the <strong>Users</strong> module.
             </p>
             <div class="admv-dash-people-metrics">
               <div class="admv-dash-pm-card">
-                <div class="admv-dash-pm-val" id="dashPeopleStaffActive">—</div>
                 <div class="admv-dash-pm-lbl">Active staff</div>
+                <div class="admv-dash-pm-val" id="dashPeopleStaffActive">—</div>
                 <div class="admv-dash-pm-sub">Accounts excluding technician designation</div>
               </div>
               <div class="admv-dash-pm-card">
-                <div class="admv-dash-pm-val" id="dashPeopleTechRoster">—</div>
                 <div class="admv-dash-pm-lbl">Technician roster</div>
-                <div class="admv-dash-pm-sub">Active field technicians (Employees table)</div>
+                <div class="admv-dash-pm-val" id="dashPeopleTechRoster">—</div>
+                <div class="admv-dash-pm-sub">Active field technicians</div>
               </div>
               <div class="admv-dash-pm-card">
-                <div class="admv-dash-pm-val admv-dash-pm-val-sm" id="dashPeopleTechLogins">—</div>
                 <div class="admv-dash-pm-lbl">Technician logins</div>
-                <div class="admv-dash-pm-sub">Accounts for ticketing &amp; module access</div>
+                <div class="admv-dash-pm-val" id="dashPeopleTechLogins">—</div>
+                <div class="admv-dash-pm-sub">Ticketing &amp; module access accounts</div>
               </div>
             </div>
           </div>
@@ -212,18 +208,12 @@
 
         <!-- Service tickets / work orders (pipeline + quick actions) -->
         <div class="admv2-card adm-dash-tickets" id="section-tickets">
-          <div class="adm-dash-tk-hd">
-            <div class="adm-dash-tk-hd-left">
-              <div class="adm-dash-tk-ico-wrap" aria-hidden="true">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
-              </div>
-              <div>
-                <h2 class="adm-dash-tk-title">Service tickets</h2>
-                <p class="adm-dash-tk-sub">Live pipeline: routing queue, field execution, verification, and escalation — jump into the board or open a work order.</p>
-              </div>
+          <div class="admv2-card-hd adm-dash-tk-hd">
+            <div>
+              <h2 class="admv2-card-title">Service tickets</h2>
             </div>
-            <div class="adm-dash-tk-hd-actions">
-              <a href="/tickets/" class="admv3-pill-btn admv3-pill-btn--primary">Ticketing board →</a>
+            <div class="admv2-card-controls adm-dash-tk-hd-actions">
+              <a href="/tickets/" class="admv3-pill-btn admv3-pill-btn--primary">Ticketing board</a>
               <a href="/tickets/new" class="admv3-pill-btn">＋ New ticket</a>
             </div>
           </div>
@@ -234,59 +224,68 @@
 
       </div><!-- /bento-main -->
 
-      <!-- ── Right top: activity + Module Pulse (paired row with notification below) ── -->
+      <!-- ── Right top: activity + Module Pulse (paired row with sent emails below) ── -->
       <div class="admv2-bento-side-top">
 
         <div class="neat-activity neat-anim" id="neatActivityPanel" style="animation-delay:0.1s" aria-live="polite">
           <div class="neat-activity-hd">
             <div>
               <h3>Recent activity</h3>
-              <p>Latest audit events</p>
+              <p>Newest audit events first</p>
             </div>
-            <span class="neat-activity-live"><span aria-hidden="true">●</span> Live</span>
+            <span class="neat-activity-count" id="neatActivityCount">Loading…</span>
           </div>
           <ul class="neat-activity-list" id="neatActivityList">
-            <li class="neat-activity-row"><span class="neat-activity-t" style="color:var(--neat-muted)">Loading…</span></li>
+            <li class="neat-activity-row neat-activity-row--empty"><span class="neat-activity-t" style="color:var(--neat-muted)">Loading…</span></li>
           </ul>
         </div>
 
         <aside class="neat-side-fill" aria-label="Organization snapshot">
           <p class="neat-side-fill-title">Organization snapshot</p>
-          <div class="neat-side-metrics-scroll" role="region" aria-label="Metric totals">
           <div class="neat-side-metrics-grid" role="group" aria-label="Key totals">
             <div class="neat-side-metric">
-              <span class="neat-side-metric-ico neat-side-metric-ico--a" aria-hidden="true">👤</span>
+              <div class="neat-side-metric-text">
+                <span class="neat-side-metric-lbl">Users</span>
+                <span class="neat-side-metric-sub">Total accounts</span>
+              </div>
               <span class="neat-side-metric-val" id="sideMetricUsers">—</span>
-              <span class="neat-side-metric-lbl">Users</span>
-              <span class="neat-side-metric-sub">Total accounts</span>
             </div>
             <div class="neat-side-metric">
-              <span class="neat-side-metric-ico neat-side-metric-ico--b" aria-hidden="true">👥</span>
+              <div class="neat-side-metric-text">
+                <span class="neat-side-metric-lbl">Employees</span>
+                <span class="neat-side-metric-sub">Active designation</span>
+              </div>
               <span class="neat-side-metric-val" id="sideMetricEmployees">—</span>
-              <span class="neat-side-metric-lbl">Employees</span>
-              <span class="neat-side-metric-sub">Active employee designation</span>
             </div>
             <div class="neat-side-metric">
-              <span class="neat-side-metric-ico neat-side-metric-ico--c" aria-hidden="true">📋</span>
-              <span class="neat-side-metric-val" id="sideMetricHrForms">—</span>
-              <span class="neat-side-metric-lbl">HR module</span>
-              <span class="neat-side-metric-sub">All HR submissions</span>
+              <div class="neat-side-metric-text">
+                <span class="neat-side-metric-lbl">Tickets</span>
+                <span class="neat-side-metric-sub">Active pipeline</span>
+              </div>
+              <span class="neat-side-metric-val" id="sideMetricTickets">—</span>
             </div>
             <div class="neat-side-metric">
-              <span class="neat-side-metric-ico neat-side-metric-ico--d" aria-hidden="true">🔍</span>
+              <div class="neat-side-metric-text">
+                <span class="neat-side-metric-lbl">Pipeline</span>
+                <span class="neat-side-metric-sub">Forms in workflow</span>
+              </div>
+              <span class="neat-side-metric-val" id="sideMetricPipeline">—</span>
+            </div>
+            <div class="neat-side-metric">
+              <div class="neat-side-metric-text">
+                <span class="neat-side-metric-lbl">Inspections</span>
+                <span class="neat-side-metric-sub">Forms filed</span>
+              </div>
               <span class="neat-side-metric-val" id="sideMetricInspections">—</span>
-              <span class="neat-side-metric-lbl">Inspection forms</span>
-              <span class="neat-side-metric-sub">Inspection</span>
             </div>
-            <div class="neat-side-metric neat-side-metric--wide">
-              <span class="neat-side-metric-ico neat-side-metric-ico--e" aria-hidden="true">📱</span>
-              <span class="neat-side-metric-val" id="sideMetricDevices">—</span>
-              <span class="neat-side-metric-lbl">Devices</span>
-              <span class="neat-side-metric-sub">Registered in device management</span>
+            <div class="neat-side-metric">
+              <div class="neat-side-metric-text">
+                <span class="neat-side-metric-lbl">HR module</span>
+                <span class="neat-side-metric-sub">All submissions</span>
+              </div>
+              <span class="neat-side-metric-val" id="sideMetricHrForms">—</span>
             </div>
           </div>
-          </div>
-          <button type="button" class="neat-side-fill-jump" onclick="admv2ScrollTo('section-notification-settings', null)">Notifications ↓</button>
         </aside>
 
         <!-- Unified right panel -->
@@ -295,8 +294,7 @@
           <!-- Right panel header -->
           <div class="admv3-rp-header">
             <div class="admv3-rp-header-left">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="6" height="18" rx="1"/><rect x="9" y="8" width="6" height="13" rx="1"/><rect x="16" y="12" width="6" height="9" rx="1"/></svg>
-              Module Pulse
+              Module pulse
             </div>
             <button type="button" id="btnAutomation" class="btn-automation btn-automation-disabled admv2-rp-auto" onclick="openAutomationModal()" disabled title="Automation status">
               <span class="automation-dot"></span>
@@ -333,34 +331,29 @@
 
       </div><!-- /admv2-bento-side-top -->
 
-        <!-- Documents card (grid row 2 col 1 — same height as Notification Automation) -->
+        <!-- Documents card (grid row 2 col 1 — same height as Sent Emails) -->
         <div class="admv2-card admv2-docs-card" id="section-documents">
-          <div class="admv2-card-hd">
+          <div class="admv2-card-hd admv2-docs-hd">
             <div>
-              <h2 class="admv2-card-title">Document Workflow</h2>
+              <h2 class="admv2-card-title">Document workflow</h2>
             </div>
-            <div class="admv2-card-controls">
-              <select id="documentsFilter" class="dashboard-filter" onchange="setDocumentsFilter(this.value)">
+            <div class="admv2-card-controls admv2-docs-hd-actions">
+              <label class="admv2-docs-select-all" for="selectAllDocuments">
+                <input type="checkbox" id="selectAllDocuments" class="document-check" onchange="toggleSelectAllDocuments()">
+                <span>Select all</span>
+              </label>
+              <button type="button" class="btn admv2-docs-close-btn" onclick="closeSelectedDocuments()" id="closeSelectedBtn" disabled>Close selected</button>
+              <select id="documentsFilter" class="dashboard-filter" onchange="setDocumentsFilter(this.value)" aria-label="Filter by status">
                 <option value="all" selected>All statuses</option>
                 <option value="active">Active</option>
                 <option value="completed">Completed</option>
                 <option value="closed">Closed</option>
                 <option value="rejected">Rejected</option>
               </select>
-              <button class="btn btn-refresh" onclick="loadDocuments()">↻ Refresh</button>
+              <button type="button" class="btn btn-refresh" onclick="loadDocuments()" title="Refresh" aria-label="Refresh documents">↻</button>
             </div>
           </div>
           <div class="admv2-card-body">
-            <!-- Controls bar (select all + bulk actions) -->
-            <div class="admv2-docs-controls">
-              <div class="admv2-docs-bulk">
-                <div class="checkbox-select-all" style="margin-right:0;">
-                  <input type="checkbox" id="selectAllDocuments" onchange="toggleSelectAllDocuments()">
-                  <label for="selectAllDocuments">Select All</label>
-                </div>
-                <button class="btn btn-outline-danger" onclick="closeSelectedDocuments()" id="closeSelectedBtn" disabled>Close Selected</button>
-              </div>
-            </div>
             <!-- Scrollable table area -->
             <div class="admv2-docs-inner-scroll">
               <div id="documentsTableContainer"><p style="padding:1rem;color:var(--text-muted);">Loading documents…</p></div>
@@ -368,203 +361,46 @@
           </div>
         </div>
 
-        <!-- Notification Settings (grid row 2 col 2) -->
-        <div class="users-section" id="section-notification-settings">
-          <div class="section-header">
-            <h2 class="section-title">Notification Automation</h2>
-            <div class="section-controls">
-              <button class="btn btn-refresh" type="button" onclick="loadNotificationConfig()">↻ Refresh</button>
-              <button class="btn btn-primary" type="button" onclick="saveNotificationConfig()">Save Settings</button>
+        <!-- Sent Emails (grid row 2 col 2) -->
+        <div class="admv2-card admv2-email-log-card" id="section-email-log">
+          <div class="admv2-card-hd">
+            <div>
+              <h2 class="admv2-card-title">Sent emails</h2>
+              <p class="admv2-email-log-lede">Every outbound message from workflow, BD Email, MMR, ticketing, and account mail. Newest first.</p>
             </div>
           </div>
-          <div class="notif-settings-scroll">
-          <div class="notif-settings-inner">
-          <p class="notif-section-intro">
-            Set who receives emails at each workflow stage. Type addresses in each box, or click <strong>Pick from known emails</strong> to open the list — search, tick multiple, then <strong>Add selected</strong>.
-          </p>
-
-      <div class="notif-grid">
-        <!-- Inspection Forms card -->
-        <div class="notif-card">
-          <div class="notif-card-header">
-            <div class="notif-card-icon">🔍</div>
-            <h3 class="notif-card-title">Inspection Forms</h3>
-          </div>
-          <div class="notif-card-body">
-            <!-- To -->
-            <div class="notif-field-group">
-              <div class="notif-field-label">To <span>Primary recipients</span></div>
-              <textarea id="inspectionTo" class="notif-textarea" rows="2" placeholder="ops@company.com, manager@company.com" oninput="refreshNotificationPickerDuplicateHints()"></textarea>
-              <div class="notification-email-picker" data-notify-textarea="inspectionTo">
-                <button type="button" class="notification-email-picker-toggle" id="notif-toggle-inspectionTo" aria-expanded="false" aria-controls="notif-panel-inspectionTo" onclick="toggleNotificationPicker(this)">
-                  <span class="notification-email-picker-toggle-label">Pick from known emails</span>
-                  <span class="notification-email-picker-chevron" aria-hidden="true">▼</span>
-                </button>
-                <div class="notification-email-picker-panel" id="notif-panel-inspectionTo" role="region" aria-labelledby="notif-toggle-inspectionTo" hidden>
-                  <div class="notification-email-picker-search-wrap">
-                    <span class="notification-email-picker-search-icon">🔎</span>
-                    <input type="search" class="notification-email-picker-filter" placeholder="Search known emails…" autocomplete="off" oninput="filterNotificationEmailPicker(this)" />
-                  </div>
-                  <div class="notification-email-picker-list" role="group" aria-label="Known emails for To"></div>
-                  <div class="notification-email-picker-actions">
-                    <button type="button" class="btn-notif-ghost" onclick="notificationPickerSelectAllVisible(this)">All visible</button>
-                    <button type="button" class="btn-notif-ghost" onclick="notificationPickerClearChecks(this)">Clear</button>
-                    <button type="button" class="btn-notif-add" onclick="appendCheckedKnownEmails(this)">Add selected</button>
-                    <span class="notif-pick-count" data-pick-count="inspectionTo">0 checked</span>
-                  </div>
-                </div>
+          <div class="admv2-card-body">
+            <div class="notif-email-log-controls" role="group" aria-label="Sent email filters">
+              <div class="admv2-tb-search">
+                <svg class="admv2-tb-search-ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                <input type="search" id="emailLogSearch" class="admv2-tb-search-input" placeholder="Search subject or To…" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();loadEmailLogs(true);}">
               </div>
+              <select id="emailLogSourceFilter" class="dashboard-filter" onchange="loadEmailLogs(true)">
+                <option value="" selected>All sources</option>
+                <option value="inspection">Inspection</option>
+                <option value="hr">HR</option>
+                <option value="bd_email">BD Email</option>
+                <option value="mmr">MMR</option>
+                <option value="ticketing">Ticketing</option>
+                <option value="auth">Account</option>
+                <option value="other">Other</option>
+              </select>
+              <select id="emailLogStatusFilter" class="dashboard-filter" onchange="loadEmailLogs(true)">
+                <option value="" selected>All statuses</option>
+                <option value="sent">Sent</option>
+                <option value="failed">Failed</option>
+              </select>
+              <button class="btn btn-refresh admv2-email-log-refresh" type="button" onclick="loadEmailLogs(true)" title="Refresh" aria-label="Refresh sent emails">↻</button>
             </div>
-
-            <div class="notif-divider"></div>
-
-            <!-- CC -->
-            <div class="notif-field-group">
-              <div class="notif-field-label">CC <span>Carbon copy</span></div>
-              <textarea id="inspectionCc" class="notif-textarea" rows="2" placeholder="teamlead@company.com" oninput="refreshNotificationPickerDuplicateHints()"></textarea>
-              <div class="notification-email-picker" data-notify-textarea="inspectionCc">
-                <button type="button" class="notification-email-picker-toggle" id="notif-toggle-inspectionCc" aria-expanded="false" aria-controls="notif-panel-inspectionCc" onclick="toggleNotificationPicker(this)">
-                  <span class="notification-email-picker-toggle-label">Pick from known emails</span>
-                  <span class="notification-email-picker-chevron" aria-hidden="true">▼</span>
-                </button>
-                <div class="notification-email-picker-panel" id="notif-panel-inspectionCc" role="region" aria-labelledby="notif-toggle-inspectionCc" hidden>
-                  <div class="notification-email-picker-search-wrap">
-                    <span class="notification-email-picker-search-icon">🔎</span>
-                    <input type="search" class="notification-email-picker-filter" placeholder="Search known emails…" autocomplete="off" oninput="filterNotificationEmailPicker(this)" />
-                  </div>
-                  <div class="notification-email-picker-list" role="group" aria-label="Known emails for CC"></div>
-                  <div class="notification-email-picker-actions">
-                    <button type="button" class="btn-notif-ghost" onclick="notificationPickerSelectAllVisible(this)">All visible</button>
-                    <button type="button" class="btn-notif-ghost" onclick="notificationPickerClearChecks(this)">Clear</button>
-                    <button type="button" class="btn-notif-add" onclick="appendCheckedKnownEmails(this)">Add selected</button>
-                    <span class="notif-pick-count" data-pick-count="inspectionCc">0 checked</span>
-                  </div>
-                </div>
-              </div>
+            <div class="admv2-email-log-inner-scroll">
+              <div id="emailLogTableContainer"><p class="admv2-email-log-empty">Loading sent emails…</p></div>
             </div>
-
-            <div class="notif-divider"></div>
-
-            <div class="notif-submitter-block">
-              <p class="notif-submitter-block-title">Submitter email</p>
-              <p class="notif-submitter-block-desc">Send workflow notification emails to the user who submitted the form (they are added to <strong>To</strong> with your list above). Turn off if submitters should not receive these messages.</p>
-              <div class="notif-enable-seg" role="radiogroup" aria-label="Inspection forms: email submitter">
-                <label class="notif-seg-opt">
-                  <input type="radio" name="inspectionNotifySubmitter" id="inspectionNotifySubmitterOn" value="1" checked>
-                  <span class="notif-seg-on">Enabled</span>
-                </label>
-                <label class="notif-seg-opt">
-                  <input type="radio" name="inspectionNotifySubmitter" id="inspectionNotifySubmitterOff" value="0">
-                  <span class="notif-seg-off">Disabled</span>
-                </label>
-              </div>
+            <div class="admv2-email-log-foot">
+              <p class="admv2-email-log-meta" id="emailLogStatusLine" role="status" aria-live="polite"></p>
+              <button type="button" class="btn btn-refresh" id="emailLogLoadMore" hidden onclick="loadEmailLogs(false)">Load more</button>
             </div>
           </div>
         </div>
-
-        <!-- HR Forms card -->
-        <div class="notif-card">
-          <div class="notif-card-header">
-            <div class="notif-card-icon">👥</div>
-            <h3 class="notif-card-title">HR Module</h3>
-          </div>
-          <div class="notif-card-body">
-            <!-- To -->
-            <div class="notif-field-group">
-              <div class="notif-field-label">To <span>Primary recipients</span></div>
-              <textarea id="hrTo" class="notif-textarea" rows="2" placeholder="hr@company.com" oninput="refreshNotificationPickerDuplicateHints()"></textarea>
-              <div class="notification-email-picker" data-notify-textarea="hrTo">
-                <button type="button" class="notification-email-picker-toggle" id="notif-toggle-hrTo" aria-expanded="false" aria-controls="notif-panel-hrTo" onclick="toggleNotificationPicker(this)">
-                  <span class="notification-email-picker-toggle-label">Pick from known emails</span>
-                  <span class="notification-email-picker-chevron" aria-hidden="true">▼</span>
-                </button>
-                <div class="notification-email-picker-panel" id="notif-panel-hrTo" role="region" aria-labelledby="notif-toggle-hrTo" hidden>
-                  <div class="notification-email-picker-search-wrap">
-                    <span class="notification-email-picker-search-icon">🔎</span>
-                    <input type="search" class="notification-email-picker-filter" placeholder="Search known emails…" autocomplete="off" oninput="filterNotificationEmailPicker(this)" />
-                  </div>
-                  <div class="notification-email-picker-list" role="group" aria-label="Known HR To emails"></div>
-                  <div class="notification-email-picker-actions">
-                    <button type="button" class="btn-notif-ghost" onclick="notificationPickerSelectAllVisible(this)">All visible</button>
-                    <button type="button" class="btn-notif-ghost" onclick="notificationPickerClearChecks(this)">Clear</button>
-                    <button type="button" class="btn-notif-add" onclick="appendCheckedKnownEmails(this)">Add selected</button>
-                    <span class="notif-pick-count" data-pick-count="hrTo">0 checked</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="notif-divider"></div>
-
-            <!-- CC -->
-            <div class="notif-field-group">
-              <div class="notif-field-label">CC <span>Carbon copy</span></div>
-              <textarea id="hrCc" class="notif-textarea" rows="2" placeholder="gm@company.com" oninput="refreshNotificationPickerDuplicateHints()"></textarea>
-              <div class="notification-email-picker" data-notify-textarea="hrCc">
-                <button type="button" class="notification-email-picker-toggle" id="notif-toggle-hrCc" aria-expanded="false" aria-controls="notif-panel-hrCc" onclick="toggleNotificationPicker(this)">
-                  <span class="notification-email-picker-toggle-label">Pick from known emails</span>
-                  <span class="notification-email-picker-chevron" aria-hidden="true">▼</span>
-                </button>
-                <div class="notification-email-picker-panel" id="notif-panel-hrCc" role="region" aria-labelledby="notif-toggle-hrCc" hidden>
-                  <div class="notification-email-picker-search-wrap">
-                    <span class="notification-email-picker-search-icon">🔎</span>
-                    <input type="search" class="notification-email-picker-filter" placeholder="Search known emails…" autocomplete="off" oninput="filterNotificationEmailPicker(this)" />
-                  </div>
-                  <div class="notification-email-picker-list" role="group" aria-label="Known HR CC emails"></div>
-                  <div class="notification-email-picker-actions">
-                    <button type="button" class="btn-notif-ghost" onclick="notificationPickerSelectAllVisible(this)">All visible</button>
-                    <button type="button" class="btn-notif-ghost" onclick="notificationPickerClearChecks(this)">Clear</button>
-                    <button type="button" class="btn-notif-add" onclick="appendCheckedKnownEmails(this)">Add selected</button>
-                    <span class="notif-pick-count" data-pick-count="hrCc">0 checked</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="notif-divider"></div>
-
-            <div class="notif-submitter-block">
-              <p class="notif-submitter-block-title">Submitter email</p>
-              <p class="notif-submitter-block-desc">Send workflow notification emails to the employee who submitted the HR form (added to <strong>To</strong>). Turn off if only HR staff should receive notifications.</p>
-              <div class="notif-enable-seg" role="radiogroup" aria-label="HR forms: email submitter">
-                <label class="notif-seg-opt">
-                  <input type="radio" name="hrNotifySubmitter" id="hrNotifySubmitterOn" value="1" checked>
-                  <span class="notif-seg-on">Enabled</span>
-                </label>
-                <label class="notif-seg-opt">
-                  <input type="radio" name="hrNotifySubmitter" id="hrNotifySubmitterOff" value="0">
-                  <span class="notif-seg-off">Disabled</span>
-                </label>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <aside class="notif-settings-foot" aria-label="Notification settings tips">
-        <p class="notif-settings-foot-title">Quick guide</p>
-        <div class="notif-settings-foot-grid">
-          <div class="notif-settings-foot-tip">
-            <span class="notif-settings-foot-tip-ico" aria-hidden="true">✉️</span>
-            <strong>Recipients</strong>
-            <span>Addresses in <strong>To</strong> and <strong>CC</strong> always receive workflow mail. Separate entries with commas or new lines.</span>
-          </div>
-          <div class="notif-settings-foot-tip">
-            <span class="notif-settings-foot-tip-ico" aria-hidden="true">🔀</span>
-            <strong>Submitter toggle</strong>
-            <span><strong>Enabled</strong> adds the person who submitted the form to <strong>To</strong> as well as your lists. Use <strong>Disabled</strong> when only roster addresses should receive mail.</span>
-          </div>
-          <div class="notif-settings-foot-tip">
-            <span class="notif-settings-foot-tip-ico" aria-hidden="true">💾</span>
-            <strong>Save</strong>
-            <span>One save updates both Inspection and HR. Use Refresh if settings may have changed in another session.</span>
-          </div>
-        </div>
-        <p class="notif-settings-foot-meta" id="notifSettingsStatusLine" role="status" aria-live="polite"></p>
-      </aside>
-          </div><!-- /.notif-settings-inner -->
-          </div><!-- /.notif-settings-scroll -->
-    </div><!-- /users-section notification-settings -->
 
     </div><!-- /admv2-bento -->
 
@@ -740,8 +576,8 @@
       color: #475569;
       font-weight: 600;
       font-size: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
+      text-transform: none;
+      letter-spacing: -0.01em;
     }
     .activity-table td {
       padding: 0.625rem 0.75rem;
@@ -819,7 +655,7 @@
       border-radius: 4px;
       font-size: 0.7rem;
       font-weight: 600;
-      text-transform: uppercase;
+      text-transform: none;
     }
     .status-badge.completed { background: #dcfce7; color: #166534; }
     .status-badge.pending { background: #fef3c7; color: #92400e; }
@@ -880,8 +716,8 @@
     .user-stat-label {
       font-size: 0.7rem;
       opacity: 0.8;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
+      text-transform: none;
+      letter-spacing: -0.01em;
     }
     .empty-state {
       text-align: center;
@@ -898,444 +734,217 @@
       align-items: center;
       gap: 4px;
     }
-    /* ── Notification Settings — readable text (avoid washed-out --text-secondary) ─ */
-    #section-notification-settings {
-      --notif-fg: #0f172a;
-      --notif-body: #334155;
-      --notif-subtle: #475569;
-    }
-    .notif-section-intro {
-      color: var(--notif-body);
-      font-size: 0.875rem;
-      line-height: 1.55;
-      margin: 0 0 0.75rem;
-    }
-    .notif-section-intro strong {
-      color: var(--notif-fg);
-      font-weight: 600;
-    }
-    .notif-settings-inner {
-      display: flex;
-      flex-direction: column;
-      gap: 0;
-    }
-    .notif-settings-foot {
-      margin-top: 1.1rem;
-      padding: 0.95rem 1rem 1.05rem;
-      border-radius: 14px;
-      border: 1px solid var(--border);
-      background:
-        linear-gradient(165deg, rgba(248, 250, 252, 0.98) 0%, rgba(236, 244, 239, 0.35) 100%);
-      flex-shrink: 0;
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75), 0 1px 2px rgba(15, 23, 42, 0.03);
-    }
-    .notif-settings-foot-title {
-      margin: 0 0 0.65rem;
-      font-size: 0.72rem;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-      color: var(--primary);
-      opacity: 0.85;
-    }
-    .notif-settings-foot-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
-      gap: 0.75rem 1rem;
-      align-items: start;
-    }
-    .notif-settings-foot-tip {
-      display: flex;
-      flex-direction: column;
-      gap: 0.35rem;
-      font-size: 0.8125rem;
-      line-height: 1.5;
-      color: var(--notif-body);
-    }
-    .notif-settings-foot-tip strong {
-      color: var(--notif-fg);
-      font-weight: 700;
-      font-size: 0.84rem;
-    }
-    .notif-settings-foot-tip-ico {
-      font-size: 1.05rem;
-      line-height: 1;
-      margin-bottom: 0.1rem;
-    }
-    .notif-settings-foot-meta {
-      margin: 0.75rem 0 0;
-      padding-top: 0.65rem;
-      border-top: 1px dashed rgba(148, 163, 184, 0.55);
-      font-size: 0.75rem;
-      color: var(--notif-subtle);
-    }
-    /* Tighter stack (intro + grid) */
-    #section-notification-settings .notif-settings-scroll .notif-grid {
-      margin-top: 0.65rem;
-    }
-    .notif-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
-      gap: 1.25rem;
-      align-items: stretch;
-      margin-top: 1.25rem;
-    }
-    .notif-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      overflow: hidden;
-      box-shadow: var(--shadow-sm);
-      height: 100%;
+    /* ── Sent Emails card ── */
+    .admv2-email-log-card {
+      --email-log-subtle: #475569;
       display: flex;
       flex-direction: column;
       min-height: 0;
     }
-    .notif-card-header {
-      display: flex;
-      align-items: center;
-      gap: 0.625rem;
-      padding: 0.875rem 1.125rem;
-      background: linear-gradient(135deg, var(--primary-muted) 0%, rgba(18,84,53,0.04) 100%);
-      border-bottom: 1px solid var(--primary-border);
-    }
-    .notif-card-icon {
-      width: 34px;
-      height: 34px;
-      border-radius: 9px;
-      background: var(--primary);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1rem;
-      flex-shrink: 0;
-    }
-    .notif-card-title {
-      font-size: 0.9375rem;
-      font-weight: 600;
-      color: var(--primary);
-      margin: 0;
-    }
-    .notif-card-body {
-      padding: 1rem 1.125rem;
+    .admv2-email-log-card .admv2-card-body {
       display: flex;
       flex-direction: column;
-      gap: 1rem;
+      justify-content: flex-start;
+      align-items: stretch;
+      min-height: 0;
+      flex: 1 1 auto;
+      padding: 0.45rem 0.95rem 0.75rem;
+      gap: 0.45rem;
+    }
+    .admv2-email-log-lede {
+      margin: 0.2rem 0 0;
+      font-size: 0.75rem;
+      line-height: 1.4;
+      color: #64748b;
+      font-weight: 500;
+      max-width: 36rem;
+    }
+    .admv2-email-log-inner-scroll {
       flex: 1 1 auto;
       min-height: 0;
-    }
-    .notif-field-group {
+      overflow: auto;
       display: flex;
       flex-direction: column;
-      gap: 0.375rem;
+      justify-content: flex-start;
+      align-items: stretch;
     }
-    .notif-field-label {
-      font-size: 0.75rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.6px;
-      color: var(--notif-fg);
-    }
-    .notif-field-label span {
-      display: inline-block;
-      background: #e2e8f0;
-      border: 1px solid #cbd5e1;
-      border-radius: 5px;
-      padding: 2px 8px;
-      font-size: 0.68rem;
-      font-weight: 600;
-      color: #0f172a;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      margin-left: 0.35rem;
-    }
-    .notif-textarea {
-      width: 100%;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 0.55rem 0.75rem;
-      font-size: 0.875rem;
-      font-family: inherit;
-      color: var(--text);
-      background: var(--bg-light);
-      resize: vertical;
-      min-height: 4.125rem;
-      max-height: 14rem;
-      transition: border-color 0.15s, box-shadow 0.15s;
-      line-height: 1.5;
-      box-sizing: border-box;
-    }
-    .notif-textarea:focus {
-      outline: none;
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(18,84,53,0.1);
-      background: #fff;
-    }
-    .notif-divider {
-      height: 1px;
-      background: var(--border);
-      margin: 0 -1.125rem;
-    }
-    .notif-submitter-block {
-      padding: 0.875rem 1rem;
-      background: var(--bg-light);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      margin-top: auto;
-    }
-    .notif-submitter-block-title {
-      font-size: 0.8125rem;
-      font-weight: 700;
-      color: var(--text-dark);
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      margin: 0 0 0.35rem;
-    }
-    .notif-submitter-block-desc {
-      font-size: 0.8125rem;
-      color: var(--notif-body);
-      line-height: 1.5;
-      margin: 0 0 0.75rem;
-    }
-    .notif-submitter-block-desc strong {
-      color: var(--notif-fg);
-    }
-    .notif-enable-seg {
-      display: inline-flex;
-      border-radius: 10px;
-      overflow: hidden;
-      border: 1px solid var(--border);
-      box-shadow: var(--shadow-sm);
-    }
-    .notif-seg-opt {
-      position: relative;
+    #emailLogTableContainer {
+      flex: 0 0 auto;
       margin: 0;
-      cursor: pointer;
-    }
-    .notif-seg-opt input {
-      position: absolute;
-      opacity: 0;
-      width: 0;
-      height: 0;
-    }
-    .notif-seg-opt span {
-      display: block;
-      padding: 0.5rem 1.35rem;
-      font-size: 0.875rem;
-      font-weight: 600;
-      background: #fff;
-      color: var(--text-secondary);
-      border-right: 1px solid var(--border);
-      transition: background 0.15s, color 0.15s;
-    }
-    .notif-seg-opt:last-child span { border-right: none; }
-    .notif-seg-opt:hover span { background: var(--primary-muted); color: var(--primary); }
-    .notif-seg-opt input:checked + span.notif-seg-on {
-      background: var(--primary);
-      color: #fff;
-    }
-    .notif-seg-opt input:checked + span.notif-seg-off {
-      background: #64748b;
-      color: #fff;
-    }
-    .notif-seg-opt input:focus-visible + span {
-      outline: 2px solid var(--primary);
-      outline-offset: 2px;
-    }
-    /* Picker (collapsible) */
-    .notification-email-picker {
-      margin-top: 0.45rem;
-    }
-    .notification-email-picker-toggle {
       width: 100%;
+    }
+    .notif-email-log-controls {
+      display: flex;
+      flex-wrap: nowrap;
+      align-items: center;
+      gap: 0.4rem;
+      margin: 0;
+      min-width: 0;
+      width: 100%;
+      flex: 0 0 auto;
+    }
+    .notif-email-log-controls .admv2-tb-search {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+    .notif-email-log-controls .admv2-tb-search-input {
+      width: 100% !important;
+      min-width: 0 !important;
+    }
+    .notif-email-log-controls .dashboard-filter {
+      flex: 0 1 auto;
+      min-width: 0 !important;
+      width: auto !important;
+      max-width: 8.5rem !important;
+    }
+    .notif-email-log-controls .admv2-email-log-refresh,
+    .admv2-email-log-refresh {
+      flex: 0 0 auto !important;
+      width: 34px !important;
+      min-width: 34px !important;
+      max-width: 34px !important;
+      height: 34px !important;
+      padding: 0 !important;
+      display: inline-flex !important;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.05rem;
+      line-height: 1;
+      margin: 0 !important;
+    }
+    .admv2-email-log-empty {
+      padding: 0.35rem 0.05rem;
+      color: var(--email-log-subtle);
+      margin: 0;
+      font-size: 0.875rem;
+    }
+    .admv2-email-log-foot {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 0.5rem;
-      padding: 0.55rem 0.85rem;
-      min-height: 2.75rem;
-      box-sizing: border-box;
-      font-size: 0.875rem;
-      font-weight: 600;
-      font-family: inherit;
-      color: var(--primary);
-      background: #fff;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      cursor: pointer;
-      transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
-      text-align: left;
+      gap: 0.75rem;
+      margin-top: 0;
+      padding-top: 0.45rem;
+      border-top: 1px dashed rgba(148, 163, 184, 0.55);
+      flex-wrap: wrap;
+      flex-shrink: 0;
     }
-    .notification-email-picker-toggle:hover {
+    .admv2-email-log-meta {
+      margin: 0;
+      font-size: 0.75rem;
+      color: var(--email-log-subtle);
+    }
+    .email-log-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8125rem;
+    }
+    .email-log-table th,
+    .email-log-table td {
+      padding: 0.7rem 0.5rem;
+      text-align: left;
+      border-bottom: 1px solid #eef0ee;
+      vertical-align: top;
+    }
+    .email-log-table th {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      text-transform: none;
+      color: var(--email-log-subtle);
+      background: transparent;
+    }
+    .email-log-table tbody tr:hover {
+      background: rgba(255, 142, 104, 0.04);
+    }
+    .email-log-table tbody tr.email-log-row--open {
+      background: rgba(255, 142, 104, 0.07);
+    }
+    .email-log-when {
+      white-space: nowrap;
+      color: #334155;
+      font-variant-numeric: tabular-nums;
+    }
+    .email-log-when-sub {
+      display: block;
+      font-size: 0.72rem;
+      color: #94a3b8;
+      font-weight: 500;
+    }
+    .email-log-to,
+    .email-log-subject {
+      color: #0f172a;
+      word-break: break-word;
+    }
+    .status-badge.email-log-failed {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+    .email-log-source-pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.18rem 0.5rem;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      background: rgba(255, 142, 104, 0.12);
+      color: #c2440c;
+      white-space: nowrap;
+    }
+    .email-log-details-row td {
+      background: rgba(248, 250, 252, 0.85);
+      padding: 0.85rem 0.5rem 1rem;
+    }
+    .email-log-details {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+      gap: 0.65rem 1.25rem;
+      font-size: 0.8rem;
+      color: #334155;
+    }
+    .email-log-details dt {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      text-transform: none;
+      color: var(--email-log-subtle);
+      margin: 0 0 0.2rem;
+    }
+    .email-log-details dd {
+      margin: 0;
+      word-break: break-word;
+    }
+    .email-log-details-btn {
+      border: 1px solid var(--border);
+      background: #fff;
+      color: var(--primary);
+      font-size: 0.75rem;
+      font-weight: 600;
+      border-radius: 8px;
+      padding: 0.28rem 0.55rem;
+      min-height: 44px;
+      cursor: pointer;
+    }
+    .email-log-details-btn:hover {
       background: var(--primary-muted);
       border-color: var(--primary-border);
     }
-    .notification-email-picker-toggle:focus {
-      outline: none;
-      box-shadow: 0 0 0 3px rgba(18, 84, 53, 0.2);
+    @media (max-width: 768px) {
+      .notif-email-log-controls {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 0.15rem;
+      }
+      .notif-email-log-controls .admv2-tb-search {
+        flex: 1 1 9rem;
+        min-width: 8rem;
+      }
+      .notif-email-log-controls .dashboard-filter {
+        max-width: 7.5rem;
+      }
     }
-    .notification-email-picker-toggle-label {
-      flex: 1;
-      min-width: 0;
-    }
-    .notification-email-picker-chevron {
-      flex-shrink: 0;
-      font-size: 0.65rem;
-      opacity: 0.75;
-      transition: transform 0.2s ease;
-    }
-    .notification-email-picker--open .notification-email-picker-toggle {
-      border-radius: 10px 10px 0 0;
-      border-bottom-color: var(--border);
-      background: var(--primary-muted);
-    }
-    .notification-email-picker--open .notification-email-picker-chevron {
-      transform: rotate(180deg);
-    }
-    .notification-email-picker-panel {
-      border: 1px solid var(--border);
-      border-top: none;
-      border-radius: 0 0 10px 10px;
-      overflow: hidden;
-      background: var(--bg-light);
-    }
-    .notification-email-picker-panel[hidden] {
-      display: none !important;
-    }
-    .notification-email-picker-search-wrap {
-      position: relative;
-    }
-    .notification-email-picker-search-icon {
-      position: absolute;
-      left: 0.625rem;
-      top: 50%;
-      transform: translateY(-50%);
-      color: var(--text-muted);
-      font-size: 0.8rem;
-      pointer-events: none;
-    }
-    .notification-email-picker-filter {
-      width: 100%;
-      border: none;
-      border-bottom: 1px solid var(--border);
-      border-radius: 0;
-      padding: 0.5rem 0.75rem 0.5rem 2.1rem;
-      font-size: 0.8375rem;
-      font-family: inherit;
-      background: #fff;
-      color: var(--text);
-      outline: none;
-      transition: background 0.12s;
-    }
-    .notification-email-picker-filter:focus {
-      background: #f0fdf4;
-    }
-    .notification-email-picker-filter::placeholder { color: var(--text-muted); }
-    .notification-email-picker-list {
-      max-height: 10rem;
-      overflow-y: auto;
-      padding: 0.25rem 0;
-    }
-    .notification-email-picker-list:empty::after {
-      content: 'No known emails yet — save settings or load users first.';
-      display: block;
-      padding: 0.75rem 1rem;
-      font-size: 0.8rem;
-      color: var(--notif-subtle);
-      font-style: italic;
-    }
-    .notification-email-picker-row {
-      display: flex;
-      align-items: center;
-      gap: 0.6rem;
-      padding: 0.35rem 0.875rem;
-      cursor: pointer;
-      transition: background 0.1s;
-      user-select: none;
-    }
-    .notification-email-picker-row:hover:not(.notification-email-picker-row--present) {
-      background: var(--primary-muted);
-    }
-    .notification-email-picker-row--present {
-      opacity: 0.4;
-      cursor: not-allowed;
-    }
-    .notification-email-picker-row .notif-pick-cb {
-      width: 16px;
-      height: 16px;
-      accent-color: var(--primary);
-      flex-shrink: 0;
-    }
-    .notification-email-picker-row .notif-pick-avatar {
-      width: 22px;
-      height: 22px;
-      border-radius: 50%;
-      background: var(--notif-avatar-bg, var(--primary));
-      color: #fff;
-      font-size: 0.6rem;
-      font-weight: 700;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-      text-transform: uppercase;
-    }
-    .notification-email-picker-row--present .notif-pick-avatar {
-      background: var(--text-muted);
-    }
-    .notif-pick-email {
-      font-size: 0.8375rem;
-      color: var(--text);
-      flex: 1;
-      min-width: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .notif-pick-already {
-      font-size: 0.7rem;
-      color: var(--notif-subtle);
-      flex-shrink: 0;
-    }
-    .notification-email-picker-actions {
-      display: flex;
-      align-items: center;
-      gap: 0.35rem;
-      padding: 0.5rem 0.75rem;
-      border-top: 1px solid var(--border);
-      background: #fff;
-      flex-wrap: wrap;
-    }
-    .notif-pick-count {
-      font-size: 0.75rem;
-      color: var(--notif-subtle);
-      margin-left: auto;
-    }
-    .btn-notif-ghost {
-      font-size: 0.775rem;
-      padding: 0.28rem 0.55rem;
-      border-radius: 7px;
-      font-weight: 500;
-      cursor: pointer;
-      border: 1px solid var(--border);
-      background: #f8fafc;
-      color: var(--notif-body);
-      transition: all 0.12s;
-    }
-    .btn-notif-ghost:hover { background: var(--primary-muted); color: var(--primary); border-color: var(--primary-border); }
-    .btn-notif-add {
-      font-size: 0.775rem;
-      padding: 0.28rem 0.65rem;
-      border-radius: 7px;
-      font-weight: 600;
-      cursor: pointer;
-      border: 1px solid var(--primary-border);
-      background: var(--primary);
-      color: #fff;
-      transition: all 0.12s;
-    }
-    .btn-notif-add:hover { background: var(--primary-hover); }
-    .btn-notif-add:disabled { opacity: 0.45; cursor: default; }
   </style>
 
   <!-- Edit Submission Modal -->
@@ -1500,276 +1109,156 @@
       return false;
     }
 
-    function parseEmailList(value) {
-      return (value || '')
-        .split(',')
-        .map(v => v.trim())
-        .filter(Boolean);
+    const EMAIL_LOG_SOURCE_LABELS = {
+      inspection: 'Inspection',
+      hr: 'HR',
+      bd_email: 'BD Email',
+      mmr: 'MMR',
+      ticketing: 'Ticketing',
+      auth: 'Account',
+      other: 'Other',
+    };
+    let emailLogItems = [];
+    let emailLogTotal = 0;
+    let emailLogOffset = 0;
+    const EMAIL_LOG_PAGE = 50;
+    let emailLogOpenId = null;
+
+    function emailLogWhenHtml(iso) {
+      if (!iso) return '—';
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return escapeHtml(iso);
+      const dateStr = d.toLocaleDateString('en-US', {
+        year: 'numeric', month: 'short', day: 'numeric', timeZone: 'Asia/Dubai',
+      });
+      const timeStr = d.toLocaleTimeString('en-US', {
+        hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Dubai',
+      });
+      return `<span class="email-log-when">${escapeHtml(dateStr)}<span class="email-log-when-sub">${escapeHtml(timeStr)} GST</span></span>`;
     }
 
-    let notificationKnownEmails = [];
-
-    function notificationEscapeAttr(s) {
-      return String(s)
-        .replace(/&/g, '&amp;')
-        .replace(/"/g, '&quot;')
-        .replace(/</g, '&lt;');
-    }
-
-    function toggleNotificationPicker(btn) {
-      if (!btn) return;
-      const picker = btn.closest('.notification-email-picker');
-      const panel = picker && picker.querySelector('.notification-email-picker-panel');
-      if (!picker || !panel) return;
-      const willOpen = btn.getAttribute('aria-expanded') !== 'true';
-      btn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
-      picker.classList.toggle('notification-email-picker--open', willOpen);
-      panel.hidden = !willOpen;
-      if (willOpen) {
-        const q = panel.querySelector('.notification-email-picker-filter');
-        if (q) setTimeout(() => { try { q.focus(); } catch (e) {} }, 160);
+    function renderEmailLogTable() {
+      const container = document.getElementById('emailLogTableContainer');
+      const statusLine = document.getElementById('emailLogStatusLine');
+      const loadMore = document.getElementById('emailLogLoadMore');
+      if (!container) return;
+      if (!emailLogItems.length) {
+        container.innerHTML = '<p class="admv2-email-log-empty">No emails logged yet. Workflow, BD, and other outbound mail will appear here after they send.</p>';
+        if (statusLine) statusLine.textContent = '';
+        if (loadMore) loadMore.hidden = true;
+        return;
       }
-    }
-
-    function registerKnownEmails(emails) {
-      const set = new Set(notificationKnownEmails.map(e => e.toLowerCase()));
-      (emails || []).forEach((raw) => {
-        const email = String(raw || '').trim();
-        if (!email) return;
-        const key = email.toLowerCase();
-        if (set.has(key)) return;
-        set.add(key);
-        notificationKnownEmails.push(email);
-      });
-      notificationKnownEmails.sort((a, b) => a.localeCompare(b));
-      renderNotificationEmailPickers();
-    }
-
-    function notifAvatarInitials(email) {
-      const local = (email || '').split('@')[0] || '?';
-      return local.slice(0, 2).toUpperCase();
-    }
-
-    const NOTIF_AVATAR_COLORS = [
-      '#0078d4', '#e74856', '#8764b8', '#00b7c3', '#ff8c00', '#038387',
-      '#c239b3', '#498205', '#da3b01', '#5c2e91', '#008272', '#ffb900'
-    ];
-    function notifAvatarColor(email) {
-      let n = 0;
-      const s = String(email || '').toLowerCase();
-      for (let i = 0; i < s.length; i++) n = ((n << 5) - n) + s.charCodeAt(i);
-      return NOTIF_AVATAR_COLORS[Math.abs(n) % NOTIF_AVATAR_COLORS.length];
-    }
-
-    function renderNotificationEmailPickers() {
-      document.querySelectorAll('.notification-email-picker').forEach((picker) => {
-        const list = picker.querySelector('.notification-email-picker-list');
-        const filterInput = picker.querySelector('.notification-email-picker-filter');
-        if (!list) return;
-        const tid = picker.dataset.notifyTextarea || '';
-        const safeId = tid.replace(/[^a-z0-9_]/gi, '_');
-        const preserveFilter = filterInput ? filterInput.value : '';
-        list.innerHTML = notificationKnownEmails.map((email, idx) => {
-          const id = `notif_pick_${safeId}_${idx}`;
-          const v = notificationEscapeAttr(email);
-          const initials = notifAvatarInitials(email);
-          const avatarBg = notifAvatarColor(email);
-          return `<label class="notification-email-picker-row" for="${id}">` +
-            `<input type="checkbox" class="notif-pick-cb" id="${id}" value="${v}" onchange="updateNotifPickCount(this)" />` +
-            `<span class="notif-pick-avatar" style="--notif-avatar-bg:${avatarBg}">${initials}</span>` +
-            `<span class="notif-pick-email">${escapeHtml(email)}</span>` +
-            `<span class="notif-pick-already" hidden>already added</span>` +
-            `</label>`;
-        }).join('');
-        if (filterInput) {
-          filterInput.value = preserveFilter;
-          filterNotificationEmailPicker(filterInput);
-        }
-      });
-      refreshNotificationPickerDuplicateHints();
-    }
-
-    function filterNotificationEmailPicker(input) {
-      const picker = input.closest('.notification-email-picker');
-      if (!picker) return;
-      const q = (input.value || '').trim().toLowerCase();
-      picker.querySelectorAll('.notification-email-picker-row').forEach((row) => {
-        const span = row.querySelector('span');
-        const email = (span && span.textContent || '').trim().toLowerCase();
-        row.style.display = !q || email.includes(q) ? '' : 'none';
-      });
-    }
-
-    function refreshNotificationPickerDuplicateHints() {
-      document.querySelectorAll('.notification-email-picker').forEach((picker) => {
-        const tid = picker.dataset.notifyTextarea;
-        const ta = tid ? document.getElementById(tid) : null;
-        const set = new Set(parseEmailList(ta && ta.value).map(e => e.toLowerCase()));
-        picker.querySelectorAll('.notification-email-picker-row').forEach((row) => {
-          const emailEl = row.querySelector('.notif-pick-email');
-          const alreadyEl = row.querySelector('.notif-pick-already');
-          const email = (emailEl && emailEl.textContent || '').trim();
-          const present = !!(email && set.has(email.toLowerCase()));
-          row.classList.toggle('notification-email-picker-row--present', present);
-          if (alreadyEl) alreadyEl.hidden = !present;
-          const cb = row.querySelector('input[type="checkbox"]');
-          if (cb) {
-            if (present) {
-              cb.checked = false;
-              cb.disabled = true;
-            } else {
-              cb.disabled = false;
-            }
-          }
-        });
-        updateNotifPickCountForPicker(picker);
-      });
-    }
-
-    function updateNotifPickCount(cb) {
-      const picker = cb && cb.closest('.notification-email-picker');
-      if (picker) updateNotifPickCountForPicker(picker);
-    }
-
-    function updateNotifPickCountForPicker(picker) {
-      const tid = picker.dataset.notifyTextarea;
-      const countEl = tid ? document.querySelector(`[data-pick-count="${tid}"]`) : null;
-      if (!countEl) return;
-      const checked = picker.querySelectorAll('input[type="checkbox"]:checked:not(:disabled)').length;
-      countEl.textContent = checked ? `${checked} checked` : '';
-    }
-
-    function notificationPickerSelectAllVisible(btn) {
-      const picker = btn.closest('.notification-email-picker');
-      if (!picker) return;
-      picker.querySelectorAll('.notification-email-picker-row').forEach((row) => {
-        if (row.style.display === 'none') return;
-        const cb = row.querySelector('input[type="checkbox"]');
-        if (cb && !cb.disabled) cb.checked = true;
-      });
-      updateNotifPickCountForPicker(picker);
-    }
-
-    function notificationPickerClearChecks(btn) {
-      const picker = btn.closest('.notification-email-picker');
-      if (!picker) return;
-      picker.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
-        if (!cb.disabled) cb.checked = false;
-      });
-      updateNotifPickCountForPicker(picker);
-    }
-
-    function appendCheckedKnownEmails(btn) {
-      const picker = btn.closest('.notification-email-picker');
-      if (!picker) return;
-      const tid = picker.dataset.notifyTextarea;
-      const textarea = tid ? document.getElementById(tid) : null;
-      if (!textarea) return;
-      const existing = parseEmailList(textarea.value);
-      const lower = new Set(existing.map(e => e.toLowerCase()));
-      picker.querySelectorAll('.notification-email-picker-row input[type="checkbox"]:checked').forEach((cb) => {
-        if (cb.disabled) return;
-        const v = (cb.value || '').trim();
-        if (!v || lower.has(v.toLowerCase())) return;
-        lower.add(v.toLowerCase());
-        existing.push(v);
-        cb.checked = false;
-      });
-      textarea.value = existing.join(', ');
-      refreshNotificationPickerDuplicateHints();
-    }
-
-    function updateNotifSettingsStatusLine(message) {
-      const el = document.getElementById('notifSettingsStatusLine');
-      if (el) el.textContent = message || '';
-    }
-
-    function applyNotificationConfig(config) {
-      const inspection = (config && config.inspection) || {};
-      const hr = (config && config.hr) || {};
-
-      const inspectionToEl = document.getElementById('inspectionTo');
-      const inspectionCcEl = document.getElementById('inspectionCc');
-      const inspectionOn = document.getElementById('inspectionNotifySubmitterOn');
-      const inspectionOff = document.getElementById('inspectionNotifySubmitterOff');
-      const hrToEl = document.getElementById('hrTo');
-      const hrCcEl = document.getElementById('hrCc');
-      const hrOn = document.getElementById('hrNotifySubmitterOn');
-      const hrOff = document.getElementById('hrNotifySubmitterOff');
-
-      if (inspectionToEl) inspectionToEl.value = (inspection.to || []).join(', ');
-      if (inspectionCcEl) inspectionCcEl.value = (inspection.cc || []).join(', ');
-      if (inspectionOn && inspectionOff) {
-        const inc = inspection.include_submitter !== false;
-        inspectionOn.checked = inc;
-        inspectionOff.checked = !inc;
+      const rows = emailLogItems.map((item) => {
+        const statusClass = item.status === 'sent' ? 'completed' : 'email-log-failed';
+        const statusLabel = item.status === 'sent' ? 'Sent' : 'Failed';
+        const sourceLabel = EMAIL_LOG_SOURCE_LABELS[item.source] || item.source || 'Other';
+        const open = emailLogOpenId === item.id;
+        const details = open ? `
+          <tr class="email-log-details-row">
+            <td colspan="6">
+              <dl class="email-log-details">
+                <div>
+                  <dt>CC</dt>
+                  <dd>${escapeHtml(item.cc_emails || '—')}</dd>
+                </div>
+                <div>
+                  <dt>Related</dt>
+                  <dd>${escapeHtml(item.related_id || '—')}</dd>
+                </div>
+                <div>
+                  <dt>Sent by</dt>
+                  <dd>${escapeHtml(item.sent_by_name || 'System')}</dd>
+                </div>
+                <div>
+                  <dt>Attachments</dt>
+                  <dd>${Number(item.attachment_count) || 0}</dd>
+                </div>
+                <div>
+                  <dt>Preview</dt>
+                  <dd>${escapeHtml(item.body_preview || '—')}</dd>
+                </div>
+                ${item.error_message ? `<div><dt>Error</dt><dd>${escapeHtml(item.error_message)}</dd></div>` : ''}
+              </dl>
+            </td>
+          </tr>` : '';
+        return `
+          <tr class="${open ? 'email-log-row--open' : ''}">
+            <td data-label="When">${emailLogWhenHtml(item.created_at)}</td>
+            <td data-label="Source"><span class="email-log-source-pill">${escapeHtml(sourceLabel)}</span></td>
+            <td data-label="To" class="email-log-to">${escapeHtml(item.to_emails || '—')}</td>
+            <td data-label="Subject" class="email-log-subject">${escapeHtml(item.subject || '—')}</td>
+            <td data-label="Status"><span class="status-badge ${statusClass}">${statusLabel}</span></td>
+            <td data-label="Details">
+              <button type="button" class="email-log-details-btn" onclick="toggleEmailLogDetails(${Number(item.id)})">${open ? 'Hide' : 'Details'}</button>
+            </td>
+          </tr>${details}`;
+      }).join('');
+      container.innerHTML = `
+        <div class="table-scroll">
+          <table class="email-log-table mobile-card-list">
+            <thead>
+              <tr>
+                <th>When</th>
+                <th>Source</th>
+                <th>To</th>
+                <th>Subject</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>`;
+      if (statusLine) {
+        statusLine.textContent = `Showing ${emailLogItems.length} of ${emailLogTotal}`;
       }
-      if (hrToEl) hrToEl.value = (hr.to || []).join(', ');
-      if (hrCcEl) hrCcEl.value = (hr.cc || []).join(', ');
-      if (hrOn && hrOff) {
-        const hinc = hr.include_submitter !== false;
-        hrOn.checked = hinc;
-        hrOff.checked = !hinc;
-      }
-
-      registerKnownEmails([
-        ...(inspection.to || []),
-        ...(inspection.cc || []),
-        ...(hr.to || []),
-        ...(hr.cc || []),
-      ]);
+      if (loadMore) loadMore.hidden = emailLogItems.length >= emailLogTotal;
     }
 
-    async function loadNotificationConfig() {
+    function toggleEmailLogDetails(id) {
+      emailLogOpenId = emailLogOpenId === id ? null : id;
+      renderEmailLogTable();
+    }
+
+    async function loadEmailLogs(reset) {
+      if (reset) {
+        emailLogOffset = 0;
+        emailLogItems = [];
+        emailLogOpenId = null;
+      }
+      const source = document.getElementById('emailLogSourceFilter')?.value || '';
+      const status = document.getElementById('emailLogStatusFilter')?.value || '';
+      const q = document.getElementById('emailLogSearch')?.value || '';
+      const params = new URLSearchParams();
+      params.set('limit', String(EMAIL_LOG_PAGE));
+      params.set('offset', String(emailLogOffset));
+      if (source) params.set('source', source);
+      if (status) params.set('status', status);
+      if (q.trim()) params.set('q', q.trim());
       try {
-        const response = await adminAuthenticatedFetch('/api/admin/notification-config');
+        const response = await adminAuthenticatedFetch('/api/admin/email-logs?' + params.toString());
         if (handleUnauthorized(response)) return;
-        const data = await response.json();
+        const data = await response.json().catch(() => ({}));
         if (!response.ok || !data.success) {
-          throw new Error(data.error || 'Failed to load notification settings');
+          const detail = data.error || data.message || `HTTP ${response.status}`;
+          throw new Error(detail);
         }
-        applyNotificationConfig(data.config || {});
-        updateNotifSettingsStatusLine(`Loaded · ${new Date().toLocaleString()}`);
+        const payload = data.data && typeof data.data === 'object' ? data.data : data;
+        const items = Array.isArray(payload.items) ? payload.items : [];
+        emailLogTotal = Number(payload.total) || items.length;
+        if (reset) emailLogItems = items;
+        else emailLogItems = emailLogItems.concat(items);
+        emailLogOffset = emailLogItems.length;
+        renderEmailLogTable();
+        window.requestAnimationFrame(syncEmailLogToSnapshotHeight);
       } catch (error) {
-        console.error('Notification config load failed:', error);
-        showAlert('Failed to load notification settings', 'error');
-      }
-    }
-
-    async function saveNotificationConfig() {
-      try {
-        const payload = {
-          config: {
-            inspection: {
-              to: parseEmailList(document.getElementById('inspectionTo')?.value),
-              cc: parseEmailList(document.getElementById('inspectionCc')?.value),
-              include_submitter: document.querySelector('input[name="inspectionNotifySubmitter"]:checked')?.value === '1',
-            },
-            hr: {
-              to: parseEmailList(document.getElementById('hrTo')?.value),
-              cc: parseEmailList(document.getElementById('hrCc')?.value),
-              include_submitter: document.querySelector('input[name="hrNotifySubmitter"]:checked')?.value === '1',
-            },
-          },
-        };
-
-        const response = await adminAuthenticatedFetch('/api/admin/notification-config', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-        if (handleUnauthorized(response)) return;
-
-        const data = await response.json();
-        if (!response.ok || !data.success) {
-          throw new Error(data.error || 'Failed to save notification settings');
+        console.error('Email log load failed:', error);
+        const container = document.getElementById('emailLogTableContainer');
+        if (container && !emailLogItems.length) {
+          container.innerHTML = '<p class="admv2-email-log-empty">Failed to load sent emails.</p>';
         }
-        applyNotificationConfig(data.config || payload.config);
-        showAlert('Notification settings saved', 'success');
-        updateNotifSettingsStatusLine(`Saved · ${new Date().toLocaleString()}`);
-      } catch (error) {
-        console.error('Notification config save failed:', error);
-        showAlert('Failed to save notification settings', 'error');
+        showAlert('Failed to load sent emails', 'error');
+        window.requestAnimationFrame(syncEmailLogToSnapshotHeight);
       }
     }
 
@@ -1965,9 +1454,16 @@
       return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
 
+    function titleCaseLabel(s) {
+      if (s == null || s === '') return '—';
+      return String(s)
+        .replace(/_/g, ' ')
+        .replace(/\b\w/g, function (c) { return c.toUpperCase(); });
+    }
+
     function _dashFormatTicketStatus(st) {
       if (st == null || st === '') return '—';
-      return String(st).replace(/_/g, ' ');
+      return titleCaseLabel(st);
     }
 
     function _dashTicketPriorityBadgeClass(p) {
@@ -2022,7 +1518,7 @@
         attentionParts.push('<strong>' + supQ + '</strong> in the <strong>supervisor routing</strong> lane (open + pending supervisor)');
       }
       const attentionHtml = attentionParts.length
-        ? '<div class="adm-dash-tk-attention" role="status"><span aria-hidden="true">⚡</span><div>Needs attention: ' + attentionParts.join(' · ') + '. Use the shortcuts below to triage.</div></div>'
+        ? '<div class="adm-dash-tk-attention" role="status"><span class="adm-dash-tk-attention-ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M13 2 4.5 13.2c-.35.46-.02 1.1.55 1.1H11l-1 7.8 8.5-11.2c.35-.46.02-1.1-.55-1.1H13l1-7.8Z" fill="currentColor"/></svg></span><div>Needs attention: ' + attentionParts.join(' · ') + '. Use the shortcuts below to triage.</div></div>'
         : '';
 
       const stat = function (href, val, lbl, hint, pulse) {
@@ -2119,6 +1615,54 @@
         '</div>';
 
       body.innerHTML = attentionHtml + holdLine + bottomSplit;
+      syncNeatActivityToTicketsHeight();
+    }
+
+    function syncNeatActivityToTicketsHeight() {
+      const tickets = document.getElementById('section-tickets');
+      const activity = document.getElementById('neatActivityPanel');
+      if (!tickets || !activity) return;
+      const narrow = window.matchMedia('(max-width: 1100px)').matches;
+      if (narrow) {
+        activity.style.height = '';
+        activity.style.maxHeight = '';
+        return;
+      }
+      const h = Math.round(tickets.getBoundingClientRect().height);
+      if (h < 120) return;
+      activity.style.height = h + 'px';
+      activity.style.maxHeight = h + 'px';
+    }
+
+    let _activityTicketsRo = null;
+    function bindNeatActivityTicketsHeightSync() {
+      const tickets = document.getElementById('section-tickets');
+      if (!tickets || typeof ResizeObserver === 'undefined') return;
+      if (_activityTicketsRo) _activityTicketsRo.disconnect();
+      _activityTicketsRo = new ResizeObserver(function () {
+        window.requestAnimationFrame(syncNeatActivityToTicketsHeight);
+      });
+      _activityTicketsRo.observe(tickets);
+      window.addEventListener('resize', syncNeatActivityToTicketsHeight);
+      syncNeatActivityToTicketsHeight();
+    }
+
+    function syncEmailLogToSnapshotHeight() {
+      const email = document.getElementById('section-email-log');
+      if (!email) return;
+      /* Desktop: CSS pairs Sent emails with Document workflow height. */
+      email.style.height = '';
+      email.style.maxHeight = '';
+    }
+
+    let _emailSnapshotRo = null;
+    function bindEmailLogSnapshotHeightSync() {
+      /* Kept for API compatibility; height is CSS-driven on desktop. */
+      if (_emailSnapshotRo) {
+        _emailSnapshotRo.disconnect();
+        _emailSnapshotRo = null;
+      }
+      syncEmailLogToSnapshotHeight();
     }
 
     function updateSideSummaries(summary) {
@@ -2131,7 +1675,105 @@
       setTxt('sideMetricEmployees', s.employees_active);
       setTxt('sideMetricHrForms', s.hr_forms_total);
       setTxt('sideMetricInspections', s.inspection_forms_total);
-      setTxt('sideMetricDevices', s.devices_total);
+      setTxt('sideMetricTickets', s.tickets_active);
+      setTxt('sideMetricPipeline', s.pipeline_open);
+    }
+
+    function formatAuditAction(action) {
+      var known = {
+        login: 'Signed in',
+        logout: 'Signed out',
+        login_failed: 'Failed sign-in',
+        register: 'Registered',
+        asset_create: 'Asset created',
+        asset_update: 'Asset updated',
+        asset_delete: 'Asset deleted',
+        ticket_create: 'Ticket created',
+        ticket_closed: 'Ticket closed',
+        create_user: 'User created',
+        update_user: 'User updated',
+        delete_user: 'User deleted',
+        reset_password: 'Password reset',
+        change_password: 'Password changed',
+        toggle_user_status: 'User status changed',
+        update_user_access: 'Access updated',
+        set_designation: 'Designation set',
+        create_submission: 'Form submitted',
+        update_submission: 'Form updated',
+        close_submission: 'Form closed',
+        delete_documents: 'Documents deleted',
+        api_key_create: 'API key created',
+        mfa_enabled: 'MFA enabled',
+        mfa_disabled: 'MFA disabled',
+        mfa_failed: 'MFA failed',
+        mfa_setup_started: 'MFA setup started',
+        database_backup: 'Database backup',
+        mmr_chargeable_config: 'Chargeable rules updated',
+        assistant_create_ticket_draft: 'Ticket draft created'
+      };
+      if (known[action]) return known[action];
+      return String(action || 'Event').replace(/_/g, ' ');
+    }
+
+    function formatAuditResource(type) {
+      if (!type) return '';
+      var known = {
+        asset: 'Asset',
+        ticket: 'Ticket',
+        user: 'User',
+        submission: 'Submission',
+        database: 'Database',
+        settings: 'Settings',
+        integration_api_key: 'API key'
+      };
+      return known[type] || String(type).replace(/_/g, ' ');
+    }
+
+    function setAuditActivityCount(text) {
+      var countEl = document.getElementById('neatActivityCount');
+      if (countEl) countEl.textContent = text;
+    }
+
+    function renderAuditRecent(items, total) {
+      var list = document.getElementById('neatActivityList');
+      var rows = Array.isArray(items) ? items : [];
+      if (!rows.length) {
+        setAuditActivityCount('No events');
+        if (list) {
+          list.innerHTML = '<li class="neat-activity-row neat-activity-row--empty"><span class="neat-activity-t" style="color:var(--neat-muted)">No recent events</span></li>';
+        }
+        return;
+      }
+      if (total && total > rows.length) {
+        setAuditActivityCount(rows.length + ' of ' + total);
+      } else {
+        setAuditActivityCount(rows.length + (rows.length === 1 ? ' event' : ' events'));
+      }
+      if (!list) return;
+      list.innerHTML = rows.map(function (ev) {
+        var when = '—';
+        var whenTitle = '';
+        if (ev.created_at) {
+          try {
+            var d = new Date(ev.created_at);
+            when = d.toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' });
+            whenTitle = d.toISOString();
+          } catch (e) { when = '—'; }
+        }
+        var bits = [];
+        if (ev.username && ev.username !== '—') bits.push(ev.username);
+        var res = formatAuditResource(ev.resource_type);
+        if (res) bits.push(res);
+        if (ev.resource_id) bits.push(String(ev.resource_id));
+        var meta = bits.join(' · ') || '—';
+        return '<li class="neat-activity-row">' +
+          '<div class="neat-activity-body">' +
+            '<div class="neat-activity-t">' + escapeHtml(formatAuditAction(ev.action)) + '</div>' +
+            '<div class="neat-activity-m">' + escapeHtml(meta) + '</div>' +
+          '</div>' +
+          '<time class="neat-activity-when"' + (whenTitle ? ' datetime="' + escapeHtml(whenTitle) + '"' : '') + '>' + escapeHtml(when) + '</time>' +
+        '</li>';
+      }).join('');
     }
 
     async function loadAdminDashboardOverview() {
@@ -2139,16 +1781,18 @@
         const r = await adminAuthenticatedFetch('/api/admin/dashboard-overview');
         if (handleUnauthorized(r)) return;
         if (!r.ok) {
+          setAuditActivityCount('Unavailable');
           const el = document.getElementById('neatActivityList');
-          if (el) el.innerHTML = '<li class="neat-activity-row"><span class="neat-activity-t" style="color:var(--neat-muted)">Could not load activity</span></li>';
+          if (el) el.innerHTML = '<li class="neat-activity-row neat-activity-row--empty"><span class="neat-activity-t" style="color:var(--neat-muted)">Could not load activity</span></li>';
           updateSideSummaries(null);
           renderTicketingOverview(null);
           return;
         }
         const data = await r.json();
         if (!data.success) {
+          setAuditActivityCount('Unavailable');
           const el = document.getElementById('neatActivityList');
-          if (el) el.innerHTML = '<li class="neat-activity-row"><span class="neat-activity-t" style="color:var(--neat-muted)">Overview unavailable</span></li>';
+          if (el) el.innerHTML = '<li class="neat-activity-row neat-activity-row--empty"><span class="neat-activity-t" style="color:var(--neat-muted)">Overview unavailable</span></li>';
           updateSideSummaries(null);
           renderTicketingOverview(null);
           return;
@@ -2176,32 +1820,20 @@
           if (dh) dh.textContent = '—';
           if (dhSub) dhSub.textContent = 'No devices registered';
         }
-        const list = document.getElementById('neatActivityList');
-        if (list && Array.isArray(data.audit_recent)) {
-          if (data.audit_recent.length === 0) {
-            list.innerHTML = '<li class="neat-activity-row"><span class="neat-activity-t" style="color:var(--neat-muted)">No recent events</span></li>';
-          } else {
-            const icoClass = ['neat-act-ico-a', 'neat-act-ico-b', 'neat-act-ico-c', 'neat-act-ico-d'];
-            const icoCh = ['🔐', '📋', '✓', '📝'];
-            list.innerHTML = data.audit_recent.map(function (ev, i) {
-              var t = '—';
-              if (ev.created_at) {
-                try {
-                  t = new Date(ev.created_at).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' });
-                } catch (e) { t = '—'; }
-              }
-              var title = (ev.action || 'event') + (ev.resource_type ? (' · ' + ev.resource_type) : '');
-              var meta = (ev.username || '—') + ' · ' + t;
-              return '<li class="neat-activity-row">' +
-                '<span class="neat-activity-ico ' + icoClass[i % 4] + '" aria-hidden="true">' + icoCh[i % 4] + '</span>' +
-                '<div><div class="neat-activity-t">' + escapeHtml(title) + '</div><div class="neat-activity-m">' + escapeHtml(meta) + '</div></div></li>';
-            }).join('');
-          }
-        }
+        renderAuditRecent(data.audit_recent, data.audit_total);
+        window.requestAnimationFrame(function () {
+          syncNeatActivityToTicketsHeight();
+          syncEmailLogToSnapshotHeight();
+        });
       } catch (e) {
         console.error('loadAdminDashboardOverview', e);
+        setAuditActivityCount('Unavailable');
         updateSideSummaries(null);
         renderTicketingOverview(null);
+        window.requestAnimationFrame(function () {
+          syncNeatActivityToTicketsHeight();
+          syncEmailLogToSnapshotHeight();
+        });
       }
     }
 
@@ -2321,7 +1953,6 @@
 
         if (data.success) {
           users = data.users;
-          registerKnownEmails(users.map(u => (u && u.email) || '').filter(Boolean));
           renderUsersTable();
           updateAdminSidebarBadges();
           renderDashboardPeopleOverview(technicianRows);
@@ -3043,7 +2674,7 @@
               <td><span class="module-badge-sm ${moduleClass}">${moduleLabel}</span></td>
               <td>${form.site_name}</td>
               <td>${form.visit_date || '-'}</td>
-              <td><span class="status-badge ${statusClass}">${form.workflow_status}</span></td>
+              <td><span class="status-badge ${statusClass}">${escapeHtml(titleCaseLabel(form.workflow_status))}</span></td>
               <td>${created}</td>
               <td>
                 <button class="btn-view-form" onclick="event.stopPropagation(); viewFormFromActivity('${form.module_type}', '${form.submission_id}')" title="View Form">
@@ -3106,7 +2737,7 @@
               <td><span class="module-badge-sm ${moduleClass}">${moduleLabel}</span></td>
               <td>${form.site_name}</td>
               <td>${form.supervisor || '-'}</td>
-              <td><span class="status-badge ${statusClass}">${form.workflow_status}</span></td>
+              <td><span class="status-badge ${statusClass}">${escapeHtml(titleCaseLabel(form.workflow_status))}</span></td>
               <td>${created}</td>
               <td>
                 <button class="btn-view-form" onclick="event.stopPropagation(); viewFormFromActivity('${form.module_type}', '${form.submission_id}')" title="View Form">
@@ -3493,9 +3124,9 @@
         else if (doc.workflow_status === 'rejected') workflowClass = 'rejected';
         else if (doc.workflow_status === 'closed_by_admin') workflowClass = 'closed';
 
-        // Format workflow status for display
+        // Format workflow status for display (sentence case, not ALL CAPS)
         let workflowDisplay = doc.workflow_status || 'Submitted';
-        workflowDisplay = workflowDisplay.replace(/_/g, ' ');
+        workflowDisplay = titleCaseLabel(workflowDisplay);
 
         if (documentsFilter === 'active') {
           statusClass = 'active';
@@ -3554,7 +3185,8 @@
           || (doc.id != null ? `#${doc.id}` : '—');
         const docTooltip = `${docNum} · ${docTitle}${docSubtitle ? ' — ' + docSubtitle : ''} (${fullSubmissionId})`;
 
-        const statusLabel = documentsFilter === 'active' ? 'Active' : (doc.status || '—');
+        const statusLabelRaw = documentsFilter === 'active' ? 'Active' : (doc.status || '—');
+        const statusLabel = titleCaseLabel(statusLabelRaw);
         const sameStatusWf = String(statusLabel).toLowerCase() === String(workflowDisplay).toLowerCase();
         let statusCellInner;
         if (sameStatusWf) {
@@ -3769,12 +3401,17 @@
 
     // toggleSelectAll for documents
     function toggleSelectAllDocuments() {
-      const selectAll = document.getElementById('selectAllDocuments') || document.getElementById('selectAllHeader');
-      if (selectAll) {
-        const checkboxes = document.querySelectorAll('.document-checkbox');
-        checkboxes.forEach(cb => cb.checked = selectAll.checked);
-        updateDocumentCloseButton();
-      }
+      const selectAll = document.getElementById('selectAllDocuments');
+      const selectHeader = document.getElementById('selectAllHeader');
+      const source = (document.activeElement && document.activeElement.id === 'selectAllHeader')
+        ? selectHeader
+        : (selectAll || selectHeader);
+      if (!source) return;
+      const checked = !!source.checked;
+      if (selectAll) selectAll.checked = checked;
+      if (selectHeader) selectHeader.checked = checked;
+      document.querySelectorAll('.document-checkbox').forEach(cb => { cb.checked = checked; });
+      updateDocumentCloseButton();
     }
 
     function updateDocumentCloseButton() {
@@ -3782,7 +3419,7 @@
       const closeBtn = document.getElementById('closeSelectedBtn');
       if (!closeBtn) return;
       closeBtn.disabled = checked.length === 0;
-      closeBtn.textContent = checked.length > 0 ? `Close Selected (${checked.length})` : 'Close Selected';
+      closeBtn.textContent = checked.length > 0 ? `Close selected (${checked.length})` : 'Close selected';
     }
 
     async function closeSelectedDocuments() {
@@ -4389,7 +4026,7 @@
         if (rl) rl.textContent = role.charAt(0).toUpperCase() + role.slice(1);
         if (av) av.textContent = initials.slice(0, 3);
         if (tbNm) tbNm.textContent = name;
-        if (tbRl) tbRl.textContent = role.toUpperCase();
+        if (tbRl) tbRl.textContent = role.charAt(0).toUpperCase() + role.slice(1);
         if (tbAv) tbAv.textContent = initials.slice(0, 3);
       } catch (e) {
         if (nm) nm.textContent = 'User';
@@ -4430,25 +4067,6 @@
         if (sbDoc) sbDoc.textContent = total;
       }
     }
-
-    /* ── Live clock in greeting row ─────────────────────── */
-    function admStartLiveClock() {
-      const el = document.getElementById('admLiveTime');
-      if (!el) return;
-      const tick = () => {
-        const now = new Date();
-        const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-        const h = now.getHours(), m = now.getMinutes();
-        const ampm = h >= 12 ? 'PM' : 'AM';
-        const hh = h % 12 || 12;
-        const mm = String(m).padStart(2, '0');
-        el.textContent = `${days[now.getDay()]}, ${months[now.getMonth()]} ${now.getDate()} · ${hh}:${mm} ${ampm}`;
-      };
-      tick();
-      setInterval(tick, 60000);
-    }
-    admStartLiveClock();
 
     /* ── Active Operators renderer (reference "System HQ" style) ─ */
     const _opPalette = [
@@ -4497,7 +4115,7 @@
         employee: 'Employee', technician: 'Technician', admin: 'Admin'
       }[d] || (d ? d.replace(/_/g,' ') : ''));
 
-      const roleShort = r => ({ admin: 'ADMIN', inspector: 'INSPECTOR', user: 'USER' }[r] || (r||'USER').toUpperCase());
+      const roleShort = r => ({ admin: 'Admin', inspector: 'Inspector', user: 'User' }[r] || ((r||'User').charAt(0).toUpperCase() + (r||'user').slice(1)));
 
       const accessPct = u => {
         const n = (u.access_hvac ? 1 : 0) + (u.access_civil ? 1 : 0) + (u.access_cleaning ? 1 : 0);
@@ -4617,7 +4235,7 @@
     }
 
     function initAdminScrollSpy() {
-      const ids = ['section-overview', 'section-users', 'section-tickets', 'section-documents', 'section-notification-settings'];
+      const ids = ['section-overview', 'section-users', 'section-tickets', 'section-documents', 'section-email-log'];
       const elements = ids.map((id) => document.getElementById(id)).filter(Boolean);
       if (!elements.length || !('IntersectionObserver' in window)) return;
       const io = new IntersectionObserver(
@@ -4658,6 +4276,7 @@
       if (sidebar) sidebar.classList.remove('open');
       if (overlay) overlay.classList.remove('active');
       document.body.style.overflow = '';
+      pinAdminMenuToggleToViewport();
     }
 
     function adminOpenMobileSidebar() {
@@ -4667,6 +4286,7 @@
       if (sidebar) sidebar.classList.add('open');
       if (overlay) overlay.classList.add('active');
       document.body.style.overflow = 'hidden';
+      pinAdminMenuToggleToViewport();
     }
 
     function adminToggleMobileSidebar() {
@@ -4679,14 +4299,16 @@
     function pinAdminMenuToggleToViewport() {
       const btn = document.getElementById('adminDhSidebarToggle');
       if (!btn) return;
-      // Button lives directly under <body> in HTML — no reparenting needed.
+      const sidebar = document.getElementById('adminDhSidebar');
+      const mobile = window.innerWidth <= 900;
+      const sidebarOpen = !!(sidebar && sidebar.classList.contains('open'));
       btn.style.setProperty('position', 'fixed', 'important');
       btn.style.setProperty('left', '16px', 'important');
       btn.style.setProperty('right', 'auto', 'important');
       btn.style.setProperty('top', 'auto', 'important');
       btn.style.setProperty('bottom', '20px', 'important');
       btn.style.setProperty('z-index', '2147483000', 'important');
-      btn.style.setProperty('display', 'inline-flex', 'important');
+      btn.style.setProperty('display', (mobile && !sidebarOpen) ? 'inline-flex' : 'none', 'important');
     }
 
     function initAdminMobileSidebar() {
@@ -4761,17 +4383,19 @@
       } catch (e) { /* ignore */ }
       try {
         const focus = new URLSearchParams(window.location.search).get('focus');
-        if (focus === 'email-notifications') {
+        if (focus === 'email-log' || focus === 'email-notifications') {
           setTimeout(() => {
-            admv2ScrollTo('section-notification-settings', null);
+            admv2ScrollTo('section-email-log', null);
           }, 350);
         }
       } catch (e) { /* ignore */ }
-      loadNotificationConfig();
+      loadEmailLogs(true);
       loadAdminDashboardOverview();
       loadUsers();
       loadDocuments();
       loadAutomationStatus();
+      bindNeatActivityTicketsHeightSync();
+      bindEmailLogSnapshotHeightSync();
     });
   </script>
   <!-- ═══════════════════════════════════════════════════════
@@ -4839,16 +4463,16 @@
 
       <div class="adm-more-section-label">This page</div>
 
-      <a href="#section-notification-settings" class="adm-more-link"
-         onclick="admMoreClose(); admv2ScrollTo('section-notification-settings', null);">
+      <a href="#section-email-log" class="adm-more-link"
+         onclick="admMoreClose(); admv2ScrollTo('section-email-log', null);">
         <span class="adm-more-link-ico">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0"/>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"/>
           </svg>
         </span>
         <span class="adm-more-link-text">
-          <span class="adm-more-link-name">Notifications</span>
-          <span class="adm-more-link-sub">Email routing settings</span>
+          <span class="adm-more-link-name">Sent Emails</span>
+          <span class="adm-more-link-sub">Outbound message history</span>
         </span>
         <span class="adm-more-link-arrow">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
@@ -4928,6 +4552,21 @@
         <span class="adm-more-link-text">
           <span class="adm-more-link-name">DocHub</span>
           <span class="adm-more-link-sub">Documentation &amp; references</span>
+        </span>
+        <span class="adm-more-link-arrow">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
+        </span>
+      </a>
+
+      <a href="/admin/database" class="adm-more-link">
+        <span class="adm-more-link-ico">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125"/>
+          </svg>
+        </span>
+        <span class="adm-more-link-text">
+          <span class="adm-more-link-name">Database</span>
+          <span class="adm-more-link-sub">Status, contents, and backup download</span>
         </span>
         <span class="adm-more-link-arrow">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>

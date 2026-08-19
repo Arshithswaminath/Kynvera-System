@@ -356,17 +356,15 @@ def build_ticket_pdf(ticket, notes, images, materials, manpower_entries, output_
         story += _section_header('Attached Images', heading)
         img_row = []
         for img in images:
-            if os.path.exists(img.file_path):
-                try:
-                    ri = RLImage(img.file_path, width=55 * mm, height=44 * mm,
-                                 kind='proportional')
-                    cap = Paragraph(img.caption or img.filename, small)
-                    img_row.append([ri, cap])
-                    if len(img_row) == 3:
-                        story.append(_image_row_table(img_row, avail_w))
-                        img_row = []
-                except Exception:
-                    pass
+            if not img.file_path or not os.path.exists(img.file_path):
+                continue
+            cell = _pdf_image_cell(img, small)
+            if cell is None:
+                continue
+            img_row.append(cell)
+            if len(img_row) == 3:
+                story.append(_image_row_table(img_row, avail_w))
+                img_row = []
         if img_row:
             story.append(_image_row_table(img_row, avail_w))
         story.append(Spacer(1, 6))
@@ -420,6 +418,31 @@ def _fmt_hours(h: float) -> str:
     if h == int(h):
         return f'{int(h)}h'
     return f'{h}h'
+
+
+def _pdf_image_cell(img, small_style):
+    """Build a ReportLab image+caption cell, or skip corrupt attachments.
+
+    ReportLab defers decode until doc.build(); verifying with Pillow and passing
+    an in-memory PNG avoids a single bad file crashing the whole PDF.
+    """
+    label = img.caption or img.filename or 'Attachment'
+    try:
+        from PIL import Image as PILImage
+        with PILImage.open(img.file_path) as pil_im:
+            pil_im.load()
+            rgb = pil_im.convert('RGB') if pil_im.mode not in ('RGB', 'L') else pil_im
+            buf = io.BytesIO()
+            rgb.save(buf, format='PNG')
+            buf.seek(0)
+        ri = RLImage(buf, width=55 * mm, height=44 * mm, kind='proportional')
+        return [ri, Paragraph(label, small_style)]
+    except Exception as exc:
+        logger.warning(
+            'Skipping corrupt ticket image in PDF (%s): %s',
+            getattr(img, 'file_path', None), exc,
+        )
+        return [Paragraph(f'[Image unavailable: {label}]', small_style), Paragraph('', small_style)]
 
 
 def _data_table_style():

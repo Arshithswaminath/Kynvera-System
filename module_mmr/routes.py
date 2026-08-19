@@ -1820,7 +1820,9 @@ def send_email_now():
                 'content': report_bytes,
                 'filename': filename,
                 'mime_type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-            }]
+            }],
+            source='mmr',
+            related_id=filename,
         )
         if ok:
             _save_report_to_folder(report_bytes, filename, 'email')

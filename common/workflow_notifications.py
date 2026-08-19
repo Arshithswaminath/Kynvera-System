@@ -329,6 +329,8 @@ def _send(
             body=plain,
             html_body=html_body,
             cc=cc_list or None,
+            source=module if module in ('inspection', 'hr') else 'other',
+            related_id=getattr(submission, 'submission_id', None),
         )
         if not ok:
             current_app.logger.warning(

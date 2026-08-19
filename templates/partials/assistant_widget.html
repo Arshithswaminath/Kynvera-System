@@ -1,5 +1,5 @@
 {# Kynvera Live Assistant — floating chat widget (authenticated pages only) #}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/assistant.css') }}?v=9">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/assistant.css') }}?v=15">
 <div id="injaazAssistant" class="injaaz-assistant" aria-hidden="true" data-assistant-root>
   <button type="button" class="injaaz-assistant-fab" id="assistantFab" aria-label="Open Kynvera assistant" title="Kynvera Assistant">
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
@@ -14,11 +14,18 @@
         <span class="injaaz-assistant-title">Kynvera Assistant</span>
         <span class="injaaz-assistant-subtitle">Here to help</span>
       </div>
-      <button type="button" class="injaaz-assistant-close" id="assistantClose" aria-label="Close assistant">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
-        </svg>
-      </button>
+      <div class="injaaz-assistant-header-actions">
+        <button type="button" class="injaaz-assistant-close" id="assistantInfoBtn" aria-label="About Ask Kynvera" title="About Ask Kynvera" aria-expanded="false" aria-controls="assistantInfoOverlay">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
+          </svg>
+        </button>
+        <button type="button" class="injaaz-assistant-close" id="assistantClose" aria-label="Close assistant">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
     </header>
 
     <div class="injaaz-assistant-messages" id="assistantMessages" aria-live="polite"></div>
@@ -30,7 +37,7 @@
         type="text"
         id="assistantInput"
         class="injaaz-assistant-input"
-        placeholder="Ask about pending forms, leave, documents…"
+        placeholder="Ask anything — leave, tickets, documents, or create a draft…"
         autocomplete="off"
         maxlength="500"
         aria-label="Message to assistant"
@@ -42,5 +49,71 @@
       </button>
     </form>
   </div>
+
+  <div class="injaaz-assistant-info-overlay" id="assistantInfoOverlay" hidden>
+    <div class="injaaz-assistant-info-backdrop" data-info-dismiss></div>
+    <div class="injaaz-assistant-info-card" role="dialog" aria-modal="true" aria-labelledby="assistantInfoTitle" tabindex="-1">
+      <header class="injaaz-assistant-info-head">
+        <div>
+          <h2 class="injaaz-assistant-info-title" id="assistantInfoTitle">About Ask Kynvera</h2>
+          <p class="injaaz-assistant-info-kicker">A simple guide for everyone</p>
+        </div>
+        <button type="button" class="injaaz-assistant-info-x" id="assistantInfoClose" aria-label="Close about Ask Kynvera">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </header>
+      <div class="injaaz-assistant-info-body">
+        <section>
+          <h3>What this is</h3>
+          <p>Ask Kynvera is a helper built into Kynvera. Type a question in everyday English — the same way you would ask a colleague — about your work in this app.</p>
+        </section>
+        <section>
+          <h3>What you can ask</h3>
+          <ul>
+            <li>How many forms are waiting for your review</li>
+            <li>When you last took leave, and other leave details</li>
+            <li>Your tickets and work orders</li>
+            <li>Help finding a document or policy</li>
+            <li>How a module works, or details on your own profile</li>
+          </ul>
+        </section>
+        <section>
+          <h3>What it can do for you</h3>
+          <p>It can look up <strong>your own</strong> records and explain next steps. It can also <strong>prepare a ticket draft</strong> or a <strong>leave draft</strong>.</p>
+          <p>Nothing is saved until you tap <strong>Confirm</strong>. A draft is not submitted. You still finish it on the real form if a signature or extra details are needed.</p>
+        </section>
+        <section>
+          <h3>Example questions</h3>
+          <ul class="injaaz-assistant-info-examples">
+            <li>How many pending forms?</li>
+            <li>When was my last leave?</li>
+            <li>Find the safety policy</li>
+            <li>Create a ticket: AC leak at HQ</li>
+            <li>Save annual leave from 1 to 5 September</li>
+          </ul>
+        </section>
+        <section>
+          <h3>Typical scenarios</h3>
+          <ul>
+            <li><strong>Catching up on reviews</strong> — a supervisor checks how many forms still need a sign-off.</li>
+            <li><strong>Checking your leave</strong> — you ask when you last took leave instead of opening HR menus.</li>
+            <li><strong>Reporting a fault</strong> — you describe a leak or breakdown in chat and confirm a ticket draft for a supervisor to review.</li>
+            <li><strong>Starting leave</strong> — you give the dates in chat, confirm a draft, then open the leave form to sign and submit.</li>
+          </ul>
+        </section>
+        <section>
+          <h3>Please note</h3>
+          <ul>
+            <li>Answers are for the account you are signed in with.</li>
+            <li>It will not invent policy numbers, addresses, or details it does not have.</li>
+            <li>It will not submit forms, approve requests, or close tickets for you.</li>
+            <li>If it is not sure, it will say so and point you to the right screen or an administrator.</li>
+          </ul>
+        </section>
+      </div>
+    </div>
+  </div>
 </div>
-<script src="{{ url_for('static', filename='js/assistant.js') }}?v=6" defer></script>
+<script src="{{ url_for('static', filename='js/assistant.js') }}?v=9" defer></script>

@@ -359,6 +359,12 @@ def create_app():
                     else:
                         logger.error(f"❌ Failed to connect to database after {max_retries} attempts: {conn_error}")
                         raise
+
+            try:
+                from app.database_admin import enable_sqlite_wal
+                enable_sqlite_wal()
+            except Exception as wal_err:
+                logger.warning("SQLite WAL setup skipped: %s", wal_err)
             
             # Step 1: Create all tables if they don't exist (fully automatic)
             logger.info("Ensuring all database tables exist...")
@@ -369,10 +375,9 @@ def create_app():
                 logger.warning(f"Table creation check: {create_error}")
                 # Continue anyway - tables might already exist
             
-            # Step 2: Database migrations are now handled by Flask-Migrate
-            # Run migrations manually using: flask db upgrade
-            # This ensures version-controlled, reversible migrations
-            logger.info("✅ Database tables verified. Use 'flask db upgrade' to apply migrations.")
+            # Schema grows via create_all plus additive ALTER TABLE below.
+            # Flask-Migrate is registered but there is no Alembic versions tree yet.
+            logger.info("Database tables verified (create_all). Additive ALTER TABLE runs next for older databases.")
             
             # Step 2.5: Add missing columns if tables exist (one-time migration for existing databases)
             inspector = inspect(db.engine)
@@ -995,6 +1000,11 @@ def create_app():
             app.csrf.exempt(bd_bp)
         app.register_blueprint(bd_bp)
         logger.info("✅ Registered BD blueprint at /bd")
+        try:
+            from app.bd.email_scheduler import init_scheduler as init_bd_email_scheduler
+            init_bd_email_scheduler(app)
+        except Exception as sched_err:
+            logger.warning("⚠️  BD email scheduler not started: %s", sched_err)
     else:
         logger.warning("⚠️  BD blueprint not available - check imports")
 
@@ -1267,7 +1277,16 @@ def create_app():
             'civil': '/inspection/form',
             'cleaning': '/inspection/form',
         }
-        base = module_paths.get((sub.module_type or '').lower())
+        mod = (sub.module_type or '').lower()
+        if mod in ('qhsi_inspection', 'qhsi_staff_compliance'):
+            wf = (sub.workflow_status or '').lower()
+            if wf in ('approved', 'completed', 'rejected', 'gm_approved'):
+                return redirect(
+                    '/workflow/submitted-forms?scope=inspection&submission='
+                    + submission_id
+                )
+            return redirect('/workflow/pending-reviews')
+        base = module_paths.get(mod)
         if not base:
             return redirect('/workflow/pending-reviews')
         # Include review=true so the form opens in reviewer mode
@@ -1285,8 +1304,8 @@ def create_app():
 
     @app.route('/admin/email-notifications')
     def admin_email_notifications():
-        """Deep-link to the workflow email settings card (query param survives redirects reliably)."""
-        return redirect('/admin/dashboard?focus=email-notifications')
+        """Deep-link to the sent emails log on the admin dashboard."""
+        return redirect('/admin/dashboard?focus=email-log')
 
     @app.route('/admin/mmr-chargeable')
     def mmr_chargeable_settings_page():
@@ -1317,6 +1336,11 @@ def create_app():
     def admin_knowledge_base():
         """Knowledge Base — admin-managed records that feed the assistant."""
         return render_template('admin_knowledge_base.html', active_page='knowledge-base')
+
+    @app.route('/admin/database')
+    def admin_database():
+        """Database status and backup download — admin only."""
+        return render_template('admin_database.html', active_page='database')
 
     @app.route('/dochub')
     def dochub():

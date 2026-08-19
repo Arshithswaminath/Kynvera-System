@@ -11,7 +11,7 @@ from typing import Optional
 
 from flask import current_app, jsonify, render_template, request, send_file
 from flask_jwt_extended import jwt_required
-from sqlalchemy import or_
+from sqlalchemy import func, or_
 from sqlalchemy.orm import joinedload
 
 from app.models import (
@@ -54,6 +54,16 @@ STAFF_LIST_BUNDLED = os.path.join(
 
 LEAVE_WINDOW_START = date(LEAVE_TRACKER_YEAR, 8, 1)
 LEAVE_WINDOW_END = date(LEAVE_TRACKER_YEAR, 12, 31)
+
+
+def _parse_ymd(raw: Optional[str]) -> Optional[date]:
+    text = (raw or '').strip()[:10]
+    if not text:
+        return None
+    try:
+        return date.fromisoformat(text)
+    except ValueError:
+        return None
 
 
 def _role_is_admin(user: Optional[User]) -> bool:
@@ -825,6 +835,8 @@ def register_leave_tracker_routes(hr_bp):
         leave_type = (request.args.get('leave_type') or 'all').strip().lower()
         month_raw = (request.args.get('month') or '').strip()
         emp_id = request.args.get('employee_id')
+        leave_from = _parse_ymd(request.args.get('leave_from'))
+        leave_to = _parse_ymd(request.args.get('leave_to'))
         alerts_only = (request.args.get('alerts_only') or '').strip().lower() in (
             '1', 'true', 'yes',
         )
@@ -856,6 +868,10 @@ def register_leave_tracker_routes(hr_bp):
             query = query.filter(LeaveLog.leave_type == leave_type)
         if month_raw.isdigit() and int(month_raw) in LEAVE_TRACKER_MONTHS:
             query = query.filter(db.extract('month', LeaveLog.leave_date) == int(month_raw))
+        if leave_from:
+            query = query.filter(func.coalesce(LeaveLog.end_date, LeaveLog.leave_date) >= leave_from)
+        if leave_to:
+            query = query.filter(LeaveLog.leave_date <= leave_to)
         if emp_id:
             try:
                 query = query.filter(LeaveLog.employee_id == int(emp_id))

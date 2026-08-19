@@ -4,10 +4,11 @@ Admin Routes - User management and access control
 from flask import Blueprint, request, jsonify, render_template, current_app, send_file
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy.orm import joinedload
+from sqlalchemy import or_
 from app.models import (
     db, User, AuditLog, Device, BDProject, BDFollowUp, BDContact, BDActivity,
-    DocHubAccess, MmrChargeableConfig, NotificationConfig, AdminPersonalProject, AdminPersonalProgressStep,
-    Technician, KnowledgeBaseEntry,
+    DocHubAccess, MmrChargeableConfig, NotificationConfig, EmailLog, AdminPersonalProject, AdminPersonalProgressStep,
+    Technician, KnowledgeBaseEntry, DatabaseBackup,
 )
 from app.middleware import admin_required
 from common.error_responses import error_response, success_response
@@ -311,6 +312,63 @@ def notification_config():
         db.session.rollback()
         current_app.logger.error(f"Notification config PUT: {e}", exc_info=True)
         return error_response('Failed to save notification settings', status_code=500, error_code='DATABASE_ERROR')
+
+
+@admin_bp.route('/email-logs', methods=['GET'])
+@jwt_required()
+@admin_required
+def list_email_logs():
+    """Newest-first outbound email log for the admin Sent Emails panel."""
+    allowed_sources = frozenset({
+        'inspection', 'hr', 'bd_email', 'mmr', 'ticketing', 'auth', 'other',
+    })
+    allowed_statuses = frozenset({'sent', 'failed'})
+
+    source = (request.args.get('source') or '').strip().lower()
+    status = (request.args.get('status') or '').strip().lower()
+    q = (request.args.get('q') or '').strip()
+    try:
+        limit = int(request.args.get('limit') or 50)
+    except (TypeError, ValueError):
+        limit = 50
+    try:
+        offset = int(request.args.get('offset') or 0)
+    except (TypeError, ValueError):
+        offset = 0
+    limit = max(1, min(limit, 200))
+    offset = max(0, offset)
+
+    try:
+        query = EmailLog.query
+        if source in allowed_sources:
+            query = query.filter(EmailLog.source == source)
+        if status in allowed_statuses:
+            query = query.filter(EmailLog.status == status)
+        if q:
+            term = f'%{q}%'
+            query = query.filter(or_(
+                EmailLog.subject.ilike(term),
+                EmailLog.to_emails.ilike(term),
+                EmailLog.cc_emails.ilike(term),
+                EmailLog.related_id.ilike(term),
+            ))
+        total = query.count()
+        rows = (
+            query.options(joinedload(EmailLog.sent_by))
+            .order_by(EmailLog.created_at.desc(), EmailLog.id.desc())
+            .offset(offset)
+            .limit(limit)
+            .all()
+        )
+        return success_response({
+            'items': [row.to_dict() for row in rows],
+            'total': total,
+            'limit': limit,
+            'offset': offset,
+        })
+    except Exception as e:
+        current_app.logger.error(f"Email logs GET: {e}", exc_info=True)
+        return error_response('Failed to load email logs', status_code=500, error_code='DATABASE_ERROR')
 
 
 @admin_bp.route('/mmr/location-register/parse', methods=['POST'])
@@ -1648,20 +1706,30 @@ def dashboard_overview():
         pp_projects = AdminPersonalProject.query.count()
 
         # --- Recent audit (security / visibility) ---
-        recent_logs = AuditLog.query.order_by(AuditLog.created_at.desc()).limit(12).all()
+        AUDIT_RECENT_LIMIT = 100
+        audit_total = AuditLog.query.count()
+        recent_logs = (
+            AuditLog.query
+            .order_by(AuditLog.created_at.desc())
+            .limit(AUDIT_RECENT_LIMIT)
+            .all()
+        )
+        user_ids = {log.user_id for log in recent_logs if log.user_id}
+        users_by_id = {}
+        if user_ids:
+            users_by_id = {
+                u.id: u.username
+                for u in User.query.filter(User.id.in_(user_ids)).all()
+            }
         audit_recent = []
         for log in recent_logs:
-            uname = None
-            if log.user_id:
-                u = User.query.get(log.user_id)
-                uname = u.username if u else None
             audit_recent.append({
                 'id': log.id,
                 'action': log.action,
                 'resource_type': log.resource_type,
                 'resource_id': log.resource_id,
                 'created_at': log.created_at.isoformat() if log.created_at else None,
-                'username': uname or '—'
+                'username': users_by_id.get(log.user_id) or '—',
             })
 
         # --- Service tickets / work orders (global admin view) ---
@@ -1752,6 +1820,14 @@ def dashboard_overview():
                 'hr_forms_total': hr_form_count,
                 'inspection_forms_total': inspection_form_count,
                 'devices_total': dev_total,
+                'pipeline_open': pipeline_open,
+                'tickets_active': (
+                    ticketing_snapshot.get('active_pipeline')
+                    if ticketing_snapshot.get('available') else None
+                ),
+                'bd_projects': bd_projects,
+                'bd_followups_open': bd_open_fu,
+                'audit_total': audit_total,
             },
             'bd': {
                 'projects_total': bd_projects,
@@ -1767,6 +1843,7 @@ def dashboard_overview():
                 'personal_progress_projects': pp_projects,
             },
             'audit_recent': audit_recent,
+            'audit_total': audit_total,
             'ticketing': ticketing_snapshot,
         })
     except Exception as e:
@@ -4118,3 +4195,152 @@ def kb_refresh_app_data():
         db.session.rollback()
         current_app.logger.error(f"KB refresh-app error: {e}", exc_info=True)
         return error_response('Failed to refresh app data', status_code=500, error_code='INTERNAL_ERROR')
+
+
+@admin_bp.route('/database/status', methods=['GET'])
+@jwt_required()
+@admin_required
+def database_status():
+    """Plain-language status of the database this running app is using."""
+    try:
+        from app.database_admin import describe_current_database, module_table_counts
+
+        payload = describe_current_database()
+        payload['modules'] = module_table_counts()
+        return success_response(payload)
+    except Exception as e:
+        current_app.logger.error(f'Database status: {e}', exc_info=True)
+        return error_response('Could not read database status', status_code=500, error_code='DATABASE_ERROR')
+
+
+@admin_bp.route('/database/backups', methods=['GET'])
+@jwt_required()
+@admin_required
+def database_backups_list():
+    """Recent backup downloads recorded on this instance."""
+    try:
+        from app.database_admin import list_backups
+
+        return success_response({'backups': list_backups(40)})
+    except Exception as e:
+        current_app.logger.error(f'Database backups list: {e}', exc_info=True)
+        return error_response('Could not load backup history', status_code=500, error_code='DATABASE_ERROR')
+
+
+@admin_bp.route('/database/tables/<table_name>', methods=['GET'])
+@jwt_required()
+@admin_required
+def database_browse_table(table_name):
+    """Read-only page of rows for one table on THIS instance's database."""
+    try:
+        from app.database_admin import UnknownTable, browse_table
+
+        page = request.args.get('page', 1)
+        per_page = request.args.get('per_page', 50)
+        q = request.args.get('q', '') or ''
+        payload = browse_table(table_name, page=page, per_page=per_page, q=q)
+        return success_response(payload)
+    except UnknownTable as e:
+        return error_response(str(e), status_code=404, error_code='NOT_FOUND')
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'Database browse {table_name}: {e}', exc_info=True)
+        return error_response('Could not read that table', status_code=500, error_code='DATABASE_ERROR')
+
+
+@admin_bp.route('/database/backup', methods=['POST'])
+@jwt_required()
+@admin_required
+def database_backup_download():
+    """Create a copy of THIS instance's database and stream it to the admin."""
+    from flask import after_this_request
+    from app.database_admin import (
+        BackupError, BackupTooLarge, create_backup_file,
+        current_engine_kind, current_environment,
+    )
+
+    admin_id = get_jwt_identity()
+    try:
+        admin_id = int(admin_id)
+    except (TypeError, ValueError):
+        pass
+
+    env = current_environment()
+    engine = current_engine_kind()
+    artifact = None
+    try:
+        artifact = create_backup_file()
+        row = DatabaseBackup(
+            created_by_user_id=admin_id if isinstance(admin_id, int) else None,
+            environment=env,
+            engine=engine,
+            filename=artifact['filename'],
+            size_bytes=artifact['size_bytes'],
+            status='ok',
+            kind='download',
+        )
+        db.session.add(row)
+        db.session.commit()
+        log_audit(admin_id, 'database_backup', 'database', env, {
+            'filename': artifact['filename'],
+            'size_bytes': artifact['size_bytes'],
+            'engine': engine,
+        })
+
+        path = artifact['path']
+        keep = artifact.get('keep')
+
+        if not keep:
+            @after_this_request
+            def _cleanup_backup(response):
+                try:
+                    if path and os.path.isfile(path):
+                        os.remove(path)
+                except OSError:
+                    pass
+                return response
+
+        return send_file(
+            path,
+            as_attachment=True,
+            download_name=artifact['filename'],
+            mimetype=artifact.get('mimetype') or 'application/octet-stream',
+        )
+    except BackupTooLarge as e:
+        db.session.rollback()
+        _record_failed_backup(admin_id, env, engine, str(e))
+        return error_response(str(e), status_code=413, error_code='BACKUP_TOO_LARGE')
+    except BackupError as e:
+        db.session.rollback()
+        _record_failed_backup(admin_id, env, engine, str(e))
+        return error_response(str(e), status_code=500, error_code='BACKUP_FAILED')
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'Database backup: {e}', exc_info=True)
+        _record_failed_backup(admin_id, env, engine, 'Backup failed')
+        if artifact and artifact.get('path') and not artifact.get('keep'):
+            try:
+                os.remove(artifact['path'])
+            except OSError:
+                pass
+        return error_response('Could not create a database copy', status_code=500, error_code='BACKUP_FAILED')
+
+
+def _record_failed_backup(admin_id, env, engine, message):
+    try:
+        db.session.rollback()
+        row = DatabaseBackup(
+            created_by_user_id=admin_id if isinstance(admin_id, int) else None,
+            environment=env,
+            engine=engine,
+            filename='(failed)',
+            size_bytes=0,
+            status='failed',
+            error_message=(message or '')[:500],
+            kind='download',
+        )
+        db.session.add(row)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        current_app.logger.warning('Could not record failed database backup', exc_info=True)

@@ -10,8 +10,8 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=22">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-hiring.css') }}?v=85">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-leave-tracker.css') }}?v=20">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-hiring.css') }}?v=111">
+          <link rel="stylesheet" href="{{ url_for('static', filename='css/hr-leave-tracker.css') }}?v=29">
   {% set active_page = 'hr' %}
 </head>
 <body class="hh-page lt-page">
@@ -54,6 +54,7 @@
             <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
           </svg>
           <input type="search" id="ltSearch" placeholder="Search name or Emp ID…" autocomplete="off" aria-label="Search staff">
+          <button type="button" class="lt-search-clear" id="ltSearchClear" hidden aria-label="Clear search">×</button>
         </div>
         <select id="ltCompany" class="hh-select" aria-label="Company filter">
           <option value="all">All companies</option>
@@ -70,7 +71,7 @@
           <option value="12">December</option>
         </select>
         <label class="lt-check" for="ltAlertsOnly" title="Show only staff with leave alerts">
-          <input type="checkbox" id="ltAlertsOnly">
+          <input type="checkbox" id="ltAlertsOnly" class="kv-checkbox">
           <span>Alerts only</span>
         </label>
         <button type="button" class="hh-btn hh-btn-primary hh-btn-sm" id="ltLogLeaveBtn">Log leave</button>
@@ -180,27 +181,59 @@
       </div>
 
       <div class="lt-panel" id="ltPanelLogs" role="tabpanel" hidden>
-        <div class="lt-planner-toolbar">
-          <div class="hh-search lt-logs-search">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
-            </svg>
-            <input type="search" id="ltLogsSearch" placeholder="Search Emp ID, name, or notes…" autocomplete="off" aria-label="Search leave logs">
+        <div class="lt-logs-toolbar">
+          <div class="lt-logs-toolbar-left">
+            <div class="hh-search lt-logs-search">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+              </svg>
+              <input type="search" id="ltLogsSearch" placeholder="Search Emp ID, name, or notes…" autocomplete="off" aria-label="Search leave logs">
+              <button type="button" class="lt-search-clear" id="ltLogsSearchClear" hidden aria-label="Clear search">×</button>
+            </div>
+            <select id="ltLogTypeFilter" class="hh-select lt-filter-compact" aria-label="Leave type filter">
+              <option value="all">All types</option>
+              <option value="sick">Sick</option>
+              <option value="annual">Annual</option>
+            </select>
+            <select id="ltLogCompanyFilter" class="hh-select lt-filter-compact" aria-label="Company filter">
+              <option value="all">All companies</option>
+              <option value="INJAAZ">INJAAZ</option>
+              <option value="Tourism">Tourism</option>
+              <option value="L&P">L&amp;P</option>
+            </select>
           </div>
-          <select id="ltLogTypeFilter" class="hh-select lt-filter-compact" aria-label="Leave type filter">
-            <option value="all">All types</option>
-            <option value="sick">Sick</option>
-            <option value="annual">Annual</option>
-          </select>
-          <button type="button" class="hh-btn hh-btn-ghost hh-btn-sm" id="ltLogsClearFilters" hidden>Clear filters</button>
-          <button type="button" class="hh-btn hh-btn-primary hh-btn-sm" id="ltLogLeaveBtn2">Log leave</button>
+          <div class="lt-logs-toolbar-right">
+            <label class="lt-date-field">
+              <span class="lt-date-field-label">Leave dates</span>
+              <span class="lt-date-pair">
+                <input type="date" id="ltLogLeaveFrom" class="hh-select lt-filter-date" lang="en-GB" min="2026-08-01" max="2026-12-31" aria-label="Leave from">
+                <span class="lt-filter-range-sep">to</span>
+                <input type="date" id="ltLogLeaveTo" class="hh-select lt-filter-date" lang="en-GB" min="2026-08-01" max="2026-12-31" aria-label="Leave to">
+              </span>
+            </label>
+            <label class="lt-date-field">
+              <span class="lt-date-field-label">Created</span>
+              <span class="lt-date-pair">
+                <input type="date" id="ltLogCreatedFrom" class="hh-select lt-filter-date" lang="en-GB" aria-label="Created from">
+                <span class="lt-filter-range-sep">to</span>
+                <input type="date" id="ltLogCreatedTo" class="hh-select lt-filter-date" lang="en-GB" aria-label="Created to">
+              </span>
+            </label>
+            <button type="button" class="hh-btn hh-btn-ghost hh-btn-sm lt-logs-clear" id="ltLogsClearFilters" hidden>Clear filters</button>
+          </div>
         </div>
         <div class="lt-table-wrap">
           <table class="lt-table" id="ltLogsTable">
             <thead>
               <tr>
-                <th>From</th>
-                <th>To</th>
+                <th class="lt-th-filterable" data-col="log_leave_from">
+                  <span class="lt-th-label">From</span>
+                  <button type="button" class="lt-col-filter-btn" data-col-filter="log_leave_from" aria-label="Filter From" title="Filter From">▾</button>
+                </th>
+                <th class="lt-th-filterable" data-col="log_leave_to">
+                  <span class="lt-th-label">To</span>
+                  <button type="button" class="lt-col-filter-btn" data-col-filter="log_leave_to" aria-label="Filter To" title="Filter To">▾</button>
+                </th>
                 <th class="lt-th-filterable" data-col="log_emp_id">
                   <span class="lt-th-label">Emp ID</span>
                   <button type="button" class="lt-col-filter-btn" data-col-filter="log_emp_id" aria-label="Filter Emp ID" title="Filter Emp ID">▾</button>
@@ -213,13 +246,22 @@
                   <span class="lt-th-label">Type</span>
                   <button type="button" class="lt-col-filter-btn" data-col-filter="log_leave_type" aria-label="Filter Type" title="Filter Type">▾</button>
                 </th>
-                <th>Days</th>
+                <th class="lt-th-filterable" data-col="log_days">
+                  <span class="lt-th-label">Days</span>
+                  <button type="button" class="lt-col-filter-btn" data-col-filter="log_days" aria-label="Filter Days" title="Filter Days">▾</button>
+                </th>
                 <th class="lt-th-filterable" data-col="log_notes">
                   <span class="lt-th-label">Notes</span>
                   <button type="button" class="lt-col-filter-btn" data-col-filter="log_notes" aria-label="Filter Notes" title="Filter Notes">▾</button>
                 </th>
-                <th>Created</th>
-                <th>Edited</th>
+                <th class="lt-th-filterable" data-col="log_created">
+                  <span class="lt-th-label">Created</span>
+                  <button type="button" class="lt-col-filter-btn" data-col-filter="log_created" aria-label="Filter Created" title="Filter Created">▾</button>
+                </th>
+                <th class="lt-th-filterable" data-col="log_edited">
+                  <span class="lt-th-label">Edited</span>
+                  <button type="button" class="lt-col-filter-btn" data-col-filter="log_edited" aria-label="Filter Edited" title="Filter Edited">▾</button>
+                </th>
                 <th></th>
               </tr>
             </thead>
@@ -403,6 +445,6 @@
   <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
   <script>window.FILES_SAVE_MODULE = 'leave'; window.FILES_SAVE_MODULE_LABEL = 'Leave Tracker';</script>
   <script src="{{ url_for('static', filename='js/files-save.js') }}?v=16"></script>
-  <script src="{{ url_for('static', filename='js/hr-leave-tracker.js') }}?v=16"></script>
+  <script src="{{ url_for('static', filename='js/hr-leave-tracker.js') }}?v=19"></script>
 </body>
 </html>

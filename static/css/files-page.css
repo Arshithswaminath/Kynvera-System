@@ -866,6 +866,13 @@ body.files-page .files-main::-webkit-scrollbar {
 .files-actions-cell {
   width: 1%;
   white-space: nowrap;
+  position: relative;
+  overflow: visible;
+  z-index: 2;
+}
+
+.files-table tbody tr:hover .files-actions-cell {
+  z-index: 4;
 }
 
 .files-row-actions {
@@ -876,6 +883,8 @@ body.files-page .files-main::-webkit-scrollbar {
   border-radius: 12px;
   background: #f7f8fa;
   border: 1px solid #eef0f3;
+  position: relative;
+  overflow: visible;
 }
 
 .files-icon-btn {
@@ -893,11 +902,12 @@ body.files-page .files-main::-webkit-scrollbar {
   cursor: pointer;
   color: var(--files-muted);
   transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+  z-index: 0;
 }
 
 .files-icon-btn svg {
-  width: 17px;
-  height: 17px;
+  width: 18px;
+  height: 18px;
   display: block;
 }
 
@@ -905,12 +915,14 @@ body.files-page .files-main::-webkit-scrollbar {
   background: #fff;
   color: var(--files-brand-dark, #e05f36);
   box-shadow: 0 1px 3px rgba(255, 142, 104, 0.18);
+  z-index: 3;
 }
 
 .files-icon-btn:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px rgba(255, 142, 104, 0.28);
   color: var(--files-brand-dark, #e05f36);
+  z-index: 3;
 }
 
 .files-icon-btn.is-synced {
@@ -929,12 +941,15 @@ body.files-page .files-main::-webkit-scrollbar {
   box-shadow: none;
 }
 
+/* Tooltips sit to the left so they stay inside the scrolling table (above would clip). */
 .files-icon-btn[data-tooltip]::after {
   content: attr(data-tooltip);
   position: absolute;
-  bottom: calc(100% + 8px);
-  left: 50%;
-  transform: translateX(-50%) translateY(4px);
+  top: 50%;
+  right: calc(100% + 8px);
+  left: auto;
+  bottom: auto;
+  transform: translateY(-50%) translateX(4px);
   background: #191b23;
   color: #fff;
   font-size: 0.7rem;
@@ -946,28 +961,30 @@ body.files-page .files-main::-webkit-scrollbar {
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.12s ease, transform 0.12s ease;
-  z-index: 5;
+  z-index: 6;
   box-shadow: 0 6px 16px rgba(25, 27, 35, 0.18);
 }
 
 .files-icon-btn[data-tooltip]::before {
   content: '';
   position: absolute;
-  bottom: calc(100% + 2px);
-  left: 50%;
-  transform: translateX(-50%);
+  top: 50%;
+  right: calc(100% - 2px);
+  left: auto;
+  bottom: auto;
+  transform: translateY(-50%);
   border: 5px solid transparent;
-  border-top-color: #191b23;
+  border-left-color: #191b23;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.12s ease;
-  z-index: 5;
+  z-index: 6;
 }
 
 .files-icon-btn[data-tooltip]:hover::after,
 .files-icon-btn[data-tooltip]:focus-visible::after {
   opacity: 1;
-  transform: translateX(-50%) translateY(0);
+  transform: translateY(-50%) translateX(0);
 }
 
 .files-icon-btn[data-tooltip]:hover::before,

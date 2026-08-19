@@ -5,11 +5,14 @@ Providers:
   - claude  (default) — Anthropic API, claude-haiku-4-5 recommended
   - openai            — OpenAI or any OpenAI-compatible endpoint
 
-Also exposes generate_structured() for FM triage / prediction JSON calls.
+Also exposes generate_structured() for FM triage / prediction JSON calls
+and generate_with_tools() for the Ask Kynvera agent loop.
 """
 import json
 import logging
 import re
+from dataclasses import dataclass, field
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +22,22 @@ _openai_client = None
 
 class StructuredLLMError(Exception):
     """Raised when a structured LLM call fails or returns invalid JSON."""
+
+
+@dataclass
+class LLMToolCall:
+    id: str
+    name: str
+    input: dict
+
+
+@dataclass
+class LLMToolRound:
+    """One model round: either final text, or one or more tool calls to execute."""
+    text: str = ''
+    tool_calls: list = field(default_factory=list)
+    assistant_content: Any = None
+    stop_reason: str = 'end_turn'
 
 SYSTEM_PROMPT = """You are the Injaaz Assistant — a helpful, natural chat guide for the Injaaz FM platform and company.
 
@@ -287,3 +306,220 @@ def generate_structured(system_prompt: str, user_content: str, schema: dict, mod
             raise StructuredLLMError(f'Invalid JSON from LLM: {exc2}') from exc2
 
     return _validate_against_schema(data, schema)
+
+
+def _claude_tools(tools: list) -> list:
+    out = []
+    for t in tools or []:
+        out.append({
+            'name': t['name'],
+            'description': t.get('description') or '',
+            'input_schema': t.get('input_schema') or {'type': 'object', 'properties': {}},
+        })
+    return out
+
+
+def _openai_tools(tools: list) -> list:
+    out = []
+    for t in tools or []:
+        out.append({
+            'type': 'function',
+            'function': {
+                'name': t['name'],
+                'description': t.get('description') or '',
+                'parameters': t.get('input_schema') or {'type': 'object', 'properties': {}},
+            },
+        })
+    return out
+
+
+def _openai_messages_from_claude(messages: list) -> list:
+    """Convert Claude-style {role, content} (content may be blocks) to OpenAI chat messages."""
+    converted = []
+    for msg in messages or []:
+        role = msg.get('role') or 'user'
+        content = msg.get('content')
+        if isinstance(content, str):
+            converted.append({'role': role, 'content': content})
+            continue
+        if not isinstance(content, list):
+            converted.append({'role': role, 'content': str(content or '')})
+            continue
+        if role == 'assistant':
+            text_parts = []
+            tool_calls = []
+            for block in content:
+                btype = block.get('type') if isinstance(block, dict) else getattr(block, 'type', None)
+                if btype == 'text':
+                    text_parts.append(
+                        block.get('text') if isinstance(block, dict) else getattr(block, 'text', '') or ''
+                    )
+                elif btype == 'tool_use':
+                    bid = block.get('id') if isinstance(block, dict) else getattr(block, 'id', '')
+                    name = block.get('name') if isinstance(block, dict) else getattr(block, 'name', '')
+                    inp = block.get('input') if isinstance(block, dict) else getattr(block, 'input', {}) or {}
+                    tool_calls.append({
+                        'id': bid,
+                        'type': 'function',
+                        'function': {
+                            'name': name,
+                            'arguments': json.dumps(inp if isinstance(inp, dict) else {}),
+                        },
+                    })
+            item = {'role': 'assistant', 'content': ''.join(text_parts) or None}
+            if tool_calls:
+                item['tool_calls'] = tool_calls
+            converted.append(item)
+        else:
+            # tool_result blocks become role=tool messages
+            text_parts = []
+            for block in content:
+                btype = block.get('type') if isinstance(block, dict) else getattr(block, 'type', None)
+                if btype == 'tool_result':
+                    converted.append({
+                        'role': 'tool',
+                        'tool_call_id': (
+                            block.get('tool_use_id') if isinstance(block, dict)
+                            else getattr(block, 'tool_use_id', '')
+                        ),
+                        'content': (
+                            block.get('content') if isinstance(block, dict)
+                            else getattr(block, 'content', '')
+                        ) or '',
+                    })
+                elif btype == 'text':
+                    text_parts.append(
+                        block.get('text') if isinstance(block, dict) else getattr(block, 'text', '') or ''
+                    )
+            if text_parts:
+                converted.append({'role': 'user', 'content': ''.join(text_parts)})
+    return converted
+
+
+def generate_with_tools(system_prompt: str, messages: list, tools: list, max_tokens: int = 1200) -> LLMToolRound:
+    """One LLM round with native tool use. Does not execute tools.
+
+    `messages` uses Claude-style dicts: {role, content} where content is a string
+    or a list of content blocks (text / tool_use / tool_result).
+    `tools` is a list of {name, description, input_schema}.
+    """
+    if not is_llm_enabled():
+        raise StructuredLLMError('LLM is disabled')
+
+    from flask import current_app
+    model = current_app.config.get('ASSISTANT_LLM_MODEL') or (
+        'claude-haiku-4-5' if _provider() != 'openai' else 'gpt-4o-mini'
+    )
+
+    try:
+        if _provider() == 'openai':
+            return _generate_openai_tools(system_prompt, messages, tools, model, max_tokens)
+        return _generate_claude_tools(system_prompt, messages, tools, model, max_tokens)
+    except StructuredLLMError:
+        raise
+    except Exception as exc:
+        logger.error('generate_with_tools failed: %s', exc, exc_info=True)
+        raise StructuredLLMError(str(exc)) from exc
+
+
+def _generate_claude_tools(system_prompt, messages, tools, model, max_tokens) -> LLMToolRound:
+    client = _get_claude_client()
+    if not client:
+        raise StructuredLLMError('Claude client unavailable — check ANTHROPIC_API_KEY')
+
+    kwargs = {
+        'model': model,
+        'max_tokens': max_tokens,
+        'system': system_prompt or SYSTEM_PROMPT,
+        'messages': messages,
+        'temperature': 0.2,
+    }
+    claude_tools = _claude_tools(tools)
+    if claude_tools:
+        kwargs['tools'] = claude_tools
+    response = client.messages.create(**kwargs)
+
+    text_parts = []
+    tool_calls = []
+    for block in response.content:
+        btype = getattr(block, 'type', None)
+        if btype == 'text':
+            text_parts.append(getattr(block, 'text', '') or '')
+        elif btype == 'tool_use':
+            raw_input = getattr(block, 'input', None) or {}
+            if not isinstance(raw_input, dict):
+                raw_input = {}
+            tool_calls.append(LLMToolCall(
+                id=getattr(block, 'id', '') or '',
+                name=getattr(block, 'name', '') or '',
+                input=raw_input,
+            ))
+
+    assistant_content = []
+    for block in response.content:
+        btype = getattr(block, 'type', None)
+        if btype == 'text':
+            assistant_content.append({'type': 'text', 'text': getattr(block, 'text', '') or ''})
+        elif btype == 'tool_use':
+            assistant_content.append({
+                'type': 'tool_use',
+                'id': getattr(block, 'id', '') or '',
+                'name': getattr(block, 'name', '') or '',
+                'input': getattr(block, 'input', None) or {},
+            })
+
+    return LLMToolRound(
+        text=''.join(text_parts).strip(),
+        tool_calls=tool_calls,
+        assistant_content=assistant_content,
+        stop_reason=getattr(response, 'stop_reason', None) or 'end_turn',
+    )
+
+
+def _generate_openai_tools(system_prompt, messages, tools, model, max_tokens) -> LLMToolRound:
+    client = _get_openai_client()
+    if not client:
+        raise StructuredLLMError('OpenAI client unavailable')
+
+    oai_messages = [{'role': 'system', 'content': system_prompt or SYSTEM_PROMPT}]
+    oai_messages.extend(_openai_messages_from_claude(messages))
+    kwargs = {
+        'model': model,
+        'messages': oai_messages,
+        'max_tokens': max_tokens,
+        'temperature': 0.2,
+    }
+    oai_tools = _openai_tools(tools)
+    if oai_tools:
+        kwargs['tools'] = oai_tools
+    response = client.chat.completions.create(**kwargs)
+    choice = response.choices[0].message
+    text = (choice.content or '').strip()
+    tool_calls = []
+    assistant_content = []
+    if text:
+        assistant_content.append({'type': 'text', 'text': text})
+    for tc in (choice.tool_calls or []):
+        fn = getattr(tc, 'function', None)
+        name = getattr(fn, 'name', '') if fn else ''
+        raw_args = getattr(fn, 'arguments', '') if fn else ''
+        try:
+            parsed = json.loads(raw_args) if raw_args else {}
+        except json.JSONDecodeError:
+            parsed = {}
+        if not isinstance(parsed, dict):
+            parsed = {}
+        tid = getattr(tc, 'id', '') or ''
+        tool_calls.append(LLMToolCall(id=tid, name=name or '', input=parsed))
+        assistant_content.append({
+            'type': 'tool_use',
+            'id': tid,
+            'name': name or '',
+            'input': parsed,
+        })
+    return LLMToolRound(
+        text=text,
+        tool_calls=tool_calls,
+        assistant_content=assistant_content or text,
+        stop_reason='tool_use' if tool_calls else 'end_turn',
+    )

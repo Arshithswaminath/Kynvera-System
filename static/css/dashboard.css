@@ -2840,7 +2840,7 @@ body.hr-dashboard .footer {
     width: 36px !important;
     height: 36px !important;
     padding: 0 !important;
-    display: flex !important;
+    display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
     border-radius: 50% !important;
@@ -2852,6 +2852,25 @@ body.hr-dashboard .footer {
     box-shadow: none !important;
   }
 
+  .nav-right .notification-btn.has-count {
+    width: auto !important;
+    min-height: 36px !important;
+    padding: 0 0.7rem 0 0.5rem !important;
+    border-radius: 999px !important;
+    gap: 0.2rem !important;
+    background: #fff4ef !important;
+    border: 1px solid rgba(255, 142, 104, 0.35) !important;
+    color: var(--primary) !important;
+    box-shadow: none !important;
+  }
+
+  .nav-right .notification-btn.has-count.has-unread {
+    background: var(--primary) !important;
+    border-color: var(--primary) !important;
+    color: #fff !important;
+    box-shadow: 0 1px 2px rgba(255, 142, 104, 0.2) !important;
+  }
+
   .notification-btn svg {
     width: 20px !important;
     height: 20px !important;
@@ -2859,6 +2878,18 @@ body.hr-dashboard .footer {
 
   .nav-right .notification-btn:hover {
     background: rgba(255, 142, 104, 0.06) !important;
+  }
+
+  .nav-right .notification-btn.has-count:hover {
+    background: #ffece4 !important;
+    border-color: var(--primary) !important;
+    color: var(--primary-dark) !important;
+  }
+
+  .nav-right .notification-btn.has-count.has-unread:hover {
+    background: var(--primary-dark) !important;
+    border-color: var(--primary-dark) !important;
+    color: #fff !important;
   }
 
   .nav-right #pwa-install-btn.pwa-nav-icon {
@@ -3762,13 +3793,31 @@ body.profile-modal-open {
   cursor: pointer;
   padding: 0.5rem;
   border-radius: 8px;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 0.22rem;
   position: relative;
-  transition: all 0.15s ease;
+  transition: background 0.2s ease, box-shadow 0.2s ease, color 0.15s ease, transform 0.15s ease;
   color: var(--text-mid);
   overflow: visible;
+}
+
+.notification-btn.has-count {
+  min-height: 36px;
+  padding: 0.45rem 0.7rem 0.45rem 0.55rem;
+  border-radius: 999px;
+  background: #fff4ef;
+  border: 1px solid rgba(255, 142, 104, 0.35);
+  color: var(--primary);
+  box-shadow: none;
+}
+
+.notification-btn.has-count.has-unread {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+  box-shadow: 0 1px 2px rgba(255, 142, 104, 0.2);
 }
 
 .notification-btn svg {
@@ -3780,6 +3829,24 @@ body.profile-modal-open {
 
 .notification-btn:hover {
   background: var(--bg-light);
+}
+
+.notification-btn.has-count:hover {
+  background: #ffece4;
+  border-color: var(--primary);
+  color: var(--primary-dark);
+}
+
+.notification-btn.has-count.has-unread:hover {
+  background: var(--primary-dark);
+  border-color: var(--primary-dark);
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(255, 142, 104, 0.28);
+}
+
+.notification-btn.has-count.has-unread:active {
+  transform: scale(0.97);
+  background: var(--primary-dark);
 }
 
 /* Plain hamburger — subtle zoom pulse when reviews are pending (icon stays normal, no badge/box) */
@@ -3798,28 +3865,27 @@ body.profile-modal-open {
 }
 
 .notification-badge {
-  position: absolute;
-  top: -3px;
-  right: -5px;
+  position: static;
   z-index: 1;
-  background: #ef4444;
-  color: white;
-  font-size: 0.62rem;
+  background: transparent;
+  color: inherit;
+  font-size: 0.8rem;
   font-weight: 700;
   line-height: 1;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.01em;
   font-variant-numeric: tabular-nums;
-  min-width: 1.15rem;
-  height: 1.15rem;
-  border-radius: 999px;
+  min-width: 0;
+  height: auto;
+  border-radius: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0 0.32rem;
-  border: 2px solid white;
+  padding: 0;
+  border: none;
   box-sizing: border-box;
   white-space: nowrap;
   pointer-events: none;
+  flex-shrink: 0;
 }
 
 .notification-dropdown {
@@ -3858,6 +3924,25 @@ body.profile-modal-open {
   font-weight: 600;
   color: var(--text-dark);
   margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.notification-header-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  padding: 0 0.32rem;
+  border-radius: 999px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  font-variant-numeric: tabular-nums;
 }
 
 .mark-all-read {
@@ -3865,15 +3950,15 @@ body.profile-modal-open {
   border: none;
   color: var(--primary);
   font-size: 0.75rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   padding: 0.25rem 0.5rem;
-  border-radius: 4px;
+  border-radius: 6px;
   transition: background 0.15s;
 }
 
 .mark-all-read:hover {
-  background: rgba(255, 142, 104, 0.06);
+  background: #fff4ef;
 }
 
 .notification-list {
@@ -3888,6 +3973,7 @@ body.profile-modal-open {
   transition: background 0.15s;
   display: flex;
   gap: 0.75rem;
+  align-items: flex-start;
 }
 
 .notification-item:hover {
@@ -3895,42 +3981,49 @@ body.profile-modal-open {
 }
 
 .notification-item.unread {
-  background: #f0fdf4;
+  background: #fff4ef;
+  box-shadow: inset 3px 0 0 var(--primary);
 }
 
 .notification-item.unread:hover {
-  background: #dcfce7;
+  background: #ffece4;
 }
 
 .notification-icon {
   width: 36px;
   height: 36px;
-  border-radius: 8px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  font-size: 1.1rem;
+  background: #fff4ef;
+  color: var(--primary);
+}
+
+.notification-icon svg {
+  width: 18px;
+  height: 18px;
+  stroke: currentColor;
+  fill: none;
+}
+
+.notification-icon.ticket,
+.notification-icon.inspection,
+.notification-icon.hr,
+.notification-icon.info {
+  background: #fff4ef;
+  color: var(--primary);
 }
 
 .notification-icon.approved {
-  background: linear-gradient(135deg, #10b981, #059669);
-  color: white;
+  background: #f0fdf4;
+  color: #16a34a;
 }
 
 .notification-icon.rejected {
-  background: linear-gradient(135deg, #ef4444, #dc2626);
-  color: white;
-}
-
-.notification-icon.info {
-  background: linear-gradient(135deg, #3b82f6, #2563eb);
-  color: white;
-}
-
-.notification-icon.pending {
-  background: linear-gradient(135deg, #059669, #047857);
-  color: white;
+  background: #fef2f2;
+  color: #dc2626;
 }
 
 .notification-content {
@@ -3956,10 +4049,24 @@ body.profile-modal-open {
   overflow: hidden;
 }
 
+.notification-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.28rem;
+}
+
 .notification-time {
   font-size: 0.65rem;
   color: var(--text-muted);
-  margin-top: 0.2rem;
+}
+
+.notification-unread-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--primary);
+  flex-shrink: 0;
 }
 
 .notification-empty {
@@ -3967,14 +4074,17 @@ body.profile-modal-open {
   text-align: center;
   color: var(--text-muted);
   font-size: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.55rem;
 }
 
-.notification-empty::before {
-  content: '🔔';
-  display: block;
-  font-size: 2rem;
-  margin-bottom: 0.5rem;
-  opacity: 0.4;
+.notification-empty svg {
+  width: 28px;
+  height: 28px;
+  color: var(--primary);
+  opacity: 0.45;
 }
 
 /* Mobile notifications */

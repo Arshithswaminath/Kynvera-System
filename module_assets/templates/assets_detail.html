@@ -12,9 +12,22 @@
       {% if can_write %}
       <a class="fm-btn fm-btn-outline" href="{{ url_for('assets_bp.assets_edit_page', asset_code=asset.asset_id) }}">Edit</a>
       {% endif %}
+      <a class="fm-btn fm-btn-outline" href="/assets/api/assets/{{ asset.asset_id }}/qr.png?download=1">Download QR</a>
+      <a class="fm-btn fm-btn-outline" href="/assets/api/assets/{{ asset.asset_id }}/qr-label.pdf">Download label</a>
       <button type="button" class="fm-btn fm-btn-primary" id="predictBtn">AI estimate</button>
     </div>
   </header>
+
+  <section class="fm-panel fm-qr-strip">
+    <img class="fm-qr-preview" src="{{ url_qr_src or ('/assets/api/assets/' ~ asset.asset_id ~ '/qr.png') }}" width="132" height="132" alt="QR code for {{ asset.asset_id }}" onerror="this.onerror=null;this.src='/assets/tag/{{ asset.asset_id }}/qr.png'">
+    <div>
+      <h2>QR label</h2>
+      <p class="fm-muted">Print this sticker. A phone camera opens the full Kynvera asset page for <code>{{ asset.asset_id }}</code>{% if asset.qr_code %} · {{ asset.qr_code }}{% endif %}.</p>
+      <div class="fm-qr-actions">
+        <a class="fm-btn fm-btn-primary" href="/assets/tag/{{ asset.asset_id }}" target="_blank" rel="noopener">Preview</a>
+      </div>
+    </div>
+  </section>
 
   <section class="fm-detail-grid">
     <div class="fm-panel">

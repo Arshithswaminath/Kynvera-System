@@ -6,45 +6,133 @@
   <header class="fm-header">
     <div>
       <h1>QR / asset lookup</h1>
-      <p>Scan or enter an asset ID / QR code</p>
+      <p>Scan the asset QR — details appear on the camera</p>
     </div>
   </header>
   <section class="fm-panel">
-    <video id="qrVideo" playsinline style="width:100%;border-radius:10px;background:#111;max-height:280px;"></video>
+    <div class="fm-scan-stage">
+      <video id="qrVideo" playsinline style="width:100%;border-radius:10px;background:#111;max-height:320px;"></video>
+      <div id="scanOverlay" class="fm-scan-overlay" hidden>
+        <div class="fm-scan-card">
+          <p class="fm-scan-id" id="scanAssetId"></p>
+          <h2 id="scanAssetName"></h2>
+          <p class="fm-muted" id="scanAssetSub"></p>
+          <p id="scanAssetStatus"></p>
+          <dl class="fm-dl fm-scan-dl" id="scanAssetDl"></dl>
+          <div class="fm-scan-actions">
+            <button type="button" class="fm-btn fm-btn-primary" id="scanOpenBtn">Open full record</button>
+            <button type="button" class="fm-btn fm-btn-outline" id="scanAgainBtn">Scan another</button>
+          </div>
+        </div>
+      </div>
+    </div>
     <canvas id="qrCanvas" hidden></canvas>
     <p class="fm-muted" id="scanStatus" style="margin-top:8px;">Starting camera…</p>
     <label style="margin-top:12px;display:block;">Or enter code
       <input class="fm-input" id="manualCode" placeholder="AST-0001 or QR value">
     </label>
-    <button type="button" class="fm-btn fm-btn-primary" id="goBtn" style="margin-top:10px;">Open asset</button>
+    <button type="button" class="fm-btn fm-btn-primary" id="goBtn" style="margin-top:10px;">Look up</button>
   </section>
 
 {% set fm_scripts %}
 <script src="{{ url_for('static', filename='js/fm-mobile.js') }}"></script>
 <script>
-async function openAsset(code) {
-  code = (code || '').trim();
-  if (!code) return;
+function parseScannedAssetCode(raw) {
+  const code = String(raw || '').trim();
+  if (!code) return '';
+  const tag = code.match(/\/assets\/tag\/([^/?#]+)/i);
+  if (tag) {
+    try { return decodeURIComponent(tag[1]).trim(); } catch (_) { return tag[1].trim(); }
+  }
+  if (/^AST-\d+$/i.test(code)) return code.toUpperCase();
+  const ast = code.match(/AST-\d+/i);
+  if (ast) return ast[0].toUpperCase();
+  return code;
+}
+
+function esc(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (ch) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[ch]));
+}
+
+let scanPaused = false;
+let overlayAssetId = '';
+
+async function lookupAsset(code) {
+  code = parseScannedAssetCode(code);
+  if (!code) return null;
   let res = await fetch('/assets/api/assets/' + encodeURIComponent(code), {
     headers: fmAuthHeaders(),
   });
   if (res.ok) {
     const data = await res.json();
-    if (data.success) {
-      location.href = '/assets/' + encodeURIComponent(data.asset.asset_id);
-      return;
-    }
+    if (data.success && data.asset) return data.asset;
   }
   res = await fetch('/assets/api/assets?q=' + encodeURIComponent(code), {
     headers: fmAuthHeaders(),
   });
   const data = await res.json();
-  const hit = (data.assets || []).find(a => a.qr_code === code || a.asset_id === code) || (data.assets || [])[0];
-  if (hit) location.href = '/assets/' + encodeURIComponent(hit.asset_id);
-  else alert('Asset not found');
+  return (data.assets || []).find(a => a.qr_code === code || a.asset_id === code) || (data.assets || [])[0] || null;
+}
+
+function locationLine(asset) {
+  return [asset.building, asset.floor, asset.room].filter(Boolean).join(' / ');
+}
+
+function showOverlay(asset) {
+  scanPaused = true;
+  overlayAssetId = asset.asset_id;
+  document.getElementById('scanAssetId').textContent = asset.asset_id || '';
+  document.getElementById('scanAssetName').textContent = asset.name || 'Asset';
+  const loc = locationLine(asset);
+  document.getElementById('scanAssetSub').textContent =
+    [asset.asset_type || 'Equipment', loc].filter(Boolean).join(' · ');
+  const status = asset.status || 'active';
+  const health = asset.health_score != null ? ' · health ' + asset.health_score + '/100' : '';
+  document.getElementById('scanAssetStatus').innerHTML =
+    '<span class="fm-status fm-status-' + esc(status) + '">' + esc(status) + '</span>' + esc(health);
+  const rows = [
+    ['Manufacturer', asset.manufacturer],
+    ['Model', asset.model],
+    ['Serial', asset.serial_number],
+    ['Warranty', asset.warranty_expiry],
+    ['QR label', asset.qr_code],
+  ].filter(([, v]) => v);
+  document.getElementById('scanAssetDl').innerHTML = rows.map(([k, v]) =>
+    '<dt>' + esc(k) + '</dt><dd>' + esc(v) + '</dd>'
+  ).join('');
+  document.getElementById('scanOverlay').hidden = false;
+  document.getElementById('scanStatus').textContent = 'Asset found — review on the camera.';
+}
+
+function hideOverlay() {
+  document.getElementById('scanOverlay').hidden = true;
+  overlayAssetId = '';
+  scanPaused = false;
+  document.getElementById('scanStatus').textContent = 'Point at a QR code or enter manually.';
+}
+
+async function openAsset(code) {
+  try {
+    const asset = await lookupAsset(code);
+    if (!asset) {
+      scanPaused = false;
+      if (typeof fmNotify === 'function') fmNotify('Asset not found');
+      else document.getElementById('scanStatus').textContent = 'Asset not found';
+      return;
+    }
+    showOverlay(asset);
+  } catch (err) {
+    if (typeof fmNotify === 'function') fmNotify(err.message || 'Lookup failed');
+  }
 }
 
 document.getElementById('goBtn').addEventListener('click', () => openAsset(document.getElementById('manualCode').value));
+document.getElementById('scanOpenBtn').addEventListener('click', () => {
+  if (overlayAssetId) location.href = '/assets/' + encodeURIComponent(overlayAssetId);
+});
+document.getElementById('scanAgainBtn').addEventListener('click', hideOverlay);
 
 (async function startScan() {
   const status = document.getElementById('scanStatus');
@@ -62,10 +150,13 @@ document.getElementById('goBtn').addEventListener('click', () => openAsset(docum
       const detector = new BarcodeDetector({ formats: ['qr_code'] });
       const tick = async () => {
         try {
-          const codes = await detector.detect(video);
-          if (codes && codes[0]?.rawValue) {
-            stream.getTracks().forEach(t => t.stop());
-            return openAsset(codes[0].rawValue);
+          if (!scanPaused) {
+            const codes = await detector.detect(video);
+            if (codes && codes[0]?.rawValue) {
+              scanPaused = true;
+              await openAsset(codes[0].rawValue);
+              if (!overlayAssetId) scanPaused = false;
+            }
           }
         } catch (_) {}
         requestAnimationFrame(tick);

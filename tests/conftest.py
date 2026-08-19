@@ -19,6 +19,9 @@ def app():
     os.environ['DATABASE_URL'] = 'sqlite:///:memory:'
     os.environ['SECRET_KEY'] = 'test-secret-key-for-testing'
     os.environ['JWT_SECRET_KEY'] = 'test-jwt-secret-key-for-testing'
+    os.environ['ASSISTANT_LLM_ENABLED'] = 'false'
+    os.environ['ANTHROPIC_API_KEY'] = ''
+    os.environ['OPENAI_API_KEY'] = ''
     
     from Injaaz import create_app
     from app.models import db
@@ -30,6 +33,9 @@ def app():
         'WTF_CSRF_ENABLED': False,
         'JWT_SECRET_KEY': 'test-jwt-secret-key',
         'JWT_ACCESS_TOKEN_EXPIRES': False,  # No expiry for tests
+        'ASSISTANT_LLM_ENABLED': False,
+        'ANTHROPIC_API_KEY': '',
+        'OPENAI_API_KEY': '',
     })
     
     with app.app_context():

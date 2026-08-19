@@ -6,6 +6,18 @@ This app expects **PostgreSQL** in production via `DATABASE_URL` (`FLASK_ENV=pro
 
 ---
 
+## Admin UI
+
+Admins can open **Administration → Database** (`/admin/database`) on whichever website they are using.
+
+- The page always describes **this running app’s database** (laptop vs live). It does not connect to a second environment.
+- **Download a copy** saves a backup file to the browser. On a laptop it also writes under gitignored `backups/`.
+- Passwords and the full `DATABASE_URL` are never shown.
+
+This UI is a convenience, not a substitute for host backups (Render Postgres, OCI snapshots) or a pre-import `pg_dump` of live.
+
+---
+
 ## 1. Recommended organization
 
 Treat environments as **separate**, never point the local app at live `DATABASE_URL` during normal work.

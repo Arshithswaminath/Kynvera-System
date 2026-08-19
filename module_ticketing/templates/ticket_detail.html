@@ -11,8 +11,8 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=22">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/ticketing.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}?v=25">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/ticketing.css') }}?v=3">
   <style>
     body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; -webkit-font-smoothing: antialiased; }
     /* Narrower centered column so the page is not edge-to-edge on wide screens */
@@ -28,13 +28,69 @@
       body.tkt-detail-page .tkt-dh-main .tkt-content { max-width: none; align-self: stretch; }
     }
 
-    /* ── Header card (white, FacilityFlow style) ── */
-    .tkt-header-card { background: var(--tkt-surface); border: 1px solid var(--tkt-border); border-radius: var(--tkt-radius-lg); padding: 20px 24px; color: var(--tkt-text); margin-bottom: 20px; box-shadow: var(--tkt-shadow-xs); }
-    .tkt-header-id { font-size: .78rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--tkt-text-3); }
-    .tkt-header-title { font-size: 1.35rem; font-weight: 700; margin: 6px 0; line-height: 1.3; letter-spacing: -0.01em; color: var(--tkt-text); }
-    .tkt-header-meta { font-size: .8rem; color: var(--tkt-text-2); }
-    .tkt-header-badges { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
-    .tkt-header-badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px; border-radius: 999px; font-size: .74rem; font-weight: 600; text-transform: capitalize; }
+    /* ── Header card (compact) ── */
+    .tkt-header-card {
+      background: var(--tkt-surface);
+      border: 1px solid var(--tkt-border);
+      border-radius: var(--tkt-radius-lg);
+      padding: 14px 18px;
+      color: var(--tkt-text);
+      margin-bottom: 20px;
+      box-shadow: var(--tkt-shadow-xs);
+    }
+    .tkt-header-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .tkt-header-info { flex: 1; min-width: 0; }
+    .tkt-header-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin: 0 0 4px;
+      line-height: 1.3;
+      letter-spacing: -0.01em;
+      color: var(--tkt-text);
+    }
+    .tkt-header-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      font-size: .8rem;
+      color: var(--tkt-text-2);
+      line-height: 1.45;
+    }
+    .tkt-header-meta > span:not(:last-child)::after {
+      content: '·';
+      margin: 0 8px;
+      color: var(--tkt-text-3);
+      font-weight: 500;
+    }
+    .tkt-header-id {
+      font-size: .78rem;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--tkt-text-3);
+    }
+    .tkt-header-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+    .tkt-header-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: .72rem;
+      font-weight: 600;
+      line-height: 1.3;
+      white-space: nowrap;
+    }
+    .tkt-header-badge.hb-ai {
+      background: #fff7f2;
+      color: #c2410c;
+      border: 1px solid #ffcdb8;
+    }
     .hb-white { background: #eef0f3; color: #4b5563; }
     .hb-priority-critical { background: var(--pri-critical-bg); color: var(--pri-critical-fg); }
     .hb-priority-high     { background: var(--pri-high-bg);     color: var(--pri-high-fg); }
@@ -42,26 +98,220 @@
     .hb-priority-low      { background: var(--pri-low-bg);      color: var(--pri-low-fg); }
     .hb-charge { background: #fef3c7; color: #b45309; }
 
-    /* Header action buttons */
-    .tkt-header-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-    .tkt-hdr-btn {
-      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-      height: 42px; padding: 0 18px; border-radius: 11px;
-      font-size: .9rem; font-weight: 600; white-space: nowrap; cursor: pointer;
-      box-sizing: border-box; border: 1px solid transparent; text-decoration: none;
-      font-family: inherit;
-      transition: background .15s, border-color .15s, color .15s, transform .12s, box-shadow .15s;
+    /* ── Details tab: compact spec layout ── */
+    #tab-details > .tkt-card + .tkt-card { margin-top: 12px; }
+    #tab-details .tkt-card-header { padding: 10px 16px; }
+    #tab-details .tkt-card-header h3 { font-size: .92rem; }
+    .tkt-spec-body { padding: 12px 16px 14px; }
+    .tkt-spec-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px 20px;
     }
-    .tkt-hdr-btn:hover { transform: translateY(-1px); }
+    .tkt-spec-field { min-width: 0; }
+    .tkt-spec-field .k {
+      display: block;
+      font-size: 11px;
+      font-weight: 650;
+      color: var(--tkt-text-3);
+      margin-bottom: 3px;
+    }
+    .tkt-spec-field .v {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      font-weight: 550;
+      color: var(--tkt-text);
+      line-height: 1.4;
+      overflow-wrap: anywhere;
+    }
+    .tkt-spec-muted { color: #94a3b8; font-weight: 500; }
+    .tkt-spec-rule {
+      grid-column: 1 / -1;
+      height: 1px;
+      background: var(--tkt-border);
+      margin: 2px 0;
+    }
+    .tkt-spec-assets {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--tkt-border);
+    }
+    .tkt-spec-assets .k {
+      display: block;
+      font-size: 11px;
+      font-weight: 650;
+      color: var(--tkt-text-3);
+      margin-bottom: 8px;
+    }
+    .tkt-detail-asset-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .tkt-detail-asset-chip {
+      display: inline-flex;
+      flex-direction: row;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+      min-height: 44px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid #ffcdb8;
+      background: #fff7f2;
+      text-decoration: none;
+      max-width: 100%;
+      box-sizing: border-box;
+    }
+    .tkt-detail-asset-chip:hover { background: #fff; }
+    .tkt-detail-asset-chip .code {
+      font-size: .72rem;
+      font-weight: 700;
+      color: #c2410c;
+    }
+    .tkt-detail-asset-chip .name {
+      font-size: .82rem;
+      font-weight: 600;
+      color: #9a3412;
+      line-height: 1.3;
+    }
+    .tkt-detail-asset-chip .meta {
+      font-size: .72rem;
+      color: #b45309;
+    }
+    .tkt-spec-location {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px 16px;
+    }
+    .tkt-detail-ai-card {
+      margin-top: 12px;
+      border: 1px solid #ffcdb8;
+      background: #fff7f2;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .tkt-detail-ai-card > .tkt-card-header {
+      background: transparent;
+      border-bottom: 1px solid #ffcdb8;
+      padding: 8px 14px;
+    }
+    .tkt-detail-ai-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: #ff8e68;
+      color: #fff;
+      font-size: .68rem;
+      font-weight: 700;
+      letter-spacing: .03em;
+      text-transform: uppercase;
+    }
+    .tkt-detail-ai-decision {
+      font-size: .72rem;
+      font-weight: 650;
+      color: #c2410c;
+    }
+    .tkt-detail-ai-facts {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 0;
+      font-size: .84rem;
+      font-weight: 650;
+      color: #9a3412;
+      line-height: 1.4;
+    }
+    .tkt-detail-ai-facts > span:not(:last-child)::after {
+      content: '·';
+      margin: 0 8px;
+      color: #d97706;
+      font-weight: 500;
+    }
+    .tkt-detail-ai-reason {
+      margin: 8px 0 0;
+      font-size: .8rem;
+      color: #9a3412;
+      line-height: 1.45;
+    }
+    #tab-details .tkt-close-body { padding: 12px 16px; }
+    @media (max-width: 900px) {
+      .tkt-spec-location { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 768px) {
+      .tkt-spec-grid,
+      .tkt-spec-location { grid-template-columns: 1fr; }
+      .tkt-hdr-btn { min-height: 44px; height: 44px; }
+      .tkt-detail-asset-chip { min-height: 44px; }
+    }
+
+    /* Header action buttons — separate standalone pills */
+    .tkt-header-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .tkt-hdr-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      height: 38px;
+      padding: 0 14px;
+      border-radius: 10px;
+      font-size: .82rem;
+      font-weight: 650;
+      white-space: nowrap;
+      cursor: pointer;
+      box-sizing: border-box;
+      border: 1px solid transparent;
+      text-decoration: none;
+      font-family: inherit;
+      letter-spacing: -0.01em;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, .05);
+      transition: background .15s, border-color .15s, color .15s, box-shadow .15s, transform .12s;
+    }
+    .tkt-hdr-btn svg {
+      width: 15px;
+      height: 15px;
+      flex-shrink: 0;
+    }
+    .tkt-hdr-btn:hover { transform: translateY(-1px); box-shadow: 0 3px 8px rgba(15, 23, 42, .08); }
     .tkt-hdr-btn:active { transform: translateY(0); }
-    .tkt-hdr-btn--green { background: #16a34a; color: #fff; border: none; box-shadow: 0 2px 10px rgba(22,163,74,.3); }
+    .tkt-hdr-btn:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(255, 142, 104, .28);
+    }
+    .tkt-hdr-btn--green {
+      background: #16a34a;
+      color: #fff;
+      border-color: transparent;
+      box-shadow: 0 1px 6px rgba(22, 163, 74, .28);
+    }
     .tkt-hdr-btn--green:hover { background: #15803d; }
-    .tkt-hdr-btn--amber { background: #fff; color: #c2410c; border-color: #fdba74; }
-    .tkt-hdr-btn--amber:hover { background: #fff7ed; }
-    .tkt-hdr-btn--red { background: #fff; color: #b91c1c; border-color: #fecaca; }
-    .tkt-hdr-btn--red:hover { background: #fef2f2; }
-    .tkt-hdr-btn--outline { background: #fff; color: var(--tkt-text); border-color: var(--tkt-border-strong); box-shadow: 0 1px 2px rgba(15,23,42,.04); }
-    .tkt-hdr-btn--outline:hover { background: var(--tkt-surface-2); }
+    .tkt-hdr-btn--amber {
+      background: #fff7ed;
+      color: #9a3412;
+      border-color: #fdba74;
+    }
+    .tkt-hdr-btn--amber:hover { background: #ffedd5; border-color: #fb923c; }
+    .tkt-hdr-btn--red {
+      background: #fef2f2;
+      color: #991b1b;
+      border-color: #fca5a5;
+    }
+    .tkt-hdr-btn--red:hover { background: #fee2e2; border-color: #f87171; }
+    .tkt-hdr-btn--outline {
+      background: #fff;
+      color: #334155;
+      border-color: #cbd5e1;
+    }
+    .tkt-hdr-btn--outline:hover { background: #f8fafc; border-color: #94a3b8; }
 
     /* ── Stage progress ── */
     .stage-track { display: flex; align-items: center; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px 20px; overflow-x: auto; margin-bottom: 20px; gap: 0; }
@@ -198,29 +448,47 @@
       display: inline-flex; align-items: center; justify-content: center;
       font-size: .72rem; font-weight: 700; color: #fff; flex-shrink: 0;
     }
-    .tkt-vendor-avatar--co {
-      border-radius: 9px;
-      background: linear-gradient(135deg, #fff0ea, #ffe6db);
-      color: #c2440c;
-      font-size: .82rem;
+    .tkt-vendor-row-main {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
     }
-    .tkt-vendor-row-main { flex: 1; min-width: 0; }
     .tkt-vendor-row-name {
+      display: block;
+      width: 100%;
       font-size: .88rem; font-weight: 600; color: #1e293b;
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
-    .tkt-vendor-row-meta { font-size: .72rem; color: #64748b; margin-top: 1px; }
+    .tkt-vendor-row-meta {
+      display: block;
+      font-size: .72rem;
+      color: #64748b;
+      margin-top: 1px;
+      white-space: nowrap;
+    }
     .tkt-vendor-panel-head {
-      display: flex; align-items: center; gap: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 4px;
       margin-bottom: 10px;
     }
     .tkt-vendor-back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
       border: none; background: transparent; color: #c2440c;
-      font-size: .78rem; font-weight: 600; cursor: pointer; padding: 4px 0;
+      font-size: .78rem; font-weight: 600; cursor: pointer;
+      padding: 2px 0; min-height: 32px;
     }
     .tkt-vendor-panel-title {
-      font-size: .82rem; font-weight: 700; color: #c2440c; flex: 1; min-width: 0;
-      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      font-size: .88rem;
+      font-weight: 700;
+      color: #1e293b;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
     }
     .tkt-detail-sidebar-grid > .tkt-sidebar-span-full { grid-column: 1 / -1; }
     @media (max-width: 520px) {
@@ -248,10 +516,8 @@
     }
     #statusCard .tkt-status-help strong { color: #1e293b; font-weight: 700; }
     #statusCard .tkt-status-section-title {
-      font-size: .68rem;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: .07em;
+      font-size: .78rem;
+      font-weight: 650;
       color: #64748b;
       margin: 0 0 8px;
       line-height: 1.25;
@@ -293,6 +559,11 @@
       border-radius: 10px !important;
       gap: 8px !important;
       line-height: 1.25 !important;
+    }
+    #statusCard .tkt-status-pick-grid .status-btn[data-revoke]:hover:not(:disabled) {
+      background: #fef2f2 !important;
+      border-color: #fca5a5 !important;
+      color: #991b1b !important;
     }
     #statusCard .tkt-status-pick-grid .status-btn > span[style*="border-radius"] {
       width: 8px !important;
@@ -634,13 +905,107 @@
       border-color: #fde047;
     }
     .workflow-panel-title {
-      font-size: .92rem; font-weight: 800; text-transform: uppercase;
-      letter-spacing: .05em; margin: 0 0 12px; display: flex;
+      font-size: .92rem; font-weight: 700; letter-spacing: -0.01em;
+      margin: 0 0 12px; display: flex;
       align-items: center; gap: 8px;
     }
     .panel-supervisor .workflow-panel-title { color: #c2440c; }
     .panel-technician .workflow-panel-title { color: #15803d; }
     .panel-verification .workflow-panel-title { color: #854d0e; }
+
+    .tkt-detail-triage {
+      margin: 0 0 14px;
+      padding: 10px 12px;
+      border: 1px solid #fed7aa;
+      border-radius: 10px;
+      background: #fff7ed;
+    }
+    .tkt-detail-triage-head {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px 10px;
+    }
+    .tkt-detail-triage-head strong {
+      font-size: .82rem;
+      font-weight: 700;
+      color: #c2440c;
+      margin-right: 2px;
+    }
+    .tkt-detail-triage-btns {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .tkt-detail-triage-agreed {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: #dcfce7;
+      color: #15803d;
+      font-size: .72rem;
+      font-weight: 650;
+    }
+    #detailTriageActions { display: contents; }
+    #detailTriageActions[hidden],
+    #detailTriageResult[hidden] { display: none !important; }
+    #detailTriageResult {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid #fed7aa;
+      font-size: .82rem;
+      color: #9a3412;
+      line-height: 1.45;
+    }
+    .tkt-detail-triage-note {
+      margin: 6px 0 0;
+      font-size: .75rem;
+      color: #b45309;
+    }
+    .tkt-assign-paths {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin: 0 0 14px;
+    }
+    .tkt-assign-path {
+      appearance: none;
+      border: 1.5px solid #fed7aa;
+      background: #fff;
+      border-radius: 12px;
+      padding: 11px 12px;
+      cursor: pointer;
+      text-align: left;
+      font: inherit;
+      transition: background .12s, border-color .12s, box-shadow .12s;
+    }
+    .tkt-assign-path:hover { background: #fff7ed; }
+    .tkt-assign-path.is-active {
+      background: #fff7ed;
+      border-color: #f97e54;
+      box-shadow: 0 0 0 3px rgba(249, 126, 84, 0.16);
+    }
+    .tkt-assign-path strong {
+      display: block;
+      font-size: .88rem;
+      font-weight: 700;
+      color: #9a3412;
+    }
+    .tkt-assign-path span {
+      display: block;
+      margin-top: 2px;
+      font-size: .75rem;
+      color: #64748b;
+      line-height: 1.35;
+    }
+    .tkt-assign-empty {
+      margin: 0;
+      font-size: .84rem;
+      color: #9a3412;
+      line-height: 1.45;
+    }
 
     /* ── Markup selector ── */
     .markup-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 10px 0; }
@@ -783,6 +1148,15 @@
       outline: none;
       box-shadow: 0 0 0 3px rgba(255, 142, 104, 0.35);
     }
+    body.tkt-detail-page button.status-btn[data-revoke] .tkt-status-revoke-lbl { display: none; }
+    body.tkt-detail-page button.status-btn[data-revoke]:hover .tkt-status-lbl { display: none; }
+    body.tkt-detail-page button.status-btn[data-revoke]:hover .tkt-status-revoke-lbl { display: inline; }
+    body.tkt-detail-page button.status-btn[data-revoke]:hover:not(:disabled) {
+      background: #fef2f2 !important;
+      border-color: #fca5a5 !important;
+      color: #991b1b !important;
+      box-shadow: 0 2px 10px rgba(220, 38, 38, 0.12);
+    }
   </style>
 </head>
 <body class="tkt-dh-page tkt-detail-page has-main-nav">
@@ -807,20 +1181,24 @@
 
     <!-- ── Header card ── -->
     <div class="tkt-header-card">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-        <div style="flex:1;">
-          <div class="tkt-header-id">{{ ticket.ticket_id }}</div>
+      <div class="tkt-header-row">
+        <div class="tkt-header-info">
           <div class="tkt-header-title">{{ ticket.title }}</div>
           <div class="tkt-header-meta">
-            {{ ticket.project }} &nbsp;·&nbsp; {{ ticket.service_group }}
-            {% if ticket.created_at %}&nbsp;·&nbsp; {{ ticket.created_at|tkt_datetime('%d %b %Y') }}{% endif %}
-            {% if ticket.supervisor %}&nbsp;·&nbsp; Supervisor: {{ ticket.supervisor.full_name }}{% endif %}
-            {% if ticket.technician %}&nbsp;·&nbsp; Technician: {{ ticket.technician.full_name }}{% endif %}
+            <span class="tkt-header-id">{{ ticket.ticket_id }}</span>
+            {% if ticket.project %}<span>{{ ticket.project }}</span>{% endif %}
+            {% if ticket.service_group %}<span>{{ ticket.service_group }}</span>{% endif %}
+            {% if ticket.created_at %}<span>{{ ticket.created_at|tkt_datetime('%d %b %Y') }}</span>{% endif %}
+            {% if ticket.supervisor %}<span>Supervisor: {{ ticket.supervisor.full_name }}</span>{% endif %}
+            {% if ticket.technician %}<span>Technician: {{ ticket.technician.full_name }}</span>{% endif %}
           </div>
           <div class="tkt-header-badges">
             <span class="tkt-header-badge hb-priority-{{ ticket.priority }}">{{ ticket.priority }}</span>
             <span class="tkt-header-badge hb-white" id="headerStatus">{{ ticket.status|tkt_status_label }}</span>
             <span class="tkt-header-badge hb-white">{{ ticket.category }}</span>
+            {% if create_triage %}
+            <span class="tkt-header-badge hb-ai" title="Priority / SLA / parts came from AI triage at create">AI suggestion</span>
+            {% endif %}
           </div>
         </div>
         <div class="tkt-header-actions">
@@ -948,19 +1326,15 @@
         <!-- Tab bar -->
         <div class="detail-tabs">
           <button class="detail-tab active" data-tab="activity">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z"/></svg>
             Activity <span class="tab-badge">{{ notes|length }}</span>
           </button>
           <button class="detail-tab" data-tab="details">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z"/></svg>
             Details
           </button>
           <button class="detail-tab" data-tab="images">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"/></svg>
             Photos <span class="tab-badge">{{ images|length }}</span>
           </button>
           <button class="detail-tab" data-tab="costs">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
             Costs
             {% if (mp_total + mat_total) > 0 %}
             <span class="tab-badge">AED {{ '%.0f'|format(mp_total + mat_total) }}</span>
@@ -1009,60 +1383,95 @@
              WORKFLOW PANELS — one per active stage
              ════════════════════════════════════════════════════ #}
 
-          {# ─ STAGE 1: Open (supervisor queue) ─ #}
-          {% if ticket.status == 'open' and user_is_supervisor %}
+          {# ─ STAGE 1: Open / supervisor queue — assign to team or vendor ─ #}
+          {% set show_assign_panel = ticket.status in ('open', 'pending_supervisor') and user_is_supervisor %}
+          {% if show_assign_panel %}
           <div class="workflow-panel panel-supervisor">
-            <div class="workflow-panel-title">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"/></svg>
-              Assign Technician
-            </div>
-            <p style="font-size:.86rem;color:#c2440c;margin:0 0 14px;">Select a technician from your <strong>vendor team</strong>. The ticket moves to <strong>Assigned</strong> and they will be notified.</p>
-            <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
-              <div style="flex:1;min-width:200px;">
-                <label style="font-size:.82rem;font-weight:600;color:#c2440c;display:block;margin-bottom:4px;">Technician</label>
-                <select class="tkt-select" id="techAssignSelect">
-                  <option value="">— Select technician —</option>
-                  {% for w in worker_pick_list %}
-                  <option value="{% if w.user_id %}u-{{ w.user_id }}{% else %}d-{{ w.code }}{% endif %}"
-                          data-user-id="{{ w.user_id if w.user_id else '' }}" data-demo="{% if w.user_id %}0{% else %}1{% endif %}"
-                          data-name="{{ w.name }}" data-code="{{ w.code }}">{{ w.name }} ({{ w.speciality }})</option>
-                  {% endfor %}
-                </select>
+            <div class="workflow-panel-title">Assign work</div>
+            <p style="font-size:.86rem;color:#c2440c;margin:0 0 14px;">This ticket is with the <strong>project supervisor</strong>. Assign it to your team, or send it to a vendor.</p>
+            <div class="tkt-detail-triage{% if create_triage %} is-agreed{% endif %}" id="detailAiTriage">
+              <div class="tkt-detail-triage-head">
+                <strong>AI triage</strong>
+                {% if create_triage %}
+                <span class="tkt-detail-triage-agreed">{% if create_triage.decision == 'overridden' %}Updated at create{% else %}Agreed at create{% endif %}</span>
+                {% else %}
+                <div class="tkt-detail-triage-btns">
+                  <button type="button" class="tkt-btn tkt-btn-outline tkt-btn-sm" id="detailTriageBtn">Get suggestion</button>
+                  <span id="detailTriageActions" hidden>
+                    <button type="button" class="tkt-btn tkt-btn-primary tkt-btn-sm" id="detailTriageAccept">Accept priority / SLA</button>
+                  </span>
+                </div>
+                {% endif %}
               </div>
-              <button class="tkt-btn tkt-btn-primary tkt-btn-sm" id="assignTechBtn">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
-                Assign Technician
+              {% if create_triage %}
+              <div id="detailTriageResult">
+                <strong>{{ triage_accepted.get('priority') or triage_suggested.get('priority') or ticket.priority }}</strong>
+                · SLA {% set sla_v = triage_accepted.get('sla_hours') if triage_accepted.get('sla_hours') is not none else triage_suggested.get('sla_hours') %}{% if sla_v is not none %}{{ sla_v }}h{% elif ticket.sla_hours %}{{ ticket.sla_hours }}h{% else %}—{% endif %}
+                · Tech: {{ triage_tech_name or '—' }}
+                · Parts: {% if triage_parts %}{{ triage_parts|join(', ') }}{% else %}none{% endif %}
+                {% if triage_suggested.get('reasoning') %}
+                <div style="margin-top:4px;">{{ triage_suggested.get('reasoning') }}</div>
+                {% endif %}
+                <p class="tkt-detail-triage-note">Priority and SLA were accepted when this ticket was created. Choose a team member or vendor below.</p>
+              </div>
+              {% else %}
+              <div id="detailTriageResult" hidden></div>
+              {% endif %}
+            </div>
+            <div class="tkt-assign-paths" role="tablist" aria-label="Assignment path">
+              <button type="button" class="tkt-assign-path is-active" data-assign-path="team" aria-selected="true">
+                <strong>My team</strong>
+                <span>Assign someone from your crew</span>
+              </button>
+              <button type="button" class="tkt-assign-path" data-assign-path="vendor" aria-selected="false">
+                <strong>Vendor</strong>
+                <span>Send this work to a vendor company</span>
               </button>
             </div>
-          </div>
-          {% endif %}
-
-          {# Legacy: pending_supervisor queue view #}
-          {% if ticket.status == 'pending_supervisor' and user_is_supervisor %}
-          <div class="workflow-panel panel-supervisor">
-            <div class="workflow-panel-title">Assign Technician</div>
-            <div id="detailAiTriage" style="margin-bottom:14px;padding:12px;border:1px solid #fed7aa;border-radius:8px;background:#fff7ed;">
-              <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center;">
-                <strong style="font-size:.86rem;color:#c2440c;">AI triage</strong>
-                <button type="button" class="tkt-btn tkt-btn-outline tkt-btn-sm" id="detailTriageBtn">Get suggestion</button>
+            <div id="assignPathTeam">
+              {% if supervisor_own_team %}
+              <div class="tkt-vendor-tech-list" id="assignTeamList">
+                {% for w in supervisor_own_team %}
+                <button type="button" class="tkt-vendor-row tkt-team-assign-row"
+                        data-user-id="{{ w.user_id or '' }}"
+                        data-name="{{ w.name | e }}"
+                        data-code="{{ w.code | e }}"
+                        data-demo="{% if w.user_id %}0{% else %}1{% endif %}">
+                  <span class="tkt-vendor-avatar" aria-hidden="true">{{ (w.name or '?')[:1] | upper }}</span>
+                  <span class="tkt-vendor-row-main">
+                    <span class="tkt-vendor-row-name">{{ w.name }}</span>
+                    <span class="tkt-vendor-row-meta">{{ w.speciality or 'Technician' }}</span>
+                  </span>
+                </button>
+                {% endfor %}
               </div>
-              <div id="detailTriageResult" hidden style="margin-top:8px;font-size:.84rem;"></div>
-              <div id="detailTriageActions" hidden style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">
-                <button type="button" class="tkt-btn tkt-btn-primary tkt-btn-sm" id="detailTriageAccept">Accept priority / SLA</button>
-              </div>
+              {% else %}
+              <p class="tkt-assign-empty">No team members yet. Add technicians to this supervisor’s team in settings, then assign from here.</p>
+              {% endif %}
             </div>
-            <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
-              <div style="flex:1;min-width:200px;">
-                <select class="tkt-select" id="techAssignSelect">
-                  <option value="">— Select technician —</option>
-                  {% for w in worker_pick_list %}
-                  <option value="{% if w.user_id %}u-{{ w.user_id }}{% else %}d-{{ w.code }}{% endif %}"
-                          data-user-id="{{ w.user_id if w.user_id else '' }}" data-demo="{% if w.user_id %}0{% else %}1{% endif %}"
-                          data-name="{{ w.name }}" data-code="{{ w.code }}">{{ w.name }} ({{ w.speciality }})</option>
-                  {% endfor %}
-                </select>
+            <div id="assignPathVendor" hidden>
+              <div id="vendorCompanyList" class="tkt-vendor-company-list" aria-label="Vendor companies">
+                {% for co in vendor_companies %}
+                <button type="button" class="tkt-vendor-row tkt-vendor-company-row" data-vendor-id="{{ co.id }}" data-vendor-name="{{ co.name | e }}">
+                  <span class="tkt-vendor-row-main">
+                    <span class="tkt-vendor-row-name">{{ co.name }}</span>
+                    <span class="tkt-vendor-row-meta">{{ co.technicians | length }} user{% if co.technicians | length != 1 %}s{% endif %}</span>
+                  </span>
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="#94a3b8" width="12" height="12" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
+                </button>
+                {% endfor %}
               </div>
-              <button class="tkt-btn tkt-btn-primary tkt-btn-sm" id="assignTechBtn">Assign &amp; Start</button>
+              <div id="vendorTeamPanel" style="display:none;">
+                <div class="tkt-vendor-panel-head">
+                  <button type="button" class="tkt-vendor-back-btn" id="vendorTeamBack">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" width="14" height="14" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/></svg>
+                    Back to companies
+                  </button>
+                  <span class="tkt-vendor-panel-title" id="vendorTeamCompanyTitle"></span>
+                </div>
+                <div id="vendorTechnicianList" class="tkt-vendor-tech-list" aria-label="Vendor technicians"></div>
+              </div>
+              <script type="application/json" id="vendorCompaniesJson">{{ vendor_companies | tojson }}</script>
             </div>
           </div>
           {% endif %}
@@ -1070,10 +1479,7 @@
           {# ─ STAGE 2: Assigned — technician advances to Site Attended ─ #}
           {% if ticket.status == 'assigned' and (user.id == ticket.technician_id or user.id == ticket.assigned_to_id or ticketing_sees_all or user_is_supervisor) %}
           <div class="workflow-panel panel-advance">
-            <div class="workflow-panel-title">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z"/></svg>
-              Confirm Site Visit
-            </div>
+            <div class="workflow-panel-title">Confirm Site Visit</div>
             <p style="font-size:.86rem;color:#15803d;margin:0 0 12px;">Once you have arrived at the site, confirm your visit. The ticket will advance to <strong>Site Attended</strong>.</p>
             <button class="tkt-btn tkt-btn-sm tkt-btn-advance" data-next="site_attended">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
@@ -1085,10 +1491,7 @@
           {# ─ STAGE 3: Site Attended — advance to Work Started ─ #}
           {% if ticket.status == 'site_attended' and (user.id == ticket.technician_id or user.id == ticket.assigned_to_id or ticketing_sees_all or user_is_supervisor) %}
           <div class="workflow-panel panel-advance">
-            <div class="workflow-panel-title">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17 17.25 21A2.652 2.652 0 0 0 21 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 1 1-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 0 0 4.486-6.336l-3.276 3.277a3.004 3.004 0 0 1-2.25-2.25l3.276-3.276a4.5 4.5 0 0 0-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085m-1.745 1.437L5.909 7.5H4.5L2.25 3.75l1.5-1.5L7.5 4.5v1.409l4.26 4.26m-1.745 1.437 1.745-1.437m6.615 8.206L15.75 15.75M4.867 19.125h.008v.008h-.008v-.008Z"/></svg>
-              Start Work
-            </div>
+            <div class="workflow-panel-title">Start Work</div>
             <p style="font-size:.86rem;color:#15803d;margin:0 0 12px;">Log any initial findings then mark work as started. Add manpower and materials in the Costs tab.</p>
             <button class="tkt-btn tkt-btn-sm tkt-btn-advance" data-next="work_started">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" width="13" height="13"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z"/></svg>
@@ -1100,10 +1503,7 @@
           {# ─ STAGE 4: Work Started — advance to Work Completed ─ #}
           {% if ticket.status in ('work_started', 'in_progress', 'pending_parts') and (user.id == ticket.technician_id or user.id == ticket.assigned_to_id or ticketing_sees_all or (user_is_supervisor and ticket.supervisor_id == user.id and not ticket.technician_id)) %}
           <div class="workflow-panel panel-technician">
-            <div class="workflow-panel-title">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
-              Mark Work Completed
-            </div>
+            <div class="workflow-panel-title">Mark Work Completed</div>
             <p style="font-size:.86rem;color:#15803d;margin:0 0 12px;">Once all work is done, mark it completed. The supervisor will verify and close the ticket. Make sure all costs are logged in the <strong>Costs</strong> tab.</p>
             <div class="tkt-field" style="margin-bottom:12px;">
               <label style="font-size:.82rem;font-weight:600;color:#15803d;display:block;margin-bottom:4px;">Completion Notes <span style="font-weight:400;color:#64748b;">(optional)</span></label>
@@ -1119,10 +1519,7 @@
           {# ─ STAGE 5: Work Completed — supervisor starts verification ─ #}
           {% if ticket.status == 'work_completed' and (user_is_supervisor or ticketing_sees_all) %}
           <div class="workflow-panel panel-verification">
-            <div class="workflow-panel-title">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
-              Work Completed — Begin Verification
-            </div>
+            <div class="workflow-panel-title">Work Completed — Begin Verification</div>
             {% if ticket.technician_resolution_notes %}
             <div style="background:#fff;border-radius:8px;padding:10px 14px;margin-bottom:12px;border:1px solid #fde047;">
               <div style="font-size:.78rem;font-weight:700;color:#854d0e;margin-bottom:4px;">Technician Completion Notes:</div>
@@ -1149,10 +1546,7 @@
           {# ─ STAGE 6: Verification — supervisor reviews cost then closes ─ #}
           {% if ticket.status in ('verification', 'pending_verification') and (user_is_supervisor or ticketing_sees_all) %}
           <div class="workflow-panel panel-verification">
-            <div class="workflow-panel-title">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
-              Under Verification
-            </div>
+            <div class="workflow-panel-title">Under Verification</div>
             {% if ticket.technician_resolution_notes %}
             <div style="background:#fff;border-radius:8px;padding:10px 14px;margin-bottom:12px;border:1px solid #fde047;">
               <div style="font-size:.78rem;font-weight:700;color:#854d0e;margin-bottom:4px;">Technician Report:</div>
@@ -1178,10 +1572,7 @@
           {# ─ STAGE 7: Provider Closed — awaiting Ops (client operations) final approval ─ #}
           {% if ticket.status == 'provider_closed' %}
           <div class="workflow-panel panel-verification">
-            <div class="workflow-panel-title">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
-              Provider Verified — Pending Operations Approval
-            </div>
+            <div class="workflow-panel-title">Provider Verified — Pending Operations Approval</div>
             <div style="background:#fff7e0;border-radius:8px;padding:12px 14px;margin-bottom:12px;">
               <div style="font-size:.82rem;font-weight:700;color:#92400e;margin-bottom:6px;">Cost Summary (Stage 1 — Provider)</div>
               <div style="display:flex;gap:20px;flex-wrap:wrap;font-size:.86rem;">
@@ -1205,7 +1596,7 @@
           {# ─ CLOSED — final pricing summary ─ #}
           {% if ticket.status == 'closed' %}
           <div style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1.5px solid #86efac;border-radius:12px;padding:14px 18px;margin-bottom:16px;">
-            <div style="font-size:.82rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#15803d;margin-bottom:8px;">✓ Work Order Closed</div>
+            <div style="font-size:.82rem;font-weight:700;color:#15803d;margin-bottom:8px;">✓ Work Order Closed</div>
             <div style="display:flex;gap:24px;flex-wrap:wrap;">
               <div><div style="font-size:.74rem;color:#64748b;">Actual Price</div><div style="font-size:1rem;font-weight:700;color:#c2440c;">AED {{ '%.2f'|format(ticket.actual_price or 0) }}</div></div>
               {% if ticket.markup_pct %}<div><div style="font-size:.74rem;color:#64748b;">Markup Applied</div><div style="font-size:1rem;font-weight:700;color:#7c3aed;">{{ ticket.markup_pct|int }}%</div></div>{% endif %}
@@ -1238,6 +1629,14 @@
                   <div class="tkt-note-dot {{ note.note_type }}"></div>
                   <div class="tkt-note-meta">
                     <strong>{{ note.author.full_name if note.author else 'System' }}</strong>
+                    {% if note.author %}
+                      {% set _des = (note.author.designation or '')|trim %}
+                      {% if _des %}
+                      <span class="tkt-note-role">{{ _des.replace('_', ' ')|title }}</span>
+                      {% elif (note.author.role or '') == 'admin' %}
+                      <span class="tkt-note-role">Admin</span>
+                      {% endif %}
+                    {% endif %}
                     <span>{{ note.created_at|tkt_datetime('%d %b %Y, %H:%M') }}</span>
                   </div>
                   <div class="tkt-note-body{% if note.note_type == 'status_change' %} system{% elif note.note_type == 'assignment' %} note-assignment{% endif %}">{{ note.content }}</div>
@@ -1263,65 +1662,165 @@
         <div class="tab-panel" id="tab-details">
           <div class="tkt-card">
             <div class="tkt-card-header"><h3>Ticket Details</h3></div>
-            <div class="tkt-card-body" style="padding:8px 16px;">
-              <table class="tkt-kv-table" style="width:100%;">
-                <tr><td>Ticket ID</td><td><strong>{{ ticket.ticket_id }}</strong></td></tr>
-                <tr><td>Project</td><td>{{ ticket.project }}</td></tr>
-                <tr><td>Service Group</td><td>{{ ticket.service_group }}</td></tr>
-                <tr><td>Category</td><td>{{ ticket.category }}</td></tr>
-                <tr><td>Fault Type</td><td>{{ ticket.fault_type }}</td></tr>
-                <tr><td>Priority</td><td><span class="tkt-badge badge-priority-{{ ticket.priority }}">{{ ticket.priority|capitalize }}</span></td></tr>
-                <tr><td>SLA</td><td>
-                  {% if ticket.sla_hours %}
-                    {{ ticket.sla_hours }} hours
-                    <span id="slaCountdown" class="tkt-badge" style="margin-left:8px;"
-                          data-sla="{{ ticket.sla_hours }}"
-                          data-created="{{ ticket.created_at.isoformat() if ticket.created_at else '' }}"
-                          data-status="{{ ticket.status }}">…</span>
-                  {% else %}—{% endif %}
-                </td></tr>
-                <tr><td>FM Asset{% if ticket.linked_assets_list()|length > 1 %}s{% endif %}</td><td>
-                  {% set linked = ticket.linked_assets_list() %}
-                  {% if linked %}
-                    <div style="display:flex;flex-direction:column;gap:4px;">
-                      {% for a in linked %}
-                        <a href="/assets/{{ a.asset_id }}">{{ a.asset_id }} — {{ a.name }}</a>
-                      {% endfor %}
-                    </div>
-                  {% else %}—{% endif %}
-                </td></tr>
-                <tr><td>Status</td><td><span class="tkt-badge badge-status-{{ ticket.status }}" id="sidebarStatus">{{ ticket.status|tkt_status_label }}</span></td></tr>
-                <tr><td>Reporter</td><td>{{ ticket.reporter.full_name if ticket.reporter else '—' }}</td></tr>
-                <tr><td>Supervisor</td><td>{{ ticket.supervisor.full_name if ticket.supervisor else '<span style="color:#94a3b8;">Not assigned</span>'|safe }}</td></tr>
-                <tr><td>Technician</td><td>{{ ticket.technician.full_name if ticket.technician else '<span style="color:#94a3b8;">Not assigned</span>'|safe }}</td></tr>
-                <tr><td>Created</td><td>{% if ticket.created_at %}{{ ticket.created_at|tkt_datetime('%d %b %Y %H:%M') }}{% else %}—{% endif %}</td></tr>
-                {% if ticket.resolved_at %}<tr><td>Completed</td><td>{{ ticket.resolved_at|tkt_datetime('%d %b %Y %H:%M') }}</td></tr>{% endif %}
-                {% if ticket.closed_at %}<tr><td>Closed</td><td>{{ ticket.closed_at|tkt_datetime('%d %b %Y %H:%M') }}</td></tr>{% endif %}
-              </table>
+            <div class="tkt-card-body tkt-spec-body">
+              <div class="tkt-spec-grid">
+                <div class="tkt-spec-field">
+                  <span class="k">Project</span>
+                  <span class="v">{{ ticket.project or '—' }}</span>
+                </div>
+                <div class="tkt-spec-field">
+                  <span class="k">Service Group</span>
+                  <span class="v">{{ ticket.service_group or '—' }}</span>
+                </div>
+                <div class="tkt-spec-field">
+                  <span class="k">Category</span>
+                  <span class="v">{{ ticket.category or '—' }}</span>
+                </div>
+                <div class="tkt-spec-field">
+                  <span class="k">Fault Type</span>
+                  <span class="v">{{ ticket.fault_type or '—' }}</span>
+                </div>
+                <div class="tkt-spec-rule" role="presentation"></div>
+                <div class="tkt-spec-field">
+                  <span class="k">Priority</span>
+                  <span class="v">
+                    <span class="tkt-badge badge-priority-{{ ticket.priority }}">{{ ticket.priority|capitalize }}</span>
+                    {% if create_triage %}<span class="tkt-detail-ai-badge">AI</span>{% endif %}
+                  </span>
+                </div>
+                <div class="tkt-spec-field">
+                  <span class="k">SLA</span>
+                  <span class="v">
+                    {% if ticket.sla_hours %}
+                      {{ ticket.sla_hours }} hours
+                      <span id="slaCountdown" class="tkt-badge"
+                            data-sla="{{ ticket.sla_hours }}"
+                            data-created="{{ ticket.created_at.isoformat() if ticket.created_at else '' }}"
+                            data-status="{{ ticket.status }}">…</span>
+                      {% if create_triage %}<span class="tkt-detail-ai-badge">AI</span>{% endif %}
+                    {% else %}—{% endif %}
+                  </span>
+                </div>
+                <div class="tkt-spec-field">
+                  <span class="k">Status</span>
+                  <span class="v"><span class="tkt-badge badge-status-{{ ticket.status }}" id="sidebarStatus">{{ ticket.status|tkt_status_label }}</span></span>
+                </div>
+                <div class="tkt-spec-field">
+                  <span class="k">Billing</span>
+                  <span class="v">
+                    {% if ticket.is_chargeable %}
+                      Chargeable{% if ticket.projected_cost is not none %} · AED {{ '%.2f'|format(ticket.projected_cost) }}{% endif %}
+                    {% else %}
+                      Not chargeable
+                    {% endif %}
+                  </span>
+                </div>
+                <div class="tkt-spec-rule" role="presentation"></div>
+                <div class="tkt-spec-field">
+                  <span class="k">Reporter</span>
+                  <span class="v">{{ ticket.reporter.full_name if ticket.reporter else '—' }}</span>
+                </div>
+                <div class="tkt-spec-field">
+                  <span class="k">Supervisor</span>
+                  <span class="v">{% if ticket.supervisor %}{{ ticket.supervisor.full_name }}{% else %}<span class="tkt-spec-muted">Not assigned</span>{% endif %}</span>
+                </div>
+                <div class="tkt-spec-field">
+                  <span class="k">Technician</span>
+                  <span class="v">{% if ticket.technician %}{{ ticket.technician.full_name }}{% else %}<span class="tkt-spec-muted">Not assigned</span>{% endif %}</span>
+                </div>
+                <div class="tkt-spec-field">
+                  <span class="k">Created</span>
+                  <span class="v">{% if ticket.created_at %}{{ ticket.created_at|tkt_datetime('%d %b %Y %H:%M') }}{% else %}—{% endif %}</span>
+                </div>
+                {% if ticket.resolved_at %}
+                <div class="tkt-spec-field">
+                  <span class="k">Completed</span>
+                  <span class="v">{{ ticket.resolved_at|tkt_datetime('%d %b %Y %H:%M') }}</span>
+                </div>
+                {% endif %}
+                {% if ticket.closed_at %}
+                <div class="tkt-spec-field">
+                  <span class="k">Closed</span>
+                  <span class="v">{{ ticket.closed_at|tkt_datetime('%d %b %Y %H:%M') }}</span>
+                </div>
+                {% endif %}
+              </div>
+              {% set linked = ticket.linked_assets_list() %}
+              <div class="tkt-spec-assets">
+                <span class="k">FM Asset{% if linked|length != 1 %}s{% endif %}</span>
+                {% if linked %}
+                <div class="tkt-detail-asset-list">
+                  {% for a in linked %}
+                    <a class="tkt-detail-asset-chip" href="/assets/{{ a.asset_id }}">
+                      <span class="code">{{ a.asset_id }}</span>
+                      <span class="name">{{ a.name }}</span>
+                      {% if a.building %}<span class="meta">· {{ a.building }}{% if a.floor %} · {{ a.floor }}{% endif %}</span>{% endif %}
+                    </a>
+                  {% endfor %}
+                </div>
+                {% else %}
+                <span class="tkt-spec-muted">—</span>
+                {% endif %}
+              </div>
             </div>
           </div>
 
+          {% if create_triage %}
+          <div class="tkt-card tkt-detail-ai-card">
+            <div class="tkt-card-header">
+              <h3>
+                <span class="tkt-detail-ai-badge">AI</span>
+                AI at create
+              </h3>
+              <span class="tkt-detail-ai-decision">{{ create_triage.decision|capitalize }}</span>
+            </div>
+            <div class="tkt-card-body tkt-spec-body">
+              <div class="tkt-detail-ai-facts">
+                <span>{{ triage_accepted.get('priority') or triage_suggested.get('priority') or ticket.priority }}</span>
+                <span>{% set sla_v = triage_accepted.get('sla_hours') if triage_accepted.get('sla_hours') is not none else triage_suggested.get('sla_hours') %}{% if sla_v is not none %}{{ sla_v }}h{% elif ticket.sla_hours %}{{ ticket.sla_hours }}h{% else %}—{% endif %}</span>
+                <span>{{ triage_tech_name or '—' }}</span>
+                <span>{% if triage_parts %}{{ triage_parts|join(', ') }}{% else %}—{% endif %}</span>
+              </div>
+              {% if triage_suggested.get('reasoning') %}
+              <p class="tkt-detail-ai-reason">{{ triage_suggested.get('reasoning') }}</p>
+              {% endif %}
+            </div>
+          </div>
+          {% endif %}
+
           {% if ticket.property_name or ticket.zone or ticket.sub_zone or ticket.base_unit %}
-          <div class="tkt-card" style="margin-top:16px;">
+          <div class="tkt-card">
             <div class="tkt-card-header"><h3>Location</h3></div>
-            <div class="tkt-card-body" style="padding:8px 16px;">
-              <table class="tkt-kv-table" style="width:100%;">
-                {% if ticket.property_name %}<tr><td>Property</td><td>{{ ticket.property_name }}</td></tr>{% endif %}
-                {% if ticket.zone %}<tr><td>Zone</td><td>{{ ticket.zone }}</td></tr>{% endif %}
-                {% if ticket.sub_zone %}<tr><td>Sub Zone</td><td>{{ ticket.sub_zone }}</td></tr>{% endif %}
-                {% if ticket.base_unit %}<tr><td>Base Unit</td><td>{{ ticket.base_unit }}</td></tr>{% endif %}
-              </table>
+            <div class="tkt-card-body tkt-spec-body">
+              <div class="tkt-spec-location">
+                <div class="tkt-spec-field">
+                  <span class="k">Property</span>
+                  <span class="v">{{ ticket.property_name or '—' }}</span>
+                </div>
+                <div class="tkt-spec-field">
+                  <span class="k">Zone</span>
+                  <span class="v">{{ ticket.zone or '—' }}</span>
+                </div>
+                <div class="tkt-spec-field">
+                  <span class="k">Sub Zone</span>
+                  <span class="v">{{ ticket.sub_zone or '—' }}</span>
+                </div>
+                <div class="tkt-spec-field">
+                  <span class="k">Base Unit</span>
+                  <span class="v">{{ ticket.base_unit or '—' }}</span>
+                </div>
+              </div>
             </div>
           </div>
           {% endif %}
 
           {% if ticket.status == 'closed' and ticket.close_signature %}
-          <div class="tkt-card" style="margin-top:16px;">
+          <div class="tkt-card">
             <div class="tkt-card-header">
               <h3>Closure Sign-off</h3>
               <span class="tkt-badge badge-status-closed">{% if ticket.closed_at %}{{ ticket.closed_at|tkt_datetime('%d %b %Y') }}{% else %}Closed{% endif %}</span>
             </div>
-            <div class="tkt-card-body">
+            <div class="tkt-card-body tkt-close-body">
               <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start;">
                 <div>
                   <p style="font-size:.78rem;color:#64748b;margin:0 0 6px;">Signature</p>
@@ -1467,7 +1966,7 @@
               {% elif ticket.status not in ('closed', 'pending_verification', 'provider_closed') %}
               <!-- Custom material entry form (collapsed by default) -->
               <div class="tkt-inline-form" id="matForm">
-                <div style="font-size:.78rem;font-weight:700;color:#64748b;margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em;">Add Custom Material</div>
+                <div style="font-size:.78rem;font-weight:650;color:#64748b;margin-bottom:8px;">Add Custom Material</div>
                 <div class="tkt-inline-form-grid">
                   <div class="tkt-field" style="grid-column:1/-1;position:relative;">
                     <label>Material Name <span class="req">*</span></label>
@@ -1599,15 +2098,13 @@
         {% if tkt_sidebar_left_col %}
         <div class="tkt-sidebar-stack">
 
-        {# ── VENDOR TEAM: pick company → technician → assign ── #}
-        {% if user_is_supervisor or ticketing_sees_all %}
+        {# Vendor picker lives in the Assign work panel while the ticket is still in the supervisor queue. #}
+        {% set show_assign_panel = ticket.status in ('open', 'pending_supervisor') and user_is_supervisor %}
+        {% if (user_is_supervisor or ticketing_sees_all) and not show_assign_panel %}
         {% set can_vendor_assign = ticket.status in ('open', 'pending_supervisor', 'assigned') %}
         <div class="tkt-card tkt-my-team-sidebar-card" id="vendorTeamCard">
           <div class="tkt-card-header">
-            <h3 style="display:flex;align-items:center;gap:6px;">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z"/></svg>
-              Vendor Team
-            </h3>
+            <h3>Vendor Team</h3>
           </div>
           <div class="tkt-card-body">
             <p style="font-size:.75rem;color:#64748b;margin:0 0 12px;line-height:1.45;">Choose a <strong>vendor company</strong>, then click a technician to assign this work order.</p>
@@ -1617,7 +2114,6 @@
             <div id="vendorCompanyList" class="tkt-vendor-company-list" aria-label="Vendor companies">
               {% for co in vendor_companies %}
               <button type="button" class="tkt-vendor-row tkt-vendor-company-row" data-vendor-id="{{ co.id }}" data-vendor-name="{{ co.name | e }}" {% if not can_vendor_assign %}disabled{% endif %}>
-                <span class="tkt-vendor-avatar tkt-vendor-avatar--co" aria-hidden="true">{{ co.name[:1] | upper }}</span>
                 <span class="tkt-vendor-row-main">
                   <span class="tkt-vendor-row-name">{{ co.name }}</span>
                   <span class="tkt-vendor-row-meta">{{ co.technicians | length }} technician{% if co.technicians | length != 1 %}s{% endif %}</span>
@@ -1628,7 +2124,10 @@
             </div>
             <div id="vendorTeamPanel" style="display:none;">
               <div class="tkt-vendor-panel-head">
-                <button type="button" class="tkt-vendor-back-btn" id="vendorTeamBack">← Companies</button>
+                <button type="button" class="tkt-vendor-back-btn" id="vendorTeamBack">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" width="14" height="14" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/></svg>
+                  Back to companies
+                </button>
                 <span class="tkt-vendor-panel-title" id="vendorTeamCompanyTitle"></span>
               </div>
               <div id="vendorTechnicianList" class="tkt-vendor-tech-list" aria-label="Vendor technicians"></div>
@@ -1671,7 +2170,7 @@
         <div class="tkt-card" id="statusCard">
           <div class="tkt-card-header"><h3>Update Status</h3></div>
           <div class="tkt-card-body tkt-status-card-inner">
-            <p class="tkt-status-help">Choose a <strong>workflow stage</strong> below, then <strong>Confirm status</strong>. To pause work or cancel the ticket, use <strong>On hold</strong> or <strong>Cancel</strong> — each opens its own dialog.</p>
+            <p class="tkt-status-help">Choose a <strong>workflow stage</strong> below, then <strong>Confirm status</strong>. Click the <strong>current stage</strong> to revoke it — you will be asked for a reason. To pause work or cancel the ticket, use <strong>On hold</strong> or <strong>Cancel</strong>.</p>
             {% if ticket.status == 'on_hold' %}
             {% set oh_lbl = {'pending_materials':'Waiting for Materials','pending_approval':'Pending Approval','awaiting_client':'Awaiting Client','other':'Other'}.get(ticket.on_hold_reason, ticket.on_hold_reason or '') %}
             <div style="font-size:.78rem;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:10px 12px;color:#9a3412;">
@@ -1683,20 +2182,36 @@
             <div class="tkt-status-section-title">Workflow stages</div>
             <div class="tkt-status-pick-grid">
             {% set wf_rows = [
-              ('open', 'Open', '#0369a1'),
-              ('assigned', 'Assigned', '#7c3aed'),
-              ('site_attended', 'Site Attended', '#0891b2'),
-              ('work_started', 'Work Started', '#9333ea'),
-              ('work_completed', 'Work Completed', '#16a34a'),
-              ('verification', 'Verification', '#d97706'),
+              ('open', 'Open', '#0369a1', ''),
+              ('assigned', 'Assigned', '#7c3aed', 'Remove assignment'),
+              ('site_attended', 'Site Attended', '#0891b2', 'Remove site attended'),
+              ('work_started', 'Work Started', '#9333ea', 'Remove work started'),
+              ('work_completed', 'Work Completed', '#16a34a', 'Remove work completed'),
+              ('verification', 'Verification', '#d97706', 'Remove verification'),
             ] %}
-            {% for s, lbl, icon_color in wf_rows %}
+            {% set wf_prev_map = {
+              'assigned': ('open', 'Open'),
+              'site_attended': ('assigned', 'Assigned'),
+              'work_started': ('site_attended', 'Site Attended'),
+              'work_completed': ('work_started', 'Work Started'),
+              'verification': ('work_completed', 'Work Completed'),
+            } %}
+            {% for s, lbl, icon_color, revoke_title in wf_rows %}
             <button type="button" class="tkt-btn tkt-btn-outline tkt-btn-sm status-btn{% if cur_wf == s %} active{% endif %}"
                     data-status="{{ s }}" data-label="{{ lbl }}" data-color="{{ icon_color }}"
+                    {% if cur_wf == s and revoke_title %}
+                    data-revoke="1"
+                    data-revoke-title="{{ revoke_title }}"
+                    data-revoke-to="{{ wf_prev_map[s][0] }}"
+                    data-revoke-to-label="{{ wf_prev_map[s][1] }}"
+                    title="{{ revoke_title }}"
+                    {% endif %}
                     style="justify-content:flex-start;{% if cur_wf == s %}background:#fff5f0;border-color:#ff8e68;color:#c2440c;{% endif %}">
               <span style="width:9px;height:9px;border-radius:50%;background:{{ icon_color }};flex-shrink:0;"></span>
-              <span style="flex:1;text-align:left;white-space:normal;line-height:1.2;">{{ lbl }}</span>
-              {% if cur_wf == s %}<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="#ff8e68" width="11" height="11" style="flex-shrink:0;"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>{% endif %}
+              <span class="tkt-status-lbl" style="flex:1;text-align:left;white-space:normal;line-height:1.2;">{{ lbl }}</span>
+              {% if cur_wf == s and revoke_title %}
+              <span class="tkt-status-revoke-lbl" style="flex:1;text-align:left;white-space:normal;line-height:1.2;">{{ revoke_title }}</span>
+              {% endif %}
             </button>
             {% endfor %}
             {% if ticketing_sees_all or user_is_supervisor %}
@@ -1808,14 +2323,14 @@
       <!-- Technician report preview -->
       {% if ticket.technician_resolution_notes %}
       <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:10px 14px;margin-bottom:14px;">
-        <div style="font-size:.74rem;font-weight:800;text-transform:uppercase;color:#15803d;margin-bottom:4px;">Technician's Completion Notes</div>
+        <div style="font-size:.74rem;font-weight:700;color:#15803d;margin-bottom:4px;">Technician's Completion Notes</div>
         <div style="font-size:.88rem;color:#374151;">{{ ticket.technician_resolution_notes }}</div>
       </div>
       {% endif %}
 
       <!-- Pricing -->
       <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:16px;">
-        <div style="font-size:.8rem;font-weight:800;text-transform:uppercase;color:#64748b;margin-bottom:10px;letter-spacing:.04em;">Pricing — Internal Only</div>
+        <div style="font-size:.8rem;font-weight:700;color:#64748b;margin-bottom:10px;">Pricing — Internal Only</div>
         <div class="pricing-row"><span class="pr-label">Manpower</span><span class="pr-value">AED {{ '%.2f'|format(mp_total) }}</span></div>
         <div class="pricing-row"><span class="pr-label">Materials</span><span class="pr-value">AED {{ '%.2f'|format(mat_total) }}</span></div>
         <div class="pricing-row highlight" style="border-top:2px solid #e2e8f0;padding-top:10px;margin-top:4px;"><span class="pr-label">Actual Price</span><span class="pr-value" id="modalActual">AED {{ '%.2f'|format(actual_price) }}</span></div>
@@ -1892,7 +2407,7 @@
     </div>
     <div class="tkt-modal-body">
       <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:16px;">
-        <div style="font-size:.8rem;font-weight:800;text-transform:uppercase;color:#64748b;margin-bottom:10px;letter-spacing:.04em;">Provider-Verified Pricing</div>
+        <div style="font-size:.8rem;font-weight:700;color:#64748b;margin-bottom:10px;">Provider-Verified Pricing</div>
         <div class="pricing-row"><span class="pr-label">Actual Price</span><span class="pr-value">AED {{ '%.2f'|format(ticket.actual_price or actual_price) }}</span></div>
         {% if ticket.markup_pct is not none %}
         <div class="pricing-row"><span class="pr-label">Markup</span><span class="pr-value" style="color:#7c3aed;">{{ ticket.markup_pct|int }}%</span></div>
@@ -2026,6 +2541,44 @@
   </div>
 </div>
 
+<!-- ── Revoke current workflow stage ── -->
+<div class="tkt-modal-backdrop" id="revokeStageModal" aria-hidden="true">
+  <div class="tkt-modal" role="dialog" aria-modal="true" aria-labelledby="revokeStageTitle" style="max-width:460px;">
+    <div class="tkt-modal-header" style="background:#fef2f2;border-bottom-color:#fecaca;">
+      <h3 id="revokeStageTitle" style="color:#991b1b;">Remove assignment</h3>
+      <button type="button" class="tkt-modal-close" id="revokeStageModalX" aria-label="Close">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="tkt-modal-body">
+      <p style="font-size:.88rem;color:#7f1d1d;margin:0 0 12px;">This will return the ticket to <strong id="revokeStagePrev">Open</strong>.</p>
+      <p id="revokeStageUnassign" hidden style="font-size:.84rem;color:#9a3412;margin:0 0 14px;">Assigned users will be unassigned.</p>
+      <div class="tkt-field" style="margin-bottom:14px;">
+        <label>Reason <span class="req">*</span></label>
+        <div class="tkt-reason-chips" id="revokeStageReasons" role="group" aria-label="Revoke reason">
+          <button type="button" class="tkt-reason-chip" data-reason="Wrong assignment">Wrong assignment</button>
+          <button type="button" class="tkt-reason-chip" data-reason="Assigned by mistake">Assigned by mistake</button>
+          <button type="button" class="tkt-reason-chip" data-reason="User unavailable">User unavailable</button>
+          <button type="button" class="tkt-reason-chip" data-reason="Wrong vendor">Wrong vendor</button>
+          <button type="button" class="tkt-reason-chip" data-reason="Marked in error">Marked in error</button>
+          <button type="button" class="tkt-reason-chip" data-reason="Client request">Client request</button>
+          <button type="button" class="tkt-reason-chip" data-reason="Other">Other</button>
+        </div>
+      </div>
+      <div class="tkt-field">
+        <label>Notes <span id="revokeStageNotesHint" style="font-size:.78rem;color:#94a3b8;">(optional)</span></label>
+        <textarea class="tkt-textarea" id="revokeStageNotes" rows="2" placeholder="Any additional details…"></textarea>
+      </div>
+    </div>
+    <div class="tkt-modal-footer">
+      <button type="button" class="tkt-btn tkt-btn-outline" id="revokeStageCancelBtn">Cancel</button>
+      <button type="button" id="revokeStageConfirmBtn" class="tkt-btn" style="background:#dc2626;color:#fff;border:none;font-weight:600;">
+        Confirm
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- ── Reopen ticket (custom modal, replaces browser confirm) ── -->
 <div class="tkt-modal-backdrop" id="reopenTicketModal" aria-hidden="true">
   <div class="tkt-modal" role="dialog" aria-modal="true" aria-labelledby="reopenModalTitle" style="max-width:440px;">
@@ -2138,6 +2691,11 @@ function closeStatusPanel(resetButtons) {
 
 document.querySelectorAll('.status-btn').forEach(btn => {
   btn.addEventListener('click', () => {
+    if (btn.dataset.revoke === '1') {
+      closeStatusPanel(true);
+      openRevokeStageModal(btn);
+      return;
+    }
     const s = btn.dataset.status;
     if (_pendingStatus === s) { closeStatusPanel(true); return; }
     openStatusPanel(s, btn.dataset.label, btn.dataset.color);
@@ -2175,6 +2733,99 @@ confirmBtn?.addEventListener('click', async () => {
     confirmBtn.disabled = false; confirmBtn.textContent = 'Confirm status'; return;
   }
   tktToast('Status updated.', 'success');
+  setTimeout(() => location.reload(), 500);
+});
+
+// ── Revoke current workflow stage ─────────────────────────────
+const revokeStageModal = document.getElementById('revokeStageModal');
+const revokeStageTitle = document.getElementById('revokeStageTitle');
+const revokeStagePrev = document.getElementById('revokeStagePrev');
+const revokeStageUnassign = document.getElementById('revokeStageUnassign');
+const revokeStageReasons = document.getElementById('revokeStageReasons');
+const revokeStageNotes = document.getElementById('revokeStageNotes');
+const revokeStageNotesHint = document.getElementById('revokeStageNotesHint');
+const revokeStageConfirmBtn = document.getElementById('revokeStageConfirmBtn');
+let revokeReasonValue = '';
+function setRevokeNotesHint(required) {
+  if (!revokeStageNotesHint) return;
+  if (required) {
+    revokeStageNotesHint.className = 'req';
+    revokeStageNotesHint.textContent = '*';
+    revokeStageNotesHint.style.color = '';
+    revokeStageNotesHint.style.fontSize = '';
+  } else {
+    revokeStageNotesHint.className = '';
+    revokeStageNotesHint.textContent = '(optional)';
+    revokeStageNotesHint.style.color = '#94a3b8';
+    revokeStageNotesHint.style.fontSize = '.78rem';
+  }
+}
+function resetRevokeReasons() {
+  revokeReasonValue = '';
+  revokeStageReasons?.querySelectorAll('.tkt-reason-chip').forEach((chip) => chip.classList.remove('is-selected'));
+  if (revokeStageNotes) {
+    revokeStageNotes.value = '';
+    revokeStageNotes.placeholder = 'Any additional details…';
+  }
+  setRevokeNotesHint(false);
+}
+function openRevokeStageModal(btn) {
+  if (revokeStageTitle) revokeStageTitle.textContent = btn.dataset.revokeTitle || 'Revoke stage';
+  if (revokeStagePrev) revokeStagePrev.textContent = btn.dataset.revokeToLabel || 'the previous stage';
+  if (revokeStageUnassign) revokeStageUnassign.hidden = btn.dataset.status !== 'assigned';
+  resetRevokeReasons();
+  revokeStageModal?.classList.add('open');
+  revokeStageModal?.setAttribute('aria-hidden', 'false');
+}
+function closeRevokeStageModal() {
+  revokeStageModal?.classList.remove('open');
+  revokeStageModal?.setAttribute('aria-hidden', 'true');
+}
+document.getElementById('revokeStageCancelBtn')?.addEventListener('click', closeRevokeStageModal);
+document.getElementById('revokeStageModalX')?.addEventListener('click', closeRevokeStageModal);
+revokeStageModal?.addEventListener('click', (e) => {
+  if (e.target === revokeStageModal) closeRevokeStageModal();
+});
+revokeStageReasons?.addEventListener('click', (e) => {
+  const chip = e.target.closest('.tkt-reason-chip');
+  if (!chip || !revokeStageReasons.contains(chip)) return;
+  revokeStageReasons.querySelectorAll('.tkt-reason-chip').forEach((c) => c.classList.remove('is-selected'));
+  chip.classList.add('is-selected');
+  revokeReasonValue = chip.dataset.reason || '';
+  const other = revokeReasonValue === 'Other';
+  setRevokeNotesHint(other);
+  if (revokeStageNotes) {
+    revokeStageNotes.placeholder = other ? 'Please describe why this action is being revoked…' : 'Any additional details…';
+  }
+  if (other) setTimeout(() => revokeStageNotes?.focus(), 50);
+});
+revokeStageConfirmBtn?.addEventListener('click', async () => {
+  const notes = (revokeStageNotes?.value || '').trim();
+  if (!revokeReasonValue) {
+    tktToast('Select a reason to revoke this action.', 'error');
+    return;
+  }
+  if (revokeReasonValue === 'Other' && !notes) {
+    tktToast('Please add a note for Other.', 'error');
+    revokeStageNotes?.focus();
+    return;
+  }
+  const reason = notes ? `${revokeReasonValue} — ${notes}` : revokeReasonValue;
+  revokeStageConfirmBtn.disabled = true;
+  const prevHtml = revokeStageConfirmBtn.innerHTML;
+  revokeStageConfirmBtn.innerHTML = '<span class="tkt-spinner" style="width:14px;height:14px;border-width:2px;"></span> Updating…';
+  const res = await tktFetch(`/tickets/api/tickets/${TICKET_ID}/revoke-stage`, {
+    method: 'POST',
+    body: JSON.stringify({ reason }),
+  });
+  if (!res.ok || !res.data?.success) {
+    tktToast(res.data?.error || 'Could not revoke this stage.', 'error');
+    revokeStageConfirmBtn.disabled = false;
+    revokeStageConfirmBtn.innerHTML = prevHtml;
+    return;
+  }
+  closeRevokeStageModal();
+  tktToast('Stage revoked.', 'success');
   setTimeout(() => location.reload(), 500);
 });
 
@@ -2221,7 +2872,9 @@ document.getElementById('confirmReopenBtn')?.addEventListener('click', async () 
   setTimeout(() => location.reload(), 500);
 });
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && reopenTicketModal?.classList.contains('open')) closeReopenTicketModal();
+  if (e.key !== 'Escape') return;
+  if (revokeStageModal?.classList.contains('open')) { closeRevokeStageModal(); return; }
+  if (reopenTicketModal?.classList.contains('open')) closeReopenTicketModal();
 });
 
 // ── On-Hold modal ─────────────────────────────────────────
@@ -2377,7 +3030,8 @@ document.getElementById('addNoteBtn')?.addEventListener('click', async () => {
     // renders it in the user's local time instead of misreading it as local-already.
     const dt = new Date(note.created_at.endsWith('Z') ? note.created_at : note.created_at + 'Z');
     const dtStr = dt.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) + ' ' + dt.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
-    d.innerHTML = `<div class="tkt-note-dot note"></div><div class="tkt-note-meta"><strong>${note.author_name}</strong><span>${dtStr}</span></div><div class="tkt-note-body">${note.content}</div>`;
+    const role = note.author_role ? `<span class="tkt-note-role">${note.author_role}</span>` : '';
+    d.innerHTML = `<div class="tkt-note-dot note"></div><div class="tkt-note-meta"><strong>${note.author_name}</strong>${role}<span>${dtStr}</span></div><div class="tkt-note-body">${note.content}</div>`;
     tl.appendChild(d);
     tktToast('Note added.', 'success');
   } else tktToast('Failed.', 'error');
@@ -2675,10 +3329,10 @@ document.getElementById('detailTriageBtn')?.addEventListener('click', async () =
   document.getElementById('detailTriageActions').hidden = false;
   // Pre-select suggested technician if present
   if (s.technician_id) {
-    const sel = document.getElementById('techAssignSelect');
-    if (sel) {
-      const opt = [...sel.options].find(o => String(o.dataset.userId) === String(s.technician_id));
-      if (opt) sel.value = opt.value;
+    const row = document.querySelector(`.tkt-team-assign-row[data-user-id="${s.technician_id}"]`);
+    if (row) {
+      document.querySelectorAll('.tkt-team-assign-row').forEach((r) => r.classList.remove('is-selected'));
+      row.classList.add('is-selected');
     }
   }
 });
@@ -2702,34 +3356,52 @@ document.getElementById('detailTriageAccept')?.addEventListener('click', async (
   }
 });
 
-// ── Assign technician ─────────────────────────────────────
-document.getElementById('assignTechBtn')?.addEventListener('click', async () => {
-  const selectEl = document.getElementById('techAssignSelect');
-  const selectedOpt = selectEl?.selectedOptions?.[0];
-  if (!selectEl?.value || !selectedOpt) { tktToast('Please select a technician.', 'error'); return; }
+// ── Assign: my team vs vendor ─────────────────────────────
+document.querySelectorAll('.tkt-assign-path').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const path = btn.dataset.assignPath;
+    document.querySelectorAll('.tkt-assign-path').forEach((b) => {
+      const on = b === btn;
+      b.classList.toggle('is-active', on);
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    const teamEl = document.getElementById('assignPathTeam');
+    const vendorEl = document.getElementById('assignPathVendor');
+    if (teamEl) teamEl.hidden = path !== 'team';
+    if (vendorEl) vendorEl.hidden = path !== 'vendor';
+  });
+});
 
-  let body;
-  if (selectedOpt.dataset.demo === '1') {
-    const techName = selectedOpt.dataset.name || '';
-    const techCode = selectedOpt.dataset.code || '';
-    if (!techName) { tktToast('Please select a technician.', 'error'); return; }
-    body = { technician_name: techName, technician_code: techCode };
-  } else {
-    const uid = parseInt(selectedOpt.dataset.userId || '', 10);
-    if (!Number.isFinite(uid) || uid < 1) { tktToast('Please select a technician.', 'error'); return; }
-    body = { technician_id: uid };
-  }
-
-  const btn = document.getElementById('assignTechBtn');
-  const prevLabel = btn.textContent || 'Assign';
-  btn.disabled = true; btn.textContent = 'Assigning…';
+async function assignTicketTechnician(body, btn, successLabel) {
+  if (btn) { btn.disabled = true; btn.classList.add('is-selected'); }
   const res = await tktFetch(`/tickets/api/tickets/${TICKET_ID}/assign-technician`, {
     method: 'POST', body: JSON.stringify(body),
   });
-  if (res.ok && res.data.success) {
-    tktToast(`Technician ${res.data.technician_name} assigned!`, 'success');
-    setTimeout(() => location.reload(), 800);
-  } else { tktToast(res.data.error || 'Failed.', 'error'); btn.disabled = false; btn.textContent = prevLabel; }
+  if (res.ok && res.data && res.data.success !== false) {
+    tktToast(successLabel || `Technician ${res.data.technician_name || ''} assigned!`, 'success');
+    setTimeout(() => location.reload(), 700);
+    return true;
+  }
+  if (btn) { btn.disabled = false; btn.classList.remove('is-selected'); }
+  tktToast((res.data && res.data.error) ? res.data.error : 'Assignment failed.', 'error');
+  return false;
+}
+
+document.getElementById('assignTeamList')?.addEventListener('click', async (e) => {
+  const btn = e.target.closest('.tkt-team-assign-row');
+  if (!btn) return;
+  let body;
+  if (btn.dataset.demo === '1') {
+    const techName = btn.dataset.name || '';
+    const techCode = btn.dataset.code || '';
+    if (!techName) { tktToast('Please select a team member.', 'error'); return; }
+    body = { technician_name: techName, technician_code: techCode };
+  } else {
+    const uid = parseInt(btn.dataset.userId || '', 10);
+    if (!Number.isFinite(uid) || uid < 1) { tktToast('Please select a team member.', 'error'); return; }
+    body = { technician_id: uid };
+  }
+  await assignTicketTechnician(body, btn, `${btn.dataset.name || 'Team member'} assigned`);
 });
 
 // ── Mark completed (technician) — uses /advance endpoint ──
@@ -2855,8 +3527,8 @@ document.getElementById('confirmOpsCloseBtn')?.addEventListener('click', async (
 
 // ── Vendor company → technician assign ────────────────────
 (function initVendorTeamPicker() {
-  const card = document.getElementById('vendorTeamCard');
-  if (!card) return;
+  const companyList = document.getElementById('vendorCompanyList');
+  if (!companyList) return;
 
   const CAN_ASSIGN = {{ 'true' if ticket.status in ('open', 'pending_supervisor', 'assigned') else 'false' }};
   let companies = [];
@@ -2864,7 +3536,6 @@ document.getElementById('confirmOpsCloseBtn')?.addEventListener('click', async (
     companies = JSON.parse(document.getElementById('vendorCompaniesJson')?.textContent || '[]');
   } catch (_) { companies = []; }
 
-  const companyList = document.getElementById('vendorCompanyList');
   const teamPanel = document.getElementById('vendorTeamPanel');
   const techList = document.getElementById('vendorTechnicianList');
   const companyTitle = document.getElementById('vendorTeamCompanyTitle');

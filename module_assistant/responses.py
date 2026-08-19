@@ -12,7 +12,7 @@ DEFAULT_SUGGESTIONS = [
 
 
 def _base_payload(intent: str, message: str, **kwargs):
-    return {
+    payload = {
         'intent': intent,
         'message': message,
         'cards': kwargs.get('cards', []),
@@ -20,6 +20,11 @@ def _base_payload(intent: str, message: str, **kwargs):
         'sources': kwargs.get('sources', []),
         'suggestions': kwargs.get('suggestions', DEFAULT_SUGGESTIONS),
     }
+    if kwargs.get('pending_action') is not None:
+        payload['pending_action'] = kwargs['pending_action']
+    if kwargs.get('composer') is not None:
+        payload['composer'] = kwargs['composer']
+    return payload
 
 
 def compose_greeting(user):

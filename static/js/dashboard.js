@@ -458,12 +458,11 @@ function updateModuleVisibility(user) {
     reviewHistoryCard.style.visibility = 'hidden';
   }
 
-  // Check BD Email Module access (BD designation, module flag, or admin via userHasBdEmailAccess)
+  // Email Automation stays hidden on the dashboard (module remains available by URL).
   const bdEmailCard = document.getElementById('module-bd-email');
   if (bdEmailCard) {
-    const showBdEmail = userHasBdEmailAccess(user);
-    bdEmailCard.style.display = showBdEmail ? 'block' : 'none';
-    bdEmailCard.style.visibility = showBdEmail ? 'visible' : 'hidden';
+    bdEmailCard.style.display = 'none';
+    bdEmailCard.style.visibility = 'hidden';
   }
 
   // Check Administration module access (admin only)
@@ -3664,6 +3663,29 @@ function initNotifications() {
       loadNotifications();
     }
   });
+
+  const notificationList = document.getElementById('notificationList');
+  if (notificationList && notificationList.dataset.injaazNotifClickBound !== '1') {
+    notificationList.dataset.injaazNotifClickBound = '1';
+    notificationList.addEventListener('click', function(e) {
+      const item = e.target.closest('.notification-item');
+      if (!item) return;
+      e.preventDefault();
+      markNotificationRead(
+        item.getAttribute('data-notif-id'),
+        item.getAttribute('data-submission-id') || '',
+        item.getAttribute('data-notif-type') || '',
+        item.getAttribute('data-notif-title') || ''
+      );
+    });
+    notificationList.addEventListener('keydown', function(e) {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      const item = e.target.closest('.notification-item');
+      if (!item) return;
+      e.preventDefault();
+      item.click();
+    });
+  }
   
   // Close dropdown when clicking outside
   document.addEventListener('click', function(e) {
@@ -3681,7 +3703,7 @@ function initNotifications() {
         });
         if (response.ok) {
           loadNotifications();
-          updateNotificationBadge(0);
+          loadNotificationCount();
         }
       } catch (error) {
         console.error('Error marking all as read:', error);
@@ -3718,7 +3740,7 @@ async function loadNotificationCount() {
     }
     if (response.ok) {
       const data = await response.json();
-      updateNotificationBadge(data.unread_count || 0);
+      updateNotificationBadge(data.unread_count || 0, data.total_count || 0);
       _notifPollBackoffUntil = 0;
     }
   } catch (error) {
@@ -3739,15 +3761,148 @@ function updateMobileMenuHint(count) {
   }
 }
 
-function updateNotificationBadge(count) {
+function updateNotificationBadge(unread, total) {
   const badge = document.getElementById('notificationBadge');
   if (!badge) return;
-  
-  if (count > 0) {
-    badge.textContent = count > 99 ? '99+' : count;
+  const btn = badge.closest('.notification-btn') || document.getElementById('notificationBtn');
+  const unreadN = Number(unread) || 0;
+  const totalN = Number(total) || 0;
+  const shown = totalN > 0 ? totalN : unreadN;
+  const label = unreadN > 0
+    ? `Notifications, ${unreadN > 99 ? '99+' : unreadN} unread`
+    : shown > 0
+      ? `Notifications, ${shown > 99 ? '99+' : shown}`
+      : 'Notifications';
+
+  if (shown > 0) {
+    badge.textContent = shown > 99 ? '99+' : String(shown);
     badge.style.display = 'flex';
+    if (btn) {
+      btn.classList.add('has-count');
+      btn.classList.toggle('has-unread', unreadN > 0);
+      btn.setAttribute('aria-label', label);
+      btn.setAttribute('title', label);
+    }
   } else {
     badge.style.display = 'none';
+    if (btn) {
+      btn.classList.remove('has-count', 'has-unread');
+      btn.setAttribute('aria-label', 'Notifications');
+      btn.setAttribute('title', 'Notifications');
+    }
+  }
+}
+
+function notificationVisual(type, title, submissionId) {
+  const t = String(type || '').toLowerCase();
+  const hay = `${t} ${title || ''} ${submissionId || ''}`.toLowerCase();
+
+  if (t.includes('approved') && !t.includes('pending')) return { kind: 'approved', glyph: 'check' };
+  if (t.includes('rejected') || t.includes('withdrawn')) return { kind: 'rejected', glyph: 'x' };
+  if (t.startsWith('inspection_') || hay.includes('inspection')) return { kind: 'inspection', glyph: 'clipboard' };
+  if (t.startsWith('hr_') || t === 'gm_approval_pending' || hay.includes('hr request')) {
+    return { kind: 'hr', glyph: 'user' };
+  }
+  if (t.startsWith('ticket_') || hay.includes('tkt-') || hay.includes('ticket') || hay.includes('work order')) {
+    return { kind: 'ticket', glyph: 'ticket' };
+  }
+  return { kind: 'info', glyph: 'bell' };
+}
+
+function isTicketNotification(type, submissionId, title) {
+  const t = String(type || '').toLowerCase();
+  const sid = String(submissionId || '').trim();
+  const hay = `${sid} ${title || ''}`.toUpperCase();
+  if (t.startsWith('ticket_')) return true;
+  if (/^TKT-[A-Z0-9]+$/i.test(sid)) return true;
+  if (hay.includes('TKT-') && (t === 'info' || t === '')) return true;
+  return false;
+}
+
+function notificationDestination(type, submissionId, title) {
+  const t = String(type || '').toLowerCase();
+  const sid = String(submissionId || '').trim();
+  const enc = sid ? encodeURIComponent(sid) : '';
+
+  if (isTicketNotification(t, sid, title)) {
+    if (!sid) return '/tickets/';
+    if (t === 'ticket_draft' || /draft ticket/i.test(title || '')) {
+      return '/tickets/drafts/' + enc + '/review';
+    }
+    return '/tickets/' + enc;
+  }
+
+  if (t === 'gm_approval_pending') return '/hr/gm-approval';
+  if (t === 'hr_mgmt_chain_signoff' || t === 'hr_commencement_dual_role') {
+    return sid ? '/hr/mgmt-sign/' + enc : '/workflow/pending-reviews';
+  }
+  if (t === 'hr_replacement_signoff') {
+    return sid ? '/hr/replacement-sign/' + enc : '/workflow/pending-reviews';
+  }
+  if (t === 'hr_pending_review') return '/hr/pending-review';
+  if (
+    t === 'hr_approved' ||
+    t === 'hr_rejected' ||
+    t === 'hr_submitter_withdrawn' ||
+    t === 'hr_replacement_complete'
+  ) {
+    return sid ? '/hr/my-requests?submission=' + enc : '/hr/my-requests';
+  }
+  if (t.startsWith('hr_')) {
+    return sid ? '/hr/my-requests?submission=' + enc : '/hr/';
+  }
+
+  if (t.startsWith('inspection_')) {
+    if (t === 'inspection_approval_pending') {
+      return sid ? '/workflow/inspection/' + enc : '/workflow/pending-reviews';
+    }
+    if (t === 'inspection_approved' || t === 'inspection_rejected') {
+      return sid
+        ? '/workflow/inspection/' + enc
+        : '/workflow/submitted-forms?scope=inspection';
+    }
+    return '/workflow/pending-reviews';
+  }
+
+  if (sid) return '/hr/my-requests?submission=' + enc;
+  return null;
+}
+
+function notificationGlyphSvg(glyph) {
+  const paths = {
+    check: 'M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z',
+    x: 'M9.75 9.75l4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z',
+    clipboard: 'M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18A2.25 2.25 0 0 0 20.25 16.5V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25ZM6.75 12h.008v.008H6.75V12Zm0 3h.008v.008H6.75V15Zm0 3h.008v.008H6.75V18Z',
+    user: 'M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z',
+    ticket: 'M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-5.25h5.25M7.5 15h3M3.375 5.25c-.621 0-1.125.504-1.125 1.125v3.026a2.999 2.999 0 0 1 0 5.198v3.026c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125v-3.026a2.999 2.999 0 0 1 0-5.198V6.375c0-.621-.504-1.125-1.125-1.125H3.375Z',
+    bell: 'M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0',
+  };
+  const d = paths[glyph] || paths.bell;
+  return `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="${d}"/></svg>`;
+}
+
+function notificationEmptyMarkup(message) {
+  return `<div class="notification-empty">${notificationGlyphSvg('bell')}<span>${escapeHtml(message)}</span></div>`;
+}
+
+function updateNotificationHeaderCount(unread, total) {
+  const countEl = document.getElementById('notificationHeaderCount');
+  const markAll = document.getElementById('markAllRead');
+  const unreadN = Number(unread) || 0;
+  const totalN = Number(total) || 0;
+  const shown = totalN > 0 ? totalN : unreadN;
+  if (countEl) {
+    if (shown > 0) {
+      countEl.textContent = shown > 99 ? '99+' : String(shown);
+      countEl.hidden = false;
+      countEl.classList.toggle('is-unread', unreadN > 0);
+    } else {
+      countEl.hidden = true;
+      countEl.classList.remove('is-unread');
+    }
+  }
+  if (markAll) {
+    markAll.hidden = unreadN <= 0;
   }
 }
 
@@ -3763,93 +3918,63 @@ async function loadNotifications() {
     if (!response.ok) throw new Error('Failed to load notifications');
     
     const data = await response.json();
+    const unread = data.unread_count || 0;
+    const total = data.total_count || (data.notifications ? data.notifications.length : 0);
+    updateNotificationHeaderCount(unread, total);
     
     if (data.notifications && data.notifications.length > 0) {
       notificationList.innerHTML = data.notifications.map(n => {
-        const isInspection = (n.notification_type || '').startsWith('inspection_');
-        const iconClass = n.notification_type.includes('approved') ? 'approved' : 
-                          n.notification_type.includes('rejected') ? 'rejected' :
-                          isInspection ? 'pending' : 'info';
-        const iconEmoji = n.notification_type.includes('approved') ? '✓' : 
-                          n.notification_type.includes('rejected') ? '✕' :
-                          isInspection ? '📋' : 'ℹ';
+        const visual = notificationVisual(n.notification_type, n.title, n.submission_id);
         const createdAt = parseUtcInstantForRelative(n.created_at);
         const timeAgo = createdAt ? getTimeAgo(createdAt) : '';
         
         return `
-          <div class="notification-item ${n.is_read ? '' : 'unread'}" onclick="markNotificationRead(${n.id}, '${(n.submission_id || '').replace(/'/g, "\\'")}', '${(n.notification_type || '').replace(/'/g, "\\'")}')">
-            <div class="notification-icon ${iconClass}">${iconEmoji}</div>
+          <div class="notification-item ${n.is_read ? '' : 'unread'}" role="button" tabindex="0"
+               data-notif-id="${escapeHtml(String(n.id))}"
+               data-submission-id="${escapeHtml(n.submission_id || '')}"
+               data-notif-type="${escapeHtml(n.notification_type || '')}"
+               data-notif-title="${escapeHtml(n.title || '')}">
+            <div class="notification-icon ${visual.kind}">${notificationGlyphSvg(visual.glyph)}</div>
             <div class="notification-content">
               <div class="notification-title">${escapeHtml(n.title)}</div>
               <div class="notification-message">${escapeHtml(n.message)}</div>
-              <div class="notification-time">${timeAgo}</div>
+              <div class="notification-meta">
+                <div class="notification-time">${timeAgo}</div>
+                ${n.is_read ? '' : '<span class="notification-unread-dot" aria-hidden="true"></span>'}
+              </div>
             </div>
           </div>
         `;
       }).join('');
       
-      updateNotificationBadge(data.unread_count || 0);
+      updateNotificationBadge(unread, total);
     } else {
-      notificationList.innerHTML = '<div class="notification-empty">No notifications yet</div>';
+      notificationList.innerHTML = notificationEmptyMarkup('No notifications yet');
+      updateNotificationHeaderCount(0, 0);
+      updateNotificationBadge(0, 0);
     }
   } catch (error) {
     console.error('Error loading notifications:', error);
-    notificationList.innerHTML = '<div class="notification-empty">Error loading notifications</div>';
+    notificationList.innerHTML = notificationEmptyMarkup('Error loading notifications');
   }
 }
 
-async function markNotificationRead(id, submissionId, notificationType) {
+async function markNotificationRead(id, submissionId, notificationType, title) {
+  const dest = notificationDestination(notificationType, submissionId, title);
   try {
     await authenticatedFetch(`/hr/api/notifications/${id}/read`, {
       method: 'POST'
     });
-    
-    // Refresh notifications
-    loadNotifications();
     loadNotificationCount();
-    
-    // Navigate based on notification type when submission exists
-    if (submissionId) {
-      if (notificationType === 'gm_approval_pending') {
-        window.location.href = '/hr/gm-approval';
-        return;
-      }
-      if (notificationType === 'hr_mgmt_chain_signoff') {
-        window.location.href = '/hr/mgmt-sign/' + encodeURIComponent(submissionId);
-        return;
-      }
-      if (notificationType === 'hr_replacement_signoff') {
-        window.location.href = '/hr/replacement-sign/' + encodeURIComponent(submissionId);
-        return;
-      }
-      if (notificationType === 'hr_replacement_complete') {
-        window.location.href = '/hr/my-requests';
-        return;
-      }
-      if (notificationType && notificationType.startsWith('inspection_')) {
-        // Approval-pending notifications go straight to the form so the
-        // reviewer can read items, comment, and sign in one click.
-        if (notificationType === 'inspection_approval_pending') {
-          window.location.href = submissionId
-            ? '/workflow/inspection/' + encodeURIComponent(submissionId)
-            : '/workflow/pending-reviews';
-          return;
-        }
-        // Approved/rejected notifications open the submitter's record.
-        if (notificationType === 'inspection_approved' || notificationType === 'inspection_rejected') {
-          window.location.href = submissionId
-            ? '/workflow/inspection/' + encodeURIComponent(submissionId)
-            : '/workflow/submitted-forms?scope=inspection';
-          return;
-        }
-        window.location.href = '/workflow/pending-reviews';
-        return;
-      }
-      window.location.href = '/hr/';
-    }
   } catch (error) {
     console.error('Error marking notification as read:', error);
   }
+
+  if (dest) {
+    window.location.href = dest;
+    return;
+  }
+  loadNotifications();
 }
 
 window.__hrLastHrSubmissionId = '';

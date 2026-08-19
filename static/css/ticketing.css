@@ -520,6 +520,38 @@ a.tkt-stat-card:focus-visible {
 }
 .tkt-textarea { resize: vertical; min-height: 90px; }
 
+.tkt-reason-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.tkt-reason-chip {
+  appearance: none;
+  border: 1px solid #fecaca;
+  background: #fff;
+  color: #7f1d1d;
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-size: .82rem;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: background .12s, border-color .12s, color .12s, box-shadow .12s;
+}
+.tkt-reason-chip:hover {
+  background: #fef2f2;
+  border-color: #f87171;
+}
+.tkt-reason-chip:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, .18);
+}
+.tkt-reason-chip.is-selected {
+  background: #dc2626;
+  border-color: #dc2626;
+  color: #fff;
+}
+
 /* ── Section separator ── */
 .tkt-section-sep {
   display: flex;
@@ -883,6 +915,16 @@ a.tkt-stat-card:focus-visible {
   color: var(--tkt-text);
   font-size: 0.86rem;
   font-weight: 600;
+}
+.tkt-note-role {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 0.7rem;
+  font-weight: 650;
 }
 .tkt-note-body {
   background: var(--tkt-surface-2);
@@ -1512,7 +1554,13 @@ body.tkt-dh-page .tkt-dh-page-root {
 }
 .tkt-dh-page-root .sb-section-label { color: var(--tkt-text-3); }
 .tkt-dh-page-root .sb-nav-divider { background: var(--tkt-border); }
-.tkt-dh-page-root .sb-avatar { background: linear-gradient(135deg, var(--tkt-accent), var(--tkt-accent-hover)); }
+.tkt-dh-page-root .sb-footer { border-top: none; }
+.tkt-dh-page-root .sb-user-row { background: #fafafb; }
+.tkt-dh-page-root .sb-user-row:hover { background: #f0f1f4; }
+.tkt-dh-page-root .sb-user-name { color: #0f172a; font-weight: 700; }
+.tkt-dh-page-root .sb-user-role { color: #94a3b8; }
+.tkt-dh-page-root .sb-user-gear { color: #94a3b8; }
+.tkt-dh-page-root .sb-avatar { background: #ff8e68; }
 
 .tkt-dh-page-root .sb-nav-item {
   color: var(--tkt-text-2);
@@ -1561,13 +1609,6 @@ body.tkt-dh-page .tkt-dh-page-root {
   background: rgba(255,255,255,.25);
   color: #fff;
 }
-
-.tkt-dh-page-root .sb-footer { border-top-color: var(--tkt-border); }
-.tkt-dh-page-root .sb-user-row { background: var(--tkt-surface-2); }
-.tkt-dh-page-root .sb-user-row:hover { background: #f0f1f4; }
-.tkt-dh-page-root .sb-user-name { color: var(--tkt-text); }
-.tkt-dh-page-root .sb-user-role { color: var(--tkt-text-3); }
-.tkt-dh-page-root .sb-user-gear { color: var(--tkt-text-3); }
 
 /* ── Mobile: drawer (≤ 900px) ── */
 @media (max-width: 900px) {

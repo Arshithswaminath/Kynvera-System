@@ -1718,11 +1718,13 @@ def get_notifications():
     
     # Count unread
     unread_count = Notification.query.filter_by(user_id=user.id, is_read=False).count()
+    total_count = Notification.query.filter_by(user_id=user.id).count()
     
     return jsonify({
         'success': True,
         'notifications': [n.to_dict() for n in notifications],
-        'unread_count': unread_count
+        'unread_count': unread_count,
+        'total_count': total_count,
     })
 
 
@@ -1736,10 +1738,12 @@ def get_unread_count():
         return jsonify({'error': 'User not found'}), 404
     
     unread_count = Notification.query.filter_by(user_id=user.id, is_read=False).count()
+    total_count = Notification.query.filter_by(user_id=user.id).count()
     
     return jsonify({
         'success': True,
-        'unread_count': unread_count
+        'unread_count': unread_count,
+        'total_count': total_count,
     })
 
 

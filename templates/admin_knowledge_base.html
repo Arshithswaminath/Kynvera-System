@@ -19,17 +19,22 @@
       --kb-ink: #1f2937;
       --kb-ink-soft: #64748b;
       --kb-border: #e5eae7;
-      --kb-nav-h: calc(var(--nav-inner-h, 72px) + 1px);
     }
     body.kb-page.has-main-nav {
+      --kb-nav-h: var(--nav-bar-h, calc(40px + 1.75rem + env(safe-area-inset-top, 0px)));
       background: var(--kb-canvas);
       color: var(--kb-ink);
       min-height: 100vh;
       padding-top: var(--kb-nav-h);
     }
+    body.kb-page.has-main-nav .nav,
+    body.kb-page.has-main-nav .nav.scrolled {
+      border-bottom: none;
+      box-shadow: none;
+    }
 
     /* Layout */
-    .kb-root { display: flex; align-items: stretch; min-height: calc(100vh - var(--kb-nav-h)); }
+    .kb-root { display: flex; align-items: stretch; min-height: calc(100vh - var(--kb-nav-h) + 1px); margin-top: -1px; }
 
     /* Sidebar */
     .kb-sidebar {
@@ -42,8 +47,9 @@
       padding: 1.25rem 0.85rem;
       position: sticky;
       top: var(--kb-nav-h);
-      align-self: flex-start;
-      height: calc(100vh - var(--kb-nav-h));
+      align-self: stretch;
+      height: auto;
+      min-height: calc(100vh - var(--kb-nav-h) + 1px);
       overflow-y: auto;
     }
     .kb-brand { padding: 0.25rem 0.65rem 1.1rem; }
@@ -61,12 +67,13 @@
     .kb-nav-item:hover { background: rgba(255,255,255,0.1); color: #fff; }
     .kb-nav-item.active { background: rgba(255,255,255,0.16); color: #fff; font-weight: 600; }
     .kb-nav-badge { min-width: 22px; text-align: center; font-size: 0.7rem; font-weight: 700; padding: 1px 7px; border-radius: 999px; background: rgba(255,255,255,0.2); }
-    .kb-sb-footer { margin-top: auto; }
-    .kb-user-row { display: flex; align-items: center; gap: 0.6rem; padding: 0.6rem 0.65rem; border-radius: 10px; cursor: pointer; background: rgba(255,255,255,0.08); }
-    .kb-user-row:hover { background: rgba(255,255,255,0.14); }
-    .kb-avatar { width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,0.22); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem; }
-    .kb-user-name { font-size: 0.82rem; font-weight: 600; }
-    .kb-user-role { font-size: 0.7rem; opacity: 0.65; }
+    .kb-sb-footer { margin-top: auto; padding-top: 12px; }
+    .kb-user-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px; cursor: pointer; background: #fafafb; transition: background 0.18s; }
+    .kb-user-row:hover { background: #f0f1f4; }
+    .kb-avatar { width: 32px; height: 32px; border-radius: 50%; background: #ff8e68; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 11px; letter-spacing: 0.02em; flex-shrink: 0; }
+    .kb-user-row > div:last-child { min-width: 0; flex: 1; }
+    .kb-user-name { font-size: 13px; font-weight: 700; color: #0f172a; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .kb-user-role { font-size: 11px; color: #94a3b8; margin-top: 1px; opacity: 1; }
 
     /* Main */
     .kb-main { flex: 1; min-width: 0; padding: 1.75rem 2rem; }

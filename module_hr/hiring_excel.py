@@ -194,6 +194,11 @@ def _normalize_pipeline(raw: str) -> tuple[Optional[str], Optional[str]]:
     key = s.strip().lower().replace(' ', '_').replace('-', '_')
     if key in ('onhold',):
         key = 'on_hold'
+    if key in (
+        'nothired', 'no_hired', 'nohired', 'no_hire', 'nohire',
+        'not_hire', 'no_hiried', 'nohiried',
+    ):
+        key = 'not_hired'
     if key in ('candidateemployee', 'candidate_as_employee', 'file_closed', 'fileclosed', 'closed'):
         key = 'candidate_employee'
     if key in HIRING_PIPELINE_STATUSES:
@@ -317,10 +322,8 @@ def build_hiring_template_bytes(candidates: Optional[list] = None) -> bytes:
     # only work on the first data row in Excel for Mac / some Excel builds.
     # showDropDown=False is required — Excel treats True as "hide arrow".
     max_dv_row = max(data_end_row + 200, 1000)
-    # Stages first, then On hold as a process pause (not a linear stage).
-    pipe_list = ','.join(
-        HIRING_PIPELINE_LABELS[k] for k in (HIRING_PIPELINE_STEPS + ('on_hold',))
-    )
+    # Stages first, then process states (on hold / not hired).
+    pipe_list = ','.join(HIRING_PIPELINE_LABELS[k] for k in HIRING_PIPELINE_STATUSES)
     status_list = ','.join(DOC_STATUS_LABELS)
 
     pipe_dv = DataValidation(
@@ -375,6 +378,7 @@ def build_hiring_template_bytes(candidates: Optional[list] = None) -> bytes:
         'Pipeline stages (in order)',
         *[f'• {HIRING_PIPELINE_LABELS[k]}' for k in HIRING_PIPELINE_STEPS],
         f'• {HIRING_PIPELINE_LABELS["on_hold"]} — pauses the whole process (not a stage)',
+        f'• {HIRING_PIPELINE_LABELS["not_hired"]} — candidate was not hired (not a stage)',
         '',
         'Notes',
         '• Excel does not upload document files — use the candidate detail page for files.',

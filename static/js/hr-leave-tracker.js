@@ -27,10 +27,15 @@
       company: '',
     },
     logColFilters: {
+      log_leave_from: '',
+      log_leave_to: '',
       log_emp_id: '',
       log_full_name: '',
       log_leave_type: '',
+      log_days: '',
       log_notes: '',
+      log_created: '',
+      log_edited: '',
     },
     colFilterKey: null,
     colFilterSelected: null, // Set of exact values when using checklist
@@ -170,11 +175,16 @@
         '').trim();
     var company = ($('ltCompany') && $('ltCompany').value) || 'all';
     var lt = ($('ltLogTypeFilter') && $('ltLogTypeFilter').value) || 'all';
+    if ($('ltLogCompanyFilter')) company = $('ltLogCompanyFilter').value || 'all';
     var month = ($('ltMonth') && $('ltMonth').value) || '';
+    var leaveFrom = ($('ltLogLeaveFrom') && $('ltLogLeaveFrom').value) || '';
+    var leaveTo = ($('ltLogLeaveTo') && $('ltLogLeaveTo').value) || '';
     if (q) params.set('q', q);
     if (company && company !== 'all') params.set('company', company);
     if (lt && lt !== 'all') params.set('leave_type', lt);
     if (month) params.set('month', month);
+    if (leaveFrom) params.set('leave_from', leaveFrom);
+    if (leaveTo) params.set('leave_to', leaveTo);
     if (state.alertLevel) params.set('alert_level', state.alertLevel);
     else if ($('ltAlertsOnly') && $('ltAlertsOnly').checked) params.set('alerts_only', '1');
     return params.toString();
@@ -281,10 +291,24 @@
     full_name: 'Name',
     designation: 'Designation',
     company: 'Company',
+    log_leave_from: 'From',
+    log_leave_to: 'To',
     log_emp_id: 'Emp ID',
     log_full_name: 'Name',
     log_leave_type: 'Type',
+    log_days: 'Days',
     log_notes: 'Notes',
+    log_created: 'Created',
+    log_edited: 'Edited',
+  };
+
+  var LOG_CHECKLIST_COLS = {
+    log_leave_type: true,
+    log_leave_from: true,
+    log_leave_to: true,
+    log_days: true,
+    log_created: true,
+    log_edited: true,
   };
 
   function isLogColFilter(key) {
@@ -304,7 +328,21 @@
     if (key === 'log_full_name') return String(p.full_name || '');
     if (key === 'log_leave_type') return String(p.leave_type || '');
     if (key === 'log_notes') return String(p.notes || '');
+    if (key === 'log_days') return fmtDays(p.days);
+    if (key === 'log_leave_from') return fmtDateDMY(p.leave_date);
+    if (key === 'log_leave_to') return fmtDateDMY(p.end_date || p.leave_date);
+    if (key === 'log_created') return fmtDateDMY(p.created_at);
+    if (key === 'log_edited') return fmtDateDMY(p.updated_at || p.created_at);
     return '';
+  }
+
+  function inYmdRange(iso, fromYmd, toYmd) {
+    if (!fromYmd && !toYmd) return true;
+    var key = toYmdKey(iso);
+    if (!key) return false;
+    if (fromYmd && key < fromYmd) return false;
+    if (toYmd && key > toYmd) return false;
+    return true;
   }
 
   function filteredEmployees() {
@@ -322,12 +360,22 @@
   function filteredLogs() {
     var rows = state.logs || [];
     var filters = state.logColFilters || {};
+    var leaveFrom = ($('ltLogLeaveFrom') && $('ltLogLeaveFrom').value) || '';
+    var leaveTo = ($('ltLogLeaveTo') && $('ltLogLeaveTo').value) || '';
+    var createdFrom = ($('ltLogCreatedFrom') && $('ltLogCreatedFrom').value) || '';
+    var createdTo = ($('ltLogCreatedTo') && $('ltLogCreatedTo').value) || '';
     return rows.filter(function (p) {
-      return Object.keys(filters).every(function (key) {
+      var colsOk = Object.keys(filters).every(function (key) {
         var q = String(filters[key] || '').trim().toLowerCase();
         if (!q) return true;
         return logField(p, key).toLowerCase().indexOf(q) !== -1;
       });
+      if (!colsOk) return false;
+      var end = p.end_date || p.leave_date;
+      if (leaveFrom && toYmdKey(end) < leaveFrom) return false;
+      if (leaveTo && toYmdKey(p.leave_date) > leaveTo) return false;
+      if (!inYmdRange(p.created_at, createdFrom, createdTo)) return false;
+      return true;
     });
   }
 
@@ -338,7 +386,21 @@
     });
     var q = ($('ltLogsSearch') && $('ltLogsSearch').value) || '';
     var lt = ($('ltLogTypeFilter') && $('ltLogTypeFilter').value) || 'all';
-    return hasCol || !!q.trim() || (lt && lt !== 'all');
+    var company = ($('ltLogCompanyFilter') && $('ltLogCompanyFilter').value) || 'all';
+    var leaveFrom = ($('ltLogLeaveFrom') && $('ltLogLeaveFrom').value) || '';
+    var leaveTo = ($('ltLogLeaveTo') && $('ltLogLeaveTo').value) || '';
+    var createdFrom = ($('ltLogCreatedFrom') && $('ltLogCreatedFrom').value) || '';
+    var createdTo = ($('ltLogCreatedTo') && $('ltLogCreatedTo').value) || '';
+    return (
+      hasCol ||
+      !!q.trim() ||
+      (lt && lt !== 'all') ||
+      (company && company !== 'all') ||
+      !!leaveFrom ||
+      !!leaveTo ||
+      !!createdFrom ||
+      !!createdTo
+    );
   }
 
   function syncLogsClearBtn() {
@@ -370,7 +432,7 @@
       }
       (state.logs || []).forEach(function (p) {
         var v = logField(p, key).trim();
-        if (!v) return;
+        if (!v || v === '—') return;
         var k = v.toLowerCase();
         if (seen[k]) return;
         seen[k] = true;
@@ -418,7 +480,7 @@
     var store = isLogColFilter(key) ? state.logColFilters : state.colFilters;
     input.value = store[key] || '';
 
-    if (list && (key === 'designation' || key === 'company' || key === 'log_leave_type')) {
+    if (list && (key === 'designation' || key === 'company' || LOG_CHECKLIST_COLS[key])) {
       var vals = uniqueValuesForCol(key);
       var current = String(store[key] || '').trim().toLowerCase();
       list.hidden = false;
@@ -620,29 +682,47 @@
     syncColFilterButtons();
   }
 
-  function fmtDateTime24(iso) {
-    if (!iso) return '—';
+  function toYmdKey(iso) {
+    if (!iso) return '';
+    var str = String(iso).trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
     var d = null;
     try {
       if (window.InjaazDateTimeUAE && InjaazDateTimeUAE.parseInstant) {
-        d = InjaazDateTimeUAE.parseInstant(iso);
+        d = InjaazDateTimeUAE.parseInstant(str);
       }
     } catch (e) { /* ignore */ }
     if (!d) {
-      d = new Date(iso);
-      if (Number.isNaN(d.getTime())) return String(iso);
+      d = new Date(str);
+      if (Number.isNaN(d.getTime())) return '';
     }
     var tz = (window.InjaazDateTimeUAE && InjaazDateTimeUAE.TZ) || 'Asia/Dubai';
-    // en-GB + hour12:false → e.g. 06/08/2026, 16:08
-    return d.toLocaleString('en-GB', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
+    var parts = new Intl.DateTimeFormat('en-GB', {
       timeZone: tz,
-    }).replace(',', '');
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(d);
+    var map = {};
+    parts.forEach(function (p) {
+      if (p.type !== 'literal') map[p.type] = p.value;
+    });
+    if (!map.year || !map.month || !map.day) return '';
+    return map.year + '-' + map.month + '-' + map.day;
+  }
+
+  function fmtDateDMY(iso) {
+    if (!iso) return '—';
+    try {
+      if (window.InjaazDateTimeUAE && InjaazDateTimeUAE.formatDateDMY) {
+        var formatted = InjaazDateTimeUAE.formatDateDMY(iso);
+        if (formatted) return formatted;
+      }
+    } catch (e) { /* ignore */ }
+    var key = toYmdKey(iso);
+    if (!key) return String(iso);
+    var bits = key.split('-');
+    return bits[2] + '/' + bits[1] + '/' + bits[0];
   }
 
   function renderLogs() {
@@ -671,10 +751,10 @@
           p.employee_id +
           '">' +
           '<td>' +
-          esc(p.leave_date) +
+          esc(fmtDateDMY(p.leave_date)) +
           '</td>' +
           '<td>' +
-          esc(end) +
+          esc(fmtDateDMY(end)) +
           '</td>' +
           '<td>' +
           esc(p.emp_id) +
@@ -694,10 +774,10 @@
           esc(p.notes) +
           '</td>' +
           '<td class="lt-ts">' +
-          esc(fmtDateTime24(p.created_at)) +
+          esc(fmtDateDMY(p.created_at)) +
           '</td>' +
           '<td class="lt-ts">' +
-          esc(fmtDateTime24(p.updated_at || p.created_at)) +
+          esc(fmtDateDMY(p.updated_at || p.created_at)) +
           '</td>' +
           '<td class="lt-actions">' +
           '<button type="button" data-edit-log="' +
@@ -802,10 +882,10 @@
             esc(p.company) +
             '</td>' +
             '<td>' +
-            esc(p.start_date) +
+            esc(fmtDateDMY(p.start_date)) +
             '</td>' +
             '<td>' +
-            esc(p.end_date) +
+            esc(fmtDateDMY(p.end_date)) +
             '</td>' +
             '<td class="lt-num">' +
             esc(p.days) +
@@ -851,9 +931,9 @@
                 esc(p.emp_id) +
                 ')</span></div>' +
                 '<div class="lt-tl-meta">' +
-                esc(p.start_date) +
+                esc(fmtDateDMY(p.start_date)) +
                 ' → ' +
-                esc(p.end_date) +
+                esc(fmtDateDMY(p.end_date)) +
                 ' · ' +
                 esc(p.days) +
                 'd</div>' +
@@ -1241,9 +1321,10 @@
 
   function formatLeaveRange(log) {
     if (!log || !log.leave_date) return '—';
-    var end = log.end_date || log.leave_date;
-    if (end === log.leave_date) return log.leave_date;
-    return log.leave_date + ' → ' + end;
+    var start = fmtDateDMY(log.leave_date);
+    var end = fmtDateDMY(log.end_date || log.leave_date);
+    if (end === start) return start;
+    return start + ' → ' + end;
   }
 
   function renderPersonLatest(log) {
@@ -1563,6 +1644,45 @@
     if (state.tab === 'logs') loadLogs();
   }
 
+  function emptyLogColFilters() {
+    return {
+      log_leave_from: '',
+      log_leave_to: '',
+      log_emp_id: '',
+      log_full_name: '',
+      log_leave_type: '',
+      log_days: '',
+      log_notes: '',
+      log_created: '',
+      log_edited: '',
+    };
+  }
+
+  function syncSearchClear(inputId, btnId) {
+    var input = $(inputId);
+    var btn = $(btnId);
+    if (!btn) return;
+    btn.hidden = !(input && String(input.value || '').length);
+  }
+
+  function wireSearchClear(inputId, btnId) {
+    var input = $(inputId);
+    var btn = $(btnId);
+    if (!input || !btn) return;
+    function sync() {
+      syncSearchClear(inputId, btnId);
+    }
+    input.addEventListener('input', sync);
+    input.addEventListener('search', sync);
+    btn.addEventListener('click', function () {
+      input.value = '';
+      sync();
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.focus();
+    });
+    sync();
+  }
+
   function init() {
     var reload = debounce(function () {
       state.alertLevel = '';
@@ -1574,6 +1694,8 @@
     $('ltSearch') && $('ltSearch').addEventListener('input', reload);
     $('ltCompany') && $('ltCompany').addEventListener('change', reload);
     $('ltMonth') && $('ltMonth').addEventListener('change', reload);
+    wireSearchClear('ltSearch', 'ltSearchClear');
+    wireSearchClear('ltLogsSearch', 'ltLogsSearchClear');
     $('ltLogsSearch') &&
       $('ltLogsSearch').addEventListener(
         'input',
@@ -1584,14 +1706,16 @@
       );
     $('ltLogsClearFilters') &&
       $('ltLogsClearFilters').addEventListener('click', function () {
-        state.logColFilters = {
-          log_emp_id: '',
-          log_full_name: '',
-          log_leave_type: '',
-          log_notes: '',
-        };
+        state.logColFilters = emptyLogColFilters();
         if ($('ltLogsSearch')) $('ltLogsSearch').value = '';
         if ($('ltLogTypeFilter')) $('ltLogTypeFilter').value = 'all';
+        if ($('ltLogCompanyFilter')) $('ltLogCompanyFilter').value = 'all';
+        ['ltLogLeaveFrom', 'ltLogLeaveTo', 'ltLogCreatedFrom', 'ltLogCreatedTo'].forEach(
+          function (id) {
+            if ($(id)) $(id).value = '';
+          }
+        );
+        syncSearchClear('ltLogsSearch', 'ltLogsSearchClear');
         syncColFilterButtons();
         loadLogs();
       });
@@ -1742,7 +1866,6 @@
       openLogModal(null);
     }
     $('ltLogLeaveBtn') && $('ltLogLeaveBtn').addEventListener('click', openLog);
-    $('ltLogLeaveBtn2') && $('ltLogLeaveBtn2').addEventListener('click', openLog);
 
     document.querySelectorAll('[data-close-log-modal]').forEach(function (el) {
       el.addEventListener('click', closeLogModal);
@@ -1753,6 +1876,21 @@
         loadLogs();
         syncLogsClearBtn();
       });
+    $('ltLogCompanyFilter') &&
+      $('ltLogCompanyFilter').addEventListener('change', function () {
+        loadLogs();
+        syncLogsClearBtn();
+      });
+    ['ltLogLeaveFrom', 'ltLogLeaveTo', 'ltLogCreatedFrom', 'ltLogCreatedTo'].forEach(
+      function (id) {
+        $(id) &&
+          $(id).addEventListener('change', function () {
+            syncLogsClearBtn();
+            if (id === 'ltLogLeaveFrom' || id === 'ltLogLeaveTo') loadLogs();
+            else renderLogs();
+          });
+      }
+    );
 
     $('ltLogForm') &&
       $('ltLogForm').addEventListener('submit', function (e) {

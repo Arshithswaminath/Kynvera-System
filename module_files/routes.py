@@ -5,6 +5,8 @@ from __future__ import annotations
 import logging
 from itsdangerous import BadSignature, URLSafeSerializer
 
+from urllib.parse import quote
+
 from flask import (
     Blueprint,
     current_app,
@@ -12,8 +14,6 @@ from flask import (
     render_template,
     request,
     send_file,
-    session,
-    url_for,
 )
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
@@ -105,15 +105,7 @@ def api_tree():
     if err:
         return err
     tree = files_service.build_tree()
-    status = drive_service.drive_status()
-    # Keep Drive root folder branded as Kynvera Files (renames legacy Injaaz Files)
-    if status.get('connected'):
-        try:
-            drive_service.ensure_drive_folder_tree()
-            status = drive_service.drive_status()
-        except Exception:
-            logger.exception('Drive folder tree ensure failed during tree load')
-    tree['drive'] = status
+    tree['drive'] = drive_service.drive_status()
     return success_response(tree)
 
 
@@ -347,16 +339,20 @@ def api_drive_connect():
         return err
     if user.role != 'admin' and not getattr(user, 'access_files', False):
         return error_response('Access denied', status_code=403)
+    want_json = (
+        request.args.get('redirect') == '0'
+        or 'application/json' in (request.headers.get('Accept') or '')
+    )
     try:
         code_verifier = drive_service.make_code_verifier()
         # Embed PKCE verifier in signed state so callback does not depend on Flask session cookies
         state = _state_serializer().dumps({'uid': user.id, 'cv': code_verifier})
-        session['files_drive_oauth_state'] = state
         url = drive_service.build_auth_url(state, code_verifier)
     except Exception as e:
-        return error_response(str(e), status_code=400)
-    # Browser navigation vs XHR
-    if request.args.get('redirect') == '0' or request.headers.get('Accept', '').find('application/json') >= 0:
+        if want_json:
+            return error_response(str(e), status_code=400)
+        return redirect('/files/?drive=error&msg=' + quote(str(e)[:80]))
+    if want_json:
         return success_response({'auth_url': url})
     return redirect(url)
 
@@ -366,7 +362,7 @@ def drive_callback():
     """OAuth callback — no JWT (Google redirects here). State carries user id + PKCE verifier."""
     error = request.args.get('error')
     if error:
-        return redirect(url_for('files.files_home') + '?drive=error&msg=' + error)
+        return redirect('/files/?drive=error&msg=' + quote(str(error)[:80]))
 
     code = request.args.get('code')
     state = request.args.get('state') or ''
@@ -387,12 +383,32 @@ def drive_callback():
         creds = drive_service.exchange_code(code, state, code_verifier=code_verifier)
         email = drive_service.fetch_email_from_creds(creds)
         drive_service.save_connection(creds, email=email, user_id=user_id)
-        drive_service.ensure_drive_folder_tree()
     except Exception as e:
         logger.exception('Drive OAuth callback failed')
-        return redirect('/files/?drive=error&msg=' + str(e)[:80])
+        return redirect('/files/?drive=error&msg=' + quote(str(e)[:80]))
 
+    # Folder tree is created after redirect so Google login is not blocked on Drive API calls
     return redirect('/files/?drive=connected')
+
+
+@files_bp.route('/api/drive/setup', methods=['POST'])
+@jwt_required()
+def api_drive_setup():
+    """Create Kynvera Files + catalog folders on Drive after OAuth (non-blocking for login)."""
+    user, err = _require_files_user()
+    if err:
+        return err
+    status = drive_service.drive_status()
+    if not status.get('connected'):
+        return error_response('Connect Google Drive first', status_code=400)
+    try:
+        root_id = drive_service.ensure_drive_folder_tree()
+    except Exception as e:
+        logger.exception('Drive folder setup failed')
+        return error_response(str(e), status_code=400)
+    status = drive_service.drive_status()
+    status['root_drive_folder_id'] = root_id
+    return success_response(status)
 
 
 @files_bp.route('/api/drive/disconnect', methods=['POST'])

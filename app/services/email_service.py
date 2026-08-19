@@ -44,10 +44,10 @@ def send_outlook_email(subject, body, attachments, recipient):
         attachments = [p for p in (attachments or []) if p and os.path.exists(p)]
 
         if has_app_context():
-            ok = send_email(recipient, subject, body, attachments=attachments)
+            ok = send_email(recipient, subject, body, attachments=attachments, source='other')
         else:
             with _minimal_mail_app().app_context():
-                ok = send_email(recipient, subject, body, attachments=attachments)
+                ok = send_email(recipient, subject, body, attachments=attachments, source='other')
 
         if ok:
             logger.info("Email sent to %s with %d attachment(s)", recipient, len(attachments))

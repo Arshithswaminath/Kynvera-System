@@ -81,9 +81,17 @@ class TestClaudeLlm:
 class TestLlmNaturalChat:
     def test_llm_natural_reply_when_enabled(self, client, auth_headers, app, monkeypatch):
         monkeypatch.setattr('module_assistant.routes.is_llm_enabled', lambda: True)
+        monkeypatch.setattr('module_assistant.agent.is_llm_enabled', lambda: True)
         monkeypatch.setattr(
-            'module_assistant.llm.generate_reply',
-            lambda message, chunks, user_name='', account_context='': 'Injaaz is based in Ajman, United Arab Emirates.',
+            'module_assistant.agent.run_agent',
+            lambda user, message, composer=None: {
+                'intent': 'agent',
+                'message': 'Injaaz is based in Ajman, United Arab Emirates.',
+                'cards': [],
+                'actions': [],
+                'sources': [],
+                'suggestions': [],
+            },
         )
 
         with app.app_context():
@@ -95,26 +103,7 @@ class TestLlmNaturalChat:
             assert res.status_code == 200
             payload = res.get_json().get('data') or res.get_json()
             assert 'Ajman' in payload.get('message', '')
-            assert payload.get('intent') == 'chat'
-
-    def test_live_data_stays_structured_when_llm_enabled(
-        self, client, supervisor_auth_headers, sample_submission, app, monkeypatch
-    ):
-        monkeypatch.setattr('module_assistant.routes.is_llm_enabled', lambda: True)
-        monkeypatch.setattr(
-            'module_assistant.llm.generate_reply',
-            lambda *a, **k: 'This should not be used for pending count.',
-        )
-
-        with app.app_context():
-            res = client.post(
-                '/api/assistant/chat',
-                json={'message': 'How many pending forms?'},
-                headers=supervisor_auth_headers,
-            )
-            payload = res.get_json().get('data') or res.get_json()
-            assert payload.get('intent') == 'pending_count'
-            assert 'Ajman' not in payload.get('message', '')
+            assert payload.get('intent') == 'agent'
 
 
 class TestAssistantChatEndpoint:
@@ -667,3 +656,296 @@ class TestKnowledgeBaseLinkAPI:
                 f'/api/admin/knowledge-base/{entry_id}',
                 headers=admin_auth_headers,
             )
+
+
+class TestAssistantAgentLoop:
+    def test_tool_loop_read_then_text(self, client, supervisor_auth_headers, sample_submission, app, monkeypatch):
+        from module_assistant.llm import LLMToolCall, LLMToolRound
+
+        rounds = [
+            LLMToolRound(
+                text='',
+                tool_calls=[LLMToolCall(id='toolu_1', name='get_pending_forms', input={})],
+                assistant_content=[{'type': 'tool_use', 'id': 'toolu_1', 'name': 'get_pending_forms', 'input': {}}],
+                stop_reason='tool_use',
+            ),
+            LLMToolRound(
+                text='You have 1 form waiting for your review.',
+                tool_calls=[],
+                assistant_content=[{'type': 'text', 'text': 'You have 1 form waiting for your review.'}],
+                stop_reason='end_turn',
+            ),
+        ]
+
+        def fake_generate(_system, _messages, _tools, max_tokens=1200):
+            return rounds.pop(0)
+
+        monkeypatch.setattr('module_assistant.routes.is_llm_enabled', lambda: True)
+        monkeypatch.setattr('module_assistant.agent.is_llm_enabled', lambda: True)
+        monkeypatch.setattr('module_assistant.agent.generate_with_tools', fake_generate)
+
+        with app.app_context():
+            res = client.post(
+                '/api/assistant/chat',
+                json={'message': 'How many pending forms?'},
+                headers=supervisor_auth_headers,
+            )
+            assert res.status_code == 200
+            payload = res.get_json().get('data') or res.get_json()
+            assert '1' in payload.get('message', '')
+            assert payload.get('intent') == 'agent'
+
+    def test_llm_off_pending_forms_still_works(
+        self, client, supervisor_auth_headers, sample_submission, app, monkeypatch
+    ):
+        monkeypatch.setattr('module_assistant.routes.is_llm_enabled', lambda: False)
+        with app.app_context():
+            res = client.post(
+                '/api/assistant/chat',
+                json={'message': 'How many pending forms?'},
+                headers=supervisor_auth_headers,
+            )
+            assert res.status_code == 200
+            payload = res.get_json().get('data') or res.get_json()
+            assert payload.get('intent') == 'pending_count'
+
+
+class TestAssistantPendingActions:
+    def _grant_ticketing(self, app, username='testuser'):
+        from app.models import User, db
+        u = User.query.filter_by(username=username).first()
+        u.access_ticketing = True
+        db.session.commit()
+        return u
+
+    def test_write_tool_stores_pending_not_ticket(self, client, auth_headers, app, monkeypatch):
+        from app.models import Ticket
+        from module_assistant.llm import LLMToolCall, LLMToolRound
+
+        rounds = [
+            LLMToolRound(
+                text='',
+                tool_calls=[LLMToolCall(
+                    id='toolu_t',
+                    name='propose_create_ticket',
+                    input={
+                        'title': 'AC leak',
+                        'work_description': 'Water dripping from the unit',
+                        'project': 'HQ',
+                        'priority': 'high',
+                    },
+                )],
+                assistant_content=[{
+                    'type': 'tool_use',
+                    'id': 'toolu_t',
+                    'name': 'propose_create_ticket',
+                    'input': {
+                        'title': 'AC leak',
+                        'work_description': 'Water dripping from the unit',
+                        'project': 'HQ',
+                    },
+                }],
+                stop_reason='tool_use',
+            ),
+        ]
+        monkeypatch.setattr('module_assistant.routes.is_llm_enabled', lambda: True)
+        monkeypatch.setattr('module_assistant.agent.is_llm_enabled', lambda: True)
+        monkeypatch.setattr(
+            'module_assistant.agent.generate_with_tools',
+            lambda *a, **k: rounds.pop(0),
+        )
+
+        with app.app_context():
+            self._grant_ticketing(app)
+            before = Ticket.query.count()
+            res = client.post(
+                '/api/assistant/chat',
+                json={'message': 'Create a ticket for the AC leak at HQ'},
+                headers=auth_headers,
+            )
+            assert res.status_code == 200
+            payload = res.get_json().get('data') or res.get_json()
+            assert payload.get('intent') == 'pending_action'
+            assert payload.get('pending_action', {}).get('action_id')
+            assert Ticket.query.count() == before
+
+    def test_confirm_creates_ticket_draft(self, client, auth_headers, app, monkeypatch):
+        from app.models import AuditLog, Ticket
+        from module_assistant.actions import propose_create_ticket
+
+        with app.app_context():
+            user = self._grant_ticketing(app)
+            proposed = propose_create_ticket(user, {
+                'title': 'AC leak',
+                'work_description': 'Water dripping from the unit',
+                'project': 'HQ',
+                'priority': 'high',
+            })
+            action_id = proposed['_pending_action']['action_id']
+            res = client.post(
+                '/api/assistant/confirm',
+                json={'action_id': action_id},
+                headers=auth_headers,
+            )
+            assert res.status_code == 200
+            payload = res.get_json().get('data') or res.get_json()
+            assert payload.get('intent') == 'action_done'
+            ticket = Ticket.query.filter_by(source='assistant').order_by(Ticket.id.desc()).first()
+            assert ticket is not None
+            assert ticket.status == 'draft'
+            assert ticket.title == 'AC leak'
+            hrefs = [a.get('href') or '' for a in (payload.get('actions') or [])]
+            assert any('/tickets/' in h for h in hrefs)
+            assert AuditLog.query.filter_by(action='assistant_create_ticket_draft').count() >= 1
+            from app.models import db
+            db.session.delete(ticket)
+            db.session.commit()
+
+    def test_confirm_by_other_user_forbidden(self, client, auth_headers, app):
+        from app.models import User, db
+        from module_assistant.actions import propose_create_ticket
+
+        with app.app_context():
+            user = self._grant_ticketing(app)
+            proposed = propose_create_ticket(user, {
+                'title': 'Pump fault',
+                'work_description': 'No pressure',
+                'project': 'HQ',
+            })
+            action_id = proposed['_pending_action']['action_id']
+            other = User(
+                username='otherasst',
+                email='otherasst@example.com',
+                full_name='Other User',
+                role='user',
+                is_active=True,
+                password_changed=True,
+                access_ticketing=True,
+            )
+            other.set_password('OtherPass123')
+            db.session.add(other)
+            db.session.commit()
+            login = client.post('/api/auth/login', json={
+                'username': 'otherasst',
+                'password': 'OtherPass123',
+            })
+            token = login.get_json().get('access_token')
+            res = client.post(
+                '/api/assistant/confirm',
+                json={'action_id': action_id},
+                headers={'Authorization': f'Bearer {token}'},
+            )
+            assert res.status_code == 403
+            db.session.delete(other)
+            db.session.commit()
+
+    def test_expired_action_rejected(self, client, auth_headers, app):
+        from datetime import datetime, timedelta, timezone
+        from app.models import AssistantPendingAction, db
+        from module_assistant.actions import propose_create_ticket
+
+        with app.app_context():
+            user = self._grant_ticketing(app)
+            proposed = propose_create_ticket(user, {
+                'title': 'Expired draft',
+                'work_description': 'Should not save',
+                'project': 'HQ',
+            })
+            action_id = proposed['_pending_action']['action_id']
+            row = db.session.get(AssistantPendingAction, action_id)
+            row.expires_at = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(minutes=1)
+            db.session.commit()
+            res = client.post(
+                '/api/assistant/confirm',
+                json={'action_id': action_id},
+                headers=auth_headers,
+            )
+            assert res.status_code == 400
+            body = res.get_json() or {}
+            assert 'expired' in (body.get('error') or '').lower()
+
+    def test_composer_then_confirm_leave_draft(self, client, auth_headers, app):
+        from app.models import Submission
+
+        with app.app_context():
+            res = client.post(
+                '/api/assistant/chat',
+                json={
+                    'message': 'Please use these details.',
+                    'composer': {
+                        'type': 'leave_draft',
+                        'leave_type': 'annual',
+                        'start_date': '2026-09-01',
+                        'end_date': '2026-09-05',
+                        'reason': 'Family visit',
+                    },
+                },
+                headers=auth_headers,
+            )
+            assert res.status_code == 200
+            payload = res.get_json().get('data') or res.get_json()
+            action_id = payload.get('pending_action', {}).get('action_id')
+            assert action_id
+            before = Submission.query.filter_by(
+                module_type='hr_leave_application',
+                status='draft',
+            ).count()
+
+            confirm = client.post(
+                '/api/assistant/confirm',
+                json={'action_id': action_id},
+                headers=auth_headers,
+            )
+            assert confirm.status_code == 200
+            after = Submission.query.filter_by(
+                module_type='hr_leave_application',
+                status='draft',
+            ).count()
+            assert after == before + 1
+            draft = Submission.query.filter_by(
+                module_type='hr_leave_application',
+                status='draft',
+            ).order_by(Submission.id.desc()).first()
+            fd = draft.form_data if isinstance(draft.form_data, dict) else {}
+            assert fd.get('leave_type') == 'annual'
+            assert fd.get('first_day_of_leave') == '2026-09-01'
+            from app.models import db
+            db.session.delete(draft)
+            db.session.commit()
+
+    def test_generate_with_tools_parses_claude_tool_use(self, app, monkeypatch):
+        from module_assistant.llm import generate_with_tools
+
+        class Block:
+            def __init__(self, **kwargs):
+                self.__dict__.update(kwargs)
+
+        class Resp:
+            def __init__(self):
+                self.content = [
+                    Block(type='text', text='Let me check.'),
+                    Block(type='tool_use', id='1', name='get_my_leave', input={'leave_type': 'annual'}),
+                ]
+                self.stop_reason = 'tool_use'
+
+        class FakeMessages:
+            def create(self, **kwargs):
+                return Resp()
+
+        class FakeClient:
+            messages = FakeMessages()
+
+        monkeypatch.setattr('module_assistant.llm.is_llm_enabled', lambda: True)
+        monkeypatch.setattr('module_assistant.llm._provider', lambda: 'claude')
+        monkeypatch.setattr('module_assistant.llm._get_claude_client', lambda: FakeClient())
+
+        with app.app_context():
+            app.config['ASSISTANT_LLM_ENABLED'] = True
+            app.config['ASSISTANT_LLM_PROVIDER'] = 'claude'
+            app.config['ASSISTANT_LLM_MODEL'] = 'claude-haiku-4-5'
+            round_out = generate_with_tools('sys', [{'role': 'user', 'content': 'leave?'}], [
+                {'name': 'get_my_leave', 'description': 'leave', 'input_schema': {'type': 'object', 'properties': {}}},
+            ])
+            assert round_out.tool_calls
+            assert round_out.tool_calls[0].name == 'get_my_leave'
+            assert 'Let me check' in round_out.text

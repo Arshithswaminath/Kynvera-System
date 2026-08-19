@@ -2420,7 +2420,7 @@
    15 · Responsive
    -------------------------------------------------------------------------- */
 
-/* Hero stacks below the split breakpoint. */
+/* Hero stacks below the split breakpoint — copy first, then image. */
 @media (max-width: 980px) {
   .lp-hero-panel {
     padding: clamp(2rem, 5vw, 3rem) clamp(1.25rem, 4vw, 2rem);
@@ -2428,22 +2428,7 @@
 
   .lp-hero-top {
     grid-template-columns: 1fr;
-    gap: 2.25rem;
-  }
-
-  .lp-hero-copy {
-    max-width: 40rem;
-    text-align: center;
-    margin-inline: auto;
-    padding-block: 0;
-  }
-
-  .landing .lp-hero-sub {
-    margin-inline: auto;
-  }
-
-  .landing .lp-hero-cta {
-    justify-content: center;
+    gap: 1.5rem;
   }
 
   .lp-hero-visual {
@@ -2459,13 +2444,106 @@
 
   .lp-hero-photo-img {
     /* Milder zoom on stacked layout; still uncropped (overflow visible) */
-    transform: scale(1.2) translateY(-14%);
-    transform-origin: center 26%;
+    transform: scale(1.12) translateY(-6%);
+    transform-origin: center 22%;
     max-height: none;
   }
 
+  .lp-hero-copy {
+    max-width: 40rem;
+    text-align: center;
+    margin-inline: auto;
+    padding-block: 0;
+  }
+
+  .landing .lp-hero-title {
+    margin: 0 0 1.15rem;
+    font-size: clamp(2.5rem, 9.5vw, 3.35rem) !important;
+    line-height: 1.08;
+    letter-spacing: -0.045em;
+  }
+
+  .landing .lp-hero-sub {
+    margin: 0 auto 1.85rem;
+    font-size: 1rem;
+  }
+
+  .landing .lp-hero-cta {
+    justify-content: center;
+  }
+
   .lp-hero-stats {
-    grid-template-columns: 1fr;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.55rem;
+    margin-inline: 0;
+    padding-inline: 0;
+    padding-bottom: 0;
+    overflow: visible;
+  }
+
+  .lp-hero-stats .lp-hs-card {
+    min-height: 0;
+    padding: 0.85rem 0.7rem;
+    border-radius: 16px;
+  }
+
+  .landing .lp-hs-eyebrow {
+    font-size: 0.55rem;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.2rem;
+  }
+
+  .landing .lp-hs-stat {
+    font-size: 1.05rem;
+  }
+
+  .landing .lp-hs-dark .lp-hs-stat,
+  .landing .lp-hs-accent .lp-hs-stat {
+    font-size: 0.95rem;
+  }
+
+  .landing .lp-hs-soft .lp-hs-stat {
+    font-size: 1.65rem;
+  }
+
+  .landing .lp-hs-caption {
+    margin-top: 0.35rem;
+    font-size: 0.68rem;
+    line-height: 1.35;
+    max-width: none;
+  }
+
+  .landing .lp-hs-soft .lp-hs-caption,
+  .landing .lp-hs-accent .lp-hs-caption {
+    font-size: 0.68rem;
+  }
+
+  .lp-hs-faces {
+    margin-top: 0.55rem;
+  }
+
+  .landing .lp-hs-face {
+    width: 24px;
+    height: 24px;
+    margin-left: -6px;
+    font-size: 0.5rem;
+  }
+
+  .lp-hs-accent-top {
+    margin-bottom: 0.15rem;
+  }
+
+  .landing .lp-hs-glyph,
+  .landing .lp-hs-arrow {
+    width: 26px;
+    height: 26px;
+  }
+
+  .landing .lp-hs-glyph svg,
+  .landing .lp-hs-arrow svg {
+    width: 13px;
+    height: 13px;
   }
 
   .lp-hs-dark {
@@ -2595,14 +2673,37 @@
   }
 
   .lp-benefits {
-    grid-template-columns: 1fr;
-    gap: 1.75rem;
-    padding-top: 1.75rem;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.55rem;
+    padding-top: 1.5rem;
+    margin-bottom: 2.5rem;
   }
 
   .landing .lp-benefit::before,
   .landing .lp-benefit:last-child::after {
     display: none;
+  }
+
+  .landing .lp-benefit-icon {
+    width: 28px;
+    height: 28px;
+    margin-bottom: 0.55rem;
+  }
+
+  .landing .lp-benefit-icon svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .landing .lp-benefit h3 {
+    font-size: 0.78rem;
+    line-height: 1.25;
+    margin-bottom: 0.3rem;
+  }
+
+  .landing .lp-benefit p {
+    font-size: 0.68rem;
+    line-height: 1.4;
   }
 
   .lp-mock-widgets {
@@ -2654,12 +2755,56 @@
 
 @media (max-width: 640px) {
   .lp-hero-stats {
-    gap: 0.75rem;
+    gap: 0.4rem;
   }
 
-  .lp-hs-card {
-    min-height: 0;
-    padding: 1.25rem 1.2rem;
+  .lp-hero-stats .lp-hs-card {
+    padding: 0.7rem 0.55rem;
+    border-radius: 14px;
+  }
+
+  .landing .lp-hs-eyebrow {
+    font-size: 0.5rem;
+  }
+
+  .landing .lp-hs-stat {
+    font-size: 0.92rem;
+  }
+
+  .landing .lp-hs-dark .lp-hs-stat,
+  .landing .lp-hs-accent .lp-hs-stat {
+    font-size: 0.85rem;
+  }
+
+  .landing .lp-hs-soft .lp-hs-stat {
+    font-size: 1.4rem;
+  }
+
+  .landing .lp-hs-caption {
+    font-size: 0.62rem;
+    line-height: 1.3;
+  }
+
+  .landing .lp-hs-soft .lp-hs-caption,
+  .landing .lp-hs-accent .lp-hs-caption {
+    font-size: 0.62rem;
+  }
+
+  .landing .lp-hs-face {
+    width: 22px;
+    height: 22px;
+  }
+
+  .landing .lp-hs-glyph,
+  .landing .lp-hs-arrow {
+    width: 22px;
+    height: 22px;
+  }
+
+  .landing .lp-hs-glyph svg,
+  .landing .lp-hs-arrow svg {
+    width: 11px;
+    height: 11px;
   }
 
   .lp-features-bento,

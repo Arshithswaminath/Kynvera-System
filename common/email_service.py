@@ -298,7 +298,131 @@ def _send_email_mailjet_http(
         return False
 
 
-def send_email(recipient, subject, body, html_body=None, cc=None, attachments=None):
+EMAIL_LOG_SOURCES = frozenset({
+    'inspection', 'hr', 'bd_email', 'mmr', 'ticketing', 'auth', 'other',
+})
+_BODY_PREVIEW_MAX = 400
+_ERROR_MAX = 500
+
+
+def _join_emails(value):
+    if not value:
+        return ''
+    if isinstance(value, (list, tuple)):
+        return ', '.join(str(v).strip() for v in value if v and str(v).strip())
+    return str(value).strip()
+
+
+def _attachment_count(attachments):
+    if not attachments:
+        return 0
+    return len([item for item in attachments if item])
+
+
+def _normalize_source(source):
+    s = (source or 'other').strip().lower()
+    return s if s in EMAIL_LOG_SOURCES else 'other'
+
+
+def _body_preview(body, source):
+    if source == 'auth':
+        return 'Password reset notification'
+    text = ' '.join((body or '').split())
+    if len(text) > _BODY_PREVIEW_MAX:
+        return text[: _BODY_PREVIEW_MAX - 3] + '...'
+    return text
+
+
+def _record_email_log(
+    *,
+    recipient,
+    subject,
+    body,
+    cc,
+    attachments,
+    ok,
+    source,
+    sent_by_user_id,
+    related_id,
+    error_message,
+):
+    """Persist a send attempt. Never raises — logging must not fail the send."""
+    try:
+        from flask import has_app_context
+        if not has_app_context():
+            return
+        from app.models import EmailLog, db
+
+        src = _normalize_source(source)
+        related = str(related_id).strip() if related_id else None
+        row = EmailLog(
+            status='sent' if ok else 'failed',
+            source=src,
+            subject=(subject or '')[:500],
+            to_emails=_join_emails(recipient)[:2000],
+            cc_emails=_join_emails(cc)[:2000],
+            sent_by_user_id=sent_by_user_id,
+            related_id=(related[:120] if related else None),
+            body_preview=_body_preview(body, src)[:500],
+            attachment_count=_attachment_count(attachments),
+            error_message=(str(error_message)[:_ERROR_MAX] if (error_message and not ok) else None),
+        )
+        db.session.add(row)
+        db.session.commit()
+    except Exception as exc:
+        logger.warning("Could not record email log: %s", exc)
+        try:
+            from app.models import db as _db
+            _db.session.rollback()
+        except Exception:
+            pass
+
+
+def send_email(
+    recipient,
+    subject,
+    body,
+    html_body=None,
+    cc=None,
+    attachments=None,
+    source=None,
+    sent_by_user_id=None,
+    related_id=None,
+):
+    """
+    Send email via Brevo HTTPS, Mailjet HTTPS, or SMTP (see module docstring).
+
+    Optional source / sent_by_user_id / related_id are stored on the admin email log.
+
+    Returns:
+        bool: True if sent successfully, False otherwise
+    """
+    error_message = None
+    ok = False
+    try:
+        ok = bool(_deliver_email(recipient, subject, body, html_body, cc, attachments))
+        if not ok:
+            error_message = 'Send failed'
+    except Exception as e:
+        logger.error("Failed to send email: %s", e, exc_info=True)
+        error_message = str(e)
+        ok = False
+    _record_email_log(
+        recipient=recipient,
+        subject=subject,
+        body=body,
+        cc=cc,
+        attachments=attachments,
+        ok=ok,
+        source=source,
+        sent_by_user_id=sent_by_user_id,
+        related_id=related_id,
+        error_message=error_message,
+    )
+    return ok
+
+
+def _deliver_email(recipient, subject, body, html_body=None, cc=None, attachments=None):
     """
     Send email via Brevo HTTPS, Mailjet HTTPS, or SMTP (see module docstring).
 
@@ -443,4 +567,4 @@ Injaaz Team
 </html>
 """
 
-    return send_email(user_email, subject, body, html_body)
+    return send_email(user_email, subject, body, html_body, source='auth')

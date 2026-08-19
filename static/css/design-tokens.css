@@ -403,6 +403,72 @@ samp,
   outline-offset: 2px;
 }
 
+/* Kynvera checkbox — coral fill + white tick (replaces native OS control) */
+input[type="checkbox"].kv-checkbox {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 1.05rem;
+  height: 1.05rem;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  display: inline-block;
+  vertical-align: middle;
+  position: relative;
+  border: 1.5px solid var(--color-neutral-300, #d4d4d8);
+  border-radius: 5px;
+  background: var(--color-neutral-0, #fff);
+  cursor: pointer;
+  box-shadow: none;
+  outline: none;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+input[type="checkbox"].kv-checkbox::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: no-repeat center / 11px 11px;
+  opacity: 0;
+  transform: scale(0.7);
+  transition: opacity 0.12s ease, transform 0.12s ease;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M3.5 8.2l2.8 2.8 6.2-6.2' stroke='%23fff' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  pointer-events: none;
+}
+input[type="checkbox"].kv-checkbox:hover {
+  border-color: var(--color-brand);
+  background: var(--color-brand-accent, #fff4ef);
+}
+input[type="checkbox"].kv-checkbox:checked {
+  background: var(--color-brand);
+  border-color: var(--color-brand);
+}
+input[type="checkbox"].kv-checkbox:checked::after {
+  opacity: 1;
+  transform: scale(1);
+}
+input[type="checkbox"].kv-checkbox:indeterminate {
+  background: var(--color-brand);
+  border-color: var(--color-brand);
+}
+input[type="checkbox"].kv-checkbox:indeterminate::after {
+  opacity: 1;
+  transform: scale(1);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M3.5 8h9' stroke='%23fff' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+input[type="checkbox"].kv-checkbox:focus-visible {
+  outline: none;
+  border-color: var(--color-brand);
+  box-shadow: 0 0 0 3px rgb(255 142 104 / 0.28);
+}
+input[type="checkbox"].kv-checkbox:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

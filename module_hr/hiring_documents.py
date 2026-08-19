@@ -536,7 +536,7 @@ def register_hiring_document_routes(hr_bp):
             pipeline = (data.get('pipeline_status') or '').strip()
             if pipeline not in HIRING_PIPELINE_STATUSES:
                 return error_response(
-                    'Invalid pipeline status',
+                    f'Invalid pipeline status "{pipeline}"',
                     status_code=400,
                     error_code='VALIDATION_ERROR',
                 )

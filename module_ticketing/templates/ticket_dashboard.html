@@ -11,8 +11,8 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='animations.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=22">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/ticketing.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dochub-page.css') }}?v=25">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/ticketing.css') }}?v=3">
   <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
   <style>
     /* ── Page body ── */
@@ -101,7 +101,7 @@
         {{ tkt_trend(period_stats.trend.total, trend_compare_label) }}
       </a>
 
-      <a href="{{ url_for('ticketing.ticket_list', status='open') }}"
+      <a href="{{ url_for('ticketing.ticket_list', status='open,pending_supervisor') }}"
          class="tkt-stat-card tkt-sb-anim" style="animation-delay:.05s;"
          aria-label="View open tickets">
         <div class="tkt-stat-head">
@@ -118,7 +118,7 @@
         {{ tkt_trend(period_stats.trend.open, trend_compare_label) }}
       </a>
 
-      <a href="{{ url_for('ticketing.ticket_list', status='in_progress') }}"
+      <a href="{{ url_for('ticketing.ticket_list', status='assigned,site_attended,work_started,in_progress,pending_parts') }}"
          class="tkt-stat-card tkt-sb-anim" style="animation-delay:.1s;"
          aria-label="View in-progress tickets">
         <div class="tkt-stat-head">

@@ -1,0 +1,743 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+  <meta name="color-scheme" content="light">
+  <title>Database - Injaaz Admin</title>
+  <meta name="theme-color" content="#ff8e68">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/kynvera/kynvera-mark-32.png') }}?v=3">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='mobile_responsive.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=22">
+  <style>
+    :root {
+      --db-brand: #ff8e68;
+      --db-brand-light: #f97e54;
+      --db-brand-dark: #e05f36;
+      --db-canvas: #f5faf7;
+      --db-ink: #1f2937;
+      --db-ink-soft: #64748b;
+      --db-border: #e5eae7;
+      --db-ok: #15803d;
+      --db-warn: #b45309;
+      --db-bad: #b91c1c;
+    }
+    /* Viewport-locked shell: sidebar stays screen-tall so the profile chip stays on screen. */
+    html:has(body.db-page.has-main-nav) {
+      height: 100%;
+      height: 100dvh;
+      max-height: 100dvh;
+      overflow: hidden !important;
+      overflow-x: hidden !important;
+    }
+    body.db-page.has-main-nav {
+      --db-nav-h: var(--nav-bar-h, calc(40px + 1.75rem + env(safe-area-inset-top, 0px)));
+      background: var(--db-canvas);
+      color: var(--db-ink);
+      padding-top: var(--db-nav-h);
+      min-height: 100dvh;
+      height: 100dvh;
+      height: 100svh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden !important;
+      overflow-y: hidden !important;
+      box-sizing: border-box;
+    }
+    body.db-page.has-main-nav .nav,
+    body.db-page.has-main-nav .nav.scrolled {
+      border-bottom: none;
+      box-shadow: none;
+    }
+    .db-root {
+      display: flex;
+      align-items: stretch;
+      flex: 1 1 0%;
+      min-height: 0;
+      width: 100%;
+      overflow: hidden;
+      gap: 0;
+      margin-top: -1px;
+    }
+    .db-sidebar {
+      width: 264px; flex-shrink: 0;
+      background: linear-gradient(180deg, var(--db-brand) 0%, var(--db-brand-dark) 100%);
+      color: #fff; display: flex; flex-direction: column;
+      padding: 1.25rem 0.85rem;
+      position: relative;
+      align-self: stretch;
+      height: auto;
+      min-height: 0;
+      overflow: hidden;
+    }
+    .db-brand { flex-shrink: 0; padding: 0.25rem 0.65rem 1.1rem; }
+    .db-brand .name { display: block; font-size: 1.05rem; font-weight: 700; letter-spacing: -0.01em; }
+    .db-brand .tagline { display: block; font-size: 0.72rem; opacity: 0.7; margin-top: 0.1rem; }
+    .db-sidebar nav { flex: 1 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+    .db-sb-section { margin-bottom: 1.25rem; }
+    .db-sb-label { font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.55; padding: 0 0.65rem; margin-bottom: 0.45rem; font-weight: 600; }
+    .db-nav-item {
+      display: flex; align-items: center; gap: 0.5rem; min-height: 42px; padding: 0.55rem 0.65rem;
+      border-radius: 10px; color: rgba(255,255,255,0.86); text-decoration: none;
+      font-size: 0.875rem; font-weight: 500; transition: background 0.15s ease, color 0.15s ease;
+    }
+    .db-nav-item:hover { background: rgba(255,255,255,0.1); color: #fff; }
+    .db-nav-item.active { background: rgba(255,255,255,0.16); color: #fff; font-weight: 600; }
+    .db-sb-footer {
+      flex-shrink: 0;
+      margin-top: auto;
+      padding-top: 12px;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    .db-user-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px; cursor: pointer; background: #fafafb; transition: background 0.18s; }
+    .db-user-row:hover { background: #f0f1f4; }
+    .db-avatar { width: 32px; height: 32px; border-radius: 50%; background: #ff8e68; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 11px; letter-spacing: 0.02em; flex-shrink: 0; }
+    .db-user-row > div:last-child { min-width: 0; flex: 1; }
+    .db-user-name { font-size: 13px; font-weight: 700; color: #0f172a; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .db-user-role { font-size: 11px; color: #94a3b8; margin-top: 1px; opacity: 1; }
+
+    .db-main {
+      flex: 1 1 0%;
+      min-width: 0;
+      min-height: 0;
+      background: #fff;
+      padding: 1.5rem 2rem 2rem 1.75rem;
+      overflow-y: auto;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+    }
+    .db-topbar { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+    .db-topbar-left { display: flex; align-items: flex-start; gap: 0.5rem; }
+    .db-title { font-size: 1.5rem; font-weight: 700; color: var(--db-brand); letter-spacing: -0.02em; }
+    .db-subtitle { font-size: 0.85rem; color: var(--db-ink-soft); margin-top: 0.3rem; max-width: 62ch; }
+    .db-btn { min-height: 44px; padding: 0.6rem 1.1rem; font-size: 0.85rem; font-weight: 600; border-radius: 10px; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 0.45rem; transition: background 0.15s, transform 0.05s; }
+    .db-btn:active { transform: translateY(1px); }
+    .db-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+    .db-btn--primary { background: var(--db-brand); color: #fff; }
+    .db-btn--primary:hover:not(:disabled) { background: var(--db-brand-light); }
+    .db-btn--outline { background: #fff; color: var(--db-brand); border: 1px solid var(--db-brand); }
+    .db-btn svg { width: 17px; height: 17px; }
+
+    .db-badge {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      padding: 0.35rem 0.75rem; border-radius: 999px; font-size: 0.78rem; font-weight: 700;
+    }
+    .db-badge--local { background: #dbeafe; color: #1d4ed8; }
+    .db-badge--live { background: #fee2e2; color: #b91c1c; }
+    .db-badge--ok { background: #dcfce7; color: #15803d; }
+    .db-badge--bad { background: #fee2e2; color: #b91c1c; }
+
+    .db-hero {
+      background: #fff; border: 1px solid var(--db-border); border-radius: 16px;
+      padding: 1.35rem 1.4rem; box-shadow: 0 1px 3px rgba(16,40,28,0.05); margin-bottom: 1.15rem;
+    }
+    .db-hero-top { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; margin-bottom: 0.55rem; }
+    .db-hero-plain { font-size: 0.95rem; color: var(--db-ink); font-weight: 600; margin: 0 0 0.35rem; }
+    .db-hero-help { font-size: 0.82rem; color: var(--db-ink-soft); margin: 0; max-width: 70ch; }
+
+    .db-facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.75rem; margin-top: 1.1rem; }
+    .db-fact { background: #f8fbf9; border: 1px solid var(--db-border); border-radius: 12px; padding: 0.85rem 1rem; }
+    .db-fact-lbl { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.04em; color: #6b8078; font-weight: 600; }
+    .db-fact-val { font-size: 1.05rem; font-weight: 700; color: var(--db-ink); margin-top: 0.2rem; }
+    .db-fact-sub { font-size: 0.75rem; color: var(--db-ink-soft); margin-top: 0.15rem; }
+
+    .db-card { background: #fff; border: 1px solid var(--db-border); border-radius: 16px; box-shadow: 0 1px 3px rgba(16,40,28,0.05); overflow: hidden; margin-bottom: 1.15rem; }
+    .db-card-hd { padding: 1rem 1.15rem; border-bottom: 1px solid var(--db-border); }
+    .db-card-title { font-size: 1rem; font-weight: 700; color: var(--db-ink); }
+    .db-card-sub { font-size: 0.8rem; color: var(--db-ink-soft); margin-top: 0.2rem; }
+    .db-card-bd { padding: 0.4rem 0; }
+    .db-warn {
+      background: #fff7ed; border: 1px solid #fed7aa; color: #9a3412;
+      border-radius: 12px; padding: 0.9rem 1.1rem; font-size: 0.85rem; margin-bottom: 1.15rem;
+    }
+    .db-callout {
+      background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 12px;
+      padding: 1rem 1.15rem; margin-bottom: 1.15rem;
+    }
+    .db-callout h3 { font-size: 0.9rem; margin: 0 0 0.55rem; }
+    .db-callout ul { margin: 0; padding-left: 1.1rem; }
+    .db-callout li { font-size: 0.82rem; color: var(--db-ink-soft); margin-bottom: 0.35rem; }
+    .db-callout li strong { color: var(--db-ink); }
+
+    .db-mod { border-bottom: 1px solid #f1f5f3; padding: 0.85rem 1.15rem; }
+    .db-mod:last-child { border-bottom: none; }
+    .db-mod-hd { display: flex; justify-content: space-between; gap: 0.75rem; align-items: baseline; flex-wrap: wrap; }
+    .db-mod-title { font-weight: 700; font-size: 0.92rem; }
+    .db-mod-blurb { font-size: 0.78rem; color: var(--db-ink-soft); margin-top: 0.15rem; }
+    .db-mod-count { font-size: 0.78rem; font-weight: 600; color: var(--db-brand); }
+    .db-mod-tables { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.55rem; }
+    .db-chip {
+      font-size: 0.72rem; background: #f3f8f5; border: 1px solid #e5eae7; border-radius: 8px;
+      padding: 0.35rem 0.6rem; color: #4b5d54; cursor: pointer; min-height: 36px;
+      display: inline-flex; align-items: center; gap: 0.35rem;
+    }
+    .db-chip:hover, .db-chip:focus { background: #fff; border-color: var(--db-brand); color: var(--db-brand); outline: none; }
+    .db-chip.is-active { background: var(--db-brand); color: #fff; border-color: var(--db-brand); }
+    .db-chip.is-active strong { color: #fff; }
+    .db-chip strong { color: var(--db-ink); }
+
+    .db-table { width: 100%; border-collapse: collapse; }
+    .db-table th, .db-table td { text-align: left; padding: 0.8rem 1.1rem; font-size: 0.85rem; border-bottom: 1px solid #f1f5f3; }
+    .db-table th { background: #f3f8f5; font-weight: 600; color: #4b5d54; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; }
+    .db-empty { text-align: center; padding: 2.2rem 1rem; color: #94a3b8; font-size: 0.88rem; }
+    .db-status-ok { color: var(--db-ok); font-weight: 600; }
+    .db-status-bad { color: var(--db-bad); font-weight: 600; }
+    .db-feedback { font-size: 0.82rem; margin-top: 0.6rem; min-height: 1.1rem; }
+    .db-feedback--error { color: var(--db-bad); }
+    .db-feedback--ok { color: var(--db-ok); }
+
+    .db-modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.55); display: none; align-items: center; justify-content: center; z-index: 1050; padding: 1rem; backdrop-filter: blur(2px); }
+    .db-modal-overlay.open { display: flex; }
+    .db-modal { background: #fff; border-radius: 16px; width: min(480px, 100%); box-shadow: 0 24px 60px rgba(15,23,42,0.25); }
+    .db-modal--wide { width: min(920px, 100%); max-height: 92vh; display: flex; flex-direction: column; }
+    .db-modal-header { padding: 1.1rem 1.35rem; border-bottom: 1px solid var(--db-border); font-weight: 700; font-size: 1.05rem; color: var(--db-brand); }
+    .db-modal-body { padding: 1.25rem 1.35rem; font-size: 0.9rem; color: var(--db-ink); line-height: 1.5; }
+    .db-modal--wide .db-modal-body { overflow-y: auto; flex: 1; }
+    .db-modal-footer { padding: 1rem 1.35rem 1.35rem; display: flex; gap: 0.6rem; justify-content: flex-end; }
+
+    .db-browse-hd { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; }
+    .db-toolbar { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; padding: 0.85rem 1.1rem; border-bottom: 1px solid var(--db-border); }
+    .db-search-wrap { flex: 1; min-width: 180px; }
+    .db-input { width: 100%; min-height: 44px; padding: 0.55rem 0.85rem; font-size: 16px; border: 1px solid #d8e0db; border-radius: 10px; background: #fff; color: var(--db-ink); }
+    .db-input:focus { border-color: var(--db-brand); outline: none; box-shadow: 0 0 0 3px rgba(255,142,104,0.2); }
+    .db-pager { display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; font-size: 0.8rem; color: var(--db-ink-soft); }
+    .db-browse-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .db-browse-table { min-width: 640px; }
+    .db-browse-table tbody tr { cursor: pointer; }
+    .db-browse-table tbody tr:hover { background: #f8fbf9; }
+    .db-hidden-cell { color: #94a3b8; font-style: italic; }
+    .db-dl { margin: 0; }
+    .db-dl-row { display: grid; grid-template-columns: minmax(120px, 200px) 1fr; gap: 0.5rem 1rem; padding: 0.65rem 0; border-bottom: 1px solid #f1f5f3; }
+    .db-dl-row dt { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #6b8078; }
+    .db-dl-row dd { margin: 0; font-size: 0.88rem; word-break: break-word; white-space: pre-wrap; }
+    .db-json { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.78rem; background: #f8fafc; border-radius: 8px; padding: 0.7rem 0.8rem; overflow-x: auto; }
+
+    .db-sidebar-toggle { display: none; }
+    .db-sidebar-backdrop { display: none; }
+    @media (max-width: 900px) {
+      .db-sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100vh;
+        height: 100dvh;
+        max-height: 100dvh;
+        padding-top: 1.25rem;
+        z-index: 1060;
+        transform: translateX(-100%);
+        transition: transform 0.25s ease;
+        box-shadow: 0 0 40px rgba(0,0,0,0.3);
+      }
+      .db-sidebar.open { transform: translateX(0); }
+      .db-sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 1055; }
+      .db-sidebar-backdrop.open { display: block; }
+      .db-sidebar-toggle { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; border-radius: 10px; border: 1px solid var(--db-border); background: #fff; cursor: pointer; margin-right: 0.5rem; }
+      .db-main { padding: 1.1rem; background: #fff; }
+      .db-facts { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 768px) {
+      .db-facts { grid-template-columns: 1fr; }
+      .db-table:not(.db-browse-table) thead { display: none; }
+      .db-table:not(.db-browse-table), .db-table:not(.db-browse-table) tbody, .db-table:not(.db-browse-table) tr, .db-table:not(.db-browse-table) td { display: block; width: 100%; }
+      .db-table:not(.db-browse-table) tbody tr { border: 1px solid var(--db-border); border-radius: 12px; margin: 0.75rem 1rem; padding: 0.4rem 0; }
+      .db-table:not(.db-browse-table) td { border: none; padding: 0.4rem 1rem; }
+      .db-table:not(.db-browse-table) td::before { content: attr(data-label); display: block; font-size: 0.66rem; text-transform: uppercase; color: #94a3b8; font-weight: 600; margin-bottom: 0.15rem; }
+      .db-dl-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body class="has-main-nav db-page">
+  {% set active_page = 'database' %}
+  {% include 'partials/main_navbar.html' with context %}
+
+  <div class="db-root">
+    <div class="db-sidebar-backdrop" id="dbSidebarBackdrop" onclick="dbToggleSidebar(false)"></div>
+    <aside class="db-sidebar" id="dbSidebar" aria-label="Database menu">
+      <div class="db-brand">
+        <span class="name">Database</span>
+        <span class="tagline">This website’s data</span>
+      </div>
+      <nav>
+        <div class="db-sb-section">
+          <div class="db-sb-label">This page</div>
+          <a href="#db-where" class="db-nav-item active">Where is the data?</a>
+          <a href="#db-inside" class="db-nav-item">What is inside</a>
+          <a href="#db-browse" class="db-nav-item">Browse records</a>
+          <a href="#db-backup" class="db-nav-item">Backup history</a>
+        </div>
+        <div class="db-sb-section">
+          <div class="db-sb-label">System</div>
+          <a href="/admin/dashboard" class="db-nav-item">Admin Dashboard</a>
+          <a href="/admin/knowledge-base" class="db-nav-item">Knowledge Base</a>
+          <a href="/dashboard" class="db-nav-item">App Home</a>
+        </div>
+      </nav>
+      <div class="db-sb-footer">
+        <div class="db-user-row" onclick="if(typeof openProfileModal==='function'){openProfileModal();}" role="button" tabindex="0">
+          <div class="db-avatar" id="dbUserAvatar">—</div>
+          <div>
+            <div class="db-user-name" id="dbUserName">Loading…</div>
+            <div class="db-user-role">Administrator</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="db-main">
+      <div class="db-topbar">
+        <div class="db-topbar-left">
+          <button class="db-sidebar-toggle" type="button" onclick="dbToggleSidebar(true)" aria-label="Open menu">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5" /></svg>
+          </button>
+          <div>
+            <div class="db-title">Database</div>
+            <div class="db-subtitle">This screen always describes the database <strong>this website is using right now</strong>. Click a table below to read its rows. Password hashes and secrets stay hidden. Open the same page on your laptop for the local copy, or on the live URL for the client’s data.</div>
+          </div>
+        </div>
+        <button type="button" class="db-btn db-btn--primary" id="dbBackupBtn" onclick="dbAskBackup()">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
+          Download a copy
+        </button>
+      </div>
+
+      <div id="dbAlert" hidden></div>
+
+      <section class="db-hero" id="db-where">
+        <div class="db-hero-top">
+          <span class="db-badge" id="dbEnvBadge">Loading…</span>
+          <span class="db-badge" id="dbHealthBadge">…</span>
+        </div>
+        <p class="db-hero-plain" id="dbEnvPlain">Checking which database this website is using…</p>
+        <p class="db-hero-help" id="dbEnginePlain"></p>
+        <div class="db-facts">
+          <div class="db-fact">
+            <div class="db-fact-lbl">Kind of database</div>
+            <div class="db-fact-val" id="dbEngineVal">—</div>
+            <div class="db-fact-sub" id="dbEngineSub"></div>
+          </div>
+          <div class="db-fact">
+            <div class="db-fact-lbl">Name</div>
+            <div class="db-fact-val" id="dbNameVal">—</div>
+            <div class="db-fact-sub" id="dbHostVal"></div>
+          </div>
+          <div class="db-fact">
+            <div class="db-fact-lbl">Size</div>
+            <div class="db-fact-val" id="dbSizeVal">—</div>
+            <div class="db-fact-sub">Download limit <span id="dbLimitVal">200 MB</span></div>
+          </div>
+          <div class="db-fact">
+            <div class="db-fact-lbl">Last successful backup</div>
+            <div class="db-fact-val" id="dbLastVal">Never</div>
+            <div class="db-fact-sub" id="dbLastSub">From this website only</div>
+          </div>
+        </div>
+        <div class="db-feedback" id="dbBackupFeedback"></div>
+      </section>
+
+      <div class="db-callout">
+        <h3>What is not stored in this database</h3>
+        <ul id="dbNotInDb"></ul>
+      </div>
+
+      <section class="db-card" id="db-inside">
+        <div class="db-card-hd">
+          <div class="db-card-title">What is inside</div>
+          <div class="db-card-sub">Row counts grouped by module. Click a table to open it in read-only view (login accounts, HR, tickets, and the rest).</div>
+        </div>
+        <div class="db-card-bd" id="dbModules"><div class="db-empty">Loading…</div></div>
+      </section>
+
+      <section class="db-card" id="db-browse">
+        <div class="db-card-hd db-browse-hd">
+          <div>
+            <div class="db-card-title" id="dbBrowseTitle">Browse records</div>
+            <div class="db-card-sub" id="dbBrowseSub">Click a table above. Everything here is read-only — you can look, not change.</div>
+          </div>
+          <span class="db-badge db-badge--ok" id="dbReadOnlyBadge">Read only</span>
+        </div>
+        <div class="db-toolbar" id="dbBrowseToolbar" hidden>
+          <div class="db-search-wrap">
+            <input type="search" id="dbBrowseSearch" class="db-input" placeholder="Search this table…" autocomplete="off">
+          </div>
+          <div class="db-pager" id="dbBrowsePager"></div>
+        </div>
+        <div id="dbBrowseWrap"><div class="db-empty">Click a table name above to see its rows.</div></div>
+      </section>
+
+      <section class="db-card" id="db-backup">
+        <div class="db-card-hd">
+          <div class="db-card-title">Backup history</div>
+          <div class="db-card-sub">Copies downloaded from this website. The file itself is saved on your computer (and in a local <code>backups/</code> folder when you are on your laptop).</div>
+        </div>
+        <div id="dbHistoryWrap"><div class="db-empty">Loading…</div></div>
+      </section>
+    </main>
+  </div>
+
+  <div class="db-modal-overlay" id="dbConfirmModal">
+    <div class="db-modal" role="dialog" aria-modal="true" aria-labelledby="dbConfirmTitle">
+      <div class="db-modal-header" id="dbConfirmTitle">Download a copy?</div>
+      <div class="db-modal-body" id="dbConfirmBody">
+        This downloads the database this website is using right now. It does not include Excel reports, PDFs, photos, or Google Drive files.
+      </div>
+      <div class="db-modal-footer">
+        <button type="button" class="db-btn db-btn--outline" onclick="dbCloseConfirm()">Cancel</button>
+        <button type="button" class="db-btn db-btn--primary" id="dbConfirmGo" onclick="dbDoBackup()">Download</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="db-modal-overlay" id="dbRowModal">
+    <div class="db-modal db-modal--wide" role="dialog" aria-modal="true" aria-labelledby="dbRowTitle">
+      <div class="db-modal-header" id="dbRowTitle">Record</div>
+      <div class="db-modal-body" id="dbRowBody"></div>
+      <div class="db-modal-footer">
+        <button type="button" class="db-btn db-btn--outline" onclick="dbCloseRow()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='api-client.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}?v=16"></script>
+  <script>
+    if (!localStorage.getItem('access_token')) { window.location.href = '/login'; }
+
+    function dbEsc(s) {
+      if (s == null) return '';
+      var d = document.createElement('div');
+      d.textContent = String(s);
+      return d.innerHTML;
+    }
+
+    function dbToggleSidebar(open) {
+      var sb = document.getElementById('dbSidebar');
+      var bd = document.getElementById('dbSidebarBackdrop');
+      if (!sb) return;
+      sb.classList.toggle('open', open);
+      bd.classList.toggle('open', open);
+    }
+
+    function dbFmtWhen(iso) {
+      if (!iso) return '—';
+      try {
+        var d = new Date(iso);
+        if (isNaN(d.getTime())) return iso;
+        return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+      } catch (e) { return iso; }
+    }
+
+    function dbFillUser() {
+      try {
+        var u = JSON.parse(localStorage.getItem('user') || '{}');
+        var name = u.full_name || u.username || 'Admin';
+        document.getElementById('dbUserName').textContent = name;
+        document.getElementById('dbUserAvatar').textContent = String(name).charAt(0).toUpperCase();
+      } catch (e) { /* ignore */ }
+    }
+
+    async function dbLoad() {
+      dbFillUser();
+      try {
+        var res = await authenticatedFetch('/api/admin/database/status');
+        if (res.status === 403) {
+          document.getElementById('dbAlert').hidden = false;
+          document.getElementById('dbAlert').className = 'db-warn';
+          document.getElementById('dbAlert').textContent = 'Admin access is required to view this page.';
+          return;
+        }
+        if (!res.ok) throw new Error('Failed to load database status');
+        var data = await res.json();
+        var info = data.data || data;
+        dbRenderStatus(info);
+        dbRenderModules(info.modules || []);
+        dbRenderNotIn(info.not_in_database || []);
+      } catch (e) {
+        document.getElementById('dbAlert').hidden = false;
+        document.getElementById('dbAlert').className = 'db-warn';
+        document.getElementById('dbAlert').textContent = e.message || 'Unable to reach the server.';
+      }
+      dbLoadHistory();
+    }
+
+    function dbRenderStatus(info) {
+      var env = info.environment || 'local';
+      var envBadge = document.getElementById('dbEnvBadge');
+      envBadge.textContent = info.environment_label || env;
+      envBadge.className = 'db-badge ' + (env === 'live' ? 'db-badge--live' : 'db-badge--local');
+
+      var healthBadge = document.getElementById('dbHealthBadge');
+      healthBadge.textContent = info.health_label || (info.healthy ? 'Connected' : 'Not connected');
+      healthBadge.className = 'db-badge ' + (info.healthy ? 'db-badge--ok' : 'db-badge--bad');
+
+      document.getElementById('dbEnvPlain').textContent = info.environment_plain || '';
+      document.getElementById('dbEnginePlain').textContent = info.engine_plain || '';
+      document.getElementById('dbEngineVal').textContent = info.engine_label || info.engine || '—';
+      document.getElementById('dbEngineSub').textContent = info.engine === 'sqlite' ? 'Fine for a laptop. Live always uses PostgreSQL.' : 'Matches production.';
+      document.getElementById('dbNameVal').textContent = info.database_name || '—';
+      document.getElementById('dbHostVal').textContent = info.host ? ('On ' + info.host) : '';
+      document.getElementById('dbSizeVal').textContent = info.size_label || '—';
+      document.getElementById('dbLimitVal').textContent = info.backup_limit_label || '200 MB';
+
+      var last = info.last_backup;
+      if (last && last.created_at) {
+        document.getElementById('dbLastVal').textContent = dbFmtWhen(last.created_at);
+        document.getElementById('dbLastSub').textContent = (last.created_by_name || 'Admin') + ' · ' + (last.size_label || '');
+      } else {
+        document.getElementById('dbLastVal').textContent = 'Never';
+      }
+
+      var alert = document.getElementById('dbAlert');
+      if (info.sqlite_in_production) {
+        alert.hidden = false;
+        alert.className = 'db-warn';
+        alert.textContent = 'This live site is using a SQLite file. Production should use PostgreSQL. Check DATABASE_URL on the host.';
+      } else if (info.oversize) {
+        alert.hidden = false;
+        alert.className = 'db-warn';
+        alert.textContent = 'This database is larger than the in-app download limit. Use a host backup (for example Render) or pg_dump from a trusted machine.';
+        document.getElementById('dbBackupBtn').disabled = true;
+      } else {
+        alert.hidden = true;
+      }
+    }
+
+    function dbRenderNotIn(items) {
+      var ul = document.getElementById('dbNotInDb');
+      ul.innerHTML = (items || []).map(function (it) {
+        return '<li><strong>' + dbEsc(it.title) + '.</strong> ' + dbEsc(it.detail) + '</li>';
+      }).join('') || '<li>Generated files and cloud uploads live outside this database.</li>';
+    }
+
+    function dbRenderModules(mods) {
+      var wrap = document.getElementById('dbModules');
+      if (!mods.length) {
+        wrap.innerHTML = '<div class="db-empty">No tables found yet. Start the app once so tables can be created.</div>';
+        return;
+      }
+      wrap.innerHTML = mods.map(function (m) {
+        var chips = (m.tables || []).map(function (t) {
+          var rows = t.rows == null ? '—' : t.rows;
+          var active = DB_BROWSE.table === t.table ? ' is-active' : '';
+          return '<button type="button" class="db-chip' + active + '" data-table="' + dbEsc(t.table) + '" onclick="dbOpenTable(\'' + dbEsc(t.table).replace(/'/g, '') + '\')">' +
+            dbEsc(t.label) + ' <strong>' + dbEsc(rows) + '</strong></button>';
+        }).join('');
+        return '<div class="db-mod">' +
+          '<div class="db-mod-hd"><div><div class="db-mod-title">' + dbEsc(m.title) + '</div>' +
+          '<div class="db-mod-blurb">' + dbEsc(m.blurb) + '</div></div>' +
+          '<div class="db-mod-count">' + dbEsc(m.table_count) + ' tables · ' + dbEsc(m.row_total) + ' rows</div></div>' +
+          '<div class="db-mod-tables">' + chips + '</div></div>';
+      }).join('');
+    }
+
+    var DB_BROWSE = { table: '', page: 1, q: '', rows: [], timer: null };
+
+    function dbOpenTable(name) {
+      DB_BROWSE.table = name;
+      DB_BROWSE.page = 1;
+      DB_BROWSE.q = '';
+      var search = document.getElementById('dbBrowseSearch');
+      if (search) search.value = '';
+      document.querySelectorAll('.db-chip[data-table]').forEach(function (el) {
+        el.classList.toggle('is-active', el.getAttribute('data-table') === name);
+      });
+      var browse = document.getElementById('db-browse');
+      if (browse) browse.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      dbLoadBrowse();
+    }
+
+    function dbBrowseUrl() {
+      var u = '/api/admin/database/tables/' + encodeURIComponent(DB_BROWSE.table) +
+        '?page=' + encodeURIComponent(DB_BROWSE.page) + '&per_page=50';
+      if (DB_BROWSE.q) u += '&q=' + encodeURIComponent(DB_BROWSE.q);
+      return u;
+    }
+
+    async function dbLoadBrowse() {
+      var wrap = document.getElementById('dbBrowseWrap');
+      var toolbar = document.getElementById('dbBrowseToolbar');
+      if (!DB_BROWSE.table) return;
+      wrap.innerHTML = '<div class="db-empty">Loading records…</div>';
+      toolbar.hidden = false;
+      try {
+        var res = await authenticatedFetch(dbBrowseUrl());
+        var data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Could not read that table');
+        var info = data.data || data;
+        DB_BROWSE.rows = info.rows || [];
+        document.getElementById('dbBrowseTitle').textContent = info.label || info.table;
+        document.getElementById('dbBrowseSub').textContent = info.note || 'Read only.';
+        dbRenderBrowse(info);
+      } catch (e) {
+        wrap.innerHTML = '<div class="db-empty">' + dbEsc(e.message || 'Could not read that table.') + '</div>';
+      }
+    }
+
+    function dbRenderBrowse(info) {
+      var wrap = document.getElementById('dbBrowseWrap');
+      var pager = document.getElementById('dbBrowsePager');
+      var cols = info.grid_columns || [];
+      var rows = info.rows || [];
+      var total = info.total || 0;
+      var page = info.page || 1;
+      var pages = info.pages || 1;
+      pager.innerHTML =
+        '<span>' + dbEsc(total) + ' row' + (total === 1 ? '' : 's') + '</span>' +
+        '<button type="button" class="db-btn db-btn--outline" ' + (page <= 1 ? 'disabled' : '') + ' onclick="dbBrowsePage(' + (page - 1) + ')">Previous</button>' +
+        '<span>Page ' + dbEsc(page) + ' of ' + dbEsc(pages) + '</span>' +
+        '<button type="button" class="db-btn db-btn--outline" ' + (page >= pages ? 'disabled' : '') + ' onclick="dbBrowsePage(' + (page + 1) + ')">Next</button>';
+      if (!rows.length) {
+        wrap.innerHTML = '<div class="db-empty">No rows in this table' + (info.q ? ' match that search' : '') + '.</div>';
+        return;
+      }
+      var head = cols.map(function (c) { return '<th>' + dbEsc(c.label) + '</th>'; }).join('') + '<th></th>';
+      var body = rows.map(function (r, idx) {
+        var tds = cols.map(function (c) {
+          var cell = (r.preview || {})[c.name] || {};
+          var cls = cell.hidden ? ' class="db-hidden-cell"' : '';
+          return '<td' + cls + '>' + dbEsc(cell.text == null ? '—' : cell.text) + '</td>';
+        }).join('');
+        return '<tr onclick="dbOpenRow(' + idx + ')">' + tds + '<td>View</td></tr>';
+      }).join('');
+      wrap.innerHTML = '<div class="db-browse-scroll"><table class="db-table db-browse-table"><thead><tr>' + head + '</tr></thead><tbody>' + body + '</tbody></table></div>';
+    }
+
+    function dbBrowsePage(p) {
+      if (p < 1) return;
+      DB_BROWSE.page = p;
+      dbLoadBrowse();
+    }
+
+    function dbOpenRow(idx) {
+      var row = (DB_BROWSE.rows || [])[idx];
+      if (!row) return;
+      var detail = row.detail || {};
+      var keys = Object.keys(detail);
+      document.getElementById('dbRowTitle').textContent = (document.getElementById('dbBrowseTitle').textContent || 'Record') + ' — read only';
+      document.getElementById('dbRowBody').innerHTML = '<dl class="db-dl">' + keys.map(function (k) {
+        var cell = detail[k] || {};
+        var val;
+        if (cell.hidden) {
+          val = '<span class="db-hidden-cell">Hidden</span>';
+        } else if (cell.text == null || cell.text === '') {
+          val = '—';
+        } else if (cell.json) {
+          val = '<pre class="db-json">' + dbEsc(cell.text) + '</pre>';
+        } else {
+          val = dbEsc(typeof cell.text === 'boolean' ? (cell.text ? 'Yes' : 'No') : cell.text);
+        }
+        return '<div class="db-dl-row"><dt>' + dbEsc(k.replace(/_/g, ' ')) + '</dt><dd>' + val + '</dd></div>';
+      }).join('') + '</dl>';
+      document.getElementById('dbRowModal').classList.add('open');
+    }
+
+    function dbCloseRow() {
+      document.getElementById('dbRowModal').classList.remove('open');
+    }
+
+    document.getElementById('dbBrowseSearch').addEventListener('input', function () {
+      clearTimeout(DB_BROWSE.timer);
+      var el = this;
+      DB_BROWSE.timer = setTimeout(function () {
+        DB_BROWSE.q = (el.value || '').trim();
+        DB_BROWSE.page = 1;
+        if (DB_BROWSE.table) dbLoadBrowse();
+      }, 280);
+    });
+    document.getElementById('dbRowModal').addEventListener('click', function (e) {
+      if (e.target === this) dbCloseRow();
+    });
+
+    async function dbLoadHistory() {
+      var wrap = document.getElementById('dbHistoryWrap');
+      try {
+        var res = await authenticatedFetch('/api/admin/database/backups');
+        if (!res.ok) throw new Error('Could not load history');
+        var data = await res.json();
+        var rows = (data.data && data.data.backups) || data.backups || [];
+        if (!rows.length) {
+          wrap.innerHTML = '<div class="db-empty">No copies downloaded from this website yet.</div>';
+          return;
+        }
+        wrap.innerHTML = '<table class="db-table"><thead><tr><th>When</th><th>Who</th><th>Where</th><th>File</th><th>Size</th><th>Status</th></tr></thead><tbody>' +
+          rows.map(function (r) {
+            var st = r.status === 'ok'
+              ? '<span class="db-status-ok">Saved</span>'
+              : '<span class="db-status-bad">Failed</span>' + (r.error_message ? ' · ' + dbEsc(r.error_message) : '');
+            var where = r.environment === 'live' ? 'Live' : 'Laptop';
+            return '<tr>' +
+              '<td data-label="When">' + dbEsc(dbFmtWhen(r.created_at)) + '</td>' +
+              '<td data-label="Who">' + dbEsc(r.created_by_name || '—') + '</td>' +
+              '<td data-label="Where">' + dbEsc(where) + '</td>' +
+              '<td data-label="File">' + dbEsc(r.filename || '—') + '</td>' +
+              '<td data-label="Size">' + dbEsc(r.size_label || '—') + '</td>' +
+              '<td data-label="Status">' + st + '</td></tr>';
+          }).join('') + '</tbody></table>';
+      } catch (e) {
+        wrap.innerHTML = '<div class="db-empty">Could not load backup history.</div>';
+      }
+    }
+
+    function dbAskBackup() {
+      document.getElementById('dbConfirmModal').classList.add('open');
+    }
+    function dbCloseConfirm() {
+      document.getElementById('dbConfirmModal').classList.remove('open');
+    }
+
+    function dbFilenameFromHeader(header, fallback) {
+      if (!header) return fallback;
+      var star = /filename\*=UTF-8''([^;]+)/i.exec(header);
+      if (star) {
+        try { return decodeURIComponent(star[1]); } catch (e) { return star[1]; }
+      }
+      var plain = /filename="?([^";]+)"?/i.exec(header);
+      return plain ? plain[1] : fallback;
+    }
+
+    async function dbDoBackup() {
+      dbCloseConfirm();
+      var btn = document.getElementById('dbBackupBtn');
+      var go = document.getElementById('dbConfirmGo');
+      var fb = document.getElementById('dbBackupFeedback');
+      btn.disabled = true;
+      go.disabled = true;
+      fb.className = 'db-feedback';
+      fb.textContent = 'Preparing a copy… this can take a minute.';
+      try {
+        var res = await authenticatedFetch('/api/admin/database/backup', { method: 'POST' });
+        if (!res.ok) {
+          var msg = 'Could not create a copy.';
+          try {
+            var err = await res.json();
+            msg = err.error || msg;
+          } catch (e2) { /* ignore */ }
+          throw new Error(msg);
+        }
+        var blob = await res.blob();
+        var name = dbFilenameFromHeader(res.headers.get('Content-Disposition'), 'injaaz-database-copy');
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = name;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        fb.className = 'db-feedback db-feedback--ok';
+        fb.textContent = 'Download started: ' + name;
+        dbLoad();
+      } catch (e) {
+        fb.className = 'db-feedback db-feedback--error';
+        fb.textContent = e.message || 'Backup failed.';
+      } finally {
+        btn.disabled = false;
+        go.disabled = false;
+      }
+    }
+
+    dbLoad();
+  </script>
+</body>
+</html>

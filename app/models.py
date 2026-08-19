@@ -942,6 +942,142 @@ class NotificationConfig(db.Model):
         return f'<NotificationConfig id={self.id}>'
 
 
+class EmailLog(db.Model):
+    """Outbound email send log for admin review."""
+    __tablename__ = 'email_logs'
+
+    id = db.Column(db.Integer, primary_key=True)
+    created_at = db.Column(db.DateTime, default=_utcnow, index=True, nullable=False)
+    status = db.Column(db.String(16), nullable=False, index=True)  # sent | failed
+    source = db.Column(db.String(32), nullable=False, default='other', index=True)
+    subject = db.Column(db.String(500), nullable=True)
+    to_emails = db.Column(db.Text, nullable=True)
+    cc_emails = db.Column(db.Text, nullable=True)
+    sent_by_user_id = db.Column(
+        db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True, index=True
+    )
+    related_id = db.Column(db.String(120), nullable=True)
+    body_preview = db.Column(db.String(500), nullable=True)
+    attachment_count = db.Column(db.Integer, default=0)
+    error_message = db.Column(db.String(500), nullable=True)
+
+    sent_by = db.relationship('User', foreign_keys=[sent_by_user_id], lazy='select')
+
+    def to_dict(self):
+        sent_by_name = None
+        try:
+            user = self.sent_by
+            if user:
+                sent_by_name = user.full_name or user.username
+        except Exception:
+            sent_by_name = None
+        return {
+            'id': self.id,
+            'created_at': naive_utc_isoformat_z(self.created_at),
+            'status': self.status,
+            'source': self.source,
+            'subject': self.subject or '',
+            'to_emails': self.to_emails or '',
+            'cc_emails': self.cc_emails or '',
+            'sent_by_user_id': self.sent_by_user_id,
+            'sent_by_name': sent_by_name,
+            'related_id': self.related_id,
+            'body_preview': self.body_preview or '',
+            'attachment_count': self.attachment_count or 0,
+            'error_message': self.error_message,
+        }
+
+    def __repr__(self):
+        return f'<EmailLog {self.id} {self.source} {self.status}>'
+
+
+class EmailRecipientGroup(db.Model):
+    """Saved To/CC recipient groups for BD email (personal or public)."""
+    __tablename__ = 'email_recipient_groups'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(120), nullable=False)
+    emails = db.Column(db.Text, nullable=False, default='')
+    scope = db.Column(db.String(16), nullable=False, default='personal', index=True)  # personal | public
+    owner_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True, index=True)
+    created_at = db.Column(db.DateTime, default=_utcnow)
+    updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
+
+    owner = db.relationship('User', foreign_keys=[owner_id])
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name or '',
+            'emails': self.emails or '',
+            'scope': self.scope or 'personal',
+            'owner_id': self.owner_id,
+            'created_at': naive_utc_isoformat_z(self.created_at),
+            'updated_at': naive_utc_isoformat_z(self.updated_at),
+        }
+
+    def __repr__(self):
+        return f'<EmailRecipientGroup {self.id} {self.name} {self.scope}>'
+
+
+class EmailAutomation(db.Model):
+    """Saved personal or public BD email automation (manual + optional daily schedule)."""
+    __tablename__ = 'email_automations'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(160), nullable=False)
+    scope = db.Column(db.String(16), nullable=False, default='personal', index=True)  # personal | public
+    owner_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True, index=True)
+    to_emails = db.Column(db.Text, nullable=False, default='')
+    cc_emails = db.Column(db.Text, nullable=True)
+    subject = db.Column(db.String(500), nullable=False, default='')
+    body = db.Column(db.Text, nullable=False, default='')
+    enabled = db.Column(db.Boolean, default=True, nullable=False)
+    schedule_enabled = db.Column(db.Boolean, default=False, nullable=False)
+    schedule_hour = db.Column(db.Integer, default=10, nullable=False)
+    schedule_minute = db.Column(db.Integer, default=0, nullable=False)
+    schedule_paused = db.Column(db.Boolean, default=False, nullable=False)
+    last_run_at = db.Column(db.DateTime, nullable=True)
+    last_success_at = db.Column(db.DateTime, nullable=True)
+    last_error = db.Column(db.String(500), nullable=True)
+    created_at = db.Column(db.DateTime, default=_utcnow)
+    updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
+
+    owner = db.relationship('User', foreign_keys=[owner_id])
+    attachments = db.relationship(
+        'EmailAutomationAttachment',
+        backref='automation',
+        cascade='all, delete-orphan',
+        lazy='select',
+        order_by='EmailAutomationAttachment.sort_order',
+    )
+
+    def __repr__(self):
+        return f'<EmailAutomation {self.id} {self.name} {self.scope}>'
+
+
+class EmailAutomationAttachment(db.Model):
+    """Attachment slot resolved at send time (Files item, folder latest, or submission reports)."""
+    __tablename__ = 'email_automation_attachments'
+
+    id = db.Column(db.Integer, primary_key=True)
+    automation_id = db.Column(
+        db.Integer, db.ForeignKey('email_automations.id', ondelete='CASCADE'), nullable=False, index=True
+    )
+    kind = db.Column(db.String(32), nullable=False, default='linked_file')  # linked_file | folder_latest | submission_reports
+    files_item_id = db.Column(db.Integer, db.ForeignKey('files_items.id', ondelete='SET NULL'), nullable=True, index=True)
+    folder_id = db.Column(db.Integer, db.ForeignKey('files_folders.id', ondelete='SET NULL'), nullable=True, index=True)
+    submission_id = db.Column(db.String(64), nullable=True)
+    require_new = db.Column(db.Boolean, default=False, nullable=False)
+    sort_order = db.Column(db.Integer, default=0, nullable=False)
+
+    files_item = db.relationship('FilesItem', foreign_keys=[files_item_id])
+    folder = db.relationship('FilesFolder', foreign_keys=[folder_id])
+
+    def __repr__(self):
+        return f'<EmailAutomationAttachment {self.id} {self.kind}>'
+
+
 class TicketProject(db.Model):
     """Projects managed in ticketing settings"""
     __tablename__ = 'ticket_projects'
@@ -1594,6 +1730,41 @@ class TicketTriageLog(db.Model):
         return f'<TicketTriageLog {self.id} ticket={self.ticket_code or self.ticket_id}>'
 
 
+class AssistantPendingAction(db.Model):
+    """Confirm-before-write proposals from Ask Kynvera (ticket/leave drafts)."""
+    __tablename__ = 'assistant_pending_actions'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    action_type = db.Column(db.String(40), nullable=False, index=True)  # create_ticket, leave_draft
+    payload = db.Column(JSON, nullable=True)
+    status = db.Column(db.String(20), default='pending', index=True)  # pending, confirmed, cancelled, expired
+    expires_at = db.Column(db.DateTime, nullable=True, index=True)
+    created_at = db.Column(db.DateTime, default=_utcnow, index=True)
+
+    user = db.relationship(
+        'User',
+        foreign_keys=[user_id],
+        backref=db.backref('assistant_pending_actions', cascade='all, delete-orphan'),
+    )
+
+    def to_public_dict(self):
+        payload = self.payload or {}
+        summary = payload.get('summary') if isinstance(payload, dict) else None
+        if not isinstance(summary, dict):
+            summary = payload if isinstance(payload, dict) else {}
+        return {
+            'action_id': self.id,
+            'action_type': self.action_type,
+            'summary': summary,
+            'status': self.status,
+            'expires_at': self.expires_at.isoformat() if self.expires_at else None,
+        }
+
+    def __repr__(self):
+        return f'<AssistantPendingAction {self.id} {self.action_type} {self.status}>'
+
+
 class TicketNote(db.Model):
     """Live notes / activity on a ticket"""
     __tablename__ = 'ticket_notes'
@@ -1615,6 +1786,11 @@ class TicketNote(db.Model):
             'note_type': self.note_type,
             'author_name': self.author.full_name if self.author else 'Unknown',
             'author_id': self.user_id,
+            'author_role': (
+                (self.author.designation or '').replace('_', ' ').strip().title()
+                if self.author and (self.author.designation or '').strip()
+                else ('Admin' if self.author and (getattr(self.author, 'role', None) or '') == 'admin' else '')
+            ),
             'created_at': self.created_at.isoformat() if self.created_at else None,
         }
 
@@ -2013,7 +2189,7 @@ HIRING_DOC_ALLOWED_EXT = {
 # Docs that unlock only after pipeline reaches visa_process_started
 HIRING_VISA_GATED_DOC_TYPES = frozenset({'insurance', 'e_visa', 'contract'})
 
-# Linear hiring stages only — on_hold is a process-wide pause, not a step.
+# Linear hiring stages only — on_hold / not_hired are process states, not steps.
 HIRING_PIPELINE_STEPS = (
     'interview_completed',
     'gathering_documents',
@@ -2026,8 +2202,11 @@ HIRING_PIPELINE_STEPS = (
     'candidate_employee',
 )
 
-# Valid stored values = real steps + on_hold pause state
-HIRING_PIPELINE_STATUSES = HIRING_PIPELINE_STEPS + ('on_hold',)
+# Process-wide outcomes (pause or did not hire) — not linear stages.
+HIRING_PIPELINE_PROCESS_STATUSES = ('on_hold', 'not_hired')
+
+# Valid stored values = real steps + process states
+HIRING_PIPELINE_STATUSES = HIRING_PIPELINE_STEPS + HIRING_PIPELINE_PROCESS_STATUSES
 
 HIRING_PIPELINE_LABELS = {
     'interview_completed': 'Interview completed',
@@ -2040,6 +2219,7 @@ HIRING_PIPELINE_LABELS = {
     'visa_process_started': 'Visa process started',
     'candidate_employee': 'Candidate employed',
     'on_hold': 'On hold',
+    'not_hired': 'Not hired',
 }
 
 HIRING_PIPELINE_DEFAULT = 'interview_completed'
@@ -2116,19 +2296,21 @@ class HiringCandidate(db.Model):
         """True when the whole hiring process is paused (not a linear stage)."""
         return self.normalized_pipeline_status() == 'on_hold'
 
+    def is_not_hired(self) -> bool:
+        """True when the candidate was not hired (process closed, not a linear stage)."""
+        return self.normalized_pipeline_status() == 'not_hired'
+
     def pipeline_index(self) -> int:
-        """Index within HIRING_PIPELINE_STEPS; -1 while process is on hold."""
+        """Index within HIRING_PIPELINE_STEPS; -1 for process states (on hold / not hired)."""
         status = self.normalized_pipeline_status()
-        if status == 'on_hold':
-            return -1
         try:
             return HIRING_PIPELINE_STEPS.index(status)
         except ValueError:
-            return 0
+            return -1
 
     def visa_docs_unlocked(self) -> bool:
-        """Insurance, e-visa, and contract unlock at visa_process_started (not while on hold)."""
-        if self.is_on_hold():
+        """Insurance, e-visa, and contract unlock at visa_process_started (not while off-stage)."""
+        if self.pipeline_index() < 0:
             return False
         visa_idx = HIRING_PIPELINE_STEPS.index('visa_process_started')
         return self.pipeline_index() >= visa_idx
@@ -2138,17 +2320,17 @@ class HiringCandidate(db.Model):
         return self.normalized_pipeline_status() == 'candidate_employee'
 
     def pipeline_steps(self):
-        """Linear stage chips only — excludes on_hold (process pause)."""
+        """Linear stage chips only — excludes on_hold / not_hired (process states)."""
         current = self.normalized_pipeline_status()
-        on_hold = current == 'on_hold'
         current_idx = self.pipeline_index()
+        frozen = current_idx < 0
         steps = []
         for i, key in enumerate(HIRING_PIPELINE_STEPS):
             steps.append({
                 'key': key,
                 'label': HIRING_PIPELINE_LABELS.get(key, key),
-                'done': (not on_hold) and current_idx > i,
-                'current': (not on_hold) and key == current,
+                'done': (not frozen) and current_idx > i,
+                'current': (not frozen) and key == current,
             })
         return steps
 
@@ -2221,6 +2403,7 @@ class HiringCandidate(db.Model):
             'pipeline_label': HIRING_PIPELINE_LABELS.get(pipeline, pipeline),
             'pipeline_steps': self.pipeline_steps(),
             'is_on_hold': pipeline == 'on_hold',
+            'is_not_hired': pipeline == 'not_hired',
             'file_closed': pipeline == 'candidate_employee',
             'visa_docs_unlocked': visa_unlocked,
             'phase1_completed': p1_done,
@@ -3083,3 +3266,48 @@ class FilesDriveConnection(db.Model):
 
     def __repr__(self):
         return f'<FilesDriveConnection email={self.connected_email}>'
+
+
+class DatabaseBackup(db.Model):
+    """Record of an admin-triggered database backup download (file is not stored in the row)."""
+    __tablename__ = 'database_backups'
+
+    id = db.Column(db.Integer, primary_key=True)
+    created_at = db.Column(db.DateTime, default=_utcnow, index=True)
+    created_by_user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    environment = db.Column(db.String(20), nullable=False, default='local')  # local | live
+    engine = db.Column(db.String(20), nullable=False, default='sqlite')  # sqlite | postgresql
+    filename = db.Column(db.String(255), nullable=False)
+    size_bytes = db.Column(db.Integer, default=0)
+    status = db.Column(db.String(20), nullable=False, default='ok')  # ok | failed
+    error_message = db.Column(db.String(500), nullable=True)
+    kind = db.Column(db.String(30), nullable=False, default='download')  # download | scheduled
+
+    creator = db.relationship('User', foreign_keys=[created_by_user_id])
+
+    def to_dict(self):
+        size_b = int(self.size_bytes or 0)
+        if size_b >= 1024 * 1024:
+            size_label = f'{size_b / (1024 * 1024):.1f} MB'
+        elif size_b:
+            size_label = f'{max(1, int(round(size_b / 1024)))} KB'
+        else:
+            size_label = '—'
+        creator = self.creator
+        return {
+            'id': self.id,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'created_by_user_id': self.created_by_user_id,
+            'created_by_name': (creator.full_name or creator.username) if creator else '—',
+            'environment': self.environment or 'local',
+            'engine': self.engine or '',
+            'filename': self.filename,
+            'size_bytes': size_b,
+            'size_label': size_label,
+            'status': self.status or 'ok',
+            'error_message': self.error_message or '',
+            'kind': self.kind or 'download',
+        }
+
+    def __repr__(self):
+        return f'<DatabaseBackup {self.id} {self.filename} {self.status}>'
