@@ -94,6 +94,46 @@ def log_audit(user_id, action, resource_type=None, resource_id=None, details=Non
         current_app.logger.error(f"Failed to create audit log: {str(e)}")
 
 
+def _jwt_payloads_from_request():
+    """Best-effort JWT claims from Authorization header and access/refresh cookies.
+
+    Used by logout so we can revoke sessions even when the token is already
+    expired or revoked — @jwt_required() would 401 and skip cookie clearing.
+    """
+    import jwt as pyjwt
+
+    candidates = []
+    auth = request.headers.get('Authorization') or ''
+    if auth.lower().startswith('bearer '):
+        candidates.append(auth.split(' ', 1)[1].strip())
+    for cookie_key in (
+        current_app.config.get('JWT_ACCESS_COOKIE_NAME', 'access_token_cookie'),
+        current_app.config.get('JWT_REFRESH_COOKIE_NAME', 'refresh_token_cookie'),
+    ):
+        value = request.cookies.get(cookie_key)
+        if value:
+            candidates.append(value)
+
+    secret = current_app.config.get('JWT_SECRET_KEY')
+    algorithm = current_app.config.get('JWT_ALGORITHM', 'HS256')
+    payloads = []
+    seen = set()
+    for raw in candidates:
+        if not raw or raw in seen:
+            continue
+        seen.add(raw)
+        try:
+            payloads.append(pyjwt.decode(
+                raw,
+                secret,
+                algorithms=[algorithm],
+                options={'verify_exp': False, 'verify_aud': False},
+            ))
+        except Exception:
+            continue
+    return payloads
+
+
 @auth_bp.route('/register', methods=['POST'])
 @rate_limit_if_available('5 per minute')
 def register():
@@ -362,36 +402,56 @@ def refresh():
 
 
 @auth_bp.route('/logout', methods=['POST'])
-@jwt_required()
 def logout():
     """Logout user and revoke tokens.
 
-    Revokes the current access JTI explicitly AND every other live session row
-    for this user — that covers the paired refresh token. A user who logs out
-    in one tab will be signed out on every tab the same browser had open;
-    that's the intended security behaviour.
+    Always 200 and always clears JWT cookies — even if the caller is already
+    signed out, the token is expired, or a second /login pageshow races the
+    first logout. Requiring a live access JWT left cookies in place on 401
+    and let Back/Forward restore the app without credentials.
+
+    When a valid (or expired) token is present, revokes that JTI and every
+    other live session row for the user, including the paired refresh token.
     """
     try:
-        user_id = get_jwt_identity()
-        jti = get_jwt()['jti']
+        user_ids = set()
+        jtis = set()
+        for payload in _jwt_payloads_from_request():
+            sub = payload.get('sub')
+            jti = payload.get('jti')
+            if sub is not None:
+                try:
+                    user_ids.add(int(sub))
+                except (TypeError, ValueError):
+                    pass
+            if jti:
+                jtis.add(jti)
 
-        Session.query.filter_by(token_jti=jti).update({'is_revoked': True})
-        Session.query.filter_by(user_id=int(user_id), is_revoked=False).update({'is_revoked': True})
-        db.session.commit()
-        
-        # Log logout
-        log_audit(int(user_id), 'logout', 'user', user_id)
-        
-        # Create response and unset cookies
+        if jtis:
+            Session.query.filter(Session.token_jti.in_(jtis)).update(
+                {'is_revoked': True}, synchronize_session=False
+            )
+        for uid in user_ids:
+            Session.query.filter_by(user_id=uid, is_revoked=False).update({'is_revoked': True})
+        if jtis or user_ids:
+            db.session.commit()
+            for uid in user_ids:
+                log_audit(uid, 'logout', 'user', str(uid))
+
         response = jsonify({'message': 'Logout successful'})
         from flask_jwt_extended import unset_jwt_cookies
         unset_jwt_cookies(response)
-        
+        # HTTPS browsers honor this and drop cookies + localStorage for the origin.
+        response.headers['Clear-Site-Data'] = '"cookies", "storage"'
         return response, 200
-        
+
     except Exception as e:
+        db.session.rollback()
         current_app.logger.error(f"Logout error: {str(e)}")
-        return error_response('Logout failed', 500, 'INTERNAL_ERROR')
+        response = jsonify({'message': 'Logout successful'})
+        from flask_jwt_extended import unset_jwt_cookies
+        unset_jwt_cookies(response)
+        return response, 200
 
 
 @auth_bp.route('/me', methods=['GET'])

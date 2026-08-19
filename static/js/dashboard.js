@@ -9,9 +9,21 @@ try {
     history.scrollRestoration = 'manual';
   }
 } catch (e) { /* ignore */ }
-window.addEventListener('pageshow', function () {
+window.addEventListener('pageshow', function (event) {
   if (window.scrollY > 0 && window.scrollY < 80) {
     window.scrollTo(0, 0);
+  }
+  /* Back/Forward cache can restore an app page after /login ended the session.
+     Public shells (About) keep the navbar but must stay reachable while signed out. */
+  var body = document.body;
+  var isPublicShell = !body || body.classList.contains('about-page');
+  if (
+    event.persisted &&
+    !isPublicShell &&
+    document.getElementById('logoutBtn') &&
+    !localStorage.getItem('access_token')
+  ) {
+    window.location.replace('/login');
   }
 });
 
@@ -3123,31 +3135,23 @@ window.submitChangePassword = async function() {
 async function handleLogout() {
   try {
     const token = localStorage.getItem('access_token');
-    
-    if (!token) {
-      localStorage.clear();
-      window.location.href = '/login';
-      return;
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) {
+      headers['Authorization'] = 'Bearer ' + token;
     }
-    
     await fetch('/api/auth/logout', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      }
+      headers: headers,
+      credentials: 'include'
     });
-    
-    localStorage.clear();
-    sessionStorage.clear();
-    window.location.href = '/login';
-    
   } catch (error) {
     console.error('Logout error:', error);
+  }
+  try {
     localStorage.clear();
     sessionStorage.clear();
-    window.location.href = '/login';
-  }
+  } catch (e) { /* ignore */ }
+  window.location.replace('/login');
 }
 
 // ===========================================

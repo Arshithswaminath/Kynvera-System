@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from flask import Flask, send_from_directory, abort, render_template, jsonify, request, redirect, make_response
 from concurrent.futures import ThreadPoolExecutor
 from werkzeug.exceptions import HTTPException
-from flask_jwt_extended import JWTManager
+from flask_jwt_extended import JWTManager, jwt_required
 from sqlalchemy import text
 
 # Import Flask extensions
@@ -298,6 +298,14 @@ def create_app():
         if _is_html_page_request():
             return _silent_refresh_or_login()
         return jsonify({"success": False, "error": "Token has expired"}), 401
+
+    @jwt.revoked_token_loader
+    def revoked_token_callback(jwt_header, jwt_payload):
+        """Signed-out / revoked tokens must not silently mint a new session."""
+        if _is_html_page_request():
+            from flask import redirect, url_for
+            return redirect(url_for('login_page')), 302
+        return jsonify({"success": False, "error": "Token has been revoked"}), 401
     
     # JWT token verification callback (check if token is revoked)
     @jwt.token_in_blocklist_loader
@@ -1182,6 +1190,20 @@ def create_app():
         # existing forms. Set CSP_ENFORCE=true once violations are clean.
         csp_header = 'Content-Security-Policy' if _csp_enforce else 'Content-Security-Policy-Report-Only'
         response.headers.setdefault(csp_header, _csp_policy)
+
+        # Authenticated HTML must not sit in bfcache. Back from /login was
+        # restoring the previous app page without a server round-trip.
+        mimetype = (response.mimetype or '')
+        path = request.path or ''
+        public_exact = {'/', '/about', '/offline', '/manifest.json', '/register'}
+        public_prefixes = (
+            '/static/', '/assets/tag/', '/sso/', '/login', '/logout',
+        )
+        is_public = path in public_exact or any(path.startswith(p) for p in public_prefixes)
+        if 'html' in mimetype and not is_public:
+            response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, private, max-age=0'
+            response.headers['Pragma'] = 'no-cache'
+            response.headers['Expires'] = '0'
         return response
 
     # Authentication routes
@@ -1211,6 +1233,7 @@ def create_app():
     
 
     @app.route('/dashboard')
+    @jwt_required()
     def dashboard():
         """Protected dashboard - requires authentication"""
         from common.kynvera_hub import hub_public_config

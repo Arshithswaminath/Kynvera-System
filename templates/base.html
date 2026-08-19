@@ -46,26 +46,21 @@
       const logoutBtn = document.getElementById('logoutBtn');
       if (logoutBtn) {
         logoutBtn.addEventListener('click', async function() {
+          const token = localStorage.getItem('access_token');
+          const headers = { 'Content-Type': 'application/json' };
+          if (token) headers['Authorization'] = `Bearer ${token}`;
           try {
-            const token = localStorage.getItem('access_token');
-            if (token) {
-              await fetch('/api/auth/logout', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${token}`
-                }
-              });
-            }
-            localStorage.clear();
-            sessionStorage.clear();
-            window.location.href = '/login';
+            await fetch('/api/auth/logout', {
+              method: 'POST',
+              headers: headers,
+              credentials: 'include'
+            });
           } catch (error) {
             console.error('Logout error:', error);
-            localStorage.clear();
-            sessionStorage.clear();
-            window.location.href = '/login';
           }
+          localStorage.clear();
+          sessionStorage.clear();
+          window.location.replace('/login');
         });
       }
       

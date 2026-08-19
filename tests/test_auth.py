@@ -291,11 +291,57 @@ class TestLogout:
             assert data['message'] == 'Logout successful'
     
     def test_logout_no_token(self, client, app):
-        """Test logout without token"""
+        """Logout without a token still succeeds and clears cookies."""
         with app.app_context():
             response = client.post('/api/auth/logout')
-            
-            assert response.status_code == 401
+
+            assert response.status_code == 200
+            data = response.get_json()
+            assert data['message'] == 'Logout successful'
+
+    def test_logout_revokes_session_and_blocks_dashboard(self, client, standard_user, app):
+        """After logout, dashboard HTML must ask for credentials again."""
+        with app.app_context():
+            login = client.post('/api/auth/login', json={
+                'username': 'testuser',
+                'password': 'TestPass123'
+            })
+            assert login.status_code == 200
+            token = login.get_json()['access_token']
+            headers = {'Authorization': f'Bearer {token}'}
+
+            dash = client.get('/dashboard', headers=headers)
+            assert dash.status_code == 200
+            assert 'no-store' in (dash.headers.get('Cache-Control') or '')
+
+            logout = client.post('/api/auth/logout', headers=headers)
+            assert logout.status_code == 200
+
+            blocked = client.get('/dashboard', headers=headers)
+            assert blocked.status_code in (302, 401)
+            if blocked.status_code == 302:
+                assert '/login' in (blocked.headers.get('Location') or '')
+
+            cookie_blocked = client.get('/dashboard')
+            assert cookie_blocked.status_code in (302, 401)
+            if cookie_blocked.status_code == 302:
+                assert '/login' in (cookie_blocked.headers.get('Location') or '')
+
+    def test_dashboard_requires_auth(self, client, app):
+        """Anonymous GET /dashboard redirects to login."""
+        with app.app_context():
+            response = client.get('/dashboard')
+            assert response.status_code in (302, 401)
+            if response.status_code == 302:
+                assert '/login' in (response.headers.get('Location') or '')
+
+    def test_logout_is_idempotent(self, client, auth_headers, app):
+        """A second logout after the session is already revoked still returns 200."""
+        with app.app_context():
+            first = client.post('/api/auth/logout', headers=auth_headers)
+            assert first.status_code == 200
+            second = client.post('/api/auth/logout', headers=auth_headers)
+            assert second.status_code == 200
 
 
 class TestErrorResponseFormat:

@@ -97,16 +97,29 @@
             return next;
         }
 
+        var sessionClearPromise = null;
         function clearClientSession() {
-            try {
-                ['access_token', 'refresh_token', 'user'].forEach(function (k) {
-                    try { localStorage.removeItem(k); } catch (_) {}
-                    try { sessionStorage.removeItem(k); } catch (_) {}
-                });
-            } catch (_) { /* ignore */ }
-            try {
-                fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(function () {});
-            } catch (_) { /* ignore */ }
+            if (sessionClearPromise) return sessionClearPromise;
+            sessionClearPromise = (async function () {
+                var token = null;
+                try { token = localStorage.getItem('access_token'); } catch (_) {}
+                var headers = { 'Accept': 'application/json' };
+                if (token) headers['Authorization'] = 'Bearer ' + token;
+                try {
+                    await fetch('/api/auth/logout', {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: headers
+                    });
+                } catch (_) { /* ignore */ }
+                try {
+                    ['access_token', 'refresh_token', 'user'].forEach(function (k) {
+                        try { localStorage.removeItem(k); } catch (_) {}
+                        try { sessionStorage.removeItem(k); } catch (_) {}
+                    });
+                } catch (_) { /* ignore */ }
+            })();
+            return sessionClearPromise;
         }
 
         /* Fresh credential form — used on load and when Chrome Back restores /login. */
